@@ -2,12 +2,16 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import "forge-std/console2.sol";
-import "@ipor-vaults/contracts/vaults/Vault.sol";
-import "@ipor-vaults/contracts/vaults/FlashLoanMorphoConnector.sol";
-import "@ipor-vaults/contracts/vaults/AaveV3SupplyConnector.sol";
-import "@ipor-vaults/contracts/vaults/AaveV3BorrowConnector.sol";
-import "@ipor-vaults/contracts/vaults/NativeSwapWEthToWstEthConnector.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Vault} from "../../contracts/vaults/Vault.sol";
+import {FlashLoanMorphoConnector} from "../../contracts/vaults/FlashLoanMorphoConnector.sol";
+import {AaveV3SupplyConnector} from "../../contracts/vaults/AaveV3SupplyConnector.sol";
+import {AaveV3BorrowConnector} from "../../contracts/vaults/AaveV3BorrowConnector.sol";
+import {NativeSwapWethToWstEthConnector} from "../../contracts/vaults/NativeSwapWEthToWstEthConnector.sol";
+import {PriceAdapter} from "../../contracts/vaults/PriceAdapter.sol";
+import {AaveV3BalanceConnector} from "../../contracts/vaults/AaveV3BalanceConnector.sol";
+
+import "../../contracts/vaults/ConnectorConfig.sol";
 
 contract ForkAmmGovernanceServiceTest is Test {
     address public constant wEth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -19,6 +23,13 @@ contract ForkAmmGovernanceServiceTest is Test {
     address public aaveV3BorrowConnector;
     address public nativeSwapWethToWstEthConnector;
 
+    ConnectorConfig public connectorConfig;
+
+    bytes32 aaveV3MarketName = bytes32("AaveV3");
+    uint256 aaveV3MarketId;
+
+    address priceAdapter;
+
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19368505);
 
@@ -26,32 +37,72 @@ contract ForkAmmGovernanceServiceTest is Test {
             new Vault("ipvwstETH", "IP Vault wstETH", wstETH)
         );
 
+
+        connectorConfig = new ConnectorConfig();
+
+        priceAdapter = address(
+            new PriceAdapter()
+        );
+
+        aaveV3MarketId = connectorConfig.addMarket(aaveV3MarketName);
+
         flashLoanMorphoConnector = address(new FlashLoanMorphoConnector());
         aaveV3SupplyConnector = address(new AaveV3SupplyConnector());
-        aaveV3BorrowConnector = address(new AaveV3BorrowConnector());
+        aaveV3BorrowConnector = address(new AaveV3BorrowConnector(aaveV3MarketId, aaveV3MarketName));
         nativeSwapWethToWstEthConnector = address(
             new NativeSwapWethToWstEthConnector()
         );
 
-        Vault(vaultWstEth).addConnector(flashLoanMorphoConnector);
-        Vault(vaultWstEth).addConnector(aaveV3SupplyConnector);
-        Vault(vaultWstEth).addConnector(aaveV3BorrowConnector);
-        Vault(vaultWstEth).addConnector(nativeSwapWethToWstEthConnector);
+        address[] memory connectors = new address[](4);
+        connectors[0] = flashLoanMorphoConnector;
+        connectors[1] = aaveV3SupplyConnector;
+        connectors[2] = aaveV3BorrowConnector;
+        connectors[3] = nativeSwapWethToWstEthConnector;
+
+        Vault(vaultWstEth).addConnectors(connectors);
+    }
+
+    function testShouldAddNewConnector() public {
+        //given
+
+        AaveV3BorrowConnector aaveV3BorrowConnector = new AaveV3BorrowConnector(
+            aaveV3MarketId,
+            aaveV3MarketName
+        );
+
+        address connectorBalanceOf = address(
+            new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter)
+        );
+
+        connectorConfig.addConnector(
+            address(aaveV3BorrowConnector),
+            aaveV3MarketId,
+            connectorBalanceOf
+        );
+
+        //when
+
+        //then
     }
 
     function testShouldWork() public {
-
         uint256 initialAmount = 40 * 1e18;
         deal(wstETH, address(this), initialAmount);
 
         IERC20(wstETH).approve(vaultWstEth, initialAmount);
+
+        //        uint256 amountVaultBeforeDeposit = IERC20(wstETH).balanceOf(vaultWstEth);
+        //        console2.log("amountVaultBeforeDeposit", amountVaultBeforeDeposit);
+
         Vault(vaultWstEth).deposit(initialAmount, address(this));
 
+        //        uint256 amountVaultAfterDeposit = IERC20(wstETH).balanceOf(vaultWstEth);
+        //        console2.log("amountVaultAfterDeposit", amountVaultAfterDeposit);
 
         Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
 
         Vault.ConnectorAction[]
-        memory flashLoanCalls = new Vault.ConnectorAction[](3);
+            memory flashLoanCalls = new Vault.ConnectorAction[](3);
 
         flashLoanCalls[0] = Vault.ConnectorAction(
             aaveV3SupplyConnector,
@@ -91,15 +142,15 @@ contract ForkAmmGovernanceServiceTest is Test {
             )
         );
 
-
         bytes memory flashLoanDataBytes = abi.encode(flashLoanCalls);
 
         FlashLoanMorphoConnector.FlashLoanData
-        memory flashLoanData = FlashLoanMorphoConnector.FlashLoanData({
-            token: wstETH,
-            amount: 61e18,
-            data: flashLoanDataBytes
-        });
+            memory flashLoanData = FlashLoanMorphoConnector.FlashLoanData({
+                token: wstETH,
+                /// FlashLoan 100 wstETH
+                amount: 100e18,
+                data: flashLoanDataBytes
+            });
 
         bytes memory data = abi.encode(flashLoanData);
 

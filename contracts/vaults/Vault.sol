@@ -15,7 +15,12 @@ contract Vault is ERC4626 {
         bytes data;
     }
 
+    /// TODO: move to storage library
     mapping(address => uint256) public supportedConnectors;
+
+    /// @dev key = concatenate(marketId, asset), value = specific balanceConnector
+    /// TODO: move to storage library
+    mapping(bytes32 => address) public balanceConnectors;
 
     constructor(
         string memory assetName,
