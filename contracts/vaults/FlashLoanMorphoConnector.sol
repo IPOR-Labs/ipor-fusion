@@ -23,10 +23,11 @@ contract FlashLoanMorphoConnector is IConnector {
     function enter(
         bytes calldata data
     ) external returns (uint256 executionStatus) {
-        console2.log("FlashLoanMorphoConnector: enter");
+        console2.log("FlashLoanMorphoConnector: ENTER...");
         (FlashLoanData memory flashLoanData) = abi.decode(data, (FlashLoanData));
         IERC20(flashLoanData.token).approve(morphoAddress, flashLoanData.amount);
         morphoBlue.flashLoan(flashLoanData.token, flashLoanData.amount, flashLoanData.data);
+        console2.log("FlashLoanMorphoConnector: END.");
         return 0;
     }
 

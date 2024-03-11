@@ -20,7 +20,7 @@ contract NativeSwapWethToWstEthConnector is IConnector {
     address public constant stEth = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
     function enter(bytes calldata data) external returns (uint256 executionStatus) {
-        console2.log("NativeSwapWethToWstEthConnector: enter...");
+        console2.log("NativeSwapWethToWstEthConnector: ENTER...");
 
         (SwapData memory swapData) = abi.decode(data, (SwapData));
 
@@ -34,7 +34,7 @@ contract NativeSwapWethToWstEthConnector is IConnector {
 
         IwstEth(wstEth).wrap(stEthAmount);
 
-        console2.log("NativeSwapWethToWstEthConnector: end.");
+        console2.log("NativeSwapWethToWstEthConnector: END.");
     }
 
     function exit(bytes calldata data) external returns (uint256 executionStatus) {

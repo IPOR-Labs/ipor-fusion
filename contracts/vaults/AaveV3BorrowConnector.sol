@@ -15,7 +15,7 @@ contract AaveV3BorrowConnector is IConnector {
     function enter(
         bytes calldata data
     ) external returns (uint256 executionStatus) {
-        console2.log("AaveV3BorrowConnector: enter...");
+        console2.log("AaveV3BorrowConnector: ENTER...");
         BorrowData memory borrowData = abi.decode(data, (BorrowData));
 
         aavePool.borrow(
@@ -26,7 +26,7 @@ contract AaveV3BorrowConnector is IConnector {
             address(this)
         );
 
-        console2.log("AaveV3BorrowConnector: end.");
+        console2.log("AaveV3BorrowConnector: END.");
     }
 
     function exit(

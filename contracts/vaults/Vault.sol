@@ -14,6 +14,7 @@ contract Vault is ERC4626 {
         address connector;
         bytes data;
     }
+
     mapping(address => uint256) public supportedConnectors;
 
     constructor(
@@ -25,7 +26,9 @@ contract Vault is ERC4626 {
     function execute(
         ConnectorAction[] calldata calls
     ) external returns (bytes[] memory returnData) {
-        console2.log("Vault: execute...");
+
+
+        console2.log("Vault: EXECUTE START...");
         uint256 callsCount = calls.length;
 
         returnData = new bytes[](callsCount);
@@ -42,6 +45,8 @@ contract Vault is ERC4626 {
             );
         }
 
+        console2.log("Vault: EXECUTE END.");
+
         return returnData;
     }
 
@@ -53,7 +58,7 @@ contract Vault is ERC4626 {
         console2.log("VAULT FlashLoanMorphoConnector: onMorphoFlashLoan");
         uint256 assetBalanceBeforeCalls = IERC20(wstEth).balanceOf(payable(this));
 
-        console2.log("assetBalanceBeforeCalls", assetBalanceBeforeCalls);
+        console2.log("VAULT FlashLoanMorphoConnector: assetBalanceBeforeCalls", assetBalanceBeforeCalls);
 
         ConnectorAction[] memory calls = abi.decode(data, (ConnectorAction[]));
 
@@ -65,7 +70,7 @@ contract Vault is ERC4626 {
         bytes[] memory returnData = Vault(payable(this)).execute(calls);
 
         uint256 assetBalanceAfterCalls = IERC20(wstEth).balanceOf(payable(this));
-        console2.log("assetBalanceAfterCalls", assetBalanceAfterCalls);
+        console2.log("VAULT FlashLoanMorphoConnector: assetBalanceAfterCalls", assetBalanceAfterCalls);
 
     }
 

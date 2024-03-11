@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import "./VaultTypes.sol";
 import "./Vault.sol";
 
 contract VaultFactory {
-//    function createVault(
-//        string memory assetName,
-//        string memory assetSymbol,
-//        address underlyingAsset
-//    ) external returns (address vault, address vaultOrchestrator) {
-//        vault = address(new Vault(assetName, assetSymbol, underlyingAsset));
-//        vaultOrchestrator = address(new VaultsOrchestrator(vault));
-//    }
-//
+    function createVault(
+        string memory assetName,
+        string memory assetSymbol,
+        address underlyingAsset
+    ) external returns (address vault, address vaultOrchestrator) {
+        vault = address(new Vault(assetName, assetSymbol, underlyingAsset));
+        vaultOrchestrator = address(new VaultsOrchestrator(vault));
+    }
+
 //    function createConnector(
 //        string memory assetName,
 //        string memory assetSymbol,

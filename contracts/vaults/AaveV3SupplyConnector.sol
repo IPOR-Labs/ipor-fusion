@@ -15,13 +15,14 @@ contract AaveV3SupplyConnector is IConnector {
     IPool public constant aavePool = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
 
     function enter(bytes calldata data) external returns (uint256 executionStatus) {
-        console2.log("AaveV3SupplyConnector: enter...");
+        console2.log("AaveV3SupplyConnector: ENTER...");
         (SupplyData memory supplyData) = abi.decode(data, (SupplyData));
 
         IERC20(supplyData.token).approve(address(aavePool), supplyData.amount);
 
         aavePool.supply(supplyData.token, supplyData.amount, address(this), 0);
-        console2.log("AaveV3SupplyConnector: end.");
+        console2.log("AaveV3SupplyConnector: END.");
+
     }
 
     function exit(bytes calldata data) external returns (uint256 executionStatus) {
