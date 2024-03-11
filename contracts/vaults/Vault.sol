@@ -26,8 +26,6 @@ contract Vault is ERC4626 {
     function execute(
         ConnectorAction[] calldata calls
     ) external returns (bytes[] memory returnData) {
-
-
         console2.log("Vault: EXECUTE START...");
         uint256 callsCount = calls.length;
 
@@ -56,9 +54,14 @@ contract Vault is ERC4626 {
         bytes calldata data
     ) external payable {
         console2.log("VAULT FlashLoanMorphoConnector: onMorphoFlashLoan");
-        uint256 assetBalanceBeforeCalls = IERC20(wstEth).balanceOf(payable(this));
+        uint256 assetBalanceBeforeCalls = IERC20(wstEth).balanceOf(
+            payable(this)
+        );
 
-        console2.log("VAULT FlashLoanMorphoConnector: assetBalanceBeforeCalls", assetBalanceBeforeCalls);
+        console2.log(
+            "VAULT FlashLoanMorphoConnector: assetBalanceBeforeCalls",
+            assetBalanceBeforeCalls
+        );
 
         ConnectorAction[] memory calls = abi.decode(data, (ConnectorAction[]));
 
@@ -69,9 +72,13 @@ contract Vault is ERC4626 {
 
         bytes[] memory returnData = Vault(payable(this)).execute(calls);
 
-        uint256 assetBalanceAfterCalls = IERC20(wstEth).balanceOf(payable(this));
-        console2.log("VAULT FlashLoanMorphoConnector: assetBalanceAfterCalls", assetBalanceAfterCalls);
-
+        uint256 assetBalanceAfterCalls = IERC20(wstEth).balanceOf(
+            payable(this)
+        );
+        console2.log(
+            "VAULT FlashLoanMorphoConnector: assetBalanceAfterCalls",
+            assetBalanceAfterCalls
+        );
     }
 
     receive() external payable {}
@@ -81,11 +88,15 @@ contract Vault is ERC4626 {
         /// separate contract with configuration which connector use which flashloan method and protocol
     }
 
-    function addConnector(address connector) external {
-        supportedConnectors[connector] = 1;
+    function addConnectors(address[] calldata connectors) external {
+        for (uint256 i = 0; i < connectors.length; ++i) {
+            supportedConnectors[connectors[i]] = 1;
+        }
     }
 
-    function removeConnector(address connector) external {
-        supportedConnectors[connector] = 0;
+    function removeConnectors(address[] calldata connectors) external {
+        for (uint256 i = 0; i < connectors.length; ++i) {
+            supportedConnectors[connectors[i]] = 0;
+        }
     }
 }

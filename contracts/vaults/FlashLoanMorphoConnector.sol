@@ -6,6 +6,7 @@ import "./IConnector.sol";
 import "./interfaces/IMorpho.sol";
 import "./Vault.sol";
 
+/// @dev FlashLoan Connector type does not required information about supported assets
 contract FlashLoanMorphoConnector is IConnector {
 
     address public constant wstEth = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
@@ -62,5 +63,24 @@ contract FlashLoanMorphoConnector is IConnector {
 
     receive() external payable {
         revert("FlashLoanMorphoConnector: receive not supported");
+    }
+
+    function getSupportedAssets()
+    external
+    view
+    returns (address[] memory assets) {
+        return new address[](0);
+
+    }
+
+    function isSupportedAsset(address asset) external view returns (bool) {
+        return true;
+    }
+
+    function marketId() external view returns (uint256) {
+        return 0;
+    }
+    function marketName() external view returns (string memory) {
+        return "";
     }
 }

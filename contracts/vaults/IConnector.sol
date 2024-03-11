@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-interface IConnector {
-    function enter(bytes calldata data) external returns (uint256 executionStatus);
-    function exit(bytes calldata data) external returns (uint256 executionStatus);
+import "./IConnectorCommon.sol";
+
+interface IConnector is IConnectorCommon {
+    function enter(
+        bytes calldata data
+    ) external returns (uint256 executionStatus);
+
+    function exit(
+        bytes calldata data
+    ) external returns (uint256 executionStatus);
+
 
     /// Vault details:
     /// - has a list of connectors
@@ -23,14 +31,12 @@ interface IConnector {
     /// 4 - FlashLoan connectors
     /// 5 - Swap connectors
 
-
     /// Scenario:
     /// 1 FlashLoan on Morpho - 100 wstETH
     /// 2. Inside flashloan action - execute 3 actions
     /// 3. 1 - AaveV3SupplyConnector - 40 wstETH
     /// 4. 2 - AaveV3BorrowConnector - 30 wETH
     /// 5. 3 - Native Swap wETH to wstETH - 30 wstETH - required to repay flashloan
-
 
     /// UPDATE Vault Balance -  algorithm
     /// 1 - for a given asset check supply in external protocol
@@ -40,7 +46,7 @@ interface IConnector {
     /// 5 - calculate balance in given asset to value in undelying asset in Vault
     /// 6 - update in Vault balance for a given asset and connet
 
-// benefits
+    // benefits
     /// 1. IPOR keeper can work on different vaults
     /// 2. New abstraction layer - simplification
     /// 3. Competition between keepers
@@ -48,6 +54,4 @@ interface IConnector {
     /// 5. Developer engagement
     /// 6. Solve Asset Management in IPOR
     /// 7. Flashloan on Vault
-
-
 }

@@ -10,7 +10,6 @@ contract VaultFactory {
         address underlyingAsset
     ) external returns (address vault, address vaultOrchestrator) {
         vault = address(new Vault(assetName, assetSymbol, underlyingAsset));
-        vaultOrchestrator = address(new VaultsOrchestrator(vault));
     }
 
 //    function createConnector(

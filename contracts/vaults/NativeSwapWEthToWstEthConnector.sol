@@ -41,4 +41,23 @@ contract NativeSwapWethToWstEthConnector is IConnector {
         //TODO: implement
         revert("AaveV3SupplyConnector: exit not supported");
     }
+
+    function getSupportedAssets()
+    external
+    view
+    returns (address[] memory assets) {
+        return new address[](0);
+
+    }
+
+    function isSupportedAsset(address asset) external view returns (bool) {
+        return true;
+    }
+
+    function marketId() external view returns (uint256) {
+        return 0;
+    }
+    function marketName() external view returns (string memory) {
+        return "";
+    }
 }
