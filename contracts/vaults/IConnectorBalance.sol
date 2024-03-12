@@ -8,5 +8,5 @@ interface IConnectorBalance is IConnectorCommon {
         address account,
         address underlyingAsset,
         address asset
-    ) external view returns (uint256);
+    ) external view returns (int256);
 }

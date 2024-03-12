@@ -22,6 +22,7 @@ contract ForkAmmGovernanceServiceTest is Test {
     address public aaveV3SupplyConnector;
     address public aaveV3BorrowConnector;
     address public nativeSwapWethToWstEthConnector;
+    address public balanceConnector;
 
     ConnectorConfig public connectorConfig;
 
@@ -37,27 +38,34 @@ contract ForkAmmGovernanceServiceTest is Test {
             new Vault("ipvwstETH", "IP Vault wstETH", wstETH)
         );
 
-
         connectorConfig = new ConnectorConfig();
 
-        priceAdapter = address(
-            new PriceAdapter()
-        );
+        priceAdapter = address(new PriceAdapter());
 
         aaveV3MarketId = connectorConfig.addMarket(aaveV3MarketName);
 
         flashLoanMorphoConnector = address(new FlashLoanMorphoConnector());
         aaveV3SupplyConnector = address(new AaveV3SupplyConnector());
-        aaveV3BorrowConnector = address(new AaveV3BorrowConnector(aaveV3MarketId, aaveV3MarketName));
+        aaveV3BorrowConnector = address(
+            new AaveV3BorrowConnector(aaveV3MarketId, aaveV3MarketName)
+        );
         nativeSwapWethToWstEthConnector = address(
             new NativeSwapWethToWstEthConnector()
         );
+        balanceConnector = address(
+            new AaveV3BalanceConnector(
+                aaveV3MarketId,
+                aaveV3MarketName,
+                priceAdapter
+            )
+        );
 
-        address[] memory connectors = new address[](4);
+        address[] memory connectors = new address[](5);
         connectors[0] = flashLoanMorphoConnector;
         connectors[1] = aaveV3SupplyConnector;
         connectors[2] = aaveV3BorrowConnector;
         connectors[3] = nativeSwapWethToWstEthConnector;
+        connectors[4] = balanceConnector;
 
         Vault(vaultWstEth).addConnectors(connectors);
     }
@@ -65,17 +73,21 @@ contract ForkAmmGovernanceServiceTest is Test {
     function testShouldAddNewConnector() public {
         //given
 
-        AaveV3BorrowConnector aaveV3BorrowConnector = new AaveV3BorrowConnector(
-            aaveV3MarketId,
-            aaveV3MarketName
-        );
+        AaveV3BorrowConnector aaveV3BorrowConnectorLocal = new AaveV3BorrowConnector(
+                aaveV3MarketId,
+                aaveV3MarketName
+            );
 
         address connectorBalanceOf = address(
-            new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter)
+            new AaveV3BalanceConnector(
+                aaveV3MarketId,
+                aaveV3MarketName,
+                priceAdapter
+            )
         );
 
         connectorConfig.addConnector(
-            address(aaveV3BorrowConnector),
+            address(aaveV3BorrowConnectorLocal),
             aaveV3MarketId,
             connectorBalanceOf
         );
@@ -102,7 +114,7 @@ contract ForkAmmGovernanceServiceTest is Test {
         Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
 
         Vault.ConnectorAction[]
-            memory flashLoanCalls = new Vault.ConnectorAction[](3);
+            memory flashLoanCalls = new Vault.ConnectorAction[](5);
 
         flashLoanCalls[0] = Vault.ConnectorAction(
             aaveV3SupplyConnector,
@@ -139,6 +151,26 @@ contract ForkAmmGovernanceServiceTest is Test {
                         wEthAmount: 30 * 1e18
                     })
                 )
+            )
+        );
+
+        flashLoanCalls[3] = Vault.ConnectorAction(
+            balanceConnector,
+            abi.encodeWithSignature(
+                "balanceOf(address,address,address)",
+                address(vaultWstEth),
+                wstETH,
+                wstETH
+            )
+        );
+
+        flashLoanCalls[4] = Vault.ConnectorAction(
+            balanceConnector,
+            abi.encodeWithSignature(
+                "balanceOf(address,address,address)",
+                address(vaultWstEth),
+                wstETH,
+                wEth
             )
         );
 
