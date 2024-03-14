@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import "../tokens/ERC4626/ERC4626Permit.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "forge-std/console2.sol";
 
-contract Vault is ERC4626 {
+contract Vault is ERC4626Permit {
     using Address for address;
 
     address public constant wstEth = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
@@ -26,7 +26,7 @@ contract Vault is ERC4626 {
         string memory assetName,
         string memory assetSymbol,
         address underlyingToken
-    ) ERC4626(IERC20Metadata(underlyingToken)) ERC20(assetName, assetSymbol) {}
+    ) ERC4626Permit(IERC20(underlyingToken)) ERC20Permit(assetName) ERC20(assetName, assetSymbol) {}
 
     function execute(
         ConnectorAction[] calldata calls
