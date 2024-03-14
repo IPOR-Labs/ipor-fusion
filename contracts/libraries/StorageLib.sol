@@ -3,27 +3,19 @@ pragma solidity 0.8.20;
 
 /// @title Storage ID's associated with the IPOR Protocol Router.
 library StorageLib {
-    uint256 constant STORAGE_SLOT_BASE = 1_000_000;
 
-    // append only
-    enum StorageId {
-        MARKETS_GRANTED_ASSETS
-    }
+    // keccak256(abi.encode(uint256(keccak256("io.ipor.marketsGrantedAssets")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MARKETS_GRANTED_ASSETS = 0x6c69fe10a4a5f90d958b48daeb420fdb031044e272ec2a4b02855a335483b700;
 
+    /// @custom:storage-location erc7201:io.ipor.marketsGrantedAssets
     struct MarketsGrantedAssets {
         // marketId => asset =>  1 - granted, otherwise  - not granted
         mapping(uint256 => mapping(address => uint256)) value;
     }
 
-
     function getMarketsGrantedAssets() internal pure returns (MarketsGrantedAssets storage grantedAssets) {
-        uint256 slot = _getStorageSlot(StorageId.MARKETS_GRANTED_ASSETS);
         assembly {
-            grantedAssets.slot := slot
+            grantedAssets.slot := MARKETS_GRANTED_ASSETS
         }
-    }
-
-    function _getStorageSlot(StorageId storageId) private pure returns (uint256 slot) {
-        return uint256(storageId) + STORAGE_SLOT_BASE;
     }
 }
