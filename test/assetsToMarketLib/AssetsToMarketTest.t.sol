@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import {AssetsToMarketMock} from "./AssetsToMarketMock.sol";
 
 contract AssetsToMarketTest is Test {
-
     AssetsToMarketMock assetsToMarketMock;
 
     function setUp() public {
@@ -78,5 +77,4 @@ contract AssetsToMarketTest is Test {
         assertFalse(asset3Before);
         assertFalse(asset4Before);
     }
-
 }

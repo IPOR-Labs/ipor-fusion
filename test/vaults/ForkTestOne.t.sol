@@ -34,9 +34,7 @@ contract ForkAmmGovernanceServiceTest is Test {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19368505);
 
-        vaultWstEth = payable(
-            new Vault("ipvwstETH", "IP Vault wstETH", wstETH)
-        );
+        vaultWstEth = payable(new Vault("ipvwstETH", "IP Vault wstETH", wstETH));
 
         connectorConfig = new ConnectorConfig();
 
@@ -46,19 +44,9 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         flashLoanMorphoConnector = address(new FlashLoanMorphoConnector());
         aaveV3SupplyConnector = address(new AaveV3SupplyConnector());
-        aaveV3BorrowConnector = address(
-            new AaveV3BorrowConnector(aaveV3MarketId, aaveV3MarketName)
-        );
-        nativeSwapWethToWstEthConnector = address(
-            new NativeSwapWethToWstEthConnector()
-        );
-        balanceConnector = address(
-            new AaveV3BalanceConnector(
-                aaveV3MarketId,
-                aaveV3MarketName,
-                priceAdapter
-            )
-        );
+        aaveV3BorrowConnector = address(new AaveV3BorrowConnector(aaveV3MarketId, aaveV3MarketName));
+        nativeSwapWethToWstEthConnector = address(new NativeSwapWethToWstEthConnector());
+        balanceConnector = address(new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter));
 
         address[] memory connectors = new address[](5);
         connectors[0] = flashLoanMorphoConnector;
@@ -73,24 +61,13 @@ contract ForkAmmGovernanceServiceTest is Test {
     function testShouldAddNewConnector() public {
         //given
 
-        AaveV3BorrowConnector aaveV3BorrowConnectorLocal = new AaveV3BorrowConnector(
-                aaveV3MarketId,
-                aaveV3MarketName
-            );
+        AaveV3BorrowConnector aaveV3BorrowConnectorLocal = new AaveV3BorrowConnector(aaveV3MarketId, aaveV3MarketName);
 
         address connectorBalanceOf = address(
-            new AaveV3BalanceConnector(
-                aaveV3MarketId,
-                aaveV3MarketName,
-                priceAdapter
-            )
+            new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter)
         );
 
-        connectorConfig.addConnector(
-            address(aaveV3BorrowConnectorLocal),
-            aaveV3MarketId,
-            connectorBalanceOf
-        );
+        connectorConfig.addConnector(address(aaveV3BorrowConnectorLocal), aaveV3MarketId, connectorBalanceOf);
 
         //when
 
@@ -113,19 +90,13 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
 
-        Vault.ConnectorAction[]
-            memory flashLoanCalls = new Vault.ConnectorAction[](5);
+        Vault.ConnectorAction[] memory flashLoanCalls = new Vault.ConnectorAction[](5);
 
         flashLoanCalls[0] = Vault.ConnectorAction(
             aaveV3SupplyConnector,
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyConnector.SupplyData({
-                        token: wstETH,
-                        amount: 40 * 1e18
-                    })
-                )
+                abi.encode(AaveV3SupplyConnector.SupplyData({token: wstETH, amount: 40 * 1e18}))
             )
         );
 
@@ -133,12 +104,7 @@ contract ForkAmmGovernanceServiceTest is Test {
             aaveV3BorrowConnector,
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3BorrowConnector.BorrowData({
-                        token: wEth,
-                        amount: 30 * 1e18
-                    })
-                )
+                abi.encode(AaveV3BorrowConnector.BorrowData({token: wEth, amount: 30 * 1e18}))
             )
         );
 
@@ -146,50 +112,32 @@ contract ForkAmmGovernanceServiceTest is Test {
             nativeSwapWethToWstEthConnector,
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    NativeSwapWethToWstEthConnector.SwapData({
-                        wEthAmount: 30 * 1e18
-                    })
-                )
+                abi.encode(NativeSwapWethToWstEthConnector.SwapData({wEthAmount: 30 * 1e18}))
             )
         );
 
         flashLoanCalls[3] = Vault.ConnectorAction(
             balanceConnector,
-            abi.encodeWithSignature(
-                "balanceOf(address,address,address)",
-                address(vaultWstEth),
-                wstETH,
-                wstETH
-            )
+            abi.encodeWithSignature("balanceOf(address,address,address)", address(vaultWstEth), wstETH, wstETH)
         );
 
         flashLoanCalls[4] = Vault.ConnectorAction(
             balanceConnector,
-            abi.encodeWithSignature(
-                "balanceOf(address,address,address)",
-                address(vaultWstEth),
-                wstETH,
-                wEth
-            )
+            abi.encodeWithSignature("balanceOf(address,address,address)", address(vaultWstEth), wstETH, wEth)
         );
 
         bytes memory flashLoanDataBytes = abi.encode(flashLoanCalls);
 
-        FlashLoanMorphoConnector.FlashLoanData
-            memory flashLoanData = FlashLoanMorphoConnector.FlashLoanData({
-                token: wstETH,
-                /// FlashLoan 100 wstETH
-                amount: 100e18,
-                data: flashLoanDataBytes
-            });
+        FlashLoanMorphoConnector.FlashLoanData memory flashLoanData = FlashLoanMorphoConnector.FlashLoanData({
+            token: wstETH,
+            /// FlashLoan 100 wstETH
+            amount: 100e18,
+            data: flashLoanDataBytes
+        });
 
         bytes memory data = abi.encode(flashLoanData);
 
-        calls[0] = Vault.ConnectorAction(
-            flashLoanMorphoConnector,
-            abi.encodeWithSignature("enter(bytes)", data)
-        );
+        calls[0] = Vault.ConnectorAction(flashLoanMorphoConnector, abi.encodeWithSignature("enter(bytes)", data));
 
         Vault(payable(vaultWstEth)).execute(calls);
     }
