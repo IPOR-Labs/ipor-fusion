@@ -15,6 +15,11 @@ contract Vault is ERC4626Permit {
         bytes data;
     }
 
+    struct BalanceConnector {
+        uint256 marketId;
+        address connector;
+    }
+
     /// TODO: move to storage library
     mapping(address => uint256) public supportedConnectors;
 
@@ -25,8 +30,18 @@ contract Vault is ERC4626Permit {
     constructor(
         string memory assetName,
         string memory assetSymbol,
-        address underlyingToken
-    ) ERC4626Permit(IERC20(underlyingToken)) ERC20Permit(assetName) ERC20(assetName, assetSymbol) {}
+        address underlyingToken,
+        address[] memory keepers,
+        uint256[] memory connectors,
+        uint256[] memory balanceConnectors
+    ) ERC4626Permit(IERC20(underlyingToken)) ERC20Permit(assetName) ERC20(assetName, assetSymbol) {
+        ///TODO: balance connectors are per market (not per market and asset)
+        ///TODO: balacne connectors are determined by marketId from above constructor - taken from configuration in external contract
+        ///TODO: when adding new connector - then validate if connector support assets defined for a given vault.
+        ///TODO:
+
+
+    }
 
     function execute(
         ConnectorAction[] calldata calls
