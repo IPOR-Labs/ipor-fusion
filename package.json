@@ -16,7 +16,9 @@
     "solhint:test": "./node_modules/.bin/solhint 'test/**/*.sol'",
     "solhint:script": "./node_modules/.bin/solhint 'script/**/*.sol'",
     "solhint:all": "npm-run-all --parallel solhint:contract solhint:test solhint:script",
-    "prettier": "./node_modules/.bin/prettier --write \"contracts/**/*.sol\""
+    "prettier:contracts": "./node_modules/.bin/prettier --write 'contracts/**/*.sol'",
+    "prettier:test": "./node_modules/.bin/prettier --write 'test/**/*.sol'",
+    "prettier:all": "npm-run-all --parallel prettier:contracts prettier:test"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.0.2",
