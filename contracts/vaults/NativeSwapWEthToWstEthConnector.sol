@@ -1,50 +1,49 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import "forge-std/console2.sol";
-import "./IConnector.sol";
-import "./interfaces/IMorpho.sol";
-import "./Vault.sol";
-import "./interfaces/IwstEth.sol";
-import "./interfaces/IStETH.sol";
-import "./interfaces/IWETH9.sol";
+import {IConnector} from "./IConnector.sol";
+import {IwstEth} from "./interfaces/IwstEth.sol";
+import {IStETH} from "./interfaces/IStETH.sol";
+import {IWETH9} from "./interfaces/IWETH9.sol";
 
 contract NativeSwapWethToWstEthConnector is IConnector {
     struct SwapData {
         uint256 wEthAmount;
     }
 
-    address public constant wEth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address public constant wstEth = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
-    address public constant stEth = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+    address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+    address public constant ST_ETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
     function enter(bytes calldata data) external returns (uint256 executionStatus) {
-        console2.log("NativeSwapWethToWstEthConnector: ENTER...");
-
         SwapData memory swapData = abi.decode(data, (SwapData));
 
-        IWETH9(wEth).withdraw(swapData.wEthAmount);
+        IWETH9(W_ETH).withdraw(swapData.wEthAmount);
 
-        IStETH(stEth).submit{value: swapData.wEthAmount}(address(0));
+        IStETH(ST_ETH).submit{value: swapData.wEthAmount}(address(0));
 
-        uint256 stEthAmount = IStETH(stEth).balanceOf(address(this));
+        uint256 stEthAmount = IStETH(ST_ETH).balanceOf(address(this));
 
-        IERC20(stEth).approve(wstEth, stEthAmount);
+        IERC20(ST_ETH).approve(WST_ETH, stEthAmount);
 
-        IwstEth(wstEth).wrap(stEthAmount);
-
-        console2.log("NativeSwapWethToWstEthConnector: END.");
+        IwstEth(WST_ETH).wrap(stEthAmount);
     }
 
+    //todo remove solhint disable
+    //solhint-disable-next-line
     function exit(bytes calldata data) external returns (uint256 executionStatus) {
-        //TODO: implement
+        //warning  Error message for revert is too long: 41 counted / 32 allowed  reason-string
+        // todo remove solhint disable
+        //solhint-disable-next-line
         revert("AaveV3SupplyConnector: exit not supported");
     }
 
     function getSupportedAssets() external view returns (address[] memory assets) {
-        return new address[](0);
+        assets = new address[](0);
     }
 
+    // todo remove solhint disable
+    //solhint-disable-next-line
     function isSupportedAsset(address asset) external view returns (bool) {
         return true;
     }
@@ -52,6 +51,7 @@ contract NativeSwapWethToWstEthConnector is IConnector {
     function marketId() external view returns (uint256) {
         return 0;
     }
+
     function marketName() external view returns (string memory) {
         return "";
     }
