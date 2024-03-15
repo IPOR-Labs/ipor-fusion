@@ -13,43 +13,28 @@ contract AaveV3BorrowConnector is IConnector {
         uint256 amount;
     }
 
-    IPool public constant aavePool =
-        IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
+    IPool public constant aavePool = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
 
     constructor(uint256 inputMarketId, bytes32 inputMarketName) {
         marketId = inputMarketId;
         _marketName = inputMarketName; //string(abi.encodePacked(inputMarketName));
     }
 
-    function enter(
-        bytes calldata data
-    ) external returns (uint256 executionStatus) {
+    function enter(bytes calldata data) external returns (uint256 executionStatus) {
         console2.log("AaveV3BorrowConnector: ENTER...");
         BorrowData memory borrowData = abi.decode(data, (BorrowData));
 
-        aavePool.borrow(
-            borrowData.token,
-            borrowData.amount,
-            2,
-            0,
-            address(this)
-        );
+        aavePool.borrow(borrowData.token, borrowData.amount, 2, 0, address(this));
 
         console2.log("AaveV3BorrowConnector: END.");
     }
 
-    function exit(
-        bytes calldata data
-    ) external returns (uint256 executionStatus) {
+    function exit(bytes calldata data) external returns (uint256 executionStatus) {
         //TODO: implement
         revert("AaveV3SupplyConnector: exit not supported");
     }
 
-    function getSupportedAssets()
-        external
-        view
-        returns (address[] memory assets)
-    {
+    function getSupportedAssets() external view returns (address[] memory assets) {
         return new address[](0);
     }
 

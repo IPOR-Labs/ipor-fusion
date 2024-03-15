@@ -9,29 +9,27 @@ import {IConnectorBalance} from "./IConnectorBalance.sol";
 import {PriceAdapter} from "./PriceAdapter.sol";
 
 interface IAaveProtocolDataProvider {
-    function getReserveTokensAddresses(address asset)
-    external
-    view
-    returns (
-        address aTokenAddress,
-        address stableDebtTokenAddress,
-        address variableDebtTokenAddress
-    );
+    function getReserveTokensAddresses(
+        address asset
+    ) external view returns (address aTokenAddress, address stableDebtTokenAddress, address variableDebtTokenAddress);
 
-    function getUserReserveData(address asset, address user)
-    external
-    view
-    returns (
-        uint256 currentATokenBalance,
-        uint256 currentStableDebt,
-        uint256 currentVariableDebt,
-        uint256 principalStableDebt,
-        uint256 scaledVariableDebt,
-        uint256 stableBorrowRate,
-        uint256 liquidityRate,
-        uint40 stableRateLastUpdated,
-        bool usageAsCollateralEnabled
-    );
+    function getUserReserveData(
+        address asset,
+        address user
+    )
+        external
+        view
+        returns (
+            uint256 currentATokenBalance,
+            uint256 currentStableDebt,
+            uint256 currentVariableDebt,
+            uint256 principalStableDebt,
+            uint256 scaledVariableDebt,
+            uint256 stableBorrowRate,
+            uint256 liquidityRate,
+            uint40 stableRateLastUpdated,
+            bool usageAsCollateralEnabled
+        );
 }
 
 contract AaveV3BalanceConnector is IConnectorBalance {
@@ -45,16 +43,11 @@ contract AaveV3BalanceConnector is IConnectorBalance {
 
     address public immutable priceAdapter;
 
-    constructor(
-        uint256 inputMarketId,
-        bytes32 inputMarketName,
-        address inputPriceAdapter
-    ) {
+    constructor(uint256 inputMarketId, bytes32 inputMarketName, address inputPriceAdapter) {
         marketId = inputMarketId;
         _marketName = inputMarketName;
         priceAdapter = inputPriceAdapter;
     }
-
 
     function balanceOf(
         address account,
@@ -97,14 +90,10 @@ contract AaveV3BalanceConnector is IConnectorBalance {
             console2.log("AaveV3BalanceConnector: assetBalance: ", assetBalance);
         }
 
-        return assetBalance * int256(PriceAdapter(priceAdapter).getPrice(underlyingAsset, asset)) / 1e18;
+        return (assetBalance * int256(PriceAdapter(priceAdapter).getPrice(underlyingAsset, asset))) / 1e18;
     }
 
-    function getSupportedAssets()
-    external
-    view
-    returns (address[] memory assets)
-    {
+    function getSupportedAssets() external view returns (address[] memory assets) {
         address[] memory supportedAssets = new address[](2);
         supportedAssets[0] = wstETH;
         supportedAssets[1] = wETH;

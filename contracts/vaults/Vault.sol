@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "../tokens/ERC4626/ERC4626Permit.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "forge-std/console2.sol";
+import "forge-std/console2.sol"; // todo: remove after debugging
 
 contract Vault is ERC4626Permit {
     using Address for address;
@@ -28,24 +28,17 @@ contract Vault is ERC4626Permit {
         address underlyingToken
     ) ERC4626Permit(IERC20(underlyingToken)) ERC20Permit(assetName) ERC20(assetName, assetSymbol) {}
 
-    function execute(
-        ConnectorAction[] calldata calls
-    ) external returns (bytes[] memory returnData) {
+    function execute(ConnectorAction[] calldata calls) external returns (bytes[] memory returnData) {
         console2.log("Vault: EXECUTE START...");
         uint256 callsCount = calls.length;
 
         returnData = new bytes[](callsCount);
 
         for (uint256 i = 0; i < callsCount; ++i) {
-            require(
-                supportedConnectors[calls[i].connector] == 1,
-                "Vault: unsupported connector"
-            );
+            require(supportedConnectors[calls[i].connector] == 1, "Vault: unsupported connector");
             console2.log("Vault: calls[i].connector", calls[i].connector);
 
-            returnData[i] = calls[i].connector.functionDelegateCall(
-                calls[i].data
-            );
+            returnData[i] = calls[i].connector.functionDelegateCall(calls[i].data);
         }
 
         console2.log("Vault: EXECUTE END.");
@@ -54,19 +47,11 @@ contract Vault is ERC4626Permit {
     }
 
     /// TODO: use in connector when connector configurator contract is ready
-    function onMorphoFlashLoan(
-        uint256 flashLoanAmount,
-        bytes calldata data
-    ) external payable {
+    function onMorphoFlashLoan(uint256 flashLoanAmount, bytes calldata data) external payable {
         console2.log("VAULT FlashLoanMorphoConnector: onMorphoFlashLoan");
-        uint256 assetBalanceBeforeCalls = IERC20(wstEth).balanceOf(
-            payable(this)
-        );
+        uint256 assetBalanceBeforeCalls = IERC20(wstEth).balanceOf(payable(this));
 
-        console2.log(
-            "VAULT FlashLoanMorphoConnector: assetBalanceBeforeCalls",
-            assetBalanceBeforeCalls
-        );
+        console2.log("VAULT FlashLoanMorphoConnector: assetBalanceBeforeCalls", assetBalanceBeforeCalls);
 
         ConnectorAction[] memory calls = abi.decode(data, (ConnectorAction[]));
 
@@ -77,13 +62,8 @@ contract Vault is ERC4626Permit {
 
         bytes[] memory returnData = Vault(payable(this)).execute(calls);
 
-        uint256 assetBalanceAfterCalls = IERC20(wstEth).balanceOf(
-            payable(this)
-        );
-        console2.log(
-            "VAULT FlashLoanMorphoConnector: assetBalanceAfterCalls",
-            assetBalanceAfterCalls
-        );
+        uint256 assetBalanceAfterCalls = IERC20(wstEth).balanceOf(payable(this));
+        console2.log("VAULT FlashLoanMorphoConnector: assetBalanceAfterCalls", assetBalanceAfterCalls);
     }
 
     receive() external payable {}

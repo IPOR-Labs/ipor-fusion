@@ -21,34 +21,18 @@ contract ConnectorConfig {
 
     mapping(address => ConnectorConfigData) public connectorConfig;
 
-    function addConnector(
-        address connector,
-        uint256 marketId,
-        address connectorBalanceOf
-    ) external {
-        require(
-            marketId == 0 || markets[marketId] > 0,
-            "ConnectorConfig: market doesn't exist"
-        );
-        connectorConfig[connector] = ConnectorConfigData(
-            marketId,
-            connectorBalanceOf
-        );
+    function addConnector(address connector, uint256 marketId, address connectorBalanceOf) external {
+        require(marketId == 0 || markets[marketId] > 0, "ConnectorConfig: market doesn't exist");
+        connectorConfig[connector] = ConnectorConfigData(marketId, connectorBalanceOf);
     }
 
-    function addMarket(
-        bytes32 marketName
-    ) external returns (uint256 newMarketId) {
+    function addMarket(bytes32 marketName) external returns (uint256 newMarketId) {
         newMarketId = currentMarketId++;
         markets[newMarketId] = marketName;
         currentMarketId = newMarketId;
     }
 
-    function getMarkets()
-        external
-        view
-        returns (Market[] memory resultMarkets)
-    {
+    function getMarkets() external view returns (Market[] memory resultMarkets) {
         resultMarkets = new Market[](currentMarketId);
         for (uint256 i = 0; i < currentMarketId; i++) {
             resultMarkets[i] = Market(i, markets[i]);

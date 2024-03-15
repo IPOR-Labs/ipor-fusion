@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
-import "forge-std/console2.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/IPool.sol";
-import "./IConnector.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IPool} from "./interfaces/IPool.sol";
+import {IConnector} from "./IConnector.sol";
+import "forge-std/console2.sol"; // todo: remove after debugging
 
 contract AaveV3SupplyConnector is IConnector {
-
     struct SupplyData {
         address token;
         uint256 amount;
@@ -16,13 +15,12 @@ contract AaveV3SupplyConnector is IConnector {
 
     function enter(bytes calldata data) external returns (uint256 executionStatus) {
         console2.log("AaveV3SupplyConnector: ENTER...");
-        (SupplyData memory supplyData) = abi.decode(data, (SupplyData));
+        SupplyData memory supplyData = abi.decode(data, (SupplyData));
 
         IERC20(supplyData.token).approve(address(aavePool), supplyData.amount);
 
         aavePool.supply(supplyData.token, supplyData.amount, address(this), 0);
         console2.log("AaveV3SupplyConnector: END.");
-
     }
 
     function exit(bytes calldata data) external returns (uint256 executionStatus) {
@@ -30,12 +28,8 @@ contract AaveV3SupplyConnector is IConnector {
         revert("AaveV3SupplyConnector: exit not supported");
     }
 
-    function getSupportedAssets()
-    external
-    view
-    returns (address[] memory assets) {
+    function getSupportedAssets() external view returns (address[] memory assets) {
         return new address[](0);
-
     }
 
     function isSupportedAsset(address asset) external view returns (bool) {

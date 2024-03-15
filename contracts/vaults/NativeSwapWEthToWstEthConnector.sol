@@ -10,7 +10,6 @@ import "./interfaces/IStETH.sol";
 import "./interfaces/IWETH9.sol";
 
 contract NativeSwapWethToWstEthConnector is IConnector {
-
     struct SwapData {
         uint256 wEthAmount;
     }
@@ -22,7 +21,7 @@ contract NativeSwapWethToWstEthConnector is IConnector {
     function enter(bytes calldata data) external returns (uint256 executionStatus) {
         console2.log("NativeSwapWethToWstEthConnector: ENTER...");
 
-        (SwapData memory swapData) = abi.decode(data, (SwapData));
+        SwapData memory swapData = abi.decode(data, (SwapData));
 
         IWETH9(wEth).withdraw(swapData.wEthAmount);
 
@@ -42,12 +41,8 @@ contract NativeSwapWethToWstEthConnector is IConnector {
         revert("AaveV3SupplyConnector: exit not supported");
     }
 
-    function getSupportedAssets()
-    external
-    view
-    returns (address[] memory assets) {
+    function getSupportedAssets() external view returns (address[] memory assets) {
         return new address[](0);
-
     }
 
     function isSupportedAsset(address asset) external view returns (bool) {

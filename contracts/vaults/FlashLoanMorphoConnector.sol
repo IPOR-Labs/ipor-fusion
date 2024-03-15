@@ -8,7 +8,6 @@ import "./Vault.sol";
 
 /// @dev FlashLoan Connector type does not required information about supported assets
 contract FlashLoanMorphoConnector is IConnector {
-
     address public constant wstEth = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
     struct FlashLoanData {
@@ -17,31 +16,23 @@ contract FlashLoanMorphoConnector is IConnector {
         bytes data;
     }
 
-    address public constant morphoAddress =
-        0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
+    address public constant morphoAddress = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
     IMorpho public constant morphoBlue = IMorpho(morphoAddress);
 
-    function enter(
-        bytes calldata data
-    ) external returns (uint256 executionStatus) {
+    function enter(bytes calldata data) external returns (uint256 executionStatus) {
         console2.log("FlashLoanMorphoConnector: ENTER...");
-        (FlashLoanData memory flashLoanData) = abi.decode(data, (FlashLoanData));
+        FlashLoanData memory flashLoanData = abi.decode(data, (FlashLoanData));
         IERC20(flashLoanData.token).approve(morphoAddress, flashLoanData.amount);
         morphoBlue.flashLoan(flashLoanData.token, flashLoanData.amount, flashLoanData.data);
         console2.log("FlashLoanMorphoConnector: END.");
         return 0;
     }
 
-    function exit(
-        bytes calldata data
-    ) external returns (uint256 executionStatus) {
+    function exit(bytes calldata data) external returns (uint256 executionStatus) {
         revert("FlashLoanMorphoConnector: exit not supported");
     }
 
-    function onMorphoFlashLoan(
-        uint256 flashLoanAmount,
-        bytes calldata data
-    ) external payable {
+    function onMorphoFlashLoan(uint256 flashLoanAmount, bytes calldata data) external payable {
         console2.log("FlashLoanMorphoConnector: onMorphoFlashLoan");
         uint256 assetBalanceBeforeCalls = IERC20(wstEth).balanceOf(address(this));
 
@@ -58,19 +49,14 @@ contract FlashLoanMorphoConnector is IConnector {
 
         uint256 assetBalanceAfterCalls = IERC20(wstEth).balanceOf(address(this));
         console2.log("assetBalanceAfterCalls", assetBalanceAfterCalls);
-
     }
 
     receive() external payable {
         revert("FlashLoanMorphoConnector: receive not supported");
     }
 
-    function getSupportedAssets()
-    external
-    view
-    returns (address[] memory assets) {
+    function getSupportedAssets() external view returns (address[] memory assets) {
         return new address[](0);
-
     }
 
     function isSupportedAsset(address asset) external view returns (bool) {
