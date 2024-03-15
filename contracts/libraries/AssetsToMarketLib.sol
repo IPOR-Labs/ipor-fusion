@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import "./StorageLib.sol";
+import {StorageLib} from "./StorageLib.sol";
 
 library AssetsToMarketLib {
-
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) internal {
         StorageLib.MarketsGrantedAssets storage grantedAssets = StorageLib.getMarketsGrantedAssets();
         uint256 length = assets.length;

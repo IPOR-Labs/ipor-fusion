@@ -52,8 +52,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 abstract contract ERC4626Permit is ERC20Permit, IERC4626 {
     using Math for uint256;
 
-    IERC20 private immutable _asset;
-    uint8 private immutable _underlyingDecimals;
+    IERC20 private immutable _ASSET;
+    uint8 private immutable _UNDERLYING_DECIMALS;
 
     /**
      * @dev Attempted to deposit more assets than the max amount for `receiver`.
@@ -80,8 +80,8 @@ abstract contract ERC4626Permit is ERC20Permit, IERC4626 {
      */
     constructor(IERC20 asset_) {
         (bool success, uint8 assetDecimals) = _tryGetAssetDecimals(asset_);
-        _underlyingDecimals = success ? assetDecimals : 18;
-        _asset = asset_;
+        _UNDERLYING_DECIMALS = success ? assetDecimals : 18;
+        _ASSET = asset_;
     }
 
     /**
@@ -108,17 +108,17 @@ abstract contract ERC4626Permit is ERC20Permit, IERC4626 {
      * See {IERC20Metadata-decimals}.
      */
     function decimals() public view virtual override(IERC20Metadata, ERC20) returns (uint8) {
-        return _underlyingDecimals + _decimalsOffset();
+        return _UNDERLYING_DECIMALS + _decimalsOffset();
     }
 
     /** @dev See {IERC4626-asset}. */
     function asset() public view virtual returns (address) {
-        return address(_asset);
+        return address(_ASSET);
     }
 
     /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view virtual returns (uint256) {
-        return _asset.balanceOf(address(this));
+        return _ASSET.balanceOf(address(this));
     }
 
     /** @dev See {IERC4626-convertToShares}. */
@@ -252,7 +252,7 @@ abstract contract ERC4626Permit is ERC20Permit, IERC4626 {
         // Conclusion: we need to do the transfer before we mint so that any reentrancy would happen before the
         // assets are transferred and before the shares are minted, which is a valid state.
         // slither-disable-next-line reentrancy-no-eth
-        SafeERC20.safeTransferFrom(_asset, caller, address(this), assets);
+        SafeERC20.safeTransferFrom(_ASSET, caller, address(this), assets);
         _mint(receiver, shares);
 
         emit Deposit(caller, receiver, assets, shares);
@@ -279,7 +279,7 @@ abstract contract ERC4626Permit is ERC20Permit, IERC4626 {
         // Conclusion: we need to do the transfer after the burn so that any reentrancy would happen after the
         // shares are burned and after the assets are transferred, which is a valid state.
         _burn(owner, shares);
-        SafeERC20.safeTransfer(_asset, receiver, assets);
+        SafeERC20.safeTransfer(_ASSET, receiver, assets);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
     }

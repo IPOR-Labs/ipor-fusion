@@ -1,0 +1,14 @@
+{
+    "extends": "solhint:recommended",
+    "rules": {
+        "no-inline-assembly": "off",
+        "custom-errors": "off",
+        "payable-fallback": "off",
+        "func-visibility": [
+            "warn",
+            {
+                "ignoreConstructors": true
+            }
+        ]
+    }
+}
