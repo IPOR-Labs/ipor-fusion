@@ -8,9 +8,19 @@ repos:
           - "prettier-plugin-solidity@1.3.1"
   - repo: local
     hooks:
-      - id: solhint
-        name: solhint
-        entry: npm run solhint:pre-commit
+      - id: solhint-contract
+        name: solhint-contract
+        entry: npm run solhint:contract
+        always_run: true
+        language: system
+      - id: solhint-test
+        name: solhint-test
+        entry: npm run solhint:test
+        always_run: true
+        language: system
+      - id: solhint-script
+        name: solhint-script
+        entry: npm run solhint:script
         always_run: true
         language: system
 exclude: |

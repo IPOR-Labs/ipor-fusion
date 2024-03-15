@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import "../../contracts/libraries/AssetsToMarketLib.sol";
+import {AssetsToMarketLib} from "../../contracts/libraries/AssetsToMarketLib.sol";
 
 contract AssetsToMarketMock {
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
