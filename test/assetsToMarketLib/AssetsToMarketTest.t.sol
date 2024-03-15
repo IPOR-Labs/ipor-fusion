@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {AssetsToMarketMock} from "./AssetsToMarketMock.sol";
 
 contract AssetsToMarketTest is Test {
-
-    AssetsToMarketMock assetsToMarketMock;
+    AssetsToMarketMock internal assetsToMarketMock;
 
     function setUp() public {
         assetsToMarketMock = new AssetsToMarketMock();
@@ -78,5 +77,4 @@ contract AssetsToMarketTest is Test {
         assertFalse(asset3Before);
         assertFalse(asset4Before);
     }
-
 }

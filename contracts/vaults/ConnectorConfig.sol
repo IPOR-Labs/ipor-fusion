@@ -6,10 +6,12 @@ contract ConnectorConfig {
         uint256 id;
         bytes32 name;
     }
+
     struct ConnectorConfigData {
         /// @dev when marketId = 0 then connector doesn't support any market
         uint256 marketId;
-        /// @dev address to the connector contract which is responsible for the balanceOf function for a given market and asset
+        /// @dev address to the connector contract which is responsible for the balanceOf function for a given
+        /// market and asset
         address connectorBalanceOf;
     }
 
@@ -21,34 +23,20 @@ contract ConnectorConfig {
 
     mapping(address => ConnectorConfigData) public connectorConfig;
 
-    function addConnector(
-        address connector,
-        uint256 marketId,
-        address connectorBalanceOf
-    ) external {
-        require(
-            marketId == 0 || markets[marketId] > 0,
-            "ConnectorConfig: market doesn't exist"
-        );
-        connectorConfig[connector] = ConnectorConfigData(
-            marketId,
-            connectorBalanceOf
-        );
+    function addConnector(address connector, uint256 marketId, address connectorBalanceOf) external {
+        // todo remove solhint disable
+        //solhint-disable-next-line
+        require(marketId == 0 || markets[marketId] > 0, "ConnectorConfig: market doesn't exist");
+        connectorConfig[connector] = ConnectorConfigData(marketId, connectorBalanceOf);
     }
 
-    function addMarket(
-        bytes32 marketName
-    ) external returns (uint256 newMarketId) {
+    function addMarket(bytes32 marketName) external returns (uint256 newMarketId) {
         newMarketId = currentMarketId++;
         markets[newMarketId] = marketName;
         currentMarketId = newMarketId;
     }
 
-    function getMarkets()
-        external
-        view
-        returns (Market[] memory resultMarkets)
-    {
+    function getMarkets() external view returns (Market[] memory resultMarkets) {
         resultMarkets = new Market[](currentMarketId);
         for (uint256 i = 0; i < currentMarketId; i++) {
             resultMarkets[i] = Market(i, markets[i]);

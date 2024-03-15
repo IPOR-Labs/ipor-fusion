@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import "./Vault.sol";
+import {Vault} from "./Vault.sol";
 
 contract VaultFactory {
     function createVault(
@@ -12,22 +12,22 @@ contract VaultFactory {
         vault = address(new Vault(assetName, assetSymbol, underlyingAsset));
     }
 
-//    function createConnector(
-//        string memory assetName,
-//        string memory assetSymbol,
-//        address underlyingAsset,
-//        VaultTypes.ConnectorType connectorType
-//    ) external returns (address connector) {
-//        if (connectorType == VaultTypes.ConnectorType.MORPHO) {
-//            connector = address(
-//                new ConnectorMorpho(assetName, assetSymbol, underlyingAsset)
-//            );
-//        } else if (connectorType == VaultTypes.ConnectorType.AAVE) {
-//            connector = address(
-//                new ConnectorAave(assetName, assetSymbol, underlyingAsset)
-//            );
-//        } else {
-//            revert("VaultFactory: invalid connector type");
-//        }
-//    }
+    //    function createConnector(
+    //        string memory assetName,
+    //        string memory assetSymbol,
+    //        address underlyingAsset,
+    //        VaultTypes.ConnectorType connectorType
+    //    ) external returns (address connector) {
+    //        if (connectorType == VaultTypes.ConnectorType.MORPHO) {
+    //            connector = address(
+    //                new ConnectorMorpho(assetName, assetSymbol, underlyingAsset)
+    //            );
+    //        } else if (connectorType == VaultTypes.ConnectorType.AAVE) {
+    //            connector = address(
+    //                new ConnectorAave(assetName, assetSymbol, underlyingAsset)
+    //            );
+    //        } else {
+    //            revert("VaultFactory: invalid connector type");
+    //        }
+    //    }
 }

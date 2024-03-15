@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-/// @title Storage ID's associated with the IPOR Protocol Router.
+/// @title Storage
 library StorageLib {
-
     // keccak256(abi.encode(uint256(keccak256("io.ipor.marketsGrantedAssets")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant MARKETS_GRANTED_ASSETS = 0x6c69fe10a4a5f90d958b48daeb420fdb031044e272ec2a4b02855a335483b700;
+    bytes32 private constant MARKETS_GRANTED_ASSETS =
+        0x6c69fe10a4a5f90d958b48daeb420fdb031044e272ec2a4b02855a335483b700;
 
     /// @custom:storage-location erc7201:io.ipor.marketsGrantedAssets
     struct MarketsGrantedAssets {
