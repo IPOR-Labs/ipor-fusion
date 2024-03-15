@@ -21,4 +21,7 @@ exclude: |
       .solhint.json|
       .pre-commit-config.yaml|
       .solhintignore|
+      .idea|
+      .gitmodules|
+      README.md|
   )$

@@ -9,6 +9,11 @@
 
 use instruction from https://pre-commit.com/
 
+#### install pre-commit
+
+-   `pip install pre-commit`
+-   `pre-commit install`
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
