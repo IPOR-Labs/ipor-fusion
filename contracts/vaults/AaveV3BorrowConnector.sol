@@ -6,7 +6,7 @@ import {IConnector} from "./IConnector.sol";
 
 contract AaveV3BorrowConnector is IConnector {
     uint256 public immutable override MARKET_ID;
-    bytes32 internal immutable _MARKET_NAME;
+    bytes32 public immutable MARKET_NAME;
 
     struct BorrowData {
         address token;
@@ -17,7 +17,7 @@ contract AaveV3BorrowConnector is IConnector {
 
     constructor(uint256 inputMarketId, bytes32 inputMarketName) {
         MARKET_ID = inputMarketId;
-        _MARKET_NAME = inputMarketName; //string(abi.encodePacked(inputMarketName));
+        MARKET_NAME = inputMarketName; //string(abi.encodePacked(inputMarketName));
     }
 
     function enter(bytes calldata data) external returns (uint256 executionStatus) {
@@ -46,6 +46,6 @@ contract AaveV3BorrowConnector is IConnector {
     }
 
     function marketName() external view returns (string memory) {
-        return string(abi.encodePacked(_MARKET_NAME));
+        return string(abi.encodePacked(MARKET_NAME));
     }
 }
