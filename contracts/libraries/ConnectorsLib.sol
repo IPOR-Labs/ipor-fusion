@@ -4,18 +4,18 @@ pragma solidity 0.8.20;
 import {StorageLib} from "./StorageLib.sol";
 
 library ConnectorsLib {
-    function addConnector(uint256 marketId, address connector) internal {
+    function addConnector(address connector) internal {
         StorageLib.Connectors storage connectors = StorageLib.getConnectors();
-        connectors.value[marketId][connector] = 1;
+        connectors.value[connector] = 1;
     }
 
-    function removeConnector(uint256 marketId, address connector) internal {
+    function removeConnector(address connector) internal {
         StorageLib.Connectors storage connectors = StorageLib.getConnectors();
-        connectors.value[marketId][connector] = 0;
+        connectors.value[connector] = 0;
     }
 
-    function isConnectorSupported(uint256 marketId, address connector) internal view returns (bool) {
-        return StorageLib.getConnectors().value[marketId][connector] == 1;
+    function isConnectorSupported(address connector) internal view returns (bool) {
+        return StorageLib.getConnectors().value[connector] == 1;
     }
 
     function addBalanceConnector(uint256 marketId, address connector) internal {

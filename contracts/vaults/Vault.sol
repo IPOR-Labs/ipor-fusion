@@ -20,6 +20,7 @@ contract Vault is ERC4626Permit {
     }
 
     struct ConnectorStruct {
+        /// @dev When marketId is 0, then connector is supported for all markets - example flashloan connector
         uint256 marketId;
         address connector;
     }
@@ -28,13 +29,6 @@ contract Vault is ERC4626Permit {
         uint256 marketId;
         address[] assets;
     }
-
-    /// TODO: move to storage library
-//    mapping(address => uint256) public supportedConnectors;
-
-    /// @dev key = concatenate(marketId, asset), value = specific balanceConnector
-    /// TODO: move to storage library
-//    mapping(bytes32 => address) public balanceConnectors;
 
     /// @param assetName Name of the asset
     /// @param assetSymbol Symbol of the asset
@@ -78,13 +72,11 @@ contract Vault is ERC4626Permit {
     }
 
     function _addConnector(ConnectorStruct memory connectorInput) internal {
-        //TODO: fix it
-//        require((ConnectorsLib.isConnectorSupported(connectorInput.connector) == 0), "Vault: connector already supported");
-        ConnectorsLib.addConnector(connectorInput.marketId, connectorInput.connector);
+        ConnectorsLib.addConnector(connectorInput.connector);
     }
 
     function _addBalanceConnector(ConnectorStruct memory connectorInput) internal {
-        ConnectorsLib.addConnector(connectorInput.marketId, connectorInput.connector);
+        ConnectorsLib.addConnector(connectorInput.connector);
         ConnectorsLib.addBalanceConnector(connectorInput.marketId, connectorInput.connector);
     }
 
@@ -99,9 +91,7 @@ contract Vault is ERC4626Permit {
         returnData = new bytes[](callsCount);
 
         for (uint256 i = 0; i < callsCount; ++i) {
-            //TODO: fix it
-//            require(ConnectorsLib.isConnectorSupported(calls[i].connector), "Vault: unsupported connector");
-
+            require(ConnectorsLib.isConnectorSupported(calls[i].connector), "Vault: unsupported connector");
             returnData[i] = calls[i].connector.functionDelegateCall(calls[i].data);
         }
 
@@ -134,13 +124,13 @@ contract Vault is ERC4626Permit {
 
     function addConnectors(ConnectorStruct[] calldata connectors) external {
         for (uint256 i = 0; i < connectors.length; ++i) {
-            ConnectorsLib.addConnector(connectors[i].marketId, connectors[i].connector);
+            ConnectorsLib.addConnector(connectors[i].connector);
         }
     }
 
     function removeConnectors(ConnectorStruct[] calldata connectors) external {
         for (uint256 i = 0; i < connectors.length; ++i) {
-            ConnectorsLib.removeConnector(connectors[i].marketId, connectors[i].connector);
+            ConnectorsLib.removeConnector(connectors[i].connector);
         }
     }
 }

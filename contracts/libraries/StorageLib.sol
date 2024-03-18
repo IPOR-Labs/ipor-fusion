@@ -30,8 +30,8 @@ library StorageLib {
     }
 
     struct Connectors {
-        /// @dev marketId => connector address => 1 - is granted, otherwise - not granted
-        mapping(uint256 => mapping(address => uint256)) value;
+        /// @dev =connector address => 1 - is granted, otherwise - not granted
+        mapping(address => uint256) value;
     }
 
     struct BalanceConnectors {

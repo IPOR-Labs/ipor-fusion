@@ -34,8 +34,12 @@ contract ForkAmmGovernanceServiceTest is Test {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19368505);
 
+        priceAdapter = address(new PriceAdapter());
+
+        balanceConnector = address(new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter));
+
         connectorConfig = new ConnectorConfig();
-        aaveV3MarketId = connectorConfig.addMarket(aaveV3MarketName);
+        aaveV3MarketId = connectorConfig.addMarket(aaveV3MarketName, balanceConnector);
 
         address[] memory keepers = new address[](1);
         keepers[0] = address(this);
@@ -67,22 +71,6 @@ contract ForkAmmGovernanceServiceTest is Test {
         vaultWstEth = payable(new Vault("ipvwstETH", "IP Vault wstETH", WST_ETH, keepers, supportedAssetsInMarkets, connectors, balanceConnectors));
 
         priceAdapter = address(new PriceAdapter());
-    }
-
-    function testShouldAddNewConnector() public {
-        //given
-
-        AaveV3BorrowConnector aaveV3BorrowConnectorLocal = new AaveV3BorrowConnector(aaveV3MarketId, aaveV3MarketName);
-
-        address connectorBalanceOf = address(
-            new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter)
-        );
-
-        connectorConfig.addConnector(address(aaveV3BorrowConnectorLocal), aaveV3MarketId, connectorBalanceOf);
-
-        //when
-
-        //then
     }
 
     function testShouldWork() public {
