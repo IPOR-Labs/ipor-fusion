@@ -16,6 +16,7 @@ import {ConnectorConfig} from "../../contracts/vaults/ConnectorConfig.sol";
 contract ForkAmmGovernanceServiceTest is Test {
     address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+    address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
     address payable public vaultWstEth;
     address public flashLoanMorphoConnector;
@@ -43,7 +44,7 @@ contract ForkAmmGovernanceServiceTest is Test {
         aaveV3MarketId = connectorConfig.addMarket(aaveV3MarketName);
 
         flashLoanMorphoConnector = address(new FlashLoanMorphoConnector());
-        aaveV3SupplyConnector = address(new AaveV3SupplyConnector());
+        aaveV3SupplyConnector = address(new AaveV3SupplyConnector(AAVE_POOL, aaveV3MarketId));
         aaveV3BorrowConnector = address(new AaveV3BorrowConnector(aaveV3MarketId, aaveV3MarketName));
         nativeSwapWethToWstEthConnector = address(new NativeSwapWethToWstEthConnector());
         balanceConnector = address(new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter));
