@@ -68,7 +68,7 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         supportedAssetsInMarkets[0] = Vault.AssetsMarketStruct({marketId: aaveV3MarketId, assets: marketAssets});
 
-        vaultWstEth = payable(new Vault("ipvwstETH", "IP Vault wstETH", WST_ETH, keepers, supportedAssetsInMarkets, connectors, balanceConnectors));
+        vaultWstEth = payable(new Vault(msg.sender, "ipvwstETH", "IP Vault wstETH", WST_ETH, keepers, supportedAssetsInMarkets, connectors, balanceConnectors));
 
         priceAdapter = address(new PriceAdapter());
     }
@@ -82,7 +82,7 @@ contract ForkAmmGovernanceServiceTest is Test {
         //        uint256 amountVaultBeforeDeposit = IERC20(wstETH).balanceOf(vaultWstEth);
         //        console2.log("amountVaultBeforeDeposit", amountVaultBeforeDeposit);
 
-        Vault(vaultWstEth).deposit(initialAmount, address(this));
+        Vault(vaultWstEth).deposit(initialAmount, address(this) );
 
         //        uint256 amountVaultAfterDeposit = IERC20(wstETH).balanceOf(vaultWstEth);
         //        console2.log("amountVaultAfterDeposit", amountVaultAfterDeposit);

@@ -3,16 +3,16 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {KeepersLib} from "../libraries/KeepersLib.sol";
 import {ConnectorsLib} from "../libraries/ConnectorsLib.sol";
 import {AssetsToMarketLib} from "../libraries/AssetsToMarketLib.sol";
 
-contract Vault is ERC4626Permit {
-    using Address for address;
 
-    address public constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+contract Vault is ERC4626Permit, Ownable2Step {
+    using Address for address;
 
     struct ConnectorAction {
         address connector;
@@ -37,6 +37,7 @@ contract Vault is ERC4626Permit {
     /// @param connectors Array of connectors initially granted to be supported by the vault in general
     /// @param balanceConnectors Array of balance connectors initially granted to be supported by the vault for a specific markets, balanceConnectors have to also a part of connectors array
     constructor(
+        address initialOwner,
         string memory assetName,
         string memory assetSymbol,
         address underlyingToken,
@@ -44,7 +45,7 @@ contract Vault is ERC4626Permit {
         AssetsMarketStruct[] memory supportedAssetsInMarkets,
         ConnectorStruct[] memory connectors,
         ConnectorStruct[] memory balanceConnectors
-    ) ERC4626Permit(IERC20(underlyingToken)) ERC20Permit(assetName) ERC20(assetName, assetSymbol) {
+    ) ERC4626Permit(IERC20(underlyingToken)) ERC20Permit(assetName) ERC20(assetName, assetSymbol) Ownable(initialOwner) {
         for (uint256 i = 0; i < keepers.length; ++i) {
             _grantKeeper(keepers[i]);
         }
@@ -63,11 +64,9 @@ contract Vault is ERC4626Permit {
             AssetsToMarketLib.grantAssetsToMarket(supportedAssetsInMarkets[i].marketId, supportedAssetsInMarkets[i].assets);
         }
 
-        ///TODO: balance connectors are per market (not per market and asset)
-        ///TODO: balacne connectors are determined by marketId from above constructor - taken from configuration in external contract
-        ///TODO: when adding new connector - then validate if connector support assets defined for a given vault.
-        ///TODO:
 
+
+        ///TODO: when adding new connector - then validate if connector support assets defined for a given vault.
 
     }
 
@@ -122,13 +121,13 @@ contract Vault is ERC4626Permit {
         /// separate contract with configuration which connector use which flashloan method and protocol
     }
 
-    function addConnectors(ConnectorStruct[] calldata connectors) external {
+    function addConnectors(ConnectorStruct[] calldata connectors) external onlyOwner {
         for (uint256 i = 0; i < connectors.length; ++i) {
             ConnectorsLib.addConnector(connectors[i].connector);
         }
     }
 
-    function removeConnectors(ConnectorStruct[] calldata connectors) external {
+    function removeConnectors(ConnectorStruct[] calldata connectors) external onlyOwner {
         for (uint256 i = 0; i < connectors.length; ++i) {
             ConnectorsLib.removeConnector(connectors[i].connector);
         }

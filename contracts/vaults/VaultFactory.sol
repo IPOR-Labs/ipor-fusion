@@ -3,16 +3,27 @@ pragma solidity 0.8.20;
 
 import {Vault} from "./Vault.sol";
 
-/// TODO: Vault has super admin who has rights to setup fee
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 
-contract VaultFactory {
-//    function createVault(
-//        string memory assetName,
-//        string memory assetSymbol,
-//        address underlyingAsset
-//    ) external returns (address vault, address vaultOrchestrator) {
-//        vault = address(new Vault(assetName, assetSymbol, underlyingAsset));
-//    }
+/// TODO: Vault has super admin who has rights to setup fee
+contract VaultFactory is Ownable2Step {
+    address public iporVaultInitialOwner;
+
+    constructor(address iporVaultInitialOwnerInput) Ownable(msg.sender) {
+        iporVaultInitialOwner = iporVaultInitialOwnerInput;
+    }
+
+    function createVault(
+        string memory assetName,
+        string memory assetSymbol,
+        address underlyingToken,
+        address[] memory keepers,
+        Vault.AssetsMarketStruct[] memory supportedAssetsInMarkets,
+        Vault.ConnectorStruct[] memory connectors,
+        Vault.ConnectorStruct[] memory balanceConnectors
+    ) external returns (address vault) {
+        vault = address(new Vault(iporVaultInitialOwner, assetName, assetSymbol, underlyingToken, keepers, supportedAssetsInMarkets, connectors, balanceConnectors));
+    }
 
     //    function createConnector(
     //        string memory assetName,

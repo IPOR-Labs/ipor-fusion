@@ -5,6 +5,8 @@ import {StorageLib} from "./StorageLib.sol";
 
 library ConnectorsLib {
     function addConnector(address connector) internal {
+        //TODO: events
+
         StorageLib.Connectors storage connectors = StorageLib.getConnectors();
         connectors.value[connector] = 1;
     }
@@ -21,6 +23,7 @@ library ConnectorsLib {
     function addBalanceConnector(uint256 marketId, address connector) internal {
         StorageLib.BalanceConnectors storage balanceConnectors = StorageLib.getBalanceConnectors();
         balanceConnectors.value[marketId][connector] = 1;
+        //TODO: add to array list;
     }
 
     function removeBalanceConnector(uint256 marketId, address connector) internal {
