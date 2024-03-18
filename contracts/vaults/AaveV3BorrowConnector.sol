@@ -2,10 +2,10 @@
 pragma solidity 0.8.20;
 
 import {IPool} from "./interfaces/IPool.sol";
-import {IConnector} from "./IConnector.sol";
+import {IConnectorCommon} from "./IConnectorCommon.sol";
 
-contract AaveV3BorrowConnector is IConnector {
-    uint256 public immutable override MARKET_ID;
+contract AaveV3BorrowConnector is IConnectorCommon {
+    uint256 public immutable override marketId;
     bytes32 internal immutable _MARKET_NAME;
 
     struct BorrowData {
@@ -16,7 +16,7 @@ contract AaveV3BorrowConnector is IConnector {
     IPool public constant AAVE_POOL = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
 
     constructor(uint256 inputMarketId, bytes32 inputMarketName) {
-        MARKET_ID = inputMarketId;
+        marketId = inputMarketId;
         _MARKET_NAME = inputMarketName; //string(abi.encodePacked(inputMarketName));
     }
 
