@@ -6,6 +6,6 @@ interface IConnectorCommon {
 
     function isSupportedAsset(address asset) external view returns (bool);
 
-    function marketId() external view returns (uint256);
-    function marketName() external view returns (string memory);
+    //solhint-disable-next-line
+    function MARKET_ID() external view returns (uint256);
 }

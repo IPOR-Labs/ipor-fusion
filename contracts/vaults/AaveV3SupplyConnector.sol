@@ -2,49 +2,99 @@
 pragma solidity 0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetsToMarketLib} from "../libraries/AssetsToMarketLib.sol";
+import {Errors} from "../libraries/errors/Errors.sol";
 import {IPool} from "./interfaces/IPool.sol";
 import {IConnector} from "./IConnector.sol";
 
 contract AaveV3SupplyConnector is IConnector {
-    struct SupplyData {
+    struct AaveV3SupplyConnectorData {
+        // token to supply
         address token;
+        // max amount to supply
         uint256 amount;
+        // user eMode category if pass value bigger than 255 is ignored and not set
+        uint256 userEModeCategoryId;
     }
 
-    IPool public constant AAVE_POOL = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
+    event AaveV3SupplyConnector(
+        string action,
+        uint256 version,
+        address token,
+        uint256 amount,
+        uint256 userEModeCategoryId
+    );
 
-    function enter(bytes calldata data) external returns (uint256 executionStatus) {
-        SupplyData memory supplyData = abi.decode(data, (SupplyData));
+    error AaveV3SupplyConnectorUnsupportedAsset(string action, address token, string errorCode);
 
-        IERC20(supplyData.token).approve(address(AAVE_POOL), supplyData.amount);
+    using SafeCast for uint256;
 
-        AAVE_POOL.supply(supplyData.token, supplyData.amount, address(this), 0);
+    // Ethereum Mainnet 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2
+    IPool public immutable AAVE_POOL;
+    uint256 public immutable MARKET_ID;
+    uint256 public constant VERSION = 1;
+
+    constructor(address aavePoolInput, uint256 marketIdInput) {
+        AAVE_POOL = IPool(aavePoolInput);
+        MARKET_ID = marketIdInput;
     }
 
-    // todo remove solhint disable
-    //solhint-disable-next-line
-    function exit(bytes calldata data) external returns (uint256 executionStatus) {
-        //TODO: implement
-        // todo remove solhint disable
-        //solhint-disable-next-line
-        revert("AaveV3SupplyConnector: exit not supported");
+    function enter(bytes calldata data) external returns (bytes memory executionStatus) {
+        AaveV3SupplyConnectorData memory data = abi.decode(data, (AaveV3SupplyConnectorData));
+        return _enter(data);
     }
 
-    function getSupportedAssets() external view returns (address[] memory assets) {
-        return new address[](0);
+    function enter(AaveV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
+        return _enter(data);
     }
 
-    // todo remove solhint disable
+    function _enter(AaveV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
+        if (!AssetsToMarketLib.isAssetGrantedToMarket(MARKET_ID, data.token)) {
+            revert AaveV3SupplyConnectorUnsupportedAsset("enter", data.token, Errors.NOT_SUPPORTED_TOKEN);
+        }
+
+        IERC20(data.token).approve(address(AAVE_POOL), data.amount);
+
+        AAVE_POOL.supply(data.token, data.amount, address(this), 0);
+
+        if (data.userEModeCategoryId <= type(uint8).max) {
+            AAVE_POOL.setUserEMode(data.userEModeCategoryId.toUint8());
+        }
+        emit AaveV3SupplyConnector("enter", VERSION, data.token, data.amount, data.userEModeCategoryId);
+        return abi.encodePacked(uint256(1));
+    }
+
+    function exit(bytes calldata data) external returns (bytes memory executionStatus) {
+        AaveV3SupplyConnectorData memory data = abi.decode(data, (AaveV3SupplyConnectorData));
+        return _exit(data);
+    }
+
+    function exit(AaveV3SupplyConnectorData calldata data) external returns (bytes memory executionStatus) {
+        return _exit(data);
+    }
+
+    function _exit(AaveV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
+        if (!AssetsToMarketLib.isAssetGrantedToMarket(MARKET_ID, data.token)) {
+            revert AaveV3SupplyConnectorUnsupportedAsset("exit", data.token, Errors.NOT_SUPPORTED_TOKEN);
+        }
+        uint256 withDrawAmount = AAVE_POOL.withdraw(data.token, data.amount, address(this));
+        emit AaveV3SupplyConnector("exit", VERSION, data.token, withDrawAmount, data.userEModeCategoryId);
+        return abi.encodePacked(withDrawAmount);
+    }
+
+    function getSupportedAssets() external view returns (address[] memory) {
+        return AAVE_POOL.getReservesList();
+    }
+
     //solhint-disable-next-line
     function isSupportedAsset(address asset) external view returns (bool) {
-        return true;
-    }
-
-    function marketId() external view returns (uint256) {
-        return 0;
-    }
-
-    function marketName() external view returns (string memory) {
-        return "";
+        address[] memory assets = AAVE_POOL.getReservesList();
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (assets[i] == asset) {
+                return true;
+            }
+        }
+        return false;
     }
 }

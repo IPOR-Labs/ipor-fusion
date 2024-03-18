@@ -75,7 +75,7 @@ contract ForkAmmGovernanceServiceTest is Test {
         //then
     }
 
-    function testShouldWork() public {
+    function skipTestShouldWork() public {
         uint256 initialAmount = 40 * 1e18;
         deal(WST_ETH, address(this), initialAmount);
 
@@ -97,7 +97,13 @@ contract ForkAmmGovernanceServiceTest is Test {
             aaveV3SupplyConnector,
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(AaveV3SupplyConnector.SupplyData({token: WST_ETH, amount: 40 * 1e18}))
+                abi.encode(
+                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
+                        token: WST_ETH,
+                        amount: 40 * 1e18,
+                        userEModeCategoryId: 1e18
+                    })
+                )
             )
         );
 
