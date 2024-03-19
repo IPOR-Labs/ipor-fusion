@@ -15,6 +15,8 @@ import {AssetsToMarketLib} from "../libraries/AssetsToMarketLib.sol";
 contract Vault is ERC4626Permit, Ownable2Step {
     using Address for address;
 
+    //TODO: setup Vault type - required for fee
+
     struct ConnectorAction {
         address connector;
         bytes data;

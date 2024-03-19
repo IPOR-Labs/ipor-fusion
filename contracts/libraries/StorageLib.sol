@@ -42,12 +42,13 @@ library StorageLib {
     }
 
     struct BalanceConnectors {
-        /// @dev marketId => connector address => 1 - is granted, otherwise - is not granted
-        mapping(uint256 => mapping(address => uint256)) value;
+        /// @dev keccak256(abi.encode(marketId, balance connector address)) => uint256, value is a index+1 in the balanceConnectorsArray, 0 - not granted, otherwise - is granted
+        mapping(bytes32 => uint256) value;
     }
 
     struct BalanceConnectorsArray {
-        address[] value;
+        /// @dev value is a marketId and connector address: keccak256(abi.encode(marketId, connector))
+        bytes32[] value;
     }
 
     struct LastBalanceConnectorId {

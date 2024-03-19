@@ -27,23 +27,65 @@ library ConnectorsLib {
 
     function addBalanceConnector(uint256 marketId, address connector) internal {
         StorageLib.BalanceConnectors storage balanceConnectors = StorageLib.getBalanceConnectors();
-        uint256 currentValue = balanceConnectors.value[marketId][connector];
-        require(currentValue == 0, "ConnectorsLib: Connector already exists");
+        bytes32 key = keccak256(abi.encodePacked(marketId, connector));
 
-        uint32 lastBalanceConnectorId = StorageLib.getLastBalanceConnectorId().value + 1;
-        StorageLib.getLastBalanceConnectorId().value = lastBalanceConnectorId;
+        uint256 keyIndexValue = balanceConnectors.value[key];
 
-        StorageLib.getBalanceConnectorsArray().value.push(connector);
+        require(keyIndexValue == 0, "ConnectorsLib: Connector already exists");
+
+        uint32 newLastBalanceConnectorId = StorageLib.getLastBalanceConnectorId().value + 1;
+
+        /// @dev for balance connectors, value is a index + 1 in the balanceConnectorsArray
+        balanceConnectors.value[key] = newLastBalanceConnectorId;
+
+        StorageLib.getLastBalanceConnectorId().value = newLastBalanceConnectorId;
+        StorageLib.getBalanceConnectorsArray().value.push(key);
+
         emit BalanceConnectorAdded(marketId, connector);
     }
 
     function removeBalanceConnector(uint256 marketId, address connector) internal {
         StorageLib.BalanceConnectors storage balanceConnectors = StorageLib.getBalanceConnectors();
-        balanceConnectors.value[marketId][connector] = 0;
+
+        bytes32 key = keccak256(abi.encodePacked(marketId, connector));
+
+        uint256 indexToRemove = balanceConnectors.value[key];
+
+        require(indexToRemove != 0, "ConnectorsLib: Connector does not exist");
+
+        /// @dev for balance connectors, value is a index + 1 in the balanceConnectorsArray
+        bytes32 lastKeyInArray = StorageLib.getBalanceConnectorsArray().value[
+            StorageLib.getLastBalanceConnectorId().value - 1
+        ];
+
+        balanceConnectors.value[lastKeyInArray] = indexToRemove;
+
+        balanceConnectors.value[key] = 0;
+
+        StorageLib.getBalanceConnectorsArray().value[indexToRemove - 1] = lastKeyInArray;
+
+        StorageLib.getBalanceConnectorsArray().value.pop();
+
+        StorageLib.getLastBalanceConnectorId().value = StorageLib.getLastBalanceConnectorId().value - 1;
+
         emit BalanceConnectorRemoved(marketId, connector);
     }
 
     function isBalanceConnectorSupported(uint256 marketId, address connector) internal view returns (bool) {
-        return StorageLib.getBalanceConnectors().value[marketId][connector] == 1;
+        bytes32 key = keccak256(abi.encodePacked(marketId, connector));
+        return StorageLib.getBalanceConnectors().value[key] != 0;
+    }
+
+    function getBalanceConnectorIndex(uint256 marketId, address connector) internal view returns (uint256) {
+        bytes32 key = keccak256(abi.encodePacked(marketId, connector));
+        return StorageLib.getBalanceConnectors().value[key];
+    }
+
+    function getLastBalanceConnectorId() internal view returns (uint256) {
+        return StorageLib.getLastBalanceConnectorId().value;
+    }
+
+    function getBalanceConnectorsArray() internal view returns (bytes32[] memory) {
+        return StorageLib.getBalanceConnectorsArray().value;
     }
 }
