@@ -5,7 +5,7 @@ import {IPool} from "./interfaces/IPool.sol";
 import {IConnectorCommon} from "./IConnectorCommon.sol";
 
 contract AaveV3BorrowConnector is IConnectorCommon {
-    uint256 public immutable override marketId;
+    uint256 public immutable MARKET_ID;
     bytes32 internal immutable _MARKET_NAME;
 
     struct BorrowData {
@@ -16,7 +16,7 @@ contract AaveV3BorrowConnector is IConnectorCommon {
     IPool public constant AAVE_POOL = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
 
     constructor(uint256 inputMarketId, bytes32 inputMarketName) {
-        marketId = inputMarketId;
+        MARKET_ID = inputMarketId;
         _MARKET_NAME = inputMarketName; //string(abi.encodePacked(inputMarketName));
     }
 

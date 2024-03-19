@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {KeepersLib} from "../libraries/KeepersLib.sol";
 import {ConnectorsLib} from "../libraries/ConnectorsLib.sol";
 import {AssetsToMarketLib} from "../libraries/AssetsToMarketLib.sol";
-
 
 contract Vault is ERC4626Permit, Ownable2Step {
     using Address for address;
@@ -45,7 +46,12 @@ contract Vault is ERC4626Permit, Ownable2Step {
         AssetsMarketStruct[] memory supportedAssetsInMarkets,
         ConnectorStruct[] memory connectors,
         ConnectorStruct[] memory balanceConnectors
-    ) ERC4626Permit(IERC20(underlyingToken)) ERC20Permit(assetName) ERC20(assetName, assetSymbol) Ownable(initialOwner) {
+    )
+        ERC4626Permit(IERC20(underlyingToken))
+        ERC20Permit(assetName)
+        ERC20(assetName, assetSymbol)
+        Ownable(initialOwner)
+    {
         for (uint256 i = 0; i < keepers.length; ++i) {
             _grantKeeper(keepers[i]);
         }
@@ -61,13 +67,13 @@ contract Vault is ERC4626Permit, Ownable2Step {
         }
 
         for (uint256 i = 0; i < supportedAssetsInMarkets.length; ++i) {
-            AssetsToMarketLib.grantAssetsToMarket(supportedAssetsInMarkets[i].marketId, supportedAssetsInMarkets[i].assets);
+            AssetsToMarketLib.grantAssetsToMarket(
+                supportedAssetsInMarkets[i].marketId,
+                supportedAssetsInMarkets[i].assets
+            );
         }
 
-
-
         ///TODO: when adding new connector - then validate if connector support assets defined for a given vault.
-
     }
 
     function _addConnector(ConnectorStruct memory connectorInput) internal {

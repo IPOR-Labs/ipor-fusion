@@ -16,6 +16,13 @@ library StorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.balanceConnectors")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant BALANCE_CONNECTORS = 0x5a5829737eca653c0b5b4a20468c03c7bec2bc961055a682ab2b91dff4463a00;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.balanceConnectorsArray")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant BALANCE_CONNECTORS_ARRAY =
+        0x1fc2ff582e84eb55aac3390e0ea40e2b04f7ca631b7916a8c1670711fd11f600;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.lastBalanceConnectorId")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant LAST_BALANCE_CONNECTOR_ID =
+        0xf1d8ee1a3dde7e1feef6fd686090f046e7ebf946d471fc7ebe607d11e3df3f00;
 
     /// @custom:storage-location erc7201:io.ipor.marketsGrantedAssets
     struct MarketsGrantedAssets {
@@ -35,8 +42,16 @@ library StorageLib {
     }
 
     struct BalanceConnectors {
-        /// @dev marketId => connector address => 1 - is granted, otherwise - not granted
+        /// @dev marketId => connector address => 1 - is granted, otherwise - is not granted
         mapping(uint256 => mapping(address => uint256)) value;
+    }
+
+    struct BalanceConnectorsArray {
+        address[] value;
+    }
+
+    struct LastBalanceConnectorId {
+        uint32 value;
     }
 
     function getMarketsGrantedAssets() internal pure returns (MarketsGrantedAssets storage grantedAssets) {
@@ -60,6 +75,18 @@ library StorageLib {
     function getBalanceConnectors() internal pure returns (BalanceConnectors storage balanceConnectors) {
         assembly {
             balanceConnectors.slot := BALANCE_CONNECTORS
+        }
+    }
+
+    function getBalanceConnectorsArray() internal pure returns (BalanceConnectorsArray storage balanceConnectorsArray) {
+        assembly {
+            balanceConnectorsArray.slot := BALANCE_CONNECTORS_ARRAY
+        }
+    }
+
+    function getLastBalanceConnectorId() internal pure returns (LastBalanceConnectorId storage lastBalanceConnectorId) {
+        assembly {
+            lastBalanceConnectorId.slot := LAST_BALANCE_CONNECTOR_ID
         }
     }
 }

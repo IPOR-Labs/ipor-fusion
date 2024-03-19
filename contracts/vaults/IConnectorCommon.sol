@@ -6,6 +6,5 @@ interface IConnectorCommon {
 
     function isSupportedAsset(address asset) external view returns (bool);
 
-    function marketId() external view returns (uint256);
     function marketName() external view returns (string memory);
 }

@@ -3,7 +3,8 @@ pragma solidity 0.8.20;
 
 import {Vault} from "./Vault.sol";
 
-import "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// TODO: Vault has super admin who has rights to setup fee
 contract VaultFactory is Ownable2Step {
@@ -22,7 +23,18 @@ contract VaultFactory is Ownable2Step {
         Vault.ConnectorStruct[] memory connectors,
         Vault.ConnectorStruct[] memory balanceConnectors
     ) external returns (address vault) {
-        vault = address(new Vault(iporVaultInitialOwner, assetName, assetSymbol, underlyingToken, keepers, supportedAssetsInMarkets, connectors, balanceConnectors));
+        vault = address(
+            new Vault(
+                iporVaultInitialOwner,
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                keepers,
+                supportedAssetsInMarkets,
+                connectors,
+                balanceConnectors
+            )
+        );
     }
 
     //    function createConnector(

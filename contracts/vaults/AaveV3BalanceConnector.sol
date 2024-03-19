@@ -29,7 +29,7 @@ interface IAaveProtocolDataProvider {
 }
 
 contract AaveV3BalanceConnector is IConnectorBalance {
-    uint256 public immutable override marketId;
+    uint256 public immutable MARKET_ID;
     bytes32 internal immutable _MARKET_NAME;
 
     address public constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
@@ -40,7 +40,7 @@ contract AaveV3BalanceConnector is IConnectorBalance {
     address public immutable PRICE_ADAPTER;
 
     constructor(uint256 inputMarketId, bytes32 inputMarketName, address inputPriceAdapter) {
-        marketId = inputMarketId;
+        MARKET_ID = inputMarketId;
         _MARKET_NAME = inputMarketName;
         PRICE_ADAPTER = inputPriceAdapter;
     }

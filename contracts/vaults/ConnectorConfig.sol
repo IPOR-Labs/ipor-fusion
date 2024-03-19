@@ -15,7 +15,6 @@ contract ConnectorConfig {
 
     uint256 public currentMarketId;
 
-
     function addMarket(bytes32 marketName, address balanceConnector) external returns (uint256 newMarketId) {
         newMarketId = currentMarketId++;
         markets[newMarketId] = marketName;
