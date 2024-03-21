@@ -33,5 +33,6 @@ exclude: |
       .solhintignore|
       .idea|
       .gitmodules|
+      .gitignore|
       README.md|
   )$

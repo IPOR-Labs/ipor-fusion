@@ -7,33 +7,19 @@ contract ConnectorConfig {
         bytes32 name;
     }
 
-    struct ConnectorConfigData {
-        /// @dev when marketId = 0 then connector doesn't support any market
-        uint256 marketId;
-        /// @dev address to the connector contract which is responsible for the balanceOf function for a given
-        /// market and asset
-        address connectorBalanceOf;
-    }
-
-    /// @dev key - marketId, value - market name, when key = 0 then connector doesn't support any market
-    /// TODO: iterable mapping
+    /// @dev key - marketId, value - market name
     mapping(uint256 => bytes32) public markets;
+
+    /// @dev key - marketId, value - balance connector address
+    mapping(uint256 => address) public marketBalanceConnectors;
 
     uint256 public currentMarketId;
 
-    mapping(address => ConnectorConfigData) public connectorConfig;
-
-    function addConnector(address connector, uint256 marketId, address connectorBalanceOf) external {
-        // todo remove solhint disable
-        //solhint-disable-next-line
-        require(marketId == 0 || markets[marketId] > 0, "ConnectorConfig: market doesn't exist");
-        connectorConfig[connector] = ConnectorConfigData(marketId, connectorBalanceOf);
-    }
-
-    function addMarket(bytes32 marketName) external returns (uint256 newMarketId) {
+    function addMarket(bytes32 marketName, address balanceConnector) external returns (uint256 newMarketId) {
         newMarketId = currentMarketId++;
         markets[newMarketId] = marketName;
         currentMarketId = newMarketId;
+        marketBalanceConnectors[newMarketId] = balanceConnector;
     }
 
     function getMarkets() external view returns (Market[] memory resultMarkets) {
@@ -41,5 +27,9 @@ contract ConnectorConfig {
         for (uint256 i = 0; i < currentMarketId; i++) {
             resultMarkets[i] = Market(i, markets[i]);
         }
+    }
+
+    function getBalanceConnector(uint256 marketId) external view returns (address) {
+        return marketBalanceConnectors[marketId];
     }
 }
