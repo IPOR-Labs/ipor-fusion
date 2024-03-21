@@ -15,6 +15,9 @@ import {AssetsToMarketLib} from "../libraries/AssetsToMarketLib.sol";
 contract Vault is ERC4626Permit, Ownable2Step {
     using Address for address;
 
+    error InvalidKeeper();
+    error UnsupportedConnector();
+
     //TODO: setup Vault type - required for fee
 
     struct ConnectorAction {
@@ -54,7 +57,7 @@ contract Vault is ERC4626Permit, Ownable2Step {
         ERC20(assetName, assetSymbol)
         Ownable(initialOwner)
     {
-        for (uint256 i = 0; i < keepers.length; ++i) {
+        for (uint256 i; i < keepers.length; ++i) {
             _grantKeeper(keepers[i]);
         }
 
@@ -83,12 +86,14 @@ contract Vault is ERC4626Permit, Ownable2Step {
     }
 
     function _addBalanceConnector(ConnectorStruct memory connectorInput) internal {
-        ConnectorsLib.addConnector(connectorInput.connector);
         ConnectorsLib.addBalanceConnector(connectorInput.marketId, connectorInput.connector);
     }
 
     function _grantKeeper(address keeper) internal {
-        require(keeper != address(0), "Vault: invalid keeper");
+        if (keeper == address(0)) {
+            revert InvalidKeeper();
+        }
+
         KeepersLib.grantKeeper(keeper);
     }
 
@@ -98,7 +103,9 @@ contract Vault is ERC4626Permit, Ownable2Step {
         returnData = new bytes[](callsCount);
 
         for (uint256 i = 0; i < callsCount; ++i) {
-            require(ConnectorsLib.isConnectorSupported(calls[i].connector), "Vault: unsupported connector");
+            if (ConnectorsLib.isConnectorSupported(calls[i].connector)) {
+                revert UnsupportedConnector();
+            }
             returnData[i] = calls[i].connector.functionDelegateCall(calls[i].data);
         }
 

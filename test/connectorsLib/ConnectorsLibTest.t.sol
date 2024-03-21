@@ -38,6 +38,90 @@ contract ConnectorsLibTest is Test {
         assertTrue(connectorBefore);
     }
 
+    function testShouldRemoveConnectorCheckLastConnectorId() public {
+        //given
+        address connectorOne = address(0x1);
+        address connectorTwo = address(0x2);
+        address connectorThree = address(0x3);
+        address connectorFour = address(0x4);
+
+        connectorsLibMock.addConnector(connectorOne);
+        connectorsLibMock.addConnector(connectorTwo);
+        connectorsLibMock.addConnector(connectorThree);
+        connectorsLibMock.addConnector(connectorFour);
+
+        //when
+        connectorsLibMock.removeConnector(connectorTwo);
+
+        //then
+        assertTrue(connectorsLibMock.isConnectorSupported(connectorTwo) == false, "Connector two should be removed");
+
+        /// @dev connector four should be moved to index 1
+        assertTrue(connectorsLibMock.getConnectorsArray()[1] == connectorFour, "Connector four should be at index 1");
+
+        /// @dev lastConnectorId should be 3
+        assertTrue(connectorsLibMock.getConnectorsArray().length == 3);
+
+        /// @dev connector four in mapping should be 2
+        assertTrue(connectorsLibMock.getConnectorArrayIndex(connectorFour) == 2, "Connector four should be at index 2");
+    }
+
+    function testShouldRemoveFirstConnector() public {
+        //given
+        address connectorOne = address(0x1);
+        address connectorTwo = address(0x2);
+        address connectorThree = address(0x3);
+        address connectorFour = address(0x4);
+
+        connectorsLibMock.addConnector(connectorOne);
+        connectorsLibMock.addConnector(connectorTwo);
+        connectorsLibMock.addConnector(connectorThree);
+        connectorsLibMock.addConnector(connectorFour);
+
+        //when
+        connectorsLibMock.removeConnector(connectorOne);
+
+        //then
+        assertTrue(connectorsLibMock.isConnectorSupported(connectorOne) == false, "Connector one should be removed");
+
+        /// @dev connector four should be moved to index 0
+        assertTrue(connectorsLibMock.getConnectorsArray()[0] == connectorFour, "Connector four should be at index 0");
+
+        /// @dev lastConnectorId should be 3
+        assertTrue(connectorsLibMock.getConnectorsArray().length == 3);
+
+        /// @dev connector four in mapping should be 1
+        assertTrue(connectorsLibMock.getConnectorArrayIndex(connectorFour) == 1, "Connector four should be at index 1");
+    }
+
+    function testShouldRemoveSecondFonnector() public {
+        //given
+        address connectorOne = address(0x1);
+        address connectorTwo = address(0x2);
+        address connectorThree = address(0x3);
+        address connectorFour = address(0x4);
+
+        connectorsLibMock.addConnector(connectorOne);
+        connectorsLibMock.addConnector(connectorTwo);
+        connectorsLibMock.addConnector(connectorThree);
+        connectorsLibMock.addConnector(connectorFour);
+
+        //when
+        connectorsLibMock.removeConnector(connectorTwo);
+
+        //then
+        assertTrue(connectorsLibMock.isConnectorSupported(connectorTwo) == false, "Connector two should be removed");
+
+        /// @dev connector four should be moved to index 1
+        assertTrue(connectorsLibMock.getConnectorsArray()[1] == connectorFour, "Connector four should be at index 1");
+
+        /// @dev lastConnectorId should be 3
+        assertTrue(connectorsLibMock.getConnectorsArray().length == 3);
+
+        /// @dev connector four in mapping should be 2
+        assertTrue(connectorsLibMock.getConnectorArrayIndex(connectorFour) == 2, "Connector four should be at index 2");
+    }
+
     function testShouldRemoveBalanceConnectorCheckLastBalanceConnectorId() public {
         //given
         address connectorOne = address(0x1);
@@ -66,12 +150,87 @@ contract ConnectorsLibTest is Test {
         assertTrue(connectorsLibMock.getBalanceConnectorsArray()[1] == key, "Connector four should be at index 1");
 
         /// @dev lastBalanceConnectorId should be 3
-        assertTrue(connectorsLibMock.getLastBalanceConnectorId() == 3);
+        assertTrue(connectorsLibMock.getBalanceConnectorsArray().length == 3);
 
         /// @dev connector four in mapping should be 2
         assertTrue(
-            connectorsLibMock.getBalanceConnectorIndex(marketId, connectorFour) == 2,
+            connectorsLibMock.getBalanceConnectorArrayIndex(marketId, connectorFour) == 2,
             "Connector four should be at index 2"
+        );
+    }
+
+    function testShouldRemoveFirstBalanceConnector() public {
+        //given
+        address connectorOne = address(0x1);
+        address connectorTwo = address(0x2);
+        address connectorThree = address(0x3);
+        address connectorFour = address(0x4);
+
+        uint256 marketId = 1;
+        connectorsLibMock.addBalanceConnector(marketId, connectorOne);
+        connectorsLibMock.addBalanceConnector(marketId, connectorTwo);
+        connectorsLibMock.addBalanceConnector(marketId, connectorThree);
+        connectorsLibMock.addBalanceConnector(marketId, connectorFour);
+
+        //when
+        connectorsLibMock.removeBalanceConnector(marketId, connectorOne);
+
+        //then
+        assertTrue(
+            connectorsLibMock.isBalanceConnectorSupported(marketId, connectorOne) == false,
+            "Connector one should be removed"
+        );
+
+        bytes32 key = keccak256(abi.encodePacked(marketId, connectorFour));
+
+        /// @dev connector four should be moved to index 0
+        assertTrue(connectorsLibMock.getBalanceConnectorsArray()[0] == key, "Connector four should be at index 0");
+
+        /// @dev lastBalanceConnectorId should be 3
+        assertTrue(connectorsLibMock.getBalanceConnectorsArray().length == 3);
+
+        /// @dev connector four in mapping should be 1
+        assertTrue(
+            connectorsLibMock.getBalanceConnectorArrayIndex(marketId, connectorFour) == 1,
+            "Connector four should be at index 1"
+        );
+    }
+
+    function testShouldRemoveLastConnector() public {
+        //given
+        address connectorOne = address(0x1);
+        address connectorTwo = address(0x2);
+        address connectorThree = address(0x3);
+        address connectorFour = address(0x4);
+
+        uint256 marketId = 1;
+
+        connectorsLibMock.addBalanceConnector(marketId, connectorOne);
+        connectorsLibMock.addBalanceConnector(marketId, connectorTwo);
+        connectorsLibMock.addBalanceConnector(marketId, connectorThree);
+        connectorsLibMock.addBalanceConnector(marketId, connectorFour);
+
+        //when
+        connectorsLibMock.removeBalanceConnector(marketId, connectorFour);
+
+        //then
+        assertTrue(
+            connectorsLibMock.isBalanceConnectorSupported(marketId, connectorFour) == false,
+            "Connector four should be removed"
+        );
+
+        bytes32 key = keccak256(abi.encodePacked(marketId, connectorThree));
+
+        /// @dev connector three should be moved to index 3
+        assertTrue(connectorsLibMock.getBalanceConnectorsArray()[2] == key, "Connector three should be at index 3");
+
+        /// @dev lastBalanceConnectorId should be 3
+        assertTrue(connectorsLibMock.getBalanceConnectorsArray().length == 3);
+
+        /// @dev connector three in mapping should be 3
+        assertTrue(
+            connectorsLibMock.getBalanceConnectorArrayIndex(marketId, connectorThree) == 3,
+            "Connector three should be at index 3"
         );
     }
 
@@ -133,7 +292,7 @@ contract ConnectorsLibTest is Test {
         connectorsLibMock.addBalanceConnector(marketId, connector);
 
         //then
-        uint256 lastBalanceConnectorId = connectorsLibMock.getLastBalanceConnectorId();
+        uint256 lastBalanceConnectorId = connectorsLibMock.getBalanceConnectorsArray().length;
         assertTrue(lastBalanceConnectorId == 1);
 
         bytes32[] memory balanceConnectorsArray = connectorsLibMock.getBalanceConnectorsArray();

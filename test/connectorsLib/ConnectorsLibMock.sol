@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {ConnectorsLib} from "../../contracts/libraries/ConnectorsLib.sol";
-import {StorageLib} from "../../contracts/libraries/StorageLib.sol";
 
 contract ConnectorsLibMock {
     function addConnector(address connector) external {
@@ -29,15 +28,19 @@ contract ConnectorsLibMock {
         return ConnectorsLib.isBalanceConnectorSupported(marketId, connector);
     }
 
-    function getBalanceConnectorIndex(uint256 marketId, address connector) external view returns (uint256) {
-        return ConnectorsLib.getBalanceConnectorIndex(marketId, connector);
-    }
-
-    function getLastBalanceConnectorId() external view returns (uint256) {
-        return ConnectorsLib.getLastBalanceConnectorId();
+    function getBalanceConnectorArrayIndex(uint256 marketId, address connector) external view returns (uint256) {
+        return ConnectorsLib.getBalanceConnectorArrayIndex(marketId, connector);
     }
 
     function getBalanceConnectorsArray() external view returns (bytes32[] memory) {
         return ConnectorsLib.getBalanceConnectorsArray();
+    }
+
+    function getConnectorsArray() external view returns (address[] memory) {
+        return ConnectorsLib.getConnectorsArray();
+    }
+
+    function getConnectorArrayIndex(address connector) external view returns (uint256) {
+        return ConnectorsLib.getConnectorArrayIndex(connector);
     }
 }

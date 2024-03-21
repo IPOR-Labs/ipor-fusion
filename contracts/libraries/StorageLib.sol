@@ -13,16 +13,15 @@ library StorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.commandConnectors")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CONNECTORS = 0x8df706fc41a6e9ea82576edcbe6c0508c833d6c213c8726956c1b91cfc40df00;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.connectorsArray")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant CONNECTORS_ARRAY = 0xfc45338140a0465eb8fe9e6810faefca6449a87e343df9e2e6431bb075b65500;
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.balanceConnectors")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant BALANCE_CONNECTORS = 0x5a5829737eca653c0b5b4a20468c03c7bec2bc961055a682ab2b91dff4463a00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.balanceConnectorsArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant BALANCE_CONNECTORS_ARRAY =
         0x1fc2ff582e84eb55aac3390e0ea40e2b04f7ca631b7916a8c1670711fd11f600;
-
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.lastBalanceConnectorId")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant LAST_BALANCE_CONNECTOR_ID =
-        0xf1d8ee1a3dde7e1feef6fd686090f046e7ebf946d471fc7ebe607d11e3df3f00;
 
     /// @custom:storage-location erc7201:io.ipor.marketsGrantedAssets
     struct MarketsGrantedAssets {
@@ -46,13 +45,14 @@ library StorageLib {
         mapping(bytes32 => uint256) value;
     }
 
+    struct ConnectorsArray {
+        /// @dev value is a connector address
+        address[] value;
+    }
+
     struct BalanceConnectorsArray {
         /// @dev value is a marketId and connector address: keccak256(abi.encode(marketId, connector))
         bytes32[] value;
-    }
-
-    struct LastBalanceConnectorId {
-        uint32 value;
     }
 
     function getMarketsGrantedAssets() internal pure returns (MarketsGrantedAssets storage grantedAssets) {
@@ -79,15 +79,15 @@ library StorageLib {
         }
     }
 
-    function getBalanceConnectorsArray() internal pure returns (BalanceConnectorsArray storage balanceConnectorsArray) {
+    function getConnectorsArray() internal pure returns (ConnectorsArray storage connectorsArray) {
         assembly {
-            balanceConnectorsArray.slot := BALANCE_CONNECTORS_ARRAY
+            connectorsArray.slot := CONNECTORS_ARRAY
         }
     }
 
-    function getLastBalanceConnectorId() internal pure returns (LastBalanceConnectorId storage lastBalanceConnectorId) {
+    function getBalanceConnectorsArray() internal pure returns (BalanceConnectorsArray storage balanceConnectorsArray) {
         assembly {
-            lastBalanceConnectorId.slot := LAST_BALANCE_CONNECTOR_ID
+            balanceConnectorsArray.slot := BALANCE_CONNECTORS_ARRAY
         }
     }
 }
