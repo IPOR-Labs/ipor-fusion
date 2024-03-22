@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {StorageLib} from "./StorageLib.sol";
 
 library AssetsToMarketLib {
-    function grantAssetsToMarket(uint256 marketId, address[] calldata assets) internal {
+    function grantAssetsToMarket(uint256 marketId, address[] memory assets) internal {
         StorageLib.MarketsGrantedAssets storage grantedAssets = StorageLib.getMarketsGrantedAssets();
         uint256 length = assets.length;
         for (uint256 i; i < length; ++i) {

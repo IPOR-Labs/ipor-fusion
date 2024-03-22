@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IConnector} from "./IConnector.sol";
 import {IMorpho} from "./interfaces/IMorpho.sol";
 import {Vault} from "./Vault.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @dev FlashLoan Connector type does not required information about supported assets
 contract FlashLoanMorphoConnector is IConnector {

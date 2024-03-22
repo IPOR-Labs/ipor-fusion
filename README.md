@@ -1,19 +1,3 @@
-## Pre-commit hooks
-
-### requirements
-
--   python 3.11.6
--   nodejs 20.11.1
-
-### install pre-commit
-
-use instruction from https://pre-commit.com/
-
-#### install pre-commit
-
--   `pip install pre-commit`
--   `pre-commit install`
-
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
