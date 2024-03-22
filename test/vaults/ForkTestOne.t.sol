@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Vault} from "../../contracts/vaults/Vault.sol";
 import {FlashLoanMorphoConnector} from "../../contracts/vaults/FlashLoanMorphoConnector.sol";
-import {AaveV3SupplyConnector} from "../../contracts/vaults/AaveV3SupplyConnector.sol";
+import {AaveV3SupplyConnector} from "../../contracts/connectors/aave_v3/AaveV3SupplyConnector.sol";
 import {AaveV3BorrowConnector} from "../../contracts/vaults/AaveV3BorrowConnector.sol";
 import {NativeSwapWethToWstEthConnector} from "../../contracts/vaults/NativeSwapWEthToWstEthConnector.sol";
 import {PriceAdapter} from "../../contracts/vaults/PriceAdapter.sol";

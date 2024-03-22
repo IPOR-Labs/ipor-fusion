@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {AssetsToMarketLib} from "../libraries/AssetsToMarketLib.sol";
-import {Errors} from "../libraries/errors/Errors.sol";
-import {IPool} from "./interfaces/IPool.sol";
-import {IConnector} from "./IConnector.sol";
+import {AssetsToMarketLib} from "../../libraries/AssetsToMarketLib.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
+import {IPool} from "../../vaults/interfaces/IPool.sol";
+import {IConnector} from "../IConnector.sol";
+import {IApproveERC20} from "../IApproveERC20.sol";
 
 contract AaveV3SupplyConnector is IConnector {
     struct AaveV3SupplyConnectorData {
@@ -45,7 +45,7 @@ contract AaveV3SupplyConnector is IConnector {
         return _enter(data);
     }
 
-    function enter(AaveV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
+    function enter(AaveV3SupplyConnectorData memory data) external returns (bytes memory executionStatus) {
         return _enter(data);
     }
 
@@ -54,7 +54,7 @@ contract AaveV3SupplyConnector is IConnector {
             revert AaveV3SupplyConnectorUnsupportedAsset("enter", data.token, Errors.NOT_SUPPORTED_TOKEN);
         }
 
-        IERC20(data.token).approve(address(AAVE_POOL), data.amount);
+        IApproveERC20(data.token).approve(address(AAVE_POOL), data.amount);
 
         AAVE_POOL.supply(data.token, data.amount, address(this), 0);
 
@@ -81,20 +81,5 @@ contract AaveV3SupplyConnector is IConnector {
         uint256 withDrawAmount = AAVE_POOL.withdraw(data.token, data.amount, address(this));
         emit AaveV3SupplyConnector("exit", VERSION, data.token, withDrawAmount, data.userEModeCategoryId);
         return abi.encodePacked(withDrawAmount);
-    }
-
-    function getSupportedAssets() external view returns (address[] memory) {
-        return AAVE_POOL.getReservesList();
-    }
-
-    //solhint-disable-next-line
-    function isSupportedAsset(address asset) external view returns (bool) {
-        address[] memory assets = AAVE_POOL.getReservesList();
-        for (uint256 i = 0; i < assets.length; i++) {
-            if (assets[i] == asset) {
-                return true;
-            }
-        }
-        return false;
     }
 }
