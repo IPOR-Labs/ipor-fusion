@@ -5,8 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {IPool} from "../../../contracts/vaults/interfaces/IPool.sol";
-import {IAavePriceOracle} from "../../../contracts/connectors/IAavePriceOracle.sol";
-import {IAavePoolDataProvider} from "../../../contracts/connectors/IAavePoolDataProvider.sol";
+import {IAavePriceOracle} from "../../../contracts/connectors/aave_v3/IAavePriceOracle.sol";
+import {IAavePoolDataProvider} from "../../../contracts/connectors/aave_v3/IAavePoolDataProvider.sol";
 import {AaveV3SupplyConnector} from "../../../contracts/connectors/aave_v3/AaveV3SupplyConnector.sol";
 import {VaultMock} from "./VaultMock.sol";
 
