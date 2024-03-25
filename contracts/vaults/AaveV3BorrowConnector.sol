@@ -6,7 +6,7 @@ import {IConnectorCommon} from "./IConnectorCommon.sol";
 
 contract AaveV3BorrowConnector is IConnectorCommon {
     uint256 public immutable MARKET_ID;
-    bytes32 internal immutable _MARKET_NAME;
+    bytes32 public immutable MARKET_NAME;
 
     struct BorrowData {
         address token;
@@ -17,10 +17,10 @@ contract AaveV3BorrowConnector is IConnectorCommon {
 
     constructor(uint256 inputMarketId, bytes32 inputMarketName) {
         MARKET_ID = inputMarketId;
-        _MARKET_NAME = inputMarketName; //string(abi.encodePacked(inputMarketName));
+        MARKET_NAME = inputMarketName; //string(abi.encodePacked(inputMarketName));
     }
 
-    function enter(bytes calldata data) external returns (uint256 executionStatus) {
+    function enter(bytes calldata data) external returns (bytes memory executionStatus) {
         BorrowData memory borrowData = abi.decode(data, (BorrowData));
 
         AAVE_POOL.borrow(borrowData.token, borrowData.amount, 2, 0, address(this));
@@ -28,7 +28,7 @@ contract AaveV3BorrowConnector is IConnectorCommon {
 
     // todo remove solhint disable
     //solhint-disable-next-line
-    function exit(bytes calldata data) external returns (uint256 executionStatus) {
+    function exit(bytes calldata data) external returns (bytes memory executionStatus) {
         //TODO: implement
         // todo remove solhint disable
         //solhint-disable-next-line
@@ -46,6 +46,6 @@ contract AaveV3BorrowConnector is IConnectorCommon {
     }
 
     function marketName() external view returns (string memory) {
-        return string(abi.encodePacked(_MARKET_NAME));
+        return string(abi.encodePacked(MARKET_NAME));
     }
 }

@@ -15,8 +15,9 @@ contract NativeSwapWethToWstEthConnector is IConnector {
     address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address public constant ST_ETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+    uint256 public constant MARKET_ID = 0;
 
-    function enter(bytes calldata data) external returns (uint256 executionStatus) {
+    function enter(bytes calldata data) external returns (bytes memory executionStatus) {
         SwapData memory swapData = abi.decode(data, (SwapData));
 
         IWETH9(W_ETH).withdraw(swapData.wEthAmount);
@@ -32,7 +33,7 @@ contract NativeSwapWethToWstEthConnector is IConnector {
 
     //todo remove solhint disable
     //solhint-disable-next-line
-    function exit(bytes calldata data) external returns (uint256 executionStatus) {
+    function exit(bytes calldata data) external returns (bytes memory executionStatus) {
         //warning  Error message for revert is too long: 41 counted / 32 allowed  reason-string
         // todo remove solhint disable
         //solhint-disable-next-line
@@ -47,13 +48,5 @@ contract NativeSwapWethToWstEthConnector is IConnector {
     //solhint-disable-next-line
     function isSupportedAsset(address asset) external view returns (bool) {
         return true;
-    }
-
-    function marketId() external view returns (uint256) {
-        return 0;
-    }
-
-    function marketName() external view returns (string memory) {
-        return "";
     }
 }
