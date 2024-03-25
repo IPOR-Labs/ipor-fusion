@@ -3,20 +3,20 @@ pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IBalances} from "../IBalances.sol";
+import {IBalance} from "../IBalance.sol";
 import {IAavePriceOracle} from "./IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "./IAavePoolDataProvider.sol";
 import {AaveConstants} from "./AaveConstants.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
-contract AaveV3Balances is IBalances {
+contract AaveV3Balance is IBalance {
     using SafeCast for int256;
     uint256 private constant PRICE_DECIMALS = 8;
     address private constant USD = address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa);
 
     function balanceOfMarket(
-        address[] calldata assets,
-        address user
+        address user,
+        address[] calldata assets
     ) external view override returns (uint256, address) {
         uint256 len = assets.length;
         if (len == 0) {

@@ -8,7 +8,7 @@ import {IPool} from "../../../contracts/vaults/interfaces/IPool.sol";
 import {IAavePriceOracle} from "../../../contracts/connectors/aave_v3/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../../contracts/connectors/aave_v3/IAavePoolDataProvider.sol";
 import {IApproveERC20} from "../../../contracts/connectors/IApproveERC20.sol";
-import {AaveV3Balances} from "../../../contracts/connectors/aave_v3/AaveV3Balances.sol";
+import {AaveV3Balance} from "../../../contracts/connectors/aave_v3/AaveV3Balance.sol";
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
 contract AaveV3BalancesTest is Test {
@@ -27,7 +27,7 @@ contract AaveV3BalancesTest is Test {
     function testShouldCalculateBalanceWhenSupply() external iterateSupportedTokens {
         // given
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
-        AaveV3Balances aaveV3Balances = new AaveV3Balances();
+        AaveV3Balance aaveV3Balances = new AaveV3Balance();
         address user = vm.rememberKey(123);
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
@@ -37,7 +37,7 @@ contract AaveV3BalancesTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
 
-        (uint256 balanceBefore, ) = aaveV3Balances.balanceOfMarket(assets, user);
+        (uint256 balanceBefore, ) = aaveV3Balances.balanceOfMarket(user, assets);
 
         // when
 
@@ -46,7 +46,7 @@ contract AaveV3BalancesTest is Test {
         vm.prank(user);
         AAVE_POOL.supply(activeTokens.token, amount, user, 0);
 
-        (uint256 balanceAfter, ) = aaveV3Balances.balanceOfMarket(assets, user);
+        (uint256 balanceAfter, ) = aaveV3Balances.balanceOfMarket(user, assets);
 
         // then
         assertTrue(balanceAfter > balanceBefore, "Balance should be greater after supply");
@@ -56,7 +56,7 @@ contract AaveV3BalancesTest is Test {
     function testShouldDecreaseBalanceWhenBorrowVariable() external iterateSupportedTokens {
         // given
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
-        AaveV3Balances aaveV3Balances = new AaveV3Balances();
+        AaveV3Balance aaveV3Balances = new AaveV3Balance();
         address user = vm.rememberKey(123);
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
@@ -72,13 +72,13 @@ contract AaveV3BalancesTest is Test {
         vm.prank(user);
         AAVE_POOL.supply(activeTokens.token, amount, user, 0);
 
-        (uint256 balanceBefore, ) = aaveV3Balances.balanceOfMarket(assets, user);
+        (uint256 balanceBefore, ) = aaveV3Balances.balanceOfMarket(user, assets);
         // when
 
         vm.prank(user);
         AAVE_POOL.borrow(activeTokens.token, borrowAmount, uint256(2), 0, user);
 
-        (uint256 balanceAfter, ) = aaveV3Balances.balanceOfMarket(assets, user);
+        (uint256 balanceAfter, ) = aaveV3Balances.balanceOfMarket(user, assets);
 
         // then
         assertTrue(balanceAfter < balanceBefore, "Balance should be greater after supply");
