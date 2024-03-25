@@ -12,7 +12,7 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 contract AaveV3Balances is IBalances {
     using SafeCast for int256;
     uint256 private constant PRICE_DECIMALS = 8;
-    address private constant USD = address(0x0); //todo change to real address
+    address private constant USD = address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa);
 
     function balanceOfMarket(
         address[] calldata assets,
