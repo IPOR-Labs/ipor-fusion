@@ -10,7 +10,7 @@ import {VaultERC4626Mock} from "./VaultERC4626Mock.sol";
 import {IWETH9} from "./IWETH9.sol";
 
 contract ERC4626SupplyConnectorTest is Test {
-    address private constant wEth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
@@ -30,7 +30,7 @@ contract ERC4626SupplyConnectorTest is Test {
         //        _supplyTokensToMockVault(vault.asset(), address(vaultMock), 1_000 * 10 ** decimals);
         deal(address(vaultMock), 1_000 * 10 ** decimals);
         vm.prank(address(vaultMock));
-        IWETH9(wEth).deposit{value: 1_000 * 10 ** decimals}();
+        IWETH9(WETH).deposit{value: 1_000 * 10 ** decimals}();
 
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
         uint256 balanceOnMarketBefore = vault.balanceOf(address(vaultMock));
@@ -65,7 +65,7 @@ contract ERC4626SupplyConnectorTest is Test {
         //        _supplyTokensToMockVault(vault.asset(), address(vaultMock), 1_000 * 10 ** decimals);
         deal(address(vaultMock), 1_000 * 10 ** decimals);
         vm.prank(address(vaultMock));
-        IWETH9(wEth).deposit{value: 1_000 * 10 ** decimals}();
+        IWETH9(WETH).deposit{value: 1_000 * 10 ** decimals}();
 
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
