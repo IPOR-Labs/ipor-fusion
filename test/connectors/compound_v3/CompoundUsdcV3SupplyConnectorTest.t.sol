@@ -20,7 +20,7 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
     IComet private constant COMET = IComet(CompoundConstants.COMET_V3_USDC);
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
     }
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
