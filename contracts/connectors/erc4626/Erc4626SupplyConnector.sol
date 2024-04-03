@@ -10,6 +10,8 @@ import {IApproveERC20} from "../IApproveERC20.sol";
 
 // https://github.com/morpho-org/metamorpho
 contract Erc4626SupplyConnector is IConnector {
+    using SafeCast for uint256;
+
     struct Erc4626SupplyConnectorData {
         // vault address
         address vault;
@@ -20,8 +22,6 @@ contract Erc4626SupplyConnector is IConnector {
     event Erc4626SupplyConnector(string action, uint256 version, address tokenIn, address market, uint256 amount);
 
     error Erc4626SupplyConnectorUnsupportedVault(string action, address token, string errorCode);
-
-    using SafeCast for uint256;
 
     uint256 public immutable MARKET_ID;
     uint256 public constant VERSION = 1;
