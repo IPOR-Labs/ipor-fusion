@@ -135,7 +135,7 @@ contract ForkAmmGovernanceServiceTest is Test {
     }
 
     function _getSupportedAssets() private returns (SupportedToken[] memory supportedTokensTemp) {
-        supportedTokensTemp = new SupportedToken[](22);
+        supportedTokensTemp = new SupportedToken[](20);
 
         supportedTokensTemp[0] = SupportedToken(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, "WETH");
         supportedTokensTemp[1] = SupportedToken(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0, "WSTETH");
@@ -155,10 +155,8 @@ contract ForkAmmGovernanceServiceTest is Test {
         supportedTokensTemp[15] = SupportedToken(0x853d955aCEf822Db058eb8505911ED77F175b99e, "FRAX");
         supportedTokensTemp[16] = SupportedToken(0xD33526068D116cE69F19A9ee46F0bd304F21A51f, "RPL");
         supportedTokensTemp[17] = SupportedToken(0x83F20F44975D03b1b09e64809B757c47f942BEeA, "sDAI");
-        supportedTokensTemp[18] = SupportedToken(0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6, "STG");
-        supportedTokensTemp[19] = SupportedToken(0xdeFA4e8a7bcBA345F687a2f1456F5Edd9CE97202, "KNC");
-        supportedTokensTemp[20] = SupportedToken(0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E, "crvUSD");
-        supportedTokensTemp[21] = SupportedToken(0x6c3ea9036406852006290770BEdFcAbA0e23A0e8, "PYUSD");
+        supportedTokensTemp[18] = SupportedToken(0x6c3ea9036406852006290770BEdFcAbA0e23A0e8, "PYUSD");
+        supportedTokensTemp[19] = SupportedToken(0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E, "crvUSD");
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {

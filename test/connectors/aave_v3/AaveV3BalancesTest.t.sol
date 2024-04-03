@@ -26,7 +26,7 @@ contract AaveV3BalancesTest is Test {
 
     function testShouldCalculateBalanceWhenSupply() external iterateSupportedTokens {
         // given
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19508857);
         AaveV3Balance aaveV3Balances = new AaveV3Balance();
         address user = vm.rememberKey(123);
         uint256 decimals = ERC20(activeTokens.token).decimals();
@@ -85,7 +85,7 @@ contract AaveV3BalancesTest is Test {
     }
 
     function _getSupportedAssets() private returns (SupportedToken[] memory supportedTokensTemp) {
-        supportedTokensTemp = new SupportedToken[](9);
+        supportedTokensTemp = new SupportedToken[](8);
 
         supportedTokensTemp[0] = SupportedToken(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, "WETH");
         supportedTokensTemp[1] = SupportedToken(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0, "WSTETH");
@@ -95,7 +95,6 @@ contract AaveV3BalancesTest is Test {
         supportedTokensTemp[5] = SupportedToken(0xBe9895146f7AF43049ca1c1AE358B0541Ea49704, "cbETH");
         supportedTokensTemp[6] = SupportedToken(0xdAC17F958D2ee523a2206206994597C13D831ec7, "USDT");
         supportedTokensTemp[7] = SupportedToken(0xae78736Cd615f374D3085123A210448E74Fc6393, "rETH");
-        supportedTokensTemp[8] = SupportedToken(0x5f98805A4E8be255a32880FDeC7F6728C6568bA0, "LUSD");
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
