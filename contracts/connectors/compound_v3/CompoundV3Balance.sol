@@ -11,7 +11,7 @@ contract CompoundV3Balance is IBalance {
     using SafeCast for int256;
     using SafeCast for uint256;
     uint256 private constant PRICE_DECIMALS = 8;
-    address private constant USD = address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa);
+    address private constant USD = address(0x0000000000000000000000000000000000000348);
     IComet public immutable COMET;
     uint256 public immutable MARKET_ID;
     address public immutable COMPOUND_BASE_TOKEN;
