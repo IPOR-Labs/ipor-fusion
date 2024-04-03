@@ -8,24 +8,23 @@ import {CompoundV3SupplyConnector} from "../../../contracts/connectors/compound_
 import {IComet} from "../../../contracts/connectors/compound_v3/IComet.sol";
 
 import {VaultCompoundMock} from "./VaultCompoundMock.sol";
+import {CompoundV3Balance} from "../../../contracts/connectors/compound_v3/CompoundV3Balance.sol";
 
-//https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
-contract CompoundUsdcV3SupplyConnectorTest is Test {
+contract CompoundWethV3BalanceTest is Test {
     struct SupportedToken {
         address token;
         string name;
     }
 
     SupportedToken private activeTokens;
-    IComet private constant COMET = IComet(CompoundConstants.COMET_V3_USDC);
-
-    function setUp() public {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
-    }
+    IComet private constant COMET = IComet(CompoundConstants.COMET_V3_WETH);
+    CompoundV3Balance private marketBalance;
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyConnector connector = new CompoundV3SupplyConnector(CompoundConstants.COMET_V3_USDC, 1);
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
+        marketBalance = new CompoundV3Balance(CompoundConstants.COMET_V3_WETH, 1);
+        CompoundV3SupplyConnector connector = new CompoundV3SupplyConnector(CompoundConstants.COMET_V3_WETH, 1);
         VaultCompoundMock vaultMock = new VaultCompoundMock(address(connector));
 
         uint256 decimals = ERC20(activeTokens.token).decimals();
@@ -39,6 +38,7 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
         vaultMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
+        (uint256 balanceMarketBefore, ) = marketBalance.balanceOfMarket(address(vaultMock), assets);
 
         // when
 
@@ -49,14 +49,18 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
         // then
         uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(vaultMock));
         uint256 balanceOnCometAfter = _getBalance(address(vaultMock), activeTokens.token);
+        (uint256 balanceMarketAfter, ) = marketBalance.balanceOfMarket(address(vaultMock), assets);
 
+        assertTrue(balanceMarketBefore < balanceMarketAfter, "market balance should be increased by amount");
         assertEq(balanceAfter + amount, balanceBefore, "vault balance should be decreased by amount");
         assertTrue(balanceOnCometAfter > balanceOnCometBefore, "collateral balance should be increased by amount");
     }
 
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyConnector connector = new CompoundV3SupplyConnector(CompoundConstants.COMET_V3_USDC, 1);
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
+        marketBalance = new CompoundV3Balance(CompoundConstants.COMET_V3_WETH, 1);
+        CompoundV3SupplyConnector connector = new CompoundV3SupplyConnector(CompoundConstants.COMET_V3_WETH, 1);
         VaultCompoundMock vaultMock = new VaultCompoundMock(address(connector));
 
         uint256 decimals = ERC20(activeTokens.token).decimals();
@@ -74,6 +78,7 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
 
         uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(vaultMock));
         uint256 balanceOnCometBefore = _getBalance(address(vaultMock), activeTokens.token);
+        (uint256 balanceMarketBefore, ) = marketBalance.balanceOfMarket(address(vaultMock), assets);
 
         // when
         vaultMock.exit(
@@ -86,14 +91,16 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
         // then
         uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(vaultMock));
         uint256 balanceOnCometAfter = _getBalance(address(vaultMock), activeTokens.token);
+        (uint256 balanceMarketAfter, ) = marketBalance.balanceOfMarket(address(vaultMock), assets);
 
+        assertTrue(balanceMarketBefore > balanceMarketAfter, "market balance should be decreased by amount");
         assertTrue(balanceAfter > balanceBefore, "vault balance should be increased by amount");
         assertTrue(balanceOnCometAfter < balanceOnCometBefore, "collateral balance should be decreased by amount");
     }
 
     function _getBalance(address user, address asset) private returns (uint256) {
-        if (asset == 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) {
-            // USDC
+        if (asset == 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2) {
+            // wETH
             return COMET.balanceOf(user);
         } else {
             return COMET.collateralBalanceOf(user, asset);
@@ -101,13 +108,12 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
     }
 
     function _getSupportedAssets() private returns (SupportedToken[] memory supportedTokensTemp) {
-        supportedTokensTemp = new SupportedToken[](5);
+        supportedTokensTemp = new SupportedToken[](4);
 
-        supportedTokensTemp[0] = SupportedToken(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, "USDC");
-        supportedTokensTemp[1] = SupportedToken(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984, "UNI");
+        supportedTokensTemp[0] = SupportedToken(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0, "wstETH");
+        supportedTokensTemp[1] = SupportedToken(0xae78736Cd615f374D3085123A210448E74Fc6393, "rETH");
         supportedTokensTemp[2] = SupportedToken(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, "WETH");
-        supportedTokensTemp[3] = SupportedToken(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, "WBTC");
-        supportedTokensTemp[4] = SupportedToken(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK");
+        supportedTokensTemp[3] = SupportedToken(0xBe9895146f7AF43049ca1c1AE358B0541Ea49704, "cbETH");
 
         return supportedTokensTemp;
     }
