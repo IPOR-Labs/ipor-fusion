@@ -6,7 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {Errors} from "../../contracts/libraries/errors/Errors.sol";
-import "../../contracts/priceOracle/priceFeed/SDaiPriceFeed.sol";
+import {SDaiPriceFeed} from "../../contracts/priceOracle/priceFeed/SDaiPriceFeed.sol";
 
 contract IporPriceOracleMaintenanceTest is Test {
     address private constant CHAINLINK_FEED_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;

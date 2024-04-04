@@ -76,7 +76,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        iporPriceOracleProxy.setAssetSources(new address[](0), new address[](0));
+        iporPriceOracleProxy.setAssetSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetSourceWithEmptyArrays() external {

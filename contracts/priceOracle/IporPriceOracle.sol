@@ -6,7 +6,6 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 
-import {AggregatorV3Interface} from "./AggregatorV3Interface.sol";
 import {IIporPriceOracle} from "./IIporPriceOracle.sol";
 import {IIporPriceFeed} from "./IIporPriceFeed.sol";
 import {IporPriceOracleStorageLib} from "./IporPriceOracleStorageLib.sol";
