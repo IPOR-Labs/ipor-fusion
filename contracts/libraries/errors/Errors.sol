@@ -3,4 +3,5 @@ pragma solidity 0.8.20;
 
 library Errors {
     string public constant NOT_SUPPORTED_TOKEN = "IPF_001";
+    string public constant NOT_SUPPORTED_ERC4626 = "IPF_002";
 }
