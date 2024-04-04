@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {StorageLib} from "./StorageLib.sol";
+import {IConnectorCommon} from "../vaults/IConnectorCommon.sol";
 
 library ConnectorsLib {
     event ConnectorAdded(address indexed connector);
@@ -79,6 +80,8 @@ library ConnectorsLib {
 
         StorageLib.getBalanceConnectorsArray().value.push(key);
 
+        StorageLib.getMarketBalanceConnectors().value[marketId] = connector;
+
         emit BalanceConnectorAdded(marketId, connector);
     }
 
@@ -104,6 +107,8 @@ library ConnectorsLib {
         /// @dev balanceConnectors mapping contains values as index + 1
         StorageLib.getBalanceConnectorsArray().value[indexToRemove - 1] = lastKeyInArray;
 
+//        StorageLib.getMaketBalanceConnectors().value[marketId] = address(0);
+
         StorageLib.getBalanceConnectorsArray().value.pop();
 
         emit BalanceConnectorRemoved(marketId, connector);
@@ -123,11 +128,25 @@ library ConnectorsLib {
         return StorageLib.getBalanceConnectorsArray().value;
     }
 
+//    function getMarketBalanceConnectors() internal view returns (address[] memory) {
+//        return StorageLib.getMarketBalanceConnectors().value;
+//    }
+
     function getConnectorsArray() internal view returns (address[] memory) {
         return StorageLib.getConnectorsArray().value;
     }
 
     function getConnectorArrayIndex(address connector) internal view returns (uint256) {
         return StorageLib.getConnectors().value[connector];
+    }
+
+    function updateBalance(uint256 marketId) internal {
+        bytes32[] memory balanceConnectors = getBalanceConnectorsArray();
+        for (uint256 i = 0; i < balanceConnectors.length; ++i) {
+//            (uint256 marketIdInArray, address connector) = abi.decode(balanceConnectors[i], (uint256, address));
+//            if (marketIdInArray == marketId) {
+//                IConnectorCommon(connector).updateBalance();
+//            }
+        }
     }
 }

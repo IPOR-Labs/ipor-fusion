@@ -23,4 +23,14 @@ library AssetsToMarketLib {
     function isAssetGrantedToMarket(uint256 marketId, address asset) internal view returns (bool) {
         return StorageLib.getMarketsGrantedAssets().value[marketId][asset] == 1;
     }
+
+    function getAssetsFromMarket(uint256 marketId) internal view returns (address[] memory) {
+        StorageLib.MarketsGrantedAssets storage grantedAssets = StorageLib.getMarketsGrantedAssets();
+//        uint256 length = grantedAssets.value[marketId].length;
+        address[] memory assets = new address[](1);
+//        for (uint256 i; i < length; ++i) {
+//            assets[i] = grantedAssets.value[marketId][i];
+//        }
+        return assets;
+    }
 }

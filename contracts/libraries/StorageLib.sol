@@ -7,6 +7,10 @@ library StorageLib {
     bytes32 private constant MARKETS_GRANTED_ASSETS =
         0x6c69fe10a4a5f90d958b48daeb420fdb031044e272ec2a4b02855a335483b700;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.marketsGrantedAssetsArray")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MARKETS_GRANTED_ASSETS_ARRAY =
+        0x76618d2b3a27e36ece8e66fca19ffa0115addb88622780d28fe8d12d52eb8d00;
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.keepers")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant KEEPERS = 0x7dd7151eda9a8aa729c84433daab8cd1eaf1f4ce42af566ab5ad0e56a8023100;
 
@@ -19,6 +23,10 @@ library StorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.balanceConnectors")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant BALANCE_CONNECTORS = 0x5a5829737eca653c0b5b4a20468c03c7bec2bc961055a682ab2b91dff4463a00;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.marketBalanceConnectors")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MARKET_BALANCE_CONNECTORS =
+        0xeba9231169beda60a3a6e498152686285436fed40abcb5feb85c88b510ca8b00;
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.balanceConnectorsArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant BALANCE_CONNECTORS_ARRAY =
         0x1fc2ff582e84eb55aac3390e0ea40e2b04f7ca631b7916a8c1670711fd11f600;
@@ -27,6 +35,13 @@ library StorageLib {
     struct MarketsGrantedAssets {
         /// @dev marketId => asset =>  1 - granted, otherwise  - not granted
         mapping(uint256 => mapping(address => uint256)) value;
+    }
+
+    /// @dev Iterable array of granted assets for each market, associated with the structure MarketsGrantedAssets
+    /// @custom:storage-location erc7201:io.ipor.marketsGrantedAssetsArray
+    struct MarketGrantedAssetsArray {
+        /// @dev marketId => array of assets
+        mapping(uint256 => address[]) value;
     }
 
     /// @custom:storage-location erc7201:io.ipor.keepers
@@ -45,6 +60,11 @@ library StorageLib {
         mapping(bytes32 => uint256) value;
     }
 
+    struct MarketBalanceConnectors {
+        /// @dev marketId => balance connector address
+        mapping(uint256 => address) value;
+    }
+
     struct ConnectorsArray {
         /// @dev value is a connector address
         address[] value;
@@ -58,6 +78,12 @@ library StorageLib {
     function getMarketsGrantedAssets() internal pure returns (MarketsGrantedAssets storage grantedAssets) {
         assembly {
             grantedAssets.slot := MARKETS_GRANTED_ASSETS
+        }
+    }
+
+    function getMarketGrantedAssetsArray() internal pure returns (MarketGrantedAssetsArray storage grantedAssetsArray) {
+        assembly {
+            grantedAssetsArray.slot := MARKETS_GRANTED_ASSETS_ARRAY
         }
     }
 
@@ -76,6 +102,16 @@ library StorageLib {
     function getBalanceConnectors() internal pure returns (BalanceConnectors storage balanceConnectors) {
         assembly {
             balanceConnectors.slot := BALANCE_CONNECTORS
+        }
+    }
+
+    function getMarketBalanceConnectors()
+        internal
+        pure
+        returns (MarketBalanceConnectors storage marketBalanceConnectors)
+    {
+        assembly {
+            marketBalanceConnectors.slot := MARKET_BALANCE_CONNECTORS
         }
     }
 

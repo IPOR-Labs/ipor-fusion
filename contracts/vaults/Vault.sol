@@ -11,6 +11,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {KeepersLib} from "../libraries/KeepersLib.sol";
 import {ConnectorsLib} from "../libraries/ConnectorsLib.sol";
 import {AssetsToMarketLib} from "../libraries/AssetsToMarketLib.sol";
+import {IConnectorCommon} from "./IConnectorCommon.sol";
 
 contract Vault is ERC4626Permit, Ownable2Step {
     using Address for address;
@@ -102,14 +103,54 @@ contract Vault is ERC4626Permit, Ownable2Step {
 
         returnData = new bytes[](callsCount);
 
+        uint256[] memory markets = new uint256[](callsCount);
+        uint256 marketIndex = 0;
+
         for (uint256 i = 0; i < callsCount; ++i) {
             if (ConnectorsLib.isConnectorSupported(calls[i].connector)) {
                 revert UnsupportedConnector();
             }
+
+            uint256 connectorMarketId = IConnectorCommon(calls[i].connector).MARKET_ID();
+
+            if (_checkIfExistsMarket(markets, connectorMarketId) == false) {
+                markets[marketIndex] = connectorMarketId;
+                marketIndex++;
+            }
+
             returnData[i] = calls[i].connector.functionDelegateCall(calls[i].data);
         }
 
+        _updateBalances(markets);
+
         return returnData;
+    }
+
+    /// marketId and connetcore
+    function _checkIfExistsMarket(uint256[] memory markets, uint256 marketId) internal view returns (bool exists) {
+        for (uint256 i = 0; i < markets.length; ++i) {
+            if (markets[i] == 0) {
+                break;
+            }
+            if (markets[i] == marketId) {
+                exists = true;
+            }
+        }
+    }
+
+    function _updateBalances(uint256[] memory markets) internal {
+//        mapping(uint256 => address) storage marketBalances;
+
+        for (uint256 i = 0; i < markets.length; ++i) {
+            if (markets[i] == 0) {
+                break;
+            }
+            //            marketBalances[markets[i]] = IConnectorBalanceOf(ConnectorsLib.getMarketBalanceConnectors().value[markets[i]]).balanceOfMarket(
+            //                address(this),
+            //
+            //            );
+            ConnectorsLib.updateBalance(markets[i]);
+        }
     }
 
     /// TODO: use in connector when connector configurator contract is ready
