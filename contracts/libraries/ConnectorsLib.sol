@@ -107,7 +107,7 @@ library ConnectorsLib {
         /// @dev balanceConnectors mapping contains values as index + 1
         StorageLib.getBalanceConnectorsArray().value[indexToRemove - 1] = lastKeyInArray;
 
-//        StorageLib.getMaketBalanceConnectors().value[marketId] = address(0);
+        //        StorageLib.getMaketBalanceConnectors().value[marketId] = address(0);
 
         StorageLib.getBalanceConnectorsArray().value.pop();
 
@@ -128,9 +128,9 @@ library ConnectorsLib {
         return StorageLib.getBalanceConnectorsArray().value;
     }
 
-//    function getMarketBalanceConnectors() internal view returns (address[] memory) {
-//        return StorageLib.getMarketBalanceConnectors().value;
-//    }
+    //    function getMarketBalanceConnectors() internal view returns (address[] memory) {
+    //        return StorageLib.getMarketBalanceConnectors().value;
+    //    }
 
     function getConnectorsArray() internal view returns (address[] memory) {
         return StorageLib.getConnectorsArray().value;
@@ -143,10 +143,10 @@ library ConnectorsLib {
     function updateBalance(uint256 marketId) internal {
         bytes32[] memory balanceConnectors = getBalanceConnectorsArray();
         for (uint256 i = 0; i < balanceConnectors.length; ++i) {
-//            (uint256 marketIdInArray, address connector) = abi.decode(balanceConnectors[i], (uint256, address));
-//            if (marketIdInArray == marketId) {
-//                IConnectorCommon(connector).updateBalance();
-//            }
+            //            (uint256 marketIdInArray, address connector) = abi.decode(balanceConnectors[i], (uint256, address));
+            //            if (marketIdInArray == marketId) {
+            //                IConnectorCommon(connector).updateBalance();
+            //            }
         }
     }
 }

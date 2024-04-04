@@ -26,11 +26,11 @@ library AssetsToMarketLib {
 
     function getAssetsFromMarket(uint256 marketId) internal view returns (address[] memory) {
         StorageLib.MarketsGrantedAssets storage grantedAssets = StorageLib.getMarketsGrantedAssets();
-//        uint256 length = grantedAssets.value[marketId].length;
+        //        uint256 length = grantedAssets.value[marketId].length;
         address[] memory assets = new address[](1);
-//        for (uint256 i; i < length; ++i) {
-//            assets[i] = grantedAssets.value[marketId][i];
-//        }
+        //        for (uint256 i; i < length; ++i) {
+        //            assets[i] = grantedAssets.value[marketId][i];
+        //        }
         return assets;
     }
 }

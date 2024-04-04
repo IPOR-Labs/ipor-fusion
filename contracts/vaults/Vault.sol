@@ -139,7 +139,7 @@ contract Vault is ERC4626Permit, Ownable2Step {
     }
 
     function _updateBalances(uint256[] memory markets) internal {
-//        mapping(uint256 => address) storage marketBalances;
+        //        mapping(uint256 => address) storage marketBalances;
 
         for (uint256 i = 0; i < markets.length; ++i) {
             if (markets[i] == 0) {
