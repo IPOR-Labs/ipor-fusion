@@ -10,7 +10,7 @@ library IporPriceOracleStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.assetsSources
     struct AssetsSources {
-        /// @dev keeper address => 1 - is granted, otherwise - not granted
+        /// @dev asset => priceFead
         mapping(address => address) value;
     }
 
@@ -25,7 +25,7 @@ library IporPriceOracleStorageLib {
         }
     }
 
-    function getAssetSource(address asset) internal view returns (address source) {
+    function getSourceOfAsset(address asset) internal view returns (address source) {
         return _getAssetsSources().value[asset];
     }
 

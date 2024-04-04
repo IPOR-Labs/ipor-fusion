@@ -3,8 +3,8 @@ pragma solidity 0.8.20;
 
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 
 import {AggregatorV3Interface} from "./AggregatorV3Interface.sol";
 import {IIporPriceOracle} from "./IIporPriceOracle.sol";
@@ -23,10 +23,10 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
 
     constructor(address baseCurrency, uint256 baseCurrencyDecimals, address chainlinkFeedRegistry) {
         if (baseCurrency == address(0)) {
-            revert IIporPriceOracle.ZeroAddress(Errors.ZERO_ADDRESS, "baseCurrency");
+            revert IIporPriceOracle.ZeroAddress(Errors.ZERO_ADDRESS_NOT_SUPPORTED, "baseCurrency");
         }
         if (chainlinkFeedRegistry == address(0)) {
-            revert IIporPriceOracle.ZeroAddress(Errors.ZERO_ADDRESS, "chainlinkFeedRegistry");
+            revert IIporPriceOracle.ZeroAddress(Errors.ZERO_ADDRESS_NOT_SUPPORTED, "chainlinkFeedRegistry");
         }
 
         BASE_CURRENCY = baseCurrency;
@@ -36,12 +36,13 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
 
     function initialize(address initialOwner) external initializer {
         __Ownable_init(initialOwner);
+        // todo check what is needed
     }
 
     function setAssetSources(address[] calldata assets, address[] calldata sources) external onlyOwner {
         uint256 assetsLength = assets.length;
         uint256 sourcesLength = sources.length;
-        if (assetsLength == 0 || assetsLength == 0) {
+        if (assetsLength == 0 || sourcesLength == 0) {
             revert IIporPriceOracle.EmptyArrayNotSupported(Errors.EMPTY_ARRAY_NOT_SUPPORTED);
         }
         if (assetsLength != sourcesLength) {
@@ -57,11 +58,11 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
     }
 
     function _getAssetPrice(address asset) private view returns (uint256) {
-        address source = IporPriceOracleStorageLib.getAssetSource(asset);
+        address source = IporPriceOracleStorageLib.getSourceOfAsset(asset);
         if (source != address(0)) {
             return IIporPriceFeed(source).getLatestPrice();
         }
-        try AggregatorV3Interface(source).latestRoundData() returns (
+        try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset, BASE_CURRENCY) returns (
             uint80 roundId,
             int256 price,
             uint256 startedAt,
@@ -87,8 +88,9 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
     }
 
     function getSourceOfAsset(address asset) external view returns (address) {
-        return IporPriceOracleStorageLib.getAssetSource(asset);
+        return IporPriceOracleStorageLib.getSourceOfAsset(asset);
     }
 
+    //solhint-disable-next-line
     function _authorizeUpgrade(address) internal override onlyOwner {}
 }
