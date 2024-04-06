@@ -30,16 +30,16 @@ contract Erc4626SupplyConnector is IConnector {
         MARKET_ID = marketIdInput;
     }
 
-    function enter(bytes calldata data) external returns (ExecutionStatus memory executionStatus) {
+    function enter(bytes calldata data) external returns (bytes memory executionStatus) {
         Erc4626SupplyConnectorData memory data = abi.decode(data, (Erc4626SupplyConnectorData));
         return _enter(data);
     }
 
-    function enter(Erc4626SupplyConnectorData memory data) external returns (ExecutionStatus memory executionStatus) {
+    function enter(Erc4626SupplyConnectorData memory data) external returns (bytes memory executionStatus) {
         return _enter(data);
     }
 
-    function _enter(Erc4626SupplyConnectorData memory data) internal returns (ExecutionStatus memory executionStatus) {
+    function _enter(Erc4626SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
             revert Erc4626SupplyConnectorUnsupportedVault("enter", data.vault, Errors.NOT_SUPPORTED_ERC4626);
         }
@@ -50,32 +50,22 @@ contract Erc4626SupplyConnector is IConnector {
         IERC4626(data.vault).deposit(data.amount, address(this));
 
         emit Erc4626SupplyConnector("enter", VERSION, underlineAsset, data.vault, data.amount);
-
-        //TODO: setup assets
-        address[] memory assets = new address[](1);
-
-        return ExecutionStatus(1, assets);
     }
 
-    function exit(bytes calldata data) external returns (ExecutionStatus memory executionStatus) {
+    function exit(bytes calldata data) external returns (bytes memory executionStatus) {
         Erc4626SupplyConnectorData memory data = abi.decode(data, (Erc4626SupplyConnectorData));
         return _exit(data);
     }
 
-    function exit(Erc4626SupplyConnectorData calldata data) external returns (ExecutionStatus memory executionStatus) {
+    function exit(Erc4626SupplyConnectorData calldata data) external returns (bytes memory executionStatus) {
         return _exit(data);
     }
 
-    function _exit(Erc4626SupplyConnectorData memory data) internal returns (ExecutionStatus memory executionStatus) {
+    function _exit(Erc4626SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
             revert Erc4626SupplyConnectorUnsupportedVault("exit", data.vault, Errors.NOT_SUPPORTED_ERC4626);
         }
         uint256 shares = IERC4626(data.vault).withdraw(data.amount, address(this), address(this));
         emit Erc4626SupplyConnector("exit", VERSION, IERC4626(data.vault).asset(), data.vault, shares);
-
-        //TODO: setup assets
-        address[] memory assets = new address[](1);
-
-        return ExecutionStatus(1, assets);
     }
 }

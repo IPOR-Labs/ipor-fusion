@@ -188,6 +188,8 @@ contract Vault is ERC4626Permit, Ownable2Step {
 
     function _updateBalances(uint256[] memory markets) internal {
         uint256 deltas = 0;
+        uint256 balanceAmount;
+        address balanceAsset;
 
         for (uint256 i = 0; i < markets.length; ++i) {
             if (markets[i] == 0) {
@@ -200,7 +202,7 @@ contract Vault is ERC4626Permit, Ownable2Step {
                 abi.encodeWithSignature("balanceOfMarket(address)", address(this))
             );
 
-            (uint256 balanceAmount, ) = abi.decode(returnedData, (uint256, address));
+            (balanceAmount, balanceAsset) = abi.decode(returnedData, (uint256, address));
             deltas = deltas + VaultLib.updateTotalAssetsInMarket(markets[i], balanceAmount);
 
             //TODO: here use price oracle to convert balanceAmount to underlying token

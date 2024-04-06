@@ -31,20 +31,16 @@ contract CompoundV3SupplyConnector is IConnector {
         MARKET_ID = marketIdInput;
     }
 
-    function enter(bytes calldata data) external returns (ExecutionStatus memory executionStatus) {
+    function enter(bytes calldata data) external returns (bytes memory executionStatus) {
         CompoundV3SupplyConnectorData memory data = abi.decode(data, (CompoundV3SupplyConnectorData));
         return _enter(data);
     }
 
-    function enter(
-        CompoundV3SupplyConnectorData memory data
-    ) external returns (ExecutionStatus memory executionStatus) {
+    function enter(CompoundV3SupplyConnectorData memory data) external returns (bytes memory executionStatus) {
         return _enter(data);
     }
 
-    function _enter(
-        CompoundV3SupplyConnectorData memory data
-    ) internal returns (ExecutionStatus memory executionStatus) {
+    function _enter(CompoundV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.token)) {
             revert CompoundV3SupplyConnectorUnsupportedAsset("enter", data.token, Errors.NOT_SUPPORTED_TOKEN);
         }
@@ -54,34 +50,22 @@ contract CompoundV3SupplyConnector is IConnector {
         COMET.supply(data.token, data.amount);
 
         emit CompoundV3SupplyConnector("enter", VERSION, data.token, address(COMET), data.amount);
-
-        address[] memory assets = new address[](1);
-        assets[0] = data.token;
-        return ExecutionStatus(1, assets);
     }
 
-    function exit(bytes calldata data) external returns (ExecutionStatus memory executionStatus) {
+    function exit(bytes calldata data) external returns (bytes memory executionStatus) {
         CompoundV3SupplyConnectorData memory data = abi.decode(data, (CompoundV3SupplyConnectorData));
         return _exit(data);
     }
 
-    function exit(
-        CompoundV3SupplyConnectorData calldata data
-    ) external returns (ExecutionStatus memory executionStatus) {
+    function exit(CompoundV3SupplyConnectorData calldata data) external returns (bytes memory executionStatus) {
         return _exit(data);
     }
 
-    function _exit(
-        CompoundV3SupplyConnectorData memory data
-    ) internal returns (ExecutionStatus memory executionStatus) {
+    function _exit(CompoundV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.token)) {
             revert CompoundV3SupplyConnectorUnsupportedAsset("exit", data.token, Errors.NOT_SUPPORTED_TOKEN);
         }
         COMET.withdraw(data.token, data.amount);
         emit CompoundV3SupplyConnector("exit", VERSION, data.token, address(COMET), data.amount);
-
-        address[] memory assets = new address[](1);
-        assets[0] = data.token;
-        return ExecutionStatus(1, assets);
     }
 }

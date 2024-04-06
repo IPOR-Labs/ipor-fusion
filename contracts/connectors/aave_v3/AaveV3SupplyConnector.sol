@@ -40,16 +40,16 @@ contract AaveV3SupplyConnector is IConnector {
         MARKET_ID = marketIdInput;
     }
 
-    function enter(bytes calldata data) external returns (ExecutionStatus memory executionStatus) {
+    function enter(bytes calldata data) external returns (bytes memory executionStatus) {
         AaveV3SupplyConnectorData memory structData = abi.decode(data, (AaveV3SupplyConnectorData));
         return _enter(structData);
     }
 
-    function enter(AaveV3SupplyConnectorData memory data) external returns (ExecutionStatus memory executionStatus) {
+    function enter(AaveV3SupplyConnectorData memory data) external returns (bytes memory executionStatus) {
         return _enter(data);
     }
 
-    function _enter(AaveV3SupplyConnectorData memory data) internal returns (ExecutionStatus memory executionStatus) {
+    function _enter(AaveV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.token)) {
             revert AaveV3SupplyConnectorUnsupportedAsset("enter", data.token, Errors.NOT_SUPPORTED_TOKEN);
         }
@@ -62,30 +62,22 @@ contract AaveV3SupplyConnector is IConnector {
             AAVE_POOL.setUserEMode(data.userEModeCategoryId.toUint8());
         }
         emit AaveV3SupplyConnector("enter", VERSION, data.token, data.amount, data.userEModeCategoryId);
-
-        address[] memory assets = new address[](1);
-        assets[0] = data.token;
-        return ExecutionStatus(1, assets);
     }
 
-    function exit(bytes calldata data) external returns (ExecutionStatus memory executionStatus) {
+    function exit(bytes calldata data) external returns (bytes memory executionStatus) {
         AaveV3SupplyConnectorData memory data = abi.decode(data, (AaveV3SupplyConnectorData));
         return _exit(data);
     }
 
-    function exit(AaveV3SupplyConnectorData calldata data) external returns (ExecutionStatus memory executionStatus) {
+    function exit(AaveV3SupplyConnectorData calldata data) external returns (bytes memory executionStatus) {
         return _exit(data);
     }
 
-    function _exit(AaveV3SupplyConnectorData memory data) internal returns (ExecutionStatus memory executionStatus) {
+    function _exit(AaveV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.token)) {
             revert AaveV3SupplyConnectorUnsupportedAsset("exit", data.token, Errors.NOT_SUPPORTED_TOKEN);
         }
         uint256 withDrawAmount = AAVE_POOL.withdraw(data.token, data.amount, address(this));
         emit AaveV3SupplyConnector("exit", VERSION, data.token, withDrawAmount, data.userEModeCategoryId);
-
-        address[] memory assets = new address[](1);
-        assets[0] = data.token;
-        return ExecutionStatus(1, assets);
     }
 }
