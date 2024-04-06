@@ -21,6 +21,7 @@
     "prettier:all": "npm-run-all --parallel prettier:contracts prettier:test"
   },
   "dependencies": {
+    "@chainlink/contracts": "^1.0.0",
     "@openzeppelin/contracts": "5.0.2",
     "@openzeppelin/contracts-upgradeable": "5.0.2"
   }
