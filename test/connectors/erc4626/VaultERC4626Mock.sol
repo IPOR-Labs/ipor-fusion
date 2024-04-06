@@ -2,8 +2,8 @@
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {AssetsToMarketLib} from "../../../contracts/libraries/AssetsToMarketLib.sol";
 import {Erc4626SupplyConnector} from "../../../contracts/connectors/erc4626/Erc4626SupplyConnector.sol";
+import {MarketConfigurationLib} from "../../../contracts/libraries/MarketConfigurationLib.sol";
 
 contract VaultERC4626Mock {
     using Address for address;
@@ -38,10 +38,6 @@ contract VaultERC4626Mock {
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
-        AssetsToMarketLib.grantAssetsToMarket(marketId, assets);
-    }
-
-    function revokeAssetsFromMarket(uint256 marketId, address[] calldata assets) external {
-        AssetsToMarketLib.revokeAssetsFromMarket(marketId, assets);
+        MarketConfigurationLib.grandSubstratesAsAssetsToMarket(marketId, assets);
     }
 }

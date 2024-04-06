@@ -8,10 +8,10 @@ import {IPool} from "../../../contracts/vaults/interfaces/IPool.sol";
 import {IAavePriceOracle} from "../../../contracts/connectors/aave_v3/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../../contracts/connectors/aave_v3/IAavePoolDataProvider.sol";
 import {AaveV3SupplyConnector} from "../../../contracts/connectors/aave_v3/AaveV3SupplyConnector.sol";
-import {VaultMock} from "./VaultMock.sol";
+import {AaveV3SupplyConnectorMock} from "./AaveV3SupplyConnectorMock.sol";
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
-contract ForkAmmGovernanceServiceTest is Test {
+contract AaveV3SupplyConnectorTest is Test {
     struct SupportedToken {
         address token;
         string name;
@@ -25,28 +25,28 @@ contract ForkAmmGovernanceServiceTest is Test {
     SupportedToken private activeTokens;
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
     }
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
         AaveV3SupplyConnector connector = new AaveV3SupplyConnector(address(AAVE_POOL), 1);
-        VaultMock vaultMock = new VaultMock(address(connector));
+        AaveV3SupplyConnectorMock connectorMock = new AaveV3SupplyConnectorMock(address(connector));
 
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.token, address(vaultMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.token, address(connectorMock), 1_000 * 10 ** decimals);
 
-        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(vaultMock));
+        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(connectorMock));
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
-        vaultMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
+        connectorMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
 
         // when
 
-        vaultMock.enter(
+        connectorMock.enter(
             AaveV3SupplyConnector.AaveV3SupplyConnectorData({
                 token: activeTokens.token,
                 amount: amount,
@@ -55,7 +55,7 @@ contract ForkAmmGovernanceServiceTest is Test {
         );
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(vaultMock));
+        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(connectorMock));
 
         (
             address aTokenAddress,
@@ -65,12 +65,16 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         assertEq(balanceAfter + amount, balanceBefore, "vault balance should be decreased by amount");
         assertTrue(
-            ERC20(aTokenAddress).balanceOf(address(vaultMock)) >= amount,
+            ERC20(aTokenAddress).balanceOf(address(connectorMock)) >= amount,
             "aToken balance should be increased by amount"
         );
-        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken balance should be 0");
         assertEq(
-            ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)),
+            ERC20(stableDebtTokenAddress).balanceOf(address(connectorMock)),
+            0,
+            "stableDebtToken balance should be 0"
+        );
+        assertEq(
+            ERC20(variableDebtTokenAddress).balanceOf(address(connectorMock)),
             0,
             "variableDebtToken balance should be 0"
         );
@@ -80,21 +84,21 @@ contract ForkAmmGovernanceServiceTest is Test {
         // given
         uint256 dustOnAToken = 10;
         AaveV3SupplyConnector connector = new AaveV3SupplyConnector(address(AAVE_POOL), 1);
-        VaultMock vaultMock = new VaultMock(address(connector));
+        AaveV3SupplyConnectorMock connectorMock = new AaveV3SupplyConnectorMock(address(connector));
 
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 enterAmount = 100 * 10 ** decimals;
         uint256 exitAmount = 50 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.token, address(vaultMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.token, address(connectorMock), 1_000 * 10 ** decimals);
 
-        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(vaultMock));
+        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(connectorMock));
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
-        vaultMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
+        connectorMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
 
-        vaultMock.enter(
+        connectorMock.enter(
             AaveV3SupplyConnector.AaveV3SupplyConnectorData({
                 token: activeTokens.token,
                 amount: enterAmount,
@@ -104,7 +108,7 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         // when
 
-        vaultMock.exit(
+        connectorMock.exit(
             AaveV3SupplyConnector.AaveV3SupplyConnectorData({
                 token: activeTokens.token,
                 amount: exitAmount,
@@ -113,7 +117,7 @@ contract ForkAmmGovernanceServiceTest is Test {
         );
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(vaultMock));
+        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(connectorMock));
 
         (
             address aTokenAddress,
@@ -123,12 +127,16 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         assertEq(balanceAfter + enterAmount - exitAmount, balanceBefore, "vault balance should be decreased by amount");
         assertTrue(
-            ERC20(aTokenAddress).balanceOf(address(vaultMock)) >= enterAmount - exitAmount - dustOnAToken,
+            ERC20(aTokenAddress).balanceOf(address(connectorMock)) >= enterAmount - exitAmount - dustOnAToken,
             "aToken balance should be decreased by amount"
         );
-        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken balance should be 0");
         assertEq(
-            ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)),
+            ERC20(stableDebtTokenAddress).balanceOf(address(connectorMock)),
+            0,
+            "stableDebtToken balance should be 0"
+        );
+        assertEq(
+            ERC20(variableDebtTokenAddress).balanceOf(address(connectorMock)),
             0,
             "variableDebtToken balance should be 0"
         );
@@ -160,7 +168,13 @@ contract ForkAmmGovernanceServiceTest is Test {
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
-        deal(asset, to, amount);
+        if (asset == 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) {
+            // USDC
+            vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9); // AmmTreasuryUsdcProxy
+            ERC20(asset).transfer(to, amount);
+        } else {
+            deal(asset, to, amount);
+        }
     }
 
     modifier iterateSupportedTokens() {

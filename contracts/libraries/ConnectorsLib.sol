@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {StorageLib} from "./StorageLib.sol";
-import {IConnectorCommon} from "../vaults/IConnectorCommon.sol";
+import {VaultStorageLib} from "./VaultStorageLib.sol";
+//import {IConnectorCommon} from "../vaults/IConnectorCommon.sol";
 
 library ConnectorsLib {
     event ConnectorAdded(address indexed connector);
@@ -10,13 +10,14 @@ library ConnectorsLib {
     event BalanceConnectorAdded(uint256 indexed marketId, address indexed connector);
     event BalanceConnectorRemoved(uint256 indexed marketId, address indexed connector);
 
+    error WrongAddress();
     error ConnectorAlreadyExists();
     error ConnectorDoesNotExist();
     error BalanceConnectorAlreadyExists(uint256 marketId, address connector);
     error BalanceConnectorDoesNotExist(uint256 marketId, address connector);
 
     function addConnector(address connector) internal {
-        StorageLib.Connectors storage connectors = StorageLib.getConnectors();
+        VaultStorageLib.Connectors storage connectors = VaultStorageLib.getConnectors();
 
         uint256 keyIndexValue = connectors.value[connector];
 
@@ -24,18 +25,18 @@ library ConnectorsLib {
             revert ConnectorAlreadyExists();
         }
 
-        uint256 newLastConnectorId = StorageLib.getConnectorsArray().value.length + 1;
+        uint256 newLastConnectorId = VaultStorageLib.getConnectorsArray().value.length + 1;
 
         /// @dev for balance connectors, value is a index + 1 in the connectorsArray
         connectors.value[connector] = newLastConnectorId;
 
-        StorageLib.getConnectorsArray().value.push(connector);
+        VaultStorageLib.getConnectorsArray().value.push(connector);
 
         emit ConnectorAdded(connector);
     }
 
     function removeConnector(address connector) internal {
-        StorageLib.Connectors storage connectors = StorageLib.getConnectors();
+        VaultStorageLib.Connectors storage connectors = VaultStorageLib.getConnectors();
 
         uint256 indexToRemove = connectors.value[connector];
 
@@ -43,8 +44,8 @@ library ConnectorsLib {
             revert ConnectorDoesNotExist();
         }
 
-        address lastKeyInArray = StorageLib.getConnectorsArray().value[
-            StorageLib.getConnectorsArray().value.length - 1
+        address lastKeyInArray = VaultStorageLib.getConnectorsArray().value[
+            VaultStorageLib.getConnectorsArray().value.length - 1
         ];
 
         connectors.value[lastKeyInArray] = indexToRemove;
@@ -52,101 +53,56 @@ library ConnectorsLib {
         connectors.value[connector] = 0;
 
         /// @dev balanceConnectors mapping contains values as index + 1
-        StorageLib.getConnectorsArray().value[indexToRemove - 1] = lastKeyInArray;
+        VaultStorageLib.getConnectorsArray().value[indexToRemove - 1] = lastKeyInArray;
 
-        StorageLib.getConnectorsArray().value.pop();
+        VaultStorageLib.getConnectorsArray().value.pop();
 
         emit ConnectorRemoved(connector);
     }
 
     function isConnectorSupported(address connector) internal view returns (bool) {
-        return StorageLib.getConnectors().value[connector] != 0;
+        return VaultStorageLib.getConnectors().value[connector] != 0;
     }
 
-    function addBalanceConnector(uint256 marketId, address connector) internal {
-        StorageLib.BalanceConnectors storage balanceConnectors = StorageLib.getBalanceConnectors();
-        bytes32 key = keccak256(abi.encodePacked(marketId, connector));
+    function setBalanceFuse(uint256 marketId, address fuse) internal {
+        address currentConnector = VaultStorageLib.getMarketBalanceConnectors().value[marketId];
 
-        uint256 keyIndexValue = balanceConnectors.value[key];
+        //        if (currentConnector == address(0)) {
+        //            revert WrongAddress();
+        //        }
 
-        if (keyIndexValue != 0) {
-            revert BalanceConnectorAlreadyExists(marketId, connector);
+        if (currentConnector == fuse) {
+            revert BalanceConnectorAlreadyExists(marketId, fuse);
         }
 
-        uint256 newLastBalanceConnectorId = StorageLib.getBalanceConnectorsArray().value.length + 1;
+        VaultStorageLib.getMarketBalanceConnectors().value[marketId] = fuse;
 
-        /// @dev for balance connectors, value is a index + 1 in the balanceConnectorsArray
-        balanceConnectors.value[key] = newLastBalanceConnectorId;
-
-        StorageLib.getBalanceConnectorsArray().value.push(key);
-
-        StorageLib.getMarketBalanceConnectors().value[marketId] = connector;
-
-        emit BalanceConnectorAdded(marketId, connector);
+        emit BalanceConnectorAdded(marketId, fuse);
     }
 
     function removeBalanceConnector(uint256 marketId, address connector) internal {
-        StorageLib.BalanceConnectors storage balanceConnectors = StorageLib.getBalanceConnectors();
-
-        bytes32 key = keccak256(abi.encodePacked(marketId, connector));
-
-        uint256 indexToRemove = balanceConnectors.value[key];
-
-        if (indexToRemove == 0) {
+        address currentConnector = VaultStorageLib.getMarketBalanceConnectors().value[marketId];
+        if (currentConnector != connector) {
             revert BalanceConnectorDoesNotExist(marketId, connector);
         }
-
-        bytes32 lastKeyInArray = StorageLib.getBalanceConnectorsArray().value[
-            StorageLib.getBalanceConnectorsArray().value.length - 1
-        ];
-
-        balanceConnectors.value[lastKeyInArray] = indexToRemove;
-
-        balanceConnectors.value[key] = 0;
-
-        /// @dev balanceConnectors mapping contains values as index + 1
-        StorageLib.getBalanceConnectorsArray().value[indexToRemove - 1] = lastKeyInArray;
-
-        //        StorageLib.getMaketBalanceConnectors().value[marketId] = address(0);
-
-        StorageLib.getBalanceConnectorsArray().value.pop();
+        VaultStorageLib.getMarketBalanceConnectors().value[marketId] = address(0);
 
         emit BalanceConnectorRemoved(marketId, connector);
     }
 
     function isBalanceConnectorSupported(uint256 marketId, address connector) internal view returns (bool) {
-        bytes32 key = keccak256(abi.encodePacked(marketId, connector));
-        return StorageLib.getBalanceConnectors().value[key] != 0;
+        return VaultStorageLib.getMarketBalanceConnectors().value[marketId] == connector;
     }
 
-    function getBalanceConnectorArrayIndex(uint256 marketId, address connector) internal view returns (uint256) {
-        bytes32 key = keccak256(abi.encodePacked(marketId, connector));
-        return StorageLib.getBalanceConnectors().value[key];
+    function getMarketBalanceConnector(uint256 marketId) internal view returns (address) {
+        return VaultStorageLib.getMarketBalanceConnectors().value[marketId];
     }
-
-    function getBalanceConnectorsArray() internal view returns (bytes32[] memory) {
-        return StorageLib.getBalanceConnectorsArray().value;
-    }
-
-    //    function getMarketBalanceConnectors() internal view returns (address[] memory) {
-    //        return StorageLib.getMarketBalanceConnectors().value;
-    //    }
 
     function getConnectorsArray() internal view returns (address[] memory) {
-        return StorageLib.getConnectorsArray().value;
+        return VaultStorageLib.getConnectorsArray().value;
     }
 
     function getConnectorArrayIndex(address connector) internal view returns (uint256) {
-        return StorageLib.getConnectors().value[connector];
-    }
-
-    function updateBalance(uint256 marketId) internal {
-        bytes32[] memory balanceConnectors = getBalanceConnectorsArray();
-        for (uint256 i = 0; i < balanceConnectors.length; ++i) {
-            //            (uint256 marketIdInArray, address connector) = abi.decode(balanceConnectors[i], (uint256, address));
-            //            if (marketIdInArray == marketId) {
-            //                IConnectorCommon(connector).updateBalance();
-            //            }
-        }
+        return VaultStorageLib.getConnectors().value[connector];
     }
 }

@@ -16,8 +16,8 @@ contract ConnectorsLibMock {
         return ConnectorsLib.isConnectorSupported(connector);
     }
 
-    function addBalanceConnector(uint256 marketId, address connector) external {
-        ConnectorsLib.addBalanceConnector(marketId, connector);
+    function setBalanceFuse(uint256 marketId, address fuse) external {
+        ConnectorsLib.setBalanceFuse(marketId, fuse);
     }
 
     function removeBalanceConnector(uint256 marketId, address connector) external {
@@ -26,14 +26,6 @@ contract ConnectorsLibMock {
 
     function isBalanceConnectorSupported(uint256 marketId, address connector) external view returns (bool) {
         return ConnectorsLib.isBalanceConnectorSupported(marketId, connector);
-    }
-
-    function getBalanceConnectorArrayIndex(uint256 marketId, address connector) external view returns (uint256) {
-        return ConnectorsLib.getBalanceConnectorArrayIndex(marketId, connector);
-    }
-
-    function getBalanceConnectorsArray() external view returns (bytes32[] memory) {
-        return ConnectorsLib.getBalanceConnectorsArray();
     }
 
     function getConnectorsArray() external view returns (address[] memory) {

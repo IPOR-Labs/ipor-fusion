@@ -6,6 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IBalance} from "../IBalance.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IComet} from "./IComet.sol";
+import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 
 contract CompoundV3Balance is IBalance {
     using SafeCast for int256;
@@ -26,11 +27,10 @@ contract CompoundV3Balance is IBalance {
         COMPOUND_BASE_TOKEN_DECIMALS = ERC20(COMPOUND_BASE_TOKEN).decimals();
     }
 
-    function balanceOfMarket(
-        address user,
-        address[] calldata assets
-    ) external view override returns (uint256, address) {
-        uint256 len = assets.length;
+    function balanceOfMarket(address user) external view override returns (uint256, address) {
+        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfiguration(MARKET_ID).substrates;
+
+        uint256 len = assetsRaw.length;
         if (len == 0) {
             return (0, USD);
         }
@@ -40,14 +40,16 @@ contract CompoundV3Balance is IBalance {
         uint256 decimals;
         // @dev this value has 8 decimals
         uint256 price;
+        address asset;
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
-            decimals = ERC20(assets[i]).decimals();
-            price = _getPrice(assets[i]);
+            asset = MarketConfigurationLib.bytes32ToAddress(assetsRaw[i]);
+            decimals = ERC20(asset).decimals();
+            price = _getPrice(asset);
 
             balanceTemp += IporMath.convertToWad(
-                _getBalance(user, assets[i]).toInt256() * int256(price),
+                _getBalance(user, asset).toInt256() * int256(price),
                 decimals + PRICE_DECIMALS
             );
         }

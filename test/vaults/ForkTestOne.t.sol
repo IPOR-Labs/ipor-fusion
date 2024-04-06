@@ -12,6 +12,7 @@ import {PriceAdapter} from "../../contracts/vaults/PriceAdapter.sol";
 import {AaveV3BalanceConnector} from "../../contracts/vaults/AaveV3BalanceConnector.sol";
 
 import {ConnectorConfig} from "../../contracts/vaults/ConnectorConfig.sol";
+import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
 
 contract ForkAmmGovernanceServiceTest is Test {
     address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -51,23 +52,23 @@ contract ForkAmmGovernanceServiceTest is Test {
         nativeSwapWethToWstEthConnector = address(new NativeSwapWethToWstEthConnector());
         balanceConnector = address(new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter));
 
-        Vault.ConnectorStruct[] memory connectors = new Vault.ConnectorStruct[](5);
-        connectors[0] = Vault.ConnectorStruct(aaveV3MarketId, flashLoanMorphoConnector);
-        connectors[1] = Vault.ConnectorStruct(aaveV3MarketId, aaveV3SupplyConnector);
-        connectors[2] = Vault.ConnectorStruct(aaveV3MarketId, aaveV3BorrowConnector);
-        connectors[3] = Vault.ConnectorStruct(aaveV3MarketId, nativeSwapWethToWstEthConnector);
-        connectors[4] = Vault.ConnectorStruct(aaveV3MarketId, balanceConnector);
+        address[] memory connectors = new address[](5);
+        connectors[0] = flashLoanMorphoConnector;
+        connectors[1] = aaveV3SupplyConnector;
+        connectors[2] = aaveV3BorrowConnector;
+        connectors[3] = nativeSwapWethToWstEthConnector;
+        connectors[4] = balanceConnector;
 
-        Vault.ConnectorStruct[] memory balanceConnectors = new Vault.ConnectorStruct[](1);
-        balanceConnectors[0] = Vault.ConnectorStruct({marketId: aaveV3MarketId, connector: balanceConnector});
+        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](1);
+        balanceConnectors[0] = Vault.FuseStruct({marketId: aaveV3MarketId, fuse: balanceConnector});
 
-        Vault.AssetsMarketStruct[] memory supportedAssetsInMarkets = new Vault.AssetsMarketStruct[](1);
+        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](1);
 
-        address[] memory marketAssets = new address[](2);
-        marketAssets[0] = WST_ETH;
-        marketAssets[1] = W_ETH;
+        bytes32[] memory marketAssets = new bytes32[](2);
+        marketAssets[0] = MarketConfigurationLib.addressToBytes32(WST_ETH);
+        marketAssets[1] = MarketConfigurationLib.addressToBytes32(W_ETH);
 
-        supportedAssetsInMarkets[0] = Vault.AssetsMarketStruct({marketId: aaveV3MarketId, assets: marketAssets});
+        marketConfigs[0] = Vault.MarketConfig({marketId: aaveV3MarketId, substrates: marketAssets});
 
         vaultWstEth = payable(
             new Vault(
@@ -76,7 +77,7 @@ contract ForkAmmGovernanceServiceTest is Test {
                 "IP Vault wstETH",
                 WST_ETH,
                 keepers,
-                supportedAssetsInMarkets,
+                marketConfigs,
                 connectors,
                 balanceConnectors
             )

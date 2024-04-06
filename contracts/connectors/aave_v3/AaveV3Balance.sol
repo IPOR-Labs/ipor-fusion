@@ -8,17 +8,23 @@ import {IAavePriceOracle} from "./IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "./IAavePoolDataProvider.sol";
 import {AaveConstants} from "./AaveConstants.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 
 contract AaveV3Balance is IBalance {
     using SafeCast for int256;
     uint256 private constant PRICE_DECIMALS = 8;
     address private constant USD = address(0x0000000000000000000000000000000000000348);
+    uint256 public immutable MARKET_ID;
 
-    function balanceOfMarket(
-        address user,
-        address[] calldata assets
-    ) external view override returns (uint256, address) {
-        uint256 len = assets.length;
+    constructor(uint256 marketIdInput) {
+        MARKET_ID = marketIdInput;
+    }
+
+    function balanceOfMarket(address user) external view override returns (uint256, address) {
+        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfiguration(MARKET_ID).substrates;
+
+        uint256 len = assetsRaw.length;
+
         if (len == 0) {
             return (0, USD);
         }
@@ -28,18 +34,20 @@ contract AaveV3Balance is IBalance {
         uint256 decimals;
         // @dev this value has 8 decimals
         uint256 price;
+        address asset;
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
-            decimals = ERC20(assets[i]).decimals();
-            price = IAavePriceOracle(AaveConstants.ETHEREUM_AAVE_PRICE_ORACLE_MAINNET).getAssetPrice(assets[i]);
+            asset = MarketConfigurationLib.bytes32ToAddress(assetsRaw[i]);
+            decimals = ERC20(asset).decimals();
+            price = IAavePriceOracle(AaveConstants.ETHEREUM_AAVE_PRICE_ORACLE_MAINNET).getAssetPrice(asset);
 
             (
                 address aTokenAddress,
                 address stableDebtTokenAddress,
                 address variableDebtTokenAddress
             ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-                    .getReserveTokensAddresses(assets[i]);
+                    .getReserveTokensAddresses(asset);
 
             if (aTokenAddress != address(0)) {
                 balanceInLoop += int256(ERC20(aTokenAddress).balanceOf(user));

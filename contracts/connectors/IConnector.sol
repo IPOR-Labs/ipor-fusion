@@ -4,9 +4,15 @@ pragma solidity 0.8.20;
 import {IConnectorCommon} from "./IConnectorCommon.sol";
 
 interface IConnector is IConnectorCommon {
-    function enter(bytes calldata data) external returns (bytes memory executionStatus);
+    struct ExecutionStatus {
+        /// @dev status 0 - success, 1 - fail
+        uint256 status;
+        /// @dev assets touched during execution
+        address[] touchedAssets;
+    }
+    function enter(bytes calldata data) external returns (ExecutionStatus memory executionStatus);
 
-    function exit(bytes calldata data) external returns (bytes memory executionStatus);
+    function exit(bytes calldata data) external returns (ExecutionStatus memory executionStatus);
 
     /// Vault details:
     /// - has a list of connectors
