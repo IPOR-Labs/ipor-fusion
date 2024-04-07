@@ -13,6 +13,7 @@ import {ConnectorsLib} from "../libraries/ConnectorsLib.sol";
 import {IConnectorCommon} from "./IConnectorCommon.sol";
 import {MarketConfigurationLib} from "../libraries/MarketConfigurationLib.sol";
 import {VaultLib} from "../libraries/VaultLib.sol";
+import {IporMath} from "../libraries/math/IporMath.sol";
 
 contract Vault is ERC4626Permit, Ownable2Step {
     using Address for address;
@@ -83,7 +84,7 @@ contract Vault is ERC4626Permit, Ownable2Step {
     }
 
     function totalAssets() public view virtual override returns (uint256) {
-        return VaultLib.getTotalAssets();
+        return IporMath.convertToWad(IERC20(asset()).balanceOf(address(this)), decimals()) + VaultLib.getTotalAssets();
     }
 
     function totalAssetsInMarket(uint256 marketId) public view virtual returns (uint256) {

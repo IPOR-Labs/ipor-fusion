@@ -5,5 +5,5 @@ interface IConnectorBalanceOf {
     function balanceOfMarket(
         address user,
         address[] calldata assets
-    ) external view returns (uint256 balances, address valuesInAsset);
+    ) external view returns (uint256 balanceValue, address balanceAsset);
 }

@@ -11,6 +11,7 @@ import {CompoundV3Balance} from "../../contracts/connectors/compound_v3/Compound
 import {CompoundV3SupplyConnector} from "../../contracts/connectors/compound_v3/CompoundV3SupplyConnector.sol";
 import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/connectors/aave_v3/IAavePoolDataProvider.sol";
+import {DoNothingConnector} from "../connectors/DoNothingConnector.sol";
 
 contract ForkVaultTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -33,10 +34,15 @@ contract ForkVaultTest is Test {
     string public assetSymbol;
     address public underlyingToken;
     address[] public keepers;
+    address public keeper;
+    uint256 public amount;
+
+    address public userOne;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
         vaultFactory = new VaultFactory(owner);
+        userOne = address(0x777);
     }
 
     function testShouldExecuteSimpleCase() public {
@@ -256,21 +262,25 @@ contract ForkVaultTest is Test {
 
         (address aTokenAddress, , ) = AAVE_POOL_DATA_PROVIDER.getReserveTokensAddresses(DAI);
 
-        uint256 vaultTotalAssetsBefore = vault.totalAssets();
-
         //when
         vm.prank(keeper);
         vault.execute(calls);
 
         //then
         uint256 vaultTotalAssetsAfter = vault.totalAssets();
+        uint256 vaultTotalAssetsInMarket = vault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
 
         assertTrue(
             ERC20(aTokenAddress).balanceOf(address(vault)) >= amount,
             "aToken balance should be increased by amount"
         );
 
-        assertGt(vaultTotalAssetsAfter, vaultTotalAssetsBefore, "Vault total assets should be increased by amount");
+        assertGt(vaultTotalAssetsAfter, 99e18, "Vault total assets should be increased by amount");
+        assertEq(
+            vaultTotalAssetsAfter,
+            vaultTotalAssetsInMarket,
+            "Vault total assets should be equal to total assets in market"
+        );
     }
 
     function testShouldUpdateBalanceWhenExecuteTwoSupplyConnectors() public {
@@ -352,8 +362,6 @@ contract ForkVaultTest is Test {
             )
         );
 
-        uint256 vaultTotalAssetsBefore = vault.totalAssets();
-
         //when
         vm.prank(keeper);
         vault.execute(calls);
@@ -361,7 +369,222 @@ contract ForkVaultTest is Test {
         //then
         uint256 vaultTotalAssetsAfter = vault.totalAssets();
 
-        assertGt(vaultTotalAssetsAfter, vaultTotalAssetsBefore, "Vault total assets should be increased by amount");
+        assertGt(vaultTotalAssetsAfter, 199e18, "Vault total assets should be increased by amount");
         assertGt(vaultTotalAssetsAfter, 199e18, "Vault total assets should be increased by amount + amount - 1");
+    }
+
+    function testShouldIncreaseSharesWhenTouchedMarket() public {
+        //given
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        keepers = new address[](1);
+        keeper = address(0x1);
+
+        keepers[0] = keeper;
+
+        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](2);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3Balance balanceFuseAaveV3 = new AaveV3Balance(AAVE_V3_MARKET_ID);
+        AaveV3SupplyConnector supplyFuseAaveV3 = new AaveV3SupplyConnector(AAVE_POOL, AAVE_V3_MARKET_ID);
+        DoNothingConnector doNothingConnectorAaveV3 = new DoNothingConnector(AAVE_V3_MARKET_ID);
+
+        address[] memory fuses = new address[](2);
+        fuses[0] = address(supplyFuseAaveV3);
+        fuses[1] = address(doNothingConnectorAaveV3);
+
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](1);
+        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        Vault vault = Vault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    keepers,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        amount = 100 * 1e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), 2 * amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(vault), 3 * amount);
+
+        vm.prank(userOne);
+        vault.deposit(2 * amount, userOne);
+
+        uint256 userSharesBefore = vault.balanceOf(userOne);
+        uint256 userAssetsBefore = vault.convertToAssets(userSharesBefore);
+
+        Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
+
+        calls[0] = Vault.ConnectorAction(
+            address(supplyFuseAaveV3),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(
+                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
+                        token: USDC,
+                        amount: amount,
+                        userEModeCategoryId: 1e6
+                    })
+                )
+            )
+        );
+
+        /// @dev first call
+        vm.prank(keeper);
+        vault.execute(calls);
+
+        /// @dev artificial time forward
+        vm.warp(block.timestamp + 100 days);
+
+        Vault.ConnectorAction[] memory callsSecond = new Vault.ConnectorAction[](1);
+
+        /// @dev do nothing only touch the market
+        callsSecond[0] = Vault.ConnectorAction(
+            address(doNothingConnectorAaveV3),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(DoNothingConnector.DoNothingConnectorData({token: USDC}))
+            )
+        );
+
+        //when
+        /// @dev second call
+        vm.prank(keeper);
+        vault.execute(callsSecond);
+
+        //then
+        uint256 userSharesAfter = vault.balanceOf(userOne);
+        uint256 userAssetsAfter = vault.convertToAssets(userSharesAfter);
+
+        assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
+        assertGt(
+            userAssetsAfter,
+            userAssetsBefore + 2e18,
+            "User assets after should be greater than user assets before"
+        );
+    }
+
+    function testShouldNOTIncreaseSharesWhenNotTouchedMarket() public {
+        //given
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        keepers = new address[](1);
+        keeper = address(0x1);
+
+        keepers[0] = keeper;
+
+        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](2);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3Balance balanceFuseAaveV3 = new AaveV3Balance(AAVE_V3_MARKET_ID);
+        AaveV3SupplyConnector supplyFuseAaveV3 = new AaveV3SupplyConnector(AAVE_POOL, AAVE_V3_MARKET_ID);
+
+        /// @dev Market Compound V3
+        marketConfigs[1] = Vault.MarketConfig(COMPOUND_V3_MARKET_ID, assets);
+        CompoundV3Balance balanceFuseCompoundV3 = new CompoundV3Balance(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        DoNothingConnector doNothingConnectorCompoundV3 = new DoNothingConnector(COMPOUND_V3_MARKET_ID);
+
+        address[] memory fuses = new address[](2);
+        fuses[0] = address(supplyFuseAaveV3);
+        fuses[1] = address(doNothingConnectorCompoundV3);
+
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](2);
+        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = Vault.FuseStruct(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+
+        Vault vault = Vault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    keepers,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        amount = 100 * 1e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), 2 * amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(vault), 3 * amount);
+
+        vm.prank(userOne);
+        vault.deposit(2 * amount, userOne);
+
+        uint256 userSharesBefore = vault.balanceOf(userOne);
+        uint256 userAssetsBefore = vault.convertToAssets(userSharesBefore);
+
+        Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
+
+        calls[0] = Vault.ConnectorAction(
+            address(supplyFuseAaveV3),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(
+                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
+                        token: USDC,
+                        amount: amount,
+                        userEModeCategoryId: 0
+                    })
+                )
+            )
+        );
+
+        vm.warp(block.timestamp);
+
+        /// @dev first call
+        vm.prank(keeper);
+        vault.execute(calls);
+
+        vm.warp(block.timestamp + 100 days);
+
+        Vault.ConnectorAction[] memory callsSecond = new Vault.ConnectorAction[](1);
+
+        callsSecond[0] = Vault.ConnectorAction(
+            address(doNothingConnectorCompoundV3),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(DoNothingConnector.DoNothingConnectorData({token: USDC}))
+            )
+        );
+
+        //when
+        /// @dev second call
+        vm.prank(keeper);
+        vault.execute(callsSecond);
+
+        //then
+        uint256 userSharesAfter = vault.balanceOf(userOne);
+        uint256 userAssetsAfter = vault.convertToAssets(userSharesAfter);
+
+        assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
+        assertLt(userAssetsAfter, userAssetsBefore + 2e18, "User assets before and after should be equal");
     }
 }

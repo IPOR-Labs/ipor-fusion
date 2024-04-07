@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import {VaultStorageLib} from "./VaultStorageLib.sol";
 
 library MarketConfigurationLib {
+    /// @notice Gets the market configuration for a specific market
     function getMarketConfiguration(uint256 marketId) internal view returns (VaultStorageLib.MarketStruct storage) {
         return VaultStorageLib.getMarketConfiguration().value[marketId];
     }
@@ -11,14 +12,6 @@ library MarketConfigurationLib {
     function isSubstrateAsAssetGranted(uint256 marketId, address substrateAsAsset) internal view returns (bool) {
         VaultStorageLib.MarketStruct storage marketConfiguration = getMarketConfiguration(marketId);
         return marketConfiguration.substrateAllowances[addressToBytes32(substrateAsAsset)] == 1;
-    }
-
-    function bytes32ToAddress(bytes32 substrate) internal pure returns (address) {
-        return address(uint160(uint256(substrate)));
-    }
-
-    function addressToBytes32(address addressInput) internal pure returns (bytes32) {
-        return bytes32(uint256(uint160(addressInput)));
     }
 
     function grandSubstratesToMarket(uint256 marketId, bytes32[] memory substrates) internal {
@@ -45,5 +38,13 @@ library MarketConfigurationLib {
         }
 
         marketConfig.substrates = balanceSubstrates;
+    }
+
+    function bytes32ToAddress(bytes32 substrate) internal pure returns (address) {
+        return address(uint160(uint256(substrate)));
+    }
+
+    function addressToBytes32(address addressInput) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(addressInput)));
     }
 }

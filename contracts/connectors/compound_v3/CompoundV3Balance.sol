@@ -11,8 +11,10 @@ import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol
 contract CompoundV3Balance is IBalance {
     using SafeCast for int256;
     using SafeCast for uint256;
+
     uint256 private constant PRICE_DECIMALS = 8;
     address private constant USD = address(0x0000000000000000000000000000000000000348);
+
     IComet public immutable COMET;
     uint256 public immutable MARKET_ID;
     address public immutable COMPOUND_BASE_TOKEN;
@@ -41,6 +43,7 @@ contract CompoundV3Balance is IBalance {
         // @dev this value has 8 decimals
         uint256 price;
         address asset;
+        int256 borrowBalance;
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
@@ -48,16 +51,19 @@ contract CompoundV3Balance is IBalance {
             decimals = ERC20(asset).decimals();
             price = _getPrice(asset);
 
-            balanceTemp += IporMath.convertToWad(
+            balanceTemp += IporMath.convertToWadInt(
                 _getBalance(user, asset).toInt256() * int256(price),
                 decimals + PRICE_DECIMALS
             );
         }
-        int256 borrowBalance = IporMath.convertToWad(
+
+        borrowBalance = IporMath.convertToWadInt(
             (COMET.borrowBalanceOf(user) * COMET.getPrice(BASE_TOKEN_PRICE_FEED)).toInt256(),
             COMPOUND_BASE_TOKEN_DECIMALS + PRICE_DECIMALS
         );
+
         balanceTemp -= borrowBalance;
+
         return (balanceTemp.toUint256(), USD);
     }
 

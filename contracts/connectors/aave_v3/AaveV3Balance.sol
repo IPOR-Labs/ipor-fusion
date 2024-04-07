@@ -35,6 +35,9 @@ contract AaveV3Balance is IBalance {
         // @dev this value has 8 decimals
         uint256 price;
         address asset;
+        address aTokenAddress;
+        address stableDebtTokenAddress;
+        address variableDebtTokenAddress;
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
@@ -42,12 +45,9 @@ contract AaveV3Balance is IBalance {
             decimals = ERC20(asset).decimals();
             price = IAavePriceOracle(AaveConstants.ETHEREUM_AAVE_PRICE_ORACLE_MAINNET).getAssetPrice(asset);
 
-            (
-                address aTokenAddress,
-                address stableDebtTokenAddress,
-                address variableDebtTokenAddress
-            ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-                    .getReserveTokensAddresses(asset);
+            (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(
+                AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET
+            ).getReserveTokensAddresses(asset);
 
             if (aTokenAddress != address(0)) {
                 balanceInLoop += int256(ERC20(aTokenAddress).balanceOf(user));
@@ -59,7 +59,7 @@ contract AaveV3Balance is IBalance {
                 balanceInLoop -= int256(ERC20(variableDebtTokenAddress).balanceOf(user));
             }
 
-            balanceTemp += IporMath.convertToWad(balanceInLoop * int256(price), decimals + PRICE_DECIMALS);
+            balanceTemp += IporMath.convertToWadInt(balanceInLoop * int256(price), decimals + PRICE_DECIMALS);
         }
 
         return (balanceTemp.toUint256(), USD);

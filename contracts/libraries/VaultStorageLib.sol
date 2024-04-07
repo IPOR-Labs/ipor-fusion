@@ -56,7 +56,10 @@ library VaultStorageLib {
         uint256[] value;
     }
 
+    /// @notice Market configuration
+    /// @dev Substrate - abstract item in the market, could be asset or sub market in the external protocol, it could be any item required to calculate balance in the market
     struct MarketStruct {
+        /// @notice Define which substrates are allowed and supported in the market
         /// @dev key can be specific asset or sub market in a specific external protocol (market), value - 1 - granted, otherwise - not granted
         mapping(bytes32 => uint256) substrateAllowances;
         /// @dev it could be list of assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
@@ -144,12 +147,14 @@ library VaultStorageLib {
         }
     }
 
+    ///TODO: confirm if needed
     function getConnectorsArray() internal pure returns (ConnectorsArray storage connectorsArray) {
         assembly {
             connectorsArray.slot := CONNECTORS_ARRAY
         }
     }
 
+    //TODO: confirm if needed
     function getBalanceConnectorsArray() internal pure returns (BalanceConnectorsArray storage balanceConnectorsArray) {
         assembly {
             balanceConnectorsArray.slot := BALANCE_CONNECTORS_ARRAY
@@ -162,19 +167,9 @@ library VaultStorageLib {
         }
     }
 
-    function updateVaultTotalAssets(uint256 totalAssets) internal {
-        VaultTotalAssets storage totalAssetsStorage = getVaultTotalAssets();
-        totalAssetsStorage.value = totalAssets;
-    }
-
     function getVaultMarketTotalAssets() internal pure returns (VaultMarketTotalAssets storage vaultMarketTotalAssets) {
         assembly {
             vaultMarketTotalAssets.slot := VAULT_MARKET_TOTAL_ASSETS
         }
-    }
-
-    function updateVaultMarketTotalAssets(uint256 marketId, uint256 totalAssets) internal {
-        VaultMarketTotalAssets storage totalAssetsStorage = getVaultMarketTotalAssets();
-        totalAssetsStorage.value[marketId] = totalAssets;
     }
 }

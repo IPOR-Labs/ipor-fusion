@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {VaultStorageLib} from "./VaultStorageLib.sol";
-//import {IConnectorCommon} from "../vaults/IConnectorCommon.sol";
 
 library ConnectorsLib {
     event ConnectorAdded(address indexed connector);
@@ -67,10 +66,6 @@ library ConnectorsLib {
     function setBalanceFuse(uint256 marketId, address fuse) internal {
         address currentConnector = VaultStorageLib.getMarketBalanceConnectors().value[marketId];
 
-        //        if (currentConnector == address(0)) {
-        //            revert WrongAddress();
-        //        }
-
         if (currentConnector == fuse) {
             revert BalanceConnectorAlreadyExists(marketId, fuse);
         }
@@ -82,9 +77,11 @@ library ConnectorsLib {
 
     function removeBalanceConnector(uint256 marketId, address connector) internal {
         address currentConnector = VaultStorageLib.getMarketBalanceConnectors().value[marketId];
+
         if (currentConnector != connector) {
             revert BalanceConnectorDoesNotExist(marketId, connector);
         }
+
         VaultStorageLib.getMarketBalanceConnectors().value[marketId] = address(0);
 
         emit BalanceConnectorRemoved(marketId, connector);

@@ -20,7 +20,6 @@ contract Erc4626SupplyConnector is IConnector {
     }
 
     event Erc4626SupplyConnector(string action, uint256 version, address tokenIn, address market, uint256 amount);
-
     error Erc4626SupplyConnectorUnsupportedVault(string action, address token, string errorCode);
 
     uint256 public immutable MARKET_ID;
@@ -65,7 +64,9 @@ contract Erc4626SupplyConnector is IConnector {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
             revert Erc4626SupplyConnectorUnsupportedVault("exit", data.vault, Errors.NOT_SUPPORTED_ERC4626);
         }
+
         uint256 shares = IERC4626(data.vault).withdraw(data.amount, address(this), address(this));
+
         emit Erc4626SupplyConnector("exit", VERSION, IERC4626(data.vault).asset(), data.vault, shares);
     }
 }
