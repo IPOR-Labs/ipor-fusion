@@ -3,15 +3,14 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Vault} from "../../contracts/vaults/Vault.sol";
-import {FlashLoanMorphoConnector} from "../../contracts/vaults/FlashLoanMorphoConnector.sol";
-import {AaveV3SupplyConnector} from "../../contracts/connectors/aave_v3/AaveV3SupplyConnector.sol";
-import {AaveV3BorrowConnector} from "../../contracts/vaults/AaveV3BorrowConnector.sol";
-import {NativeSwapWethToWstEthConnector} from "../../contracts/vaults/NativeSwapWEthToWstEthConnector.sol";
-import {PriceAdapter} from "../../contracts/vaults/PriceAdapter.sol";
-import {AaveV3BalanceConnector} from "../../contracts/vaults/AaveV3BalanceConnector.sol";
+import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
+import {FlashLoanMorphoFuse} from "../../contracts/vaults/poc/FlashLoanMorphoFuse.sol";
+import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3BorrowFuse} from "../../contracts/vaults/poc/AaveV3BorrowFuse.sol";
+import {NativeSwapWethToWstEthFuse} from "../../contracts/vaults/poc/NativeSwapWEthToWstEthFuse.sol";
+import {PriceAdapter} from "../../contracts/vaults/poc/PriceAdapter.sol";
+import {AaveV3BalanceFuse} from "../../contracts/vaults/poc/AaveV3BalanceFuse.sol";
 
-import {ConnectorConfig} from "../../contracts/vaults/ConnectorConfig.sol";
 import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
 
 contract ForkAmmGovernanceServiceTest is Test {
@@ -20,13 +19,11 @@ contract ForkAmmGovernanceServiceTest is Test {
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
     address payable public vaultWstEth;
-    address public flashLoanMorphoConnector;
-    address public aaveV3SupplyConnector;
-    address public aaveV3BorrowConnector;
-    address public nativeSwapWethToWstEthConnector;
-    address public balanceConnector;
-
-    ConnectorConfig public connectorConfig;
+    address public flashLoanMorphoFuse;
+    address public aaveV3SupplyFuse;
+    address public aaveV3BorrowFuse;
+    address public nativeSwapWethToWstEthFuse;
+    address public balanceFuse;
 
     bytes32 internal aaveV3MarketName = bytes32("AaveV3");
     uint256 internal aaveV3MarketId;
@@ -38,48 +35,45 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         priceAdapter = address(new PriceAdapter());
 
-        balanceConnector = address(new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter));
+        balanceFuse = address(new AaveV3BalanceFuse(aaveV3MarketId, aaveV3MarketName, priceAdapter));
 
-        connectorConfig = new ConnectorConfig();
-        aaveV3MarketId = connectorConfig.addMarket(aaveV3MarketName, balanceConnector);
+        address[] memory alphas = new address[](1);
+        alphas[0] = address(this);
 
-        address[] memory keepers = new address[](1);
-        keepers[0] = address(this);
+        flashLoanMorphoFuse = address(new FlashLoanMorphoFuse());
+        aaveV3SupplyFuse = address(new AaveV3SupplyFuse(AAVE_POOL, aaveV3MarketId));
+        aaveV3BorrowFuse = address(new AaveV3BorrowFuse(aaveV3MarketId, aaveV3MarketName));
+        nativeSwapWethToWstEthFuse = address(new NativeSwapWethToWstEthFuse());
+        balanceFuse = address(new AaveV3BalanceFuse(aaveV3MarketId, aaveV3MarketName, priceAdapter));
 
-        flashLoanMorphoConnector = address(new FlashLoanMorphoConnector());
-        aaveV3SupplyConnector = address(new AaveV3SupplyConnector(AAVE_POOL, aaveV3MarketId));
-        aaveV3BorrowConnector = address(new AaveV3BorrowConnector(aaveV3MarketId, aaveV3MarketName));
-        nativeSwapWethToWstEthConnector = address(new NativeSwapWethToWstEthConnector());
-        balanceConnector = address(new AaveV3BalanceConnector(aaveV3MarketId, aaveV3MarketName, priceAdapter));
+        address[] memory fuses = new address[](5);
+        fuses[0] = flashLoanMorphoFuse;
+        fuses[1] = aaveV3SupplyFuse;
+        fuses[2] = aaveV3BorrowFuse;
+        fuses[3] = nativeSwapWethToWstEthFuse;
+        fuses[4] = balanceFuse;
 
-        address[] memory connectors = new address[](5);
-        connectors[0] = flashLoanMorphoConnector;
-        connectors[1] = aaveV3SupplyConnector;
-        connectors[2] = aaveV3BorrowConnector;
-        connectors[3] = nativeSwapWethToWstEthConnector;
-        connectors[4] = balanceConnector;
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig({marketId: aaveV3MarketId, fuse: balanceFuse});
 
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](1);
-        balanceConnectors[0] = Vault.FuseStruct({marketId: aaveV3MarketId, fuse: balanceConnector});
-
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](1);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory marketAssets = new bytes32[](2);
         marketAssets[0] = MarketConfigurationLib.addressToBytes32(WST_ETH);
         marketAssets[1] = MarketConfigurationLib.addressToBytes32(W_ETH);
 
-        marketConfigs[0] = Vault.MarketConfig({marketId: aaveV3MarketId, substrates: marketAssets});
+        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig({marketId: aaveV3MarketId, substrates: marketAssets});
 
         vaultWstEth = payable(
-            new Vault(
+            new PlazmaVault(
                 msg.sender,
                 "ipvwstETH",
-                "IP Vault wstETH",
+                "IP PlazmaVault wstETH",
                 WST_ETH,
-                keepers,
+                alphas,
                 marketConfigs,
-                connectors,
-                balanceConnectors
+                fuses,
+                balanceFuses
             )
         );
 
@@ -95,22 +89,22 @@ contract ForkAmmGovernanceServiceTest is Test {
         //        uint256 amountVaultBeforeDeposit = IERC20(wstETH).balanceOf(vaultWstEth);
         //        console2.log("amountVaultBeforeDeposit", amountVaultBeforeDeposit);
 
-        Vault(vaultWstEth).deposit(initialAmount, address(this));
+        PlazmaVault(vaultWstEth).deposit(initialAmount, address(this));
 
         //        uint256 amountVaultAfterDeposit = IERC20(wstETH).balanceOf(vaultWstEth);
         //        console2.log("amountVaultAfterDeposit", amountVaultAfterDeposit);
 
-        Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
+        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
-        Vault.ConnectorAction[] memory flashLoanCalls = new Vault.ConnectorAction[](5);
+        PlazmaVault.FuseAction[] memory flashLoanCalls = new PlazmaVault.FuseAction[](5);
 
-        flashLoanCalls[0] = Vault.ConnectorAction(
-            aaveV3SupplyConnector,
+        flashLoanCalls[0] = PlazmaVault.FuseAction(
+            aaveV3SupplyFuse,
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
-                        token: WST_ETH,
+                    AaveV3SupplyFuse.AaveV3SupplyFuseData({
+                        asset: WST_ETH,
                         amount: 40 * 1e18,
                         userEModeCategoryId: 1e18
                     })
@@ -118,36 +112,36 @@ contract ForkAmmGovernanceServiceTest is Test {
             )
         );
 
-        flashLoanCalls[1] = Vault.ConnectorAction(
-            aaveV3BorrowConnector,
+        flashLoanCalls[1] = PlazmaVault.FuseAction(
+            aaveV3BorrowFuse,
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(AaveV3BorrowConnector.BorrowData({token: W_ETH, amount: 30 * 1e18}))
+                abi.encode(AaveV3BorrowFuse.BorrowData({asset: W_ETH, amount: 30 * 1e18}))
             )
         );
 
-        flashLoanCalls[2] = Vault.ConnectorAction(
-            nativeSwapWethToWstEthConnector,
+        flashLoanCalls[2] = PlazmaVault.FuseAction(
+            nativeSwapWethToWstEthFuse,
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(NativeSwapWethToWstEthConnector.SwapData({wEthAmount: 30 * 1e18}))
+                abi.encode(NativeSwapWethToWstEthFuse.SwapData({wEthAmount: 30 * 1e18}))
             )
         );
 
-        flashLoanCalls[3] = Vault.ConnectorAction(
-            balanceConnector,
+        flashLoanCalls[3] = PlazmaVault.FuseAction(
+            balanceFuse,
             abi.encodeWithSignature("balanceOf(address,address,address)", address(vaultWstEth), WST_ETH, WST_ETH)
         );
 
-        flashLoanCalls[4] = Vault.ConnectorAction(
-            balanceConnector,
+        flashLoanCalls[4] = PlazmaVault.FuseAction(
+            balanceFuse,
             abi.encodeWithSignature("balanceOf(address,address,address)", address(vaultWstEth), WST_ETH, W_ETH)
         );
 
         bytes memory flashLoanDataBytes = abi.encode(flashLoanCalls);
 
-        FlashLoanMorphoConnector.FlashLoanData memory flashLoanData = FlashLoanMorphoConnector.FlashLoanData({
-            token: WST_ETH,
+        FlashLoanMorphoFuse.FlashLoanData memory flashLoanData = FlashLoanMorphoFuse.FlashLoanData({
+            asset: WST_ETH,
             /// FlashLoan 100 wstETH
             amount: 100e18,
             data: flashLoanDataBytes
@@ -155,8 +149,8 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         bytes memory data = abi.encode(flashLoanData);
 
-        calls[0] = Vault.ConnectorAction(flashLoanMorphoConnector, abi.encodeWithSignature("enter(bytes)", data));
+        calls[0] = PlazmaVault.FuseAction(flashLoanMorphoFuse, abi.encodeWithSignature("enter(bytes)", data));
 
-        Vault(payable(vaultWstEth)).execute(calls);
+        PlazmaVault(payable(vaultWstEth)).execute(calls);
     }
 }

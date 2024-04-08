@@ -40,7 +40,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // given
         bytes memory error = abi.encodeWithSignature(
             "ZeroAddress(string,string)",
-            Errors.ZERO_ADDRESS_NOT_SUPPORTED,
+            Errors.UNSUPPORTED_ZERO_ADDRESS,
             "baseCurrency"
         );
 
@@ -53,7 +53,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // given
         bytes memory error = abi.encodeWithSignature(
             "ZeroAddress(string,string)",
-            Errors.ZERO_ADDRESS_NOT_SUPPORTED,
+            Errors.UNSUPPORTED_ZERO_ADDRESS,
             "chainlinkFeedRegistry"
         );
 
@@ -64,10 +64,7 @@ contract IporPriceOracleMaintenanceTest is Test {
 
     function testShouldNotBeAbleToSetAssetWithEmptyArrays() external {
         // given
-        bytes memory error = abi.encodeWithSignature(
-            "EmptyArrayNotSupported(string)",
-            Errors.EMPTY_ARRAY_NOT_SUPPORTED
-        );
+        bytes memory error = abi.encodeWithSignature("EmptyArrayNotSupported(string)", Errors.UNSUPPORTED_EMPTY_ARRAY);
 
         address[] memory assets = new address[](0);
         address[] memory sources = new address[](1);
@@ -81,10 +78,7 @@ contract IporPriceOracleMaintenanceTest is Test {
 
     function testShouldNotBeAbleToSetSourceWithEmptyArrays() external {
         // given
-        bytes memory error = abi.encodeWithSignature(
-            "EmptyArrayNotSupported(string)",
-            Errors.EMPTY_ARRAY_NOT_SUPPORTED
-        );
+        bytes memory error = abi.encodeWithSignature("EmptyArrayNotSupported(string)", Errors.UNSUPPORTED_EMPTY_ARRAY);
 
         address[] memory assets = new address[](1);
         assets[0] = address(0);
@@ -130,7 +124,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // given
         bytes memory error = abi.encodeWithSignature(
             "AssetsAddressCanNotBeZero(string)",
-            Errors.ZERO_ADDRESS_NOT_SUPPORTED
+            Errors.UNSUPPORTED_ZERO_ADDRESS
         );
 
         address[] memory assets = new address[](1);
@@ -148,7 +142,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // given
         bytes memory error = abi.encodeWithSignature(
             "SourceAddressCanNotBeZero(string)",
-            Errors.ZERO_ADDRESS_NOT_SUPPORTED
+            Errors.UNSUPPORTED_ZERO_ADDRESS
         );
 
         address[] memory assets = new address[](1);

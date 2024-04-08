@@ -31,10 +31,10 @@ library IporPriceOracleStorageLib {
 
     function setAssetSource(address asset, address source) internal {
         if (source == address(0)) {
-            revert SourceAddressCanNotBeZero(Errors.ZERO_ADDRESS_NOT_SUPPORTED);
+            revert SourceAddressCanNotBeZero(Errors.UNSUPPORTED_ZERO_ADDRESS);
         }
         if (asset == address(0)) {
-            revert AssetsAddressCanNotBeZero(Errors.ZERO_ADDRESS_NOT_SUPPORTED);
+            revert AssetsAddressCanNotBeZero(Errors.UNSUPPORTED_ZERO_ADDRESS);
         }
         _getAssetsSources().value[asset] = source;
         emit AssetSourceUpdated(asset, source);
