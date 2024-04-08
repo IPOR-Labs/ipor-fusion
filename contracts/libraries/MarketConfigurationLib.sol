@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {VaultStorageLib} from "./VaultStorageLib.sol";
+import {PlazmaVaultStorageLib} from "./PlazmaVaultStorageLib.sol";
 
 library MarketConfigurationLib {
     function getMarketConfigurationSubstrates(uint256 marketId) internal view returns (bytes32[] memory) {
@@ -9,12 +9,12 @@ library MarketConfigurationLib {
     }
 
     function isSubstrateAsAssetGranted(uint256 marketId, address substrateAsAsset) internal view returns (bool) {
-        VaultStorageLib.MarketStruct storage marketConfiguration = _getMarketConfiguration(marketId);
+        PlazmaVaultStorageLib.MarketStruct storage marketConfiguration = _getMarketConfiguration(marketId);
         return marketConfiguration.substrateAllowances[addressToBytes32(substrateAsAsset)] == 1;
     }
 
     function grandSubstratesToMarket(uint256 marketId, bytes32[] memory substrates) internal {
-        VaultStorageLib.MarketStruct storage marketConfig = _getMarketConfiguration(marketId);
+        PlazmaVaultStorageLib.MarketStruct storage marketConfig = _getMarketConfiguration(marketId);
 
         bytes32[] memory balanceSubstrates = new bytes32[](substrates.length);
 
@@ -27,7 +27,7 @@ library MarketConfigurationLib {
     }
 
     function grandSubstratesAsAssetsToMarket(uint256 marketId, address[] calldata substratesAsAssets) internal {
-        VaultStorageLib.MarketStruct storage marketConfig = _getMarketConfiguration(marketId);
+        PlazmaVaultStorageLib.MarketStruct storage marketConfig = _getMarketConfiguration(marketId);
 
         bytes32[] memory balanceSubstrates = new bytes32[](substratesAsAssets.length);
 
@@ -48,7 +48,9 @@ library MarketConfigurationLib {
     }
 
     /// @notice Gets the market configuration for a specific market
-    function _getMarketConfiguration(uint256 marketId) private view returns (VaultStorageLib.MarketStruct storage) {
-        return VaultStorageLib.getMarketConfiguration().value[marketId];
+    function _getMarketConfiguration(
+        uint256 marketId
+    ) private view returns (PlazmaVaultStorageLib.MarketStruct storage) {
+        return PlazmaVaultStorageLib.getMarketConfiguration().value[marketId];
     }
 }
