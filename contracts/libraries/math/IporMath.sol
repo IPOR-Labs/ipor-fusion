@@ -2,6 +2,25 @@
 pragma solidity 0.8.20;
 
 library IporMath {
+    function convertToWad(uint256 value, uint256 assetDecimals) internal pure returns (uint256) {
+        if (value > 0) {
+            if (assetDecimals == 18) {
+                return value;
+            } else if (assetDecimals > 18) {
+                return division(value, 10 ** (assetDecimals - 18));
+            } else {
+                return value * 10 ** (18 - assetDecimals);
+            }
+        } else {
+            return value;
+        }
+    }
+
+    //@notice Division with rounding up on last position, x, and y is with MD
+    function division(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        z = (x + (y / 2)) / y;
+    }
+
     function convertToWad(int256 value, uint256 assetDecimals) internal pure returns (int256) {
         if (value == 0) {
             return 0;

@@ -90,4 +90,9 @@ library StorageLib {
             balanceConnectorsArray.slot := BALANCE_CONNECTORS_ARRAY
         }
     }
+
+    struct MarketConfig {
+        /// @dev keeper address => 1 - is granted, otherwise - not granted
+        mapping(address => uint256) value;
+    }
 }

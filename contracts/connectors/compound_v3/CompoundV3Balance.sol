@@ -26,10 +26,7 @@ contract CompoundV3Balance is IBalance {
         COMPOUND_BASE_TOKEN_DECIMALS = ERC20(COMPOUND_BASE_TOKEN).decimals();
     }
 
-    function balanceOfMarket(
-        address user,
-        address[] calldata assets
-    ) external view override returns (uint256, address) {
+    function balanceOfMarket(z user, address[] calldata assets) external view override returns (uint256, address) {
         uint256 len = assets.length;
         if (len == 0) {
             return (0, USD);
