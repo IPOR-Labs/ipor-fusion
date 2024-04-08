@@ -8,18 +8,15 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {KeepersLib} from "../libraries/KeepersLib.sol";
+import {AlphasLib} from "../libraries/AlphasLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {MarketConfigurationLib} from "../libraries/MarketConfigurationLib.sol";
 import {PlazmaVaultLib} from "../libraries/PlazmaVaultLib.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
 
-contract Vault is ERC4626Permit, Ownable2Step {
+contract PlazmaVault is ERC4626Permit, Ownable2Step {
     using Address for address;
-
-    error InvalidKeeper();
-    error UnsupportedFuse();
 
     //TODO: setup Vault type - required for fee
 
@@ -28,23 +25,26 @@ contract Vault is ERC4626Permit, Ownable2Step {
         bytes data;
     }
 
-    struct FuseStruct {
+    struct MarketBalanceFuseConfig {
         /// @dev When marketId is 0, then fuse is independent to a market - example flashloan fuse
         uint256 marketId;
         address fuse;
     }
 
-    struct MarketConfig {
+    struct MarketSubstratesConfig {
         uint256 marketId;
         /// @dev it could be list of assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
         bytes32[] substrates;
     }
 
+    error InvalidAlpha();
+    error UnsupportedFuse();
+
     /// @param assetName Name of the asset
     /// @param assetSymbol Symbol of the asset
     /// @param underlyingToken Address of the underlying token
-    /// @param keepers Array of keepers initially granted to execute actions on the vault
-    /// @param marketConfigs Array of market configurations
+    /// @param alphas Array of alphas initially granted to execute actions on the Plazma Vault
+    /// @param marketSubstratesConfigs Array of market configurations
     /// @param fuses Array of fuses
     /// @param balanceFuses Array of balance fuses
     constructor(
@@ -52,18 +52,18 @@ contract Vault is ERC4626Permit, Ownable2Step {
         string memory assetName,
         string memory assetSymbol,
         address underlyingToken,
-        address[] memory keepers,
-        MarketConfig[] memory marketConfigs,
+        address[] memory alphas,
+        MarketSubstratesConfig[] memory marketSubstratesConfigs,
         address[] memory fuses,
-        FuseStruct[] memory balanceFuses
+        MarketBalanceFuseConfig[] memory balanceFuses
     )
         ERC4626Permit(IERC20(underlyingToken))
         ERC20Permit(assetName)
         ERC20(assetName, assetSymbol)
         Ownable(initialOwner)
     {
-        for (uint256 i; i < keepers.length; ++i) {
-            _grantKeeper(keepers[i]);
+        for (uint256 i; i < alphas.length; ++i) {
+            _grantAlpha(alphas[i]);
         }
 
         //TODO: validations supported assets are supported by fuses
@@ -76,11 +76,14 @@ contract Vault is ERC4626Permit, Ownable2Step {
             FusesLib.setBalanceFuse(balanceFuses[i].marketId, balanceFuses[i].fuse);
         }
 
-        for (uint256 i; i < marketConfigs.length; ++i) {
-            MarketConfigurationLib.grandSubstratesToMarket(marketConfigs[i].marketId, marketConfigs[i].substrates);
+        for (uint256 i; i < marketSubstratesConfigs.length; ++i) {
+            MarketConfigurationLib.grandSubstratesToMarket(
+                marketSubstratesConfigs[i].marketId,
+                marketSubstratesConfigs[i].substrates
+            );
         }
 
-        ///TODO: when adding new fuse - then validate if fuse support assets defined for a given vault.
+        ///TODO: when adding new fuse - then validate if fuse support assets defined for a given Plazma Vault.
     }
 
     function totalAssets() public view virtual override returns (uint256) {
@@ -120,16 +123,16 @@ contract Vault is ERC4626Permit, Ownable2Step {
         _updateBalances(markets);
     }
 
-    function grantKeeper(address keeper) external onlyOwner {
-        _grantKeeper(keeper);
+    function grantAlpha(address alpha) external onlyOwner {
+        _grantAlpha(alpha);
     }
 
-    function revokeKeeper(address keeper) external onlyOwner {
-        KeepersLib.revokeKeeper(keeper);
+    function revokeAlpha(address alpha) external onlyOwner {
+        AlphasLib.revokeAlpha(alpha);
     }
 
-    function isKeeperGranted(address keeper) external view returns (bool) {
-        return KeepersLib.isKeeperGranted(keeper);
+    function isAlphaGranted(address alpha) external view returns (bool) {
+        return AlphasLib.isAlphaGranted(alpha);
     }
 
     function addFuse(address fuse) external onlyOwner {
@@ -148,20 +151,20 @@ contract Vault is ERC4626Permit, Ownable2Step {
         return FusesLib.isBalanceFuseSupported(marketId, fuse);
     }
 
-    function addBalanceFuse(FuseStruct memory fuseInput) external onlyOwner {
+    function addBalanceFuse(MarketBalanceFuseConfig memory fuseInput) external onlyOwner {
         FusesLib.setBalanceFuse(fuseInput.marketId, fuseInput.fuse);
     }
 
-    function removeBalanceFuse(FuseStruct memory fuseInput) external onlyOwner {
+    function removeBalanceFuse(MarketBalanceFuseConfig memory fuseInput) external onlyOwner {
         FusesLib.removeBalanceFuse(fuseInput.marketId, fuseInput.fuse);
     }
 
-    function _grantKeeper(address keeper) internal {
-        if (keeper == address(0)) {
-            revert InvalidKeeper();
+    function _grantAlpha(address alpha) internal {
+        if (alpha == address(0)) {
+            revert InvalidAlpha();
         }
 
-        KeepersLib.grantKeeper(keeper);
+        AlphasLib.grantAlpha(alpha);
     }
 
     /// marketId and connetcore
@@ -215,7 +218,7 @@ contract Vault is ERC4626Permit, Ownable2Step {
             return;
         }
 
-        Vault(payable(this)).execute(calls);
+        PlazmaVault(payable(this)).execute(calls);
 
         //        uint256 assetBalanceAfterCalls = IERC20(WST_ETH).balanceOf(payable(this));
     }
@@ -228,15 +231,15 @@ contract Vault is ERC4626Permit, Ownable2Step {
         /// separate contract with configuration which fuse use which flashloan method and protocol
     }
 
-    function addFuses(FuseStruct[] calldata fuses) external onlyOwner {
+    function addFuses(address[] calldata fuses) external onlyOwner {
         for (uint256 i; i < fuses.length; ++i) {
-            FusesLib.addFuse(fuses[i].fuse);
+            FusesLib.addFuse(fuses[i]);
         }
     }
 
-    function removeFuses(FuseStruct[] calldata fuses) external onlyOwner {
+    function removeFuses(address[] calldata fuses) external onlyOwner {
         for (uint256 i; i < fuses.length; ++i) {
-            FusesLib.removeFuse(fuses[i].fuse);
+            FusesLib.removeFuse(fuses[i]);
         }
     }
 }

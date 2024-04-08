@@ -3,8 +3,8 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {VaultFactory} from "../../contracts/vaults/VaultFactory.sol";
-import {Vault} from "../../contracts/vaults/Vault.sol";
+import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
+import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
@@ -13,11 +13,11 @@ import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurat
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
 
-contract VaultTest is Test {
+contract PlazmaVaultTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
-    VaultFactory internal vaultFactory;
+    PlazmaVaultFactory internal vaultFactory;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
@@ -33,15 +33,15 @@ contract VaultTest is Test {
     string public assetName;
     string public assetSymbol;
     address public underlyingToken;
-    address[] public keepers;
-    address public keeper;
+    address[] public alphas;
+    address public alpha;
     uint256 public amount;
 
     address public userOne;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
-        vaultFactory = new VaultFactory(owner);
+        vaultFactory = new PlazmaVaultFactory(owner);
         userOne = address(0x777);
     }
 
@@ -50,16 +50,16 @@ contract VaultTest is Test {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](1);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
-        marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
 
@@ -68,16 +68,16 @@ contract VaultTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
 
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](1);
-        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuse));
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -85,13 +85,13 @@ contract VaultTest is Test {
             )
         );
 
-        Vault.FuseAction[] memory calls = new Vault.FuseAction[](1);
+        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
         uint256 amount = 100 * 1e18;
 
-        deal(DAI, address(vault), amount);
+        deal(DAI, address(plazmaVault), amount);
 
-        calls[0] = Vault.FuseAction(
+        calls[0] = PlazmaVault.FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -102,8 +102,8 @@ contract VaultTest is Test {
         );
 
         //when
-        vm.prank(keeper);
-        vault.execute(calls);
+        vm.prank(alpha);
+        plazmaVault.execute(calls);
 
         //then
         /// @dev if is here then it means that the transaction was successful
@@ -115,23 +115,23 @@ contract VaultTest is Test {
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
         address underlyingToken = USDC;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](2);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
 
         /// @dev Market Compound V3
-        marketConfigs[1] = Vault.MarketConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
 
@@ -139,17 +139,17 @@ contract VaultTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](2);
-        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = Vault.FuseStruct(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -157,14 +157,14 @@ contract VaultTest is Test {
             )
         );
 
-        Vault.FuseAction[] memory calls = new Vault.FuseAction[](2);
+        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
 
         uint256 amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-        ERC20(USDC).transfer(address(vault), 2 * amount);
+        ERC20(USDC).transfer(address(plazmaVault), 2 * amount);
 
-        calls[0] = Vault.FuseAction(
+        calls[0] = PlazmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -174,7 +174,7 @@ contract VaultTest is Test {
             )
         );
 
-        calls[1] = Vault.FuseAction(
+        calls[1] = PlazmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -183,8 +183,8 @@ contract VaultTest is Test {
         );
 
         //when
-        vm.prank(keeper);
-        vault.execute(calls);
+        vm.prank(alpha);
+        plazmaVault.execute(calls);
 
         //then
         /// @dev if is here then it means that the transaction was successful
@@ -196,16 +196,16 @@ contract VaultTest is Test {
         assetName = "IPOR Fusion DAI";
         assetSymbol = "ipfDAI";
         underlyingToken = DAI;
-        keepers = new address[](1);
+        alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](1);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
-        marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
 
@@ -214,16 +214,16 @@ contract VaultTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
 
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](1);
-        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuse));
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -231,13 +231,13 @@ contract VaultTest is Test {
             )
         );
 
-        Vault.FuseAction[] memory calls = new Vault.FuseAction[](1);
+        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
         uint256 amount = 100 * 1e18;
 
-        deal(DAI, address(vault), amount);
+        deal(DAI, address(plazmaVault), amount);
 
-        calls[0] = Vault.FuseAction(
+        calls[0] = PlazmaVault.FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -250,15 +250,15 @@ contract VaultTest is Test {
         (address aTokenAddress, , ) = AAVE_POOL_DATA_PROVIDER.getReserveTokensAddresses(DAI);
 
         //when
-        vm.prank(keeper);
-        vault.execute(calls);
+        vm.prank(alpha);
+        plazmaVault.execute(calls);
 
         //then
-        uint256 vaultTotalAssetsAfter = vault.totalAssets();
-        uint256 vaultTotalAssetsInMarket = vault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
+        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 vaultTotalAssetsInMarket = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
 
         assertTrue(
-            ERC20(aTokenAddress).balanceOf(address(vault)) == amount,
+            ERC20(aTokenAddress).balanceOf(address(plazmaVault)) == amount,
             "aToken balance should be increased by amount"
         );
 
@@ -275,23 +275,23 @@ contract VaultTest is Test {
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
         address underlyingToken = USDC;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](2);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
 
         /// @dev Market Compound V3
-        marketConfigs[1] = Vault.MarketConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
 
@@ -299,17 +299,17 @@ contract VaultTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](2);
-        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = Vault.FuseStruct(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -317,14 +317,14 @@ contract VaultTest is Test {
             )
         );
 
-        Vault.FuseAction[] memory calls = new Vault.FuseAction[](2);
+        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
 
         uint256 amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-        ERC20(USDC).transfer(address(vault), 2 * amount);
+        ERC20(USDC).transfer(address(plazmaVault), 2 * amount);
 
-        calls[0] = Vault.FuseAction(
+        calls[0] = PlazmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -334,7 +334,7 @@ contract VaultTest is Test {
             )
         );
 
-        calls[1] = Vault.FuseAction(
+        calls[1] = PlazmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -343,11 +343,11 @@ contract VaultTest is Test {
         );
 
         //when
-        vm.prank(keeper);
-        vault.execute(calls);
+        vm.prank(alpha);
+        plazmaVault.execute(calls);
 
         //then
-        uint256 vaultTotalAssetsAfter = vault.totalAssets();
+        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
 
         assertGt(vaultTotalAssetsAfter, 199e18, "Vault total assets should be increased by amount");
         assertGt(vaultTotalAssetsAfter, 199e18, "Vault total assets should be increased by amount + amount - 1");
@@ -358,18 +358,18 @@ contract VaultTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        keepers = new address[](1);
-        keeper = address(0x1);
+        alphas = new address[](1);
+        alpha = address(0x1);
 
-        keepers[0] = keeper;
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](2);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
         DoNothingFuse doNothingFuseAaveV3 = new DoNothingFuse(AAVE_V3_MARKET_ID);
@@ -378,16 +378,16 @@ contract VaultTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(doNothingFuseAaveV3);
 
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](1);
-        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -401,14 +401,14 @@ contract VaultTest is Test {
         ERC20(USDC).transfer(address(userOne), 2 * amount);
 
         vm.prank(userOne);
-        ERC20(USDC).approve(address(vault), 3 * amount);
+        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
 
         vm.prank(userOne);
-        vault.deposit(2 * amount, userOne);
+        plazmaVault.deposit(2 * amount, userOne);
 
-        Vault.FuseAction[] memory calls = new Vault.FuseAction[](1);
+        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
-        calls[0] = Vault.FuseAction(
+        calls[0] = PlazmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -419,31 +419,31 @@ contract VaultTest is Test {
         );
 
         /// @dev first call
-        vm.prank(keeper);
-        vault.execute(calls);
+        vm.prank(alpha);
+        plazmaVault.execute(calls);
 
-        uint256 userSharesBefore = vault.balanceOf(userOne);
-        uint256 userAssetsBefore = vault.convertToAssets(userSharesBefore);
+        uint256 userSharesBefore = plazmaVault.balanceOf(userOne);
+        uint256 userAssetsBefore = plazmaVault.convertToAssets(userSharesBefore);
 
         /// @dev artificial time forward
         vm.warp(block.timestamp + 100 days);
 
-        Vault.FuseAction[] memory callsSecond = new Vault.FuseAction[](1);
+        PlazmaVault.FuseAction[] memory callsSecond = new PlazmaVault.FuseAction[](1);
 
         /// @dev do nothing only touch the market
-        callsSecond[0] = Vault.FuseAction(
+        callsSecond[0] = PlazmaVault.FuseAction(
             address(doNothingFuseAaveV3),
             abi.encodeWithSignature("enter(bytes)", abi.encode(DoNothingFuse.DoNothingFuseData({asset: USDC})))
         );
 
         //when
         /// @dev second call
-        vm.prank(keeper);
-        vault.execute(callsSecond);
+        vm.prank(alpha);
+        plazmaVault.execute(callsSecond);
 
         //then
-        uint256 userSharesAfter = vault.balanceOf(userOne);
-        uint256 userAssetsAfter = vault.convertToAssets(userSharesAfter);
+        uint256 userSharesAfter = plazmaVault.balanceOf(userOne);
+        uint256 userAssetsAfter = plazmaVault.convertToAssets(userSharesAfter);
 
         assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
         assertGt(
@@ -458,23 +458,23 @@ contract VaultTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        keepers = new address[](1);
-        keeper = address(0x1);
+        alphas = new address[](1);
+        alpha = address(0x1);
 
-        keepers[0] = keeper;
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](2);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
 
         /// @dev Market Compound V3
-        marketConfigs[1] = Vault.MarketConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
         DoNothingFuse doNothingFuseCompoundV3 = new DoNothingFuse(COMPOUND_V3_MARKET_ID);
 
@@ -482,17 +482,17 @@ contract VaultTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(doNothingFuseCompoundV3);
 
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](2);
-        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = Vault.FuseStruct(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -506,14 +506,14 @@ contract VaultTest is Test {
         ERC20(USDC).transfer(address(userOne), 2 * amount);
 
         vm.prank(userOne);
-        ERC20(USDC).approve(address(vault), 3 * amount);
+        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
 
         vm.prank(userOne);
-        vault.deposit(2 * amount, userOne);
+        plazmaVault.deposit(2 * amount, userOne);
 
-        Vault.FuseAction[] memory calls = new Vault.FuseAction[](1);
+        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
-        calls[0] = Vault.FuseAction(
+        calls[0] = PlazmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -522,29 +522,29 @@ contract VaultTest is Test {
         );
 
         /// @dev first call
-        vm.prank(keeper);
-        vault.execute(calls);
+        vm.prank(alpha);
+        plazmaVault.execute(calls);
 
-        uint256 userSharesBefore = vault.balanceOf(userOne);
-        uint256 userAssetsBefore = vault.convertToAssets(userSharesBefore);
+        uint256 userSharesBefore = plazmaVault.balanceOf(userOne);
+        uint256 userAssetsBefore = plazmaVault.convertToAssets(userSharesBefore);
 
         vm.warp(block.timestamp + 1000 days);
 
-        Vault.FuseAction[] memory callsSecond = new Vault.FuseAction[](1);
+        PlazmaVault.FuseAction[] memory callsSecond = new PlazmaVault.FuseAction[](1);
 
-        callsSecond[0] = Vault.FuseAction(
+        callsSecond[0] = PlazmaVault.FuseAction(
             address(doNothingFuseCompoundV3),
             abi.encodeWithSignature("enter(bytes)", abi.encode(DoNothingFuse.DoNothingFuseData({asset: USDC})))
         );
 
         //when
         /// @dev second call
-        vm.prank(keeper);
-        vault.execute(callsSecond);
+        vm.prank(alpha);
+        plazmaVault.execute(callsSecond);
 
         //then
-        uint256 userSharesAfter = vault.balanceOf(userOne);
-        uint256 userAssetsAfter = vault.convertToAssets(userSharesAfter);
+        uint256 userSharesAfter = plazmaVault.balanceOf(userOne);
+        uint256 userAssetsAfter = plazmaVault.convertToAssets(userSharesAfter);
 
         assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
         assertEq(userAssetsAfter, userAssetsBefore, "User assets before and after should be equal");

@@ -2,14 +2,14 @@
 pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {VaultFactory} from "../../contracts/vaults/VaultFactory.sol";
-import {Vault} from "../../contracts/vaults/Vault.sol";
+import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
+import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 
-contract VaultMaintenanceTest is Test {
+contract PlazmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    VaultFactory internal vaultFactory;
+    PlazmaVaultFactory internal vaultFactory;
 
     uint256 public constant AAVE_V3_MARKET_ID = 1;
 
@@ -17,7 +17,7 @@ contract VaultMaintenanceTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
-        vaultFactory = new VaultFactory(owner);
+        vaultFactory = new PlazmaVaultFactory(owner);
     }
 
     function testShouldSetupBalanceFusesWhenVaultCreated() public {
@@ -25,28 +25,28 @@ contract VaultMaintenanceTest is Test {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
 
         address[] memory fuses = new address[](0);
 
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](1);
-        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuse));
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         // when
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -55,7 +55,7 @@ contract VaultMaintenanceTest is Test {
         );
 
         // then
-        assertTrue(vault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)));
+        assertTrue(plazmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)));
     }
 
     function testShouldAddBalanceFuseByOwner() public {
@@ -63,25 +63,25 @@ contract VaultMaintenanceTest is Test {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
 
         address[] memory fuses = new address[](0);
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -90,16 +90,16 @@ contract VaultMaintenanceTest is Test {
         );
 
         assertFalse(
-            vault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            plazmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
             "Balance fuse should not be supported"
         );
 
         //when
-        vault.addBalanceFuse(Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuse)));
+        plazmaVault.addBalanceFuse(PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse)));
 
         //then
         assertTrue(
-            vault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            plazmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
             "Balance fuse should be supported"
         );
     }
@@ -109,27 +109,27 @@ contract VaultMaintenanceTest is Test {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](1);
         AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(0x1), AAVE_V3_MARKET_ID);
         fuses[0] = address(fuse);
 
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
         // when
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -138,7 +138,7 @@ contract VaultMaintenanceTest is Test {
         );
 
         // then
-        assertTrue(vault.isFuseSupported(address(fuse)));
+        assertTrue(plazmaVault.isFuseSupported(address(fuse)));
     }
 
     function testShouldAddFuseByOwner() public {
@@ -146,23 +146,23 @@ contract VaultMaintenanceTest is Test {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -172,13 +172,13 @@ contract VaultMaintenanceTest is Test {
 
         AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(0x1), AAVE_V3_MARKET_ID);
 
-        assertFalse(vault.isFuseSupported(address(fuse)));
+        assertFalse(plazmaVault.isFuseSupported(address(fuse)));
 
         //when
-        vault.addFuse(address(fuse));
+        plazmaVault.addFuse(address(fuse));
 
         //then
-        assertTrue(vault.isFuseSupported(address(fuse)));
+        assertTrue(plazmaVault.isFuseSupported(address(fuse)));
     }
 
     function testShouldRemoveFuseByOwner() public {
@@ -186,26 +186,26 @@ contract VaultMaintenanceTest is Test {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](1);
         AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(0x1), AAVE_V3_MARKET_ID);
         fuses[0] = address(fuse);
 
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -213,38 +213,38 @@ contract VaultMaintenanceTest is Test {
             )
         );
 
-        assertTrue(vault.isFuseSupported(address(fuse)));
+        assertTrue(plazmaVault.isFuseSupported(address(fuse)));
 
         //when
-        vault.removeFuse(address(fuse));
+        plazmaVault.removeFuse(address(fuse));
 
         //then
-        assertFalse(vault.isFuseSupported(address(fuse)));
+        assertFalse(plazmaVault.isFuseSupported(address(fuse)));
     }
 
-    function testShouldSetupKeeperWhenVaultCreated() public {
+    function testShouldSetupAlphaWhenVaultCreated() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
         // when
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -253,32 +253,32 @@ contract VaultMaintenanceTest is Test {
         );
 
         // then
-        assertTrue(vault.isKeeperGranted(keeper));
+        assertTrue(plazmaVault.isAlphaGranted(alpha));
     }
 
-    function testShouldNotSetupKeeperWhenVaultIsCreated() public {
+    function testShouldNotSetupAlphaWhenVaultIsCreated() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
         // when
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -287,31 +287,31 @@ contract VaultMaintenanceTest is Test {
         );
 
         // then
-        assertFalse(vault.isKeeperGranted(address(0x2)));
+        assertFalse(plazmaVault.isAlphaGranted(address(0x2)));
     }
 
-    function testShouldSetupKeeperByOwner() public {
+    function testShouldSetupAlphaByOwner() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory keepers = new address[](1);
+        address[] memory alphas = new address[](1);
 
-        address keeper = address(0x1);
-        keepers[0] = keeper;
+        address alpha = address(0x1);
+        alphas[0] = alpha;
 
-        Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        Vault vault = Vault(
+        PlazmaVault plazmaVault = PlazmaVault(
             payable(
                 vaultFactory.createVault(
                     assetName,
                     assetSymbol,
                     underlyingToken,
-                    keepers,
+                    alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses
@@ -320,9 +320,9 @@ contract VaultMaintenanceTest is Test {
         );
 
         //when
-        vault.grantKeeper(address(0x2));
+        plazmaVault.grantAlpha(address(0x2));
 
         //then
-        assertTrue(vault.isKeeperGranted(address(0x2)));
+        assertTrue(plazmaVault.isAlphaGranted(address(0x2)));
     }
 }

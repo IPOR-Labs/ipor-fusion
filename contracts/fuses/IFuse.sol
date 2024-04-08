@@ -42,9 +42,9 @@ interface IFuse is IFuseCommon {
     /// 6 - update in Vault balance for a given asset and connet
 
     // benefits
-    /// 1. IPOR keeper can work on different vaults
+    /// 1. IPOR alpha can work on different vaults
     /// 2. New abstraction layer - simplification
-    /// 3. Competition between keepers
+    /// 3. Competition between alphas
     /// 4. Lightweigth ERC4626
     /// 5. Developer engagement
     /// 6. Solve Asset Management in IPOR

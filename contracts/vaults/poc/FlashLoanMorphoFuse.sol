@@ -2,9 +2,9 @@
 pragma solidity 0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IFuse} from "../fuses/IFuse.sol";
+import {IFuse} from "../../fuses/IFuse.sol";
 import {IMorpho} from "./interfaces/IMorpho.sol";
-import {Vault} from "./Vault.sol";
+import {PlazmaVault} from "../PlazmaVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @dev FlashLoan Fuse type does not required information about supported assets
@@ -40,13 +40,13 @@ contract FlashLoanMorphoFuse is IFuse {
     function onMorphoFlashLoan(uint256 flashLoanAmount, bytes calldata data) external payable {
         //        uint256 assetBalanceBeforeCalls = IERC20(WST_ETH).balanceOf(address(this));
 
-        Vault.FuseAction[] memory calls = abi.decode(data, (Vault.FuseAction[]));
+        PlazmaVault.FuseAction[] memory calls = abi.decode(data, (PlazmaVault.FuseAction[]));
 
         if (calls.length == 0) {
             return;
         }
 
-        Vault(payable(this)).execute(calls);
+        PlazmaVault(payable(this)).execute(calls);
 
         //        uint256 assetBalanceAfterCalls = IERC20(WST_ETH).balanceOf(address(this));
     }

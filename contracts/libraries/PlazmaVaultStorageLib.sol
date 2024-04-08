@@ -24,9 +24,9 @@ library PlazmaVaultStorageLib {
     bytes32 private constant GLOBAL_CFG_MARKETS_ARRAY =
         0xa9ab0f59d22adb63c5e64506bd16f6182bc321006c1f7ff0dcb1b445a2fd5400;
 
-    /// @notice List of keepers allowed to execute actions on the vault
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.keepers")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant KEEPERS = 0x7dd7151eda9a8aa729c84433daab8cd1eaf1f4ce42af566ab5ad0e56a8023100;
+    /// @notice List of alphas allowed to execute actions on the vault
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.alphas")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant ALPHAS = 0x7dd7151eda9a8aa729c84433daab8cd1eaf1f4ce42af566ab5ad0e56a8023100;
 
     /// @notice List of fuses ass
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.commandFuses")) - 1)) & ~bytes32(uint256(0xff));
@@ -88,9 +88,9 @@ library PlazmaVaultStorageLib {
         mapping(uint256 => uint256) value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.keepers
-    struct Keepers {
-        /// @dev keeper address => 1 - is granted, otherwise - not granted
+    /// @custom:storage-location erc7201:io.ipor.alphas
+    struct Alphas {
+        /// @dev alpha address => 1 - is granted, otherwise - not granted
         mapping(address => uint256) value;
     }
 
@@ -126,9 +126,9 @@ library PlazmaVaultStorageLib {
         }
     }
 
-    function getKeepers() internal pure returns (Keepers storage keepers) {
+    function getAlphas() internal pure returns (Alphas storage alphas) {
         assembly {
-            keepers.slot := KEEPERS
+            alphas.slot := ALPHAS
         }
     }
 

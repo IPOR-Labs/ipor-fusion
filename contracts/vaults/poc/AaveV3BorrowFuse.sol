@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {IPool} from "./interfaces/IPool.sol";
-import {IFuseCommon} from "../fuses/IFuseCommon.sol";
+import {IPool} from "../interfaces/IPool.sol";
+import {IFuseCommon} from "../../fuses/IFuseCommon.sol";
 
 contract AaveV3BorrowFuse is IFuseCommon {
     uint256 public immutable MARKET_ID;
