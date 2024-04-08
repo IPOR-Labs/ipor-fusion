@@ -29,12 +29,12 @@ contract CompoundV3Balance is IBalance {
         COMPOUND_BASE_TOKEN_DECIMALS = ERC20(COMPOUND_BASE_TOKEN).decimals();
     }
 
-    function balanceOfMarket(address user) external view override returns (uint256, address) {
-        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfiguration(MARKET_ID).substrates;
+    function balanceOfMarket(address user) external view override returns (uint256) {
+        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfigurationSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
         if (len == 0) {
-            return (0, USD);
+            return 0;
         }
 
         int256 balanceTemp = 0;
@@ -64,7 +64,7 @@ contract CompoundV3Balance is IBalance {
 
         balanceTemp -= borrowBalance;
 
-        return (balanceTemp.toUint256(), USD);
+        return balanceTemp.toUint256();
     }
 
     function _getPrice(address asset) internal view returns (uint256) {

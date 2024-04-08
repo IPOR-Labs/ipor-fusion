@@ -67,16 +67,16 @@ contract Vault is ERC4626Permit, Ownable2Step {
         }
 
         //TODO: validations supported assets are supported by connectors
-        for (uint256 i = 0; i < fuses.length; ++i) {
+        for (uint256 i; i < fuses.length; ++i) {
             _addFuse(fuses[i]);
         }
 
         //TODO: validations supported assets are supported by connectors
-        for (uint256 i = 0; i < balanceFuses.length; ++i) {
+        for (uint256 i; i < balanceFuses.length; ++i) {
             _addBalanceFuse(balanceFuses[i]);
         }
 
-        for (uint256 i = 0; i < marketConfigs.length; ++i) {
+        for (uint256 i; i < marketConfigs.length; ++i) {
             MarketConfigurationLib.grandSubstratesToMarket(marketConfigs[i].marketId, marketConfigs[i].substrates);
         }
 
@@ -84,7 +84,9 @@ contract Vault is ERC4626Permit, Ownable2Step {
     }
 
     function totalAssets() public view virtual override returns (uint256) {
-        return IporMath.convertToWad(IERC20(asset()).balanceOf(address(this)), decimals()) + VaultLib.getTotalAssets();
+        return
+            IporMath.convertToWad(IERC20(asset()).balanceOf(address(this)), decimals()) +
+            VaultLib.getTotalAssetsInMarkets();
     }
 
     function totalAssetsInMarket(uint256 marketId) public view virtual returns (uint256) {
@@ -102,7 +104,7 @@ contract Vault is ERC4626Permit, Ownable2Step {
 
         uint256 connectorMarketId;
 
-        for (uint256 i = 0; i < callsCount; ++i) {
+        for (uint256 i; i < callsCount; ++i) {
             if (!ConnectorsLib.isConnectorSupported(calls[i].connector)) {
                 revert UnsupportedConnector();
             }
@@ -176,7 +178,7 @@ contract Vault is ERC4626Permit, Ownable2Step {
 
     /// marketId and connetcore
     function _checkIfExistsMarket(uint256[] memory markets, uint256 marketId) internal view returns (bool exists) {
-        for (uint256 i = 0; i < markets.length; ++i) {
+        for (uint256 i; i < markets.length; ++i) {
             if (markets[i] == 0) {
                 break;
             }
@@ -190,9 +192,8 @@ contract Vault is ERC4626Permit, Ownable2Step {
     function _updateBalances(uint256[] memory markets) internal {
         uint256 deltas = 0;
         uint256 balanceAmount;
-        address balanceAsset;
 
-        for (uint256 i = 0; i < markets.length; ++i) {
+        for (uint256 i; i < markets.length; ++i) {
             if (markets[i] == 0) {
                 break;
             }
@@ -203,7 +204,7 @@ contract Vault is ERC4626Permit, Ownable2Step {
                 abi.encodeWithSignature("balanceOfMarket(address)", address(this))
             );
 
-            (balanceAmount, balanceAsset) = abi.decode(returnedData, (uint256, address));
+            balanceAmount = abi.decode(returnedData, (uint256));
             deltas = deltas + VaultLib.updateTotalAssetsInMarket(markets[i], balanceAmount);
 
             //TODO: here use price oracle to convert balanceAmount to underlying token
@@ -240,13 +241,13 @@ contract Vault is ERC4626Permit, Ownable2Step {
     }
 
     function addConnectors(FuseStruct[] calldata fuses) external onlyOwner {
-        for (uint256 i = 0; i < fuses.length; ++i) {
+        for (uint256 i; i < fuses.length; ++i) {
             ConnectorsLib.addConnector(fuses[i].fuse);
         }
     }
 
     function removeConnectors(FuseStruct[] calldata fuses) external onlyOwner {
-        for (uint256 i = 0; i < fuses.length; ++i) {
+        for (uint256 i; i < fuses.length; ++i) {
             ConnectorsLib.removeConnector(fuses[i].fuse);
         }
     }

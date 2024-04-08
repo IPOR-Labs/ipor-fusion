@@ -20,13 +20,13 @@ contract AaveV3Balance is IBalance {
         MARKET_ID = marketIdInput;
     }
 
-    function balanceOfMarket(address user) external view override returns (uint256, address) {
-        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfiguration(MARKET_ID).substrates;
+    function balanceOfMarket(address user) external view override returns (uint256) {
+        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfigurationSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
 
         if (len == 0) {
-            return (0, USD);
+            return 0;
         }
 
         int256 balanceTemp = 0;
@@ -62,6 +62,6 @@ contract AaveV3Balance is IBalance {
             balanceTemp += IporMath.convertToWadInt(balanceInLoop * int256(price), decimals + PRICE_DECIMALS);
         }
 
-        return (balanceTemp.toUint256(), USD);
+        return balanceTemp.toUint256();
     }
 }

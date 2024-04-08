@@ -4,9 +4,13 @@ pragma solidity 0.8.20;
 import {VaultStorageLib} from "./VaultStorageLib.sol";
 
 library VaultLib {
-    function getTotalAssets() internal view returns (uint256) {
+    /// @notice Gets the total assets in the vault for all markets
+    function getTotalAssetsInMarkets() internal view returns (uint256) {
         return VaultStorageLib.getVaultTotalAssets().value;
     }
+
+    /// @notice Gets the total assets in the vault for a specific market
+    /// @param marketId The market id
     function getTotalAssetsInMarket(uint256 marketId) internal view returns (uint256) {
         return VaultStorageLib.getVaultMarketTotalAssets().value[marketId];
     }

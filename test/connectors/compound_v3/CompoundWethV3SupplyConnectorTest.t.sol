@@ -117,7 +117,7 @@ contract CompoundWethV3SupplyConnectorTest is Test {
 
     modifier iterateSupportedTokens() {
         SupportedToken[] memory supportedTokens = _getSupportedAssets();
-        for (uint256 i; i < supportedTokens.length; i++) {
+        for (uint256 i; i < supportedTokens.length; ++i) {
             activeTokens = supportedTokens[i];
             _;
         }

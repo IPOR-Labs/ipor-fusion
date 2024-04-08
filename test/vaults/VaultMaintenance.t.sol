@@ -7,7 +7,7 @@ import {Vault} from "../../contracts/vaults/Vault.sol";
 import {AaveV3SupplyConnector} from "../../contracts/connectors/aave_v3/AaveV3SupplyConnector.sol";
 import {AaveV3Balance} from "../../contracts/connectors/aave_v3/AaveV3Balance.sol";
 
-contract ForkVaultMaintenanceTest is Test {
+contract VaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     VaultFactory internal vaultFactory;
 

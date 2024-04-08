@@ -8,11 +8,11 @@ contract AaveV3BalanceMock is AaveV3Balance {
     constructor(uint256 marketIdInput) AaveV3Balance(marketIdInput) {}
 
     function updateMarketConfiguration(address[] memory supportedAssets) public {
-        VaultStorageLib.MarketStruct storage marketConfig = MarketConfigurationLib.getMarketConfiguration(MARKET_ID);
+        VaultStorageLib.MarketStruct storage marketConfig = VaultStorageLib.getMarketConfiguration().value[MARKET_ID];
 
         bytes32[] memory balanceSubstrates = new bytes32[](supportedAssets.length);
 
-        for (uint256 i = 0; i < supportedAssets.length; i++) {
+        for (uint256 i; i < supportedAssets.length; ++i) {
             marketConfig.substrateAllowances[MarketConfigurationLib.addressToBytes32(supportedAssets[i])] = 1;
             balanceSubstrates[i] = MarketConfigurationLib.addressToBytes32(supportedAssets[i]);
         }

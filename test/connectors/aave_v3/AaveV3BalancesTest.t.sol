@@ -40,7 +40,7 @@ contract AaveV3BalancesTest is Test {
 
         aaveV3Balances.updateMarketConfiguration(assets);
 
-        (uint256 balanceBefore, ) = aaveV3Balances.balanceOfMarket(user);
+        uint256 balanceBefore = aaveV3Balances.balanceOfMarket(user);
 
         // when
 
@@ -49,7 +49,7 @@ contract AaveV3BalancesTest is Test {
         vm.prank(user);
         AAVE_POOL.supply(activeTokens.token, amount, user, 0);
 
-        (uint256 balanceAfter, ) = aaveV3Balances.balanceOfMarket(user);
+        uint256 balanceAfter = aaveV3Balances.balanceOfMarket(user);
 
         // then
         assertTrue(balanceAfter > balanceBefore, "Balance should be greater after supply");
@@ -76,13 +76,13 @@ contract AaveV3BalancesTest is Test {
         vm.prank(user);
         AAVE_POOL.supply(activeTokens.token, amount, user, 0);
 
-        (uint256 balanceBefore, ) = aaveV3Balances.balanceOfMarket(user);
+        uint256 balanceBefore = aaveV3Balances.balanceOfMarket(user);
 
         // when
         vm.prank(user);
         AAVE_POOL.borrow(activeTokens.token, borrowAmount, uint256(2), 0, user);
 
-        (uint256 balanceAfter, ) = aaveV3Balances.balanceOfMarket(user);
+        uint256 balanceAfter = aaveV3Balances.balanceOfMarket(user);
 
         // then
         assertTrue(balanceAfter < balanceBefore, "Balance should be greater after supply");
@@ -107,7 +107,7 @@ contract AaveV3BalancesTest is Test {
 
     modifier iterateSupportedTokens() {
         SupportedToken[] memory supportedTokens = _getSupportedAssets();
-        for (uint256 i; i < supportedTokens.length; i++) {
+        for (uint256 i; i < supportedTokens.length; ++i) {
             activeTokens = supportedTokens[i];
             _;
         }

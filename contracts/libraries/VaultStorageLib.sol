@@ -53,6 +53,7 @@ library VaultStorageLib {
     /// @dev Iterable array of marketIds, associated with the structure GlobalCfgMarkets
     struct GlobalCfgMarketsArray {
         /// @dev array of marketIds
+        //TODO: change to bytes32
         uint256[] value;
     }
 

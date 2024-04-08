@@ -40,7 +40,7 @@ contract CompoundWethV3BalanceTest is Test {
         connectorMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
         marketBalance.updateMarketConfiguration(assets);
 
-        (uint256 balanceMarketBefore, ) = marketBalance.balanceOfMarket(address(connectorMock));
+        uint256 balanceMarketBefore = marketBalance.balanceOfMarket(address(connectorMock));
 
         // when
 
@@ -51,7 +51,7 @@ contract CompoundWethV3BalanceTest is Test {
         // then
         uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(connectorMock));
         uint256 balanceOnCometAfter = _getBalance(address(connectorMock), activeTokens.token);
-        (uint256 balanceMarketAfter, ) = marketBalance.balanceOfMarket(address(connectorMock));
+        uint256 balanceMarketAfter = marketBalance.balanceOfMarket(address(connectorMock));
 
         assertTrue(balanceMarketBefore < balanceMarketAfter, "market balance should be increased by amount");
         assertEq(balanceAfter + amount, balanceBefore, "vault balance should be decreased by amount");
@@ -82,7 +82,7 @@ contract CompoundWethV3BalanceTest is Test {
         uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(connectorMock));
         uint256 balanceOnCometBefore = _getBalance(address(connectorMock), activeTokens.token);
 
-        (uint256 balanceMarketBefore, ) = marketBalance.balanceOfMarket(address(connectorMock));
+        uint256 balanceMarketBefore = marketBalance.balanceOfMarket(address(connectorMock));
 
         // when
         connectorMock.exit(
@@ -95,7 +95,7 @@ contract CompoundWethV3BalanceTest is Test {
         // then
         uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(connectorMock));
         uint256 balanceOnCometAfter = _getBalance(address(connectorMock), activeTokens.token);
-        (uint256 balanceMarketAfter, ) = marketBalance.balanceOfMarket(address(connectorMock));
+        uint256 balanceMarketAfter = marketBalance.balanceOfMarket(address(connectorMock));
 
         assertTrue(balanceMarketBefore > balanceMarketAfter, "market balance should be decreased by amount");
         assertTrue(balanceAfter > balanceBefore, "vault balance should be increased by amount");
@@ -134,7 +134,7 @@ contract CompoundWethV3BalanceTest is Test {
 
     modifier iterateSupportedTokens() {
         SupportedToken[] memory supportedTokens = _getSupportedAssets();
-        for (uint256 i; i < supportedTokens.length; i++) {
+        for (uint256 i; i < supportedTokens.length; ++i) {
             activeTokens = supportedTokens[i];
             _;
         }

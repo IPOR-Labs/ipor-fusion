@@ -13,7 +13,7 @@ import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurat
 import {IAavePoolDataProvider} from "../../contracts/connectors/aave_v3/IAavePoolDataProvider.sol";
 import {DoNothingConnector} from "../connectors/DoNothingConnector.sol";
 
-contract ForkVaultTest is Test {
+contract VaultTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
@@ -110,6 +110,7 @@ contract ForkVaultTest is Test {
         vault.execute(calls);
 
         //then
+        /// @dev if is here then it means that the transaction was successful
         assertTrue(true);
     }
 
@@ -197,6 +198,7 @@ contract ForkVaultTest is Test {
         vault.execute(calls);
 
         //then
+        /// @dev if is here then it means that the transaction was successful
         assertTrue(true);
     }
 
@@ -271,7 +273,7 @@ contract ForkVaultTest is Test {
         uint256 vaultTotalAssetsInMarket = vault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
 
         assertTrue(
-            ERC20(aTokenAddress).balanceOf(address(vault)) >= amount,
+            ERC20(aTokenAddress).balanceOf(address(vault)) == amount,
             "aToken balance should be increased by amount"
         );
 
@@ -373,7 +375,7 @@ contract ForkVaultTest is Test {
         assertGt(vaultTotalAssetsAfter, 199e18, "Vault total assets should be increased by amount + amount - 1");
     }
 
-    function testShouldIncreaseSharesWhenTouchedMarket() public {
+    function testShouldIncreaseValueOfSharesAndNotChangeNumberOfSharesWhenTouchedMarket() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -426,9 +428,6 @@ contract ForkVaultTest is Test {
         vm.prank(userOne);
         vault.deposit(2 * amount, userOne);
 
-        uint256 userSharesBefore = vault.balanceOf(userOne);
-        uint256 userAssetsBefore = vault.convertToAssets(userSharesBefore);
-
         Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
 
         calls[0] = Vault.ConnectorAction(
@@ -448,6 +447,9 @@ contract ForkVaultTest is Test {
         /// @dev first call
         vm.prank(keeper);
         vault.execute(calls);
+
+        uint256 userSharesBefore = vault.balanceOf(userOne);
+        uint256 userAssetsBefore = vault.convertToAssets(userSharesBefore);
 
         /// @dev artificial time forward
         vm.warp(block.timestamp + 100 days);
@@ -480,7 +482,7 @@ contract ForkVaultTest is Test {
         );
     }
 
-    function testShouldNOTIncreaseSharesWhenNotTouchedMarket() public {
+    function testShouldNOTIncreaseValueOfSharesAndAmountOfSharesWhenNotTouchedMarket() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -538,9 +540,6 @@ contract ForkVaultTest is Test {
         vm.prank(userOne);
         vault.deposit(2 * amount, userOne);
 
-        uint256 userSharesBefore = vault.balanceOf(userOne);
-        uint256 userAssetsBefore = vault.convertToAssets(userSharesBefore);
-
         Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
 
         calls[0] = Vault.ConnectorAction(
@@ -557,13 +556,14 @@ contract ForkVaultTest is Test {
             )
         );
 
-        vm.warp(block.timestamp);
-
         /// @dev first call
         vm.prank(keeper);
         vault.execute(calls);
 
-        vm.warp(block.timestamp + 100 days);
+        uint256 userSharesBefore = vault.balanceOf(userOne);
+        uint256 userAssetsBefore = vault.convertToAssets(userSharesBefore);
+
+        vm.warp(block.timestamp + 1000 days);
 
         Vault.ConnectorAction[] memory callsSecond = new Vault.ConnectorAction[](1);
 
@@ -585,6 +585,6 @@ contract ForkVaultTest is Test {
         uint256 userAssetsAfter = vault.convertToAssets(userSharesAfter);
 
         assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
-        assertLt(userAssetsAfter, userAssetsBefore + 2e18, "User assets before and after should be equal");
+        assertEq(userAssetsAfter, userAssetsBefore, "User assets before and after should be equal");
     }
 }
