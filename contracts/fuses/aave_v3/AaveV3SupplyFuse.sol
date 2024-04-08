@@ -74,8 +74,8 @@ contract AaveV3SupplyFuse is IFuse {
             revert AaveV3SupplyFuseUnsupportedAsset("exit", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
-        uint256 withDrawAmount = AAVE_POOL.withdraw(data.asset, data.amount, address(this));
+        uint256 withdrawnAmount = AAVE_POOL.withdraw(data.asset, data.amount, address(this));
 
-        emit AaveV3SupplyFuse(VERSION, "exit", data.asset, withDrawAmount, data.userEModeCategoryId);
+        emit AaveV3SupplyFuse(VERSION, "exit", data.asset, withdrawnAmount, data.userEModeCategoryId);
     }
 }

@@ -549,4 +549,94 @@ contract PlazmaVaultTest is Test {
         assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
         assertEq(userAssetsAfter, userAssetsBefore, "User assets before and after should be equal");
     }
+
+    function testShouldExitFromAaveV3SupplyFuse() public {
+        //given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
+        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
+
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuse);
+
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(plazmaVault), amount);
+
+        calls[0] = PlazmaVault.FuseAction(
+            address(supplyFuse),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(
+                    AaveV3SupplyFuse.AaveV3SupplyFuseData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
+                )
+            )
+        );
+
+        vm.prank(alpha);
+        plazmaVault.execute(calls);
+
+        PlazmaVault.FuseAction[] memory callsSecond = new PlazmaVault.FuseAction[](1);
+
+        callsSecond[0] = PlazmaVault.FuseAction(
+            address(supplyFuse),
+            abi.encodeWithSignature(
+                "exit(bytes)",
+                abi.encode(
+                    AaveV3SupplyFuse.AaveV3SupplyFuseData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
+                )
+            )
+        );
+
+        uint256 totalAssetsInMarketBefore = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
+
+        //when
+        vm.prank(alpha);
+        plazmaVault.execute(callsSecond);
+
+        //then
+        uint256 totalAssetsInMarketAfter = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
+        assertGt(
+            totalAssetsInMarketBefore,
+            totalAssetsInMarketAfter,
+            "Total assets in market should be decreased by amount"
+        );
+    }
+
+    function testShouldExitFromTwoMarkets() public {
+        //TODO: implement
+    }
 }
