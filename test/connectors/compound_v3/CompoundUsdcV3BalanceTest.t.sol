@@ -7,8 +7,8 @@ import {CompoundConstants} from "../../../contracts/connectors/compound_v3/Compo
 import {CompoundV3SupplyConnector} from "../../../contracts/connectors/compound_v3/CompoundV3SupplyConnector.sol";
 import {IComet} from "../../../contracts/connectors/compound_v3/IComet.sol";
 
-import {VaultCompoundMock} from "./VaultCompoundMock.sol";
-import {CompoundV3Balance} from "../../../contracts/connectors/compound_v3/CompoundV3Balance.sol";
+import {CompoundV3SupplyConnectorMock} from "./CompoundV3SupplyConnectorMock.sol";
+import {CompoundV3BalanceMock} from "./CompoundV3BalanceMock.sol";
 
 contract CompoundUsdcV3BalanceTest is Test {
     struct SupportedToken {
@@ -18,41 +18,44 @@ contract CompoundUsdcV3BalanceTest is Test {
 
     SupportedToken private activeTokens;
     IComet private constant COMET = IComet(CompoundConstants.COMET_V3_USDC);
-    CompoundV3Balance private marketBalance;
+    CompoundV3BalanceMock private marketBalance;
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
-        marketBalance = new CompoundV3Balance(CompoundConstants.COMET_V3_USDC, 1);
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
+        marketBalance = new CompoundV3BalanceMock(CompoundConstants.COMET_V3_USDC, 1);
     }
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
         CompoundV3SupplyConnector connector = new CompoundV3SupplyConnector(CompoundConstants.COMET_V3_USDC, 1);
-        VaultCompoundMock vaultMock = new VaultCompoundMock(address(connector));
+        CompoundV3SupplyConnectorMock connectorMock = new CompoundV3SupplyConnectorMock(address(connector));
 
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.token, address(vaultMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.token, address(connectorMock), 1_000 * 10 ** decimals);
 
-        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(vaultMock));
-        uint256 balanceOnCometBefore = _getBalance(address(vaultMock), activeTokens.token);
+        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(connectorMock));
+        uint256 balanceOnCometBefore = _getBalance(address(connectorMock), activeTokens.token);
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
-        vaultMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
-        (uint256 balanceMarketBefore, ) = marketBalance.balanceOfMarket(address(vaultMock), assets);
+        connectorMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
+        marketBalance.updateMarketConfiguration(assets);
+
+        uint256 balanceMarketBefore = marketBalance.balanceOfMarket(address(connectorMock));
 
         // when
 
-        vaultMock.enter(
+        connectorMock.enter(
             CompoundV3SupplyConnector.CompoundV3SupplyConnectorData({token: activeTokens.token, amount: amount})
         );
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(vaultMock));
-        uint256 balanceOnCometAfter = _getBalance(address(vaultMock), activeTokens.token);
-        (uint256 balanceMarketAfter, ) = marketBalance.balanceOfMarket(address(vaultMock), assets);
+        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(connectorMock));
+        uint256 balanceOnCometAfter = _getBalance(address(connectorMock), activeTokens.token);
+
+        uint256 balanceMarketAfter = marketBalance.balanceOfMarket(address(connectorMock));
 
         assertTrue(balanceMarketBefore < balanceMarketAfter, "market balance should be increased by amount");
         assertEq(balanceAfter + amount, balanceBefore, "vault balance should be decreased by amount");
@@ -62,27 +65,28 @@ contract CompoundUsdcV3BalanceTest is Test {
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
         CompoundV3SupplyConnector connector = new CompoundV3SupplyConnector(CompoundConstants.COMET_V3_USDC, 1);
-        VaultCompoundMock vaultMock = new VaultCompoundMock(address(connector));
+        CompoundV3SupplyConnectorMock connectorMock = new CompoundV3SupplyConnectorMock(address(connector));
 
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.token, address(vaultMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.token, address(connectorMock), 1_000 * 10 ** decimals);
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
-        vaultMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
+        connectorMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
+        marketBalance.updateMarketConfiguration(assets);
 
-        vaultMock.enter(
+        connectorMock.enter(
             CompoundV3SupplyConnector.CompoundV3SupplyConnectorData({token: activeTokens.token, amount: amount})
         );
 
-        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(vaultMock));
-        uint256 balanceOnCometBefore = _getBalance(address(vaultMock), activeTokens.token);
-        (uint256 balanceMarketBefore, ) = marketBalance.balanceOfMarket(address(vaultMock), assets);
+        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(connectorMock));
+        uint256 balanceOnCometBefore = _getBalance(address(connectorMock), activeTokens.token);
+        uint256 balanceMarketBefore = marketBalance.balanceOfMarket(address(connectorMock));
 
         // when
-        vaultMock.exit(
+        connectorMock.exit(
             CompoundV3SupplyConnector.CompoundV3SupplyConnectorData({
                 token: activeTokens.token,
                 amount: balanceOnCometBefore
@@ -90,9 +94,9 @@ contract CompoundUsdcV3BalanceTest is Test {
         );
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(vaultMock));
-        uint256 balanceOnCometAfter = _getBalance(address(vaultMock), activeTokens.token);
-        (uint256 balanceMarketAfter, ) = marketBalance.balanceOfMarket(address(vaultMock), assets);
+        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(connectorMock));
+        uint256 balanceOnCometAfter = _getBalance(address(connectorMock), activeTokens.token);
+        uint256 balanceMarketAfter = marketBalance.balanceOfMarket(address(connectorMock));
 
         assertTrue(balanceMarketBefore > balanceMarketAfter, "market balance should be decreased by amount");
 
@@ -133,7 +137,7 @@ contract CompoundUsdcV3BalanceTest is Test {
 
     modifier iterateSupportedTokens() {
         SupportedToken[] memory supportedTokens = _getSupportedAssets();
-        for (uint256 i; i < supportedTokens.length; i++) {
+        for (uint256 i; i < supportedTokens.length; ++i) {
             activeTokens = supportedTokens[i];
             _;
         }

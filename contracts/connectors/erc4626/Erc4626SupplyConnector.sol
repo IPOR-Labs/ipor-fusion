@@ -3,10 +3,10 @@ pragma solidity 0.8.20;
 
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {AssetsToMarketLib} from "../../libraries/AssetsToMarketLib.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IConnector} from "../IConnector.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
+import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 
 // https://github.com/morpho-org/metamorpho
 contract Erc4626SupplyConnector is IConnector {
@@ -20,7 +20,6 @@ contract Erc4626SupplyConnector is IConnector {
     }
 
     event Erc4626SupplyConnector(string action, uint256 version, address tokenIn, address market, uint256 amount);
-
     error Erc4626SupplyConnectorUnsupportedVault(string action, address token, string errorCode);
 
     uint256 public immutable MARKET_ID;
@@ -40,7 +39,7 @@ contract Erc4626SupplyConnector is IConnector {
     }
 
     function _enter(Erc4626SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
-        if (!AssetsToMarketLib.isAssetGrantedToMarket(MARKET_ID, data.vault)) {
+        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
             revert Erc4626SupplyConnectorUnsupportedVault("enter", data.vault, Errors.NOT_SUPPORTED_ERC4626);
         }
 
@@ -50,7 +49,6 @@ contract Erc4626SupplyConnector is IConnector {
         IERC4626(data.vault).deposit(data.amount, address(this));
 
         emit Erc4626SupplyConnector("enter", VERSION, underlineAsset, data.vault, data.amount);
-        return abi.encodePacked(uint256(1));
     }
 
     function exit(bytes calldata data) external returns (bytes memory executionStatus) {
@@ -63,11 +61,12 @@ contract Erc4626SupplyConnector is IConnector {
     }
 
     function _exit(Erc4626SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
-        if (!AssetsToMarketLib.isAssetGrantedToMarket(MARKET_ID, data.vault)) {
+        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
             revert Erc4626SupplyConnectorUnsupportedVault("exit", data.vault, Errors.NOT_SUPPORTED_ERC4626);
         }
+
         uint256 shares = IERC4626(data.vault).withdraw(data.amount, address(this), address(this));
+
         emit Erc4626SupplyConnector("exit", VERSION, IERC4626(data.vault).asset(), data.vault, shares);
-        return abi.encodePacked(data.amount);
     }
 }
