@@ -2,10 +2,10 @@
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {AssetsToMarketLib} from "../../../contracts/libraries/AssetsToMarketLib.sol";
 import {AaveV3SupplyConnector} from "../../../contracts/connectors/aave_v3/AaveV3SupplyConnector.sol";
+import {MarketConfigurationLib} from "../../../contracts/libraries/MarketConfigurationLib.sol";
 
-contract VaultMock {
+contract AaveV3SupplyConnectorMock {
     using Address for address;
 
     AaveV3SupplyConnector public connector;
@@ -38,10 +38,6 @@ contract VaultMock {
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
-        AssetsToMarketLib.grantAssetsToMarket(marketId, assets);
-    }
-
-    function revokeAssetsFromMarket(uint256 marketId, address[] calldata assets) external {
-        AssetsToMarketLib.revokeAssetsFromMarket(marketId, assets);
+        MarketConfigurationLib.grandSubstratesAsAssetsToMarket(marketId, assets);
     }
 }

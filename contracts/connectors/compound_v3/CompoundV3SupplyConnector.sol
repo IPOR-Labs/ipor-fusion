@@ -2,11 +2,11 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {AssetsToMarketLib} from "../../libraries/AssetsToMarketLib.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IConnector} from "../IConnector.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
 import {IComet} from "./IComet.sol";
+import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 
 contract CompoundV3SupplyConnector is IConnector {
     struct CompoundV3SupplyConnectorData {
@@ -41,7 +41,7 @@ contract CompoundV3SupplyConnector is IConnector {
     }
 
     function _enter(CompoundV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
-        if (!AssetsToMarketLib.isAssetGrantedToMarket(MARKET_ID, data.token)) {
+        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.token)) {
             revert CompoundV3SupplyConnectorUnsupportedAsset("enter", data.token, Errors.NOT_SUPPORTED_TOKEN);
         }
 
@@ -50,7 +50,6 @@ contract CompoundV3SupplyConnector is IConnector {
         COMET.supply(data.token, data.amount);
 
         emit CompoundV3SupplyConnector("enter", VERSION, data.token, address(COMET), data.amount);
-        return abi.encodePacked(uint256(1));
     }
 
     function exit(bytes calldata data) external returns (bytes memory executionStatus) {
@@ -63,11 +62,10 @@ contract CompoundV3SupplyConnector is IConnector {
     }
 
     function _exit(CompoundV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
-        if (!AssetsToMarketLib.isAssetGrantedToMarket(MARKET_ID, data.token)) {
+        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.token)) {
             revert CompoundV3SupplyConnectorUnsupportedAsset("exit", data.token, Errors.NOT_SUPPORTED_TOKEN);
         }
         COMET.withdraw(data.token, data.amount);
         emit CompoundV3SupplyConnector("exit", VERSION, data.token, address(COMET), data.amount);
-        return abi.encodePacked(data.amount);
     }
 }

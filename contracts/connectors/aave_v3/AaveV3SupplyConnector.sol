@@ -2,13 +2,15 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {AssetsToMarketLib} from "../../libraries/AssetsToMarketLib.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IPool} from "../../vaults/interfaces/IPool.sol";
 import {IConnector} from "../IConnector.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
+import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 
 contract AaveV3SupplyConnector is IConnector {
+    using SafeCast for uint256;
+
     struct AaveV3SupplyConnectorData {
         // token to supply
         address token;
@@ -28,8 +30,6 @@ contract AaveV3SupplyConnector is IConnector {
 
     error AaveV3SupplyConnectorUnsupportedAsset(string action, address token, string errorCode);
 
-    using SafeCast for uint256;
-
     // Ethereum Mainnet 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2
     IPool public immutable AAVE_POOL;
     uint256 public immutable MARKET_ID;
@@ -41,8 +41,8 @@ contract AaveV3SupplyConnector is IConnector {
     }
 
     function enter(bytes calldata data) external returns (bytes memory executionStatus) {
-        AaveV3SupplyConnectorData memory data = abi.decode(data, (AaveV3SupplyConnectorData));
-        return _enter(data);
+        AaveV3SupplyConnectorData memory structData = abi.decode(data, (AaveV3SupplyConnectorData));
+        return _enter(structData);
     }
 
     function enter(AaveV3SupplyConnectorData memory data) external returns (bytes memory executionStatus) {
@@ -50,7 +50,7 @@ contract AaveV3SupplyConnector is IConnector {
     }
 
     function _enter(AaveV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
-        if (!AssetsToMarketLib.isAssetGrantedToMarket(MARKET_ID, data.token)) {
+        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.token)) {
             revert AaveV3SupplyConnectorUnsupportedAsset("enter", data.token, Errors.NOT_SUPPORTED_TOKEN);
         }
 
@@ -61,8 +61,8 @@ contract AaveV3SupplyConnector is IConnector {
         if (data.userEModeCategoryId <= type(uint8).max) {
             AAVE_POOL.setUserEMode(data.userEModeCategoryId.toUint8());
         }
+
         emit AaveV3SupplyConnector("enter", VERSION, data.token, data.amount, data.userEModeCategoryId);
-        return abi.encodePacked(uint256(1));
     }
 
     function exit(bytes calldata data) external returns (bytes memory executionStatus) {
@@ -75,11 +75,12 @@ contract AaveV3SupplyConnector is IConnector {
     }
 
     function _exit(AaveV3SupplyConnectorData memory data) internal returns (bytes memory executionStatus) {
-        if (!AssetsToMarketLib.isAssetGrantedToMarket(MARKET_ID, data.token)) {
+        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.token)) {
             revert AaveV3SupplyConnectorUnsupportedAsset("exit", data.token, Errors.NOT_SUPPORTED_TOKEN);
         }
+
         uint256 withDrawAmount = AAVE_POOL.withdraw(data.token, data.amount, address(this));
+
         emit AaveV3SupplyConnector("exit", VERSION, data.token, withDrawAmount, data.userEModeCategoryId);
-        return abi.encodePacked(withDrawAmount);
     }
 }

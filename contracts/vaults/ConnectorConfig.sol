@@ -24,7 +24,7 @@ contract ConnectorConfig {
 
     function getMarkets() external view returns (Market[] memory resultMarkets) {
         resultMarkets = new Market[](currentMarketId);
-        for (uint256 i = 0; i < currentMarketId; i++) {
+        for (uint256 i; i < currentMarketId; ++i) {
             resultMarkets[i] = Market(i, markets[i]);
         }
     }

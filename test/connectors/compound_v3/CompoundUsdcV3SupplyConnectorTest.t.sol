@@ -7,7 +7,7 @@ import {CompoundConstants} from "../../../contracts/connectors/compound_v3/Compo
 import {CompoundV3SupplyConnector} from "../../../contracts/connectors/compound_v3/CompoundV3SupplyConnector.sol";
 import {IComet} from "../../../contracts/connectors/compound_v3/IComet.sol";
 
-import {VaultCompoundMock} from "./VaultCompoundMock.sol";
+import {CompoundV3SupplyConnectorMock} from "./CompoundV3SupplyConnectorMock.sol";
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
 contract CompoundUsdcV3SupplyConnectorTest is Test {
@@ -26,29 +26,29 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
         CompoundV3SupplyConnector connector = new CompoundV3SupplyConnector(CompoundConstants.COMET_V3_USDC, 1);
-        VaultCompoundMock vaultMock = new VaultCompoundMock(address(connector));
+        CompoundV3SupplyConnectorMock connectorMock = new CompoundV3SupplyConnectorMock(address(connector));
 
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.token, address(vaultMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.token, address(connectorMock), 1_000 * 10 ** decimals);
 
-        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(vaultMock));
-        uint256 balanceOnCometBefore = _getBalance(address(vaultMock), activeTokens.token);
+        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(connectorMock));
+        uint256 balanceOnCometBefore = _getBalance(address(connectorMock), activeTokens.token);
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
-        vaultMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
+        connectorMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
 
         // when
 
-        vaultMock.enter(
+        connectorMock.enter(
             CompoundV3SupplyConnector.CompoundV3SupplyConnectorData({token: activeTokens.token, amount: amount})
         );
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(vaultMock));
-        uint256 balanceOnCometAfter = _getBalance(address(vaultMock), activeTokens.token);
+        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(connectorMock));
+        uint256 balanceOnCometAfter = _getBalance(address(connectorMock), activeTokens.token);
 
         assertEq(balanceAfter + amount, balanceBefore, "vault balance should be decreased by amount");
         assertTrue(balanceOnCometAfter > balanceOnCometBefore, "collateral balance should be increased by amount");
@@ -57,26 +57,26 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
         CompoundV3SupplyConnector connector = new CompoundV3SupplyConnector(CompoundConstants.COMET_V3_USDC, 1);
-        VaultCompoundMock vaultMock = new VaultCompoundMock(address(connector));
+        CompoundV3SupplyConnectorMock connectorMock = new CompoundV3SupplyConnectorMock(address(connector));
 
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.token, address(vaultMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.token, address(connectorMock), 1_000 * 10 ** decimals);
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
-        vaultMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
+        connectorMock.grantAssetsToMarket(connector.MARKET_ID(), assets);
 
-        vaultMock.enter(
+        connectorMock.enter(
             CompoundV3SupplyConnector.CompoundV3SupplyConnectorData({token: activeTokens.token, amount: amount})
         );
 
-        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(vaultMock));
-        uint256 balanceOnCometBefore = _getBalance(address(vaultMock), activeTokens.token);
+        uint256 balanceBefore = ERC20(activeTokens.token).balanceOf(address(connectorMock));
+        uint256 balanceOnCometBefore = _getBalance(address(connectorMock), activeTokens.token);
 
         // when
-        vaultMock.exit(
+        connectorMock.exit(
             CompoundV3SupplyConnector.CompoundV3SupplyConnectorData({
                 token: activeTokens.token,
                 amount: balanceOnCometBefore
@@ -84,8 +84,8 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
         );
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(vaultMock));
-        uint256 balanceOnCometAfter = _getBalance(address(vaultMock), activeTokens.token);
+        uint256 balanceAfter = ERC20(activeTokens.token).balanceOf(address(connectorMock));
+        uint256 balanceOnCometAfter = _getBalance(address(connectorMock), activeTokens.token);
 
         assertTrue(balanceAfter > balanceBefore, "vault balance should be increased by amount");
         assertTrue(balanceOnCometAfter < balanceOnCometBefore, "collateral balance should be decreased by amount");
@@ -124,7 +124,7 @@ contract CompoundUsdcV3SupplyConnectorTest is Test {
 
     modifier iterateSupportedTokens() {
         SupportedToken[] memory supportedTokens = _getSupportedAssets();
-        for (uint256 i; i < supportedTokens.length; i++) {
+        for (uint256 i; i < supportedTokens.length; ++i) {
             activeTokens = supportedTokens[i];
             _;
         }

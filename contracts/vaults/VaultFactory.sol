@@ -19,10 +19,16 @@ contract VaultFactory is Ownable2Step {
         string memory assetSymbol,
         address underlyingToken,
         address[] memory keepers,
-        Vault.AssetsMarketStruct[] memory supportedAssetsInMarkets,
-        Vault.ConnectorStruct[] memory connectors,
-        Vault.ConnectorStruct[] memory balanceConnectors
+        Vault.MarketConfig[] memory marketConfigs,
+        address[] memory fuses,
+        Vault.FuseStruct[] memory balanceFuses
     ) external returns (address vault) {
+        /// TODO: validate if used marketId exists in global configuration. Storage: GLOBAL_CFG_MARKETS, GLOBAL_CFG_MARKETS_ARRAY
+        /// TODO: admin can add or remove markets in global configuration of a VaultFactory
+
+        ///TODO: validate connectors used markets existing in global configuration.
+        ///TODO: validate balance connectors used markets existing in global configuration.
+
         vault = address(
             new Vault(
                 iporVaultInitialOwner,
@@ -30,9 +36,9 @@ contract VaultFactory is Ownable2Step {
                 assetSymbol,
                 underlyingToken,
                 keepers,
-                supportedAssetsInMarkets,
-                connectors,
-                balanceConnectors
+                marketConfigs,
+                fuses,
+                balanceFuses
             )
         );
     }

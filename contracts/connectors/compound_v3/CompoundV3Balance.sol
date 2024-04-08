@@ -6,12 +6,15 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IBalance} from "../IBalance.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IComet} from "./IComet.sol";
+import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 
 contract CompoundV3Balance is IBalance {
     using SafeCast for int256;
     using SafeCast for uint256;
+
     uint256 private constant PRICE_DECIMALS = 8;
     address private constant USD = address(0x0000000000000000000000000000000000000348);
+
     IComet public immutable COMET;
     uint256 public immutable MARKET_ID;
     address public immutable COMPOUND_BASE_TOKEN;
@@ -26,13 +29,12 @@ contract CompoundV3Balance is IBalance {
         COMPOUND_BASE_TOKEN_DECIMALS = ERC20(COMPOUND_BASE_TOKEN).decimals();
     }
 
-    function balanceOfMarket(
-        address user,
-        address[] calldata assets
-    ) external view override returns (uint256, address) {
-        uint256 len = assets.length;
+    function balanceOfMarket(address user) external view override returns (uint256) {
+        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfigurationSubstrates(MARKET_ID);
+
+        uint256 len = assetsRaw.length;
         if (len == 0) {
-            return (0, USD);
+            return 0;
         }
 
         int256 balanceTemp = 0;
@@ -40,23 +42,29 @@ contract CompoundV3Balance is IBalance {
         uint256 decimals;
         // @dev this value has 8 decimals
         uint256 price;
+        address asset;
+        int256 borrowBalance;
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
-            decimals = ERC20(assets[i]).decimals();
-            price = _getPrice(assets[i]);
+            asset = MarketConfigurationLib.bytes32ToAddress(assetsRaw[i]);
+            decimals = ERC20(asset).decimals();
+            price = _getPrice(asset);
 
-            balanceTemp += IporMath.convertToWad(
-                _getBalance(user, assets[i]).toInt256() * int256(price),
+            balanceTemp += IporMath.convertToWadInt(
+                _getBalance(user, asset).toInt256() * int256(price),
                 decimals + PRICE_DECIMALS
             );
         }
-        int256 borrowBalance = IporMath.convertToWad(
+
+        borrowBalance = IporMath.convertToWadInt(
             (COMET.borrowBalanceOf(user) * COMET.getPrice(BASE_TOKEN_PRICE_FEED)).toInt256(),
             COMPOUND_BASE_TOKEN_DECIMALS + PRICE_DECIMALS
         );
+
         balanceTemp -= borrowBalance;
-        return (balanceTemp.toUint256(), USD);
+
+        return balanceTemp.toUint256();
     }
 
     function _getPrice(address asset) internal view returns (uint256) {
