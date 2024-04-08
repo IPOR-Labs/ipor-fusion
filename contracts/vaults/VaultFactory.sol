@@ -26,8 +26,8 @@ contract VaultFactory is Ownable2Step {
         /// TODO: validate if used marketId exists in global configuration. Storage: GLOBAL_CFG_MARKETS, GLOBAL_CFG_MARKETS_ARRAY
         /// TODO: admin can add or remove markets in global configuration of a VaultFactory
 
-        ///TODO: validate connectors used markets existing in global configuration.
-        ///TODO: validate balance connectors used markets existing in global configuration.
+        ///TODO: validate fuses used markets existing in global configuration.
+        ///TODO: validate balance fuses used markets existing in global configuration.
 
         vault = address(
             new Vault(
@@ -43,22 +43,22 @@ contract VaultFactory is Ownable2Step {
         );
     }
 
-    //    function createConnector(
+    //    function createFuse(
     //        string memory assetName,
     //        string memory assetSymbol,
     //        address underlyingAsset,
-    //        VaultTypes.ConnectorType connectorType
-    //    ) external returns (address connector) {
-    //        if (connectorType == VaultTypes.ConnectorType.MORPHO) {
-    //            connector = address(
-    //                new ConnectorMorpho(assetName, assetSymbol, underlyingAsset)
+    //        VaultTypes.FuseType fuseType
+    //    ) external returns (address fuse) {
+    //        if (fuseType == VaultTypes.FuseType.MORPHO) {
+    //            fuse = address(
+    //                new FuseMorpho(assetName, assetSymbol, underlyingAsset)
     //            );
-    //        } else if (connectorType == VaultTypes.ConnectorType.AAVE) {
-    //            connector = address(
-    //                new ConnectorAave(assetName, assetSymbol, underlyingAsset)
+    //        } else if (fuseType == VaultTypes.FuseType.AAVE) {
+    //            fuse = address(
+    //                new FuseAave(assetName, assetSymbol, underlyingAsset)
     //            );
     //        } else {
-    //            revert("VaultFactory: invalid connector type");
+    //            revert("VaultFactory: invalid fuse type");
     //        }
     //    }
 }

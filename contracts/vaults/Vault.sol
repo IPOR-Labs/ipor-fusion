@@ -9,27 +9,27 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {KeepersLib} from "../libraries/KeepersLib.sol";
-import {ConnectorsLib} from "../libraries/ConnectorsLib.sol";
-import {IConnectorCommon} from "./IConnectorCommon.sol";
+import {FusesLib} from "../libraries/FusesLib.sol";
+import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {MarketConfigurationLib} from "../libraries/MarketConfigurationLib.sol";
-import {VaultLib} from "../libraries/VaultLib.sol";
+import {PlazmaVaultLib} from "../libraries/PlazmaVaultLib.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
 
 contract Vault is ERC4626Permit, Ownable2Step {
     using Address for address;
 
     error InvalidKeeper();
-    error UnsupportedConnector();
+    error UnsupportedFuse();
 
     //TODO: setup Vault type - required for fee
 
-    struct ConnectorAction {
-        address connector;
+    struct FuseAction {
+        address fuse;
         bytes data;
     }
 
     struct FuseStruct {
-        /// @dev When marketId is 0, then connector is independent to a market - example flashloan connector
+        /// @dev When marketId is 0, then fuse is independent to a market - example flashloan fuse
         uint256 marketId;
         address fuse;
     }
@@ -45,8 +45,8 @@ contract Vault is ERC4626Permit, Ownable2Step {
     /// @param underlyingToken Address of the underlying token
     /// @param keepers Array of keepers initially granted to execute actions on the vault
     /// @param marketConfigs Array of market configurations
-    /// @param fuses Array of connectors
-    /// @param balanceFuses Array of balance connectors
+    /// @param fuses Array of fuses
+    /// @param balanceFuses Array of balance fuses
     constructor(
         address initialOwner,
         string memory assetName,
@@ -66,62 +66,58 @@ contract Vault is ERC4626Permit, Ownable2Step {
             _grantKeeper(keepers[i]);
         }
 
-        //TODO: validations supported assets are supported by connectors
+        //TODO: validations supported assets are supported by fuses
         for (uint256 i; i < fuses.length; ++i) {
-            _addFuse(fuses[i]);
+            FusesLib.addFuse(fuses[i]);
         }
 
-        //TODO: validations supported assets are supported by connectors
+        //TODO: validations supported assets are supported by fuses
         for (uint256 i; i < balanceFuses.length; ++i) {
-            _addBalanceFuse(balanceFuses[i]);
+            FusesLib.setBalanceFuse(balanceFuses[i].marketId, balanceFuses[i].fuse);
         }
 
         for (uint256 i; i < marketConfigs.length; ++i) {
             MarketConfigurationLib.grandSubstratesToMarket(marketConfigs[i].marketId, marketConfigs[i].substrates);
         }
 
-        ///TODO: when adding new connector - then validate if connector support assets defined for a given vault.
+        ///TODO: when adding new fuse - then validate if fuse support assets defined for a given vault.
     }
 
     function totalAssets() public view virtual override returns (uint256) {
         return
             IporMath.convertToWad(IERC20(asset()).balanceOf(address(this)), decimals()) +
-            VaultLib.getTotalAssetsInMarkets();
+            PlazmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
     function totalAssetsInMarket(uint256 marketId) public view virtual returns (uint256) {
-        return VaultLib.getTotalAssetsInMarket(marketId);
+        return PlazmaVaultLib.getTotalAssetsInMarket(marketId);
     }
 
-    function execute(ConnectorAction[] calldata calls) external returns (bytes[] memory returnData) {
+    function execute(FuseAction[] calldata calls) external {
         uint256 callsCount = calls.length;
-
-        returnData = new bytes[](callsCount);
 
         //TODO: move to transient storage
         uint256[] memory markets = new uint256[](callsCount);
         uint256 marketIndex = 0;
 
-        uint256 connectorMarketId;
+        uint256 fuseMarketId;
 
         for (uint256 i; i < callsCount; ++i) {
-            if (!ConnectorsLib.isConnectorSupported(calls[i].connector)) {
-                revert UnsupportedConnector();
+            if (!FusesLib.isFuseSupported(calls[i].fuse)) {
+                revert UnsupportedFuse();
             }
 
-            connectorMarketId = IConnectorCommon(calls[i].connector).MARKET_ID();
+            fuseMarketId = IFuseCommon(calls[i].fuse).MARKET_ID();
 
-            if (_checkIfExistsMarket(markets, connectorMarketId) == false) {
-                markets[marketIndex] = connectorMarketId;
+            if (_checkIfExistsMarket(markets, fuseMarketId) == false) {
+                markets[marketIndex] = fuseMarketId;
                 marketIndex++;
             }
 
-            returnData[i] = calls[i].connector.functionDelegateCall(calls[i].data);
+            calls[i].fuse.functionDelegateCall(calls[i].data);
         }
 
         _updateBalances(markets);
-
-        return returnData;
     }
 
     function grantKeeper(address keeper) external onlyOwner {
@@ -136,36 +132,28 @@ contract Vault is ERC4626Permit, Ownable2Step {
         return KeepersLib.isKeeperGranted(keeper);
     }
 
-    function addConnector(address fuse) external onlyOwner {
-        _addFuse(fuse);
+    function addFuse(address fuse) external onlyOwner {
+        FusesLib.addFuse(fuse);
     }
 
-    function removeConnector(address connector) external onlyOwner {
-        ConnectorsLib.removeConnector(connector);
+    function removeFuse(address fuse) external onlyOwner {
+        FusesLib.removeFuse(fuse);
     }
 
-    function isConnectorSupported(address connector) external view returns (bool) {
-        return ConnectorsLib.isConnectorSupported(connector);
+    function isFuseSupported(address fuse) external view returns (bool) {
+        return FusesLib.isFuseSupported(fuse);
     }
 
-    function isBalanceConnectorSupported(uint256 marketId, address connector) external view returns (bool) {
-        return ConnectorsLib.isBalanceConnectorSupported(marketId, connector);
+    function isBalanceFuseSupported(uint256 marketId, address fuse) external view returns (bool) {
+        return FusesLib.isBalanceFuseSupported(marketId, fuse);
     }
 
-    function addBalanceFuse(FuseStruct memory fuse) external onlyOwner {
-        _addBalanceFuse(fuse);
+    function addBalanceFuse(FuseStruct memory fuseInput) external onlyOwner {
+        FusesLib.setBalanceFuse(fuseInput.marketId, fuseInput.fuse);
     }
 
     function removeBalanceFuse(FuseStruct memory fuseInput) external onlyOwner {
-        ConnectorsLib.removeBalanceConnector(fuseInput.marketId, fuseInput.fuse);
-    }
-
-    function _addFuse(address fuseInput) internal {
-        ConnectorsLib.addConnector(fuseInput);
-    }
-
-    function _addBalanceFuse(FuseStruct memory fuseInput) internal {
-        ConnectorsLib.setBalanceFuse(fuseInput.marketId, fuseInput.fuse);
+        FusesLib.removeBalanceFuse(fuseInput.marketId, fuseInput.fuse);
     }
 
     function _grantKeeper(address keeper) internal {
@@ -198,30 +186,30 @@ contract Vault is ERC4626Permit, Ownable2Step {
                 break;
             }
 
-            address balanceFuse = ConnectorsLib.getMarketBalanceConnector(markets[i]);
+            address balanceFuse = FusesLib.getMarketBalanceFuse(markets[i]);
 
             bytes memory returnedData = balanceFuse.functionDelegateCall(
-                abi.encodeWithSignature("balanceOfMarket(address)", address(this))
+                abi.encodeWithSignature("balanceOf(address)", address(this))
             );
 
             balanceAmount = abi.decode(returnedData, (uint256));
-            deltas = deltas + VaultLib.updateTotalAssetsInMarket(markets[i], balanceAmount);
+            deltas = deltas + PlazmaVaultLib.updateTotalAssetsInMarket(markets[i], balanceAmount);
 
             //TODO: here use price oracle to convert balanceAmount to underlying token
             ///TODO:.....
         }
 
         if (deltas != 0) {
-            VaultLib.addToTotalAssets(deltas);
+            PlazmaVaultLib.addToTotalAssetsInMarkets(deltas);
         }
     }
 
-    /// TODO: use in connector when connector configurator contract is ready
+    /// TODO: use in fuse when fuse configurator contract is ready
     //solhint-disable-next-line
     function onMorphoFlashLoan(uint256 flashLoanAmount, bytes calldata data) external payable {
         //        uint256 assetBalanceBeforeCalls = IERC20(WST_ETH).balanceOf(payable(this));
 
-        ConnectorAction[] memory calls = abi.decode(data, (ConnectorAction[]));
+        FuseAction[] memory calls = abi.decode(data, (FuseAction[]));
 
         if (calls.length == 0) {
             return;
@@ -235,20 +223,20 @@ contract Vault is ERC4626Permit, Ownable2Step {
     receive() external payable {}
 
     fallback() external {
-        ///TODO: read msg.sender (if Morpho) and read method signature to determine connector address to execute
+        ///TODO: read msg.sender (if Morpho) and read method signature to determine fuse address to execute
         /// delegate call on method onMorphoFlashLoan
-        /// separate contract with configuration which connector use which flashloan method and protocol
+        /// separate contract with configuration which fuse use which flashloan method and protocol
     }
 
-    function addConnectors(FuseStruct[] calldata fuses) external onlyOwner {
+    function addFuses(FuseStruct[] calldata fuses) external onlyOwner {
         for (uint256 i; i < fuses.length; ++i) {
-            ConnectorsLib.addConnector(fuses[i].fuse);
+            FusesLib.addFuse(fuses[i].fuse);
         }
     }
 
-    function removeConnectors(FuseStruct[] calldata fuses) external onlyOwner {
+    function removeFuses(FuseStruct[] calldata fuses) external onlyOwner {
         for (uint256 i; i < fuses.length; ++i) {
-            ConnectorsLib.removeConnector(fuses[i].fuse);
+            FusesLib.removeFuse(fuses[i].fuse);
         }
     }
 }

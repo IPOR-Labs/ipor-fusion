@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {VaultFactory} from "../../contracts/vaults/VaultFactory.sol";
 import {Vault} from "../../contracts/vaults/Vault.sol";
-import {AaveV3SupplyConnector} from "../../contracts/connectors/aave_v3/AaveV3SupplyConnector.sol";
-import {AaveV3Balance} from "../../contracts/connectors/aave_v3/AaveV3Balance.sol";
+import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 
 contract VaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -20,7 +20,7 @@ contract VaultMaintenanceTest is Test {
         vaultFactory = new VaultFactory(owner);
     }
 
-    function testShouldSetupBalanceConnectorsWhenVaultCreated() public {
+    function testShouldSetupBalanceFusesWhenVaultCreated() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
@@ -32,12 +32,12 @@ contract VaultMaintenanceTest is Test {
 
         Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
 
-        AaveV3Balance balanceConnector = new AaveV3Balance(AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
 
-        address[] memory connectors = new address[](0);
+        address[] memory fuses = new address[](0);
 
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](1);
-        balanceConnectors[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceConnector));
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](1);
+        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         // when
         Vault vault = Vault(
@@ -48,17 +48,17 @@ contract VaultMaintenanceTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );
 
         // then
-        assertTrue(vault.isBalanceConnectorSupported(AAVE_V3_MARKET_ID, address(balanceConnector)));
+        assertTrue(vault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)));
     }
 
-    function testShouldAddBalanceConnectorByOwner() public {
+    function testShouldAddBalanceFuseByOwner() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
@@ -70,10 +70,10 @@ contract VaultMaintenanceTest is Test {
 
         Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
 
-        AaveV3Balance balanceConnector = new AaveV3Balance(AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
 
-        address[] memory connectors = new address[](0);
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](0);
+        address[] memory fuses = new address[](0);
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
 
         Vault vault = Vault(
             payable(
@@ -83,28 +83,28 @@ contract VaultMaintenanceTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );
 
         assertFalse(
-            vault.isBalanceConnectorSupported(AAVE_V3_MARKET_ID, address(balanceConnector)),
-            "Balance connector should not be supported"
+            vault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            "Balance fuse should not be supported"
         );
 
         //when
-        vault.addBalanceFuse(Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceConnector)));
+        vault.addBalanceFuse(Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuse)));
 
         //then
         assertTrue(
-            vault.isBalanceConnectorSupported(AAVE_V3_MARKET_ID, address(balanceConnector)),
-            "Balance connector should be supported"
+            vault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            "Balance fuse should be supported"
         );
     }
 
-    function testShouldSetupConnectorsWhenVaultCreated() public {
+    function testShouldSetupFusesWhenVaultCreated() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
@@ -116,11 +116,11 @@ contract VaultMaintenanceTest is Test {
 
         Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
 
-        address[] memory connectors = new address[](1);
-        AaveV3SupplyConnector connector = new AaveV3SupplyConnector(address(0x1), AAVE_V3_MARKET_ID);
-        connectors[0] = address(connector);
+        address[] memory fuses = new address[](1);
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(0x1), AAVE_V3_MARKET_ID);
+        fuses[0] = address(fuse);
 
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](0);
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
 
         // when
         Vault vault = Vault(
@@ -131,17 +131,17 @@ contract VaultMaintenanceTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );
 
         // then
-        assertTrue(vault.isConnectorSupported(address(connector)));
+        assertTrue(vault.isFuseSupported(address(fuse)));
     }
 
-    function testShouldAddConnectorByOwner() public {
+    function testShouldAddFuseByOwner() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
@@ -153,8 +153,8 @@ contract VaultMaintenanceTest is Test {
 
         Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
 
-        address[] memory connectors = new address[](0);
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](0);
+        address[] memory fuses = new address[](0);
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
 
         Vault vault = Vault(
             payable(
@@ -164,24 +164,24 @@ contract VaultMaintenanceTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );
 
-        AaveV3SupplyConnector connector = new AaveV3SupplyConnector(address(0x1), AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(0x1), AAVE_V3_MARKET_ID);
 
-        assertFalse(vault.isConnectorSupported(address(connector)));
+        assertFalse(vault.isFuseSupported(address(fuse)));
 
         //when
-        vault.addConnector(address(connector));
+        vault.addFuse(address(fuse));
 
         //then
-        assertTrue(vault.isConnectorSupported(address(connector)));
+        assertTrue(vault.isFuseSupported(address(fuse)));
     }
 
-    function testShouldRemoveConnectorByOwner() public {
+    function testShouldRemoveFuseByOwner() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
@@ -193,11 +193,11 @@ contract VaultMaintenanceTest is Test {
 
         Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
 
-        address[] memory connectors = new address[](1);
-        AaveV3SupplyConnector connector = new AaveV3SupplyConnector(address(0x1), AAVE_V3_MARKET_ID);
-        connectors[0] = address(connector);
+        address[] memory fuses = new address[](1);
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(0x1), AAVE_V3_MARKET_ID);
+        fuses[0] = address(fuse);
 
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](0);
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
 
         Vault vault = Vault(
             payable(
@@ -207,19 +207,19 @@ contract VaultMaintenanceTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );
 
-        assertTrue(vault.isConnectorSupported(address(connector)));
+        assertTrue(vault.isFuseSupported(address(fuse)));
 
         //when
-        vault.removeConnector(address(connector));
+        vault.removeFuse(address(fuse));
 
         //then
-        assertFalse(vault.isConnectorSupported(address(connector)));
+        assertFalse(vault.isFuseSupported(address(fuse)));
     }
 
     function testShouldSetupKeeperWhenVaultCreated() public {
@@ -234,8 +234,8 @@ contract VaultMaintenanceTest is Test {
 
         Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
 
-        address[] memory connectors = new address[](0);
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](0);
+        address[] memory fuses = new address[](0);
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
 
         // when
         Vault vault = Vault(
@@ -246,8 +246,8 @@ contract VaultMaintenanceTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );
@@ -268,8 +268,8 @@ contract VaultMaintenanceTest is Test {
 
         Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
 
-        address[] memory connectors = new address[](0);
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](0);
+        address[] memory fuses = new address[](0);
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
 
         // when
         Vault vault = Vault(
@@ -280,8 +280,8 @@ contract VaultMaintenanceTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );
@@ -302,8 +302,8 @@ contract VaultMaintenanceTest is Test {
 
         Vault.MarketConfig[] memory marketConfigs = new Vault.MarketConfig[](0);
 
-        address[] memory connectors = new address[](0);
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](0);
+        address[] memory fuses = new address[](0);
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](0);
 
         Vault vault = Vault(
             payable(
@@ -313,8 +313,8 @@ contract VaultMaintenanceTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );

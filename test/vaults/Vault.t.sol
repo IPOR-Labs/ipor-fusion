@@ -5,13 +5,13 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {VaultFactory} from "../../contracts/vaults/VaultFactory.sol";
 import {Vault} from "../../contracts/vaults/Vault.sol";
-import {AaveV3SupplyConnector} from "../../contracts/connectors/aave_v3/AaveV3SupplyConnector.sol";
-import {AaveV3Balance} from "../../contracts/connectors/aave_v3/AaveV3Balance.sol";
-import {CompoundV3Balance} from "../../contracts/connectors/compound_v3/CompoundV3Balance.sol";
-import {CompoundV3SupplyConnector} from "../../contracts/connectors/compound_v3/CompoundV3SupplyConnector.sol";
+import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
+import {CompoundV3SupplyFuse} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
-import {IAavePoolDataProvider} from "../../contracts/connectors/aave_v3/IAavePoolDataProvider.sol";
-import {DoNothingConnector} from "../connectors/DoNothingConnector.sol";
+import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
+import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
 
 contract VaultTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -61,15 +61,15 @@ contract VaultTest is Test {
         assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
         marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
 
-        AaveV3Balance balanceConnector = new AaveV3Balance(AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
 
-        AaveV3SupplyConnector supplyConnector = new AaveV3SupplyConnector(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
 
-        address[] memory connectors = new address[](1);
-        connectors[0] = address(supplyConnector);
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuse);
 
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](1);
-        balanceConnectors[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceConnector));
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](1);
+        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         Vault vault = Vault(
             payable(
@@ -79,28 +79,24 @@ contract VaultTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );
 
-        Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
+        Vault.FuseAction[] memory calls = new Vault.FuseAction[](1);
 
         uint256 amount = 100 * 1e18;
 
         deal(DAI, address(vault), amount);
 
-        calls[0] = Vault.ConnectorAction(
-            address(supplyConnector),
+        calls[0] = Vault.FuseAction(
+            address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
-                        token: DAI,
-                        amount: amount,
-                        userEModeCategoryId: 1e18
-                    })
+                    AaveV3SupplyFuse.AaveV3SupplyFuseData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
                 )
             )
         );
@@ -114,7 +110,7 @@ contract VaultTest is Test {
         assertTrue(true);
     }
 
-    function testShouldExecuteTwoSupplyConnectors() public {
+    function testShouldExecuteTwoSupplyFuses() public {
         //given
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
@@ -131,16 +127,13 @@ contract VaultTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3Balance balanceFuseAaveV3 = new AaveV3Balance(AAVE_V3_MARKET_ID);
-        AaveV3SupplyConnector supplyFuseAaveV3 = new AaveV3SupplyConnector(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
 
         /// @dev Market Compound V3
         marketConfigs[1] = Vault.MarketConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3Balance balanceFuseCompoundV3 = new CompoundV3Balance(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyConnector supplyFuseCompoundV3 = new CompoundV3SupplyConnector(
-            COMET_V3_USDC,
-            COMPOUND_V3_MARKET_ID
-        );
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -164,32 +157,28 @@ contract VaultTest is Test {
             )
         );
 
-        Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](2);
+        Vault.FuseAction[] memory calls = new Vault.FuseAction[](2);
 
         uint256 amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(vault), 2 * amount);
 
-        calls[0] = Vault.ConnectorAction(
+        calls[0] = Vault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
-                        token: USDC,
-                        amount: amount,
-                        userEModeCategoryId: 1e6
-                    })
+                    AaveV3SupplyFuse.AaveV3SupplyFuseData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
                 )
             )
         );
 
-        calls[1] = Vault.ConnectorAction(
+        calls[1] = Vault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(CompoundV3SupplyConnector.CompoundV3SupplyConnectorData({token: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseData({asset: USDC, amount: amount}))
             )
         );
 
@@ -202,7 +191,7 @@ contract VaultTest is Test {
         assertTrue(true);
     }
 
-    function testShouldUpdateBalanceWhenOneConnector() public {
+    function testShouldUpdateBalanceWhenOneFuse() public {
         //given
         assetName = "IPOR Fusion DAI";
         assetSymbol = "ipfDAI";
@@ -218,15 +207,15 @@ contract VaultTest is Test {
         assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
         marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
 
-        AaveV3Balance balanceConnector = new AaveV3Balance(AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
 
-        AaveV3SupplyConnector supplyConnector = new AaveV3SupplyConnector(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
 
-        address[] memory connectors = new address[](1);
-        connectors[0] = address(supplyConnector);
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuse);
 
-        Vault.FuseStruct[] memory balanceConnectors = new Vault.FuseStruct[](1);
-        balanceConnectors[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceConnector));
+        Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](1);
+        balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         Vault vault = Vault(
             payable(
@@ -236,28 +225,24 @@ contract VaultTest is Test {
                     underlyingToken,
                     keepers,
                     marketConfigs,
-                    connectors,
-                    balanceConnectors
+                    fuses,
+                    balanceFuses
                 )
             )
         );
 
-        Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
+        Vault.FuseAction[] memory calls = new Vault.FuseAction[](1);
 
         uint256 amount = 100 * 1e18;
 
         deal(DAI, address(vault), amount);
 
-        calls[0] = Vault.ConnectorAction(
-            address(supplyConnector),
+        calls[0] = Vault.FuseAction(
+            address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
-                        token: DAI,
-                        amount: amount,
-                        userEModeCategoryId: 1e18
-                    })
+                    AaveV3SupplyFuse.AaveV3SupplyFuseData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
                 )
             )
         );
@@ -285,7 +270,7 @@ contract VaultTest is Test {
         );
     }
 
-    function testShouldUpdateBalanceWhenExecuteTwoSupplyConnectors() public {
+    function testShouldUpdateBalanceWhenExecuteTwoSupplyFuses() public {
         //given
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
@@ -302,16 +287,13 @@ contract VaultTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3Balance balanceFuseAaveV3 = new AaveV3Balance(AAVE_V3_MARKET_ID);
-        AaveV3SupplyConnector supplyFuseAaveV3 = new AaveV3SupplyConnector(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
 
         /// @dev Market Compound V3
         marketConfigs[1] = Vault.MarketConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3Balance balanceFuseCompoundV3 = new CompoundV3Balance(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyConnector supplyFuseCompoundV3 = new CompoundV3SupplyConnector(
-            COMET_V3_USDC,
-            COMPOUND_V3_MARKET_ID
-        );
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -335,32 +317,28 @@ contract VaultTest is Test {
             )
         );
 
-        Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](2);
+        Vault.FuseAction[] memory calls = new Vault.FuseAction[](2);
 
         uint256 amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(vault), 2 * amount);
 
-        calls[0] = Vault.ConnectorAction(
+        calls[0] = Vault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
-                        token: USDC,
-                        amount: amount,
-                        userEModeCategoryId: 1e6
-                    })
+                    AaveV3SupplyFuse.AaveV3SupplyFuseData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
                 )
             )
         );
 
-        calls[1] = Vault.ConnectorAction(
+        calls[1] = Vault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(CompoundV3SupplyConnector.CompoundV3SupplyConnectorData({token: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseData({asset: USDC, amount: amount}))
             )
         );
 
@@ -392,13 +370,13 @@ contract VaultTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3Balance balanceFuseAaveV3 = new AaveV3Balance(AAVE_V3_MARKET_ID);
-        AaveV3SupplyConnector supplyFuseAaveV3 = new AaveV3SupplyConnector(AAVE_POOL, AAVE_V3_MARKET_ID);
-        DoNothingConnector doNothingConnectorAaveV3 = new DoNothingConnector(AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        DoNothingFuse doNothingFuseAaveV3 = new DoNothingFuse(AAVE_V3_MARKET_ID);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
-        fuses[1] = address(doNothingConnectorAaveV3);
+        fuses[1] = address(doNothingFuseAaveV3);
 
         Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](1);
         balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
@@ -428,18 +406,14 @@ contract VaultTest is Test {
         vm.prank(userOne);
         vault.deposit(2 * amount, userOne);
 
-        Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
+        Vault.FuseAction[] memory calls = new Vault.FuseAction[](1);
 
-        calls[0] = Vault.ConnectorAction(
+        calls[0] = Vault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
-                        token: USDC,
-                        amount: amount,
-                        userEModeCategoryId: 1e6
-                    })
+                    AaveV3SupplyFuse.AaveV3SupplyFuseData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
                 )
             )
         );
@@ -454,15 +428,12 @@ contract VaultTest is Test {
         /// @dev artificial time forward
         vm.warp(block.timestamp + 100 days);
 
-        Vault.ConnectorAction[] memory callsSecond = new Vault.ConnectorAction[](1);
+        Vault.FuseAction[] memory callsSecond = new Vault.FuseAction[](1);
 
         /// @dev do nothing only touch the market
-        callsSecond[0] = Vault.ConnectorAction(
-            address(doNothingConnectorAaveV3),
-            abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(DoNothingConnector.DoNothingConnectorData({token: USDC}))
-            )
+        callsSecond[0] = Vault.FuseAction(
+            address(doNothingFuseAaveV3),
+            abi.encodeWithSignature("enter(bytes)", abi.encode(DoNothingFuse.DoNothingFuseData({asset: USDC})))
         );
 
         //when
@@ -499,17 +470,17 @@ contract VaultTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = Vault.MarketConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3Balance balanceFuseAaveV3 = new AaveV3Balance(AAVE_V3_MARKET_ID);
-        AaveV3SupplyConnector supplyFuseAaveV3 = new AaveV3SupplyConnector(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
 
         /// @dev Market Compound V3
         marketConfigs[1] = Vault.MarketConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3Balance balanceFuseCompoundV3 = new CompoundV3Balance(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        DoNothingConnector doNothingConnectorCompoundV3 = new DoNothingConnector(COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        DoNothingFuse doNothingFuseCompoundV3 = new DoNothingFuse(COMPOUND_V3_MARKET_ID);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
-        fuses[1] = address(doNothingConnectorCompoundV3);
+        fuses[1] = address(doNothingFuseCompoundV3);
 
         Vault.FuseStruct[] memory balanceFuses = new Vault.FuseStruct[](2);
         balanceFuses[0] = Vault.FuseStruct(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
@@ -540,19 +511,13 @@ contract VaultTest is Test {
         vm.prank(userOne);
         vault.deposit(2 * amount, userOne);
 
-        Vault.ConnectorAction[] memory calls = new Vault.ConnectorAction[](1);
+        Vault.FuseAction[] memory calls = new Vault.FuseAction[](1);
 
-        calls[0] = Vault.ConnectorAction(
+        calls[0] = Vault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyConnector.AaveV3SupplyConnectorData({
-                        token: USDC,
-                        amount: amount,
-                        userEModeCategoryId: 0
-                    })
-                )
+                abi.encode(AaveV3SupplyFuse.AaveV3SupplyFuseData({asset: USDC, amount: amount, userEModeCategoryId: 0}))
             )
         );
 
@@ -565,14 +530,11 @@ contract VaultTest is Test {
 
         vm.warp(block.timestamp + 1000 days);
 
-        Vault.ConnectorAction[] memory callsSecond = new Vault.ConnectorAction[](1);
+        Vault.FuseAction[] memory callsSecond = new Vault.FuseAction[](1);
 
-        callsSecond[0] = Vault.ConnectorAction(
-            address(doNothingConnectorCompoundV3),
-            abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(DoNothingConnector.DoNothingConnectorData({token: USDC}))
-            )
+        callsSecond[0] = Vault.FuseAction(
+            address(doNothingFuseCompoundV3),
+            abi.encodeWithSignature("enter(bytes)", abi.encode(DoNothingFuse.DoNothingFuseData({asset: USDC})))
         );
 
         //when
