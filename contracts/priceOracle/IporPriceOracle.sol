@@ -22,10 +22,10 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
 
     constructor(address baseCurrency, uint256 baseCurrencyDecimals, address chainlinkFeedRegistry) {
         if (baseCurrency == address(0)) {
-            revert IIporPriceOracle.ZeroAddress(Errors.ZERO_ADDRESS_NOT_SUPPORTED, "baseCurrency");
+            revert IIporPriceOracle.ZeroAddress(Errors.UNSUPPORTED_ZERO_ADDRESS, "baseCurrency");
         }
         if (chainlinkFeedRegistry == address(0)) {
-            revert IIporPriceOracle.ZeroAddress(Errors.ZERO_ADDRESS_NOT_SUPPORTED, "chainlinkFeedRegistry");
+            revert IIporPriceOracle.ZeroAddress(Errors.UNSUPPORTED_ZERO_ADDRESS, "chainlinkFeedRegistry");
         }
 
         BASE_CURRENCY = baseCurrency;
@@ -42,7 +42,7 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
         uint256 assetsLength = assets.length;
         uint256 sourcesLength = sources.length;
         if (assetsLength == 0 || sourcesLength == 0) {
-            revert IIporPriceOracle.EmptyArrayNotSupported(Errors.EMPTY_ARRAY_NOT_SUPPORTED);
+            revert IIporPriceOracle.EmptyArrayNotSupported(Errors.UNSUPPORTED_EMPTY_ARRAY);
         }
         if (assetsLength != sourcesLength) {
             revert IIporPriceOracle.ArrayLengthMismatch(Errors.ARRAY_LENGTH_MISMATCH);
@@ -77,7 +77,7 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
     function getAssetsPrices(address[] calldata assets) external view returns (uint256[] memory) {
         uint256 assetsLength = assets.length;
         if (assetsLength == 0) {
-            revert IIporPriceOracle.EmptyArrayNotSupported(Errors.EMPTY_ARRAY_NOT_SUPPORTED);
+            revert IIporPriceOracle.EmptyArrayNotSupported(Errors.UNSUPPORTED_EMPTY_ARRAY);
         }
         uint256[] memory prices = new uint256[](assetsLength);
         for (uint256 i; i < assetsLength; ++i) {
