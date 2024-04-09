@@ -9,9 +9,11 @@ contract VaultMorphoBlueMock {
     using Address for address;
 
     MorphoBlueSupplyFuse public fuse;
+    address public morphoBalanceFuse;
 
-    constructor(address fuseInput) {
+    constructor(address fuseInput, address morphoBalanceFuseInput) {
         fuse = MorphoBlueSupplyFuse(fuseInput);
+        morphoBalanceFuse = morphoBalanceFuseInput;
     }
     //solhint-disable-next-line
     function enter(bytes calldata data) external returns (bytes memory executionStatus) {
@@ -39,5 +41,10 @@ contract VaultMorphoBlueMock {
 
     function grantAssetsToMarket(uint256 marketId, bytes32[] calldata substrates) external {
         MarketConfigurationLib.grandSubstratesToMarket(marketId, substrates);
+    }
+
+    //solhint-disable-next-line
+    function balanceOf(address plazmaVault) external returns (uint256) {
+        return abi.decode(morphoBalanceFuse.functionDelegateCall(msg.data), (uint256));
     }
 }
