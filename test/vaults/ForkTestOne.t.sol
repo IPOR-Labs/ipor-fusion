@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {FlashLoanMorphoFuse} from "../../contracts/vaults/poc/FlashLoanMorphoFuse.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
@@ -12,6 +13,7 @@ import {PriceAdapter} from "../../contracts/vaults/poc/PriceAdapter.sol";
 import {AaveV3BalanceFuse} from "../../contracts/vaults/poc/AaveV3BalanceFuse.sol";
 
 import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
+import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 
 contract ForkAmmGovernanceServiceTest is Test {
     address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -29,6 +31,8 @@ contract ForkAmmGovernanceServiceTest is Test {
     uint256 internal aaveV3MarketId;
 
     address internal priceAdapter;
+
+    IporPriceOracle private iporPriceOracleProxy;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19368505);
@@ -64,12 +68,25 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig({marketId: aaveV3MarketId, substrates: marketAssets});
 
+        IporPriceOracle implementation = new IporPriceOracle(
+            0x0000000000000000000000000000000000000348,
+            8,
+            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
+        );
+
+        iporPriceOracleProxy = IporPriceOracle(
+            address(
+                new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
+            )
+        );
+
         vaultWstEth = payable(
             new PlazmaVault(
                 msg.sender,
                 "ipvwstETH",
                 "IP PlazmaVault wstETH",
                 WST_ETH,
+                address(iporPriceOracleProxy),
                 alphas,
                 marketConfigs,
                 fuses,

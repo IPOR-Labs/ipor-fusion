@@ -14,9 +14,13 @@ import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {MarketConfigurationLib} from "../libraries/MarketConfigurationLib.sol";
 import {PlazmaVaultLib} from "../libraries/PlazmaVaultLib.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
+import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
+import {Errors} from "../libraries/errors/Errors.sol";
 
 contract PlazmaVault is ERC4626Permit, Ownable2Step {
     using Address for address;
+
+    address private constant USD = address(0x0000000000000000000000000000000000000348);
 
     //TODO: setup Vault type - required for fee
 
@@ -37,6 +41,9 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         bytes32[] substrates;
     }
 
+    IIporPriceOracle public immutable PRICE_ORACLE;
+    uint256 public immutable BASE_CURRENCY_DECIMALS;
+
     error InvalidAlpha();
     error UnsupportedFuse();
 
@@ -52,6 +59,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         string memory assetName,
         string memory assetSymbol,
         address underlyingToken,
+        address iporPriceOracle,
         address[] memory alphas,
         MarketSubstratesConfig[] memory marketSubstratesConfigs,
         address[] memory fuses,
@@ -62,6 +70,14 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         ERC20(assetName, assetSymbol)
         Ownable(initialOwner)
     {
+        PRICE_ORACLE = IIporPriceOracle(iporPriceOracle);
+
+        if (PRICE_ORACLE.BASE_CURRENCY() != USD) {
+            revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
+        }
+
+        BASE_CURRENCY_DECIMALS = PRICE_ORACLE.BASE_CURRENCY_DECIMALS();
+
         for (uint256 i; i < alphas.length; ++i) {
             _grantAlpha(alphas[i]);
         }
@@ -86,12 +102,15 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         ///TODO: when adding new fuse - then validate if fuse support assets defined for a given Plazma Vault.
     }
 
+    /// @notice Returns the total assets in the vault
+    /// @return total assets in the vault, represented in underlying token decimals
     function totalAssets() public view virtual override returns (uint256) {
-        return
-            IporMath.convertToWad(IERC20(asset()).balanceOf(address(this)), decimals()) +
-            PlazmaVaultLib.getTotalAssetsInAllMarkets();
+        return IERC20(asset()).balanceOf(address(this)) + PlazmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
+    /// @notice Returns the total assets in the vault for a specific market
+    /// @param marketId The market id
+    /// @return total assets in the vault for the market, represented in underlying token decimals
     function totalAssetsInMarket(uint256 marketId) public view virtual returns (uint256) {
         return PlazmaVaultLib.getTotalAssetsInMarket(marketId);
     }
@@ -159,6 +178,44 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         FusesLib.removeBalanceFuse(fuseInput.marketId, fuseInput.fuse);
     }
 
+    /// @notice Update balances in the vault for markets touched by the fuses during the execution of all FuseActions
+    /// @param markets Array of market ids touched by the fuses in the FuseActions
+    function _updateBalances(uint256[] memory markets) internal {
+        int256 deltasInUnderlying = 0;
+        uint256 wadBalanceAmountInUSD;
+        address balanceFuse;
+
+        /// @dev USD price is represented in 8 decimals
+        uint256 underlyingAssetPrice = PRICE_ORACLE.getAssetPrice(asset());
+
+        for (uint256 i; i < markets.length; ++i) {
+            if (markets[i] == 0) {
+                break;
+            }
+
+            balanceFuse = FusesLib.getMarketBalanceFuse(markets[i]);
+
+            wadBalanceAmountInUSD = abi.decode(
+                balanceFuse.functionDelegateCall(abi.encodeWithSignature("balanceOf(address)", address(this))),
+                (uint256)
+            );
+
+            deltasInUnderlying =
+                deltasInUnderlying +
+                PlazmaVaultLib.updateTotalAssetsInMarket(
+                    markets[i],
+                    IporMath.convertWadToAssetDecimals(
+                        IporMath.division(wadBalanceAmountInUSD * underlyingAssetPrice, 10 ** BASE_CURRENCY_DECIMALS),
+                        decimals()
+                    )
+                );
+        }
+
+        if (deltasInUnderlying != 0) {
+            PlazmaVaultLib.addToTotalAssetsInMarkets(deltasInUnderlying);
+        }
+    }
+
     function _grantAlpha(address alpha) internal {
         if (alpha == address(0)) {
             revert InvalidAlpha();
@@ -167,7 +224,6 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         AlphasLib.grantAlpha(alpha);
     }
 
-    /// marketId and connetcore
     function _checkIfExistsMarket(uint256[] memory markets, uint256 marketId) internal view returns (bool exists) {
         for (uint256 i; i < markets.length; ++i) {
             if (markets[i] == 0) {
@@ -177,33 +233,6 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
                 exists = true;
                 break;
             }
-        }
-    }
-
-    function _updateBalances(uint256[] memory markets) internal {
-        int256 deltas = 0;
-        uint256 balanceAmount;
-
-        for (uint256 i; i < markets.length; ++i) {
-            if (markets[i] == 0) {
-                break;
-            }
-
-            address balanceFuse = FusesLib.getMarketBalanceFuse(markets[i]);
-
-            bytes memory returnedData = balanceFuse.functionDelegateCall(
-                abi.encodeWithSignature("balanceOf(address)", address(this))
-            );
-
-            balanceAmount = abi.decode(returnedData, (uint256));
-            deltas = deltas + PlazmaVaultLib.updateTotalAssetsInMarket(markets[i], balanceAmount);
-
-            //TODO: here use price oracle to convert balanceAmount to underlying token
-            ///TODO:.....
-        }
-
-        if (deltas != 0) {
-            PlazmaVaultLib.addToTotalAssetsInMarkets(deltas);
         }
     }
 

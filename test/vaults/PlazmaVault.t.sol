@@ -12,6 +12,8 @@ import {CompoundV3SupplyFuse} from "../../contracts/fuses/compound_v3/CompoundV3
 import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
+import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract PlazmaVaultTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -39,10 +41,24 @@ contract PlazmaVaultTest is Test {
 
     address public userOne;
 
+    IporPriceOracle private iporPriceOracleProxy;
+
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
         vaultFactory = new PlazmaVaultFactory(owner);
         userOne = address(0x777);
+
+        IporPriceOracle implementation = new IporPriceOracle(
+            0x0000000000000000000000000000000000000348,
+            8,
+            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
+        );
+
+        iporPriceOracleProxy = IporPriceOracle(
+            address(
+                new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
+            )
+        );
     }
 
     function testShouldExecuteSimpleCase() public {
@@ -77,6 +93,7 @@ contract PlazmaVaultTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -112,10 +129,10 @@ contract PlazmaVaultTest is Test {
 
     function testShouldExecuteTwoSupplyFuses() public {
         //given
-        string memory assetName = "IPOR Fusion USDC";
-        string memory assetSymbol = "ipfUSDC";
-        address underlyingToken = USDC;
-        address[] memory alphas = new address[](1);
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alphas = new address[](1);
 
         address alpha = address(0x1);
         alphas[0] = alpha;
@@ -149,6 +166,7 @@ contract PlazmaVaultTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -159,7 +177,7 @@ contract PlazmaVaultTest is Test {
 
         PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
 
-        uint256 amount = 100 * 1e6;
+        amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(plazmaVault), 2 * amount);
@@ -223,6 +241,7 @@ contract PlazmaVaultTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -272,10 +291,10 @@ contract PlazmaVaultTest is Test {
 
     function testShouldUpdateBalanceWhenExecuteTwoSupplyFuses() public {
         //given
-        string memory assetName = "IPOR Fusion USDC";
-        string memory assetSymbol = "ipfUSDC";
-        address underlyingToken = USDC;
-        address[] memory alphas = new address[](1);
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alphas = new address[](1);
 
         address alpha = address(0x1);
         alphas[0] = alpha;
@@ -309,6 +328,7 @@ contract PlazmaVaultTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -319,7 +339,7 @@ contract PlazmaVaultTest is Test {
 
         PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
 
-        uint256 amount = 100 * 1e6;
+        amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(plazmaVault), 2 * amount);
@@ -349,7 +369,11 @@ contract PlazmaVaultTest is Test {
         //then
         uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
 
-        assertGt(vaultTotalAssetsAfter, 199e18, "Vault total assets should be increased by amount");
+        assertGt(
+            vaultTotalAssetsAfter,
+            199 * 10 ** plazmaVault.decimals(),
+            "Vault total assets should be increased by amount"
+        );
     }
 
     function testShouldIncreaseValueOfSharesAndNotChangeNumberOfSharesWhenTouchedMarket() public {
@@ -386,6 +410,7 @@ contract PlazmaVaultTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -447,7 +472,7 @@ contract PlazmaVaultTest is Test {
         assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
         assertGt(
             userAssetsAfter,
-            userAssetsBefore + 2e18,
+            userAssetsBefore + 2 * 10 ** plazmaVault.decimals(),
             "User assets after should be greater than user assets before"
         );
     }
@@ -491,6 +516,7 @@ contract PlazmaVaultTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -583,6 +609,7 @@ contract PlazmaVaultTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -676,6 +703,7 @@ contract PlazmaVaultTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
