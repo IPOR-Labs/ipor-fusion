@@ -103,7 +103,7 @@ contract ForkAmmGovernanceServiceTest is Test {
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseData({
+                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({
                         asset: WST_ETH,
                         amount: 40 * 1e18,
                         userEModeCategoryId: 1e18

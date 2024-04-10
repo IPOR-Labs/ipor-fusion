@@ -14,27 +14,27 @@ contract CompoundV3SupplyFuseMock {
         fuse = CompoundV3SupplyFuse(fuseInput);
     }
     //solhint-disable-next-line
-    function enter(bytes calldata data) external returns (bytes memory executionStatus) {
-        return address(fuse).functionDelegateCall(msg.data);
+    function enter(bytes calldata data) external {
+        address(fuse).functionDelegateCall(msg.data);
     }
 
     function enter(
         //solhint-disable-next-line
-        CompoundV3SupplyFuse.CompoundV3SupplyFuseData memory data
-    ) external returns (bytes memory executionStatus) {
-        return address(fuse).functionDelegateCall(msg.data);
+        CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData memory data
+    ) external {
+        address(fuse).functionDelegateCall(msg.data);
     }
 
     //solhint-disable-next-line
-    function exit(bytes calldata data) external returns (bytes memory executionStatus) {
-        return address(fuse).functionDelegateCall(msg.data);
+    function exit(bytes calldata data) external {
+        address(fuse).functionDelegateCall(msg.data);
     }
 
     function exit(
         //solhint-disable-next-line
-        CompoundV3SupplyFuse.CompoundV3SupplyFuseData memory data
-    ) external returns (bytes memory executionStatus) {
-        return address(fuse).functionDelegateCall(msg.data);
+        CompoundV3SupplyFuse.CompoundV3SupplyFuseExitData memory data
+    ) external {
+        address(fuse).functionDelegateCall(msg.data);
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {

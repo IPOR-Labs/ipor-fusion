@@ -7,12 +7,18 @@ contract DoNothingFuse is IFuse {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
-    struct DoNothingFuseData {
+    struct DoNothingFuseEnterData {
         // token to supply
         address asset;
     }
 
-    event DoNothingFuse(address version, string action, address asset);
+    struct DoNothingFuseExitData {
+        // token to supply
+        address asset;
+    }
+
+    event DoNothingEnterFuse(address version, address asset);
+    event DoNothingExitFuse(address version, address asset);
 
     constructor(uint256 marketIdInput) {
         MARKET_ID = marketIdInput;
@@ -20,28 +26,26 @@ contract DoNothingFuse is IFuse {
     }
 
     function enter(bytes calldata data) external {
-        DoNothingFuseData memory structData = abi.decode(data, (DoNothingFuseData));
-        return _enter(structData);
+        return _enter(abi.decode(data, (DoNothingFuseEnterData)));
     }
 
-    function enter(DoNothingFuseData memory data) external {
+    function enter(DoNothingFuseEnterData memory data) external {
         return _enter(data);
     }
 
-    function _enter(DoNothingFuseData memory data) internal {
-        emit DoNothingFuse(VERSION, "enter", data.asset);
+    function _enter(DoNothingFuseEnterData memory data) internal {
+        emit DoNothingEnterFuse(VERSION, data.asset);
     }
 
     function exit(bytes calldata data) external {
-        DoNothingFuseData memory data = abi.decode(data, (DoNothingFuseData));
+        return _exit(abi.decode(data, (DoNothingFuseExitData)));
+    }
+
+    function exit(DoNothingFuseExitData calldata data) external {
         return _exit(data);
     }
 
-    function exit(DoNothingFuseData calldata data) external {
-        return _exit(data);
-    }
-
-    function _exit(DoNothingFuseData memory data) internal {
-        emit DoNothingFuse(VERSION, "exit", data.asset);
+    function _exit(DoNothingFuseExitData memory data) internal {
+        emit DoNothingExitFuse(VERSION, data.asset);
     }
 }
