@@ -10,8 +10,12 @@ interface IIporPriceOracle {
 
     function getSourceOfAsset(address asset) external view returns (address);
 
+    //solhint-disable-next-line
+    function BASE_CURRENCY() external view returns (address);
+
     error EmptyArrayNotSupported(string errorCode);
     error ArrayLengthMismatch(string errorCode);
+    error UnexpectedPriceResult(string errorCode);
     error UnsupportedAsset(string errorCode);
     error ZeroAddress(string errorCode, string variableName);
 }

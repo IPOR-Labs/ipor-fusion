@@ -68,6 +68,9 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
             uint256 time,
             uint80 answeredInRound
         ) {
+            if (price <= 0) {
+                revert IIporPriceOracle.UnexpectedPriceResult(Errors.CHAINLINK_PRICE_ERROR);
+            }
             return price.toUint256();
         } catch {
             revert IIporPriceOracle.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);

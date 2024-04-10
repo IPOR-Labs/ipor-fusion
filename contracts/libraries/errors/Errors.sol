@@ -7,4 +7,7 @@ library Errors {
     string public constant UNSUPPORTED_EMPTY_ARRAY = "IPF_003";
     string public constant UNSUPPORTED_ZERO_ADDRESS = "IPF_004";
     string public constant ARRAY_LENGTH_MISMATCH = "IPF_005";
+    string public constant UNSUPPORTED_MARKET = "IPF_006";
+    string public constant UNSUPPORTED_BASE_CURRENCY = "IPF_007";
+    string public constant CHAINLINK_PRICE_ERROR = "IPF_008";
 }
