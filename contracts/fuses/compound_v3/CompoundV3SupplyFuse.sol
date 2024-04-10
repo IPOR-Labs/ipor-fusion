@@ -11,10 +11,17 @@ import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol
 contract CompoundV3SupplyFuse is IFuse {
     using SafeCast for uint256;
 
-    struct CompoundV3SupplyFuseData {
-        // token to supply
+    struct CompoundV3SupplyFuseEnterData {
+        /// @notis asset address to supply
         address asset;
-        // max amount to supply
+        /// @notice asset amount to supply
+        uint256 amount;
+    }
+
+    struct CompoundV3SupplyFuseExitData {
+        /// @notice asset address to withdraw
+        address asset;
+        /// @notice asset amount to withdraw
         uint256 amount;
     }
 
@@ -22,7 +29,8 @@ contract CompoundV3SupplyFuse is IFuse {
     uint256 public immutable MARKET_ID;
     address public immutable VERSION;
 
-    event CompoundV3SupplyFuse(address version, string action, address asset, address market, uint256 amount);
+    event CompoundV3SupplyEnterFuse(address version, address asset, address market, uint256 amount);
+    event CompoundV3SupplyExitFuse(address version, address asset, address market, uint256 amount);
 
     error CompoundV3SupplyFuseUnsupportedAsset(string action, address asset, string errorCode);
 
@@ -33,15 +41,14 @@ contract CompoundV3SupplyFuse is IFuse {
     }
 
     function enter(bytes calldata data) external {
-        CompoundV3SupplyFuseData memory data = abi.decode(data, (CompoundV3SupplyFuseData));
+        _enter(abi.decode(data, (CompoundV3SupplyFuseEnterData)));
+    }
+
+    function enter(CompoundV3SupplyFuseEnterData memory data) external {
         _enter(data);
     }
 
-    function enter(CompoundV3SupplyFuseData memory data) external {
-        _enter(data);
-    }
-
-    function _enter(CompoundV3SupplyFuseData memory data) internal {
+    function _enter(CompoundV3SupplyFuseEnterData memory data) internal {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert CompoundV3SupplyFuseUnsupportedAsset("enter", data.asset, Errors.UNSUPPORTED_ASSET);
         }
@@ -50,25 +57,24 @@ contract CompoundV3SupplyFuse is IFuse {
 
         COMET.supply(data.asset, data.amount);
 
-        emit CompoundV3SupplyFuse(VERSION, "enter", data.asset, address(COMET), data.amount);
+        emit CompoundV3SupplyEnterFuse(VERSION, data.asset, address(COMET), data.amount);
     }
 
     function exit(bytes calldata data) external {
-        CompoundV3SupplyFuseData memory data = abi.decode(data, (CompoundV3SupplyFuseData));
+        _exit(abi.decode(data, (CompoundV3SupplyFuseExitData)));
+    }
+
+    function exit(CompoundV3SupplyFuseExitData calldata data) external {
         _exit(data);
     }
 
-    function exit(CompoundV3SupplyFuseData calldata data) external {
-        _exit(data);
-    }
-
-    function _exit(CompoundV3SupplyFuseData memory data) internal {
+    function _exit(CompoundV3SupplyFuseExitData memory data) internal {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert CompoundV3SupplyFuseUnsupportedAsset("exit", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
         COMET.withdraw(data.asset, data.amount);
 
-        emit CompoundV3SupplyFuse(VERSION, "exit", data.asset, address(COMET), data.amount);
+        emit CompoundV3SupplyExitFuse(VERSION, data.asset, address(COMET), data.amount);
     }
 }

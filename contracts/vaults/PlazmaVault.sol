@@ -181,7 +181,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     }
 
     function _updateBalances(uint256[] memory markets) internal {
-        uint256 deltas = 0;
+        int256 deltas = 0;
         uint256 balanceAmount;
 
         for (uint256 i; i < markets.length; ++i) {

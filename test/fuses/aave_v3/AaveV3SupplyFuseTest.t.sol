@@ -47,7 +47,7 @@ contract AaveV3SupplyFuseTest is Test {
         // when
 
         fuseMock.enter(
-            AaveV3SupplyFuse.AaveV3SupplyFuseData({
+            AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({
                 asset: activeTokens.asset,
                 amount: amount,
                 userEModeCategoryId: uint256(300)
@@ -95,7 +95,7 @@ contract AaveV3SupplyFuseTest is Test {
         fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         fuseMock.enter(
-            AaveV3SupplyFuse.AaveV3SupplyFuseData({
+            AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({
                 asset: activeTokens.asset,
                 amount: enterAmount,
                 userEModeCategoryId: uint256(300)
@@ -104,13 +104,7 @@ contract AaveV3SupplyFuseTest is Test {
 
         // when
 
-        fuseMock.exit(
-            AaveV3SupplyFuse.AaveV3SupplyFuseData({
-                asset: activeTokens.asset,
-                amount: exitAmount,
-                userEModeCategoryId: uint256(300)
-            })
-        );
+        fuseMock.exit(AaveV3SupplyFuse.AaveV3SupplyFuseExitData({asset: activeTokens.asset, amount: exitAmount}));
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));

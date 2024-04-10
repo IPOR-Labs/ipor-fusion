@@ -14,27 +14,27 @@ contract AaveV3SupplyFuseMock {
         fuse = AaveV3SupplyFuse(fuseInput);
     }
     //solhint-disable-next-line
-    function enter(bytes calldata data) external returns (bytes memory executionStatus) {
-        return address(fuse).functionDelegateCall(msg.data);
+    function enter(bytes calldata data) external {
+        address(fuse).functionDelegateCall(msg.data);
     }
 
     function enter(
         //solhint-disable-next-line
-        AaveV3SupplyFuse.AaveV3SupplyFuseData memory data
+        AaveV3SupplyFuse.AaveV3SupplyFuseEnterData memory data
     ) external returns (bytes memory executionStatus) {
-        return address(fuse).functionDelegateCall(msg.data);
+        address(fuse).functionDelegateCall(msg.data);
     }
 
     //solhint-disable-next-line
-    function exit(bytes calldata data) external returns (bytes memory executionStatus) {
-        return address(fuse).functionDelegateCall(msg.data);
+    function exit(bytes calldata data) external {
+        address(fuse).functionDelegateCall(msg.data);
     }
 
     function exit(
         //solhint-disable-next-line
-        AaveV3SupplyFuse.AaveV3SupplyFuseData memory data
-    ) external returns (bytes memory executionStatus) {
-        return address(fuse).functionDelegateCall(msg.data);
+        AaveV3SupplyFuse.AaveV3SupplyFuseExitData memory data
+    ) external {
+        address(fuse).functionDelegateCall(msg.data);
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {

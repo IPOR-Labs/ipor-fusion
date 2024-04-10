@@ -47,7 +47,7 @@ contract CompoundUsdcV3BalanceFuseTest is Test {
 
         // when
 
-        fuseMock.enter(CompoundV3SupplyFuse.CompoundV3SupplyFuseData({asset: activeTokens.asset, amount: amount}));
+        fuseMock.enter(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
@@ -75,7 +75,7 @@ contract CompoundUsdcV3BalanceFuseTest is Test {
         fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
         marketBalance.updateMarketConfiguration(assets);
 
-        fuseMock.enter(CompoundV3SupplyFuse.CompoundV3SupplyFuseData({asset: activeTokens.asset, amount: amount}));
+        fuseMock.enter(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
 
         uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
         uint256 balanceOnCometBefore = _getBalance(address(fuseMock), activeTokens.asset);
@@ -83,7 +83,7 @@ contract CompoundUsdcV3BalanceFuseTest is Test {
 
         // when
         fuseMock.exit(
-            CompoundV3SupplyFuse.CompoundV3SupplyFuseData({asset: activeTokens.asset, amount: balanceOnCometBefore})
+            CompoundV3SupplyFuse.CompoundV3SupplyFuseExitData({asset: activeTokens.asset, amount: balanceOnCometBefore})
         );
 
         // then
