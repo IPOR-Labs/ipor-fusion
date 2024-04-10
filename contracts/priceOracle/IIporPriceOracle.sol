@@ -20,6 +20,7 @@ interface IIporPriceOracle {
 
     error EmptyArrayNotSupported(string errorCode);
     error ArrayLengthMismatch(string errorCode);
+    error UnexpectedPriceResult(string errorCode);
     error UnsupportedAsset(string errorCode);
     error ZeroAddress(string errorCode, string variableName);
 }

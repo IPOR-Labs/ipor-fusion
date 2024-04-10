@@ -13,6 +13,11 @@ library MarketConfigurationLib {
         return marketConfiguration.substrateAllowances[addressToBytes32(substrateAsAsset)] == 1;
     }
 
+    function isSubstrateGranted(uint256 marketId, bytes32 substrate) internal view returns (bool) {
+        PlazmaVaultStorageLib.MarketStruct storage marketConfiguration = _getMarketConfiguration(marketId);
+        return marketConfiguration.substrateAllowances[substrate] == 1;
+    }
+
     function grandSubstratesToMarket(uint256 marketId, bytes32[] memory substrates) internal {
         PlazmaVaultStorageLib.MarketStruct storage marketConfig = _getMarketConfiguration(marketId);
 

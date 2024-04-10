@@ -11,4 +11,5 @@ library Errors {
     string public constant ARRAY_LENGTH_MISMATCH = "IPF_005";
     string public constant UNSUPPORTED_MARKET = "IPF_006";
     string public constant UNSUPPORTED_BASE_CURRENCY = "IPF_007";
+    string public constant CHAINLINK_PRICE_ERROR = "IPF_008";
 }
