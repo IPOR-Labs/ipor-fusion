@@ -2,6 +2,8 @@
 pragma solidity 0.8.20;
 
 library Errors {
+    error UnsupportedBaseCurrencyFromOracle(string errorCode);
+    /// TODO: common sustom errors plase here
     string public constant UNSUPPORTED_ASSET = "IPF_001";
     string public constant UNSUPPORTED_ERC4626 = "IPF_002";
     string public constant UNSUPPORTED_EMPTY_ARRAY = "IPF_003";

@@ -6,6 +6,8 @@ import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol"
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract PlazmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -15,9 +17,22 @@ contract PlazmaVaultMaintenanceTest is Test {
 
     address public owner = address(this);
 
+    IporPriceOracle private iporPriceOracleProxy;
+
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
         vaultFactory = new PlazmaVaultFactory(owner);
+        IporPriceOracle implementation = new IporPriceOracle(
+            0x0000000000000000000000000000000000000348,
+            8,
+            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
+        );
+
+        iporPriceOracleProxy = IporPriceOracle(
+            address(
+                new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
+            )
+        );
     }
 
     function testShouldSetupBalanceFusesWhenVaultCreated() public {
@@ -46,6 +61,7 @@ contract PlazmaVaultMaintenanceTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -81,6 +97,7 @@ contract PlazmaVaultMaintenanceTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -129,6 +146,7 @@ contract PlazmaVaultMaintenanceTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -162,6 +180,7 @@ contract PlazmaVaultMaintenanceTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -205,6 +224,7 @@ contract PlazmaVaultMaintenanceTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -244,6 +264,7 @@ contract PlazmaVaultMaintenanceTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -278,6 +299,7 @@ contract PlazmaVaultMaintenanceTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,
@@ -311,6 +333,7 @@ contract PlazmaVaultMaintenanceTest is Test {
                     assetName,
                     assetSymbol,
                     underlyingToken,
+                    address(iporPriceOracleProxy),
                     alphas,
                     marketConfigs,
                     fuses,

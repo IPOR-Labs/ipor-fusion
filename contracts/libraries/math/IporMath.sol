@@ -16,6 +16,16 @@ library IporMath {
         }
     }
 
+    function convertWadToAssetDecimals(uint256 value, uint256 assetDecimals) internal pure returns (uint256) {
+        if (assetDecimals == 18) {
+            return value;
+        } else if (assetDecimals > 18) {
+            return value * 10 ** (assetDecimals - 18);
+        } else {
+            return division(value, 10 ** (18 - assetDecimals));
+        }
+    }
+
     function convertToWadInt(int256 value, uint256 assetDecimals) internal pure returns (int256) {
         if (value == 0) {
             return 0;
