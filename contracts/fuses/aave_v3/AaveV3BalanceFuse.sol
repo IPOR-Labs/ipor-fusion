@@ -12,8 +12,10 @@ import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol
 
 contract AaveV3BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
-    uint256 private constant PRICE_DECIMALS = 8;
-    address private constant USD = address(0x0000000000000000000000000000000000000348);
+
+    /// @dev Aave Price Oracle base currency decimals
+    uint256 private constant AAVE_ORACLE_BASE_CURRENCY_DECIMALS = 8;
+
     uint256 public immutable MARKET_ID;
 
     constructor(uint256 marketIdInput) {
@@ -59,7 +61,10 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
                 balanceInLoop -= int256(ERC20(variableDebtTokenAddress).balanceOf(plazmaVault));
             }
 
-            balanceTemp += IporMath.convertToWadInt(balanceInLoop * int256(price), decimals + PRICE_DECIMALS);
+            balanceTemp += IporMath.convertToWadInt(
+                balanceInLoop * int256(price),
+                decimals + AAVE_ORACLE_BASE_CURRENCY_DECIMALS
+            );
         }
 
         return balanceTemp.toUint256();
