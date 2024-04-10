@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {MorphoBlueSupplyFuse} from "../../../contracts/fuses/morphoBlue/MorphoBlueSupplyFuse.sol";
+import {MorphoBlueSupplyFuse, MorphoBlueSupplyFuseExitData, MorphoBlueSupplyFuseEnterData} from "../../../contracts/fuses/morphoBlue/MorphoBlueSupplyFuse.sol";
 import {MarketConfigurationLib} from "../../../contracts/libraries/MarketConfigurationLib.sol";
 
 contract VaultMorphoBlueMock {
@@ -22,7 +22,7 @@ contract VaultMorphoBlueMock {
 
     function enter(
         //solhint-disable-next-line
-        MorphoBlueSupplyFuse.MorphoBlueSupplyFuseData memory data
+        MorphoBlueSupplyFuseEnterData memory data
     ) external returns (bytes memory executionStatus) {
         return address(fuse).functionDelegateCall(msg.data);
     }
@@ -34,7 +34,7 @@ contract VaultMorphoBlueMock {
 
     function exit(
         //solhint-disable-next-line
-        MorphoBlueSupplyFuse.MorphoBlueSupplyFuseData memory data
+        MorphoBlueSupplyFuseExitData memory data
     ) external returns (bytes memory executionStatus) {
         return address(fuse).functionDelegateCall(msg.data);
     }

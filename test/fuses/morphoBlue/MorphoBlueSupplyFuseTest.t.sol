@@ -6,14 +6,14 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {VaultMorphoBlueMock} from "./VaultMorphoBlueMock.sol";
-import {MorphoBlueSupplyFuse} from "../../../contracts/fuses/morphoBlue/MorphoBlueSupplyFuse.sol";
+import {MorphoBlueSupplyFuse, MorphoBlueSupplyFuseExitData, MorphoBlueSupplyFuseEnterData} from "../../../contracts/fuses/morphoBlue/MorphoBlueSupplyFuse.sol";
+import {MorphoBlueBalanceFuse} from "../../../contracts/fuses/morphoBlue/MorphoBlueBalanceFuse.sol";
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib.sol";
 import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParamsLib.sol";
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
 import {IporPriceOracle} from "../../../contracts/priceOracle/IporPriceOracle.sol";
-import {MorphoBlueBalanceFuse} from "../../../contracts/fuses/morphoBlue/MorphoBlueBalanceFuse.sol";
 
 contract MorphoBlueSupplyFuseTest is Test {
     using MorphoBalancesLib for IMorpho;
@@ -65,9 +65,7 @@ contract MorphoBlueSupplyFuseTest is Test {
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), marketIds);
 
         // when
-        vaultMock.enter(
-            MorphoBlueSupplyFuse.MorphoBlueSupplyFuseData({morphoBlueMarketId: marketIdBytes32, amount: amount})
-        );
+        vaultMock.enter(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(DAI).balanceOf(address(vaultMock));
@@ -102,18 +100,14 @@ contract MorphoBlueSupplyFuseTest is Test {
         marketIds[0] = marketIdBytes32;
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), marketIds);
 
-        vaultMock.enter(
-            MorphoBlueSupplyFuse.MorphoBlueSupplyFuseData({morphoBlueMarketId: marketIdBytes32, amount: amount})
-        );
+        vaultMock.enter(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
 
         uint256 balanceBefore = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceOnMorphoBlueBefore = MORPHO.expectedSupplyAssets(marketParams, address(vaultMock));
 
         // when
 
-        vaultMock.exit(
-            MorphoBlueSupplyFuse.MorphoBlueSupplyFuseData({morphoBlueMarketId: marketIdBytes32, amount: amount})
-        );
+        vaultMock.exit(MorphoBlueSupplyFuseExitData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(DAI).balanceOf(address(vaultMock));

@@ -14,6 +14,20 @@ import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib
 import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParamsLib.sol";
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
 
+struct MorphoBlueSupplyFuseEnterData {
+    // vault address
+    bytes32 morphoBlueMarketId;
+    // max amount to supply
+    uint256 amount;
+}
+
+struct MorphoBlueSupplyFuseExitData {
+    // vault address
+    bytes32 morphoBlueMarketId;
+    // max amount to supply
+    uint256 amount;
+}
+
 contract MorphoBlueSupplyFuse is IFuse {
     using SafeCast for uint256;
     using MorphoBalancesLib for IMorpho;
@@ -23,14 +37,8 @@ contract MorphoBlueSupplyFuse is IFuse {
 
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
 
-    struct MorphoBlueSupplyFuseData {
-        // vault address
-        bytes32 morphoBlueMarketId;
-        // max amount to supply
-        uint256 amount;
-    }
-
-    event MorphoBlueSupplyFuse(address version, string action, address asset, bytes32 market, uint256 amount);
+    event MorphoBlueSupplyEnterFuse(address version, address asset, bytes32 market, uint256 amount);
+    event MorphoBlueSupplyExitFuse(address version, address asset, bytes32 market, uint256 amount);
 
     error MorphoBlueSupplyFuseUnsupportedMarket(string action, bytes32 morphoBlueMarketId, string errorCode);
 
@@ -43,15 +51,14 @@ contract MorphoBlueSupplyFuse is IFuse {
     }
 
     function enter(bytes calldata data) external {
-        MorphoBlueSupplyFuseData memory data = abi.decode(data, (MorphoBlueSupplyFuseData));
+        _enter(abi.decode(data, (MorphoBlueSupplyFuseEnterData)));
+    }
+
+    function enter(MorphoBlueSupplyFuseEnterData memory data) external {
         _enter(data);
     }
 
-    function enter(MorphoBlueSupplyFuseData memory data) external {
-        _enter(data);
-    }
-
-    function _enter(MorphoBlueSupplyFuseData memory data) internal {
+    function _enter(MorphoBlueSupplyFuseEnterData memory data) internal {
         if (!MarketConfigurationLib.isSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
             revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data.morphoBlueMarketId, Errors.UNSUPPORTED_MARKET);
         }
@@ -62,19 +69,18 @@ contract MorphoBlueSupplyFuse is IFuse {
 
         (uint256 assetsSupplied, ) = MORPHO.supply(marketParams, data.amount, 0, address(this), bytes(""));
 
-        emit MorphoBlueSupplyFuse(VERSION, "enter", marketParams.loanToken, data.morphoBlueMarketId, assetsSupplied);
+        emit MorphoBlueSupplyEnterFuse(VERSION, marketParams.loanToken, data.morphoBlueMarketId, assetsSupplied);
     }
 
     function exit(bytes calldata data) external {
-        MorphoBlueSupplyFuseData memory data = abi.decode(data, (MorphoBlueSupplyFuseData));
+        _exit(abi.decode(data, (MorphoBlueSupplyFuseExitData)));
+    }
+
+    function exit(MorphoBlueSupplyFuseExitData calldata data) external {
         _exit(data);
     }
 
-    function exit(MorphoBlueSupplyFuseData calldata data) external {
-        _exit(data);
-    }
-
-    function _exit(MorphoBlueSupplyFuseData memory data) internal {
+    function _exit(MorphoBlueSupplyFuseExitData memory data) internal {
         if (!MarketConfigurationLib.isSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
             revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data.morphoBlueMarketId, Errors.UNSUPPORTED_MARKET);
         }
@@ -103,6 +109,6 @@ contract MorphoBlueSupplyFuse is IFuse {
                 address(this)
             );
         }
-        emit MorphoBlueSupplyFuse(VERSION, "exit", marketParams.loanToken, data.morphoBlueMarketId, assetsWithdrawn);
+        emit MorphoBlueSupplyExitFuse(VERSION, marketParams.loanToken, data.morphoBlueMarketId, assetsWithdrawn);
     }
 }
