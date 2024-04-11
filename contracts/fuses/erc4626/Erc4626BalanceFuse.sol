@@ -32,7 +32,7 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
 			return 0;
 		}
 
-		uint256 balance = 0;
+		int256 balance = 0;
 		uint256 vaultShares;
 		uint256 vaultAssets;
 		uint256 decimals;
