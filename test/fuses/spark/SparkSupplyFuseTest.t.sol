@@ -46,7 +46,7 @@ contract SparkSupplyFuseTest is Test {
         // given
         // sDAI/DAI
 
-        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(address(iporPriceOracleProxy), 1);
+        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1, address(iporPriceOracleProxy));
         SparkSupplyFuse fuse = new SparkSupplyFuse(1);
         VaultSparkMock vaultMock = new VaultSparkMock(address(fuse), address(balanceFuse));
 
@@ -78,7 +78,7 @@ contract SparkSupplyFuseTest is Test {
         // given
         // sDAI/DAI
 
-        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(address(iporPriceOracleProxy), 1);
+        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1, address(iporPriceOracleProxy));
         SparkSupplyFuse fuse = new SparkSupplyFuse(1);
         VaultSparkMock vaultMock = new VaultSparkMock(address(fuse), address(balanceFuse));
 
