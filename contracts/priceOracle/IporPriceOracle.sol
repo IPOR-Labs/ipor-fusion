@@ -38,6 +38,26 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
         // todo check what is needed
     }
 
+    function getAssetPrice(address asset) external view returns (uint256) {
+        return _getAssetPrice(asset);
+    }
+
+    function getAssetsPrices(address[] calldata assets) external view returns (uint256[] memory) {
+        uint256 assetsLength = assets.length;
+        if (assetsLength == 0) {
+            revert IIporPriceOracle.EmptyArrayNotSupported(Errors.UNSUPPORTED_EMPTY_ARRAY);
+        }
+        uint256[] memory prices = new uint256[](assetsLength);
+        for (uint256 i; i < assetsLength; ++i) {
+            prices[i] = _getAssetPrice(assets[i]);
+        }
+        return prices;
+    }
+
+    function getSourceOfAsset(address asset) external view returns (address) {
+        return IporPriceOracleStorageLib.getSourceOfAsset(asset);
+    }
+
     function setAssetSources(address[] calldata assets, address[] calldata sources) external onlyOwner {
         uint256 assetsLength = assets.length;
         uint256 sourcesLength = sources.length;
@@ -50,10 +70,6 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
         for (uint256 i; i < assetsLength; ++i) {
             IporPriceOracleStorageLib.setAssetSource(assets[i], sources[i]);
         }
-    }
-
-    function getAssetPrice(address asset) external view returns (uint256) {
-        return _getAssetPrice(asset);
     }
 
     function _getAssetPrice(address asset) private view returns (uint256) {
@@ -75,22 +91,6 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
         } catch {
             revert IIporPriceOracle.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);
         }
-    }
-
-    function getAssetsPrices(address[] calldata assets) external view returns (uint256[] memory) {
-        uint256 assetsLength = assets.length;
-        if (assetsLength == 0) {
-            revert IIporPriceOracle.EmptyArrayNotSupported(Errors.UNSUPPORTED_EMPTY_ARRAY);
-        }
-        uint256[] memory prices = new uint256[](assetsLength);
-        for (uint256 i; i < assetsLength; ++i) {
-            prices[i] = _getAssetPrice(assets[i]);
-        }
-        return prices;
-    }
-
-    function getSourceOfAsset(address asset) external view returns (address) {
-        return IporPriceOracleStorageLib.getSourceOfAsset(asset);
     }
 
     //solhint-disable-next-line
