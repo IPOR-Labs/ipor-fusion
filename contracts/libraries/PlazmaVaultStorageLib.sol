@@ -3,17 +3,16 @@ pragma solidity 0.8.20;
 
 /// @title Storage
 library PlazmaVaultStorageLib {
-    /// TODO: fix all codes
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.vaultTotalAssets")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plazmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLAZMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
-        0x357d32c408459d6b4515886adc12a53a5cea792ef64d96e1a6de5be310df6800;
+        0x5a03fb3ee5c2b8e397013e1f4a344208b3193b25fa29ae6c2cda3db858454700;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.vaultMarketTotalAssets")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plazmaVaultTotalAssetsInMarket")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLAZMA_VAULT_TOTAL_ASSETS_IN_MARKET =
-        0xc6a86114ffcf09bc9efb3cc43636220a50177b2dd24c2e11f6f3c549ab662600;
+        0xe242383a5553e6ba2476f2482afc0944276473bfda72ea3703579c6a32bd3500;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.vaultMarketConfiguration")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant MARKET_CONFIGURATION = 0xde0ed8ff1d9b0e8c557d6f5222521c90408a837fe441ce1ebbb1b1425d9b0f00;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plazmaVaultMarketConfiguration")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MARKET_CONFIGURATION = 0xd5bdc7559e360e9c73313f6862fc65997a8cda8dafe6ecfa240156ec11864100;
 
     /// --------------
 
@@ -26,23 +25,23 @@ library PlazmaVaultStorageLib {
 
     /// @notice List of alphas allowed to execute actions on the vault
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.alphas")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant ALPHAS = 0x7dd7151eda9a8aa729c84433daab8cd1eaf1f4ce42af566ab5ad0e56a8023100;
+    bytes32 private constant ALPHAS = 0x6e63fd334756476008e18320c17a15b90685bef378a9769b941259f22b716400;
 
     /// @notice List of fuses ass
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.commandFuses")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant FUSES = 0x8df706fc41a6e9ea82576edcbe6c0508c833d6c213c8726956c1b91cfc40df00;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fuses")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant FUSES = 0x8aea6b6f6aa5634a831e026b11b303364a06768c46e3d2947b4fd826fe672900;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusesArray")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant FUSES_ARRAY = 0xfc45338140a0465eb8fe9e6810faefca6449a87e343df9e2e6431bb075b65500;
+    bytes32 private constant FUSES_ARRAY = 0xba14be3a97cf2f8b4d597466152c4a1f5bd0a3391c168df3545415b0818dc800;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.balanceFuses")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant BALANCE_FUSES = 0x5a5829737eca653c0b5b4a20468c03c7bec2bc961055a682ab2b91dff4463a00;
+    bytes32 private constant BALANCE_FUSES = 0x79c8c92d14d4269e7b571a09af2cbe14b4b7cb5d7081dd3cc58334735482cf00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.marketBalanceFuses")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant MARKET_BALANCE_FUSES = 0xeba9231169beda60a3a6e498152686285436fed40abcb5feb85c88b510ca8b00;
+    bytes32 private constant MARKET_BALANCE_FUSES = 0x3ddfefcd740eb895c0ab40938b57a412bbd0e50288e41524dda256641368a700;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.balanceFusesArray")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant BALANCE_FUSES_ARRAY = 0x1fc2ff582e84eb55aac3390e0ea40e2b04f7ca631b7916a8c1670711fd11f600;
+    bytes32 private constant BALANCE_FUSES_ARRAY = 0xc8e943b00e69c68afc4d0f8d07f8c1977c720a201f28d8f41b019a8cdd242900;
 
     /// @notice Global configuration of markets
     struct GlobalCfgMarkets {
@@ -72,6 +71,7 @@ library PlazmaVaultStorageLib {
         mapping(uint256 => MarketStruct) value;
     }
 
+    /// @notice Space in storage to store the market configuration for a given PlazmaVault
     function getMarketConfiguration() internal pure returns (MarketConfiguration storage marketConfiguration) {
         assembly {
             marketConfiguration.slot := MARKET_CONFIGURATION
