@@ -2,8 +2,10 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
-import {AaveLendingPoolV2} from "./AaveLendingPoolV2.sol";
+import {AaveLendingPoolV2, ReserveData} from "./AaveLendingPoolV2.sol";
+import {AaveConstants} from "./AaveConstants.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
 import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
@@ -73,9 +75,17 @@ contract AaveV2SupplyFuse is IFuse {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV2SupplyFuseUnsupportedAsset(data.asset, Errors.UNSUPPORTED_ASSET);
         }
+        uint amountToWithdraw = data.amount;
 
-        uint256 withdrawnAmount = AAVE_POOL.withdraw(data.asset, data.amount, address(this));
+        ReserveData memory reserveData = AaveLendingPoolV2(AaveConstants.AAVE_LENDING_POOL_V2).getReserveData(
+            data.asset
+        );
+        uint256 aTokenBalance = ERC20(reserveData.aTokenAddress).balanceOf(address(this));
 
-        emit AaveV2SupplyExitFuse(VERSION, data.asset, withdrawnAmount);
+        if (aTokenBalance < amountToWithdraw) {
+            amountToWithdraw = aTokenBalance;
+        }
+
+        emit AaveV2SupplyExitFuse(VERSION, data.asset, AAVE_POOL.withdraw(data.asset, amountToWithdraw, address(this)));
     }
 }
