@@ -42,7 +42,6 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
         // @dev this value has 8 decimals
         uint256 price;
         address asset;
-        int256 borrowBalance;
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
@@ -56,7 +55,7 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
             );
         }
 
-        borrowBalance = IporMath.convertToWadInt(
+        int256 borrowBalance = IporMath.convertToWadInt(
             (COMET.borrowBalanceOf(plazmaVault) * COMET.getPrice(BASE_TOKEN_PRICE_FEED)).toInt256(),
             COMPOUND_BASE_TOKEN_DECIMALS + PRICE_DECIMALS
         );

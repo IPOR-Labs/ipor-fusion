@@ -102,26 +102,10 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         ///TODO: when adding new fuse - then validate if fuse support assets defined for a given Plazma Vault.
     }
 
-    /// @notice Returns the total assets in the vault
-    /// @return total assets in the vault, represented in underlying token decimals
-    function totalAssets() public view virtual override returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this)) + PlazmaVaultLib.getTotalAssetsInAllMarkets();
-    }
-
-    /// @notice Returns the total assets in the vault for a specific market
-    /// @param marketId The market id
-    /// @return total assets in the vault for the market, represented in underlying token decimals
-    function totalAssetsInMarket(uint256 marketId) public view virtual returns (uint256) {
-        return PlazmaVaultLib.getTotalAssetsInMarket(marketId);
-    }
-
     function execute(FuseAction[] calldata calls) external {
         uint256 callsCount = calls.length;
-
-        //TODO: move to transient storage
         uint256[] memory markets = new uint256[](callsCount);
-        uint256 marketIndex = 0;
-
+        uint256 marketIndex;
         uint256 fuseMarketId;
 
         for (uint256 i; i < callsCount; ++i) {
@@ -139,7 +123,20 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
             calls[i].fuse.functionDelegateCall(calls[i].data);
         }
 
-        _updateBalances(markets);
+        _updateMarketsBalances(markets);
+    }
+
+    /// @notice Returns the total assets in the vault
+    /// @return total assets in the vault, represented in underlying token decimals
+    function totalAssets() public view virtual override returns (uint256) {
+        return IERC20(asset()).balanceOf(address(this)) + PlazmaVaultLib.getTotalAssetsInAllMarkets();
+    }
+
+    /// @notice Returns the total assets in the vault for a specific market
+    /// @param marketId The market id
+    /// @return total assets in the vault for the market, represented in underlying token decimals
+    function totalAssetsInMarket(uint256 marketId) public view virtual returns (uint256) {
+        return PlazmaVaultLib.getTotalAssetsInMarket(marketId);
     }
 
     function grantAlpha(address alpha) external onlyOwner {
@@ -152,6 +149,10 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
 
     function isAlphaGranted(address alpha) external view returns (bool) {
         return AlphasLib.isAlphaGranted(alpha);
+    }
+
+    function getFuses() external view returns (address[] memory) {
+        return FusesLib.getFusesArray();
     }
 
     function addFuse(address fuse) external onlyOwner {
@@ -178,9 +179,79 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         FusesLib.removeBalanceFuse(fuseInput.marketId, fuseInput.fuse);
     }
 
+    function updateImmediateWithdrawalFuses(
+        PlazmaVaultLib.ImmediateWithdrawalFusesParamsStruct[] calldata fuses
+    ) external onlyOwner {
+        PlazmaVaultLib.updateImmediateWithdrawalFuses(fuses);
+    }
+
+    function _withdraw(
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual override {
+        uint256 currentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
+
+        uint256 left;
+
+        if (assets >= currentBalanceUnderlying) {
+            uint256 marketIndex;
+            uint256 fuseMarketId;
+
+            bytes32 key;
+            bytes32[] memory params;
+            uint256 loopWithdrawnAmount;
+
+            /// @dev assume that the same fuse can be used multiple times
+            /// @dev assume that more than one fuse can be from the same market
+            address[] memory fuses = PlazmaVaultLib.getImmediateWithdrawalFuses();
+
+            uint256[] memory markets = new uint256[](fuses.length);
+
+            left = assets - currentBalanceUnderlying;
+
+            for (uint256 i; left != 0 && i < fuses.length; ++i) {
+                key = keccak256(abi.encodePacked(fuses[i], i));
+
+                params = PlazmaVaultLib.getImmediateWithdrawalFusesParams(key);
+
+                /// @dev always first param is amount, by default is 0 in storage, set to left
+                params[0] = bytes32(left);
+
+                fuses[i].functionDelegateCall(abi.encodeWithSignature("withdraw(bytes32[])", params));
+
+                loopWithdrawnAmount = currentBalanceUnderlying;
+
+                currentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
+
+                loopWithdrawnAmount = currentBalanceUnderlying - loopWithdrawnAmount;
+
+                left -= loopWithdrawnAmount;
+
+                fuseMarketId = IFuseCommon(fuses[i]).MARKET_ID();
+
+                if (_checkIfExistsMarket(markets, fuseMarketId) == false) {
+                    markets[marketIndex] = fuseMarketId;
+                    marketIndex++;
+                }
+            }
+
+            _updateMarketsBalances(markets);
+        }
+
+        if (left != 0) {
+            assets = assets - left;
+            shares = previewWithdraw(assets);
+        }
+
+        super._withdraw(caller, receiver, owner, assets, shares);
+    }
+
     /// @notice Update balances in the vault for markets touched by the fuses during the execution of all FuseActions
     /// @param markets Array of market ids touched by the fuses in the FuseActions
-    function _updateBalances(uint256[] memory markets) internal {
+    function _updateMarketsBalances(uint256[] memory markets) internal {
         int256 deltasInUnderlying = 0;
         uint256 wadBalanceAmountInUSD;
         address balanceFuse;

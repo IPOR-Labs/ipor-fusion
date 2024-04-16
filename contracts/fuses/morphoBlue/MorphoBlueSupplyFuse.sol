@@ -80,6 +80,14 @@ contract MorphoBlueSupplyFuse is IFuse {
         _exit(data);
     }
 
+    /// @dev params[0] - amount in underlying asset, params[1] - Morpho market id
+    function withdraw(bytes32[] calldata params) external override {
+        uint256 amount = uint256(params[0]);
+        bytes32 morphoMarketId = params[1];
+
+        _exit(MorphoBlueSupplyFuseExitData(morphoMarketId, amount));
+    }
+
     function _exit(MorphoBlueSupplyFuseExitData memory data) internal {
         if (!MarketConfigurationLib.isSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
             revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data.morphoBlueMarketId, Errors.UNSUPPORTED_MARKET);

@@ -45,6 +45,12 @@ contract DoNothingFuse is IFuse {
         return _exit(data);
     }
 
+    function withdraw(bytes32[] calldata params) external override {
+        address asset = address(bytes20(params[0]));
+
+        _exit(DoNothingFuseExitData(asset));
+    }
+
     function _exit(DoNothingFuseExitData memory data) internal {
         emit DoNothingExitFuse(VERSION, data.asset);
     }

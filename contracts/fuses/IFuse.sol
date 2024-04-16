@@ -8,6 +8,14 @@ interface IFuse is IFuseCommon {
 
     function exit(bytes calldata data) external;
 
+    /// @notice Withdraw assets from the Fuse
+    /// @param params - array of parameters
+    /// @dev - Notice! Always first param -
+    /// params[0] is asset value in underlying, next params are specific for the Fuse,
+    /// params[1] - could be address of the asset, address of the external vault or address of the market or any other specific param for the Fuse
+    /// params[n] - any other specific param for a given the Fuse
+    function withdraw(bytes32[] calldata params) external;
+
     /// Vault details:
     /// - has a list of fuses
     /// - Vault is a ERC-4626

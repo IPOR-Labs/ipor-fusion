@@ -40,6 +40,10 @@ contract NativeSwapWethToWstEthFuse is IFuse {
         revert("AaveV3SupplyFuse: exit not supported");
     }
 
+    function withdraw(bytes32[] calldata) external override {
+        revert("not supported");
+    }
+
     function getSupportedAssets() external view returns (address[] memory assets) {
         assets = new address[](0);
     }

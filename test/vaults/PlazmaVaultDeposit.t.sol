@@ -31,13 +31,7 @@ contract PlazmaVaultDepositTest is Test {
 
     address public owner = address(this);
 
-    string public assetName;
-    string public assetSymbol;
-    address public underlyingToken;
-    address[] public alphas;
-    address public alpha;
     uint256 public amount;
-
     address public userOne;
 
     IporPriceOracle private iporPriceOracleProxy;
@@ -64,9 +58,9 @@ contract PlazmaVaultDepositTest is Test {
         //given
         PlazmaVault plazmaVault = _preparePlazmaVaultDai();
 
-        address userOne = address(0x777);
+        userOne = address(0x777);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
 
         deal(DAI, address(userOne), amount);
 
@@ -104,9 +98,9 @@ contract PlazmaVaultDepositTest is Test {
         //given
         PlazmaVault plazmaVault = _preparePlazmaVaultUsdc();
 
-        address userOne = address(0x777);
+        userOne = address(0x777);
 
-        uint256 amount = 100 * 1e6;
+        amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount);

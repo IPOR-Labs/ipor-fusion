@@ -62,6 +62,14 @@ contract Erc4626SupplyFuse is IFuse {
         _exit(data);
     }
 
+    /// @dev params[0] - amount in underlying asset, params[1] - vault address
+    function withdraw(bytes32[] calldata params) external override {
+        uint256 amount = uint256(params[0]);
+        address vault = MarketConfigurationLib.bytes32ToAddress(params[1]);
+
+        _exit(Erc4626SupplyFuseData(vault, amount));
+    }
+
     function _exit(Erc4626SupplyFuseData memory data) internal {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
             revert Erc4626SupplyFuseUnsupportedVault("exit", data.vault, Errors.UNSUPPORTED_ERC4626);

@@ -2,11 +2,14 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IPool} from "../../vaults/interfaces/IPool.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
 import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {IAavePoolDataProvider} from "./IAavePoolDataProvider.sol";
+import {AaveConstants} from "./AaveConstants.sol";
 
 contract AaveV3SupplyFuse is IFuse {
     using SafeCast for uint256;
@@ -51,6 +54,13 @@ contract AaveV3SupplyFuse is IFuse {
         _enter(data);
     }
 
+    /// @dev params[0] - amount in underlying asset, params[1] - asset address
+    function withdraw(bytes32[] calldata params) external override {
+        uint256 amount = uint256(params[0]);
+        address asset = MarketConfigurationLib.bytes32ToAddress(params[1]);
+        _exit(AaveV3SupplyFuseExitData(asset, amount));
+    }
+
     function _enter(AaveV3SupplyFuseEnterData memory data) internal {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV3SupplyFuseUnsupportedAsset("enter", data.asset, Errors.UNSUPPORTED_ASSET);
@@ -80,7 +90,18 @@ contract AaveV3SupplyFuse is IFuse {
             revert AaveV3SupplyFuseUnsupportedAsset("exit", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
-        uint256 withdrawnAmount = AAVE_POOL.withdraw(data.asset, data.amount, address(this));
+        uint256 amountToWithdraw = data.amount;
+
+        (address aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
+            .getReserveTokensAddresses(data.asset);
+
+        uint256 aTokenBalance = ERC20(aTokenAddress).balanceOf(address(this));
+
+        if (aTokenBalance < amountToWithdraw) {
+            amountToWithdraw = aTokenBalance;
+        }
+
+        uint256 withdrawnAmount = AAVE_POOL.withdraw(data.asset, amountToWithdraw, address(this));
 
         emit AaveV3SupplyExitFuse(VERSION, data.asset, withdrawnAmount);
     }

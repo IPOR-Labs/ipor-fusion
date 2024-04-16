@@ -12,7 +12,7 @@ contract CompoundV3SupplyFuse is IFuse {
     using SafeCast for uint256;
 
     struct CompoundV3SupplyFuseEnterData {
-        /// @notis asset address to supply
+        /// @notice asset address to supply
         address asset;
         /// @notice asset amount to supply
         uint256 amount;
@@ -48,6 +48,22 @@ contract CompoundV3SupplyFuse is IFuse {
         _enter(data);
     }
 
+    function exit(bytes calldata data) external {
+        _exit(abi.decode(data, (CompoundV3SupplyFuseExitData)));
+    }
+
+    function exit(CompoundV3SupplyFuseExitData calldata data) external {
+        _exit(data);
+    }
+
+    /// @dev params[0] - amount in underlying asset, params[1] - asset address
+    function withdraw(bytes32[] calldata params) external override {
+        uint256 amount = uint256(params[0]);
+        address asset = MarketConfigurationLib.bytes32ToAddress(params[1]);
+
+        _exit(CompoundV3SupplyFuseExitData(asset, amount));
+    }
+
     function _enter(CompoundV3SupplyFuseEnterData memory data) internal {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert CompoundV3SupplyFuseUnsupportedAsset("enter", data.asset, Errors.UNSUPPORTED_ASSET);
@@ -58,14 +74,6 @@ contract CompoundV3SupplyFuse is IFuse {
         COMET.supply(data.asset, data.amount);
 
         emit CompoundV3SupplyEnterFuse(VERSION, data.asset, address(COMET), data.amount);
-    }
-
-    function exit(bytes calldata data) external {
-        _exit(abi.decode(data, (CompoundV3SupplyFuseExitData)));
-    }
-
-    function exit(CompoundV3SupplyFuseExitData calldata data) external {
-        _exit(data);
     }
 
     function _exit(CompoundV3SupplyFuseExitData memory data) internal {

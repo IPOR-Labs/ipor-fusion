@@ -14,6 +14,15 @@ library PlazmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plazmaVaultMarketConfiguration")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant MARKET_CONFIGURATION = 0xd5bdc7559e360e9c73313f6862fc65997a8cda8dafe6ecfa240156ec11864100;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plazmaVaultCfgImmediateWithdrawalFusesArray")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PLAZMA_VAULT_CFG_IMMEDIATE_WITHDRAWAL_FUSES_ARRAY =
+        0x1a6ddb1ce5f4f320920a4c0f528489c050b900038d1d9389d5273ce4a6988900;
+
+    /// @notice Every fuse has a list of parameters used for immediate withdrawal
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plazmaVaultCfgImmediateWithdrawalFusesParams")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PLAZMA_VAULT_CFG_IMMEDIATE_WITHDRAWAL_FUSES_PARAMS =
+        0x397ee58b336520b7a796c422a0927e1600c688e25e66430186a8ab1f395b6500;
+
     /// --------------
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.globalCfgMarkets")) - 1)) & ~bytes32(uint256(0xff));
@@ -69,6 +78,37 @@ library PlazmaVaultStorageLib {
     struct MarketConfiguration {
         /// @dev marketId => MarketStruct
         mapping(uint256 => MarketStruct) value;
+    }
+
+    struct ImmediateWithdrawalFuses {
+        /// @dev value is a fuse address used for immediate withdrawal
+        address[] value;
+    }
+
+    struct ImmediateWithdrawalFusesParams {
+        /// @dev key: fuse address and index in ImmediateWithdrawalFuses array, value: list of parameters used for immediate withdrawal
+        /// @dev first param always amount in underlying asset of PlazmaVault, second and next params are specific for the fuse and market
+        mapping(bytes32 => bytes32[]) value;
+    }
+
+    function getImmediateWithdrawalFusesArray()
+        internal
+        pure
+        returns (ImmediateWithdrawalFuses storage immediateWithdrawalFuses)
+    {
+        assembly {
+            immediateWithdrawalFuses.slot := PLAZMA_VAULT_CFG_IMMEDIATE_WITHDRAWAL_FUSES_ARRAY
+        }
+    }
+
+    function getImmediateWithdrawalFusesParams()
+        internal
+        pure
+        returns (ImmediateWithdrawalFusesParams storage immediateWithdrawalFusesParams)
+    {
+        assembly {
+            immediateWithdrawalFusesParams.slot := PLAZMA_VAULT_CFG_IMMEDIATE_WITHDRAWAL_FUSES_PARAMS
+        }
     }
 
     /// @notice Space in storage to store the market configuration for a given PlazmaVault

@@ -35,6 +35,10 @@ contract FlashLoanMorphoFuse is IFuse {
         revert("FlashLoanMorphoFuse: exit not supported");
     }
 
+    function withdraw(bytes32[] calldata) external override {
+        revert("not supported");
+    }
+
     // todo remove solhint disable
     //solhint-disable-next-line
     function onMorphoFlashLoan(uint256 flashLoanAmount, bytes calldata data) external payable {

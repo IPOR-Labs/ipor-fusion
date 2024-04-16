@@ -63,12 +63,12 @@ contract PlazmaVaultTest is Test {
 
     function testShouldExecuteSimpleCase() public {
         //given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
-        address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
+        assetName = "IPOR Fusion DAI";
+        assetSymbol = "ipfDAI";
+        underlyingToken = DAI;
+        alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
@@ -104,7 +104,7 @@ contract PlazmaVaultTest is Test {
 
         PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
 
         deal(DAI, address(plazmaVault), amount);
 
@@ -134,7 +134,7 @@ contract PlazmaVaultTest is Test {
         underlyingToken = USDC;
         alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
@@ -216,7 +216,7 @@ contract PlazmaVaultTest is Test {
         underlyingToken = DAI;
         alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
@@ -252,7 +252,7 @@ contract PlazmaVaultTest is Test {
 
         PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
 
         deal(DAI, address(plazmaVault), amount);
 
@@ -296,7 +296,7 @@ contract PlazmaVaultTest is Test {
         underlyingToken = USDC;
         alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
@@ -579,12 +579,12 @@ contract PlazmaVaultTest is Test {
 
     function testShouldExitFromAaveV3SupplyFuse() public {
         //given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
-        address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
+        assetName = "IPOR Fusion DAI";
+        assetSymbol = "ipfDAI";
+        underlyingToken = DAI;
+        alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
@@ -620,7 +620,7 @@ contract PlazmaVaultTest is Test {
 
         PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
 
         deal(DAI, address(plazmaVault), amount);
 
@@ -671,7 +671,7 @@ contract PlazmaVaultTest is Test {
         underlyingToken = USDC;
         alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
