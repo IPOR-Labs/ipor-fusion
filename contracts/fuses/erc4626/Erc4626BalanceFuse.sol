@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
@@ -20,7 +19,7 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
 
     constructor(uint256 marketIdInput, address priceOracle) {
         MARKET_ID = marketIdInput;
-        PRICE_ORACLE = priceOracle;
+        PRICE_ORACLE = IIporPriceOracle(priceOracle);
     }
 
     function balanceOf(address plazmaVault) external view override returns (uint256) {
@@ -34,9 +33,6 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
 
         uint256 balance = 0;
         uint256 vaultAssets;
-        uint256 decimals;
-        // @dev this value has 8 decimals
-        uint256 assetPrice;
         address vaultAddress;
         IERC4626 vault;
 
