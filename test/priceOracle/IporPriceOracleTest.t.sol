@@ -29,7 +29,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         );
     }
 
-    function testShouldRevertWhenPassNotSupportetAsset() external {
+    function testShouldRevertWhenPassNotSupportedAsset() external {
         // given
         bytes memory error = abi.encodeWithSignature("UnsupportedAsset(string)", Errors.UNSUPPORTED_ASSET);
 
