@@ -37,7 +37,7 @@ contract AaveV2SupplyFuse is IFuse {
 
     error AaveV2SupplyFuseUnsupportedAsset(address asset, string errorCode);
 
-    constructor(address aavePoolInput, uint256 marketIdInput) {
+    constructor(uint256 marketIdInput, address aavePoolInput) {
         MARKET_ID = marketIdInput;
         VERSION = address(this);
         AAVE_POOL = AaveLendingPoolV2(aavePoolInput);
@@ -51,6 +51,14 @@ contract AaveV2SupplyFuse is IFuse {
         _enter(data);
     }
 
+    function exit(bytes calldata data) external {
+        _exit(abi.decode(data, (AaveV2SupplyFuseExitData)));
+    }
+
+    function exit(AaveV2SupplyFuseExitData calldata data) external {
+        _exit(data);
+    }
+
     function _enter(AaveV2SupplyFuseEnterData memory data) internal {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV2SupplyFuseUnsupportedAsset(data.asset, Errors.UNSUPPORTED_ASSET);
@@ -61,14 +69,6 @@ contract AaveV2SupplyFuse is IFuse {
         AAVE_POOL.deposit(data.asset, data.amount, address(this), 0);
 
         emit AaveV2SupplyEnterFuse(VERSION, data.asset, data.amount);
-    }
-
-    function exit(bytes calldata data) external {
-        _exit(abi.decode(data, (AaveV2SupplyFuseExitData)));
-    }
-
-    function exit(AaveV2SupplyFuseExitData calldata data) external {
-        _exit(data);
     }
 
     function _exit(AaveV2SupplyFuseExitData memory data) internal {

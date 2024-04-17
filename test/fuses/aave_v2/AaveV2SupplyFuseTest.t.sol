@@ -29,7 +29,7 @@ contract AaveV2SupplyFuseTest is Test {
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        AaveV2SupplyFuse fuse = new AaveV2SupplyFuse(address(AAVE_POOL), 1);
+        AaveV2SupplyFuse fuse = new AaveV2SupplyFuse(1, address(AAVE_POOL));
         AaveV2SupplyFuseMock fuseMock = new AaveV2SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -73,7 +73,7 @@ contract AaveV2SupplyFuseTest is Test {
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
         uint256 dustOnAToken = 10;
-        AaveV2SupplyFuse fuse = new AaveV2SupplyFuse(address(AAVE_POOL), 1);
+        AaveV2SupplyFuse fuse = new AaveV2SupplyFuse(1, address(AAVE_POOL));
         AaveV2SupplyFuseMock fuseMock = new AaveV2SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
