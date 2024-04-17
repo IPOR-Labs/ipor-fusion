@@ -3,35 +3,22 @@
 
 pragma solidity 0.8.20;
 
-import {Test} from "forge-std/Test.sol";
-import {console} from "./../../../lib/forge-std/src/console.sol";
+import {Test, console2} from "forge-std/Test.sol";
+
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import {IApproveERC20} from "../../../contracts/fuses/IApproveERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ERC4626BalanceFuseMock} from "./ERC4626BalanceFuseMock.sol";
+
 import {Erc4626SupplyFuse} from "./../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {ERC4626SupplyFuseMock} from "./ERC4626SupplyFuseMock.sol";
-// TODO check import below
+import {ERC4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {VaultERC4626Mock} from "./VaultERC4626Mock.sol";
+
 import {IporPriceOracle} from "./../../../contracts/priceOracle/IporPriceOracle.sol";
-import {MarketConfigurationLib} from "./../../../contracts/libraries/MarketConfigurationLib.sol";
 
 contract ERC4646BalanceFuseTest is Test {
-    struct SupportedToken {
-        address vault;
-        string name;
-    }
+    address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address private constant sDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
 
     IporPriceOracle private iporPriceOracleProxy;
-
-    IERC4626 public constant sDAI = IERC4626(0x83F20F44975D03b1b09e64809B757c47f942BEeA);
-
-    Erc4626SupplyFuse private marketSupply;
-    ERC4626SupplyFuseMock private marketSupplyMock;
-    ERC4626BalanceFuseMock private marketBalance;
-    VaultERC4626Mock private vault;
-
-    SupportedToken private activeTokens;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
@@ -45,42 +32,87 @@ contract ERC4646BalanceFuseTest is Test {
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
         );
-        marketSupply = new Erc4626SupplyFuse(1);
-        marketSupplyMock = new ERC4626SupplyFuseMock(address(marketSupply));
-        marketBalance = new ERC4626BalanceFuseMock(1, address(iporPriceOracleProxy));
-        // vault = new VaultERC4626Mock(address(marketSupply));
-        // activeTokens = SupportedToken({vault: address(vault), name: "mockVault"});
-        activeTokens = SupportedToken({vault: address(sDAI), name: "sDAI"});
+        address[] memory assets = new address[](1);
+        address[] memory sources = new address[](1);
+        assets[0] = DAI;
     }
 
     function testShouldBeAbleToSupplyAndCalculateBalance() external {
         // given
-        address user = vm.rememberKey(123);
-        uint256 decimals = sDAI.decimals();
-        uint256 amount = 100 * 10 ** decimals;
-
-        deal(activeTokens.vault, user, 1_000 * 10 ** decimals);
+        Erc4626SupplyFuse supplyFuse = new Erc4626SupplyFuse(1);
+        ERC4626BalanceFuse balanceFuse = new ERC4626BalanceFuse(1, address(iporPriceOracleProxy));
+        VaultERC4626Mock vault = new VaultERC4626Mock(address(supplyFuse), address(balanceFuse));
 
         address[] memory assets = new address[](1);
-        assets[0] = activeTokens.vault;
-        // TODO
-        // vault.grantAssetsToMarket(marketSupply.MARKET_ID(), assets);
-        // vault.grantAssetsToMarket(marketSupply.MARKET_ID(), assets);
-        marketSupplyMock.grantAssetsToMarket(marketSupply.MARKET_ID(), assets);
-        marketBalance.updateMarketConfiguration(assets);
+        assets[0] = sDAI;
+        vault.grantAssetsToMarket(supplyFuse.MARKET_ID(), assets);
+        uint256 amount = 100e18;
 
-        uint256 balanceBefore = marketBalance.balanceOf(user);
+        deal(DAI, address(vault), 1_000e18);
+
+        uint256 balanceBefore = IERC4626(sDAI).balanceOf(address(vault));
+        uint256 balanceFromFuseBefore = vault.balanceOf(address(vault));
 
         // when
-        vm.startPrank(user);
-        IApproveERC20(activeTokens.vault).approve(address(marketSupply), amount);
-        marketSupply.enter(Erc4626SupplyFuse.Erc4626SupplyFuseData({vault: activeTokens.vault, amount: amount}));
-        vm.stopPrank();
+        vault.enter(Erc4626SupplyFuse.Erc4626SupplyFuseData({vault: sDAI, amount: amount}));
 
-        // uint256 balanceAfter = marketBalance.balanceOf(user);
+        //then
+        uint256 balanceAfter = IERC4626(sDAI).balanceOf(address(vault));
+        uint256 balanceFromFuseAfter = vault.balanceOf(address(vault));
 
-        // // then
-        // assertTrue(balanceAfter > balanceBefore, "Balance should be greater after supply");
-        // assertEq(balanceBefore, 0, "Balance before should be 0");
+        assertEq(balanceBefore, 0, "Balance before should be 0");
+        assertEq(balanceFromFuseBefore, 0, "Balance from fuse before should be 0");
+        assertGt(balanceAfter, balanceBefore, "Balance should be greater after supply");
+        assertGt(balanceFromFuseAfter, balanceFromFuseBefore, "Balance from fuse should be greater after supply");
+        assertEq(balanceAfter, 93731561573799055444, "sDAI balance should be 93731561573799055444 after supply");
+        assertEq(
+            balanceFromFuseAfter,
+            100042570999999999999,
+            "Balance from fuse balance should be 100042570999999999999 after supply"
+        );
+    }
+
+    function testShouldBeAbleToWithdrawAndCalculateBalance() external {
+        // given
+        Erc4626SupplyFuse supplyFuse = new Erc4626SupplyFuse(1);
+        ERC4626BalanceFuse balanceFuse = new ERC4626BalanceFuse(1, address(iporPriceOracleProxy));
+        VaultERC4626Mock vault = new VaultERC4626Mock(address(supplyFuse), address(balanceFuse));
+
+        address[] memory assets = new address[](1);
+        assets[0] = sDAI;
+        vault.grantAssetsToMarket(supplyFuse.MARKET_ID(), assets);
+        uint256 amount = 100e18;
+
+        deal(DAI, address(vault), 1_000e18);
+
+        vault.enter(Erc4626SupplyFuse.Erc4626SupplyFuseData({vault: sDAI, amount: amount}));
+
+        uint256 balanceBeforeWithdraw = IERC4626(sDAI).balanceOf(address(vault));
+        uint256 balanceFromFuseBeforeWithdraw = vault.balanceOf(address(vault));
+
+        // when
+        vault.exit(
+            Erc4626SupplyFuse.Erc4626SupplyFuseData({
+                vault: sDAI,
+                amount: IERC4626(sDAI).convertToAssets(balanceBeforeWithdraw)
+            })
+        );
+
+        // then
+        uint256 balanceAfterWithdraw = IERC4626(sDAI).balanceOf(address(vault));
+        uint256 balanceFromFuseAfterWithdraw = vault.balanceOf(address(vault));
+
+        assertEq(
+            balanceBeforeWithdraw,
+            93731561573799055444,
+            "sDAI balance should be 93731561573799055444 before withdraw"
+        );
+        assertEq(
+            balanceFromFuseBeforeWithdraw,
+            100042570999999999999,
+            "Balance from fuse balance should be 100042570999999999999 before withdraw"
+        );
+        assertEq(balanceAfterWithdraw, 0, "sDAI balance should be 0 after withdraw");
+        assertEq(balanceFromFuseAfterWithdraw, 0, "Balance from fuse balance should be 0 after withdraw");
     }
 }

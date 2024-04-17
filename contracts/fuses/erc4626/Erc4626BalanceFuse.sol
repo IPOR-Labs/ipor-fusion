@@ -13,8 +13,8 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
     uint256 private constant PRICE_DECIMALS = 8;
-
     uint256 public immutable MARKET_ID;
+
     IIporPriceOracle public immutable PRICE_ORACLE;
 
     constructor(uint256 marketIdInput, address priceOracle) {
