@@ -32,7 +32,7 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        int256 balanceTemp = 0;
+        int256 balanceTemp;
         int256 balanceInLoop;
         uint256 decimals;
         // @dev this value has 8 decimals

@@ -46,6 +46,14 @@ contract CompoundV2SupplyFuse is IFuse {
         _enter(data);
     }
 
+    function exit(bytes calldata data) external {
+        _exit(abi.decode(data, (CompoundV2SupplyFuseExitData)));
+    }
+
+    function exit(CompoundV2SupplyFuseExitData calldata data) external {
+        _exit(data);
+    }
+
     function _enter(CompoundV2SupplyFuseEnterData memory data) internal {
         CErc20 cToken = CErc20(_getCToken(MARKET_ID, data.asset));
 
@@ -54,14 +62,6 @@ contract CompoundV2SupplyFuse is IFuse {
         cToken.mint(data.amount);
 
         emit CompoundV2SupplyEnterFuse(VERSION, data.asset, address(cToken), data.amount);
-    }
-
-    function exit(bytes calldata data) external {
-        _exit(abi.decode(data, (CompoundV2SupplyFuseExitData)));
-    }
-
-    function exit(CompoundV2SupplyFuseExitData calldata data) external {
-        _exit(data);
     }
 
     function _exit(CompoundV2SupplyFuseExitData memory data) internal {
