@@ -62,7 +62,7 @@ contract MorphoBlueSupplyFuseTest is Test {
 
         bytes32[] memory marketIds = new bytes32[](1);
         marketIds[0] = marketIdBytes32;
-        vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), marketIds);
+        vaultMock.grandMarketSubstrates(fuse.MARKET_ID(), marketIds);
 
         // when
         vaultMock.enter(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
@@ -98,7 +98,7 @@ contract MorphoBlueSupplyFuseTest is Test {
 
         bytes32[] memory marketIds = new bytes32[](1);
         marketIds[0] = marketIdBytes32;
-        vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), marketIds);
+        vaultMock.grandMarketSubstrates(fuse.MARKET_ID(), marketIds);
 
         vaultMock.enter(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
 

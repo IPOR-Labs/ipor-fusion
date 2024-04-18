@@ -2,8 +2,9 @@
 pragma solidity 0.8.20;
 
 import {IFuse} from "../../contracts/fuses/IFuse.sol";
+import {IFuseInstantWithdraw} from "../../contracts/fuses/IFuseInstantWithdraw.sol";
 
-contract DoNothingFuse is IFuse {
+contract DoNothingFuse is IFuse, IFuseInstantWithdraw {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
@@ -33,10 +34,6 @@ contract DoNothingFuse is IFuse {
         return _enter(data);
     }
 
-    function _enter(DoNothingFuseEnterData memory data) internal {
-        emit DoNothingEnterFuse(VERSION, data.asset);
-    }
-
     function exit(bytes calldata data) external {
         return _exit(abi.decode(data, (DoNothingFuseExitData)));
     }
@@ -45,10 +42,14 @@ contract DoNothingFuse is IFuse {
         return _exit(data);
     }
 
-    function withdraw(bytes32[] calldata params) external override {
+    function instantWithdraw(bytes32[] calldata params) external override {
         address asset = address(bytes20(params[0]));
 
         _exit(DoNothingFuseExitData(asset));
+    }
+
+    function _enter(DoNothingFuseEnterData memory data) internal {
+        emit DoNothingEnterFuse(VERSION, data.asset);
     }
 
     function _exit(DoNothingFuseExitData memory data) internal {

@@ -5,11 +5,11 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
-import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
-import {CompoundV3SupplyFuse} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
+import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {PlazmaVaultConfigLib} from "../../contracts/libraries/PlazmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
@@ -74,7 +74,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
@@ -112,9 +112,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
             )
         );
 
@@ -140,7 +138,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -186,9 +184,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -196,7 +192,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
             )
         );
 
@@ -222,7 +218,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
@@ -260,9 +256,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
             )
         );
 
@@ -302,7 +296,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -348,9 +342,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -358,7 +350,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
             )
         );
 
@@ -389,7 +381,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -436,9 +428,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -490,7 +480,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -542,9 +532,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 0})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 0}))
             )
         );
 
@@ -590,7 +578,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
@@ -628,9 +616,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
             )
         );
 
@@ -641,10 +627,7 @@ contract PlazmaVaultTest is Test {
 
         callsSecond[0] = PlazmaVault.FuseAction(
             address(supplyFuse),
-            abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(AaveV3SupplyFuse.AaveV3SupplyFuseExitData({asset: DAI, amount: amount}))
-            )
+            abi.encodeWithSignature("exit(bytes)", abi.encode(AaveV3SupplyFuseExitData({asset: DAI, amount: amount})))
         );
 
         uint256 totalAssetsInMarketBefore = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
@@ -677,7 +660,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -723,9 +706,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -733,7 +714,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
             )
         );
 
@@ -744,17 +725,14 @@ contract PlazmaVaultTest is Test {
 
         callsSecond[0] = PlazmaVault.FuseAction(
             address(supplyFuseAaveV3),
-            abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(AaveV3SupplyFuse.AaveV3SupplyFuseExitData({asset: USDC, amount: amount}))
-            )
+            abi.encodeWithSignature("exit(bytes)", abi.encode(AaveV3SupplyFuseExitData({asset: USDC, amount: amount})))
         );
 
         callsSecond[1] = PlazmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "exit(bytes)",
-                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseExitData({asset: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuseExitData({asset: USDC, amount: amount}))
             )
         );
 

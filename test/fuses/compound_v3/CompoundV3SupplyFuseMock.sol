@@ -2,8 +2,8 @@
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {CompoundV3SupplyFuse} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {MarketConfigurationLib} from "../../../contracts/libraries/MarketConfigurationLib.sol";
+import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {PlazmaVaultConfigLib} from "../../../contracts/libraries/PlazmaVaultConfigLib.sol";
 
 contract CompoundV3SupplyFuseMock {
     using Address for address;
@@ -20,7 +20,7 @@ contract CompoundV3SupplyFuseMock {
 
     function enter(
         //solhint-disable-next-line
-        CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData memory data
+        CompoundV3SupplyFuseEnterData memory data
     ) external {
         address(fuse).functionDelegateCall(msg.data);
     }
@@ -32,12 +32,12 @@ contract CompoundV3SupplyFuseMock {
 
     function exit(
         //solhint-disable-next-line
-        CompoundV3SupplyFuse.CompoundV3SupplyFuseExitData memory data
+        CompoundV3SupplyFuseExitData memory data
     ) external {
         address(fuse).functionDelegateCall(msg.data);
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
-        MarketConfigurationLib.grandSubstratesAsAssetsToMarket(marketId, assets);
+        PlazmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
     }
 }

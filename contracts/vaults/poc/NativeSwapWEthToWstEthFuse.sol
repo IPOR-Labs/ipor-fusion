@@ -6,8 +6,9 @@ import {IFuse} from "../../fuses/IFuse.sol";
 import {IwstEth} from "./interfaces/IwstEth.sol";
 import {IStETH} from "./interfaces/IStETH.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
+import {IFuseInstantWithdraw} from "../../fuses/IFuseInstantWithdraw.sol";
 
-contract NativeSwapWethToWstEthFuse is IFuse {
+contract NativeSwapWethToWstEthFuse is IFuse, IFuseInstantWithdraw {
     struct SwapData {
         uint256 wEthAmount;
     }
@@ -17,7 +18,7 @@ contract NativeSwapWethToWstEthFuse is IFuse {
     address public constant ST_ETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     uint256 public constant MARKET_ID = 0;
 
-    function enter(bytes calldata data) external {
+    function enter(bytes calldata data) external override {
         SwapData memory swapData = abi.decode(data, (SwapData));
 
         IWETH9(W_ETH).withdraw(swapData.wEthAmount);
@@ -33,14 +34,14 @@ contract NativeSwapWethToWstEthFuse is IFuse {
 
     //todo remove solhint disable
     //solhint-disable-next-line
-    function exit(bytes calldata data) external {
+    function exit(bytes calldata data) external override {
         //warning  Error message for revert is too long: 41 counted / 32 allowed  reason-string
         // todo remove solhint disable
         //solhint-disable-next-line
         revert("AaveV3SupplyFuse: exit not supported");
     }
 
-    function withdraw(bytes32[] calldata) external override {
+    function instantWithdraw(bytes32[] calldata) external override {
         revert("not supported");
     }
 

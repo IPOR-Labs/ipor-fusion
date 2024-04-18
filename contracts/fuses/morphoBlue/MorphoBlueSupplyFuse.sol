@@ -6,13 +6,14 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
 
-import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
 
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib.sol";
 import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParamsLib.sol";
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
+import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 
 struct MorphoBlueSupplyFuseEnterData {
     // vault address
@@ -28,7 +29,7 @@ struct MorphoBlueSupplyFuseExitData {
     uint256 amount;
 }
 
-contract MorphoBlueSupplyFuse is IFuse {
+contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using MorphoBalancesLib for IMorpho;
     using MorphoLib for IMorpho;
@@ -50,16 +51,34 @@ contract MorphoBlueSupplyFuse is IFuse {
         VERSION = address(this);
     }
 
-    function enter(bytes calldata data) external {
+    function enter(bytes calldata data) external override {
         _enter(abi.decode(data, (MorphoBlueSupplyFuseEnterData)));
     }
 
+    /// @dev technical method to generate ABI
     function enter(MorphoBlueSupplyFuseEnterData memory data) external {
         _enter(data);
     }
 
+    function exit(bytes calldata data) external override {
+        _exit(abi.decode(data, (MorphoBlueSupplyFuseExitData)));
+    }
+
+    /// @dev technical method to generate ABI
+    function exit(MorphoBlueSupplyFuseExitData calldata data) external {
+        _exit(data);
+    }
+
+    /// @dev params[0] - amount in underlying asset, params[1] - Morpho market id
+    function instantWithdraw(bytes32[] calldata params) external override {
+        uint256 amount = uint256(params[0]);
+        bytes32 morphoMarketId = params[1];
+
+        _exit(MorphoBlueSupplyFuseExitData(morphoMarketId, amount));
+    }
+
     function _enter(MorphoBlueSupplyFuseEnterData memory data) internal {
-        if (!MarketConfigurationLib.isSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
+        if (!PlazmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
             revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data.morphoBlueMarketId, Errors.UNSUPPORTED_MARKET);
         }
 
@@ -72,24 +91,8 @@ contract MorphoBlueSupplyFuse is IFuse {
         emit MorphoBlueSupplyEnterFuse(VERSION, marketParams.loanToken, data.morphoBlueMarketId, assetsSupplied);
     }
 
-    function exit(bytes calldata data) external {
-        _exit(abi.decode(data, (MorphoBlueSupplyFuseExitData)));
-    }
-
-    function exit(MorphoBlueSupplyFuseExitData calldata data) external {
-        _exit(data);
-    }
-
-    /// @dev params[0] - amount in underlying asset, params[1] - Morpho market id
-    function withdraw(bytes32[] calldata params) external override {
-        uint256 amount = uint256(params[0]);
-        bytes32 morphoMarketId = params[1];
-
-        _exit(MorphoBlueSupplyFuseExitData(morphoMarketId, amount));
-    }
-
     function _exit(MorphoBlueSupplyFuseExitData memory data) internal {
-        if (!MarketConfigurationLib.isSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
+        if (!PlazmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
             revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data.morphoBlueMarketId, Errors.UNSUPPORTED_MARKET);
         }
 
@@ -97,8 +100,10 @@ contract MorphoBlueSupplyFuse is IFuse {
         Id id = marketParams.id();
 
         MORPHO.accrueInterest(marketParams);
+
         uint256 totalSupplyAssets = MORPHO.totalSupplyAssets(id);
         uint256 totalSupplyShares = MORPHO.totalSupplyShares(id);
+
         uint256 shares = MORPHO.supplyShares(id, address(this));
 
         uint256 assetsMax = shares.toAssetsDown(totalSupplyAssets, totalSupplyShares);

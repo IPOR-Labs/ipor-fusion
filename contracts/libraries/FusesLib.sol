@@ -9,11 +9,22 @@ library FusesLib {
     event BalanceFuseAdded(uint256 indexed marketId, address indexed fuse);
     event BalanceFuseRemoved(uint256 indexed marketId, address indexed fuse);
 
-    error WrongAddress();
     error FuseAlreadyExists();
     error FuseDoesNotExist();
     error BalanceFuseAlreadyExists(uint256 marketId, address fuse);
     error BalanceFuseDoesNotExist(uint256 marketId, address fuse);
+
+    function isFuseSupported(address fuse) internal view returns (bool) {
+        return PlazmaVaultStorageLib.getFuses().value[fuse] != 0;
+    }
+
+    function getFusesArray() internal view returns (address[] memory) {
+        return PlazmaVaultStorageLib.getFusesArray().value;
+    }
+
+    function getFuseArrayIndex(address fuse) internal view returns (uint256) {
+        return PlazmaVaultStorageLib.getFuses().value[fuse];
+    }
 
     // TODO: add tests for addFuse and removeFuse
     function addFuse(address fuse) internal {
@@ -60,48 +71,36 @@ library FusesLib {
         emit FuseRemoved(fuse);
     }
 
-    function isFuseSupported(address fuse) internal view returns (bool) {
-        return PlazmaVaultStorageLib.getFuses().value[fuse] != 0;
+    function isBalanceFuseSupported(uint256 marketId, address fuse) internal view returns (bool) {
+        return PlazmaVaultStorageLib.getBalanceFuses().value[marketId] == fuse;
     }
 
-    function setBalanceFuse(uint256 marketId, address fuse) internal {
-        address currentFuse = PlazmaVaultStorageLib.getMarketBalanceFuses().value[marketId];
+    function getBalanceFuse(uint256 marketId) internal view returns (address) {
+        return PlazmaVaultStorageLib.getBalanceFuses().value[marketId];
+    }
+
+    function addBalanceFuse(uint256 marketId, address fuse) internal {
+        address currentFuse = PlazmaVaultStorageLib.getBalanceFuses().value[marketId];
 
         if (currentFuse == fuse) {
             revert BalanceFuseAlreadyExists(marketId, fuse);
         }
 
-        PlazmaVaultStorageLib.getMarketBalanceFuses().value[marketId] = fuse;
+        PlazmaVaultStorageLib.getBalanceFuses().value[marketId] = fuse;
 
         emit BalanceFuseAdded(marketId, fuse);
     }
 
     //TODO: add balance fuse array and add tests for that
     function removeBalanceFuse(uint256 marketId, address fuse) internal {
-        address currentFuse = PlazmaVaultStorageLib.getMarketBalanceFuses().value[marketId];
+        address currentFuse = PlazmaVaultStorageLib.getBalanceFuses().value[marketId];
 
         if (currentFuse != fuse) {
             revert BalanceFuseDoesNotExist(marketId, fuse);
         }
 
-        PlazmaVaultStorageLib.getMarketBalanceFuses().value[marketId] = address(0);
+        PlazmaVaultStorageLib.getBalanceFuses().value[marketId] = address(0);
 
         emit BalanceFuseRemoved(marketId, fuse);
-    }
-
-    function isBalanceFuseSupported(uint256 marketId, address fuse) internal view returns (bool) {
-        return PlazmaVaultStorageLib.getMarketBalanceFuses().value[marketId] == fuse;
-    }
-
-    function getMarketBalanceFuse(uint256 marketId) internal view returns (address) {
-        return PlazmaVaultStorageLib.getMarketBalanceFuses().value[marketId];
-    }
-
-    function getFusesArray() internal view returns (address[] memory) {
-        return PlazmaVaultStorageLib.getFusesArray().value;
-    }
-
-    function getFuseArrayIndex(address fuse) internal view returns (uint256) {
-        return PlazmaVaultStorageLib.getFuses().value[fuse];
     }
 }

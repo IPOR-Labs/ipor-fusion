@@ -6,9 +6,10 @@ import {IFuse} from "../../fuses/IFuse.sol";
 import {IMorpho} from "./interfaces/IMorpho.sol";
 import {PlazmaVault} from "../PlazmaVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IFuseInstantWithdraw} from "../../fuses/IFuseInstantWithdraw.sol";
 
 /// @dev FlashLoan Fuse type does not required information about supported assets
-contract FlashLoanMorphoFuse is IFuse {
+contract FlashLoanMorphoFuse is IFuse, IFuseInstantWithdraw {
     address public constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
     struct FlashLoanData {
@@ -21,7 +22,7 @@ contract FlashLoanMorphoFuse is IFuse {
     IMorpho public constant MORPHO_BLUE = IMorpho(MORPHO_ADDRESS);
     uint256 public constant MARKET_ID = 0; // todo: set correct market id
 
-    function enter(bytes calldata data) external {
+    function enter(bytes calldata data) external override {
         FlashLoanData memory flashLoanData = abi.decode(data, (FlashLoanData));
         IERC20(flashLoanData.asset).approve(MORPHO_ADDRESS, flashLoanData.amount);
         MORPHO_BLUE.flashLoan(flashLoanData.asset, flashLoanData.amount, flashLoanData.data);
@@ -29,13 +30,13 @@ contract FlashLoanMorphoFuse is IFuse {
 
     // todo remove solhint disable
     //solhint-disable-next-line
-    function exit(bytes calldata data) external {
+    function exit(bytes calldata data) external override {
         // todo remove solhint disable
         //solhint-disable-next-line
         revert("FlashLoanMorphoFuse: exit not supported");
     }
 
-    function withdraw(bytes32[] calldata) external override {
+    function instantWithdraw(bytes32[] calldata) external override {
         revert("not supported");
     }
 

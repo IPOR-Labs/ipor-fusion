@@ -112,7 +112,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         //when
-        plazmaVault.addBalanceFuse(PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse)));
+        plazmaVault.addBalanceFuse(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         //then
         assertTrue(

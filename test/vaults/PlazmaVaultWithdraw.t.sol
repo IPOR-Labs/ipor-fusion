@@ -5,11 +5,11 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
-import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
-import {CompoundV3SupplyFuse} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
+import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {PlazmaVaultConfigLib} from "../../contracts/libraries/PlazmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -61,7 +61,7 @@ contract PlazmaVaultWithdrawTest is Test {
         );
     }
 
-    function testShouldImmediatelyWithdrawCashAvailableOnPlazmaVault() public {
+    function testShouldInstantWithdrawCashAvailableOnPlazmaVault() public {
         //given
         PlazmaVault plazmaVault = _preparePlazmaVaultDai();
 
@@ -94,7 +94,7 @@ contract PlazmaVaultWithdrawTest is Test {
         assertEq(vaultTotalAssetsAfter, 0);
     }
 
-    function testShouldNotImmediatelyWithdrawBecauseNoShares() public {
+    function testShouldNotInstantWithdrawBecauseNoShares() public {
         // given
         PlazmaVault plazmaVault = _preparePlazmaVaultDai();
 
@@ -114,7 +114,7 @@ contract PlazmaVaultWithdrawTest is Test {
         plazmaVault.withdraw(amount, userOne, userOne);
     }
 
-    function testShouldImmediatelyWithdrawRequiredExitFromOneMarketAaveV3() public {
+    function testShouldInstantlyWithdrawRequiredExitFromOneMarketAaveV3() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -127,7 +127,7 @@ contract PlazmaVaultWithdrawTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -172,9 +172,7 @@ contract PlazmaVaultWithdrawTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -182,19 +180,19 @@ contract PlazmaVaultWithdrawTest is Test {
         vm.prank(alpha);
         plazmaVault.execute(calls);
 
-        /// @dev prepare immediate withdraw config
-        PlazmaVaultLib.ImmediateWithdrawalFusesParamsStruct[]
-            memory immediateWithdrawFuses = new PlazmaVaultLib.ImmediateWithdrawalFusesParamsStruct[](1);
-        bytes32[] memory immediateWithdrawParams = new bytes32[](2);
-        immediateWithdrawParams[0] = 0;
-        immediateWithdrawParams[1] = MarketConfigurationLib.addressToBytes32(USDC);
+        /// @dev prepare instant withdraw config
+        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory instantWithdrawParams = new bytes32[](2);
+        instantWithdrawParams[0] = 0;
+        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
-        immediateWithdrawFuses[0] = PlazmaVaultLib.ImmediateWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
-            params: immediateWithdrawParams
+            params: instantWithdrawParams
         });
 
-        plazmaVault.updateImmediateWithdrawalFuses(immediateWithdrawFuses);
+        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -210,7 +208,7 @@ contract PlazmaVaultWithdrawTest is Test {
         assertLt(vaultTotalAssetsAfter, 1e6);
     }
 
-    function testShouldImmediatelyWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3() public {
+    function testShouldInstantWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -223,7 +221,7 @@ contract PlazmaVaultWithdrawTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -275,13 +273,7 @@ contract PlazmaVaultWithdrawTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({
-                        asset: USDC,
-                        amount: 50 * 1e6,
-                        userEModeCategoryId: 1e6
-                    })
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -289,7 +281,7 @@ contract PlazmaVaultWithdrawTest is Test {
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6}))
+                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6}))
             )
         );
 
@@ -297,24 +289,24 @@ contract PlazmaVaultWithdrawTest is Test {
         vm.prank(alpha);
         plazmaVault.execute(calls);
 
-        /// @dev prepare immediate withdraw config
-        PlazmaVaultLib.ImmediateWithdrawalFusesParamsStruct[]
-            memory immediateWithdrawFuses = new PlazmaVaultLib.ImmediateWithdrawalFusesParamsStruct[](2);
-        bytes32[] memory immediateWithdrawParams = new bytes32[](2);
-        immediateWithdrawParams[0] = 0;
-        immediateWithdrawParams[1] = MarketConfigurationLib.addressToBytes32(USDC);
+        /// @dev prepare instant withdraw config
+        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        bytes32[] memory instantWithdrawParams = new bytes32[](2);
+        instantWithdrawParams[0] = 0;
+        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
-        immediateWithdrawFuses[0] = PlazmaVaultLib.ImmediateWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
-            params: immediateWithdrawParams
+            params: instantWithdrawParams
         });
 
-        immediateWithdrawFuses[1] = PlazmaVaultLib.ImmediateWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
-            params: immediateWithdrawParams
+            params: instantWithdrawParams
         });
 
-        plazmaVault.updateImmediateWithdrawalFuses(immediateWithdrawFuses);
+        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -330,6 +322,10 @@ contract PlazmaVaultWithdrawTest is Test {
         assertLt(vaultTotalAssetsAfter, 25 * 1e6);
     }
 
+    //    function testShouldInstantWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFails() public {
+    //        //TODO: implement
+    //    }
+
     function _preparePlazmaVaultUsdc() public returns (PlazmaVault) {
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
@@ -341,7 +337,7 @@ contract PlazmaVaultWithdrawTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -390,7 +386,7 @@ contract PlazmaVaultWithdrawTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);

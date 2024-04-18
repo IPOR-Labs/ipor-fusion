@@ -7,28 +7,30 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {IPool} from "../../vaults/interfaces/IPool.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
-import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "./IAavePoolDataProvider.sol";
 import {AaveConstants} from "./AaveConstants.sol";
+import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
 
-contract AaveV3SupplyFuse is IFuse {
+struct AaveV3SupplyFuseEnterData {
+    /// @notice asset address to supply
+    address asset;
+    /// @notice asset amount to supply
+    uint256 amount;
+    /// @notice user eMode category if pass value bigger than 255 is ignored and not set
+    uint256 userEModeCategoryId;
+}
+
+struct AaveV3SupplyFuseExitData {
+    /// @notice asset address to withdraw
+    address asset;
+    /// @notice asset amount to withdraw
+    uint256 amount;
+}
+
+contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
-
-    struct AaveV3SupplyFuseEnterData {
-        /// @notice asset address to supply
-        address asset;
-        /// @notice asset amount to supply
-        uint256 amount;
-        /// @notice user eMode category if pass value bigger than 255 is ignored and not set
-        uint256 userEModeCategoryId;
-    }
-
-    struct AaveV3SupplyFuseExitData {
-        /// @notice asset address to withdraw
-        address asset;
-        /// @notice asset amount to withdraw
-        uint256 amount;
-    }
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -46,23 +48,34 @@ contract AaveV3SupplyFuse is IFuse {
         VERSION = address(this);
     }
 
-    function enter(bytes calldata data) external {
+    function enter(bytes calldata data) external override {
         _enter(abi.decode(data, (AaveV3SupplyFuseEnterData)));
     }
 
+    /// @dev technical method to generate ABI
     function enter(AaveV3SupplyFuseEnterData memory data) external {
         _enter(data);
     }
 
+    function exit(bytes calldata data) external override {
+        _exit(abi.decode(data, (AaveV3SupplyFuseExitData)));
+    }
+
+    /// @dev technical method to generate ABI
+    function exit(AaveV3SupplyFuseExitData calldata data) external {
+        _exit(data);
+    }
+
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
-    function withdraw(bytes32[] calldata params) external override {
+    function instantWithdraw(bytes32[] calldata params) external override {
         uint256 amount = uint256(params[0]);
-        address asset = MarketConfigurationLib.bytes32ToAddress(params[1]);
+        address asset = PlazmaVaultConfigLib.bytes32ToAddress(params[1]);
+
         _exit(AaveV3SupplyFuseExitData(asset, amount));
     }
 
     function _enter(AaveV3SupplyFuseEnterData memory data) internal {
-        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV3SupplyFuseUnsupportedAsset("enter", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
@@ -77,31 +90,19 @@ contract AaveV3SupplyFuse is IFuse {
         emit AaveV3SupplyEnterFuse(VERSION, data.asset, data.amount, data.userEModeCategoryId);
     }
 
-    function exit(bytes calldata data) external {
-        _exit(abi.decode(data, (AaveV3SupplyFuseExitData)));
-    }
-
-    function exit(AaveV3SupplyFuseExitData calldata data) external {
-        _exit(data);
-    }
-
     function _exit(AaveV3SupplyFuseExitData memory data) internal {
-        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV3SupplyFuseUnsupportedAsset("exit", data.asset, Errors.UNSUPPORTED_ASSET);
         }
-
-        uint256 amountToWithdraw = data.amount;
 
         (address aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(data.asset);
 
-        uint256 aTokenBalance = ERC20(aTokenAddress).balanceOf(address(this));
-
-        if (aTokenBalance < amountToWithdraw) {
-            amountToWithdraw = aTokenBalance;
-        }
-
-        uint256 withdrawnAmount = AAVE_POOL.withdraw(data.asset, amountToWithdraw, address(this));
+        uint256 withdrawnAmount = AAVE_POOL.withdraw(
+            data.asset,
+            IporMath.min(ERC20(aTokenAddress).balanceOf(address(this)), data.amount),
+            address(this)
+        );
 
         emit AaveV3SupplyExitFuse(VERSION, data.asset, withdrawnAmount);
     }

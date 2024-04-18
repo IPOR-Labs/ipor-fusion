@@ -6,13 +6,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {FlashLoanMorphoFuse} from "../../contracts/vaults/poc/FlashLoanMorphoFuse.sol";
-import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BorrowFuse} from "../../contracts/vaults/poc/AaveV3BorrowFuse.sol";
 import {NativeSwapWethToWstEthFuse} from "../../contracts/vaults/poc/NativeSwapWEthToWstEthFuse.sol";
 import {PriceAdapter} from "../../contracts/vaults/poc/PriceAdapter.sol";
 import {AaveV3BalanceFuse} from "../../contracts/vaults/poc/AaveV3BalanceFuse.sol";
 
-import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../contracts/libraries/PlazmaVaultConfigLib.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 
 contract ForkAmmGovernanceServiceTest is Test {
@@ -63,8 +63,8 @@ contract ForkAmmGovernanceServiceTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory marketAssets = new bytes32[](2);
-        marketAssets[0] = MarketConfigurationLib.addressToBytes32(WST_ETH);
-        marketAssets[1] = MarketConfigurationLib.addressToBytes32(W_ETH);
+        marketAssets[0] = PlazmaVaultConfigLib.addressToBytes32(WST_ETH);
+        marketAssets[1] = PlazmaVaultConfigLib.addressToBytes32(W_ETH);
 
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig({marketId: aaveV3MarketId, substrates: marketAssets});
 
@@ -119,13 +119,7 @@ contract ForkAmmGovernanceServiceTest is Test {
             aaveV3SupplyFuse,
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({
-                        asset: WST_ETH,
-                        amount: 40 * 1e18,
-                        userEModeCategoryId: 1e18
-                    })
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: WST_ETH, amount: 40 * 1e18, userEModeCategoryId: 1e18}))
             )
         );
 

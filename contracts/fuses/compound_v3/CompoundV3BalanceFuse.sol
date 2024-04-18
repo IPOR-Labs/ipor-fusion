@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IComet} from "./IComet.sol";
-import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
 
 contract CompoundV3BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
@@ -29,7 +29,7 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
     }
 
     function balanceOf(address plazmaVault) external view override returns (uint256) {
-        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfigurationSubstrates(MARKET_ID);
+        bytes32[] memory assetsRaw = PlazmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
         if (len == 0) {
@@ -45,7 +45,7 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
-            asset = MarketConfigurationLib.bytes32ToAddress(assetsRaw[i]);
+            asset = PlazmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             decimals = ERC20(asset).decimals();
             price = _getPrice(asset);
 

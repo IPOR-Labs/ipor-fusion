@@ -4,6 +4,10 @@ pragma solidity 0.8.20;
 import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
 
 contract FusesLibMock {
+    function isFuseSupported(address fuse) external view returns (bool) {
+        return FusesLib.isFuseSupported(fuse);
+    }
+
     function addFuse(address fuse) external {
         FusesLib.addFuse(fuse);
     }
@@ -12,20 +16,16 @@ contract FusesLibMock {
         FusesLib.removeFuse(fuse);
     }
 
-    function isFuseSupported(address fuse) external view returns (bool) {
-        return FusesLib.isFuseSupported(fuse);
+    function isBalanceFuseSupported(uint256 marketId, address fuse) external view returns (bool) {
+        return FusesLib.isBalanceFuseSupported(marketId, fuse);
     }
 
-    function setBalanceFuse(uint256 marketId, address fuse) external {
-        FusesLib.setBalanceFuse(marketId, fuse);
+    function addBalanceFuse(uint256 marketId, address fuse) external {
+        FusesLib.addBalanceFuse(marketId, fuse);
     }
 
     function removeBalanceFuse(uint256 marketId, address fuse) external {
         FusesLib.removeBalanceFuse(marketId, fuse);
-    }
-
-    function isBalanceFuseSupported(uint256 marketId, address fuse) external view returns (bool) {
-        return FusesLib.isBalanceFuseSupported(marketId, fuse);
     }
 
     function getFusesArray() external view returns (address[] memory) {
