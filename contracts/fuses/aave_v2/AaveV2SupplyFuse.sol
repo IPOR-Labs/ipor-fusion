@@ -75,7 +75,7 @@ contract AaveV2SupplyFuse is IFuse {
         if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV2SupplyFuseUnsupportedAsset(data.asset, Errors.UNSUPPORTED_ASSET);
         }
-        uint amountToWithdraw = data.amount;
+        uint256 amountToWithdraw = data.amount;
 
         ReserveData memory reserveData = AaveLendingPoolV2(AaveConstants.AAVE_LENDING_POOL_V2).getReserveData(
             data.asset
