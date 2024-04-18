@@ -6,8 +6,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IAavePriceOracle} from "./IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "./IAavePoolDataProvider.sol";
-import {AaveConstants} from "./AaveConstants.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 
 contract AaveV3BalanceFuse is IMarketBalanceFuse {
@@ -17,9 +17,13 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
     uint256 private constant AAVE_ORACLE_BASE_CURRENCY_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
+    address public immutable AAVE_PRICE_ORACLE;
+    address public immutable AAVE_POOL_DATA_PROVIDER_V3;
 
-    constructor(uint256 marketIdInput) {
+    constructor(uint256 marketIdInput, address aavePriceOracle, address aavePoolDataProviderV3) {
         MARKET_ID = marketIdInput;
+        AAVE_PRICE_ORACLE = aavePriceOracle;
+        AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3;
     }
 
     function balanceOf(address plazmaVault) external view override returns (uint256) {
@@ -45,10 +49,13 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
             balanceInLoop = 0;
             asset = MarketConfigurationLib.bytes32ToAddress(assetsRaw[i]);
             decimals = ERC20(asset).decimals();
-            price = IAavePriceOracle(AaveConstants.ETHEREUM_AAVE_PRICE_ORACLE_MAINNET).getAssetPrice(asset);
+            price = IAavePriceOracle(AAVE_PRICE_ORACLE).getAssetPrice(asset);
+            if (price == 0) {
+                revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_ASSET);
+            }
 
             (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(
-                AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET
+                AAVE_POOL_DATA_PROVIDER_V3
             ).getReserveTokensAddresses(asset);
 
             if (aTokenAddress != address(0)) {
