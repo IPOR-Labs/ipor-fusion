@@ -7,7 +7,6 @@ import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
 import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {Errors} from "./../../libraries/errors/Errors.sol";
 
 contract ERC4626BalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;

@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.20;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -16,7 +16,7 @@ import {IporPriceOracle} from "./../../../contracts/priceOracle/IporPriceOracle.
 
 contract ERC4646BalanceFuseTest is Test {
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address private constant sDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
+    address private constant SDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
 
     IporPriceOracle private iporPriceOracleProxy;
 
@@ -33,7 +33,6 @@ contract ERC4646BalanceFuseTest is Test {
             )
         );
         address[] memory assets = new address[](1);
-        address[] memory sources = new address[](1);
         assets[0] = DAI;
     }
 
@@ -44,27 +43,27 @@ contract ERC4646BalanceFuseTest is Test {
         VaultERC4626Mock vault = new VaultERC4626Mock(address(supplyFuse), address(balanceFuse));
 
         address[] memory assets = new address[](1);
-        assets[0] = sDAI;
+        assets[0] = SDAI;
         vault.grantAssetsToMarket(supplyFuse.MARKET_ID(), assets);
         uint256 amount = 100e18;
 
         deal(DAI, address(vault), 1_000e18);
 
-        uint256 balanceBefore = IERC4626(sDAI).balanceOf(address(vault));
+        uint256 balanceBefore = IERC4626(SDAI).balanceOf(address(vault));
         uint256 balanceFromFuseBefore = vault.balanceOf(address(vault));
 
         // when
-        vault.enter(Erc4626SupplyFuse.Erc4626SupplyFuseData({vault: sDAI, amount: amount}));
+        vault.enter(Erc4626SupplyFuse.Erc4626SupplyFuseData({vault: SDAI, amount: amount}));
 
         //then
-        uint256 balanceAfter = IERC4626(sDAI).balanceOf(address(vault));
+        uint256 balanceAfter = IERC4626(SDAI).balanceOf(address(vault));
         uint256 balanceFromFuseAfter = vault.balanceOf(address(vault));
 
         assertEq(balanceBefore, 0, "Balance before should be 0");
         assertEq(balanceFromFuseBefore, 0, "Balance from fuse before should be 0");
         assertGt(balanceAfter, balanceBefore, "Balance should be greater after supply");
         assertGt(balanceFromFuseAfter, balanceFromFuseBefore, "Balance from fuse should be greater after supply");
-        assertEq(balanceAfter, 93731561573799055444, "sDAI balance should be 93731561573799055444 after supply");
+        assertEq(balanceAfter, 93731561573799055444, "SDAI balance should be 93731561573799055444 after supply");
         assertEq(
             balanceFromFuseAfter,
             100042570999999999999,
@@ -79,40 +78,40 @@ contract ERC4646BalanceFuseTest is Test {
         VaultERC4626Mock vault = new VaultERC4626Mock(address(supplyFuse), address(balanceFuse));
 
         address[] memory assets = new address[](1);
-        assets[0] = sDAI;
+        assets[0] = SDAI;
         vault.grantAssetsToMarket(supplyFuse.MARKET_ID(), assets);
         uint256 amount = 100e18;
 
         deal(DAI, address(vault), 1_000e18);
 
-        vault.enter(Erc4626SupplyFuse.Erc4626SupplyFuseData({vault: sDAI, amount: amount}));
+        vault.enter(Erc4626SupplyFuse.Erc4626SupplyFuseData({vault: SDAI, amount: amount}));
 
-        uint256 balanceBeforeWithdraw = IERC4626(sDAI).balanceOf(address(vault));
+        uint256 balanceBeforeWithdraw = IERC4626(SDAI).balanceOf(address(vault));
         uint256 balanceFromFuseBeforeWithdraw = vault.balanceOf(address(vault));
 
         // when
         vault.exit(
             Erc4626SupplyFuse.Erc4626SupplyFuseData({
-                vault: sDAI,
-                amount: IERC4626(sDAI).convertToAssets(balanceBeforeWithdraw)
+                vault: SDAI,
+                amount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw)
             })
         );
 
         // then
-        uint256 balanceAfterWithdraw = IERC4626(sDAI).balanceOf(address(vault));
+        uint256 balanceAfterWithdraw = IERC4626(SDAI).balanceOf(address(vault));
         uint256 balanceFromFuseAfterWithdraw = vault.balanceOf(address(vault));
 
         assertEq(
             balanceBeforeWithdraw,
             93731561573799055444,
-            "sDAI balance should be 93731561573799055444 before withdraw"
+            "SDAI balance should be 93731561573799055444 before withdraw"
         );
         assertEq(
             balanceFromFuseBeforeWithdraw,
             100042570999999999999,
             "Balance from fuse balance should be 100042570999999999999 before withdraw"
         );
-        assertEq(balanceAfterWithdraw, 0, "sDAI balance should be 0 after withdraw");
+        assertEq(balanceAfterWithdraw, 0, "SDAI balance should be 0 after withdraw");
         assertEq(balanceFromFuseAfterWithdraw, 0, "Balance from fuse balance should be 0 after withdraw");
     }
 }
