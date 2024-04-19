@@ -137,6 +137,16 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         return PlazmaVaultLib.getTotalAssetsInMarket(marketId);
     }
 
+    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
+        _withdrawFromMarkets(assets);
+        return super.withdraw(assets, receiver, owner);
+    }
+
+    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
+        _withdrawFromMarkets(convertToAssets(shares));
+        return super.redeem(shares, receiver, owner);
+    }
+
     function isAlphaGranted(address alpha) external view returns (bool) {
         return AlphasLib.isAlphaGranted(alpha);
     }
@@ -214,16 +224,9 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         FusesLib.addBalanceFuse(marketId, fuse);
     }
 
-    function _withdraw(
-        address caller,
-        address receiver,
-        address owner,
-        uint256 assets,
-        uint256 shares
-    ) internal virtual override {
-        uint256 currentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
-
+    function _withdrawFromMarkets(uint256 assets) internal {
         uint256 left;
+        uint256 currentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
 
         if (assets >= currentBalanceUnderlying) {
             uint256 marketIndex;
@@ -259,11 +262,6 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
 
             _updateMarketsBalances(markets);
         }
-
-        assets = assets - left;
-        shares = previewWithdraw(assets);
-
-        super._withdraw(caller, receiver, owner, assets, shares);
     }
 
     /// @notice Update balances in the vault for markets touched by the fuses during the execution of all FuseActions
@@ -293,7 +291,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
                 PlazmaVaultLib.updateTotalAssetsInMarket(
                     markets[i],
                     IporMath.convertWadToAssetDecimals(
-                        IporMath.division(wadBalanceAmountInUSD * underlyingAssetPrice, 10 ** BASE_CURRENCY_DECIMALS),
+                        IporMath.division(wadBalanceAmountInUSD * 10 ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
                         decimals()
                     )
                 );

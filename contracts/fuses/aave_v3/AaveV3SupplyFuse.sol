@@ -39,6 +39,7 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
 
     event AaveV3SupplyEnterFuse(address version, address asset, uint256 amount, uint256 userEModeCategoryId);
     event AaveV3SupplyExitFuse(address version, address asset, uint256 amount);
+    event AaveV3SupplyExitFailed(address version, address asset, uint256 amount);
 
     error AaveV3SupplyFuseUnsupportedAsset(string action, address asset, string errorCode);
 
@@ -98,12 +99,17 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
         (address aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(data.asset);
 
-        uint256 withdrawnAmount = AAVE_POOL.withdraw(
-            data.asset,
-            IporMath.min(ERC20(aTokenAddress).balanceOf(address(this)), data.amount),
-            address(this)
-        );
-
-        emit AaveV3SupplyExitFuse(VERSION, data.asset, withdrawnAmount);
+        try
+            AAVE_POOL.withdraw(
+                data.asset,
+                IporMath.min(ERC20(aTokenAddress).balanceOf(address(this)), data.amount),
+                address(this)
+            )
+        returns (uint256 withdrawnAmount) {
+            emit AaveV3SupplyExitFuse(VERSION, data.asset, withdrawnAmount);
+        } catch {
+            /// @dev if withdraw failed, continue with the next step
+            emit AaveV3SupplyExitFailed(VERSION, data.asset, data.amount);
+        }
     }
 }
