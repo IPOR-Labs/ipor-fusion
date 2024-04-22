@@ -11,28 +11,28 @@ import {IApproveERC20} from "../../../contracts/fuses/IApproveERC20.sol";
 import {AaveV3BalanceFuseMock} from "./AaveV3BalanceFuseMock.sol";
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
-contract AaveV3BalanceFuseTest is Test {
+contract AaveV3BalanceFuseArbitrumTest is Test {
     struct SupportedToken {
         address token;
         string name;
     }
 
-    IPool public constant AAVE_POOL = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
-    IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0x54586bE62E3c3580375aE3723C145253060Ca0C2);
+    IPool public constant AAVE_POOL = IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD);
+    IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7);
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
-        IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
-    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+        IAavePoolDataProvider(0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654);
+    address public constant ARBITRUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654;
 
     SupportedToken private activeTokens;
 
     function testShouldCalculateBalanceWhenSupply() external iterateSupportedTokens {
         // given
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19508857);
+        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
 
         AaveV3BalanceFuseMock aaveV3Balances = new AaveV3BalanceFuseMock(
             1,
             address(AAVE_PRICE_ORACLE),
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ARBITRUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         address user = vm.rememberKey(123);
         uint256 decimals = ERC20(activeTokens.token).decimals();
@@ -63,11 +63,11 @@ contract AaveV3BalanceFuseTest is Test {
 
     function testShouldDecreaseBalanceWhenBorrowVariable() external iterateSupportedTokens {
         // given
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
+        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"));
         AaveV3BalanceFuseMock aaveV3Balances = new AaveV3BalanceFuseMock(
             1,
             address(AAVE_PRICE_ORACLE),
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ARBITRUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         address user = vm.rememberKey(123);
         uint256 decimals = ERC20(activeTokens.token).decimals();
@@ -97,23 +97,21 @@ contract AaveV3BalanceFuseTest is Test {
         assertTrue(balanceAfter < balanceBefore, "Balance should be greater after supply");
     }
 
-    function _getSupportedAssets() private returns (SupportedToken[] memory supportedTokensTemp) {
-        supportedTokensTemp = new SupportedToken[](8);
+    function _getSupportedAssets() private pure returns (SupportedToken[] memory supportedTokensTemp) {
+        supportedTokensTemp = new SupportedToken[](1);
 
-        supportedTokensTemp[0] = SupportedToken(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, "WETH");
-        supportedTokensTemp[1] = SupportedToken(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0, "WSTETH");
-        supportedTokensTemp[2] = SupportedToken(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, "WBTC");
-        supportedTokensTemp[3] = SupportedToken(0x6B175474E89094C44Da98b954EedeAC495271d0F, "DAI");
-        supportedTokensTemp[4] = SupportedToken(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK");
-        supportedTokensTemp[5] = SupportedToken(0xBe9895146f7AF43049ca1c1AE358B0541Ea49704, "cbETH");
-        supportedTokensTemp[6] = SupportedToken(0xdAC17F958D2ee523a2206206994597C13D831ec7, "USDT");
-        supportedTokensTemp[7] = SupportedToken(0xae78736Cd615f374D3085123A210448E74Fc6393, "rETH");
+        supportedTokensTemp[0] = SupportedToken(0xaf88d065e77c8cC2239327C5EDb3A432268e5831, "USDC");
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
-        deal(asset, to, amount);
+        if (asset == 0xaf88d065e77c8cC2239327C5EDb3A432268e5831) {
+            // USDC
+            vm.prank(0x05e3a758FdD29d28435019ac453297eA37b61b62); // holder
+            ERC20(asset).transfer(to, amount);
+        } else {
+            deal(asset, to, amount);
+        }
     }
-
     modifier iterateSupportedTokens() {
         SupportedToken[] memory supportedTokens = _getSupportedAssets();
         for (uint256 i; i < supportedTokens.length; ++i) {

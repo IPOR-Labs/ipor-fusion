@@ -11,6 +11,10 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 contract PlazmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    /// @dev Aave Price Oracle mainnet address where base currency is USD
+    address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+
     PlazmaVaultFactory internal vaultFactory;
 
     uint256 public constant AAVE_V3_MARKET_ID = 1;
@@ -47,7 +51,11 @@ contract PlazmaVaultMaintenanceTest is Test {
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
-        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](0);
 
@@ -86,7 +94,11 @@ contract PlazmaVaultMaintenanceTest is Test {
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
-        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](0);
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
