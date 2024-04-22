@@ -22,7 +22,7 @@ contract Erc4626SupplyFuseTest is Test {
         address marketAddress = 0x38989BBA00BDF8181F4082995b3DEAe96163aC5D;
         IERC4626 vault = IERC4626(marketAddress);
         Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(1);
-        VaultERC4626Mock vaultMock = new VaultERC4626Mock(address(fuse));
+        VaultERC4626Mock vaultMock = new VaultERC4626Mock(address(fuse), address(fuse));
 
         uint256 decimals = vault.decimals();
         uint256 amount = 100 * 10 ** decimals;
@@ -57,7 +57,7 @@ contract Erc4626SupplyFuseTest is Test {
         address marketAddress = 0x38989BBA00BDF8181F4082995b3DEAe96163aC5D;
         IERC4626 vault = IERC4626(marketAddress);
         Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(1);
-        VaultERC4626Mock vaultMock = new VaultERC4626Mock(address(fuse));
+        VaultERC4626Mock vaultMock = new VaultERC4626Mock(address(fuse), address(fuse));
 
         uint256 decimals = vault.decimals();
         uint256 amount = 100 * 10 ** decimals;
@@ -93,7 +93,7 @@ contract Erc4626SupplyFuseTest is Test {
         address marketAddress = 0x500331c9fF24D9d11aee6B07734Aa72343EA74a5;
         IERC4626 vault = IERC4626(marketAddress);
         Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(1);
-        VaultERC4626Mock vaultMock = new VaultERC4626Mock(address(fuse));
+        VaultERC4626Mock vaultMock = new VaultERC4626Mock(address(fuse), address(fuse));
 
         uint256 decimals = vault.decimals();
         uint256 amount = 100 * 10 ** decimals;
@@ -124,7 +124,7 @@ contract Erc4626SupplyFuseTest is Test {
         address marketAddress = 0x500331c9fF24D9d11aee6B07734Aa72343EA74a5;
         IERC4626 vault = IERC4626(marketAddress);
         Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(1);
-        VaultERC4626Mock vaultMock = new VaultERC4626Mock(address(fuse));
+        VaultERC4626Mock vaultMock = new VaultERC4626Mock(address(fuse), address(fuse));
 
         uint256 decimals = vault.decimals();
         uint256 amount = 100 * 10 ** decimals;
