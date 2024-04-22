@@ -30,14 +30,12 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        uint256 balance = 0;
+        uint256 balance;
         uint256 vaultAssets;
-        address vaultAddress;
         IERC4626 vault;
 
         for (uint256 i; i < len; ++i) {
-            vaultAddress = MarketConfigurationLib.bytes32ToAddress(vaults[i]);
-            vault = IERC4626(vaultAddress);
+            vault = IERC4626(MarketConfigurationLib.bytes32ToAddress(vaults[i]));
             vaultAssets = vault.convertToAssets(vault.balanceOf(plazmaVault));
             balance += IporMath.convertToWad(
                 vaultAssets * PRICE_ORACLE.getAssetPrice(vault.asset()),
