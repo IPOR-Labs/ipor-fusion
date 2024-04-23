@@ -8,22 +8,22 @@ import {IApproveERC20} from "../IApproveERC20.sol";
 import {IComet} from "./IComet.sol";
 import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 
+struct CompoundV3SupplyFuseEnterData {
+    /// @notis asset address to supply
+    address asset;
+    /// @notice asset amount to supply
+    uint256 amount;
+}
+
+struct CompoundV3SupplyFuseExitData {
+    /// @notice asset address to withdraw
+    address asset;
+    /// @notice asset amount to withdraw
+    uint256 amount;
+}
+
 contract CompoundV3SupplyFuse is IFuse {
     using SafeCast for uint256;
-
-    struct CompoundV3SupplyFuseEnterData {
-        /// @notis asset address to supply
-        address asset;
-        /// @notice asset amount to supply
-        uint256 amount;
-    }
-
-    struct CompoundV3SupplyFuseExitData {
-        /// @notice asset address to withdraw
-        address asset;
-        /// @notice asset amount to withdraw
-        uint256 amount;
-    }
 
     IComet public immutable COMET;
     uint256 public immutable MARKET_ID;

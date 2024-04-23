@@ -8,7 +8,7 @@ import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
-import {CompoundV3SupplyFuse} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
@@ -206,7 +206,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
             )
         );
 
@@ -376,7 +376,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
             )
         );
 
@@ -767,7 +767,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
             )
         );
 
@@ -788,7 +788,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "exit(bytes)",
-                abi.encode(CompoundV3SupplyFuse.CompoundV3SupplyFuseExitData({asset: USDC, amount: amount}))
+                abi.encode(CompoundV3SupplyFuseExitData({asset: USDC, amount: amount}))
             )
         );
 
