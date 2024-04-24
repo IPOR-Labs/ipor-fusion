@@ -19,6 +19,7 @@ contract ForkAmmGovernanceServiceTest is Test {
     address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
+    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
 
     address payable public vaultWstEth;
     address public flashLoanMorphoFuse;
@@ -45,7 +46,9 @@ contract ForkAmmGovernanceServiceTest is Test {
         alphas[0] = address(this);
 
         flashLoanMorphoFuse = address(new FlashLoanMorphoFuse());
-        aaveV3SupplyFuse = address(new AaveV3SupplyFuse(AAVE_POOL, aaveV3MarketId));
+        aaveV3SupplyFuse = address(
+            new AaveV3SupplyFuse(aaveV3MarketId, AAVE_POOL, ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3)
+        );
         aaveV3BorrowFuse = address(new AaveV3BorrowFuse(aaveV3MarketId, aaveV3MarketName));
         nativeSwapWethToWstEthFuse = address(new NativeSwapWethToWstEthFuse());
         balanceFuse = address(new AaveV3BalanceFuse(aaveV3MarketId, aaveV3MarketName, priceAdapter));

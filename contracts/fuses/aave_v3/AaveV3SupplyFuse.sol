@@ -9,7 +9,6 @@ import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
 import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "./IAavePoolDataProvider.sol";
-import {AaveConstants} from "./AaveConstants.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
@@ -36,6 +35,7 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     uint256 public immutable MARKET_ID;
 
     IPool public immutable AAVE_POOL;
+    address public immutable AAVE_POOL_DATA_PROVIDER_V3;
 
     event AaveV3SupplyEnterFuse(address version, address asset, uint256 amount, uint256 userEModeCategoryId);
     event AaveV3SupplyExitFuse(address version, address asset, uint256 amount);
@@ -43,9 +43,10 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
 
     error AaveV3SupplyFuseUnsupportedAsset(string action, address asset, string errorCode);
 
-    constructor(address aavePoolInput, uint256 marketIdInput) {
-        AAVE_POOL = IPool(aavePoolInput);
+    constructor(uint256 marketIdInput, address aavePoolInput, address aavePoolDataProviderV3) {
         MARKET_ID = marketIdInput;
+        AAVE_POOL = IPool(aavePoolInput);
+        AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3;
         VERSION = address(this);
     }
 
@@ -96,8 +97,9 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
             revert AaveV3SupplyFuseUnsupportedAsset("exit", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
-        (address aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(data.asset);
+        (address aTokenAddress, , ) = IAavePoolDataProvider(AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            data.asset
+        );
 
         try
             AAVE_POOL.withdraw(

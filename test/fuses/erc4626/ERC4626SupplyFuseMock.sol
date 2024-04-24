@@ -2,20 +2,16 @@
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {ERC4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
+import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {PlazmaVaultConfigLib} from "../../../contracts/libraries/PlazmaVaultConfigLib.sol";
-import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 
-contract VaultERC4626Mock {
+contract ERC4626SupplyFuseMock {
     using Address for address;
 
     Erc4626SupplyFuse public fuse;
-    ERC4626BalanceFuse public balanceFuse;
 
-    constructor(address fuseInput, address balanceFuseInput) {
+    constructor(address fuseInput) {
         fuse = Erc4626SupplyFuse(fuseInput);
-        balanceFuse = ERC4626BalanceFuse(balanceFuseInput);
     }
     //solhint-disable-next-line
     function enter(bytes calldata data) external returns (bytes memory executionStatus) {
@@ -43,10 +39,5 @@ contract VaultERC4626Mock {
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
         PlazmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
-    }
-
-    //solhint-disable-next-line
-    function balanceOf(address plazmaVault) external returns (uint256) {
-        return abi.decode(address(balanceFuse).functionDelegateCall(msg.data), (uint256));
     }
 }

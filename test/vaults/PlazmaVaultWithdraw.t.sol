@@ -28,6 +28,8 @@ contract PlazmaVaultWithdrawTest is Test {
     PlazmaVaultFactory internal vaultFactory;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
+    address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
 
     address public constant COMET_V3_USDC = 0xc3d688B66703497DAA19211EEdff47f25384cdc3;
@@ -144,8 +146,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuseAaveV3);
@@ -238,8 +248,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
@@ -352,8 +370,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuseAaveV3);
@@ -440,8 +466,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
@@ -558,8 +592,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
@@ -709,8 +751,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
@@ -852,8 +902,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
@@ -993,8 +1051,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuseAaveV3);
@@ -1095,8 +1161,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuseAaveV3);
@@ -1206,8 +1280,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
@@ -1346,8 +1428,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
@@ -1394,9 +1484,17 @@ contract PlazmaVaultWithdrawTest is Test {
         assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
-        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(AAVE_V3_MARKET_ID);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);

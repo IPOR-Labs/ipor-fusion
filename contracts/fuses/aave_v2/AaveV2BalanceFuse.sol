@@ -5,25 +5,21 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IAavePriceOracle} from "./IAavePriceOracle.sol";
-import {IAavePoolDataProvider} from "./IAavePoolDataProvider.sol";
+import {AaveConstants} from "./AaveConstants.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
 import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {AaveLendingPoolV2, ReserveData} from "./AaveLendingPoolV2.sol";
 
-contract AaveV3BalanceFuse is IMarketBalanceFuse {
+contract AaveV2BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
 
     /// @dev Aave Price Oracle base currency decimals
     uint256 private constant AAVE_ORACLE_BASE_CURRENCY_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
-    address public immutable AAVE_PRICE_ORACLE;
-    address public immutable AAVE_POOL_DATA_PROVIDER_V3;
 
-    constructor(uint256 marketIdInput, address aavePriceOracle, address aavePoolDataProviderV3) {
+    constructor(uint256 marketIdInput) {
         MARKET_ID = marketIdInput;
-        AAVE_PRICE_ORACLE = aavePriceOracle;
-        AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3;
     }
 
     function balanceOf(address plazmaVault) external view override returns (uint256) {
@@ -41,31 +37,24 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
         // @dev this value has 8 decimals
         uint256 price;
         address asset;
-        address aTokenAddress;
-        address stableDebtTokenAddress;
-        address variableDebtTokenAddress;
+        ReserveData memory reserveData;
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
             asset = PlazmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             decimals = ERC20(asset).decimals();
-            price = IAavePriceOracle(AAVE_PRICE_ORACLE).getAssetPrice(asset);
-            if (price == 0) {
-                revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_ASSET);
-            }
+            price = IAavePriceOracle(AaveConstants.ETHEREUM_AAVE_PRICE_ORACLE_MAINNET).getAssetPrice(asset);
 
-            (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(
-                AAVE_POOL_DATA_PROVIDER_V3
-            ).getReserveTokensAddresses(asset);
+            reserveData = AaveLendingPoolV2(AaveConstants.AAVE_LENDING_POOL_V2).getReserveData(asset);
 
-            if (aTokenAddress != address(0)) {
-                balanceInLoop += int256(ERC20(aTokenAddress).balanceOf(plazmaVault));
+            if (reserveData.aTokenAddress != address(0)) {
+                balanceInLoop += int256(ERC20(reserveData.aTokenAddress).balanceOf(plazmaVault));
             }
-            if (stableDebtTokenAddress != address(0)) {
-                balanceInLoop -= int256(ERC20(stableDebtTokenAddress).balanceOf(plazmaVault));
+            if (reserveData.stableDebtTokenAddress != address(0)) {
+                balanceInLoop -= int256(ERC20(reserveData.stableDebtTokenAddress).balanceOf(plazmaVault));
             }
-            if (variableDebtTokenAddress != address(0)) {
-                balanceInLoop -= int256(ERC20(variableDebtTokenAddress).balanceOf(plazmaVault));
+            if (reserveData.variableDebtTokenAddress != address(0)) {
+                balanceInLoop -= int256(ERC20(reserveData.variableDebtTokenAddress).balanceOf(plazmaVault));
             }
 
             balanceTemp += IporMath.convertToWadInt(

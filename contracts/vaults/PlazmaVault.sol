@@ -254,7 +254,6 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     /// @notice Withdraw assets from the markets
     /// @param assets Amount of assets to withdraw
     /// @param vaultCurrentBalanceUnderlying Current balance of the vault in underlying token
-    /// @return true if assets are successfully withdrawn from the markets or all instant withdrawal fuses are touched, otherwise false
     function _withdrawFromMarkets(uint256 assets, uint256 vaultCurrentBalanceUnderlying) internal {
         if (assets == 0) {
             return;
