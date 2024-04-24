@@ -242,4 +242,289 @@ contract PlazmaVaultDepositTest is Test {
 
         return plazmaVault;
     }
+
+    function testShouldNotDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
+        //given
+        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+
+        address userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+
+        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+
+        vm.prank(owner);
+        plazmaVault.activateAccessControl();
+
+        bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
+
+        //when
+        vm.prank(userOne);
+        vm.expectRevert(error);
+        plazmaVault.deposit(amount, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
+
+        assertEq(userVaultBalanceBefore, userVaultBalanceAfter);
+    }
+
+    function testShouldDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
+        //given
+        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+
+        address userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+
+        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+
+        vm.prank(owner);
+        plazmaVault.activateAccessControl();
+
+        vm.prank(owner);
+        plazmaVault.grantAccessToVault(userOne);
+
+        //when
+        vm.prank(userOne);
+        plazmaVault.deposit(amount, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore, 0);
+        assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore + amount);
+
+        assertEq(userVaultBalanceBefore, 0);
+        assertEq(userVaultBalanceAfter, userVaultBalanceBefore + amount);
+
+        assertEq(amount, ERC20(DAI).balanceOf(address(plazmaVault)));
+
+        assertEq(amount, vaultTotalAssetsAfter);
+
+        assertEq(ERC20(DAI).balanceOf(userOne), 0);
+
+        /// @dev no transfer to the market when depositing
+        assertEq(plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+    }
+
+    function testShouldNotDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenRemoveFromAccessList() public {
+        //given
+        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+
+        address userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+
+        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+
+        vm.prank(owner);
+        plazmaVault.activateAccessControl();
+
+        vm.prank(owner);
+        plazmaVault.grantAccessToVault(userOne);
+
+        bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
+
+        //when
+        vm.prank(owner);
+        plazmaVault.revokeAccessToVault(userOne);
+
+        vm.prank(userOne);
+        vm.expectRevert(error);
+        plazmaVault.deposit(amount, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
+
+        assertEq(userVaultBalanceBefore, userVaultBalanceAfter);
+    }
+
+    function testShouldMintToPlazamVaultWithDAIAsUnderlyingToken() public {
+        //given
+        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+
+        address userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+
+        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+
+        //when
+        vm.prank(userOne);
+        plazmaVault.mint(amount, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore, 0);
+        assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore + amount);
+
+        assertEq(userVaultBalanceBefore, 0);
+        assertEq(userVaultBalanceAfter, userVaultBalanceBefore + amount);
+
+        assertEq(amount, ERC20(DAI).balanceOf(address(plazmaVault)));
+
+        assertEq(amount, vaultTotalAssetsAfter);
+
+        assertEq(ERC20(DAI).balanceOf(userOne), 0);
+
+        /// @dev no transfer to the market when depositing
+        assertEq(plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+    }
+
+    // todo
+    function testShouldNotMintToPlazamVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
+        //given
+        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+
+        address userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+
+        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+
+        vm.prank(owner);
+        plazmaVault.activateAccessControl();
+
+        bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
+
+        //when
+        vm.prank(userOne);
+        vm.expectRevert(error);
+        plazmaVault.mint(amount, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
+
+        assertEq(userVaultBalanceBefore, userVaultBalanceAfter);
+    }
+
+    function testShouldMintToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
+        //given
+        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+
+        address userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+
+        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+
+        vm.prank(owner);
+        plazmaVault.activateAccessControl();
+
+        vm.prank(owner);
+        plazmaVault.grantAccessToVault(userOne);
+
+        //when
+        vm.prank(userOne);
+        plazmaVault.mint(amount, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore, 0);
+        assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore + amount);
+
+        assertEq(userVaultBalanceBefore, 0);
+        assertEq(userVaultBalanceAfter, userVaultBalanceBefore + amount);
+
+        assertEq(amount, ERC20(DAI).balanceOf(address(plazmaVault)));
+
+        assertEq(amount, vaultTotalAssetsAfter);
+
+        assertEq(ERC20(DAI).balanceOf(userOne), 0);
+
+        /// @dev no transfer to the market when depositing
+        assertEq(plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+    }
+
+    function testShouldNotMintToPlazamVaultWithDAIAsUnderlyingTokenWhenRemoveFromAccessList() public {
+        //given
+        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+
+        address userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+
+        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+
+        vm.prank(owner);
+        plazmaVault.activateAccessControl();
+
+        vm.prank(owner);
+        plazmaVault.grantAccessToVault(userOne);
+
+        bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
+
+        //when
+        vm.prank(owner);
+        plazmaVault.revokeAccessToVault(userOne);
+
+        vm.prank(userOne);
+        vm.expectRevert(error);
+        plazmaVault.mint(amount, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
+
+        assertEq(userVaultBalanceBefore, userVaultBalanceAfter);
+    }
 }
