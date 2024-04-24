@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
+import {ERC4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
+import {PlazmaVaultStorageLib} from "./../../../contracts/libraries/PlazmaVaultStorageLib.sol";
+import {MarketConfigurationLib} from "./../../../contracts/libraries/MarketConfigurationLib.sol";
 
-import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
-import {PlazmaVaultStorageLib} from "../../../contracts/libraries/PlazmaVaultStorageLib.sol";
-import {MarketConfigurationLib} from "../../../contracts/libraries/MarketConfigurationLib.sol";
-
-contract AaveV3BalanceFuseMock is AaveV3BalanceFuse {
-    constructor(
-        uint256 marketIdInput,
-        address aavePriceOracle,
-        address aavePoolDataProviderV3
-    ) AaveV3BalanceFuse(marketIdInput, aavePriceOracle, aavePoolDataProviderV3) {}
+contract ERC4626BalanceFuseMock is ERC4626BalanceFuse {
+    constructor(uint256 marketIdInput, address priceOracle) ERC4626BalanceFuse(marketIdInput, priceOracle) {}
 
     function updateMarketConfiguration(address[] memory supportedAssets) public {
         PlazmaVaultStorageLib.MarketStruct storage marketConfig = PlazmaVaultStorageLib.getMarketConfiguration().value[
