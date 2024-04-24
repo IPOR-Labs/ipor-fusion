@@ -21,6 +21,10 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     using Address for address;
 
     address private constant USD = address(0x0000000000000000000000000000000000000348);
+    uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
+
+    error NoSharesToRedeem();
+    error NoAssetsToWithdraw();
 
     //TODO: setup Vault type - required for fee
 
@@ -138,12 +142,30 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     }
 
     function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
-        _withdrawFromMarkets(assets);
+        if (assets == 0) {
+            revert NoAssetsToWithdraw();
+        }
+        _withdrawFromMarkets(assets, IERC20(asset()).balanceOf(address(this)));
         return super.withdraw(assets, receiver, owner);
     }
 
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
-        _withdrawFromMarkets(convertToAssets(shares));
+        if (shares == 0) {
+            revert NoSharesToRedeem();
+        }
+
+        uint256 sharesValue;
+        uint256 vaultCurrentBalanceUnderlying;
+
+        for (uint256 i; i < 10; ++i) {
+            sharesValue = convertToAssets(shares);
+            vaultCurrentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
+            if (vaultCurrentBalanceUnderlying >= sharesValue) {
+                break;
+            }
+            _withdrawFromMarkets(_includeSlippage(sharesValue), vaultCurrentBalanceUnderlying);
+        }
+
         return super.redeem(shares, receiver, owner);
     }
 
@@ -210,6 +232,11 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         PlazmaVaultLib.updateInstantWithdrawalFuses(fuses);
     }
 
+    function _includeSlippage(uint256 value) internal view returns (uint256) {
+        /// @dev increase value by DEFAULT_SLIPPAGE_IN_PERCENTAGE to cover potential slippage
+        return value + IporMath.division(value * DEFAULT_SLIPPAGE_IN_PERCENTAGE, 100);
+    }
+
     function _addFuse(address fuse) internal {
         if (fuse == address(0)) {
             revert Errors.WrongAddress();
@@ -224,11 +251,18 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         FusesLib.addBalanceFuse(marketId, fuse);
     }
 
-    function _withdrawFromMarkets(uint256 assets) internal {
-        uint256 left;
-        uint256 currentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
+    /// @notice Withdraw assets from the markets
+    /// @param assets Amount of assets to withdraw
+    /// @param vaultCurrentBalanceUnderlying Current balance of the vault in underlying token
+    /// @return true if assets are successfully withdrawn from the markets or all instant withdrawal fuses are touched, otherwise false
+    function _withdrawFromMarkets(uint256 assets, uint256 vaultCurrentBalanceUnderlying) internal {
+        if (assets == 0) {
+            return;
+        }
 
-        if (assets >= currentBalanceUnderlying) {
+        uint256 left;
+
+        if (assets >= vaultCurrentBalanceUnderlying) {
             uint256 marketIndex;
             uint256 fuseMarketId;
 
@@ -240,9 +274,12 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
 
             uint256[] memory markets = new uint256[](fuses.length);
 
-            left = assets - currentBalanceUnderlying;
+            left = assets - vaultCurrentBalanceUnderlying;
 
-            for (uint256 i; left != 0 && i < fuses.length; ++i) {
+            uint256 i;
+            uint256 fusesLength = fuses.length;
+
+            for (i; left != 0 && i < fusesLength; ++i) {
                 params = PlazmaVaultLib.getInstantWithdrawalFusesParams(fuses[i], i);
 
                 /// @dev always first param is amount, by default is 0 in storage, set to left
@@ -259,7 +296,6 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
                     marketIndex++;
                 }
             }
-
             _updateMarketsBalances(markets);
         }
     }

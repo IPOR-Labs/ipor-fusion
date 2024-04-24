@@ -78,7 +78,7 @@ library PlazmaVaultStorageLib {
     }
 
     struct Fuses {
-        /// @dev =fuse address => 1 - is granted, otherwise - not granted
+        /// @dev fuse address => 1 - is granted, otherwise - not granted
         mapping(address => uint256) value;
     }
 
