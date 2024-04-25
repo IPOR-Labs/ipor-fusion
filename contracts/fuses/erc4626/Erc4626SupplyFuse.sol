@@ -32,12 +32,12 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
 
     error Erc4626SupplyFuseUnsupportedVault(string action, address asset, string errorCode);
 
-    uint256 public immutable MARKET_ID;
     address public immutable VERSION;
+    uint256 public immutable MARKET_ID;
 
     constructor(uint256 marketIdInput) {
-        MARKET_ID = marketIdInput;
         VERSION = address(this);
+        MARKET_ID = marketIdInput;
     }
 
     function enter(bytes calldata data) external override {

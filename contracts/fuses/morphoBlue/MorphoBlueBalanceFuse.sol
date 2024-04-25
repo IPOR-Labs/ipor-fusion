@@ -26,10 +26,10 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
     address private constant USD = address(0x0000000000000000000000000000000000000348);
 
-    IIporPriceOracle public immutable PRICE_ORACLE;
     uint256 public immutable MARKET_ID;
+    IIporPriceOracle public immutable PRICE_ORACLE;
 
-    constructor(address priceOracle, uint256 marketIdInput) {
+    constructor(uint256 marketIdInput, address priceOracle) {
         MARKET_ID = marketIdInput;
         PRICE_ORACLE = IIporPriceOracle(priceOracle);
         if (PRICE_ORACLE.BASE_CURRENCY() != USD) {

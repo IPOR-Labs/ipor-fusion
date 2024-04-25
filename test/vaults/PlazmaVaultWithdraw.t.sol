@@ -18,7 +18,7 @@ import {PlazmaVaultLib} from "../../contracts/libraries/PlazmaVaultLib.sol";
 import {AaveConstants} from "../../contracts/fuses/aave_v3/AaveConstants.sol";
 
 interface AavePool {
-    function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external virtual;
+    function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
 }
 
 contract PlazmaVaultWithdrawTest is Test {
@@ -261,8 +261,8 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -479,8 +479,8 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -605,8 +605,8 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -764,8 +764,8 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -915,8 +915,8 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -1293,8 +1293,8 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -1441,8 +1441,8 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);

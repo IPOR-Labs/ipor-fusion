@@ -38,8 +38,8 @@ contract AaveV2SupplyFuse is IFuse {
     error AaveV2SupplyFuseUnsupportedAsset(address asset, string errorCode);
 
     constructor(uint256 marketIdInput, address aavePoolInput) {
-        MARKET_ID = marketIdInput;
         VERSION = address(this);
+        MARKET_ID = marketIdInput;
         AAVE_POOL = AaveLendingPoolV2(aavePoolInput);
     }
 

@@ -10,6 +10,7 @@ import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {AlphasLib} from "../libraries/AlphasLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
+import {AccessControlLib} from "../libraries/AccessControlLib.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {PlazmaVaultConfigLib} from "../libraries/PlazmaVaultConfigLib.sol";
 import {PlazmaVaultLib} from "../libraries/PlazmaVaultLib.sol";
@@ -391,5 +392,38 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         for (uint256 i; i < fuses.length; ++i) {
             FusesLib.removeFuse(fuses[i]);
         }
+    }
+
+    function deposit(uint256 assets, address receiver) public override OnlyGrantedAccess returns (uint256) {
+        return super.deposit(assets, receiver);
+    }
+
+    function mint(uint256 shares, address receiver) public override OnlyGrantedAccess returns (uint256) {
+        return super.mint(shares, receiver);
+    }
+
+    function activateAccessControl() external onlyOwner {
+        AccessControlLib.activateAccessControl();
+    }
+
+    function grantAccessToVault(address account) external onlyOwner {
+        AccessControlLib.grantAccessToVault(account);
+    }
+
+    function revokeAccessToVault(address account) external onlyOwner {
+        AccessControlLib.revokeAccessToVault(account);
+    }
+
+    function deactivateAccessControl() external onlyOwner {
+        AccessControlLib.deactivateAccessControl();
+    }
+
+    function isAccessControlActivated() external view returns (bool) {
+        return AccessControlLib.isControlAccessActivated();
+    }
+
+    modifier OnlyGrantedAccess() {
+        AccessControlLib.isAccessGrantedToVault(msg.sender);
+        _;
     }
 }

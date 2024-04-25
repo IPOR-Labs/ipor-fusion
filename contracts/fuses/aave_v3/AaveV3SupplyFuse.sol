@@ -44,10 +44,10 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     error AaveV3SupplyFuseUnsupportedAsset(string action, address asset, string errorCode);
 
     constructor(uint256 marketIdInput, address aavePoolInput, address aavePoolDataProviderV3) {
+        VERSION = address(this);
         MARKET_ID = marketIdInput;
         AAVE_POOL = IPool(aavePoolInput);
         AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3;
-        VERSION = address(this);
     }
 
     function enter(bytes calldata data) external override {

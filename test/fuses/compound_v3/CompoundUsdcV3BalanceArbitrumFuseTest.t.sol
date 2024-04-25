@@ -3,28 +3,30 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {CompoundConstants} from "../../../contracts/fuses/compound_v3/CompoundConstants.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {IComet} from "../../../contracts/fuses/compound_v3/IComet.sol";
 
 import {CompoundV3SupplyFuseMock} from "./CompoundV3SupplyFuseMock.sol";
+import {CompoundV3BalanceFuseMock} from "./CompoundV3BalanceFuseMock.sol";
 
-contract CompoundUsdcV3SupplyFuseTest is Test {
+contract CompoundUsdcV3BalanceArbitrumFuse is Test {
     struct SupportedToken {
         address asset;
         string name;
     }
 
     SupportedToken private activeTokens;
-    IComet private constant COMET = IComet(CompoundConstants.COMET_V3_USDC);
+    IComet private constant COMET = IComet(0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf);
+    CompoundV3BalanceFuseMock private marketBalance;
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
+        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
+        marketBalance = new CompoundV3BalanceFuseMock(1, address(COMET));
     }
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_USDC);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, address(COMET));
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -38,6 +40,9 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.asset;
         fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
+        marketBalance.updateMarketConfiguration(assets);
+
+        uint256 balanceMarketBefore = marketBalance.balanceOf(address(fuseMock));
 
         // when
 
@@ -47,13 +52,16 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
         uint256 balanceOnCometAfter = _getBalance(address(fuseMock), activeTokens.asset);
 
+        uint256 balanceMarketAfter = marketBalance.balanceOf(address(fuseMock));
+
+        assertTrue(balanceMarketBefore < balanceMarketAfter, "market balance should be increased by amount");
         assertEq(balanceAfter + amount, balanceBefore, "vault balance should be decreased by amount");
         assertTrue(balanceOnCometAfter > balanceOnCometBefore, "collateral balance should be increased by amount");
     }
 
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_USDC);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, address(COMET));
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -64,11 +72,13 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.asset;
         fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
+        marketBalance.updateMarketConfiguration(assets);
 
         fuseMock.enter(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
 
         uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
         uint256 balanceOnCometBefore = _getBalance(address(fuseMock), activeTokens.asset);
+        uint256 balanceMarketBefore = marketBalance.balanceOf(address(fuseMock));
 
         // when
         fuseMock.exit(CompoundV3SupplyFuseExitData({asset: activeTokens.asset, amount: balanceOnCometBefore}));
@@ -76,13 +86,16 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
         uint256 balanceOnCometAfter = _getBalance(address(fuseMock), activeTokens.asset);
+        uint256 balanceMarketAfter = marketBalance.balanceOf(address(fuseMock));
+
+        assertTrue(balanceMarketBefore > balanceMarketAfter, "market balance should be decreased by amount");
 
         assertTrue(balanceAfter > balanceBefore, "vault balance should be increased by amount");
         assertTrue(balanceOnCometAfter < balanceOnCometBefore, "collateral balance should be decreased by amount");
     }
 
     function _getBalance(address user, address asset) private returns (uint256) {
-        if (asset == 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) {
+        if (asset == 0xaf88d065e77c8cC2239327C5EDb3A432268e5831) {
             // USDC
             return COMET.balanceOf(user);
         } else {
@@ -91,21 +104,19 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
     }
 
     function _getSupportedAssets() private returns (SupportedToken[] memory supportedTokensTemp) {
-        supportedTokensTemp = new SupportedToken[](5);
+        supportedTokensTemp = new SupportedToken[](3);
 
-        supportedTokensTemp[0] = SupportedToken(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, "USDC");
-        supportedTokensTemp[1] = SupportedToken(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984, "UNI");
-        supportedTokensTemp[2] = SupportedToken(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, "WETH");
-        supportedTokensTemp[3] = SupportedToken(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, "WBTC");
-        supportedTokensTemp[4] = SupportedToken(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK");
+        supportedTokensTemp[0] = SupportedToken(0xaf88d065e77c8cC2239327C5EDb3A432268e5831, "USDC");
+        supportedTokensTemp[1] = SupportedToken(0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f, "WBTC");
+        supportedTokensTemp[2] = SupportedToken(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1, "WETH");
 
         return supportedTokensTemp;
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
-        if (asset == 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) {
+        if (asset == 0xaf88d065e77c8cC2239327C5EDb3A432268e5831) {
             // USDC
-            vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9); // AmmTreasuryUsdcProxy
+            vm.prank(0x47c031236e19d024b42f8AE6780E44A573170703); // AmmTreasuryUsdcProxy
             ERC20(asset).transfer(to, amount);
         } else {
             deal(asset, to, amount);

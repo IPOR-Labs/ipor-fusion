@@ -16,6 +16,7 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
     using Address for address;
 
     uint256 private constant PRICE_DECIMALS = 8;
+
     uint256 public immutable MARKET_ID;
     IIporPriceOracle public immutable PRICE_ORACLE;
 

@@ -46,6 +46,10 @@ library PlazmaVaultStorageLib {
     bytes32 private constant CFG_PLAZMA_VAULT_INSTANT_WITHDRAWAL_FUSES_PARAMS =
         0x397ee58b336520b7a796c422a0927e1600c688e25e66430186a8ab1f395b6500;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.grantedAddressesToInteractWithVault")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT =
+        0xa992609e649c37dfe66423b55091e2506c7245219ba1f3948890efe1fb6f6100;
+
     struct TotalAssets {
         /// @dev total assets in the vault
         uint256 value;
@@ -106,6 +110,12 @@ library PlazmaVaultStorageLib {
         /// @dev key: fuse address and index in InstantWithdrawalFuses array, value: list of parameters used for instant withdrawal
         /// @dev first param always amount in underlying asset of PlazmaVault, second and next params are specific for the fuse and market
         mapping(bytes32 => bytes32[]) value;
+    }
+
+    struct GrantedAddressesToInteractWithVault {
+        /// @dev The zero address serves as a flag indicating whether the vault has limited access.
+        /// @dev address => 1 - is granted, otherwise - not granted
+        mapping(address => uint256) value;
     }
 
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
@@ -174,6 +184,16 @@ library PlazmaVaultStorageLib {
     {
         assembly {
             instantWithdrawalFusesParams.slot := CFG_PLAZMA_VAULT_INSTANT_WITHDRAWAL_FUSES_PARAMS
+        }
+    }
+
+    function getGrantedAddressesToInteractWithVault()
+        internal
+        pure
+        returns (GrantedAddressesToInteractWithVault storage grantedAddressesToInteractWithVault)
+    {
+        assembly {
+            grantedAddressesToInteractWithVault.slot := GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT
         }
     }
 }

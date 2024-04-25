@@ -360,4 +360,216 @@ contract PlazmaVaultMaintenanceTest is Test {
         //then
         assertTrue(plazmaVault.isAlphaGranted(address(0x2)));
     }
+
+    function testShouldAccessControlDeactivatedAfterCreateVault() external {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        // when
+        bool isAccessControlActive = plazmaVault.isAccessControlActivated();
+
+        // then
+
+        assertFalse(isAccessControlActive);
+    }
+
+    function testShouldBeAbleToActivateAccessControl() external {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
+
+        // when
+        vm.prank(owner);
+        plazmaVault.activateAccessControl();
+
+        // then
+        assertTrue(plazmaVault.isAccessControlActivated());
+        assertFalse(isAccessControlActiveBefore);
+    }
+
+    function testShouldNotBeAbleToActivateAccessControlWhenNotOwner() external {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
+
+        bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        plazmaVault.activateAccessControl();
+
+        // then
+        assertFalse(plazmaVault.isAccessControlActivated());
+        assertFalse(isAccessControlActiveBefore);
+    }
+
+    function testShouldBeAbleToDeactivateAccessControl() external {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+        vm.prank(owner);
+        plazmaVault.activateAccessControl();
+
+        bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
+
+        // when
+        vm.prank(owner);
+        plazmaVault.deactivateAccessControl();
+
+        // then
+        assertFalse(plazmaVault.isAccessControlActivated());
+        assertTrue(isAccessControlActiveBefore);
+    }
+
+    function testShouldNotBeAbleToDeactivateAccessControlWhenNotOwner() external {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+        vm.prank(owner);
+        plazmaVault.activateAccessControl();
+
+        bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
+
+        bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        plazmaVault.deactivateAccessControl();
+
+        // then
+        assertTrue(plazmaVault.isAccessControlActivated());
+        assertTrue(isAccessControlActiveBefore);
+    }
 }

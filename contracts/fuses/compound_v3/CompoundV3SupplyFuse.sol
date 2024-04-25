@@ -37,7 +37,7 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
 
     error CompoundV3SupplyFuseUnsupportedAsset(string action, address asset, string errorCode);
 
-    constructor(address cometAddressInput, uint256 marketIdInput) {
+    constructor(uint256 marketIdInput, address cometAddressInput) {
         VERSION = address(this);
         MARKET_ID = marketIdInput;
         COMET = IComet(cometAddressInput);

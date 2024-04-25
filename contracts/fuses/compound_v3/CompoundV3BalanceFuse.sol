@@ -14,15 +14,15 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
 
     uint256 private constant PRICE_DECIMALS = 8;
 
-    IComet public immutable COMET;
     uint256 public immutable MARKET_ID;
+    IComet public immutable COMET;
     address public immutable COMPOUND_BASE_TOKEN;
     uint256 public immutable COMPOUND_BASE_TOKEN_DECIMALS;
     address public immutable BASE_TOKEN_PRICE_FEED;
 
-    constructor(address cometAddressInput, uint256 marketIdInput) {
-        COMET = IComet(cometAddressInput);
+    constructor(uint256 marketIdInput, address cometAddressInput) {
         MARKET_ID = marketIdInput;
+        COMET = IComet(cometAddressInput);
         COMPOUND_BASE_TOKEN = COMET.baseToken();
         BASE_TOKEN_PRICE_FEED = COMET.baseTokenPriceFeed();
         COMPOUND_BASE_TOKEN_DECIMALS = ERC20(COMPOUND_BASE_TOKEN).decimals();

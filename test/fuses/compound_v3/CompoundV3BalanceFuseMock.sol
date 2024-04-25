@@ -7,9 +7,9 @@ import {PlazmaVaultConfigLib} from "../../../contracts/libraries/PlazmaVaultConf
 
 contract CompoundV3BalanceFuseMock is CompoundV3BalanceFuse {
     constructor(
-        address cometAddressInput,
-        uint256 marketIdInput
-    ) CompoundV3BalanceFuse(cometAddressInput, marketIdInput) {}
+        uint256 marketIdInput,
+        address cometAddressInput
+    ) CompoundV3BalanceFuse(marketIdInput, cometAddressInput) {}
 
     function updateMarketConfiguration(address[] memory supportedAssets) public {
         PlazmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = PlazmaVaultStorageLib

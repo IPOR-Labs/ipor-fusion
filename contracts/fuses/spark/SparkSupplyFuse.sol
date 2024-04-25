@@ -17,10 +17,11 @@ struct SparkSupplyFuseExitData {
 }
 
 contract SparkSupplyFuse is IFuse {
-    uint256 public immutable MARKET_ID;
-    address public immutable VERSION;
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant SDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
+
+    address public immutable VERSION;
+    uint256 public immutable MARKET_ID;
 
     event SparkSupplyEnterFuse(address version, uint256 amount);
     event SparkSupplyExitFuse(address version, uint256 amount);
@@ -28,8 +29,8 @@ contract SparkSupplyFuse is IFuse {
     error SpSupplyFuseUnsupportedVault(string action, address asset, string errorCode);
 
     constructor(uint256 marketIdInput) {
-        MARKET_ID = marketIdInput;
         VERSION = address(this);
+        MARKET_ID = marketIdInput;
     }
 
     function enter(bytes calldata data) external {

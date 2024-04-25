@@ -25,8 +25,8 @@ struct CompoundV2SupplyFuseExitData {
 contract CompoundV2SupplyFuse is IFuse {
     using SafeCast for uint256;
 
-    uint256 public immutable MARKET_ID;
     address public immutable VERSION;
+    uint256 public immutable MARKET_ID;
 
     event CompoundV2SupplyEnterFuse(address version, address asset, address market, uint256 amount);
     event CompoundV2SupplyExitFuse(address version, address asset, address market, uint256 amount);
@@ -34,8 +34,8 @@ contract CompoundV2SupplyFuse is IFuse {
     error CompoundV2SupplyFuseUnsupportedAsset(address asset, string errorCode);
 
     constructor(uint256 marketIdInput) {
-        MARKET_ID = marketIdInput;
         VERSION = address(this);
+        MARKET_ID = marketIdInput;
     }
 
     function enter(bytes calldata data) external {
