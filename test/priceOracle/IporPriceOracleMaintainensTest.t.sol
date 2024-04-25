@@ -49,19 +49,6 @@ contract IporPriceOracleMaintenanceTest is Test {
         new IporPriceOracle(address(0), BASE_CURRENCY_DECIMALS, CHAINLINK_FEED_REGISTRY);
     }
 
-    function testShouldNotBeAbleToSetChainlinkFeedRegistryAsZeroAddress() external {
-        // given
-        bytes memory error = abi.encodeWithSignature(
-            "ZeroAddress(string,string)",
-            Errors.UNSUPPORTED_ZERO_ADDRESS,
-            "chainlinkFeedRegistry"
-        );
-
-        // when
-        vm.expectRevert(error);
-        new IporPriceOracle(BASE_CURRENCY, BASE_CURRENCY_DECIMALS, address(0));
-    }
-
     function testShouldNotBeAbleToSetAssetWithEmptyArrays() external {
         // given
         bytes memory error = abi.encodeWithSignature("EmptyArrayNotSupported(string)", Errors.UNSUPPORTED_EMPTY_ARRAY);

@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {CompoundConstants} from "../../../contracts/fuses/compound_v3/CompoundConstants.sol";
-import {CompoundV3SupplyFuse} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {IComet} from "../../../contracts/fuses/compound_v3/IComet.sol";
 
 import {CompoundV3SupplyFuseMock} from "./CompoundV3SupplyFuseMock.sol";
@@ -44,7 +44,7 @@ contract CompoundWethV3BalanceFuseTest is Test {
 
         // when
 
-        fuseMock.enter(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
+        fuseMock.enter(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
@@ -73,7 +73,7 @@ contract CompoundWethV3BalanceFuseTest is Test {
         fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
         marketBalance.updateMarketConfiguration(assets);
 
-        fuseMock.enter(CompoundV3SupplyFuse.CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
+        fuseMock.enter(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
 
         uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
         uint256 balanceOnCometBefore = _getBalance(address(fuseMock), activeTokens.asset);
@@ -81,9 +81,7 @@ contract CompoundWethV3BalanceFuseTest is Test {
         uint256 balanceMarketBefore = marketBalance.balanceOf(address(fuseMock));
 
         // when
-        fuseMock.exit(
-            CompoundV3SupplyFuse.CompoundV3SupplyFuseExitData({asset: activeTokens.asset, amount: balanceOnCometBefore})
-        );
+        fuseMock.exit(CompoundV3SupplyFuseExitData({asset: activeTokens.asset, amount: balanceOnCometBefore}));
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));

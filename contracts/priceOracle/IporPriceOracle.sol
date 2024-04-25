@@ -24,9 +24,6 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
         if (baseCurrency == address(0)) {
             revert IIporPriceOracle.ZeroAddress(Errors.UNSUPPORTED_ZERO_ADDRESS, "baseCurrency");
         }
-        if (chainlinkFeedRegistry == address(0)) {
-            revert IIporPriceOracle.ZeroAddress(Errors.UNSUPPORTED_ZERO_ADDRESS, "chainlinkFeedRegistry");
-        }
 
         BASE_CURRENCY = baseCurrency;
         BASE_CURRENCY_DECIMALS = baseCurrencyDecimals;
@@ -74,23 +71,33 @@ contract IporPriceOracle is IIporPriceOracle, Ownable2StepUpgradeable, UUPSUpgra
 
     function _getAssetPrice(address asset) private view returns (uint256) {
         address source = IporPriceOracleStorageLib.getSourceOfAsset(asset);
+        uint80 roundId;
+        int256 price;
+        uint256 startedAt;
+        uint256 time;
+        uint80 answeredInRound;
         if (source != address(0)) {
-            return IIporPriceFeed(source).getLatestPrice();
-        }
-        try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset, BASE_CURRENCY) returns (
-            uint80 roundId,
-            int256 price,
-            uint256 startedAt,
-            uint256 time,
-            uint80 answeredInRound
-        ) {
-            if (price <= 0) {
-                revert IIporPriceOracle.UnexpectedPriceResult(Errors.CHAINLINK_PRICE_ERROR);
+            (roundId, price, startedAt, time, answeredInRound) = IIporPriceFeed(source).latestRoundData();
+        } else {
+            if (CHAINLINK_FEED_REGISTRY == address(0)) {
+                revert IIporPriceOracle.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);
             }
-            return price.toUint256();
-        } catch {
-            revert IIporPriceOracle.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);
+            try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset, BASE_CURRENCY) returns (
+                uint80 roundIdChainlink,
+                int256 priceChainlink,
+                uint256 startedAtChainlink,
+                uint256 timeChainlink,
+                uint80 answeredInRoundChainlink
+            ) {
+                price = priceChainlink;
+            } catch {
+                revert IIporPriceOracle.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);
+            }
         }
+        if (price <= 0) {
+            revert IIporPriceOracle.UnexpectedPriceResult(Errors.CHAINLINK_PRICE_ERROR);
+        }
+        return price.toUint256();
     }
 
     //solhint-disable-next-line
