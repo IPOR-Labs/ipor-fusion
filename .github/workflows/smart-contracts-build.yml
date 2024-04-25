@@ -93,11 +93,10 @@ jobs:
           key: ${{ runner.os }}-modules-${{ hashFiles('**/package-lock.json') }}
 
       - name: Setup Foundry
-        # TODO: update foundry-toolchain and user nightly version
-        # from tag: v1.0.10-ipor-v1
-        uses: IPOR-Labs/foundry-toolchain@d9760eeeaf64fdac14339e530358e15925d2997c
+        # from tag: v1.2.0-ipor
+        uses: IPOR-Labs/foundry-toolchain@18ecb60c02f281f6906d3349abfe450d295be7a8
         with:
-          version: nightly-ba6c85112f4c34fc8eb081645bad278f48343ec4
+          version: nightly-e01038f35750b4a41b1eda5a4ea3da976027eee2
 
       - name: Install
         run: npm install
