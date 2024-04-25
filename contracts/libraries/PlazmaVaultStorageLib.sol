@@ -43,6 +43,10 @@ library PlazmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.balanceFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant BALANCE_FUSES_ARRAY = 0xc8e943b00e69c68afc4d0f8d07f8c1977c720a201f28d8f41b019a8cdd242900;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.grantedAddressesToInteractWithVault")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT =
+        0xa992609e649c37dfe66423b55091e2506c7245219ba1f3948890efe1fb6f6100;
+
     /// @notice Global configuration of markets
     struct GlobalCfgMarkets {
         /// @dev marketId => name
@@ -114,6 +118,12 @@ library PlazmaVaultStorageLib {
         bytes32[] value;
     }
 
+    struct GrantedAddressesToInteractWithVault {
+        /// @dev The zero address serves as a flag indicating whether the vault has limited access.
+        /// @dev address => 1 - is granted, otherwise - not granted
+        mapping(address => uint256) value;
+    }
+
     function getGlobalCfgMarkets() internal pure returns (GlobalCfgMarkets storage globalCfgMarkets) {
         assembly {
             globalCfgMarkets.slot := GLOBAL_CFG_MARKETS
@@ -167,6 +177,16 @@ library PlazmaVaultStorageLib {
     function getVaultMarketTotalAssets() internal pure returns (VaultMarketTotalAssets storage vaultMarketTotalAssets) {
         assembly {
             vaultMarketTotalAssets.slot := PLAZMA_VAULT_TOTAL_ASSETS_IN_MARKET
+        }
+    }
+
+    function getGrantedAddressesToInteractWithVault()
+        internal
+        pure
+        returns (GrantedAddressesToInteractWithVault storage grantedAddressesToInteractWithVault)
+    {
+        assembly {
+            grantedAddressesToInteractWithVault.slot := GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT
         }
     }
 }
