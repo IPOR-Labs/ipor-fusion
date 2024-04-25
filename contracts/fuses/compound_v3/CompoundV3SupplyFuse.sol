@@ -9,7 +9,7 @@ import {IComet} from "./IComet.sol";
 import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
 
 struct CompoundV3SupplyFuseEnterData {
-    /// @notis asset address to supply
+    /// @notice asset address to supply
     address asset;
     /// @notice asset amount to supply
     uint256 amount;
