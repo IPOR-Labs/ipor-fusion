@@ -18,7 +18,8 @@ jobs:
       ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
       ARBITRUM_PROVIDER_URL: ${{ secrets.ARBITRUM_PROVIDER_URL }}
     with:
-      build-options: '--sizes'
+      sizes-enabled: true
+      sizes-options: '--skip test --skip script'
 
   report:
     if: ${{ always() }}

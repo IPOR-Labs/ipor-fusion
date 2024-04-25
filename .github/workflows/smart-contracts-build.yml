@@ -22,6 +22,12 @@ on:
         default: true
         required: false
 
+      sizes-enabled:
+        description: "Enable Forge sizes check"
+        type: boolean
+        default: true
+        required: false
+
       test-enabled:
         description: "Enable Forge tests"
         type: boolean
@@ -30,6 +36,12 @@ on:
 
       build-options:
         description: "Extra options in Forge build command"
+        type: string
+        default: ""
+        required: false
+
+      sizes-options:
+        description: "Extra options in Forge sizes check command"
         type: string
         default: ""
         required: false
@@ -96,6 +108,12 @@ jobs:
           forge --version
           forge build ${{ inputs.build-options }}
         id: build
+
+      - name: Forge sizes
+        if: inputs.sizes-enabled
+        run: |
+          forge build --sizes ${{ inputs.sizes-options }}
+        id: sizes
 
       - name: Forge tests
         if: inputs.test-enabled
