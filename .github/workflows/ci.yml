@@ -11,7 +11,7 @@ jobs:
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
-  smart-contracts-build:
+  build:
     needs: notify
     uses: ./.github/workflows/smart-contracts-build.yml
     secrets:
@@ -24,10 +24,10 @@ jobs:
     if: ${{ always() }}
     needs:
       - notify
-      - smart-contracts-build
+      - build
     uses: ./.github/workflows/report-slack.yml
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
     with:
-      success: ${{ needs.smart-contracts-build.result == 'success' }}
+      success: ${{ needs.build.result == 'success' }}
       slack-status-msg-id: ${{ needs.notify.outputs.slack-status-msg-id }}
