@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {AlphasLib} from "../libraries/AlphasLib.sol";
@@ -20,6 +22,7 @@ import {Errors} from "../libraries/errors/Errors.sol";
 
 contract PlazmaVault is ERC4626Permit, Ownable2Step {
     using Address for address;
+    using SafeCast for int256;
 
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
@@ -49,6 +52,9 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     IIporPriceOracle public immutable PRICE_ORACLE;
     uint256 public immutable BASE_CURRENCY_DECIMALS;
 
+    address public dao;
+    uint256 public performanceFeeInPercentage;
+
     error InvalidAlpha();
     error UnsupportedFuse();
 
@@ -68,7 +74,9 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         address[] memory alphas,
         MarketSubstratesConfig[] memory marketSubstratesConfigs,
         address[] memory fuses,
-        MarketBalanceFuseConfig[] memory balanceFuses
+        MarketBalanceFuseConfig[] memory balanceFuses,
+        address daoInput,
+        uint256 performanceFeeInPercentageInput
     )
         ERC4626Permit(IERC20(underlyingToken))
         ERC20Permit(assetName)
@@ -102,14 +110,18 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
             );
         }
 
-        ///TODO: when adding new fuse - then validate if fuse support assets defined for a given Plazma Vault.
+        dao = daoInput;
+        performanceFeeInPercentage = performanceFeeInPercentageInput;
     }
 
+    /// @notice Execute multiple FuseActions by a Alpha. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls) external {
         uint256 callsCount = calls.length;
         uint256[] memory markets = new uint256[](callsCount);
         uint256 marketIndex;
         uint256 fuseMarketId;
+
+        uint256 totalAssetsBefore = totalAssets();
 
         for (uint256 i; i < callsCount; ++i) {
             if (!FusesLib.isFuseSupported(calls[i].fuse)) {
@@ -127,6 +139,12 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         }
 
         _updateMarketsBalances(markets);
+
+        uint256 totalAssetsAfter = totalAssets();
+
+        if (totalAssetsAfter > totalAssetsBefore) {
+            _calculateAndMintPerformanceFee(totalAssetsAfter - totalAssetsBefore);
+        }
     }
 
     /// @notice Returns the total assets in the vault
@@ -146,7 +164,16 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         if (assets == 0) {
             revert NoAssetsToWithdraw();
         }
+        uint256 totalAssetsBefore = totalAssets();
+
         _withdrawFromMarkets(assets, IERC20(asset()).balanceOf(address(this)));
+
+        uint256 totalAssetsAfter = totalAssets();
+
+        if (totalAssetsAfter > totalAssetsBefore) {
+            _calculateAndMintPerformanceFee(totalAssetsAfter - totalAssetsBefore);
+        }
+
         return super.withdraw(assets, receiver, owner);
     }
 
@@ -155,16 +182,26 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
             revert NoSharesToRedeem();
         }
 
-        uint256 sharesValue;
+        uint256 assets;
         uint256 vaultCurrentBalanceUnderlying;
 
+        uint256 totalAssetsBefore = totalAssets();
+
         for (uint256 i; i < 10; ++i) {
-            sharesValue = convertToAssets(shares);
+            assets = convertToAssets(shares);
             vaultCurrentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
-            if (vaultCurrentBalanceUnderlying >= sharesValue) {
+            if (vaultCurrentBalanceUnderlying >= assets) {
                 break;
             }
-            _withdrawFromMarkets(_includeSlippage(sharesValue), vaultCurrentBalanceUnderlying);
+            _withdrawFromMarkets(_includeSlippage(assets), vaultCurrentBalanceUnderlying);
+        }
+
+        assets = convertToAssets(shares);
+
+        uint256 totalAssetsAfter = totalAssets();
+
+        if (totalAssetsAfter > totalAssetsBefore) {
+            _calculateAndMintPerformanceFee(totalAssetsAfter - totalAssetsBefore);
         }
 
         return super.redeem(shares, receiver, owner);
@@ -233,7 +270,12 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         PlazmaVaultLib.updateInstantWithdrawalFuses(fuses);
     }
 
-    function _includeSlippage(uint256 value) internal view returns (uint256) {
+    function _calculateAndMintPerformanceFee(uint256 deltasInUnderlying) internal {
+        uint256 fee = Math.mulDiv(deltasInUnderlying, performanceFeeInPercentage, 100);
+        _mint(dao, convertToShares(fee));
+    }
+
+    function _includeSlippage(uint256 value) internal pure returns (uint256) {
         /// @dev increase value by DEFAULT_SLIPPAGE_IN_PERCENTAGE to cover potential slippage
         return value + IporMath.division(value * DEFAULT_SLIPPAGE_IN_PERCENTAGE, 100);
     }
@@ -296,6 +338,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
                     marketIndex++;
                 }
             }
+
             _updateMarketsBalances(markets);
         }
     }
@@ -303,9 +346,9 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     /// @notice Update balances in the vault for markets touched by the fuses during the execution of all FuseActions
     /// @param markets Array of market ids touched by the fuses in the FuseActions
     function _updateMarketsBalances(uint256[] memory markets) internal {
-        int256 deltasInUnderlying = 0;
         uint256 wadBalanceAmountInUSD;
         address balanceFuse;
+        int256 deltasInUnderlying;
 
         /// @dev USD price is represented in 8 decimals
         uint256 underlyingAssetPrice = PRICE_ORACLE.getAssetPrice(asset());
@@ -346,7 +389,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         AlphasLib.grantAlpha(alpha);
     }
 
-    function _checkIfExistsMarket(uint256[] memory markets, uint256 marketId) internal view returns (bool exists) {
+    function _checkIfExistsMarket(uint256[] memory markets, uint256 marketId) internal pure returns (bool exists) {
         for (uint256 i; i < markets.length; ++i) {
             if (markets[i] == 0) {
                 break;

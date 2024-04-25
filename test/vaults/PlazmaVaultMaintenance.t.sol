@@ -73,7 +73,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -113,7 +115,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -162,7 +166,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -196,7 +202,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -240,7 +248,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -280,7 +290,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -315,7 +327,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -349,7 +363,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -386,7 +402,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -424,7 +442,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -465,7 +485,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -509,7 +531,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -552,7 +576,9 @@ contract PlazmaVaultMaintenanceTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );

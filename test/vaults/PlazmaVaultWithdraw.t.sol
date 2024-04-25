@@ -173,7 +173,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -282,7 +284,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -397,7 +401,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -500,7 +506,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -626,7 +634,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -785,7 +795,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -936,7 +948,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -1078,7 +1092,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -1188,7 +1204,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -1314,7 +1332,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -1462,7 +1482,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );
@@ -1512,7 +1534,9 @@ contract PlazmaVaultWithdrawTest is Test {
                     alphas,
                     marketConfigs,
                     fuses,
-                    balanceFuses
+                    balanceFuses,
+                    address(0x777),
+                    0
                 )
             )
         );

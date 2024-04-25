@@ -23,7 +23,9 @@ contract PlazmaVaultFactory is Ownable2Step {
         address[] memory alphas,
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs,
         address[] memory fuses,
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses,
+        address dao,
+        uint256 performanceFeeInPercentage
     ) external returns (address plazmaVault) {
         /// TODO: validate if used marketId exists in global configuration. Storage: GLOBAL_CFG_MARKETS, GLOBAL_CFG_MARKETS_ARRAY
         /// TODO: admin can add or remove markets in global configuration of a VaultFactory
@@ -41,7 +43,9 @@ contract PlazmaVaultFactory is Ownable2Step {
                 alphas,
                 marketConfigs,
                 fuses,
-                balanceFuses
+                balanceFuses,
+                dao,
+                performanceFeeInPercentage
             )
         );
     }
