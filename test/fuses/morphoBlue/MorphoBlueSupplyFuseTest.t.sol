@@ -46,7 +46,7 @@ contract MorphoBlueSupplyFuseTest is Test {
         bytes32 marketIdBytes32 = 0xb1eac1c0f3ad13fb45b01beac8458c055c903b1bff8cb882346635996a774f77;
         Id marketId = Id.wrap(marketIdBytes32);
 
-        MorphoBlueBalanceFuse balanceFuse = new MorphoBlueBalanceFuse(address(iporPriceOracleProxy), 1);
+        MorphoBlueBalanceFuse balanceFuse = new MorphoBlueBalanceFuse(1, address(iporPriceOracleProxy));
         MorphoBlueSupplyFuse fuse = new MorphoBlueSupplyFuse(1);
         VaultMorphoBlueMock vaultMock = new VaultMorphoBlueMock(address(fuse), address(balanceFuse));
 
@@ -62,7 +62,7 @@ contract MorphoBlueSupplyFuseTest is Test {
 
         bytes32[] memory marketIds = new bytes32[](1);
         marketIds[0] = marketIdBytes32;
-        vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), marketIds);
+        vaultMock.grandMarketSubstrates(fuse.MARKET_ID(), marketIds);
 
         // when
         vaultMock.enter(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
@@ -98,7 +98,7 @@ contract MorphoBlueSupplyFuseTest is Test {
 
         bytes32[] memory marketIds = new bytes32[](1);
         marketIds[0] = marketIdBytes32;
-        vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), marketIds);
+        vaultMock.grandMarketSubstrates(fuse.MARKET_ID(), marketIds);
 
         vaultMock.enter(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
 

@@ -117,9 +117,7 @@ abstract contract ERC4626Permit is ERC20Permit, IERC4626 {
     }
 
     /** @dev See {IERC4626-totalAssets}. */
-    function totalAssets() public view virtual returns (uint256) {
-        return _ASSET.balanceOf(address(this));
-    }
+    function totalAssets() public view virtual returns (uint256);
 
     /** @dev See {IERC4626-convertToShares}. */
     function convertToShares(uint256 assets) public view virtual returns (uint256) {

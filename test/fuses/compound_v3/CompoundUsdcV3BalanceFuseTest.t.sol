@@ -22,12 +22,12 @@ contract CompoundUsdcV3BalanceFuseTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
-        marketBalance = new CompoundV3BalanceFuseMock(CompoundConstants.COMET_V3_USDC, 1);
+        marketBalance = new CompoundV3BalanceFuseMock(1, CompoundConstants.COMET_V3_USDC);
     }
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(CompoundConstants.COMET_V3_USDC, 1);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_USDC);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -62,7 +62,7 @@ contract CompoundUsdcV3BalanceFuseTest is Test {
 
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(CompoundConstants.COMET_V3_USDC, 1);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_USDC);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();

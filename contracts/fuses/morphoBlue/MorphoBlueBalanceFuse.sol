@@ -7,7 +7,7 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
@@ -26,10 +26,10 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
     address private constant USD = address(0x0000000000000000000000000000000000000348);
 
-    IIporPriceOracle public immutable PRICE_ORACLE;
     uint256 public immutable MARKET_ID;
+    IIporPriceOracle public immutable PRICE_ORACLE;
 
-    constructor(address priceOracle, uint256 marketIdInput) {
+    constructor(uint256 marketIdInput, address priceOracle) {
         MARKET_ID = marketIdInput;
         PRICE_ORACLE = IIporPriceOracle(priceOracle);
         if (PRICE_ORACLE.BASE_CURRENCY() != USD) {
@@ -38,7 +38,7 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
     }
 
     function balanceOf(address plazmaVault) external view override returns (uint256) {
-        bytes32[] memory morphoMarkets = MarketConfigurationLib.getMarketConfigurationSubstrates(MARKET_ID);
+        bytes32[] memory morphoMarkets = PlazmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = morphoMarkets.length;
         if (len == 0) {

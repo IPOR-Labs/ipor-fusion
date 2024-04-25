@@ -17,7 +17,7 @@ contract FusesLibTest is Test {
         uint256 marketId = 1;
 
         //when
-        fusesLibMock.setBalanceFuse(marketId, fuse);
+        fusesLibMock.addBalanceFuse(marketId, fuse);
 
         //then
         assertTrue(fusesLibMock.isBalanceFuseSupported(marketId, fuse));
@@ -27,7 +27,9 @@ contract FusesLibTest is Test {
         //given
         address fuse = address(0x1);
         uint256 marketId = 1;
-        fusesLibMock.setBalanceFuse(marketId, fuse);
+
+        fusesLibMock.addBalanceFuse(marketId, fuse);
+
         bool fuseBefore = fusesLibMock.isBalanceFuseSupported(marketId, fuse);
 
         //when
@@ -129,12 +131,12 @@ contract FusesLibTest is Test {
 
         uint256 marketId = 1;
 
-        fusesLibMock.setBalanceFuse(marketId, fuseOne);
+        fusesLibMock.addBalanceFuse(marketId, fuseOne);
 
         assertTrue(fusesLibMock.isBalanceFuseSupported(marketId, fuseOne) == true, "Fuse one should be added");
 
         //when
-        fusesLibMock.setBalanceFuse(marketId, fuseTwo);
+        fusesLibMock.addBalanceFuse(marketId, fuseTwo);
 
         //then
         assertTrue(fusesLibMock.isBalanceFuseSupported(marketId, fuseOne) == false, "Fuse four should be removed");

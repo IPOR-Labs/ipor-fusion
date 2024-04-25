@@ -21,12 +21,12 @@ contract CompoundUsdcV3BalanceArbitrumFuse is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
-        marketBalance = new CompoundV3BalanceFuseMock(address(COMET), 1);
+        marketBalance = new CompoundV3BalanceFuseMock(1, address(COMET));
     }
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(address(COMET), 1);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, address(COMET));
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -61,7 +61,7 @@ contract CompoundUsdcV3BalanceArbitrumFuse is Test {
 
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(address(COMET), 1);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, address(COMET));
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();

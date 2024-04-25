@@ -124,7 +124,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         //when
-        plazmaVault.addBalanceFuse(PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse)));
+        plazmaVault.addBalanceFuse(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         //then
         assertTrue(
@@ -146,7 +146,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](1);
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(0x1), AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         fuses[0] = address(fuse);
 
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
@@ -201,7 +201,7 @@ contract PlazmaVaultMaintenanceTest is Test {
             )
         );
 
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(0x1), AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
 
         assertFalse(plazmaVault.isFuseSupported(address(fuse)));
 
@@ -225,7 +225,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](1);
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(0x1), AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         fuses[0] = address(fuse);
 
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);

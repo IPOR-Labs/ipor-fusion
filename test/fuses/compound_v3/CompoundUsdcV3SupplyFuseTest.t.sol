@@ -24,7 +24,7 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(CompoundConstants.COMET_V3_USDC, 1);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_USDC);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -53,7 +53,7 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
 
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(CompoundConstants.COMET_V3_USDC, 1);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_USDC);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();

@@ -2,8 +2,8 @@
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {MarketConfigurationLib} from "../../../contracts/libraries/MarketConfigurationLib.sol";
+import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {PlazmaVaultConfigLib} from "../../../contracts/libraries/PlazmaVaultConfigLib.sol";
 
 contract ERC4626SupplyFuseMock {
     using Address for address;
@@ -20,7 +20,7 @@ contract ERC4626SupplyFuseMock {
 
     function enter(
         //solhint-disable-next-line
-        Erc4626SupplyFuse.Erc4626SupplyFuseData memory data
+        Erc4626SupplyFuseEnterData memory data
     ) external returns (bytes memory executionStatus) {
         return address(fuse).functionDelegateCall(msg.data);
     }
@@ -32,12 +32,12 @@ contract ERC4626SupplyFuseMock {
 
     function exit(
         //solhint-disable-next-line
-        Erc4626SupplyFuse.Erc4626SupplyFuseData memory data
+        Erc4626SupplyFuseExitData memory data
     ) external returns (bytes memory executionStatus) {
         return address(fuse).functionDelegateCall(msg.data);
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
-        MarketConfigurationLib.grandSubstratesAsAssetsToMarket(marketId, assets);
+        PlazmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
     }
 }
