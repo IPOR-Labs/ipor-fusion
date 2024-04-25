@@ -1,4 +1,18 @@
-/node_modules/
+### Environment ###
+/.env
+
+### Node build artifacts ###
+/node_modules
+
+### Smart Contracts build artifacts ###
 /out/
-.env
 /cache/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### macOS system files ###
+.DS_Store
