@@ -14,9 +14,9 @@ contract SDaiPriceFeedTest is Test {
         SDaiPriceFeed priceFeed = new SDaiPriceFeed();
 
         // when
-        uint256 result = priceFeed.getLatestPrice();
+        (, int256 price, , , ) = priceFeed.latestRoundData();
 
         // then
-        assertEq(result, uint256(106851828), "Price should be calculated correctly");
+        assertEq(uint256(price), uint256(106851828), "Price should be calculated correctly");
     }
 }
