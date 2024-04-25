@@ -5,7 +5,7 @@ import {PlazmaVaultStorageLib} from "./PlazmaVaultStorageLib.sol";
 
 library AccessControlLib {
     event AccessGrantedToVault(address indexed account);
-    event AccessRevokeToVault(address indexed account);
+    event AccessRevokedToVault(address indexed account);
     event AccessControlActivated();
     event AccessControlDeactivated();
 
@@ -29,7 +29,7 @@ library AccessControlLib {
         PlazmaVaultStorageLib.GrantedAddressesToInteractWithVault storage accessControl = PlazmaVaultStorageLib
             .getGrantedAddressesToInteractWithVault();
         accessControl.value[account] = 0;
-        emit AccessRevokeToVault(account);
+        emit AccessRevokedToVault(account);
     }
 
     function isAccessGrantedToVault(address account) internal view returns (bool) {
