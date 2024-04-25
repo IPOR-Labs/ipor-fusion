@@ -6,19 +6,20 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {FlashLoanMorphoFuse} from "../../contracts/vaults/poc/FlashLoanMorphoFuse.sol";
-import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BorrowFuse} from "../../contracts/vaults/poc/AaveV3BorrowFuse.sol";
 import {NativeSwapWethToWstEthFuse} from "../../contracts/vaults/poc/NativeSwapWEthToWstEthFuse.sol";
 import {PriceAdapter} from "../../contracts/vaults/poc/PriceAdapter.sol";
 import {AaveV3BalanceFuse} from "../../contracts/vaults/poc/AaveV3BalanceFuse.sol";
 
-import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../contracts/libraries/PlazmaVaultConfigLib.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 
 contract ForkAmmGovernanceServiceTest is Test {
     address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
+    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
 
     address payable public vaultWstEth;
     address public flashLoanMorphoFuse;
@@ -45,7 +46,9 @@ contract ForkAmmGovernanceServiceTest is Test {
         alphas[0] = address(this);
 
         flashLoanMorphoFuse = address(new FlashLoanMorphoFuse());
-        aaveV3SupplyFuse = address(new AaveV3SupplyFuse(AAVE_POOL, aaveV3MarketId));
+        aaveV3SupplyFuse = address(
+            new AaveV3SupplyFuse(aaveV3MarketId, AAVE_POOL, ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3)
+        );
         aaveV3BorrowFuse = address(new AaveV3BorrowFuse(aaveV3MarketId, aaveV3MarketName));
         nativeSwapWethToWstEthFuse = address(new NativeSwapWethToWstEthFuse());
         balanceFuse = address(new AaveV3BalanceFuse(aaveV3MarketId, aaveV3MarketName, priceAdapter));
@@ -63,8 +66,8 @@ contract ForkAmmGovernanceServiceTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory marketAssets = new bytes32[](2);
-        marketAssets[0] = MarketConfigurationLib.addressToBytes32(WST_ETH);
-        marketAssets[1] = MarketConfigurationLib.addressToBytes32(W_ETH);
+        marketAssets[0] = PlazmaVaultConfigLib.addressToBytes32(WST_ETH);
+        marketAssets[1] = PlazmaVaultConfigLib.addressToBytes32(W_ETH);
 
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig({marketId: aaveV3MarketId, substrates: marketAssets});
 
@@ -119,13 +122,7 @@ contract ForkAmmGovernanceServiceTest is Test {
             aaveV3SupplyFuse,
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({
-                        asset: WST_ETH,
-                        amount: 40 * 1e18,
-                        userEModeCategoryId: 1e18
-                    })
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: WST_ETH, amount: 40 * 1e18, userEModeCategoryId: 1e18}))
             )
         );
 

@@ -2,6 +2,10 @@
 pragma solidity 0.8.20;
 
 library IporMath {
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+
     function convertToWad(uint256 value, uint256 assetDecimals) internal pure returns (uint256) {
         if (value > 0) {
             if (assetDecimals == 18) {

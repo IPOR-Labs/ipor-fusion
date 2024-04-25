@@ -7,7 +7,7 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// TODO: Vault has super admin who has rights to setup fee
-//TODO: upgradeable
+/// TODO: upgradeable
 contract PlazmaVaultFactory is Ownable2Step {
     address public iporVaultInitialOwner;
 

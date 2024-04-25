@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
-import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
 import {CErc20} from "./CErc20.sol";
 
 struct CompoundV2SupplyFuseEnterData {
@@ -25,8 +25,8 @@ struct CompoundV2SupplyFuseExitData {
 contract CompoundV2SupplyFuse is IFuse {
     using SafeCast for uint256;
 
-    uint256 public immutable MARKET_ID;
     address public immutable VERSION;
+    uint256 public immutable MARKET_ID;
 
     event CompoundV2SupplyEnterFuse(address version, address asset, address market, uint256 amount);
     event CompoundV2SupplyExitFuse(address version, address asset, address market, uint256 amount);
@@ -34,8 +34,8 @@ contract CompoundV2SupplyFuse is IFuse {
     error CompoundV2SupplyFuseUnsupportedAsset(address asset, string errorCode);
 
     constructor(uint256 marketIdInput) {
-        MARKET_ID = marketIdInput;
         VERSION = address(this);
+        MARKET_ID = marketIdInput;
     }
 
     function enter(bytes calldata data) external {
@@ -76,13 +76,13 @@ contract CompoundV2SupplyFuse is IFuse {
     }
 
     function _getCToken(uint256 marketId, address asset) internal view returns (address) {
-        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfigurationSubstrates(marketId);
+        bytes32[] memory assetsRaw = PlazmaVaultConfigLib.getMarketSubstrates(marketId);
         uint256 len = assetsRaw.length;
         if (len == 0) {
             revert CompoundV2SupplyFuseUnsupportedAsset(asset, Errors.UNSUPPORTED_ASSET);
         }
         for (uint256 i; i < len; ++i) {
-            address cToken = MarketConfigurationLib.bytes32ToAddress(assetsRaw[i]);
+            address cToken = PlazmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             if (CErc20(cToken).underlying() == asset) {
                 return cToken;
             }

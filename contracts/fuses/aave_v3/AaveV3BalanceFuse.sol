@@ -8,7 +8,7 @@ import {IAavePriceOracle} from "./IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "./IAavePoolDataProvider.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
-import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
 
 contract AaveV3BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
@@ -27,7 +27,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
     }
 
     function balanceOf(address plazmaVault) external view override returns (uint256) {
-        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfigurationSubstrates(MARKET_ID);
+        bytes32[] memory assetsRaw = PlazmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
 
@@ -47,7 +47,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
-            asset = MarketConfigurationLib.bytes32ToAddress(assetsRaw[i]);
+            asset = PlazmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             decimals = ERC20(asset).decimals();
             price = IAavePriceOracle(AAVE_PRICE_ORACLE).getAssetPrice(asset);
             if (price == 0) {

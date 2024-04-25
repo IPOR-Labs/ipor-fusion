@@ -5,11 +5,11 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
-import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {MarketConfigurationLib} from "../../contracts/libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../contracts/libraries/PlazmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
@@ -65,18 +65,18 @@ contract PlazmaVaultTest is Test {
 
     function testShouldExecuteSimpleCase() public {
         //given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
-        address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
+        assetName = "IPOR Fusion DAI";
+        assetSymbol = "ipfDAI";
+        underlyingToken = DAI;
+        alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
@@ -85,7 +85,11 @@ contract PlazmaVaultTest is Test {
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
 
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
@@ -110,7 +114,7 @@ contract PlazmaVaultTest is Test {
 
         PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
 
         deal(DAI, address(plazmaVault), amount);
 
@@ -118,9 +122,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
             )
         );
 
@@ -140,13 +142,13 @@ contract PlazmaVaultTest is Test {
         underlyingToken = USDC;
         alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -155,12 +157,16 @@ contract PlazmaVaultTest is Test {
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -196,9 +202,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -226,13 +230,13 @@ contract PlazmaVaultTest is Test {
         underlyingToken = DAI;
         alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
@@ -241,7 +245,11 @@ contract PlazmaVaultTest is Test {
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
 
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
@@ -266,7 +274,7 @@ contract PlazmaVaultTest is Test {
 
         PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
 
         deal(DAI, address(plazmaVault), amount);
 
@@ -274,9 +282,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
             )
         );
 
@@ -310,13 +316,13 @@ contract PlazmaVaultTest is Test {
         underlyingToken = USDC;
         alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -325,12 +331,16 @@ contract PlazmaVaultTest is Test {
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -366,9 +376,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -407,7 +415,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -416,7 +424,11 @@ contract PlazmaVaultTest is Test {
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
         DoNothingFuse doNothingFuseAaveV3 = new DoNothingFuse(AAVE_V3_MARKET_ID);
 
         address[] memory fuses = new address[](2);
@@ -458,9 +470,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -512,7 +522,7 @@ contract PlazmaVaultTest is Test {
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -521,11 +531,15 @@ contract PlazmaVaultTest is Test {
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         DoNothingFuse doNothingFuseCompoundV3 = new DoNothingFuse(COMPOUND_V3_MARKET_ID);
 
         address[] memory fuses = new address[](2);
@@ -568,9 +582,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 0})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 0}))
             )
         );
 
@@ -605,18 +617,18 @@ contract PlazmaVaultTest is Test {
 
     function testShouldExitFromAaveV3SupplyFuse() public {
         //given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
-        address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
+        assetName = "IPOR Fusion DAI";
+        assetSymbol = "ipfDAI";
+        underlyingToken = DAI;
+        alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(DAI);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
@@ -625,7 +637,11 @@ contract PlazmaVaultTest is Test {
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
 
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
@@ -650,7 +666,7 @@ contract PlazmaVaultTest is Test {
 
         PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
 
         deal(DAI, address(plazmaVault), amount);
 
@@ -658,9 +674,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
             )
         );
 
@@ -671,10 +685,7 @@ contract PlazmaVaultTest is Test {
 
         callsSecond[0] = PlazmaVault.FuseAction(
             address(supplyFuse),
-            abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(AaveV3SupplyFuse.AaveV3SupplyFuseExitData({asset: DAI, amount: amount}))
-            )
+            abi.encodeWithSignature("exit(bytes)", abi.encode(AaveV3SupplyFuseExitData({asset: DAI, amount: amount})))
         );
 
         uint256 totalAssetsInMarketBefore = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
@@ -701,13 +712,13 @@ contract PlazmaVaultTest is Test {
         underlyingToken = USDC;
         alphas = new address[](1);
 
-        address alpha = address(0x1);
+        alpha = address(0x1);
         alphas[0] = alpha;
 
         PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = MarketConfigurationLib.addressToBytes32(USDC);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
         marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
@@ -716,12 +727,16 @@ contract PlazmaVaultTest is Test {
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
-        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(AAVE_POOL, AAVE_V3_MARKET_ID);
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
 
         /// @dev Market Compound V3
         marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
-        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
-        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMET_V3_USDC, COMPOUND_V3_MARKET_ID);
+        CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(supplyFuseAaveV3);
@@ -757,9 +772,7 @@ contract PlazmaVaultTest is Test {
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(
-                    AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
-                )
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
             )
         );
 
@@ -778,10 +791,7 @@ contract PlazmaVaultTest is Test {
 
         callsSecond[0] = PlazmaVault.FuseAction(
             address(supplyFuseAaveV3),
-            abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(AaveV3SupplyFuse.AaveV3SupplyFuseExitData({asset: USDC, amount: amount}))
-            )
+            abi.encodeWithSignature("exit(bytes)", abi.encode(AaveV3SupplyFuseExitData({asset: USDC, amount: amount})))
         );
 
         callsSecond[1] = PlazmaVault.FuseAction(

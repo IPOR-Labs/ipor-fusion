@@ -6,7 +6,9 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
 import {IComet} from "./IComet.sol";
-import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
 
 struct CompoundV3SupplyFuseEnterData {
     /// @notice asset address to supply
@@ -22,34 +24,54 @@ struct CompoundV3SupplyFuseExitData {
     uint256 amount;
 }
 
-contract CompoundV3SupplyFuse is IFuse {
+contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
 
-    IComet public immutable COMET;
-    uint256 public immutable MARKET_ID;
     address public immutable VERSION;
+    uint256 public immutable MARKET_ID;
+    IComet public immutable COMET;
+    address public immutable COMPOUND_BASE_TOKEN;
 
     event CompoundV3SupplyEnterFuse(address version, address asset, address market, uint256 amount);
     event CompoundV3SupplyExitFuse(address version, address asset, address market, uint256 amount);
 
     error CompoundV3SupplyFuseUnsupportedAsset(string action, address asset, string errorCode);
 
-    constructor(address cometAddressInput, uint256 marketIdInput) {
-        COMET = IComet(cometAddressInput);
-        MARKET_ID = marketIdInput;
+    constructor(uint256 marketIdInput, address cometAddressInput) {
         VERSION = address(this);
+        MARKET_ID = marketIdInput;
+        COMET = IComet(cometAddressInput);
+        COMPOUND_BASE_TOKEN = COMET.baseToken();
     }
 
-    function enter(bytes calldata data) external {
+    function enter(bytes calldata data) external override {
         _enter(abi.decode(data, (CompoundV3SupplyFuseEnterData)));
     }
 
+    /// @dev technical method to generate ABI
     function enter(CompoundV3SupplyFuseEnterData memory data) external {
         _enter(data);
     }
 
+    function exit(bytes calldata data) external override {
+        _exit(abi.decode(data, (CompoundV3SupplyFuseExitData)));
+    }
+
+    /// @dev technical method to generate ABI
+    function exit(CompoundV3SupplyFuseExitData calldata data) external {
+        _exit(data);
+    }
+
+    /// @dev params[0] - amount in underlying asset, params[1] - asset address
+    function instantWithdraw(bytes32[] calldata params) external override {
+        uint256 amount = uint256(params[0]);
+        address asset = PlazmaVaultConfigLib.bytes32ToAddress(params[1]);
+
+        _exit(CompoundV3SupplyFuseExitData(asset, amount));
+    }
+
     function _enter(CompoundV3SupplyFuseEnterData memory data) internal {
-        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert CompoundV3SupplyFuseUnsupportedAsset("enter", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
@@ -60,21 +82,21 @@ contract CompoundV3SupplyFuse is IFuse {
         emit CompoundV3SupplyEnterFuse(VERSION, data.asset, address(COMET), data.amount);
     }
 
-    function exit(bytes calldata data) external {
-        _exit(abi.decode(data, (CompoundV3SupplyFuseExitData)));
-    }
-
-    function exit(CompoundV3SupplyFuseExitData calldata data) external {
-        _exit(data);
-    }
-
     function _exit(CompoundV3SupplyFuseExitData memory data) internal {
-        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert CompoundV3SupplyFuseUnsupportedAsset("exit", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
-        COMET.withdraw(data.asset, data.amount);
+        COMET.withdraw(data.asset, IporMath.min(data.amount, _getBalance(data.asset)));
 
         emit CompoundV3SupplyExitFuse(VERSION, data.asset, address(COMET), data.amount);
+    }
+
+    function _getBalance(address asset) private view returns (uint256) {
+        if (asset == COMPOUND_BASE_TOKEN) {
+            return COMET.balanceOf(address(this));
+        } else {
+            return COMET.collateralBalanceOf(address(this), asset);
+        }
     }
 }

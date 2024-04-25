@@ -8,7 +8,7 @@ import {Test} from "forge-std/Test.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {Erc4626SupplyFuse} from "./../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "./../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {VaultERC4626Mock} from "./VaultERC4626Mock.sol";
 
@@ -53,7 +53,7 @@ contract ERC4646BalanceFuseTest is Test {
         uint256 balanceFromFuseBefore = vault.balanceOf(address(vault));
 
         // when
-        vault.enter(Erc4626SupplyFuse.Erc4626SupplyFuseData({vault: SDAI, amount: amount}));
+        vault.enter(Erc4626SupplyFuseEnterData({vault: SDAI, amount: amount}));
 
         //then
         uint256 balanceAfter = IERC4626(SDAI).balanceOf(address(vault));
@@ -84,17 +84,14 @@ contract ERC4646BalanceFuseTest is Test {
 
         deal(DAI, address(vault), 1_000e18);
 
-        vault.enter(Erc4626SupplyFuse.Erc4626SupplyFuseData({vault: SDAI, amount: amount}));
+        vault.enter(Erc4626SupplyFuseEnterData({vault: SDAI, amount: amount}));
 
         uint256 balanceBeforeWithdraw = IERC4626(SDAI).balanceOf(address(vault));
         uint256 balanceFromFuseBeforeWithdraw = vault.balanceOf(address(vault));
 
         // when
         vault.exit(
-            Erc4626SupplyFuse.Erc4626SupplyFuseData({
-                vault: SDAI,
-                amount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw)
-            })
+            Erc4626SupplyFuseExitData({vault: SDAI, amount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw)})
         );
 
         // then

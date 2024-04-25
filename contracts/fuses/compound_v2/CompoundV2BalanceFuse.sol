@@ -6,7 +6,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
 import {CErc20} from "./CErc20.sol";
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
 
@@ -16,6 +16,7 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
     using Address for address;
 
     uint256 private constant PRICE_DECIMALS = 8;
+
     uint256 public immutable MARKET_ID;
     IIporPriceOracle public immutable PRICE_ORACLE;
 
@@ -25,7 +26,7 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
     }
 
     function balanceOf(address plazmaVault) external override returns (uint256) {
-        bytes32[] memory assetsRaw = MarketConfigurationLib.getMarketConfigurationSubstrates(MARKET_ID);
+        bytes32[] memory assetsRaw = PlazmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
         if (len == 0) {
@@ -45,7 +46,7 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
-            cToken = CErc20(MarketConfigurationLib.bytes32ToAddress(assetsRaw[i]));
+            cToken = CErc20(PlazmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]));
             underlying = cToken.underlying();
             decimals = ERC20(underlying).decimals();
             price = _getPrice(underlying);

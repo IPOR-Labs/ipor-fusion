@@ -23,8 +23,8 @@ contract CompoundWethV3BalanceFuseTest is Test {
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
-        marketBalance = new CompoundV3BalanceFuseMock(CompoundConstants.COMET_V3_WETH, 1);
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(CompoundConstants.COMET_V3_WETH, 1);
+        marketBalance = new CompoundV3BalanceFuseMock(1, CompoundConstants.COMET_V3_WETH);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_WETH);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -59,8 +59,8 @@ contract CompoundWethV3BalanceFuseTest is Test {
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
-        marketBalance = new CompoundV3BalanceFuseMock(CompoundConstants.COMET_V3_WETH, 1);
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(CompoundConstants.COMET_V3_WETH, 1);
+        marketBalance = new CompoundV3BalanceFuseMock(1, CompoundConstants.COMET_V3_WETH);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_WETH);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();

@@ -8,7 +8,7 @@ import {AaveLendingPoolV2, ReserveData} from "./AaveLendingPoolV2.sol";
 import {AaveConstants} from "./AaveConstants.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
-import {MarketConfigurationLib} from "../../libraries/MarketConfigurationLib.sol";
+import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
 
 struct AaveV2SupplyFuseEnterData {
     /// @notice asset address to supply
@@ -38,8 +38,8 @@ contract AaveV2SupplyFuse is IFuse {
     error AaveV2SupplyFuseUnsupportedAsset(address asset, string errorCode);
 
     constructor(uint256 marketIdInput, address aavePoolInput) {
-        MARKET_ID = marketIdInput;
         VERSION = address(this);
+        MARKET_ID = marketIdInput;
         AAVE_POOL = AaveLendingPoolV2(aavePoolInput);
     }
 
@@ -60,7 +60,7 @@ contract AaveV2SupplyFuse is IFuse {
     }
 
     function _enter(AaveV2SupplyFuseEnterData memory data) internal {
-        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV2SupplyFuseUnsupportedAsset(data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
@@ -72,7 +72,7 @@ contract AaveV2SupplyFuse is IFuse {
     }
 
     function _exit(AaveV2SupplyFuseExitData memory data) internal {
-        if (!MarketConfigurationLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV2SupplyFuseUnsupportedAsset(data.asset, Errors.UNSUPPORTED_ASSET);
         }
         uint256 amountToWithdraw = data.amount;

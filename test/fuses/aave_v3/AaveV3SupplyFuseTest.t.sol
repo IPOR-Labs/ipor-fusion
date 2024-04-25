@@ -7,7 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IPool} from "../../../contracts/vaults/interfaces/IPool.sol";
 import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
-import {AaveV3SupplyFuse} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3SupplyFuseMock} from "./AaveV3SupplyFuseMock.sol";
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
@@ -30,7 +30,7 @@ contract AaveV3SupplyFuseTest is Test {
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(AAVE_POOL), 1);
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, address(AAVE_POOL), address(AAVE_POOL_DATA_PROVIDER));
         AaveV3SupplyFuseMock fuseMock = new AaveV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -47,11 +47,7 @@ contract AaveV3SupplyFuseTest is Test {
         // when
 
         fuseMock.enter(
-            AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({
-                asset: activeTokens.asset,
-                amount: amount,
-                userEModeCategoryId: uint256(300)
-            })
+            AaveV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount, userEModeCategoryId: uint256(300)})
         );
 
         // then
@@ -79,7 +75,7 @@ contract AaveV3SupplyFuseTest is Test {
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
         uint256 dustOnAToken = 10;
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(address(AAVE_POOL), 1);
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, address(AAVE_POOL), address(AAVE_POOL_DATA_PROVIDER));
         AaveV3SupplyFuseMock fuseMock = new AaveV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -95,7 +91,7 @@ contract AaveV3SupplyFuseTest is Test {
         fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         fuseMock.enter(
-            AaveV3SupplyFuse.AaveV3SupplyFuseEnterData({
+            AaveV3SupplyFuseEnterData({
                 asset: activeTokens.asset,
                 amount: enterAmount,
                 userEModeCategoryId: uint256(300)
@@ -104,7 +100,7 @@ contract AaveV3SupplyFuseTest is Test {
 
         // when
 
-        fuseMock.exit(AaveV3SupplyFuse.AaveV3SupplyFuseExitData({asset: activeTokens.asset, amount: exitAmount}));
+        fuseMock.exit(AaveV3SupplyFuseExitData({asset: activeTokens.asset, amount: exitAmount}));
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
