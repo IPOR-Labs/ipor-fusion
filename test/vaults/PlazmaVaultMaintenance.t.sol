@@ -8,9 +8,12 @@ import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.s
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IporPriceOracleMock} from "../priceOracle/IporPriceOracleMock.sol";
+import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 
 contract PlazmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant USD = 0x0000000000000000000000000000000000000348;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
@@ -571,5 +574,187 @@ contract PlazmaVaultMaintenanceTest is Test {
         // then
         assertTrue(plazmaVault.isAccessControlActivated());
         assertTrue(isAccessControlActiveBefore);
+    }
+
+    function testShouldBeAbleToUpdatePriceOracle() external {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        address newPriceOracle = address(new IporPriceOracleMock(USD, 8, address(0)));
+        address priceOracleBefore = plazmaVault.getPriceOracle();
+
+        // when
+        plazmaVault.setPriceOracle(newPriceOracle);
+
+        // then
+        address priceOracleAfter = plazmaVault.getPriceOracle();
+
+        assertEq(priceOracleBefore, address(iporPriceOracleProxy));
+        assertEq(priceOracleAfter, newPriceOracle);
+    }
+
+    function testShouldNotBeAbleToUpdatePriceOracleWhenDecimalIdWrong() external {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        address newPriceOracle = address(new IporPriceOracleMock(USD, 6, address(0)));
+        address priceOracleBefore = plazmaVault.getPriceOracle();
+
+        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle(string)", Errors.PRICE_ORACLE_ERROR);
+
+        // when
+        vm.expectRevert(error);
+        plazmaVault.setPriceOracle(newPriceOracle);
+
+        // when
+        address priceOracleAfter = plazmaVault.getPriceOracle();
+
+        assertEq(priceOracleBefore, address(iporPriceOracleProxy));
+        assertEq(priceOracleAfter, address(iporPriceOracleProxy));
+    }
+
+    function testShouldNotBeAbleToUpdatePriceOracleWhenCurrencyIsWrong() external {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        address newPriceOracle = address(new IporPriceOracleMock(address(0x777), 8, address(0)));
+        address priceOracleBefore = plazmaVault.getPriceOracle();
+
+        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle(string)", Errors.PRICE_ORACLE_ERROR);
+
+        // when
+        vm.expectRevert(error);
+        plazmaVault.setPriceOracle(newPriceOracle);
+
+        // when
+        address priceOracleAfter = plazmaVault.getPriceOracle();
+
+        assertEq(priceOracleBefore, address(iporPriceOracleProxy));
+        assertEq(priceOracleAfter, address(iporPriceOracleProxy));
+    }
+
+    function testShouldNotBeAbleToUpdatePriceOracleWhenNotOwner() external {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        address newPriceOracle = address(new IporPriceOracleMock(USD, 8, address(0)));
+        address priceOracleBefore = plazmaVault.getPriceOracle();
+
+        bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        plazmaVault.setPriceOracle(newPriceOracle);
+
+        // then
+        address priceOracleAfter = plazmaVault.getPriceOracle();
+
+        assertEq(priceOracleBefore, address(iporPriceOracleProxy));
+        assertEq(priceOracleAfter, address(iporPriceOracleProxy));
     }
 }
