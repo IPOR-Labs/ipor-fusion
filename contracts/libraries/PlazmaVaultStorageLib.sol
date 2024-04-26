@@ -44,12 +44,6 @@ library PlazmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracle")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PRICE_ORACLE = 0x58241ab58cc0d3d7994d58fd91816a26df3bcc7565a2c401cab5971211036a00;
 
-    /// @notice Global configuration of markets
-    struct GlobalCfgMarkets {
-        /// @dev marketId => name
-        mapping(uint256 => string) value;
-    }
-
     /// @notice Every fuse has a list of parameters used for instant withdrawal
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultInstantWithdrawalFusesParams")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLAZMA_VAULT_INSTANT_WITHDRAWAL_FUSES_PARAMS =
@@ -134,12 +128,6 @@ library PlazmaVaultStorageLib {
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
         assembly {
             totalAssets.slot := PLAZMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS
-        }
-    }
-
-    function getGlobalCfgMarkets() internal pure returns (GlobalCfgMarkets storage globalCfgMarkets) {
-        assembly {
-            globalCfgMarkets.slot := PLAZMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS
         }
     }
 
