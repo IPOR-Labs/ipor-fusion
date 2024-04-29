@@ -94,7 +94,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
 
         BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
 
-        PlazmaVaultLib.setPriceOracle(iporPriceOracle);
+        PlasmaVaultLib.setPriceOracle(iporPriceOracle);
 
         for (uint256 i; i < alphas.length; ++i) {
             _grantAlpha(alphas[i]);
@@ -363,7 +363,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         int256 deltasInUnderlying;
 
         /// @dev USD price is represented in 8 decimals
-        uint256 underlyingAssetPrice = IIporPriceOracle(PlazmaVaultLib.getPriceOracle()).getAssetPrice(asset());
+        uint256 underlyingAssetPrice = IIporPriceOracle(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
 
         for (uint256 i; i < markets.length; ++i) {
             if (markets[i] == 0) {
@@ -478,11 +478,11 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
     }
 
     function getPriceOracle() external view returns (address) {
-        return PlazmaVaultLib.getPriceOracle();
+        return PlasmaVaultLib.getPriceOracle();
     }
 
     function setPriceOracle(address priceOracle) external onlyOwner {
-        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlazmaVaultLib.getPriceOracle());
+        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlasmaVaultLib.getPriceOracle());
         IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
         if (
             oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
@@ -491,7 +491,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
             revert Errors.UnsupportedPriceOracle(Errors.PRICE_ORACLE_ERROR);
         }
 
-        PlazmaVaultLib.setPriceOracle(priceOracle);
+        PlasmaVaultLib.setPriceOracle(priceOracle);
     }
 
     modifier OnlyGrantedAccess() {

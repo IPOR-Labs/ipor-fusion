@@ -114,13 +114,13 @@ library PlasmaVaultLib {
 
     /// @notice Gets the price oracle address
     function getPriceOracle() internal view returns (address) {
-        return PlazmaVaultStorageLib.getPriceOracle().value;
+        return PlasmaVaultStorageLib.getPriceOracle().value;
     }
 
     /// @notice Sets the price oracle address
     /// @param priceOracle The price oracle address
     function setPriceOracle(address priceOracle) internal {
-        PlazmaVaultStorageLib.getPriceOracle().value = priceOracle;
+        PlasmaVaultStorageLib.getPriceOracle().value = priceOracle;
         emit PriceOracleChanged(priceOracle);
     }
 }
