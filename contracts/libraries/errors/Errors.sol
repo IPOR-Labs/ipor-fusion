@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 library Errors {
     error WrongAddress();
     error UnsupportedBaseCurrencyFromOracle(string errorCode);
+    error UnsupportedPriceOracle(string errorCode);
     /// TODO: common sustom errors plase here
     string public constant UNSUPPORTED_ASSET = "IPF_001";
     string public constant UNSUPPORTED_ERC4626 = "IPF_002";
@@ -13,4 +14,5 @@ library Errors {
     string public constant UNSUPPORTED_MARKET = "IPF_006";
     string public constant UNSUPPORTED_BASE_CURRENCY = "IPF_007";
     string public constant CHAINLINK_PRICE_ERROR = "IPF_008";
+    string public constant PRICE_ORACLE_ERROR = "IPF_008";
 }

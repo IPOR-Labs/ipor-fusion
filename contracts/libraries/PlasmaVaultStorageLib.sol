@@ -5,53 +5,56 @@ pragma solidity 0.8.20;
 library PlasmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
-        0x5a03fb3ee5c2b8e397013e1f4a344208b3193b25fa29ae6c2cda3db858454700;
+        0xf660efede6b8071aab61a75191de57a4a8a416b088f961d8c2a18168aa7c7700;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultTotalAssetsInMarket")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_MARKET =
-        0xe242383a5553e6ba2476f2482afc0944276473bfda72ea3703579c6a32bd3500;
+        0x4b7e21bd695ff47386ac5a9c91bc5af89ae8f70db8784eaaf7e339cf59a90400;
 
     /// @notice List of alphas allowed to execute actions on the vault
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultAlphas")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_ALPHAS =
-        0xbbd7bc5cd719a97025518945196354def0448dfbb28026fa8e24bdb46e847d00;
+        0xb4a789f3429f4117549bcd6c9310113f9405d6b1c930f53ac188a1907a86c400;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultMarketSubstrates")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_MARKET_SUBSTRATES =
-        0x687e7b34daf9b2313d902de6df703f968b9401655e0597c93605beb6dcd2a200;
+        0xfe9ad807db753417e8720b1fc03cc0413cb78b2a910b408a05319e9fda3ed100;
 
     /// @notice List of fuses ass
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultFuses")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_FUSES =
-        0x000870d0ab0f5888c0443d38da0ef74462768b61a0736020c116cc1261f85100;
+        0xa96ee4949aa7df44b46d24f50f8a0d5df8f141f78617dead947063334c48e700;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_FUSES_ARRAY =
-        0xe1087412b7cc398415230a6f08f19ca4eb4b4903631014f99bd0383ea79b5600;
+        0x25ef92c2997157a4d79515d18f6eba738994580f5e258ef357c1ee175bcbbc00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultBalanceFuses")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_BALANCE_FUSES =
-        0xecfbe2133c36991f817b6176be193a570614fe65c12380c8155f71c8db8ffa00;
+        0xa5d630b12943d05aa5b6826803880948eb9a1ad1cf4a04bb7a5d69aae8b60600;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultBalanceFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_BALANCE_FUSES_ARRAY =
-        0xc6ea71123e83eb9e295d0fbbb08460fe8b3972391fb51a770212c1740a87e600;
+        0xf531919d0b746f08e934928426e18847fe5fabaf4cddaf2d95b336c5765f0200;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultInstantWithdrawalFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_INSTANT_WITHDRAWAL_FUSES_ARRAY =
-        0xc650b77456730746bf5cfc334017a83f195e5f3c1517bf4b6f17a14213596e00;
+        0x4320b221b0115d4c27700eb9530f9b97354a11fc1d15a3bfa71b7d6e46733f00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracle")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PRICE_ORACLE = 0x58241ab58cc0d3d7994d58fd91816a26df3bcc7565a2c401cab5971211036a00;
 
     /// @notice Every fuse has a list of parameters used for instant withdrawal
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultInstantWithdrawalFusesParams")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_INSTANT_WITHDRAWAL_FUSES_PARAMS =
-        0xdc3a1c6868589d5b4c729d47a3a17bacae0afe31d7c568e7b5699f211a9ef000;
+        0x471d4152a74f0c2d2daea41c6f0f65733a7bcc61fedc32bc0084a98c5f96ff00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultGrantedAddressesToInteractWithVault")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT =
-        0x46ec56ade62cfd6abda269a58cda0f97b3c6351a2256484532e7afc30b7ba600;
+        0xfa87daeda1dbf9ff4e1e074074afad700558780bbfeeb3fc95c580b632362700;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultFees")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CFG_PLASMA_VAULT_FEES = 0x61ae617869d57de2346d52225ecd25878c9518b527e367e03eeeee76158e8900;
+    bytes32 private constant CFG_PLASMA_VAULT_FEES = 0x08218d6b001db865cb48a91c7dacc07e49d68c8ca266334a4720f2a519c85600;
 
     struct TotalAssets {
         /// @dev total assets in the vault
@@ -139,6 +142,10 @@ library PlasmaVaultStorageLib {
         Fees value;
     }
 
+    struct PriceOracle {
+        address value;
+    }
+
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
         assembly {
             totalAssets.slot := PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS
@@ -221,6 +228,12 @@ library PlasmaVaultStorageLib {
     function getFees() internal pure returns (FeeStorage storage fees) {
         assembly {
             fees.slot := CFG_PLASMA_VAULT_FEES
+        }
+    }
+
+    function getPriceOracle() internal pure returns (PriceOracle storage oracle) {
+        assembly {
+            oracle.slot := PRICE_ORACLE
         }
     }
 }

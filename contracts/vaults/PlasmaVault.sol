@@ -59,7 +59,6 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         bytes32[] substrates;
     }
 
-    IIporPriceOracle public immutable PRICE_ORACLE;
     uint256 public immutable BASE_CURRENCY_DECIMALS;
 
     /// @param assetName Name of the asset
@@ -87,13 +86,15 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         ERC20(assetName, assetSymbol)
         Ownable(initialOwner)
     {
-        PRICE_ORACLE = IIporPriceOracle(iporPriceOracle);
+        IIporPriceOracle priceOracle = IIporPriceOracle(iporPriceOracle);
 
-        if (PRICE_ORACLE.BASE_CURRENCY() != USD) {
+        if (priceOracle.BASE_CURRENCY() != USD) {
             revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
         }
 
-        BASE_CURRENCY_DECIMALS = PRICE_ORACLE.BASE_CURRENCY_DECIMALS();
+        BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
+
+        PlazmaVaultLib.setPriceOracle(iporPriceOracle);
 
         for (uint256 i; i < alphas.length; ++i) {
             _grantAlpha(alphas[i]);
@@ -362,7 +363,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         int256 deltasInUnderlying;
 
         /// @dev USD price is represented in 8 decimals
-        uint256 underlyingAssetPrice = PRICE_ORACLE.getAssetPrice(asset());
+        uint256 underlyingAssetPrice = IIporPriceOracle(PlazmaVaultLib.getPriceOracle()).getAssetPrice(asset());
 
         for (uint256 i; i < markets.length; ++i) {
             if (markets[i] == 0) {
@@ -474,6 +475,23 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
 
     function isAccessControlActivated() external view returns (bool) {
         return AccessControlLib.isControlAccessActivated();
+    }
+
+    function getPriceOracle() external view returns (address) {
+        return PlazmaVaultLib.getPriceOracle();
+    }
+
+    function setPriceOracle(address priceOracle) external onlyOwner {
+        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlazmaVaultLib.getPriceOracle());
+        IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
+        if (
+            oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
+            oldPriceOracle.BASE_CURRENCY_DECIMALS() != newPriceOracle.BASE_CURRENCY_DECIMALS()
+        ) {
+            revert Errors.UnsupportedPriceOracle(Errors.PRICE_ORACLE_ERROR);
+        }
+
+        PlazmaVaultLib.setPriceOracle(priceOracle);
     }
 
     modifier OnlyGrantedAccess() {
