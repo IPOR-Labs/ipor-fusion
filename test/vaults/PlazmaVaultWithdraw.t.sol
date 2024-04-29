@@ -4,7 +4,6 @@ pragma solidity 0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626Permit} from "../../contracts/tokens/ERC4626/ERC4626Permit.sol";
-import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
@@ -24,8 +23,6 @@ interface AavePool {
 contract PlazmaVaultWithdrawTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-
-    PlazmaVaultFactory internal vaultFactory;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
@@ -59,7 +56,7 @@ contract PlazmaVaultWithdrawTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19724793);
-        vaultFactory = new PlazmaVaultFactory(owner);
+
         userOne = address(0x777);
         userTwo = address(0x888);
 
@@ -163,21 +160,18 @@ contract PlazmaVaultWithdrawTest is Test {
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -274,21 +268,18 @@ contract PlazmaVaultWithdrawTest is Test {
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -391,21 +382,18 @@ contract PlazmaVaultWithdrawTest is Test {
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -496,21 +484,18 @@ contract PlazmaVaultWithdrawTest is Test {
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -624,21 +609,18 @@ contract PlazmaVaultWithdrawTest is Test {
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -785,21 +767,18 @@ contract PlazmaVaultWithdrawTest is Test {
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -938,21 +917,18 @@ contract PlazmaVaultWithdrawTest is Test {
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -1082,21 +1058,18 @@ contract PlazmaVaultWithdrawTest is Test {
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -1194,21 +1167,18 @@ contract PlazmaVaultWithdrawTest is Test {
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -1322,21 +1292,18 @@ contract PlazmaVaultWithdrawTest is Test {
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -1472,21 +1439,18 @@ contract PlazmaVaultWithdrawTest is Test {
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
         return plazmaVault;
     }
@@ -1524,21 +1488,18 @@ contract PlazmaVaultWithdrawTest is Test {
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         return plazmaVault;

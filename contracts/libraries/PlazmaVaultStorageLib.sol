@@ -12,43 +12,46 @@ library PlazmaVaultStorageLib {
         0xe242383a5553e6ba2476f2482afc0944276473bfda72ea3703579c6a32bd3500;
 
     /// @notice List of alphas allowed to execute actions on the vault
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.alphas")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultAlphas")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLAZMA_VAULT_ALPHAS =
-        0x6e63fd334756476008e18320c17a15b90685bef378a9769b941259f22b716400;
+        0xbbd7bc5cd719a97025518945196354def0448dfbb28026fa8e24bdb46e847d00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultMarketSubstrates")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLAZMA_VAULT_MARKET_SUBSTRATES =
-        0xd5bdc7559e360e9c73313f6862fc65997a8cda8dafe6ecfa240156ec11864100;
+        0x687e7b34daf9b2313d902de6df703f968b9401655e0597c93605beb6dcd2a200;
 
     /// @notice List of fuses ass
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fuses")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultFuses")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLAZMA_VAULT_FUSES =
-        0x8aea6b6f6aa5634a831e026b11b303364a06768c46e3d2947b4fd826fe672900;
+        0x000870d0ab0f5888c0443d38da0ef74462768b61a0736020c116cc1261f85100;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusesArray")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLAZMA_VAULT_FUSES_ARRAY =
-        0xba14be3a97cf2f8b4d597466152c4a1f5bd0a3391c168df3545415b0818dc800;
+        0xe1087412b7cc398415230a6f08f19ca4eb4b4903631014f99bd0383ea79b5600;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultBalanceFuses")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLAZMA_VAULT_BALANCE_FUSES =
-        0x79c8c92d14d4269e7b571a09af2cbe14b4b7cb5d7081dd3cc58334735482cf00;
+        0xecfbe2133c36991f817b6176be193a570614fe65c12380c8155f71c8db8ffa00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultBalanceFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLAZMA_VAULT_BALANCE_FUSES_ARRAY =
-        0xc8e943b00e69c68afc4d0f8d07f8c1977c720a201f28d8f41b019a8cdd242900;
+        0xc6ea71123e83eb9e295d0fbbb08460fe8b3972391fb51a770212c1740a87e600;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultInstantWithdrawalFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLAZMA_VAULT_INSTANT_WITHDRAWAL_FUSES_ARRAY =
-        0x1a6ddb1ce5f4f320920a4c0f528489c050b900038d1d9389d5273ce4a6988900;
+        0xc650b77456730746bf5cfc334017a83f195e5f3c1517bf4b6f17a14213596e00;
 
     /// @notice Every fuse has a list of parameters used for instant withdrawal
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultInstantWithdrawalFusesParams")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLAZMA_VAULT_INSTANT_WITHDRAWAL_FUSES_PARAMS =
-        0x397ee58b336520b7a796c422a0927e1600c688e25e66430186a8ab1f395b6500;
+        0xdc3a1c6868589d5b4c729d47a3a17bacae0afe31d7c568e7b5699f211a9ef000;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.grantedAddressesToInteractWithVault")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT =
-        0xa992609e649c37dfe66423b55091e2506c7245219ba1f3948890efe1fb6f6100;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultGrantedAddressesToInteractWithVault")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant CFG_PLAZMA_VAULT_GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT =
+        0x46ec56ade62cfd6abda269a58cda0f97b3c6351a2256484532e7afc30b7ba600;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlazmaVaultFees")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant CFG_PLAZMA_VAULT_FEES = 0x61ae617869d57de2346d52225ecd25878c9518b527e367e03eeeee76158e8900;
 
     struct TotalAssets {
         /// @dev total assets in the vault
@@ -116,6 +119,24 @@ library PlazmaVaultStorageLib {
         /// @dev The zero address serves as a flag indicating whether the vault has limited access.
         /// @dev address => 1 - is granted, otherwise - not granted
         mapping(address => uint256) value;
+    }
+
+    /// @notice Fee configuration and balance
+    struct Fees {
+        /// @notice Fee Manager address, all fees are sent to this address and then distributed based on logic implemented in the Fee Manager contract
+        address manager;
+        /// @notice Configuration of performance fee in percentage, represented in 2 decimals, 100% = 10000, 1% = 100, 0.01% = 1
+        uint16 cfgPerformanceFeeInPercentage;
+        /// @notice Configuration of management fee in percentage, represented in 2 decimals, 100% = 10000, 1% = 100, 0.01% = 1
+        uint16 cfgManagementFeeInPercentage;
+        /// @notice Performance fee balance, accounting for the performance fee
+        uint32 performanceFeeBalance;
+        /// @notice Management fee balance, accounting for the management fee
+        uint32 managementFeeBalance;
+    }
+
+    struct FeeStorage {
+        Fees value;
     }
 
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
@@ -193,7 +214,13 @@ library PlazmaVaultStorageLib {
         returns (GrantedAddressesToInteractWithVault storage grantedAddressesToInteractWithVault)
     {
         assembly {
-            grantedAddressesToInteractWithVault.slot := GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT
+            grantedAddressesToInteractWithVault.slot := CFG_PLAZMA_VAULT_GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT
+        }
+    }
+
+    function getFees() internal pure returns (FeeStorage storage fees) {
+        assembly {
+            fees.slot := CFG_PLAZMA_VAULT_FEES
         }
     }
 }

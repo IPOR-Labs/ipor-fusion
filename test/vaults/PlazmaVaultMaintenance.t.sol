@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
@@ -15,8 +14,6 @@ contract PlazmaVaultMaintenanceTest is Test {
     address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
 
-    PlazmaVaultFactory internal vaultFactory;
-
     uint256 public constant AAVE_V3_MARKET_ID = 1;
 
     address public owner = address(this);
@@ -25,7 +22,7 @@ contract PlazmaVaultMaintenanceTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
-        vaultFactory = new PlazmaVaultFactory(owner);
+
         IporPriceOracle implementation = new IporPriceOracle(
             0x0000000000000000000000000000000000000348,
             8,
@@ -63,21 +60,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         // when
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         // then
@@ -105,21 +99,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](0);
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         assertFalse(
@@ -156,21 +147,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
         // when
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         // then
@@ -192,21 +180,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](0);
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
@@ -238,21 +223,18 @@ contract PlazmaVaultMaintenanceTest is Test {
 
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         assertTrue(plazmaVault.isFuseSupported(address(fuse)));
@@ -280,21 +262,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
         // when
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         // then
@@ -317,21 +296,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
         // when
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         // then
@@ -353,21 +329,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](0);
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         //when
@@ -392,21 +365,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](0);
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         // when
@@ -432,21 +402,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](0);
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
@@ -475,21 +442,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](0);
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
@@ -521,21 +485,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](0);
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
         vm.prank(owner);
         plazmaVault.activateAccessControl();
@@ -566,21 +527,18 @@ contract PlazmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](0);
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
         vm.prank(owner);
         plazmaVault.activateAccessControl();

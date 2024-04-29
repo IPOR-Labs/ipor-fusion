@@ -19,6 +19,7 @@ import {PlazmaVaultLib} from "../libraries/PlazmaVaultLib.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
 import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
+import {PlazmaVaultStorageLib} from "../libraries/PlazmaVaultStorageLib.sol";
 
 contract PlazmaVault is ERC4626Permit, Ownable2Step {
     using Address for address;
@@ -29,34 +30,37 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
 
     error NoSharesToRedeem();
     error NoAssetsToWithdraw();
+    error InvalidAlpha();
+    error UnsupportedFuse();
 
-    //TODO: setup Vault type - required for fee
-
+    /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
     struct FuseAction {
+        /// @notice fuse is a address of the Fuse contract
         address fuse;
+        /// @notice data is a bytes data that is passed to the Fuse contract
         bytes data;
     }
 
+    /// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
     struct MarketBalanceFuseConfig {
-        /// @dev When marketId is 0, then fuse is independent to a market - example flashloan fuse
+        /// @notice When marketId is 0, then fuse is independent to a market - example flashloan fuse
         uint256 marketId;
+        /// @notice address of the balance fuse
         address fuse;
     }
 
+    /// @notice MarketSubstratesConfig is a struct that represents a configuration of substrates for a specific market
+    /// @notice substrates are assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
     struct MarketSubstratesConfig {
+        /// @notice marketId is a id of the market
         uint256 marketId;
+        /// @notice substrates is a list of substrates for the market
         /// @dev it could be list of assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
         bytes32[] substrates;
     }
 
     IIporPriceOracle public immutable PRICE_ORACLE;
     uint256 public immutable BASE_CURRENCY_DECIMALS;
-
-    address public dao;
-    uint256 public performanceFeeInPercentage;
-
-    error InvalidAlpha();
-    error UnsupportedFuse();
 
     /// @param assetName Name of the asset
     /// @param assetSymbol Symbol of the asset
@@ -110,8 +114,8 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
             );
         }
 
-        dao = daoInput;
-        performanceFeeInPercentage = performanceFeeInPercentageInput;
+        PlazmaVaultLib.setFeeManager(daoInput);
+        PlazmaVaultLib.setFeeConfiguration(performanceFeeInPercentageInput, 0);
     }
 
     /// @notice Execute multiple FuseActions by a Alpha. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
@@ -271,8 +275,15 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     }
 
     function _calculateAndMintPerformanceFee(uint256 deltasInUnderlying) internal {
-        uint256 fee = Math.mulDiv(deltasInUnderlying, performanceFeeInPercentage, 100);
-        _mint(dao, convertToShares(fee));
+        PlazmaVaultStorageLib.Fees memory feesStruct = PlazmaVaultLib.getFees();
+
+        uint256 fee = Math.mulDiv(deltasInUnderlying, feesStruct.cfgPerformanceFeeInPercentage, 100);
+
+        uint256 feeInShares = convertToShares(fee);
+
+        PlazmaVaultLib.addFeeBalance(feeInShares, 0);
+
+        _mint(feesStruct.manager, feeInShares);
     }
 
     function _includeSlippage(uint256 value) internal pure returns (uint256) {

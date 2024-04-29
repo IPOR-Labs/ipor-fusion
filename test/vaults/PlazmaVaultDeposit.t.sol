@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
@@ -20,8 +19,6 @@ contract PlazmaVaultDepositTest is Test {
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
-
-    PlazmaVaultFactory internal vaultFactory;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
@@ -41,7 +38,6 @@ contract PlazmaVaultDepositTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
-        vaultFactory = new PlazmaVaultFactory(owner);
         userOne = address(0x777);
 
         IporPriceOracle implementation = new IporPriceOracle(
@@ -177,21 +173,18 @@ contract PlazmaVaultDepositTest is Test {
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
         return plazmaVault;
     }
@@ -229,21 +222,18 @@ contract PlazmaVaultDepositTest is Test {
         PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
         balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
-                    address(0x777),
-                    0
-                )
-            )
+        PlazmaVault plazmaVault = new PlazmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         return plazmaVault;

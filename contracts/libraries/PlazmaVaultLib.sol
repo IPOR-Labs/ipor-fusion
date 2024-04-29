@@ -59,6 +59,24 @@ library PlazmaVaultLib {
         emit TotalAssetsInMarketAdded(marketId, deltaInUnderlying);
     }
 
+    function getFees() internal view returns (PlazmaVaultStorageLib.Fees memory fees) {
+        return PlazmaVaultStorageLib.getFees().value;
+    }
+
+    function setFeeManager(address newFeeManager) internal {
+        PlazmaVaultStorageLib.getFees().value.manager = newFeeManager;
+    }
+
+    function setFeeConfiguration(uint256 newPerformanceFeeInPercentage, uint256 newManagementFeeInPercentage) internal {
+        PlazmaVaultStorageLib.getFees().value.cfgPerformanceFeeInPercentage = newPerformanceFeeInPercentage.toUint16();
+        PlazmaVaultStorageLib.getFees().value.cfgManagementFeeInPercentage = newManagementFeeInPercentage.toUint16();
+    }
+
+    function addFeeBalance(uint256 newPerformanceFeeBalance, uint256 newManagementFeeBalance) internal {
+        PlazmaVaultStorageLib.getFees().value.performanceFeeBalance += newPerformanceFeeBalance.toUint32();
+        PlazmaVaultStorageLib.getFees().value.managementFeeBalance += newManagementFeeBalance.toUint32();
+    }
+
     function getInstantWithdrawalFuses() internal view returns (address[] memory) {
         return PlazmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
     }
