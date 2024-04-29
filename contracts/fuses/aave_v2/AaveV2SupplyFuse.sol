@@ -8,7 +8,7 @@ import {AaveLendingPoolV2, ReserveData} from "./AaveLendingPoolV2.sol";
 import {AaveConstants} from "./AaveConstants.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 struct AaveV2SupplyFuseEnterData {
     /// @notice asset address to supply
@@ -60,7 +60,7 @@ contract AaveV2SupplyFuse is IFuse {
     }
 
     function _enter(AaveV2SupplyFuseEnterData memory data) internal {
-        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV2SupplyFuseUnsupportedAsset(data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
@@ -72,7 +72,7 @@ contract AaveV2SupplyFuse is IFuse {
     }
 
     function _exit(AaveV2SupplyFuseExitData memory data) internal {
-        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV2SupplyFuseUnsupportedAsset(data.asset, Errors.UNSUPPORTED_ASSET);
         }
         uint256 amountToWithdraw = data.amount;

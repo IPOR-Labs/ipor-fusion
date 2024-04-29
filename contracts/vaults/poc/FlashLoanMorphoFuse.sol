@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IFuse} from "../../fuses/IFuse.sol";
 import {IMorpho} from "./interfaces/IMorpho.sol";
-import {PlazmaVault} from "../PlazmaVault.sol";
+import {PlasmaVault} from "../PlasmaVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IFuseInstantWithdraw} from "../../fuses/IFuseInstantWithdraw.sol";
 
@@ -45,13 +45,13 @@ contract FlashLoanMorphoFuse is IFuse, IFuseInstantWithdraw {
     function onMorphoFlashLoan(uint256 flashLoanAmount, bytes calldata data) external payable {
         //        uint256 assetBalanceBeforeCalls = IERC20(WST_ETH).balanceOf(address(this));
 
-        PlazmaVault.FuseAction[] memory calls = abi.decode(data, (PlazmaVault.FuseAction[]));
+        PlasmaVault.FuseAction[] memory calls = abi.decode(data, (PlasmaVault.FuseAction[]));
 
         if (calls.length == 0) {
             return;
         }
 
-        PlazmaVault(payable(this)).execute(calls);
+        PlasmaVault(payable(this)).execute(calls);
 
         //        uint256 assetBalanceAfterCalls = IERC20(WST_ETH).balanceOf(address(this));
     }

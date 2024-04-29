@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {CErc20} from "./CErc20.sol";
 
 struct CompoundV2SupplyFuseEnterData {
@@ -76,13 +76,13 @@ contract CompoundV2SupplyFuse is IFuse {
     }
 
     function _getCToken(uint256 marketId, address asset) internal view returns (address) {
-        bytes32[] memory assetsRaw = PlazmaVaultConfigLib.getMarketSubstrates(marketId);
+        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(marketId);
         uint256 len = assetsRaw.length;
         if (len == 0) {
             revert CompoundV2SupplyFuseUnsupportedAsset(asset, Errors.UNSUPPORTED_ASSET);
         }
         for (uint256 i; i < len; ++i) {
-            address cToken = PlazmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
+            address cToken = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             if (CErc20(cToken).underlying() == asset) {
                 return cToken;
             }

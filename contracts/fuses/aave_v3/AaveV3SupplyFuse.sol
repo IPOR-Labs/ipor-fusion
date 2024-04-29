@@ -7,7 +7,7 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {IPool} from "../../vaults/interfaces/IPool.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "./IAavePoolDataProvider.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
@@ -71,13 +71,13 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
     function instantWithdraw(bytes32[] calldata params) external override {
         uint256 amount = uint256(params[0]);
-        address asset = PlazmaVaultConfigLib.bytes32ToAddress(params[1]);
+        address asset = PlasmaVaultConfigLib.bytes32ToAddress(params[1]);
 
         _exit(AaveV3SupplyFuseExitData(asset, amount));
     }
 
     function _enter(AaveV3SupplyFuseEnterData memory data) internal {
-        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV3SupplyFuseUnsupportedAsset("enter", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
@@ -93,7 +93,7 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _exit(AaveV3SupplyFuseExitData memory data) internal {
-        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV3SupplyFuseUnsupportedAsset("exit", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 

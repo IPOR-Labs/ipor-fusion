@@ -7,7 +7,7 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
@@ -37,8 +37,8 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
         }
     }
 
-    function balanceOf(address plazmaVault) external view override returns (uint256) {
-        bytes32[] memory morphoMarkets = PlazmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+    function balanceOf(address plasmaVault) external view override returns (uint256) {
+        bytes32[] memory morphoMarkets = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = morphoMarkets.length;
         if (len == 0) {
@@ -56,13 +56,13 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             marketParams = MORPHO.idToMarketParams(Id.wrap(morphoMarkets[i]));
-            totalSupplyAssets = MORPHO.expectedSupplyAssets(marketParams, plazmaVault);
+            totalSupplyAssets = MORPHO.expectedSupplyAssets(marketParams, plasmaVault);
 
-            slots[0] = MorphoStorageLib.positionBorrowSharesAndCollateralSlot(Id.wrap(morphoMarkets[i]), plazmaVault);
+            slots[0] = MorphoStorageLib.positionBorrowSharesAndCollateralSlot(Id.wrap(morphoMarkets[i]), plasmaVault);
             values = MORPHO.extSloads(slots);
             totalCollateralAssets = uint256(values[0] >> 128);
 
-            totalBorrowAssets = MORPHO.expectedBorrowAssets(marketParams, plazmaVault);
+            totalBorrowAssets = MORPHO.expectedBorrowAssets(marketParams, plasmaVault);
 
             balance += _convertToUsd(marketParams.collateralToken, totalCollateralAssets).toInt256(); //totalCollateralAssets - totalBorrowAssets;
             if (totalSupplyAssets > totalBorrowAssets) {

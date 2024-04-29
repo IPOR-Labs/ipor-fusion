@@ -7,7 +7,7 @@ import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IAavePriceOracle} from "./IAavePriceOracle.sol";
 import {AaveConstants} from "./AaveConstants.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {AaveLendingPoolV2, ReserveData} from "./AaveLendingPoolV2.sol";
 
 contract AaveV2BalanceFuse is IMarketBalanceFuse {
@@ -22,8 +22,8 @@ contract AaveV2BalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketIdInput;
     }
 
-    function balanceOf(address plazmaVault) external view override returns (uint256) {
-        bytes32[] memory assetsRaw = PlazmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+    function balanceOf(address plasmaVault) external view override returns (uint256) {
+        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
 
@@ -41,20 +41,20 @@ contract AaveV2BalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
-            asset = PlazmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
+            asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             decimals = ERC20(asset).decimals();
             price = IAavePriceOracle(AaveConstants.ETHEREUM_AAVE_PRICE_ORACLE_MAINNET).getAssetPrice(asset);
 
             reserveData = AaveLendingPoolV2(AaveConstants.AAVE_LENDING_POOL_V2).getReserveData(asset);
 
             if (reserveData.aTokenAddress != address(0)) {
-                balanceInLoop += int256(ERC20(reserveData.aTokenAddress).balanceOf(plazmaVault));
+                balanceInLoop += int256(ERC20(reserveData.aTokenAddress).balanceOf(plasmaVault));
             }
             if (reserveData.stableDebtTokenAddress != address(0)) {
-                balanceInLoop -= int256(ERC20(reserveData.stableDebtTokenAddress).balanceOf(plazmaVault));
+                balanceInLoop -= int256(ERC20(reserveData.stableDebtTokenAddress).balanceOf(plasmaVault));
             }
             if (reserveData.variableDebtTokenAddress != address(0)) {
-                balanceInLoop -= int256(ERC20(reserveData.variableDebtTokenAddress).balanceOf(plazmaVault));
+                balanceInLoop -= int256(ERC20(reserveData.variableDebtTokenAddress).balanceOf(plasmaVault));
             }
 
             balanceTemp += IporMath.convertToWadInt(

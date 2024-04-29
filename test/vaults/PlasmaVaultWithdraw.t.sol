@@ -4,28 +4,25 @@ pragma solidity 0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626Permit} from "../../contracts/tokens/ERC4626/ERC4626Permit.sol";
-import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
-import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {PlazmaVaultConfigLib} from "../../contracts/libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PlazmaVaultLib} from "../../contracts/libraries/PlazmaVaultLib.sol";
+import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {AaveConstants} from "../../contracts/fuses/aave_v3/AaveConstants.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
 }
 
-contract PlazmaVaultWithdrawTest is Test {
+contract PlasmaVaultWithdrawTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-
-    PlazmaVaultFactory internal vaultFactory;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
@@ -59,7 +56,7 @@ contract PlazmaVaultWithdrawTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19724793);
-        vaultFactory = new PlazmaVaultFactory(owner);
+
         userOne = address(0x777);
         userTwo = address(0x888);
 
@@ -76,9 +73,9 @@ contract PlazmaVaultWithdrawTest is Test {
         );
     }
 
-    function testShouldInstantWithdrawCashAvailableOnPlazmaVault() public {
+    function testShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         userOne = address(0x777);
 
@@ -87,21 +84,21 @@ contract PlazmaVaultWithdrawTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(amount, userOne);
+        plasmaVault.deposit(amount, userOne);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         //when
         vm.prank(userOne);
-        plazmaVault.withdraw(amount, userOne, userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
         assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
@@ -111,7 +108,7 @@ contract PlazmaVaultWithdrawTest is Test {
 
     function testShouldNotInstantWithdrawBecauseNoShares() public {
         // given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         userOne = address(0x777);
 
@@ -120,13 +117,13 @@ contract PlazmaVaultWithdrawTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
         bytes4 selector = bytes4(keccak256("ERC4626ExceededMaxWithdraw(address,uint256,uint256)"));
         //when
         vm.prank(userOne);
         vm.expectRevert(abi.encodeWithSelector(selector, userOne, amount, 0));
-        plazmaVault.withdraw(amount, userOne, userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
     }
 
     function testShouldInstantlyWithdrawRequiredExitFromOneMarketAaveV3() public {
@@ -139,13 +136,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -160,22 +157,21 @@ contract PlazmaVaultWithdrawTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuseAaveV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -184,14 +180,14 @@ contract PlazmaVaultWithdrawTest is Test {
         ERC20(USDC).transfer(address(userOne), 2 * amount);
 
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -201,30 +197,30 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
-        plazmaVault.withdraw(199 * 1e6, userOne, userOne);
+        plasmaVault.withdraw(199 * 1e6, userOne, userOne);
 
         //then
         uint256 userBalanceAfter = ERC20(USDC).balanceOf(userOne);
 
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
 
         assertEq(userBalanceAfter, 199 * 1e6);
         assertGt(vaultTotalAssetsAfter, 0);
@@ -241,13 +237,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -260,7 +256,7 @@ contract PlazmaVaultWithdrawTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -268,23 +264,22 @@ contract PlazmaVaultWithdrawTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -293,14 +288,14 @@ contract PlazmaVaultWithdrawTest is Test {
         ERC20(USDC).transfer(address(userOne), 2 * amount);
 
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -308,7 +303,7 @@ contract PlazmaVaultWithdrawTest is Test {
             )
         );
 
-        calls[1] = PlazmaVault.FuseAction(
+        calls[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -318,34 +313,34 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
 
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
-        plazmaVault.withdraw(175 * 1e6, userOne, userOne);
+        plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         //then
         uint256 userBalanceAfter = ERC20(USDC).balanceOf(userOne);
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
 
         assertEq(userBalanceAfter, 175 * 1e6);
 
@@ -363,13 +358,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -384,22 +379,21 @@ contract PlazmaVaultWithdrawTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuseAaveV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -408,14 +402,14 @@ contract PlazmaVaultWithdrawTest is Test {
         ERC20(USDC).transfer(address(userOne), 2 * amount);
 
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -425,28 +419,28 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         //then
         vm.expectEmit(true, true, true, true);
         emit AaveV3SupplyExitFuse(address(supplyFuseAaveV3), USDC, 99 * 1e6);
         //when
         vm.prank(userOne);
-        plazmaVault.withdraw(199 * 1e6, userOne, userOne);
+        plasmaVault.withdraw(199 * 1e6, userOne, userOne);
     }
 
     function testShouldEmitEventsWhenInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3() public {
@@ -459,13 +453,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -478,7 +472,7 @@ contract PlazmaVaultWithdrawTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -486,23 +480,22 @@ contract PlazmaVaultWithdrawTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -511,14 +504,14 @@ contract PlazmaVaultWithdrawTest is Test {
         ERC20(USDC).transfer(address(userOne), 2 * amount);
 
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -526,7 +519,7 @@ contract PlazmaVaultWithdrawTest is Test {
             )
         );
 
-        calls[1] = PlazmaVault.FuseAction(
+        calls[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -536,26 +529,26 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
 
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         //then
         vm.expectEmit(true, true, true, true);
@@ -565,7 +558,7 @@ contract PlazmaVaultWithdrawTest is Test {
 
         //when
         vm.prank(userOne);
-        plazmaVault.withdraw(175 * 1e6, userOne, userOne);
+        plasmaVault.withdraw(175 * 1e6, userOne, userOne);
     }
 
     function testShouldInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFails() public {
@@ -585,13 +578,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -604,7 +597,7 @@ contract PlazmaVaultWithdrawTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -612,23 +605,22 @@ contract PlazmaVaultWithdrawTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -637,23 +629,23 @@ contract PlazmaVaultWithdrawTest is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), 2 * amount);
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
         /// @dev user two
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userTwo), 2 * amount);
         vm.prank(userTwo);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userTwo);
-        plazmaVault.deposit(2 * amount, userTwo);
+        plasmaVault.deposit(2 * amount, userTwo);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -661,7 +653,7 @@ contract PlazmaVaultWithdrawTest is Test {
             )
         );
 
-        calls[1] = PlazmaVault.FuseAction(
+        calls[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -671,30 +663,30 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
 
         /// @dev configure order for instant withdraw
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
-        plazmaVault.withdraw(175 * 1e6, userOne, userOne);
+        plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
@@ -702,13 +694,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         address userThree = address(0x999);
 
-        /// @dev artificially transfer aTokens to random person, PlazmaVault don't have enough assets to withdraw from Aave V3
-        vm.prank(address(plazmaVault));
+        /// @dev artificially transfer aTokens to random person, PlasmaVault don't have enough assets to withdraw from Aave V3
+        vm.prank(address(plasmaVault));
         ERC20(aTokenAddress).transfer(userThree, 100 * 1e6);
 
         //when
         vm.prank(userTwo);
-        plazmaVault.withdraw(30 * 1e6, userTwo, userTwo);
+        plasmaVault.withdraw(30 * 1e6, userTwo, userTwo);
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -718,7 +710,7 @@ contract PlazmaVaultWithdrawTest is Test {
         assertEq(userTwoBalanceAfter, 30 * 1e6);
 
         /// CompoundV3 balance
-        uint256 vaultTotalAssetInCompoundV3After = plazmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
+        uint256 vaultTotalAssetInCompoundV3After = plasmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
 
         assertGt(vaultTotalAssetInCompoundV3After, 94 * 1e6, "vaultTotalAssetInCompoundV3After gt");
         assertLt(vaultTotalAssetInCompoundV3After, 95 * 1e6, "vaultTotalAssetInCompoundV3After lt");
@@ -744,13 +736,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -763,7 +755,7 @@ contract PlazmaVaultWithdrawTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -771,23 +763,22 @@ contract PlazmaVaultWithdrawTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -796,23 +787,23 @@ contract PlazmaVaultWithdrawTest is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), 2 * amount);
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
         /// @dev user two
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userTwo), 2 * amount);
         vm.prank(userTwo);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userTwo);
-        plazmaVault.deposit(2 * amount, userTwo);
+        plasmaVault.deposit(2 * amount, userTwo);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -820,7 +811,7 @@ contract PlazmaVaultWithdrawTest is Test {
             )
         );
 
-        calls[1] = PlazmaVault.FuseAction(
+        calls[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -830,30 +821,30 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
 
         /// @dev configure order for instant withdraw
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
-        plazmaVault.withdraw(175 * 1e6, userOne, userOne);
+        plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
@@ -861,8 +852,8 @@ contract PlazmaVaultWithdrawTest is Test {
 
         address userThree = address(0x999);
 
-        /// @dev artificially transfer aTokens to random person, PlazmaVault don't have enough assets to withdraw from Aave V3
-        vm.prank(address(plazmaVault));
+        /// @dev artificially transfer aTokens to random person, PlasmaVault don't have enough assets to withdraw from Aave V3
+        vm.prank(address(plasmaVault));
         ERC20(aTokenAddress).transfer(userThree, 100 * 1e6);
 
         //when
@@ -875,7 +866,7 @@ contract PlazmaVaultWithdrawTest is Test {
             )
         );
         vm.prank(userTwo);
-        plazmaVault.withdraw(120 * 1e6, userTwo, userTwo);
+        plasmaVault.withdraw(120 * 1e6, userTwo, userTwo);
     }
 
     function testShouldRedeemExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFails() public {
@@ -895,13 +886,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -914,7 +905,7 @@ contract PlazmaVaultWithdrawTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -922,23 +913,22 @@ contract PlazmaVaultWithdrawTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -947,23 +937,23 @@ contract PlazmaVaultWithdrawTest is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), 2 * amount);
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
         /// @dev user two
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userTwo), 2 * amount);
         vm.prank(userTwo);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userTwo);
-        plazmaVault.deposit(2 * amount, userTwo);
+        plasmaVault.deposit(2 * amount, userTwo);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -971,7 +961,7 @@ contract PlazmaVaultWithdrawTest is Test {
             )
         );
 
-        calls[1] = PlazmaVault.FuseAction(
+        calls[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -981,30 +971,30 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
 
         /// @dev configure order for instant withdraw
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
-        plazmaVault.redeem(175 * 1e6, userOne, userOne);
+        plasmaVault.redeem(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
@@ -1012,13 +1002,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         address userThree = address(0x999);
 
-        /// @dev artificially transfer aTokens to random person, PlazmaVault don't have enough assets to withdraw from Aave V3
-        vm.prank(address(plazmaVault));
+        /// @dev artificially transfer aTokens to random person, PlasmaVault don't have enough assets to withdraw from Aave V3
+        vm.prank(address(plasmaVault));
         ERC20(aTokenAddress).transfer(userThree, 100 * 1e6);
 
         //when
         vm.prank(userTwo);
-        plazmaVault.redeem(30 * 1e6, userTwo, userTwo);
+        plasmaVault.redeem(30 * 1e6, userTwo, userTwo);
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1028,7 +1018,7 @@ contract PlazmaVaultWithdrawTest is Test {
         assertEq(userTwoBalanceAfter, 16666666);
 
         /// CompoundV3 balance
-        uint256 vaultTotalAssetInCompoundV3After = plazmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
+        uint256 vaultTotalAssetInCompoundV3After = plasmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
 
         assertGt(vaultTotalAssetInCompoundV3After, 94 * 1e6, "vaultTotalAssetInCompoundV3After gt");
         assertLt(vaultTotalAssetInCompoundV3After, 95 * 1e6, "vaultTotalAssetInCompoundV3After lt");
@@ -1044,13 +1034,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -1065,22 +1055,21 @@ contract PlazmaVaultWithdrawTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuseAaveV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -1089,14 +1078,14 @@ contract PlazmaVaultWithdrawTest is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), 3 * amount);
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -1106,37 +1095,37 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
         /// @dev configure order for instant withdraw
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(USDC);
 
-        /// @dev artificially transfer aTokens to a Plazma Vault to increase shares values
+        /// @dev artificially transfer aTokens to a Plasma Vault to increase shares values
         vm.prank(userOne);
         ERC20(USDC).approve(address(AAVE_POOL), amount);
 
         vm.prank(userOne);
-        AavePool(AAVE_POOL).deposit(USDC, 1 * 1e6, address(plazmaVault), 0);
+        AavePool(AAVE_POOL).deposit(USDC, 1 * 1e6, address(plasmaVault), 0);
 
         //when
         vm.prank(userOne);
-        plazmaVault.redeem(200 * 1e6, userOne, userOne);
+        plasmaVault.redeem(200 * 1e6, userOne, userOne);
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1154,13 +1143,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -1175,22 +1164,21 @@ contract PlazmaVaultWithdrawTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuseAaveV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -1199,14 +1187,14 @@ contract PlazmaVaultWithdrawTest is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), 3 * amount);
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -1216,38 +1204,38 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
         /// @dev configure order for instant withdraw
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(USDC);
 
-        /// @dev artificially transfer aTokens to a Plazma Vault to increase shares values
+        /// @dev artificially transfer aTokens to a Plasma Vault to increase shares values
         vm.prank(userOne);
         ERC20(USDC).approve(address(AAVE_POOL), amount);
 
-        /// @dev PlazmaVault earn more tokens than slippage
+        /// @dev PlasmaVault earn more tokens than slippage
         vm.prank(userOne);
-        AavePool(AAVE_POOL).deposit(USDC, 5 * 1e6, address(plazmaVault), 0);
+        AavePool(AAVE_POOL).deposit(USDC, 5 * 1e6, address(plasmaVault), 0);
 
         //when
         vm.prank(userOne);
-        plazmaVault.redeem(170 * 1e6, userOne, userOne);
+        plasmaVault.redeem(170 * 1e6, userOne, userOne);
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1273,13 +1261,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -1292,7 +1280,7 @@ contract PlazmaVaultWithdrawTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -1300,23 +1288,22 @@ contract PlazmaVaultWithdrawTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -1325,23 +1312,23 @@ contract PlazmaVaultWithdrawTest is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), 2 * amount);
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
         /// @dev user two
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userTwo), 2 * amount);
         vm.prank(userTwo);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userTwo);
-        plazmaVault.deposit(2 * amount, userTwo);
+        plasmaVault.deposit(2 * amount, userTwo);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -1349,7 +1336,7 @@ contract PlazmaVaultWithdrawTest is Test {
             )
         );
 
-        calls[1] = PlazmaVault.FuseAction(
+        calls[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -1359,30 +1346,30 @@ contract PlazmaVaultWithdrawTest is Test {
 
         /// @dev first call to move some assets to a external market
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlazmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
 
         /// @dev configure order for instant withdraw
-        plazmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
-        plazmaVault.redeem(175 * 1e6, userOne, userOne);
+        plasmaVault.redeem(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
@@ -1390,16 +1377,16 @@ contract PlazmaVaultWithdrawTest is Test {
 
         address userThree = address(0x999);
 
-        /// @dev artificially transfer aTokens to random person, PlazmaVault don't have enough assets to withdraw from Aave V3
-        vm.prank(address(plazmaVault));
+        /// @dev artificially transfer aTokens to random person, PlasmaVault don't have enough assets to withdraw from Aave V3
+        vm.prank(address(plasmaVault));
         ERC20(aTokenAddress).transfer(userThree, 100 * 1e6);
 
         //when
         vm.prank(userTwo);
-        plazmaVault.redeem(200 * 1e6, userTwo, userTwo);
+        plasmaVault.redeem(200 * 1e6, userTwo, userTwo);
 
         vm.prank(userOne);
-        plazmaVault.redeem(25 * 1e6, userOne, userOne);
+        plasmaVault.redeem(25 * 1e6, userOne, userOne);
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1409,11 +1396,11 @@ contract PlazmaVaultWithdrawTest is Test {
         assertEq(userTwoBalanceAfter, 111111111);
 
         /// CompoundV3 balance
-        uint256 vaultTotalAssetInCompoundV3After = plazmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
+        uint256 vaultTotalAssetInCompoundV3After = plasmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
         assertEq(vaultTotalAssetInCompoundV3After, 0, "vaultTotalAssetInCompoundV3After");
     }
 
-    function _preparePlazmaVaultUsdc() public returns (PlazmaVault) {
+    function _preparePlasmaVaultUsdc() public returns (PlasmaVault) {
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
         address underlyingToken = USDC;
@@ -1421,13 +1408,13 @@ contract PlazmaVaultWithdrawTest is Test {
 
         alphas[0] = address(0x1);
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -1440,7 +1427,7 @@ contract PlazmaVaultWithdrawTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -1448,28 +1435,27 @@ contract PlazmaVaultWithdrawTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
-        return plazmaVault;
+        return plasmaVault;
     }
 
-    function _preparePlazmaVaultDai() public returns (PlazmaVault) {
+    function _preparePlasmaVaultDai() public returns (PlasmaVault) {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
@@ -1478,11 +1464,11 @@ contract PlazmaVaultWithdrawTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
@@ -1499,24 +1485,23 @@ contract PlazmaVaultWithdrawTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
-        return plazmaVault;
+        return plasmaVault;
     }
 }

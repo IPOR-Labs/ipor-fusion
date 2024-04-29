@@ -1,60 +1,70 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {AlphasLib} from "../libraries/AlphasLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {AccessControlLib} from "../libraries/AccessControlLib.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
-import {PlazmaVaultConfigLib} from "../libraries/PlazmaVaultConfigLib.sol";
-import {PlazmaVaultLib} from "../libraries/PlazmaVaultLib.sol";
+import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
 import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
+import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 
-contract PlazmaVault is ERC4626Permit, Ownable2Step {
+contract PlasmaVault is ERC4626Permit, Ownable2Step {
     using Address for address;
+    using SafeCast for int256;
 
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
     error NoSharesToRedeem();
     error NoAssetsToWithdraw();
+    error InvalidAlpha();
+    error UnsupportedFuse();
 
-    //TODO: setup Vault type - required for fee
-
+    /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
     struct FuseAction {
+        /// @notice fuse is a address of the Fuse contract
         address fuse;
+        /// @notice data is a bytes data that is passed to the Fuse contract
         bytes data;
     }
 
+    /// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
     struct MarketBalanceFuseConfig {
-        /// @dev When marketId is 0, then fuse is independent to a market - example flashloan fuse
+        /// @notice When marketId is 0, then fuse is independent to a market - example flashloan fuse
         uint256 marketId;
+        /// @notice address of the balance fuse
         address fuse;
     }
 
+    /// @notice MarketSubstratesConfig is a struct that represents a configuration of substrates for a specific market
+    /// @notice substrates are assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
     struct MarketSubstratesConfig {
+        /// @notice marketId is a id of the market
         uint256 marketId;
+        /// @notice substrates is a list of substrates for the market
         /// @dev it could be list of assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
         bytes32[] substrates;
     }
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
 
-    error InvalidAlpha();
-    error UnsupportedFuse();
-
     /// @param assetName Name of the asset
     /// @param assetSymbol Symbol of the asset
     /// @param underlyingToken Address of the underlying token
-    /// @param alphas Array of alphas initially granted to execute actions on the Plazma Vault
+    /// @param alphas Array of alphas initially granted to execute actions on the Plasma Vault
     /// @param marketSubstratesConfigs Array of market configurations
     /// @param fuses Array of fuses
     /// @param balanceFuses Array of balance fuses
@@ -67,7 +77,9 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         address[] memory alphas,
         MarketSubstratesConfig[] memory marketSubstratesConfigs,
         address[] memory fuses,
-        MarketBalanceFuseConfig[] memory balanceFuses
+        MarketBalanceFuseConfig[] memory balanceFuses,
+        address daoInput,
+        uint256 performanceFeeInPercentageInput
     )
         ERC4626Permit(IERC20(underlyingToken))
         ERC20Permit(assetName)
@@ -82,7 +94,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
 
         BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
 
-        PlazmaVaultLib.setPriceOracle(iporPriceOracle);
+        PlasmaVaultLib.setPriceOracle(iporPriceOracle);
 
         for (uint256 i; i < alphas.length; ++i) {
             _grantAlpha(alphas[i]);
@@ -97,20 +109,24 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         }
 
         for (uint256 i; i < marketSubstratesConfigs.length; ++i) {
-            PlazmaVaultConfigLib.grandMarketSubstrates(
+            PlasmaVaultConfigLib.grandMarketSubstrates(
                 marketSubstratesConfigs[i].marketId,
                 marketSubstratesConfigs[i].substrates
             );
         }
 
-        ///TODO: when adding new fuse - then validate if fuse support assets defined for a given Plazma Vault.
+        PlasmaVaultLib.setFeeManager(daoInput);
+        PlasmaVaultLib.setFeeConfiguration(performanceFeeInPercentageInput, 0);
     }
 
+    /// @notice Execute multiple FuseActions by a Alpha. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls) external {
         uint256 callsCount = calls.length;
         uint256[] memory markets = new uint256[](callsCount);
         uint256 marketIndex;
         uint256 fuseMarketId;
+
+        uint256 totalAssetsBefore = totalAssets();
 
         for (uint256 i; i < callsCount; ++i) {
             if (!FusesLib.isFuseSupported(calls[i].fuse)) {
@@ -128,26 +144,41 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         }
 
         _updateMarketsBalances(markets);
+
+        uint256 totalAssetsAfter = totalAssets();
+
+        if (totalAssetsAfter > totalAssetsBefore) {
+            _calculateAndMintPerformanceFee(totalAssetsAfter - totalAssetsBefore);
+        }
     }
 
     /// @notice Returns the total assets in the vault
     /// @return total assets in the vault, represented in underlying token decimals
     function totalAssets() public view virtual override returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this)) + PlazmaVaultLib.getTotalAssetsInAllMarkets();
+        return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
     /// @notice Returns the total assets in the vault for a specific market
     /// @param marketId The market id
     /// @return total assets in the vault for the market, represented in underlying token decimals
     function totalAssetsInMarket(uint256 marketId) public view virtual returns (uint256) {
-        return PlazmaVaultLib.getTotalAssetsInMarket(marketId);
+        return PlasmaVaultLib.getTotalAssetsInMarket(marketId);
     }
 
     function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToWithdraw();
         }
+        uint256 totalAssetsBefore = totalAssets();
+
         _withdrawFromMarkets(assets, IERC20(asset()).balanceOf(address(this)));
+
+        uint256 totalAssetsAfter = totalAssets();
+
+        if (totalAssetsAfter > totalAssetsBefore) {
+            _calculateAndMintPerformanceFee(totalAssetsAfter - totalAssetsBefore);
+        }
+
         return super.withdraw(assets, receiver, owner);
     }
 
@@ -156,16 +187,26 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
             revert NoSharesToRedeem();
         }
 
-        uint256 sharesValue;
+        uint256 assets;
         uint256 vaultCurrentBalanceUnderlying;
 
+        uint256 totalAssetsBefore = totalAssets();
+
         for (uint256 i; i < 10; ++i) {
-            sharesValue = convertToAssets(shares);
+            assets = convertToAssets(shares);
             vaultCurrentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
-            if (vaultCurrentBalanceUnderlying >= sharesValue) {
+            if (vaultCurrentBalanceUnderlying >= assets) {
                 break;
             }
-            _withdrawFromMarkets(_includeSlippage(sharesValue), vaultCurrentBalanceUnderlying);
+            _withdrawFromMarkets(_includeSlippage(assets), vaultCurrentBalanceUnderlying);
+        }
+
+        assets = convertToAssets(shares);
+
+        uint256 totalAssetsAfter = totalAssets();
+
+        if (totalAssetsAfter > totalAssetsBefore) {
+            _calculateAndMintPerformanceFee(totalAssetsAfter - totalAssetsBefore);
         }
 
         return super.redeem(shares, receiver, owner);
@@ -221,20 +262,32 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     }
 
     function isMarketSubstrateGranted(uint256 marketId, bytes32 substrate) external view returns (bool) {
-        return PlazmaVaultConfigLib.isMarketSubstrateGranted(marketId, substrate);
+        return PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId, substrate);
     }
 
     function grandMarketSubstrates(uint256 marketId, bytes32[] calldata substrates) external onlyOwner {
-        PlazmaVaultConfigLib.grandMarketSubstrates(marketId, substrates);
+        PlasmaVaultConfigLib.grandMarketSubstrates(marketId, substrates);
     }
 
     function updateInstantWithdrawalFuses(
-        PlazmaVaultLib.InstantWithdrawalFusesParamsStruct[] calldata fuses
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[] calldata fuses
     ) external onlyOwner {
-        PlazmaVaultLib.updateInstantWithdrawalFuses(fuses);
+        PlasmaVaultLib.updateInstantWithdrawalFuses(fuses);
     }
 
-    function _includeSlippage(uint256 value) internal view returns (uint256) {
+    function _calculateAndMintPerformanceFee(uint256 deltasInUnderlying) internal {
+        PlasmaVaultStorageLib.Fees memory feesStruct = PlasmaVaultLib.getFees();
+
+        uint256 fee = Math.mulDiv(deltasInUnderlying, feesStruct.cfgPerformanceFeeInPercentage, 100);
+
+        uint256 feeInShares = convertToShares(fee);
+
+        PlasmaVaultLib.addFeeBalance(feeInShares, 0);
+
+        _mint(feesStruct.manager, feeInShares);
+    }
+
+    function _includeSlippage(uint256 value) internal pure returns (uint256) {
         /// @dev increase value by DEFAULT_SLIPPAGE_IN_PERCENTAGE to cover potential slippage
         return value + IporMath.division(value * DEFAULT_SLIPPAGE_IN_PERCENTAGE, 100);
     }
@@ -271,7 +324,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
 
             /// @dev assume that the same fuse can be used multiple times
             /// @dev assume that more than one fuse can be from the same market
-            address[] memory fuses = PlazmaVaultLib.getInstantWithdrawalFuses();
+            address[] memory fuses = PlasmaVaultLib.getInstantWithdrawalFuses();
 
             uint256[] memory markets = new uint256[](fuses.length);
 
@@ -281,7 +334,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
             uint256 fusesLength = fuses.length;
 
             for (i; left != 0 && i < fusesLength; ++i) {
-                params = PlazmaVaultLib.getInstantWithdrawalFusesParams(fuses[i], i);
+                params = PlasmaVaultLib.getInstantWithdrawalFusesParams(fuses[i], i);
 
                 /// @dev always first param is amount, by default is 0 in storage, set to left
                 params[0] = bytes32(left);
@@ -297,6 +350,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
                     marketIndex++;
                 }
             }
+
             _updateMarketsBalances(markets);
         }
     }
@@ -304,12 +358,12 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     /// @notice Update balances in the vault for markets touched by the fuses during the execution of all FuseActions
     /// @param markets Array of market ids touched by the fuses in the FuseActions
     function _updateMarketsBalances(uint256[] memory markets) internal {
-        int256 deltasInUnderlying = 0;
         uint256 wadBalanceAmountInUSD;
         address balanceFuse;
+        int256 deltasInUnderlying;
 
         /// @dev USD price is represented in 8 decimals
-        uint256 underlyingAssetPrice = IIporPriceOracle(PlazmaVaultLib.getPriceOracle()).getAssetPrice(asset());
+        uint256 underlyingAssetPrice = IIporPriceOracle(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
 
         for (uint256 i; i < markets.length; ++i) {
             if (markets[i] == 0) {
@@ -325,7 +379,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
 
             deltasInUnderlying =
                 deltasInUnderlying +
-                PlazmaVaultLib.updateTotalAssetsInMarket(
+                PlasmaVaultLib.updateTotalAssetsInMarket(
                     markets[i],
                     IporMath.convertWadToAssetDecimals(
                         IporMath.division(wadBalanceAmountInUSD * 10 ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
@@ -335,7 +389,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         }
 
         if (deltasInUnderlying != 0) {
-            PlazmaVaultLib.addToTotalAssetsInAllMarkets(deltasInUnderlying);
+            PlasmaVaultLib.addToTotalAssetsInAllMarkets(deltasInUnderlying);
         }
     }
 
@@ -347,7 +401,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
         AlphasLib.grantAlpha(alpha);
     }
 
-    function _checkIfExistsMarket(uint256[] memory markets, uint256 marketId) internal view returns (bool exists) {
+    function _checkIfExistsMarket(uint256[] memory markets, uint256 marketId) internal pure returns (bool exists) {
         for (uint256 i; i < markets.length; ++i) {
             if (markets[i] == 0) {
                 break;
@@ -370,7 +424,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
             return;
         }
 
-        PlazmaVault(payable(this)).execute(calls);
+        PlasmaVault(payable(this)).execute(calls);
 
         //        uint256 assetBalanceAfterCalls = IERC20(WST_ETH).balanceOf(payable(this));
     }
@@ -424,11 +478,11 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
     }
 
     function getPriceOracle() external view returns (address) {
-        return PlazmaVaultLib.getPriceOracle();
+        return PlasmaVaultLib.getPriceOracle();
     }
 
     function setPriceOracle(address priceOracle) external onlyOwner {
-        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlazmaVaultLib.getPriceOracle());
+        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlasmaVaultLib.getPriceOracle());
         IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
         if (
             oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
@@ -437,7 +491,7 @@ contract PlazmaVault is ERC4626Permit, Ownable2Step {
             revert Errors.UnsupportedPriceOracle(Errors.PRICE_ORACLE_ERROR);
         }
 
-        PlazmaVaultLib.setPriceOracle(priceOracle);
+        PlasmaVaultLib.setPriceOracle(priceOracle);
     }
 
     modifier OnlyGrantedAccess() {
