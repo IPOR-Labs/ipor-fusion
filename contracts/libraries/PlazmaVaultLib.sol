@@ -19,6 +19,7 @@ library PlazmaVaultLib {
     event TotalAssetsInAllMarketsAdded(int256 amount);
     event TotalAssetsInMarketAdded(uint256 marketId, int256 amount);
     event InstantWithdrawalFusesUpdated(InstantWithdrawalFusesParamsStruct[] fuses);
+    event PriceOracleChanged(address newPriceOracle);
 
     /// @notice Gets the total assets in the vault for all markets
     /// @return The total assets in the vault for all markets, represented in decimals of the underlying asset
@@ -91,5 +92,17 @@ library PlazmaVaultLib {
         PlazmaVaultStorageLib.getInstantWithdrawalFusesArray().value = fusesList;
 
         emit InstantWithdrawalFusesUpdated(fuses);
+    }
+
+    /// @notice Gets the price oracle address
+    function getPriceOracle() internal view returns (address) {
+        return PlazmaVaultStorageLib.getPriceOracle().value;
+    }
+
+    /// @notice Sets the price oracle address
+    /// @param priceOracle The price oracle address
+    function setPriceOracle(address priceOracle) internal {
+        PlazmaVaultStorageLib.getPriceOracle().value = priceOracle;
+        emit PriceOracleChanged(priceOracle);
     }
 }
