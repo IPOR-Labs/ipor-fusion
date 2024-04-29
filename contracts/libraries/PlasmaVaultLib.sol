@@ -2,9 +2,9 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {PlazmaVaultStorageLib} from "./PlazmaVaultStorageLib.sol";
+import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 
-library PlazmaVaultLib {
+library PlasmaVaultLib {
     using SafeCast for uint256;
     using SafeCast for int256;
 
@@ -24,23 +24,23 @@ library PlazmaVaultLib {
     /// @notice Gets the total assets in the vault for all markets
     /// @return The total assets in the vault for all markets, represented in decimals of the underlying asset
     function getTotalAssetsInAllMarkets() internal view returns (uint256) {
-        return PlazmaVaultStorageLib.getTotalAssets().value;
+        return PlasmaVaultStorageLib.getTotalAssets().value;
     }
 
     /// @notice Gets the total assets in the vault for a specific market
     /// @param marketId The market id
     /// @return The total assets in the vault for the market, represented in decimals of the underlying asset
     function getTotalAssetsInMarket(uint256 marketId) internal view returns (uint256) {
-        return PlazmaVaultStorageLib.getMarketTotalAssets().value[marketId];
+        return PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId];
     }
 
     /// @notice Adds an amount to the total assets in the vault for all markets
     /// @param amount The amount to add, represented in decimals of the underlying asset
     function addToTotalAssetsInAllMarkets(int256 amount) internal {
         if (amount < 0) {
-            PlazmaVaultStorageLib.getTotalAssets().value -= (-amount).toUint256();
+            PlasmaVaultStorageLib.getTotalAssets().value -= (-amount).toUint256();
         } else {
-            PlazmaVaultStorageLib.getTotalAssets().value += amount.toUint256();
+            PlasmaVaultStorageLib.getTotalAssets().value += amount.toUint256();
         }
 
         emit TotalAssetsInAllMarketsAdded(amount);
@@ -53,25 +53,43 @@ library PlazmaVaultLib {
         uint256 marketId,
         uint256 newTotalAssetsInUnderlying
     ) internal returns (int256 deltaInUnderlying) {
-        uint256 oldTotalAssetsInUnderlying = PlazmaVaultStorageLib.getMarketTotalAssets().value[marketId];
-        PlazmaVaultStorageLib.getMarketTotalAssets().value[marketId] = newTotalAssetsInUnderlying;
+        uint256 oldTotalAssetsInUnderlying = PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId];
+        PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId] = newTotalAssetsInUnderlying;
         deltaInUnderlying = newTotalAssetsInUnderlying.toInt256() - oldTotalAssetsInUnderlying.toInt256();
 
         emit TotalAssetsInMarketAdded(marketId, deltaInUnderlying);
     }
 
+    function getFees() internal view returns (PlasmaVaultStorageLib.Fees memory fees) {
+        return PlasmaVaultStorageLib.getFees().value;
+    }
+
+    function setFeeManager(address newFeeManager) internal {
+        PlasmaVaultStorageLib.getFees().value.manager = newFeeManager;
+    }
+
+    function setFeeConfiguration(uint256 newPerformanceFeeInPercentage, uint256 newManagementFeeInPercentage) internal {
+        PlasmaVaultStorageLib.getFees().value.cfgPerformanceFeeInPercentage = newPerformanceFeeInPercentage.toUint16();
+        PlasmaVaultStorageLib.getFees().value.cfgManagementFeeInPercentage = newManagementFeeInPercentage.toUint16();
+    }
+
+    function addFeeBalance(uint256 newPerformanceFeeBalance, uint256 newManagementFeeBalance) internal {
+        PlasmaVaultStorageLib.getFees().value.performanceFeeBalance += newPerformanceFeeBalance.toUint32();
+        PlasmaVaultStorageLib.getFees().value.managementFeeBalance += newManagementFeeBalance.toUint32();
+    }
+
     function getInstantWithdrawalFuses() internal view returns (address[] memory) {
-        return PlazmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
+        return PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
     }
 
     function getInstantWithdrawalFusesParams(address fuse, uint256 index) internal view returns (bytes32[] memory) {
-        return PlazmaVaultStorageLib.getInstantWithdrawalFusesParams().value[keccak256(abi.encodePacked(fuse, index))];
+        return PlasmaVaultStorageLib.getInstantWithdrawalFusesParams().value[keccak256(abi.encodePacked(fuse, index))];
     }
 
     function updateInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses) internal {
         address[] memory fusesList = new address[](fuses.length);
 
-        PlazmaVaultStorageLib.InstantWithdrawalFusesParams storage instantWithdrawalFusesParams = PlazmaVaultStorageLib
+        PlasmaVaultStorageLib.InstantWithdrawalFusesParams storage instantWithdrawalFusesParams = PlasmaVaultStorageLib
             .getInstantWithdrawalFusesParams();
 
         bytes32 key;
@@ -87,22 +105,22 @@ library PlazmaVaultLib {
             }
         }
 
-        delete PlazmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
+        delete PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
 
-        PlazmaVaultStorageLib.getInstantWithdrawalFusesArray().value = fusesList;
+        PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value = fusesList;
 
         emit InstantWithdrawalFusesUpdated(fuses);
     }
 
     /// @notice Gets the price oracle address
     function getPriceOracle() internal view returns (address) {
-        return PlazmaVaultStorageLib.getPriceOracle().value;
+        return PlasmaVaultStorageLib.getPriceOracle().value;
     }
 
     /// @notice Sets the price oracle address
     /// @param priceOracle The price oracle address
     function setPriceOracle(address priceOracle) internal {
-        PlazmaVaultStorageLib.getPriceOracle().value = priceOracle;
+        PlasmaVaultStorageLib.getPriceOracle().value = priceOracle;
         emit PriceOracleChanged(priceOracle);
     }
 }

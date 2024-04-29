@@ -39,7 +39,7 @@ contract VaultSparkMock {
     }
 
     //solhint-disable-next-line
-    function balanceOf(address plazmaVault) external returns (uint256) {
+    function balanceOf(address plasmaVault) external returns (uint256) {
         return abi.decode(sparkBalanceFuse.functionDelegateCall(msg.data), (uint256));
     }
 }

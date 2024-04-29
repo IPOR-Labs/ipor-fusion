@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {MorphoBlueSupplyFuse, MorphoBlueSupplyFuseExitData, MorphoBlueSupplyFuseEnterData} from "../../../contracts/fuses/morphoBlue/MorphoBlueSupplyFuse.sol";
-import {PlazmaVaultConfigLib} from "../../../contracts/libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 
 contract VaultMorphoBlueMock {
     using Address for address;
@@ -40,11 +40,11 @@ contract VaultMorphoBlueMock {
     }
 
     function grandMarketSubstrates(uint256 marketId, bytes32[] calldata substrates) external {
-        PlazmaVaultConfigLib.grandMarketSubstrates(marketId, substrates);
+        PlasmaVaultConfigLib.grandMarketSubstrates(marketId, substrates);
     }
 
     //solhint-disable-next-line
-    function balanceOf(address plazmaVault) external returns (uint256) {
+    function balanceOf(address plasmaVault) external returns (uint256) {
         return abi.decode(morphoBalanceFuse.functionDelegateCall(msg.data), (uint256));
     }
 }

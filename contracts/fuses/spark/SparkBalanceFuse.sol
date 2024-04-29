@@ -23,8 +23,8 @@ contract SparkBalanceFuse is IMarketBalanceFuse {
         }
     }
 
-    function balanceOf(address plazmaVault) external view override returns (uint256) {
-        return _convertToUsd(SDAI, ISavingsDai(SDAI).balanceOf(plazmaVault));
+    function balanceOf(address plasmaVault) external view override returns (uint256) {
+        return _convertToUsd(SDAI, ISavingsDai(SDAI).balanceOf(plasmaVault));
     }
 
     function _convertToUsd(address asset, uint256 amount) internal view returns (uint256) {

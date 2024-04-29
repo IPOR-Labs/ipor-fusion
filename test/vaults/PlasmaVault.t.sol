@@ -3,25 +3,23 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
-import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {PlazmaVaultConfigLib} from "../../contracts/libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract PlazmaVaultTest is Test {
+contract PlasmaVaultTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
-    PlazmaVaultFactory internal vaultFactory;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
@@ -47,7 +45,6 @@ contract PlazmaVaultTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
-        vaultFactory = new PlazmaVaultFactory(owner);
         userOne = address(0x777);
 
         IporPriceOracle implementation = new IporPriceOracle(
@@ -73,11 +70,11 @@ contract PlazmaVaultTest is Test {
         alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
@@ -94,31 +91,30 @@ contract PlazmaVaultTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
 
         amount = 100 * 1e18;
 
-        deal(DAI, address(plazmaVault), amount);
+        deal(DAI, address(plasmaVault), amount);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -128,7 +124,7 @@ contract PlazmaVaultTest is Test {
 
         //when
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         //then
         /// @dev if is here then it means that the transaction was successful
@@ -145,13 +141,13 @@ contract PlazmaVaultTest is Test {
         alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -164,7 +160,7 @@ contract PlazmaVaultTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -172,33 +168,32 @@ contract PlazmaVaultTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
 
         amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-        ERC20(USDC).transfer(address(plazmaVault), 2 * amount);
+        ERC20(USDC).transfer(address(plasmaVault), 2 * amount);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -206,7 +201,7 @@ contract PlazmaVaultTest is Test {
             )
         );
 
-        calls[1] = PlazmaVault.FuseAction(
+        calls[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -216,7 +211,7 @@ contract PlazmaVaultTest is Test {
 
         //when
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         //then
         /// @dev if is here then it means that the transaction was successful
@@ -233,11 +228,11 @@ contract PlazmaVaultTest is Test {
         alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
@@ -254,31 +249,30 @@ contract PlazmaVaultTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
 
         amount = 100 * 1e18;
 
-        deal(DAI, address(plazmaVault), amount);
+        deal(DAI, address(plasmaVault), amount);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -290,14 +284,14 @@ contract PlazmaVaultTest is Test {
 
         //when
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 vaultTotalAssetsInMarket = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 vaultTotalAssetsInMarket = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
 
         assertTrue(
-            ERC20(aTokenAddress).balanceOf(address(plazmaVault)) == amount,
+            ERC20(aTokenAddress).balanceOf(address(plasmaVault)) == amount,
             "aToken balance should be increased by amount"
         );
 
@@ -319,13 +313,13 @@ contract PlazmaVaultTest is Test {
         alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -338,7 +332,7 @@ contract PlazmaVaultTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -346,33 +340,32 @@ contract PlazmaVaultTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
 
         amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-        ERC20(USDC).transfer(address(plazmaVault), 2 * amount);
+        ERC20(USDC).transfer(address(plasmaVault), 2 * amount);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -380,7 +373,7 @@ contract PlazmaVaultTest is Test {
             )
         );
 
-        calls[1] = PlazmaVault.FuseAction(
+        calls[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -390,14 +383,14 @@ contract PlazmaVaultTest is Test {
 
         //when
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
 
         assertGt(
             vaultTotalAssetsAfter,
-            199 * 10 ** plazmaVault.decimals(),
+            199 * 10 ** plasmaVault.decimals(),
             "Vault total assets should be increased by amount"
         );
     }
@@ -412,13 +405,13 @@ contract PlazmaVaultTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -435,22 +428,21 @@ contract PlazmaVaultTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(doNothingFuseAaveV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -459,14 +451,14 @@ contract PlazmaVaultTest is Test {
         ERC20(USDC).transfer(address(userOne), 2 * amount);
 
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -476,18 +468,18 @@ contract PlazmaVaultTest is Test {
 
         /// @dev first call
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
-        uint256 userSharesBefore = plazmaVault.balanceOf(userOne);
-        uint256 userAssetsBefore = plazmaVault.convertToAssets(userSharesBefore);
+        uint256 userSharesBefore = plasmaVault.balanceOf(userOne);
+        uint256 userAssetsBefore = plasmaVault.convertToAssets(userSharesBefore);
 
         /// @dev artificial time forward
         vm.warp(block.timestamp + 100 days);
 
-        PlazmaVault.FuseAction[] memory callsSecond = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory callsSecond = new PlasmaVault.FuseAction[](1);
 
         /// @dev do nothing only touch the market
-        callsSecond[0] = PlazmaVault.FuseAction(
+        callsSecond[0] = PlasmaVault.FuseAction(
             address(doNothingFuseAaveV3),
             abi.encodeWithSignature("enter(bytes)", abi.encode(DoNothingFuse.DoNothingFuseEnterData({asset: USDC})))
         );
@@ -495,16 +487,16 @@ contract PlazmaVaultTest is Test {
         //when
         /// @dev second call
         vm.prank(alpha);
-        plazmaVault.execute(callsSecond);
+        plasmaVault.execute(callsSecond);
 
         //then
-        uint256 userSharesAfter = plazmaVault.balanceOf(userOne);
-        uint256 userAssetsAfter = plazmaVault.convertToAssets(userSharesAfter);
+        uint256 userSharesAfter = plasmaVault.balanceOf(userOne);
+        uint256 userAssetsAfter = plasmaVault.convertToAssets(userSharesAfter);
 
         assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
         assertGt(
             userAssetsAfter,
-            userAssetsBefore + 2 * 10 ** plazmaVault.decimals(),
+            userAssetsBefore + 2 * 10 ** plasmaVault.decimals(),
             "User assets after should be greater than user assets before"
         );
     }
@@ -519,13 +511,13 @@ contract PlazmaVaultTest is Test {
 
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -538,7 +530,7 @@ contract PlazmaVaultTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         DoNothingFuse doNothingFuseCompoundV3 = new DoNothingFuse(COMPOUND_V3_MARKET_ID);
 
@@ -546,23 +538,22 @@ contract PlazmaVaultTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(doNothingFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
         amount = 100 * 1e6;
@@ -571,14 +562,14 @@ contract PlazmaVaultTest is Test {
         ERC20(USDC).transfer(address(userOne), 2 * amount);
 
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), 3 * amount);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
         vm.prank(userOne);
-        plazmaVault.deposit(2 * amount, userOne);
+        plasmaVault.deposit(2 * amount, userOne);
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -588,16 +579,16 @@ contract PlazmaVaultTest is Test {
 
         /// @dev first call
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
-        uint256 userSharesBefore = plazmaVault.balanceOf(userOne);
-        uint256 userAssetsBefore = plazmaVault.convertToAssets(userSharesBefore);
+        uint256 userSharesBefore = plasmaVault.balanceOf(userOne);
+        uint256 userAssetsBefore = plasmaVault.convertToAssets(userSharesBefore);
 
         vm.warp(block.timestamp + 1000 days);
 
-        PlazmaVault.FuseAction[] memory callsSecond = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory callsSecond = new PlasmaVault.FuseAction[](1);
 
-        callsSecond[0] = PlazmaVault.FuseAction(
+        callsSecond[0] = PlasmaVault.FuseAction(
             address(doNothingFuseCompoundV3),
             abi.encodeWithSignature("enter(bytes)", abi.encode(DoNothingFuse.DoNothingFuseEnterData({asset: USDC})))
         );
@@ -605,11 +596,11 @@ contract PlazmaVaultTest is Test {
         //when
         /// @dev second call
         vm.prank(alpha);
-        plazmaVault.execute(callsSecond);
+        plasmaVault.execute(callsSecond);
 
         //then
-        uint256 userSharesAfter = plazmaVault.balanceOf(userOne);
-        uint256 userAssetsAfter = plazmaVault.convertToAssets(userSharesAfter);
+        uint256 userSharesAfter = plasmaVault.balanceOf(userOne);
+        uint256 userAssetsAfter = plasmaVault.convertToAssets(userSharesAfter);
 
         assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
         assertEq(userAssetsAfter, userAssetsBefore, "User assets before and after should be equal");
@@ -625,11 +616,11 @@ contract PlazmaVaultTest is Test {
         alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
@@ -646,31 +637,30 @@ contract PlazmaVaultTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
 
         amount = 100 * 1e18;
 
-        deal(DAI, address(plazmaVault), amount);
+        deal(DAI, address(plasmaVault), amount);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -679,25 +669,25 @@ contract PlazmaVaultTest is Test {
         );
 
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
-        PlazmaVault.FuseAction[] memory callsSecond = new PlazmaVault.FuseAction[](1);
+        PlasmaVault.FuseAction[] memory callsSecond = new PlasmaVault.FuseAction[](1);
 
-        callsSecond[0] = PlazmaVault.FuseAction(
+        callsSecond[0] = PlasmaVault.FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature("exit(bytes)", abi.encode(AaveV3SupplyFuseExitData({asset: DAI, amount: amount})))
         );
 
-        uint256 totalAssetsInMarketBefore = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
+        uint256 totalAssetsInMarketBefore = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
 
         vm.warp(block.timestamp + 100 days);
 
         //when
         vm.prank(alpha);
-        plazmaVault.execute(callsSecond);
+        plasmaVault.execute(callsSecond);
 
         //then
-        uint256 totalAssetsInMarketAfter = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
+        uint256 totalAssetsInMarketAfter = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
         assertGt(
             totalAssetsInMarketBefore,
             totalAssetsInMarketAfter,
@@ -715,13 +705,13 @@ contract PlazmaVaultTest is Test {
         alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -734,7 +724,7 @@ contract PlazmaVaultTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -742,33 +732,32 @@ contract PlazmaVaultTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
-        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
 
         amount = 100 * 1e6;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-        ERC20(USDC).transfer(address(plazmaVault), 2 * amount);
+        ERC20(USDC).transfer(address(plasmaVault), 2 * amount);
 
-        calls[0] = PlazmaVault.FuseAction(
+        calls[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -776,7 +765,7 @@ contract PlazmaVaultTest is Test {
             )
         );
 
-        calls[1] = PlazmaVault.FuseAction(
+        calls[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -785,16 +774,16 @@ contract PlazmaVaultTest is Test {
         );
 
         vm.prank(alpha);
-        plazmaVault.execute(calls);
+        plasmaVault.execute(calls);
 
-        PlazmaVault.FuseAction[] memory callsSecond = new PlazmaVault.FuseAction[](2);
+        PlasmaVault.FuseAction[] memory callsSecond = new PlasmaVault.FuseAction[](2);
 
-        callsSecond[0] = PlazmaVault.FuseAction(
+        callsSecond[0] = PlasmaVault.FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature("exit(bytes)", abi.encode(AaveV3SupplyFuseExitData({asset: USDC, amount: amount})))
         );
 
-        callsSecond[1] = PlazmaVault.FuseAction(
+        callsSecond[1] = PlasmaVault.FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
                 "exit(bytes)",
@@ -802,18 +791,18 @@ contract PlazmaVaultTest is Test {
             )
         );
 
-        uint256 totalAssetsInMarketBefore = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
-        uint256 totalAssetsInMarketBeforeCompound = plazmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
+        uint256 totalAssetsInMarketBefore = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
+        uint256 totalAssetsInMarketBeforeCompound = plasmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
 
         vm.warp(block.timestamp + 1 seconds);
 
         //when
         vm.prank(alpha);
-        plazmaVault.execute(callsSecond);
+        plasmaVault.execute(callsSecond);
 
         //then
-        uint256 totalAssetsInMarketAfter = plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
-        uint256 totalAssetsInMarketAfterCompound = plazmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
+        uint256 totalAssetsInMarketAfter = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
+        uint256 totalAssetsInMarketAfterCompound = plasmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
 
         assertGt(
             totalAssetsInMarketBefore,
