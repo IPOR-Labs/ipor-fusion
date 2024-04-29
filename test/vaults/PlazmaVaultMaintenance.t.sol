@@ -3,8 +3,9 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
+import {PlazmaVaultConfigLib} from "../../contracts/libraries/PlazmaVaultConfigLib.sol";
 import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
-import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -14,6 +15,7 @@ contract PlazmaVaultMaintenanceTest is Test {
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+    address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
     PlazmaVaultFactory internal vaultFactory;
 
@@ -212,6 +214,126 @@ contract PlazmaVaultMaintenanceTest is Test {
         assertTrue(plazmaVault.isFuseSupported(address(fuse)));
     }
 
+    function testShouldAddFuseByOwnerAndExecuteAction() public {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+        address[] memory alphas = new address[](1);
+
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+
+        address[] memory supplyFuses = new address[](0);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    supplyFuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        PlazmaVault.FuseAction[] memory calls = new PlazmaVault.FuseAction[](1);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(plazmaVault), amount);
+
+        calls[0] = PlazmaVault.FuseAction(
+            address(supplyFuse),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
+            )
+        );
+
+        assertFalse(plazmaVault.isFuseSupported(address(supplyFuse)));
+
+        // when
+        plazmaVault.addFuse(address(supplyFuse));
+
+        // then
+        assertTrue(plazmaVault.isFuseSupported(address(supplyFuse)));
+
+        // when
+        vm.prank(alpha);
+        plazmaVault.execute(calls);
+
+        // // then
+        // assertTrue(true);
+    }
+
+    function testShouldAddFusesByOwner() public {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+
+        address[] memory alphas = new address[](1);
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        AaveV3SupplyFuse fuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
+        AaveV3SupplyFuse fuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        assertFalse(plazmaVault.isFuseSupported(address(fuse1)));
+        assertFalse(plazmaVault.isFuseSupported(address(fuse2)));
+
+        //when
+        plazmaVault.addFuse(address(fuse1));
+        plazmaVault.addFuse(address(fuse2));
+
+        //then
+        assertTrue(plazmaVault.isFuseSupported(address(fuse1)));
+        assertTrue(plazmaVault.isFuseSupported(address(fuse2)));
+    }
+
     function testShouldNotAddFuseWhenNotOwner() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
@@ -257,6 +379,57 @@ contract PlazmaVaultMaintenanceTest is Test {
         assertFalse(plazmaVault.isFuseSupported(address(fuse)));
     }
 
+    function testShouldNotAddFusesWhenNotOwner() public {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+
+        address[] memory alphas = new address[](1);
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        AaveV3SupplyFuse fuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
+        AaveV3SupplyFuse fuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        assertFalse(plazmaVault.isFuseSupported(address(fuse1)));
+        assertFalse(plazmaVault.isFuseSupported(address(fuse2)));
+
+        bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
+
+        //when
+        vm.startPrank(address(0x777));
+        vm.expectRevert(error);
+        plazmaVault.addFuse(address(fuse1));
+        vm.expectRevert(error);
+        plazmaVault.addFuse(address(fuse2));
+        vm.stopPrank();
+
+        //then
+        assertFalse(plazmaVault.isFuseSupported(address(fuse1)));
+        assertFalse(plazmaVault.isFuseSupported(address(fuse2)));
+    }
+
     function testShouldRemoveFuseByOwner() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
@@ -297,6 +470,54 @@ contract PlazmaVaultMaintenanceTest is Test {
 
         //then
         assertFalse(plazmaVault.isFuseSupported(address(fuse)));
+    }
+
+    function testShouldRemoveFusesByOwner() public {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+
+        address[] memory alphas = new address[](1);
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        AaveV3SupplyFuse fuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
+        AaveV3SupplyFuse fuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](2);
+        fuses[0] = address(fuse1);
+        fuses[1] = address(fuse2);
+
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        assertTrue(plazmaVault.isFuseSupported(address(fuse1)));
+        assertTrue(plazmaVault.isFuseSupported(address(fuse2)));
+
+        //when
+        plazmaVault.removeFuse(address(fuse1));
+        plazmaVault.removeFuse(address(fuse2));
+
+        //then
+        assertFalse(plazmaVault.isFuseSupported(address(fuse1)));
+        assertFalse(plazmaVault.isFuseSupported(address(fuse2)));
     }
 
     function testShouldNotRemoveFuseWhenNotOwner() public {
@@ -346,6 +567,60 @@ contract PlazmaVaultMaintenanceTest is Test {
         assertTrue(plazmaVault.isFuseSupported(address(fuse)));
     }
 
+    function testShouldNotRemoveFusesWhenNotOwner() public {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+
+        address[] memory alphas = new address[](1);
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        AaveV3SupplyFuse fuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
+        AaveV3SupplyFuse fuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](2);
+        fuses[0] = address(fuse1);
+        fuses[1] = address(fuse2);
+
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        assertTrue(plazmaVault.isFuseSupported(address(fuse1)));
+        assertTrue(plazmaVault.isFuseSupported(address(fuse2)));
+
+        bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
+
+        //when
+        vm.startPrank(address(0x777));
+        vm.expectRevert(error);
+        plazmaVault.removeFuse(address(fuse1));
+        vm.expectRevert(error);
+        plazmaVault.removeFuse(address(fuse2));
+        vm.stopPrank();
+
+        //then
+        assertTrue(plazmaVault.isFuseSupported(address(fuse1)));
+        assertTrue(plazmaVault.isFuseSupported(address(fuse2)));
+    }
+
     function testShouldAddAndRemoveFuseWhenOwner() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
@@ -391,6 +666,59 @@ contract PlazmaVaultMaintenanceTest is Test {
 
         //then
         assertFalse(plazmaVault.isFuseSupported(address(fuse)));
+    }
+
+    function testShouldAddAndRemoveFusesWhenOwner() public {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+
+        address[] memory alphas = new address[](1);
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        AaveV3SupplyFuse fuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
+        AaveV3SupplyFuse fuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
+
+        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+
+        PlazmaVault plazmaVault = PlazmaVault(
+            payable(
+                vaultFactory.createVault(
+                    assetName,
+                    assetSymbol,
+                    underlyingToken,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses
+                )
+            )
+        );
+
+        assertFalse(plazmaVault.isFuseSupported(address(fuse1)));
+        assertFalse(plazmaVault.isFuseSupported(address(fuse2)));
+
+        //when
+        plazmaVault.addFuse(address(fuse1));
+        plazmaVault.addFuse(address(fuse2));
+
+        //then
+        assertTrue(plazmaVault.isFuseSupported(address(fuse1)));
+        assertTrue(plazmaVault.isFuseSupported(address(fuse2)));
+
+        //when
+        plazmaVault.removeFuse(address(fuse1));
+        plazmaVault.removeFuse(address(fuse2));
+
+        //then
+        assertFalse(plazmaVault.isFuseSupported(address(fuse1)));
+        assertFalse(plazmaVault.isFuseSupported(address(fuse2)));
     }
 
     function testShouldSetupAlphaWhenVaultCreated() public {
