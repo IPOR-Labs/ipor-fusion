@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {PlazmaVaultStorageLib} from "./PlazmaVaultStorageLib.sol";
+import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 
-library PlazmaVaultConfigLib {
+library PlasmaVaultConfigLib {
     event MarketSubstratesGranted(uint256 marketId, bytes32[] substrates);
 
     function getMarketSubstrates(uint256 marketId) internal view returns (bytes32[] memory) {
@@ -11,17 +11,17 @@ library PlazmaVaultConfigLib {
     }
 
     function isSubstrateAsAssetGranted(uint256 marketId, address substrateAsAsset) internal view returns (bool) {
-        PlazmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId);
+        PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId);
         return marketSubstrates.substrateAllowances[addressToBytes32(substrateAsAsset)] == 1;
     }
 
     function isMarketSubstrateGranted(uint256 marketId, bytes32 substrate) internal view returns (bool) {
-        PlazmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId);
+        PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId);
         return marketSubstrates.substrateAllowances[substrate] == 1;
     }
 
     function grandMarketSubstrates(uint256 marketId, bytes32[] memory substrates) internal {
-        PlazmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId);
+        PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId);
 
         bytes32[] memory list = new bytes32[](substrates.length);
 
@@ -36,7 +36,7 @@ library PlazmaVaultConfigLib {
     }
 
     function grandSubstratesAsAssetsToMarket(uint256 marketId, address[] calldata substratesAsAssets) internal {
-        PlazmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId);
+        PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId);
 
         bytes32[] memory list = new bytes32[](substratesAsAssets.length);
 
@@ -61,7 +61,7 @@ library PlazmaVaultConfigLib {
     /// @notice Gets the market substrates configuration for a specific market
     function _getMarketSubstrates(
         uint256 marketId
-    ) private view returns (PlazmaVaultStorageLib.MarketSubstratesStruct storage) {
-        return PlazmaVaultStorageLib.getMarketSubstrates().value[marketId];
+    ) private view returns (PlasmaVaultStorageLib.MarketSubstratesStruct storage) {
+        return PlasmaVaultStorageLib.getMarketSubstrates().value[marketId];
     }
 }

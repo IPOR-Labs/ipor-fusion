@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {PlazmaVaultConfigLib} from "../../../contracts/libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 
 contract ERC4626SupplyFuseMock {
     using Address for address;
@@ -38,6 +38,6 @@ contract ERC4626SupplyFuseMock {
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
-        PlazmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
+        PlasmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
     }
 }

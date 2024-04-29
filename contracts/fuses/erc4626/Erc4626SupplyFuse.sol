@@ -6,7 +6,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
@@ -63,13 +63,13 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
     function instantWithdraw(bytes32[] calldata params) external override {
         uint256 amount = uint256(params[0]);
-        address vault = PlazmaVaultConfigLib.bytes32ToAddress(params[1]);
+        address vault = PlasmaVaultConfigLib.bytes32ToAddress(params[1]);
 
         _exit(Erc4626SupplyFuseExitData(vault, amount));
     }
 
     function _enter(Erc4626SupplyFuseEnterData memory data) internal {
-        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
             revert Erc4626SupplyFuseUnsupportedVault("enter", data.vault, Errors.UNSUPPORTED_ERC4626);
         }
 
@@ -82,7 +82,7 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _exit(Erc4626SupplyFuseExitData memory data) internal {
-        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.vault)) {
             revert Erc4626SupplyFuseUnsupportedVault("exit", data.vault, Errors.UNSUPPORTED_ERC4626);
         }
 

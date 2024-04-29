@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
-import {PlazmaVaultConfigLib} from "../../../contracts/libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 
 contract VaultERC4626Mock {
@@ -42,11 +42,11 @@ contract VaultERC4626Mock {
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
-        PlazmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
+        PlasmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
     }
 
     //solhint-disable-next-line
-    function balanceOf(address plazmaVault) external returns (uint256) {
+    function balanceOf(address plasmaVault) external returns (uint256) {
         return abi.decode(address(balanceFuse).functionDelegateCall(msg.data), (uint256));
     }
 }

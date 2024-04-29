@@ -2,13 +2,13 @@
 pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract PlazmaVaultMaintenanceTest is Test {
+contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
@@ -46,7 +46,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
@@ -56,11 +56,11 @@ contract PlazmaVaultMaintenanceTest is Test {
 
         address[] memory fuses = new address[](0);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         // when
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -75,7 +75,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         // then
-        assertTrue(plazmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)));
+        assertTrue(plasmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)));
     }
 
     function testShouldAddBalanceFuseByOwner() public {
@@ -88,7 +88,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
@@ -97,9 +97,9 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -114,16 +114,16 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         assertFalse(
-            plazmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            plasmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
             "Balance fuse should not be supported"
         );
 
         //when
-        plazmaVault.addBalanceFuse(AAVE_V3_MARKET_ID, address(balanceFuse));
+        plasmaVault.addBalanceFuse(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         //then
         assertTrue(
-            plazmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            plasmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
             "Balance fuse should be supported"
         );
     }
@@ -138,16 +138,16 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](1);
         AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         fuses[0] = address(fuse);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
         // when
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -162,7 +162,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         // then
-        assertTrue(plazmaVault.isFuseSupported(address(fuse)));
+        assertTrue(plasmaVault.isFuseSupported(address(fuse)));
     }
 
     function testShouldAddFuseByOwner() public {
@@ -175,12 +175,12 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -196,13 +196,13 @@ contract PlazmaVaultMaintenanceTest is Test {
 
         AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
 
-        assertFalse(plazmaVault.isFuseSupported(address(fuse)));
+        assertFalse(plasmaVault.isFuseSupported(address(fuse)));
 
         //when
-        plazmaVault.addFuse(address(fuse));
+        plasmaVault.addFuse(address(fuse));
 
         //then
-        assertTrue(plazmaVault.isFuseSupported(address(fuse)));
+        assertTrue(plasmaVault.isFuseSupported(address(fuse)));
     }
 
     function testShouldRemoveFuseByOwner() public {
@@ -215,15 +215,15 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](1);
         AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         fuses[0] = address(fuse);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -237,13 +237,13 @@ contract PlazmaVaultMaintenanceTest is Test {
             0
         );
 
-        assertTrue(plazmaVault.isFuseSupported(address(fuse)));
+        assertTrue(plasmaVault.isFuseSupported(address(fuse)));
 
         //when
-        plazmaVault.removeFuse(address(fuse));
+        plasmaVault.removeFuse(address(fuse));
 
         //then
-        assertFalse(plazmaVault.isFuseSupported(address(fuse)));
+        assertFalse(plasmaVault.isFuseSupported(address(fuse)));
     }
 
     function testShouldSetupAlphaWhenVaultCreated() public {
@@ -256,13 +256,13 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
         // when
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -277,7 +277,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         // then
-        assertTrue(plazmaVault.isAlphaGranted(alpha));
+        assertTrue(plasmaVault.isAlphaGranted(alpha));
     }
 
     function testShouldNotSetupAlphaWhenVaultIsCreated() public {
@@ -290,13 +290,13 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
         // when
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -311,7 +311,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         // then
-        assertFalse(plazmaVault.isAlphaGranted(address(0x2)));
+        assertFalse(plasmaVault.isAlphaGranted(address(0x2)));
     }
 
     function testShouldSetupAlphaByOwner() public {
@@ -324,12 +324,12 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -344,10 +344,10 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         //when
-        plazmaVault.grantAlpha(address(0x2));
+        plasmaVault.grantAlpha(address(0x2));
 
         //then
-        assertTrue(plazmaVault.isAlphaGranted(address(0x2)));
+        assertTrue(plasmaVault.isAlphaGranted(address(0x2)));
     }
 
     function testShouldAccessControlDeactivatedAfterCreateVault() external {
@@ -360,12 +360,12 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -380,7 +380,7 @@ contract PlazmaVaultMaintenanceTest is Test {
         );
 
         // when
-        bool isAccessControlActive = plazmaVault.isAccessControlActivated();
+        bool isAccessControlActive = plasmaVault.isAccessControlActivated();
 
         // then
 
@@ -397,12 +397,12 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -416,14 +416,14 @@ contract PlazmaVaultMaintenanceTest is Test {
             0
         );
 
-        bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
+        bool isAccessControlActiveBefore = plasmaVault.isAccessControlActivated();
 
         // when
         vm.prank(owner);
-        plazmaVault.activateAccessControl();
+        plasmaVault.activateAccessControl();
 
         // then
-        assertTrue(plazmaVault.isAccessControlActivated());
+        assertTrue(plasmaVault.isAccessControlActivated());
         assertFalse(isAccessControlActiveBefore);
     }
 
@@ -437,12 +437,12 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -456,17 +456,17 @@ contract PlazmaVaultMaintenanceTest is Test {
             0
         );
 
-        bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
+        bool isAccessControlActiveBefore = plasmaVault.isAccessControlActivated();
 
         bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
 
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        plazmaVault.activateAccessControl();
+        plasmaVault.activateAccessControl();
 
         // then
-        assertFalse(plazmaVault.isAccessControlActivated());
+        assertFalse(plasmaVault.isAccessControlActivated());
         assertFalse(isAccessControlActiveBefore);
     }
 
@@ -480,12 +480,12 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -499,16 +499,16 @@ contract PlazmaVaultMaintenanceTest is Test {
             0
         );
         vm.prank(owner);
-        plazmaVault.activateAccessControl();
+        plasmaVault.activateAccessControl();
 
-        bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
+        bool isAccessControlActiveBefore = plasmaVault.isAccessControlActivated();
 
         // when
         vm.prank(owner);
-        plazmaVault.deactivateAccessControl();
+        plasmaVault.deactivateAccessControl();
 
         // then
-        assertFalse(plazmaVault.isAccessControlActivated());
+        assertFalse(plasmaVault.isAccessControlActivated());
         assertTrue(isAccessControlActiveBefore);
     }
 
@@ -522,12 +522,12 @@ contract PlazmaVaultMaintenanceTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](0);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](0);
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](0);
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](0);
 
-        PlazmaVault plazmaVault = new PlazmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
             assetSymbol,
@@ -541,19 +541,19 @@ contract PlazmaVaultMaintenanceTest is Test {
             0
         );
         vm.prank(owner);
-        plazmaVault.activateAccessControl();
+        plasmaVault.activateAccessControl();
 
-        bool isAccessControlActiveBefore = plazmaVault.isAccessControlActivated();
+        bool isAccessControlActiveBefore = plasmaVault.isAccessControlActivated();
 
         bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
 
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        plazmaVault.deactivateAccessControl();
+        plasmaVault.deactivateAccessControl();
 
         // then
-        assertTrue(plazmaVault.isAccessControlActivated());
+        assertTrue(plasmaVault.isAccessControlActivated());
         assertTrue(isAccessControlActiveBefore);
     }
 }

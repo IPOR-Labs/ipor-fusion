@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IComet} from "./IComet.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 contract CompoundV3BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
@@ -28,8 +28,8 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
         COMPOUND_BASE_TOKEN_DECIMALS = ERC20(COMPOUND_BASE_TOKEN).decimals();
     }
 
-    function balanceOf(address plazmaVault) external view override returns (uint256) {
-        bytes32[] memory assetsRaw = PlazmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+    function balanceOf(address plasmaVault) external view override returns (uint256) {
+        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
         if (len == 0) {
@@ -45,18 +45,18 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
-            asset = PlazmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
+            asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             decimals = ERC20(asset).decimals();
             price = _getPrice(asset);
 
             balanceTemp += IporMath.convertToWadInt(
-                _getBalance(plazmaVault, asset).toInt256() * int256(price),
+                _getBalance(plasmaVault, asset).toInt256() * int256(price),
                 decimals + PRICE_DECIMALS
             );
         }
 
         int256 borrowBalance = IporMath.convertToWadInt(
-            (COMET.borrowBalanceOf(plazmaVault) * COMET.getPrice(BASE_TOKEN_PRICE_FEED)).toInt256(),
+            (COMET.borrowBalanceOf(plasmaVault) * COMET.getPrice(BASE_TOKEN_PRICE_FEED)).toInt256(),
             COMPOUND_BASE_TOKEN_DECIMALS + PRICE_DECIMALS
         );
 
@@ -73,11 +73,11 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
         return COMET.getPrice(priceFeed);
     }
 
-    function _getBalance(address plazmaVault, address asset) private view returns (uint256) {
+    function _getBalance(address plasmaVault, address asset) private view returns (uint256) {
         if (asset == COMPOUND_BASE_TOKEN) {
-            return COMET.balanceOf(plazmaVault);
+            return COMET.balanceOf(plasmaVault);
         } else {
-            return COMET.collateralBalanceOf(plazmaVault, asset);
+            return COMET.collateralBalanceOf(plasmaVault, asset);
         }
     }
 }
