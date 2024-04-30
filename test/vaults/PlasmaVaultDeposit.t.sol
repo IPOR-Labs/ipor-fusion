@@ -3,25 +3,22 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {PlazmaVaultFactory} from "../../contracts/vaults/PlazmaVaultFactory.sol";
-import {PlazmaVault} from "../../contracts/vaults/PlazmaVault.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CompoundV3SupplyFuse} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {PlazmaVaultConfigLib} from "../../contracts/libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract PlazmaVaultDepositTest is Test {
+contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
-
-    PlazmaVaultFactory internal vaultFactory;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
@@ -41,7 +38,6 @@ contract PlazmaVaultDepositTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
-        vaultFactory = new PlazmaVaultFactory(owner);
         userOne = address(0x777);
 
         IporPriceOracle implementation = new IporPriceOracle(
@@ -59,7 +55,7 @@ contract PlazmaVaultDepositTest is Test {
 
     function testShouldDepositToPlazamVaultWithDAIAsUnderlyingToken() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         userOne = address(0x777);
 
@@ -68,18 +64,18 @@ contract PlazmaVaultDepositTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         //when
         vm.prank(userOne);
-        plazmaVault.deposit(amount, userOne);
+        plasmaVault.deposit(amount, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore, 0);
         assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore + amount);
@@ -87,19 +83,19 @@ contract PlazmaVaultDepositTest is Test {
         assertEq(userVaultBalanceBefore, 0);
         assertEq(userVaultBalanceAfter, userVaultBalanceBefore + amount);
 
-        assertEq(amount, ERC20(DAI).balanceOf(address(plazmaVault)));
+        assertEq(amount, ERC20(DAI).balanceOf(address(plasmaVault)));
 
         assertEq(amount, vaultTotalAssetsAfter);
 
         assertEq(ERC20(DAI).balanceOf(userOne), 0);
 
         /// @dev no transfer to the market when depositing
-        assertEq(plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
     function testShouldDepositToPlazamVaultWithUSDCAsUnderlyingToken() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultUsdc();
+        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc();
 
         userOne = address(0x777);
 
@@ -109,18 +105,18 @@ contract PlazmaVaultDepositTest is Test {
         ERC20(USDC).transfer(address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(USDC).approve(address(plazmaVault), amount);
+        ERC20(USDC).approve(address(plasmaVault), amount);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         //when
         vm.prank(userOne);
-        plazmaVault.deposit(amount, userOne);
+        plasmaVault.deposit(amount, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore, 0, "vaultTotalAssetsBefore");
         assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore + amount, "vaultTotalAssetsAfter");
@@ -128,17 +124,17 @@ contract PlazmaVaultDepositTest is Test {
         assertEq(userVaultBalanceBefore, 0, "userVaultBalanceBefore");
         assertEq(userVaultBalanceAfter, userVaultBalanceBefore + amount, "userVaultBalanceAfter");
 
-        assertEq(amount, ERC20(USDC).balanceOf(address(plazmaVault)), "ERC20(USDC).balanceOf(address(plazmaVault))");
+        assertEq(amount, ERC20(USDC).balanceOf(address(plasmaVault)), "ERC20(USDC).balanceOf(address(plasmaVault))");
 
         assertEq(amount, vaultTotalAssetsAfter, "vaultTotalAssetsAfter");
 
         assertEq(ERC20(USDC).balanceOf(userOne), 0, "ERC20(USDC).balanceOf(userOne)");
 
         /// @dev no transfer to the market when depositing
-        assertEq(plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
-    function _preparePlazmaVaultUsdc() public returns (PlazmaVault) {
+    function _preparePlasmaVaultUsdc() public returns (PlasmaVault) {
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
         address underlyingToken = USDC;
@@ -146,13 +142,13 @@ contract PlazmaVaultDepositTest is Test {
 
         alphas[0] = address(0x1);
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](2);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(USDC);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         /// @dev Market Aave V3
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
@@ -165,7 +161,7 @@ contract PlazmaVaultDepositTest is Test {
         );
 
         /// @dev Market Compound V3
-        marketConfigs[1] = PlazmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+        marketConfigs[1] = PlasmaVault.MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -173,28 +169,27 @@ contract PlazmaVaultDepositTest is Test {
         fuses[0] = address(supplyFuseAaveV3);
         fuses[1] = address(supplyFuseCompoundV3);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
-        balanceFuses[1] = PlazmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+        balanceFuses[1] = PlasmaVault.MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
-        return plazmaVault;
+        return plasmaVault;
     }
 
-    function _preparePlazmaVaultDai() public returns (PlazmaVault) {
+    function _preparePlasmaVaultDai() public returns (PlasmaVault) {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
@@ -203,11 +198,11 @@ contract PlazmaVaultDepositTest is Test {
         address alpha = address(0x1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlazmaVault.MarketSubstratesConfig[](1);
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
 
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlazmaVaultConfigLib.addressToBytes32(DAI);
-        marketConfigs[0] = PlazmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
@@ -224,30 +219,29 @@ contract PlazmaVaultDepositTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
 
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlazmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlazmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlazmaVault plazmaVault = PlazmaVault(
-            payable(
-                vaultFactory.createVault(
-                    assetName,
-                    assetSymbol,
-                    underlyingToken,
-                    address(iporPriceOracleProxy),
-                    alphas,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses
-                )
-            )
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            address(0x777),
+            0
         );
 
-        return plazmaVault;
+        return plasmaVault;
     }
 
     function testShouldNotDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         address userOne = address(0x777);
 
@@ -256,24 +250,24 @@ contract PlazmaVaultDepositTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         vm.prank(owner);
-        plazmaVault.activateAccessControl();
+        plasmaVault.activateAccessControl();
 
         bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
 
         //when
         vm.prank(userOne);
         vm.expectRevert(error);
-        plazmaVault.deposit(amount, userOne);
+        plasmaVault.deposit(amount, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
 
@@ -282,7 +276,7 @@ contract PlazmaVaultDepositTest is Test {
 
     function testShouldDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         address userOne = address(0x777);
 
@@ -291,24 +285,24 @@ contract PlazmaVaultDepositTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
-
-        vm.prank(owner);
-        plazmaVault.activateAccessControl();
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         vm.prank(owner);
-        plazmaVault.grantAccessToVault(userOne);
+        plasmaVault.activateAccessControl();
+
+        vm.prank(owner);
+        plasmaVault.grantAccessToVault(userOne);
 
         //when
         vm.prank(userOne);
-        plazmaVault.deposit(amount, userOne);
+        plasmaVault.deposit(amount, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore, 0);
         assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore + amount);
@@ -316,19 +310,19 @@ contract PlazmaVaultDepositTest is Test {
         assertEq(userVaultBalanceBefore, 0);
         assertEq(userVaultBalanceAfter, userVaultBalanceBefore + amount);
 
-        assertEq(amount, ERC20(DAI).balanceOf(address(plazmaVault)));
+        assertEq(amount, ERC20(DAI).balanceOf(address(plasmaVault)));
 
         assertEq(amount, vaultTotalAssetsAfter);
 
         assertEq(ERC20(DAI).balanceOf(userOne), 0);
 
         /// @dev no transfer to the market when depositing
-        assertEq(plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
     function testShouldNotDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenRemoveFromAccessList() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         address userOne = address(0x777);
 
@@ -337,30 +331,30 @@ contract PlazmaVaultDepositTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
-
-        vm.prank(owner);
-        plazmaVault.activateAccessControl();
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         vm.prank(owner);
-        plazmaVault.grantAccessToVault(userOne);
+        plasmaVault.activateAccessControl();
+
+        vm.prank(owner);
+        plasmaVault.grantAccessToVault(userOne);
 
         bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
 
         //when
         vm.prank(owner);
-        plazmaVault.revokeAccessToVault(userOne);
+        plasmaVault.revokeAccessToVault(userOne);
 
         vm.prank(userOne);
         vm.expectRevert(error);
-        plazmaVault.deposit(amount, userOne);
+        plasmaVault.deposit(amount, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
 
@@ -369,7 +363,7 @@ contract PlazmaVaultDepositTest is Test {
 
     function testShouldMintToPlazamVaultWithDAIAsUnderlyingToken() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         address userOne = address(0x777);
 
@@ -378,18 +372,18 @@ contract PlazmaVaultDepositTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         //when
         vm.prank(userOne);
-        plazmaVault.mint(amount, userOne);
+        plasmaVault.mint(amount, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore, 0);
         assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore + amount);
@@ -397,20 +391,20 @@ contract PlazmaVaultDepositTest is Test {
         assertEq(userVaultBalanceBefore, 0);
         assertEq(userVaultBalanceAfter, userVaultBalanceBefore + amount);
 
-        assertEq(amount, ERC20(DAI).balanceOf(address(plazmaVault)));
+        assertEq(amount, ERC20(DAI).balanceOf(address(plasmaVault)));
 
         assertEq(amount, vaultTotalAssetsAfter);
 
         assertEq(ERC20(DAI).balanceOf(userOne), 0);
 
         /// @dev no transfer to the market when depositing
-        assertEq(plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
     // todo
     function testShouldNotMintToPlazamVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         address userOne = address(0x777);
 
@@ -419,24 +413,24 @@ contract PlazmaVaultDepositTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         vm.prank(owner);
-        plazmaVault.activateAccessControl();
+        plasmaVault.activateAccessControl();
 
         bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
 
         //when
         vm.prank(userOne);
         vm.expectRevert(error);
-        plazmaVault.mint(amount, userOne);
+        plasmaVault.mint(amount, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
 
@@ -445,7 +439,7 @@ contract PlazmaVaultDepositTest is Test {
 
     function testShouldMintToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         address userOne = address(0x777);
 
@@ -454,24 +448,24 @@ contract PlazmaVaultDepositTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
-
-        vm.prank(owner);
-        plazmaVault.activateAccessControl();
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         vm.prank(owner);
-        plazmaVault.grantAccessToVault(userOne);
+        plasmaVault.activateAccessControl();
+
+        vm.prank(owner);
+        plasmaVault.grantAccessToVault(userOne);
 
         //when
         vm.prank(userOne);
-        plazmaVault.mint(amount, userOne);
+        plasmaVault.mint(amount, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore, 0);
         assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore + amount);
@@ -479,19 +473,19 @@ contract PlazmaVaultDepositTest is Test {
         assertEq(userVaultBalanceBefore, 0);
         assertEq(userVaultBalanceAfter, userVaultBalanceBefore + amount);
 
-        assertEq(amount, ERC20(DAI).balanceOf(address(plazmaVault)));
+        assertEq(amount, ERC20(DAI).balanceOf(address(plasmaVault)));
 
         assertEq(amount, vaultTotalAssetsAfter);
 
         assertEq(ERC20(DAI).balanceOf(userOne), 0);
 
         /// @dev no transfer to the market when depositing
-        assertEq(plazmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
     function testShouldNotMintToPlazamVaultWithDAIAsUnderlyingTokenWhenRemoveFromAccessList() public {
         //given
-        PlazmaVault plazmaVault = _preparePlazmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         address userOne = address(0x777);
 
@@ -500,30 +494,30 @@ contract PlazmaVaultDepositTest is Test {
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
-        ERC20(DAI).approve(address(plazmaVault), 3 * amount);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        uint256 vaultTotalAssetsBefore = plazmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plazmaVault.balanceOf(userOne);
-
-        vm.prank(owner);
-        plazmaVault.activateAccessControl();
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         vm.prank(owner);
-        plazmaVault.grantAccessToVault(userOne);
+        plasmaVault.activateAccessControl();
+
+        vm.prank(owner);
+        plasmaVault.grantAccessToVault(userOne);
 
         bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
 
         //when
         vm.prank(owner);
-        plazmaVault.revokeAccessToVault(userOne);
+        plasmaVault.revokeAccessToVault(userOne);
 
         vm.prank(userOne);
         vm.expectRevert(error);
-        plazmaVault.mint(amount, userOne);
+        plasmaVault.mint(amount, userOne);
 
         //then
-        uint256 vaultTotalAssetsAfter = plazmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plazmaVault.balanceOf(userOne);
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
 

@@ -6,7 +6,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {CErc20} from "./CErc20.sol";
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
 
@@ -25,8 +25,8 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
         PRICE_ORACLE = IIporPriceOracle(priceOracle);
     }
 
-    function balanceOf(address plazmaVault) external override returns (uint256) {
-        bytes32[] memory assetsRaw = PlazmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+    function balanceOf(address plasmaVault) external override returns (uint256) {
+        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
         if (len == 0) {
@@ -46,14 +46,14 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
-            cToken = CErc20(PlazmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]));
+            cToken = CErc20(PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]));
             underlying = cToken.underlying();
             decimals = ERC20(underlying).decimals();
             price = _getPrice(underlying);
 
-            rawBalance = cToken.balanceOfUnderlying(plazmaVault);
+            rawBalance = cToken.balanceOfUnderlying(plasmaVault);
             balanceTemp += IporMath.convertToWadInt(rawBalance.toInt256() * int256(price), decimals + PRICE_DECIMALS);
-            rawBorrowBalance = cToken.borrowBalanceCurrent(plazmaVault);
+            rawBorrowBalance = cToken.borrowBalanceCurrent(plasmaVault);
             borrowBalance = IporMath.convertToWadInt((rawBorrowBalance * price).toInt256(), decimals + PRICE_DECIMALS);
 
             balanceTemp -= borrowBalance;
