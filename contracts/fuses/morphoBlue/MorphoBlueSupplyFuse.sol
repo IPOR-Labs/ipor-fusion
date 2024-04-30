@@ -6,7 +6,7 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
 
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
@@ -78,7 +78,7 @@ contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _enter(MorphoBlueSupplyFuseEnterData memory data) internal {
-        if (!PlazmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
+        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
             revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data.morphoBlueMarketId, Errors.UNSUPPORTED_MARKET);
         }
 
@@ -92,7 +92,7 @@ contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _exit(MorphoBlueSupplyFuseExitData memory data) internal {
-        if (!PlazmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
+        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data.morphoBlueMarketId)) {
             revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data.morphoBlueMarketId, Errors.UNSUPPORTED_MARKET);
         }
 

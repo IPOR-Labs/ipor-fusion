@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {PlazmaVaultStorageLib} from "./PlazmaVaultStorageLib.sol";
+import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 
 library AccessControlLib {
     event AccessGrantedToVault(address indexed account);
@@ -16,7 +16,7 @@ library AccessControlLib {
         if (account == address(0)) {
             revert WrongAddress();
         }
-        PlazmaVaultStorageLib.GrantedAddressesToInteractWithVault storage accessControl = PlazmaVaultStorageLib
+        PlasmaVaultStorageLib.GrantedAddressesToInteractWithVault storage accessControl = PlasmaVaultStorageLib
             .getGrantedAddressesToInteractWithVault();
         accessControl.value[account] = 1;
         emit AccessGrantedToVault(account);
@@ -26,7 +26,7 @@ library AccessControlLib {
         if (account == address(0)) {
             revert WrongAddress();
         }
-        PlazmaVaultStorageLib.GrantedAddressesToInteractWithVault storage accessControl = PlazmaVaultStorageLib
+        PlasmaVaultStorageLib.GrantedAddressesToInteractWithVault storage accessControl = PlasmaVaultStorageLib
             .getGrantedAddressesToInteractWithVault();
         accessControl.value[account] = 0;
         emit AccessRevokedToVault(account);
@@ -34,8 +34,8 @@ library AccessControlLib {
 
     function isAccessGrantedToVault(address account) internal view returns (bool) {
         if (
-            PlazmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[address(0)] == 0 ||
-            PlazmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[account] == 1
+            PlasmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[address(0)] == 0 ||
+            PlasmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[account] == 1
         ) {
             return true;
         }
@@ -43,16 +43,16 @@ library AccessControlLib {
     }
 
     function activateAccessControl() internal {
-        PlazmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[address(0)] = 1;
+        PlasmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[address(0)] = 1;
         emit AccessControlActivated();
     }
 
     function deactivateAccessControl() internal {
-        PlazmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[address(0)] = 0;
+        PlasmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[address(0)] = 0;
         emit AccessControlDeactivated();
     }
 
     function isControlAccessActivated() internal view returns (bool) {
-        return PlazmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[address(0)] == 1;
+        return PlasmaVaultStorageLib.getGrantedAddressesToInteractWithVault().value[address(0)] == 1;
     }
 }

@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
 contract ERC4626BalanceFuse is IMarketBalanceFuse {
@@ -21,8 +21,8 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
         PRICE_ORACLE = IIporPriceOracle(priceOracle);
     }
 
-    function balanceOf(address plazmaVault) external view override returns (uint256) {
-        bytes32[] memory vaults = PlazmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+    function balanceOf(address plasmaVault) external view override returns (uint256) {
+        bytes32[] memory vaults = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = vaults.length;
 
@@ -35,8 +35,8 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
         IERC4626 vault;
 
         for (uint256 i; i < len; ++i) {
-            vault = IERC4626(PlazmaVaultConfigLib.bytes32ToAddress(vaults[i]));
-            vaultAssets = vault.convertToAssets(vault.balanceOf(plazmaVault));
+            vault = IERC4626(PlasmaVaultConfigLib.bytes32ToAddress(vaults[i]));
+            vaultAssets = vault.convertToAssets(vault.balanceOf(plasmaVault));
             balance += IporMath.convertToWad(
                 vaultAssets * PRICE_ORACLE.getAssetPrice(vault.asset()),
                 vault.decimals() + PRICE_DECIMALS

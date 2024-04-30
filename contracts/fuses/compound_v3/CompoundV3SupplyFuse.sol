@@ -6,7 +6,7 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
 import {IApproveERC20} from "../IApproveERC20.sol";
 import {IComet} from "./IComet.sol";
-import {PlazmaVaultConfigLib} from "../../libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
@@ -65,13 +65,13 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
     function instantWithdraw(bytes32[] calldata params) external override {
         uint256 amount = uint256(params[0]);
-        address asset = PlazmaVaultConfigLib.bytes32ToAddress(params[1]);
+        address asset = PlasmaVaultConfigLib.bytes32ToAddress(params[1]);
 
         _exit(CompoundV3SupplyFuseExitData(asset, amount));
     }
 
     function _enter(CompoundV3SupplyFuseEnterData memory data) internal {
-        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert CompoundV3SupplyFuseUnsupportedAsset("enter", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
@@ -83,7 +83,7 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _exit(CompoundV3SupplyFuseExitData memory data) internal {
-        if (!PlazmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert CompoundV3SupplyFuseUnsupportedAsset("exit", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 

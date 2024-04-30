@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {AaveV2SupplyFuse, AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
-import {PlazmaVaultConfigLib} from "../../../contracts/libraries/PlazmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 
 contract AaveV2SupplyFuseMock {
     using Address for address;
@@ -38,6 +38,6 @@ contract AaveV2SupplyFuseMock {
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
-        PlazmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
+        PlasmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
     }
 }
