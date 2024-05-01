@@ -22,12 +22,23 @@ contract PlasmaVaultMaintenanceTest is Test {
     uint256 public constant AAVE_V3_MARKET_ID = 1;
 
     address public owner = address(this);
+    address public alpha = address(0x1);
+
+    string public assetName = "IPOR Fusion DAI";
+    string public assetSymbol = "ipfDAI";
+
+    address[] private alphas;
+
+    bytes32[] private assets;
 
     IporPriceOracle private iporPriceOracleProxy;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
-
+        alphas = new address[](1);
+        alphas[0] = alpha;
+        assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
         IporPriceOracle implementation = new IporPriceOracle(
             0x0000000000000000000000000000000000000348,
             8,
@@ -43,13 +54,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldSetupBalanceFusesWhenVaultCreated() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -85,13 +90,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldAddBalanceFuseByOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -135,13 +134,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldSetupFusesWhenVaultCreated() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -172,13 +165,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldAddFuseByOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -212,17 +199,9 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldAddFuseByOwnerAndExecuteAction() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
-        bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         address[] memory supplyFuses = new address[](0);
@@ -281,13 +260,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldAddFusesByOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         AaveV3SupplyFuse supplyFuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         AaveV3SupplyFuse supplyFuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
@@ -328,17 +301,9 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldAddFusesByOwnerAndExecuteAction() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
 
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
-
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
-        bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         address[] memory initialSupplyFuses = new address[](0);
@@ -416,13 +381,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotAddFuseWhenNotOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
 
@@ -460,13 +419,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotAddFusesWhenNotOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         AaveV3SupplyFuse supplyFuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         AaveV3SupplyFuse supplyFuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
@@ -511,17 +464,9 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldExecutionFailWhenFuseNotAdded() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
 
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
-
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
-        bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         address[] memory initialSupplyFuses = new address[](0);
@@ -579,17 +524,9 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldExecutionFailWhenFuseIsRemoved() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
 
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
-
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
-        bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
         marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
         address[] memory initialSupplyFuses = new address[](0);
@@ -649,13 +586,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldRemoveFuseByOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -690,13 +621,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldRemoveFusesByOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         AaveV3SupplyFuse supplyFuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         AaveV3SupplyFuse supplyFuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
@@ -740,13 +665,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotRemoveFuseWhenNotOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
 
@@ -786,13 +705,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotRemoveFusesWhenNotOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         AaveV3SupplyFuse supplyFuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         AaveV3SupplyFuse supplyFuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
@@ -836,13 +749,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldAddAndRemoveFuseWhenOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         AaveV3SupplyFuse supplyFuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         AaveV3SupplyFuse supplyFuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
@@ -886,13 +793,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldAddAndRemoveFusesWhenOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-
-        address[] memory alphas = new address[](1);
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         AaveV3SupplyFuse supplyFuse1 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
         AaveV3SupplyFuse supplyFuse2 = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x2), address(0x2));
@@ -939,13 +840,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldSetupAlphaWhenVaultCreated() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -973,13 +868,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotSetupAlphaWhenVaultIsCreated() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1007,13 +896,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldSetupAlphaByOwner() public {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1043,13 +926,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldAccessControlDeactivatedAfterCreateVault() external {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1080,13 +957,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldBeAbleToActivateAccessControl() external {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1120,13 +991,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotBeAbleToActivateAccessControlWhenNotOwner() external {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1163,13 +1028,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldBeAbleToDeactivateAccessControl() external {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1205,13 +1064,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotBeAbleToDeactivateAccessControlWhenNotOwner() external {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1250,13 +1103,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldBeAbleToUpdatePriceOracle() external {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1292,13 +1139,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotBeAbleToUpdatePriceOracleWhenDecimalIdWrong() external {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1337,13 +1178,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotBeAbleToUpdatePriceOracleWhenCurrencyIsWrong() external {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
@@ -1382,13 +1217,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function testShouldNotBeAbleToUpdatePriceOracleWhenNotOwner() external {
         // given
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](0);
 
