@@ -509,6 +509,144 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertFalse(plasmaVault.isFuseSupported(address(supplyFuse2)));
     }
 
+    function testShouldExecutionFailWhenFuseNotAdded() public {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+
+        address[] memory alphas = new address[](1);
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            initialSupplyFuses,
+            balanceFuses,
+            address(0x777),
+            0
+        );
+
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(plasmaVault), amount);
+
+        calls[0] = PlasmaVault.FuseAction(
+            address(supplyFuse),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
+            )
+        );
+
+        assertFalse(plasmaVault.isFuseSupported(address(supplyFuse)));
+
+        // when
+        vm.expectRevert();
+        plasmaVault.execute(calls);
+
+        // then
+        assertFalse(plasmaVault.isFuseSupported(address(supplyFuse)));
+    }
+
+    function testShouldExecutionFailWhenFuseIsRemoved() public {
+        // given
+        string memory assetName = "IPOR Fusion DAI";
+        string memory assetSymbol = "ipfDAI";
+        address underlyingToken = DAI;
+
+        address[] memory alphas = new address[](1);
+        address alpha = address(0x1);
+        alphas[0] = alpha;
+
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            initialSupplyFuses,
+            balanceFuses,
+            address(0x777),
+            0
+        );
+
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(plasmaVault), amount);
+
+        calls[0] = PlasmaVault.FuseAction(
+            address(supplyFuse),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
+            )
+        );
+
+        assertFalse(plasmaVault.isFuseSupported(address(supplyFuse)));
+
+        // when
+        plasmaVault.addFuse(address(supplyFuse));
+        plasmaVault.removeFuse(address(supplyFuse));
+        vm.expectRevert();
+        plasmaVault.execute(calls);
+
+        // then
+        assertFalse(plasmaVault.isFuseSupported(address(supplyFuse)));
+    }
+
     function testShouldRemoveFuseByOwner() public {
         // given
         string memory assetName = "IPOR Fusion DAI";
