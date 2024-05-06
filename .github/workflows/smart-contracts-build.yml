@@ -119,7 +119,7 @@ jobs:
                   ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
                   ARBITRUM_PROVIDER_URL: ${{ secrets.ARBITRUM_PROVIDER_URL }}
               run: |
-                  forge test ${{ inputs.test-options }} -vvv --iff
+                  forge test ${{ inputs.test-options }} -vvv --ffi
               id: test
 
             - name: Solhit
