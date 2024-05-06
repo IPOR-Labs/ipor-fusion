@@ -37,10 +37,6 @@ library PlasmaVaultStorageLib {
     bytes32 private constant CFG_PLASMA_VAULT_BALANCE_FUSES =
         0xa5d630b12943d05aa5b6826803880948eb9a1ad1cf4a04bb7a5d69aae8b60600;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultBalanceFusesArray")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CFG_PLASMA_VAULT_BALANCE_FUSES_ARRAY =
-        0xf531919d0b746f08e934928426e18847fe5fabaf4cddaf2d95b336c5765f0200;
-
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultInstantWithdrawalFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_INSTANT_WITHDRAWAL_FUSES_ARRAY =
         0x4320b221b0115d4c27700eb9530f9b97354a11fc1d15a3bfa71b7d6e46733f00;
@@ -195,12 +191,6 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getBalanceFusesArray() internal pure returns (BalanceFusesArray storage balanceFusesArray) {
-        assembly {
-            balanceFusesArray.slot := CFG_PLASMA_VAULT_BALANCE_FUSES_ARRAY
-        }
-    }
-
     function getInstantWithdrawalFusesArray()
         internal
         pure
@@ -247,10 +237,5 @@ library PlasmaVaultStorageLib {
         assembly {
             managementFeeData.slot := PLASMA_VAULT_MANAGEMENT_FEE_DATA
         }
-    }
-
-    function updateManagementFeeData(uint256 newUpdateTimestamp) internal {
-        ManagementFeeData storage managementFeeData = getManagementFeeData();
-        managementFeeData.lastUpdateTimestamp = newUpdateTimestamp.toUint32();
     }
 }
