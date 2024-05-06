@@ -20,6 +20,9 @@ library PlasmaVaultLib {
     event TotalAssetsInMarketAdded(uint256 marketId, int256 amount);
     event InstantWithdrawalFusesUpdated(InstantWithdrawalFusesParamsStruct[] fuses);
     event PriceOracleChanged(address newPriceOracle);
+    event ManagementFeeDataUpdated(uint256 newUpdateTimestamp);
+    event PerformanceFeeDataConfigured(address feeManager, uint256 feeInPercentage);
+    event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
 
     /// @notice Gets the total assets in the vault for all markets
     /// @return The total assets in the vault for all markets, represented in decimals of the underlying asset
@@ -60,22 +63,43 @@ library PlasmaVaultLib {
         emit TotalAssetsInMarketAdded(marketId, deltaInUnderlying);
     }
 
-    function getFees() internal view returns (PlasmaVaultStorageLib.Fees memory fees) {
-        return PlasmaVaultStorageLib.getFees().value;
+    function getManagementFeeData()
+        internal
+        pure
+        returns (PlasmaVaultStorageLib.ManagementFeeData memory managementFeeData)
+    {
+        return PlasmaVaultStorageLib.getManagementFeeData();
     }
 
-    function setFeeManager(address newFeeManager) internal {
-        PlasmaVaultStorageLib.getFees().value.manager = newFeeManager;
+    function configureManagementFeeData(address feeManager, uint256 feeInPercentage) internal {
+        PlasmaVaultStorageLib.ManagementFeeData storage managementFeeData = PlasmaVaultStorageLib
+            .getManagementFeeData();
+        managementFeeData.feeManager = feeManager;
+        managementFeeData.feeInPercentage = feeInPercentage.toUint16();
+        emit ManagementFeeDataConfigured(feeManager, feeInPercentage);
     }
 
-    function setFeeConfiguration(uint256 newPerformanceFeeInPercentage, uint256 newManagementFeeInPercentage) internal {
-        PlasmaVaultStorageLib.getFees().value.cfgPerformanceFeeInPercentage = newPerformanceFeeInPercentage.toUint16();
-        PlasmaVaultStorageLib.getFees().value.cfgManagementFeeInPercentage = newManagementFeeInPercentage.toUint16();
+    function getPerformanceFeeData()
+        internal
+        pure
+        returns (PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData)
+    {
+        return PlasmaVaultStorageLib.getPerformanceFeeData();
     }
 
-    function addFeeBalance(uint256 newPerformanceFeeBalance, uint256 newManagementFeeBalance) internal {
-        PlasmaVaultStorageLib.getFees().value.performanceFeeBalance += newPerformanceFeeBalance.toUint32();
-        PlasmaVaultStorageLib.getFees().value.managementFeeBalance += newManagementFeeBalance.toUint32();
+    function configurePerformanceFeeData(address feeManager, uint256 feeInPercentage) internal {
+        PlasmaVaultStorageLib.PerformanceFeeData storage performanceFeeData = PlasmaVaultStorageLib
+            .getPerformanceFeeData();
+        performanceFeeData.feeManager = feeManager;
+        performanceFeeData.feeInPercentage = feeInPercentage.toUint16();
+        emit PerformanceFeeDataConfigured(feeManager, feeInPercentage);
+    }
+
+    /// @notice Updates the management fee data with the current timestamp
+    function updateManagementFeeData() internal {
+        PlasmaVaultStorageLib.ManagementFeeData storage feeData = PlasmaVaultStorageLib.getManagementFeeData();
+        feeData.lastUpdateTimestamp = block.timestamp.toUint32();
+        emit ManagementFeeDataUpdated(block.timestamp);
     }
 
     function getInstantWithdrawalFuses() internal view returns (address[] memory) {

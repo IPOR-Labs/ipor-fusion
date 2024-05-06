@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 /// @title Storage
 library PlasmaVaultStorageLib {
+    using SafeCast for uint256;
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
         0xf660efede6b8071aab61a75191de57a4a8a416b088f961d8c2a18168aa7c7700;
@@ -53,8 +57,17 @@ library PlasmaVaultStorageLib {
     bytes32 private constant CFG_PLASMA_VAULT_GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT =
         0xfa87daeda1dbf9ff4e1e074074afad700558780bbfeeb3fc95c580b632362700;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultFees")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CFG_PLASMA_VAULT_FEES = 0x08218d6b001db865cb48a91c7dacc07e49d68c8ca266334a4720f2a519c85600;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultFeeConfig")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant CFG_PLASMA_VAULT_FEE_CONFIG =
+        0xc54b723690b3d8f5a3756b82753e38bca87e5d79881cee3d06a3f9eb950f0f00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultPerformanceFeeBalance")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PLASMA_VAULT_PERFORMANCE_FEE_DATA =
+        0x85f2604ff2083d11fa5a4fd3dae6fc9bf13339301d6d5c1d657d69418cb3bb00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultManagementFeeBalance")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
+        0x0b4938b4d6832e477b3f9bc9bb46b333525f35f78b9667528a6f98094da8c800;
 
     struct TotalAssets {
         /// @dev total assets in the vault
@@ -124,22 +137,15 @@ library PlasmaVaultStorageLib {
         mapping(address => uint256) value;
     }
 
-    /// @notice Fee configuration and balance
-    struct Fees {
-        /// @notice Fee Manager address, all fees are sent to this address and then distributed based on logic implemented in the Fee Manager contract
-        address manager;
-        /// @notice Configuration of performance fee in percentage, represented in 2 decimals, 100% = 10000, 1% = 100, 0.01% = 1
-        uint16 cfgPerformanceFeeInPercentage;
-        /// @notice Configuration of management fee in percentage, represented in 2 decimals, 100% = 10000, 1% = 100, 0.01% = 1
-        uint16 cfgManagementFeeInPercentage;
-        /// @notice Performance fee balance, accounting for the performance fee
-        uint32 performanceFeeBalance;
-        /// @notice Management fee balance, accounting for the management fee
-        uint32 managementFeeBalance;
+    struct PerformanceFeeData {
+        address feeManager;
+        uint16 feeInPercentage;
     }
 
-    struct FeeStorage {
-        Fees value;
+    struct ManagementFeeData {
+        address feeManager;
+        uint16 feeInPercentage;
+        uint32 lastUpdateTimestamp;
     }
 
     struct PriceOracle {
@@ -225,15 +231,26 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getFees() internal pure returns (FeeStorage storage fees) {
-        assembly {
-            fees.slot := CFG_PLASMA_VAULT_FEES
-        }
-    }
-
     function getPriceOracle() internal pure returns (PriceOracle storage oracle) {
         assembly {
             oracle.slot := PRICE_ORACLE
         }
+    }
+
+    function getPerformanceFeeData() internal pure returns (PerformanceFeeData storage performanceFeeData) {
+        assembly {
+            performanceFeeData.slot := PLASMA_VAULT_PERFORMANCE_FEE_DATA
+        }
+    }
+
+    function getManagementFeeData() internal pure returns (ManagementFeeData storage managementFeeData) {
+        assembly {
+            managementFeeData.slot := PLASMA_VAULT_MANAGEMENT_FEE_DATA
+        }
+    }
+
+    function updateManagementFeeData(uint256 newUpdateTimestamp) internal {
+        ManagementFeeData storage managementFeeData = getManagementFeeData();
+        managementFeeData.lastUpdateTimestamp = newUpdateTimestamp.toUint32();
     }
 }

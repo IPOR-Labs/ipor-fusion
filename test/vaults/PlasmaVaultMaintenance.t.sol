@@ -73,8 +73,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         // then
@@ -112,8 +111,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         assertFalse(
@@ -160,8 +158,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         // then
@@ -193,8 +190,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
@@ -236,8 +232,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         assertTrue(plasmaVault.isFuseSupported(address(fuse)));
@@ -275,8 +270,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         // then
@@ -309,8 +303,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         // then
@@ -342,8 +335,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         //when
@@ -378,8 +370,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         // when
@@ -415,8 +406,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         bool isAccessControlActiveBefore = plasmaVault.isAccessControlActivated();
@@ -455,8 +445,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         bool isAccessControlActiveBefore = plasmaVault.isAccessControlActivated();
@@ -498,8 +487,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
         vm.prank(owner);
         plasmaVault.activateAccessControl();
@@ -540,8 +528,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
         vm.prank(owner);
         plasmaVault.activateAccessControl();
@@ -585,8 +572,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         address newPriceOracle = address(new IporPriceOracleMock(USD, 8, address(0)));
@@ -627,8 +613,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         address newPriceOracle = address(new IporPriceOracleMock(USD, 6, address(0)));
@@ -672,8 +657,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         address newPriceOracle = address(new IporPriceOracleMock(address(0x777), 8, address(0)));
@@ -717,8 +701,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         address newPriceOracle = address(new IporPriceOracleMock(USD, 8, address(0)));

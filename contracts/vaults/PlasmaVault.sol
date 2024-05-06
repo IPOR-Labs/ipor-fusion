@@ -21,6 +21,7 @@ import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 
+/// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 contract PlasmaVault is ERC4626Permit, Ownable2Step {
     using Address for address;
     using SafeCast for int256;
@@ -28,8 +29,15 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
+    modifier OnlyGrantedAccess() {
+        AccessControlLib.isAccessGrantedToVault(msg.sender);
+        _;
+    }
+
     error NoSharesToRedeem();
+    error NoSharesToMint();
     error NoAssetsToWithdraw();
+    error NoAssetsToDeposit();
     error InvalidAlpha();
     error UnsupportedFuse();
 
@@ -59,8 +67,20 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         bytes32[] substrates;
     }
 
+    struct FeeConfig {
+        /// @notice performanceFeeManager is a address of the performance fee manager
+        address performanceFeeManager;
+        /// @notice performanceFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+        uint256 performanceFeeInPercentage;
+        /// @notice managementFeeManager is a address of the management fee manager
+        address managementFeeManager;
+        /// @notice managementFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+        uint256 managementFeeInPercentage;
+    }
+
     uint256 public immutable BASE_CURRENCY_DECIMALS;
 
+    /// @param initialOwner Address of the owner
     /// @param assetName Name of the asset
     /// @param assetSymbol Symbol of the asset
     /// @param underlyingToken Address of the underlying token
@@ -68,6 +88,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
     /// @param marketSubstratesConfigs Array of market configurations
     /// @param fuses Array of fuses
     /// @param balanceFuses Array of balance fuses
+    /// @param feeConfig Fee configuration
     constructor(
         address initialOwner,
         string memory assetName,
@@ -78,8 +99,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         MarketSubstratesConfig[] memory marketSubstratesConfigs,
         address[] memory fuses,
         MarketBalanceFuseConfig[] memory balanceFuses,
-        address daoInput,
-        uint256 performanceFeeInPercentageInput
+        FeeConfig memory feeConfig
     )
         ERC4626Permit(IERC20(underlyingToken))
         ERC20Permit(assetName)
@@ -115,8 +135,19 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
             );
         }
 
-        PlasmaVaultLib.setFeeManager(daoInput);
-        PlasmaVaultLib.setFeeConfiguration(performanceFeeInPercentageInput, 0);
+        PlasmaVaultLib.configurePerformanceFeeData(
+            feeConfig.performanceFeeManager,
+            feeConfig.performanceFeeInPercentage
+        );
+        PlasmaVaultLib.configureManagementFeeData(feeConfig.managementFeeManager, feeConfig.managementFeeInPercentage);
+    }
+
+    receive() external payable {}
+
+    fallback() external {
+        ///TODO: read msg.sender (if Morpho) and read method signature to determine fuse address to execute
+        /// delegate call on method onMorphoFlashLoan
+        /// separate contract with configuration which fuse use which flashloan method and protocol
     }
 
     /// @notice Execute multiple FuseActions by a Alpha. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
@@ -148,14 +179,18 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         uint256 totalAssetsAfter = totalAssets();
 
         if (totalAssetsAfter > totalAssetsBefore) {
-            _calculateAndMintPerformanceFee(totalAssetsAfter - totalAssetsBefore);
+            _addPerformanceFee(totalAssetsAfter - totalAssetsBefore);
         }
     }
 
     /// @notice Returns the total assets in the vault
+    /// @dev value not take into account runtime accrued interest in the markets, and NOT take into account runtime accrued management fee
     /// @return total assets in the vault, represented in underlying token decimals
     function totalAssets() public view virtual override returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
+        uint256 totalAssetsWithoutUnrealizedManagementFee = _getTotalAssetsWithoutUnrealizedManagementFee();
+        return
+            totalAssetsWithoutUnrealizedManagementFee -
+            _getUnrealizedManagementFee(totalAssetsWithoutUnrealizedManagementFee);
     }
 
     /// @notice Returns the total assets in the vault for a specific market
@@ -165,10 +200,50 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         return PlasmaVaultLib.getTotalAssetsInMarket(marketId);
     }
 
+    /// @notice Returns the unrealized management fee
+    /// @return unrealized management fee, represented in underlying token decimals
+    function getUnrealizedManagementFee() public view returns (uint256) {
+        return _getUnrealizedManagementFee(_getTotalAssetsWithoutUnrealizedManagementFee());
+    }
+
+    function deposit(uint256 assets, address receiver) public override OnlyGrantedAccess returns (uint256) {
+        if (assets == 0) {
+            revert NoAssetsToDeposit();
+        }
+        if (receiver == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
+        _realizeManagementFee();
+
+        return super.deposit(assets, receiver);
+    }
+
+    function mint(uint256 shares, address receiver) public override OnlyGrantedAccess returns (uint256) {
+        if (shares == 0) {
+            revert NoSharesToMint();
+        }
+        if (receiver == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
+        _realizeManagementFee();
+
+        return super.mint(shares, receiver);
+    }
+
     function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToWithdraw();
         }
+
+        if (receiver == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
+        /// @dev first realize management fee, then other actions
+        _realizeManagementFee();
+
         uint256 totalAssetsBefore = totalAssets();
 
         _withdrawFromMarkets(assets, IERC20(asset()).balanceOf(address(this)));
@@ -176,7 +251,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         uint256 totalAssetsAfter = totalAssets();
 
         if (totalAssetsAfter > totalAssetsBefore) {
-            _calculateAndMintPerformanceFee(totalAssetsAfter - totalAssetsBefore);
+            _addPerformanceFee(totalAssetsAfter - totalAssetsBefore);
         }
 
         return super.withdraw(assets, receiver, owner);
@@ -186,6 +261,13 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         if (shares == 0) {
             revert NoSharesToRedeem();
         }
+
+        if (receiver == address(0) || owner == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
+        /// @dev first realize management fee, then other actions
+        _realizeManagementFee();
 
         uint256 assets;
         uint256 vaultCurrentBalanceUnderlying;
@@ -206,7 +288,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         uint256 totalAssetsAfter = totalAssets();
 
         if (totalAssetsAfter > totalAssetsBefore) {
-            _calculateAndMintPerformanceFee(totalAssetsAfter - totalAssetsBefore);
+            _addPerformanceFee(totalAssetsAfter - totalAssetsBefore);
         }
 
         return super.redeem(shares, receiver, owner);
@@ -214,6 +296,30 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
 
     function isAlphaGranted(address alpha) external view returns (bool) {
         return AlphasLib.isAlphaGranted(alpha);
+    }
+
+    function isMarketSubstrateGranted(uint256 marketId, bytes32 substrate) external view returns (bool) {
+        return PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId, substrate);
+    }
+
+    function isFuseSupported(address fuse) external view returns (bool) {
+        return FusesLib.isFuseSupported(fuse);
+    }
+
+    function isBalanceFuseSupported(uint256 marketId, address fuse) external view returns (bool) {
+        return FusesLib.isBalanceFuseSupported(marketId, fuse);
+    }
+
+    function getFuses() external view returns (address[] memory) {
+        return FusesLib.getFusesArray();
+    }
+
+    function isAccessControlActivated() external view returns (bool) {
+        return AccessControlLib.isControlAccessActivated();
+    }
+
+    function getPriceOracle() external view returns (address) {
+        return PlasmaVaultLib.getPriceOracle();
     }
 
     function grantAlpha(address alpha) external onlyOwner {
@@ -230,14 +336,6 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         AlphasLib.revokeAlpha(alpha);
     }
 
-    function isFuseSupported(address fuse) external view returns (bool) {
-        return FusesLib.isFuseSupported(fuse);
-    }
-
-    function getFuses() external view returns (address[] memory) {
-        return FusesLib.getFusesArray();
-    }
-
     function addFuse(address fuse) external onlyOwner {
         _addFuse(fuse);
     }
@@ -249,20 +347,12 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         FusesLib.removeFuse(fuse);
     }
 
-    function isBalanceFuseSupported(uint256 marketId, address fuse) external view returns (bool) {
-        return FusesLib.isBalanceFuseSupported(marketId, fuse);
-    }
-
     function addBalanceFuse(uint256 marketId, address fuse) external onlyOwner {
         _addBalanceFuse(marketId, fuse);
     }
 
     function removeBalanceFuse(uint256 marketId, address fuse) external onlyOwner {
         FusesLib.removeBalanceFuse(marketId, fuse);
-    }
-
-    function isMarketSubstrateGranted(uint256 marketId, bytes32 substrate) external view returns (bool) {
-        return PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId, substrate);
     }
 
     function grandMarketSubstrates(uint256 marketId, bytes32[] calldata substrates) external onlyOwner {
@@ -275,16 +365,80 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         PlasmaVaultLib.updateInstantWithdrawalFuses(fuses);
     }
 
-    function _calculateAndMintPerformanceFee(uint256 deltasInUnderlying) internal {
-        PlasmaVaultStorageLib.Fees memory feesStruct = PlasmaVaultLib.getFees();
+    /// TODO: use in fuse when fuse configurator contract is ready
+    //solhint-disable-next-line
+    function onMorphoFlashLoan(uint256 flashLoanAmount, bytes calldata data) external payable {
+        //        uint256 assetBalanceBeforeCalls = IERC20(WST_ETH).balanceOf(payable(this));
 
-        uint256 fee = Math.mulDiv(deltasInUnderlying, feesStruct.cfgPerformanceFeeInPercentage, 100);
+        FuseAction[] memory calls = abi.decode(data, (FuseAction[]));
 
-        uint256 feeInShares = convertToShares(fee);
+        if (calls.length == 0) {
+            return;
+        }
 
-        PlasmaVaultLib.addFeeBalance(feeInShares, 0);
+        PlasmaVault(payable(this)).execute(calls);
 
-        _mint(feesStruct.manager, feeInShares);
+        //        uint256 assetBalanceAfterCalls = IERC20(WST_ETH).balanceOf(payable(this));
+    }
+
+    function addFuses(address[] calldata fuses) external onlyOwner {
+        for (uint256 i; i < fuses.length; ++i) {
+            FusesLib.addFuse(fuses[i]);
+        }
+    }
+
+    function removeFuses(address[] calldata fuses) external onlyOwner {
+        for (uint256 i; i < fuses.length; ++i) {
+            FusesLib.removeFuse(fuses[i]);
+        }
+    }
+
+    function activateAccessControl() external onlyOwner {
+        AccessControlLib.activateAccessControl();
+    }
+
+    function grantAccessToVault(address account) external onlyOwner {
+        AccessControlLib.grantAccessToVault(account);
+    }
+
+    function revokeAccessToVault(address account) external onlyOwner {
+        AccessControlLib.revokeAccessToVault(account);
+    }
+
+    function deactivateAccessControl() external onlyOwner {
+        AccessControlLib.deactivateAccessControl();
+    }
+
+    function setPriceOracle(address priceOracle) external onlyOwner {
+        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlasmaVaultLib.getPriceOracle());
+        IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
+        if (
+            oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
+            oldPriceOracle.BASE_CURRENCY_DECIMALS() != newPriceOracle.BASE_CURRENCY_DECIMALS()
+        ) {
+            revert Errors.UnsupportedPriceOracle(Errors.PRICE_ORACLE_ERROR);
+        }
+
+        PlasmaVaultLib.setPriceOracle(priceOracle);
+    }
+
+    function _addPerformanceFee(uint256 deltasInUnderlying) internal {
+        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
+
+        uint256 fee = Math.mulDiv(deltasInUnderlying, feeData.feeInPercentage, 1e4);
+
+        _mint(feeData.feeManager, convertToShares(fee));
+    }
+
+    function _realizeManagementFee() internal {
+        PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
+
+        uint256 unrealizedFeeInUnderlying = getUnrealizedManagementFee();
+
+        PlasmaVaultLib.updateManagementFeeData();
+
+        /// @dev minting is an act of management fee realization
+        _mint(feeData.feeManager, convertToShares(unrealizedFeeInUnderlying));
     }
 
     function _includeSlippage(uint256 value) internal pure returns (uint256) {
@@ -413,89 +567,24 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         }
     }
 
-    /// TODO: use in fuse when fuse configurator contract is ready
-    //solhint-disable-next-line
-    function onMorphoFlashLoan(uint256 flashLoanAmount, bytes calldata data) external payable {
-        //        uint256 assetBalanceBeforeCalls = IERC20(WST_ETH).balanceOf(payable(this));
-
-        FuseAction[] memory calls = abi.decode(data, (FuseAction[]));
-
-        if (calls.length == 0) {
-            return;
-        }
-
-        PlasmaVault(payable(this)).execute(calls);
-
-        //        uint256 assetBalanceAfterCalls = IERC20(WST_ETH).balanceOf(payable(this));
+    function _getTotalAssetsWithoutUnrealizedManagementFee() internal view returns (uint256) {
+        return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
-    receive() external payable {}
+    function _getUnrealizedManagementFee(uint256 totalAssets) internal view returns (uint256) {
+        PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
 
-    fallback() external {
-        ///TODO: read msg.sender (if Morpho) and read method signature to determine fuse address to execute
-        /// delegate call on method onMorphoFlashLoan
-        /// separate contract with configuration which fuse use which flashloan method and protocol
-    }
+        uint256 blockTimestamp = block.timestamp;
 
-    function addFuses(address[] calldata fuses) external onlyOwner {
-        for (uint256 i; i < fuses.length; ++i) {
-            FusesLib.addFuse(fuses[i]);
-        }
-    }
-
-    function removeFuses(address[] calldata fuses) external onlyOwner {
-        for (uint256 i; i < fuses.length; ++i) {
-            FusesLib.removeFuse(fuses[i]);
-        }
-    }
-
-    function deposit(uint256 assets, address receiver) public override OnlyGrantedAccess returns (uint256) {
-        return super.deposit(assets, receiver);
-    }
-
-    function mint(uint256 shares, address receiver) public override OnlyGrantedAccess returns (uint256) {
-        return super.mint(shares, receiver);
-    }
-
-    function activateAccessControl() external onlyOwner {
-        AccessControlLib.activateAccessControl();
-    }
-
-    function grantAccessToVault(address account) external onlyOwner {
-        AccessControlLib.grantAccessToVault(account);
-    }
-
-    function revokeAccessToVault(address account) external onlyOwner {
-        AccessControlLib.revokeAccessToVault(account);
-    }
-
-    function deactivateAccessControl() external onlyOwner {
-        AccessControlLib.deactivateAccessControl();
-    }
-
-    function isAccessControlActivated() external view returns (bool) {
-        return AccessControlLib.isControlAccessActivated();
-    }
-
-    function getPriceOracle() external view returns (address) {
-        return PlasmaVaultLib.getPriceOracle();
-    }
-
-    function setPriceOracle(address priceOracle) external onlyOwner {
-        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlasmaVaultLib.getPriceOracle());
-        IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
         if (
-            oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
-            oldPriceOracle.BASE_CURRENCY_DECIMALS() != newPriceOracle.BASE_CURRENCY_DECIMALS()
+            feeData.feeInPercentage == 0 ||
+            feeData.lastUpdateTimestamp == 0 ||
+            blockTimestamp <= feeData.lastUpdateTimestamp
         ) {
-            revert Errors.UnsupportedPriceOracle(Errors.PRICE_ORACLE_ERROR);
+            return 0;
         }
 
-        PlasmaVaultLib.setPriceOracle(priceOracle);
-    }
-
-    modifier OnlyGrantedAccess() {
-        AccessControlLib.isAccessGrantedToVault(msg.sender);
-        _;
+        return
+            (totalAssets * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
     }
 }
