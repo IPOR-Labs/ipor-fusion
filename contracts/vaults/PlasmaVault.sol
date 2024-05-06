@@ -322,6 +322,14 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         return PlasmaVaultLib.getPriceOracle();
     }
 
+    function getPerformanceFeeData() external view returns (PlasmaVaultStorageLib.PerformanceFeeData memory feeData) {
+        feeData = PlasmaVaultLib.getPerformanceFeeData();
+    }
+
+    function getManagementFeeData() external view returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData) {
+        feeData = PlasmaVaultLib.getManagementFeeData();
+    }
+
     function grantAlpha(address alpha) external onlyOwner {
         if (alpha == address(0)) {
             revert Errors.WrongAddress();
@@ -420,6 +428,14 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         }
 
         PlasmaVaultLib.setPriceOracle(priceOracle);
+    }
+
+    function configurePerformanceFeeData(address feeManager, uint256 feeInPercentage) external onlyOwner {
+        PlasmaVaultLib.configurePerformanceFeeData(feeManager, feeInPercentage);
+    }
+
+    function configureManagementFeeData(address feeManager, uint256 feeInPercentage) external onlyOwner {
+        PlasmaVaultLib.configureManagementFeeData(feeManager, feeInPercentage);
     }
 
     function _addPerformanceFee(uint256 deltasInUnderlying) internal {
