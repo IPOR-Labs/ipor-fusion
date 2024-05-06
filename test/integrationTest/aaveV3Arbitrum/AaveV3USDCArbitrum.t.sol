@@ -21,10 +21,6 @@ contract AaveV3USDCArbitrum is SupplyTest {
         init();
     }
 
-    function testShouldWork() external {
-        assertTrue(true, "It should work");
-    }
-
     function setupAsset() public override {
         asset = USDC;
     }

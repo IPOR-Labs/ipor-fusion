@@ -1,136 +1,135 @@
 name: Smart contracts build
 
 on:
-  workflow_call:
-    secrets:
-      ETHEREUM_PROVIDER_URL:
-        required: true
-      ARBITRUM_PROVIDER_URL:
-        required: true
+    workflow_call:
+        secrets:
+            ETHEREUM_PROVIDER_URL:
+                required: true
+            ARBITRUM_PROVIDER_URL:
+                required: true
 
-    inputs:
+        inputs:
+            node-version:
+                description: "Node.js version"
+                type: string
+                default: 20.11.1
+                required: false
 
-      node-version:
-        description: "Node.js version"
-        type: string
-        default: 20.11.1
-        required: false
+            build-enabled:
+                description: "Enable build"
+                type: boolean
+                default: true
+                required: false
 
-      build-enabled:
-        description: "Enable build"
-        type: boolean
-        default: true
-        required: false
+            sizes-enabled:
+                description: "Enable Forge sizes check"
+                type: boolean
+                default: true
+                required: false
 
-      sizes-enabled:
-        description: "Enable Forge sizes check"
-        type: boolean
-        default: true
-        required: false
+            test-enabled:
+                description: "Enable Forge tests"
+                type: boolean
+                default: true
+                required: false
 
-      test-enabled:
-        description: "Enable Forge tests"
-        type: boolean
-        default: true
-        required: false
+            build-options:
+                description: "Extra options in Forge build command"
+                type: string
+                default: ""
+                required: false
 
-      build-options:
-        description: "Extra options in Forge build command"
-        type: string
-        default: ""
-        required: false
+            sizes-options:
+                description: "Extra options in Forge sizes check command"
+                type: string
+                default: ""
+                required: false
 
-      sizes-options:
-        description: "Extra options in Forge sizes check command"
-        type: string
-        default: ""
-        required: false
+            test-options:
+                description: "Extra options in Forge test command"
+                type: string
+                default: ""
+                required: false
 
-      test-options:
-        description: "Extra options in Forge test command"
-        type: string
-        default: ""
-        required: false
+            solhint-enabled:
+                description: "Enable Solhint linting"
+                type: boolean
+                default: true
+                required: false
 
-      solhint-enabled:
-        description: "Enable Solhint linting"
-        type: boolean
-        default: true
-        required: false
-
-      prettier-enabled:
-        description: "Enable Prettier formatting"
-        type: boolean
-        default: true
-        required: false
+            prettier-enabled:
+                description: "Enable Prettier formatting"
+                type: boolean
+                default: true
+                required: false
 
 env:
-  FOUNDRY_PROFILE: ci
+    FOUNDRY_PROFILE: ci
 
 jobs:
-  smart-contracts:
-    runs-on:
-      group: foundry-build
+    smart-contracts:
+        runs-on:
+            group: foundry-build
 
-    steps:
-      - name: Checkout
-        # from tag: v4.1.4
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
-        with:
-          submodules: recursive
+        steps:
+            - name: Checkout
+              # from tag: v4.1.4
+              uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
+              with:
+                  submodules: recursive
 
-      - name: Setup Node.js
-        # from tag: v4.0.2
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8
-        with:
-          node-version: ${{ inputs.node-version }}
+            - name: Setup Node.js
+              # from tag: v4.0.2
+              uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8
+              with:
+                  node-version: ${{ inputs.node-version }}
 
-      - name: Setup node_modules cache
-        # from tag: v4.0.2
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-modules-${{ hashFiles('**/package-lock.json') }}
+            - name: Setup node_modules cache
+              # from tag: v4.0.2
+              uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9
+              with:
+                  path: "**/node_modules"
+                  key: ${{ runner.os }}-modules-${{ hashFiles('**/package-lock.json') }}
 
-      - name: Setup Foundry
-        # from tag: v1.2.0-ipor
-        uses: IPOR-Labs/foundry-toolchain@18ecb60c02f281f6906d3349abfe450d295be7a8
-        with:
-          version: nightly-e01038f35750b4a41b1eda5a4ea3da976027eee2
+            - name: Setup Foundry
+              # from tag: v1.2.0-ipor
+              uses: IPOR-Labs/foundry-toolchain@18ecb60c02f281f6906d3349abfe450d295be7a8
+              with:
+                  version: nightly-e01038f35750b4a41b1eda5a4ea3da976027eee2
 
-      - name: Install
-        run: npm install
+            - name: Install
+              run: npm install
 
-      - name: Forge build
-        if: inputs.build-enabled
-        run: |
-          forge --version
-          forge build ${{ inputs.build-options }}
-        id: build
+            - name: Forge build
+              if: inputs.build-enabled
+              run: |
+                  forge --version
+                  forge build ${{ inputs.build-options }}
+              id: build
 
-      - name: Forge sizes
-        if: inputs.sizes-enabled
-        run: |
-          forge build --sizes ${{ inputs.sizes-options }}
-        id: sizes
+            - name: Forge sizes
+              if: inputs.sizes-enabled
+              run: |
+                  forge build --sizes ${{ inputs.sizes-options }}
+              id: sizes
 
-      - name: Forge tests
-        if: inputs.test-enabled
-        env:
-          ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
-          ARBITRUM_PROVIDER_URL: ${{ secrets.ARBITRUM_PROVIDER_URL }}
-        run: |
-          forge test ${{ inputs.test-options }} -vvv
-        id: test
+            - name: Forge tests
+              if: inputs.test-enabled
+              env:
+                  ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
+                  ARBITRUM_PROVIDER_URL: ${{ secrets.ARBITRUM_PROVIDER_URL }}
+              run: |
+                  forge test ${{ inputs.test-options }} -vvv --iff
+              id: test
 
-      - name: Solhit
-        if: inputs.solhint-enabled
-        run: |
-          npm run solhint:all
-        id: solhint
+            - name: Solhit
+              if: inputs.solhint-enabled
+              run: |
+                  npm run solhint:all
+              id: solhint
 
-      - name: Prettier
-        if: inputs.prettier-enabled
-        run: |
-          npm run prettier:all
-        id: prettier
+            - name: Prettier
+              if: inputs.prettier-enabled
+              run: |
+                  npm run prettier:all
+              id: prettier
