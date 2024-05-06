@@ -2,11 +2,14 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Errors} from "./errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 
 library PlasmaVaultLib {
     using SafeCast for uint256;
     using SafeCast for int256;
+
+    error InvalidPerformanceFee(uint256 feeInPercentage);
 
     /// @notice Technical struct used to pass parameters in the `updateInstantWithdrawalFuses` function
     struct InstantWithdrawalFusesParamsStruct {
@@ -20,7 +23,6 @@ library PlasmaVaultLib {
     event TotalAssetsInMarketAdded(uint256 marketId, int256 amount);
     event InstantWithdrawalFusesUpdated(InstantWithdrawalFusesParamsStruct[] fuses);
     event PriceOracleChanged(address newPriceOracle);
-    event ManagementFeeDataUpdated(uint256 newUpdateTimestamp);
     event PerformanceFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
 
@@ -71,11 +73,20 @@ library PlasmaVaultLib {
         return PlasmaVaultStorageLib.getManagementFeeData();
     }
 
-    function configureManagementFeeData(address feeManager, uint256 feeInPercentage) internal {
+    function configureManagementFee(address feeManager, uint256 feeInPercentage) internal {
+        if (feeManager == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        if (feeInPercentage > 10000) {
+            revert InvalidPerformanceFee(feeInPercentage);
+        }
+
         PlasmaVaultStorageLib.ManagementFeeData storage managementFeeData = PlasmaVaultStorageLib
             .getManagementFeeData();
+
         managementFeeData.feeManager = feeManager;
         managementFeeData.feeInPercentage = feeInPercentage.toUint16();
+
         emit ManagementFeeDataConfigured(feeManager, feeInPercentage);
     }
 
@@ -87,11 +98,20 @@ library PlasmaVaultLib {
         return PlasmaVaultStorageLib.getPerformanceFeeData();
     }
 
-    function configurePerformanceFeeData(address feeManager, uint256 feeInPercentage) internal {
+    function configurePerformanceFee(address feeManager, uint256 feeInPercentage) internal {
+        if (feeManager == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        if (feeInPercentage > 10000) {
+            revert InvalidPerformanceFee(feeInPercentage);
+        }
+
         PlasmaVaultStorageLib.PerformanceFeeData storage performanceFeeData = PlasmaVaultStorageLib
             .getPerformanceFeeData();
+
         performanceFeeData.feeManager = feeManager;
         performanceFeeData.feeInPercentage = feeInPercentage.toUint16();
+
         emit PerformanceFeeDataConfigured(feeManager, feeInPercentage);
     }
 
@@ -99,7 +119,6 @@ library PlasmaVaultLib {
     function updateManagementFeeData() internal {
         PlasmaVaultStorageLib.ManagementFeeData storage feeData = PlasmaVaultStorageLib.getManagementFeeData();
         feeData.lastUpdateTimestamp = block.timestamp.toUint32();
-        emit ManagementFeeDataUpdated(block.timestamp);
     }
 
     function getInstantWithdrawalFuses() internal view returns (address[] memory) {

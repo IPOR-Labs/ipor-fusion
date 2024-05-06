@@ -1149,6 +1149,8 @@ contract PlasmaVaultFeeTest is Test {
         PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
         balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
+        vm.warp(block.timestamp);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             owner,
             assetName,
@@ -1168,8 +1170,6 @@ contract PlasmaVaultFeeTest is Test {
         );
 
         amount = 100 * 1e6;
-
-        vm.warp(block.timestamp);
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);

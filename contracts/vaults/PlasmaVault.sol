@@ -41,6 +41,8 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
     error InvalidAlpha();
     error UnsupportedFuse();
 
+    event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
+
     /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
     struct FuseAction {
         /// @notice fuse is a address of the Fuse contract
@@ -67,6 +69,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         bytes32[] substrates;
     }
 
+    /// @notice FeeConfig is a struct that represents a configuration of performance and management fees used during Plasma Vault construction
     struct FeeConfig {
         /// @notice performanceFeeManager is a address of the performance fee manager
         address performanceFeeManager;
@@ -86,9 +89,9 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
     /// @param underlyingToken Address of the underlying token
     /// @param alphas Array of alphas initially granted to execute actions on the Plasma Vault
     /// @param marketSubstratesConfigs Array of market configurations
-    /// @param fuses Array of fuses
-    /// @param balanceFuses Array of balance fuses
-    /// @param feeConfig Fee configuration
+    /// @param fuses Array of fuses initially supported by the Plasma Vault
+    /// @param balanceFuses Array of balance fuses initially supported by the Plasma Vault
+    /// @param feeConfig Fee configuration, performance fee and management fee, with fee managers addresses
     constructor(
         address initialOwner,
         string memory assetName,
@@ -135,11 +138,10 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
             );
         }
 
-        PlasmaVaultLib.configurePerformanceFeeData(
-            feeConfig.performanceFeeManager,
-            feeConfig.performanceFeeInPercentage
-        );
-        PlasmaVaultLib.configureManagementFeeData(feeConfig.managementFeeManager, feeConfig.managementFeeInPercentage);
+        PlasmaVaultLib.configurePerformanceFee(feeConfig.performanceFeeManager, feeConfig.performanceFeeInPercentage);
+        PlasmaVaultLib.configureManagementFee(feeConfig.managementFeeManager, feeConfig.managementFeeInPercentage);
+
+        PlasmaVaultLib.updateManagementFeeData();
     }
 
     receive() external payable {}
@@ -176,11 +178,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
 
         _updateMarketsBalances(markets);
 
-        uint256 totalAssetsAfter = totalAssets();
-
-        if (totalAssetsAfter > totalAssetsBefore) {
-            _addPerformanceFee(totalAssetsAfter - totalAssetsBefore);
-        }
+        _addPerformanceFee(totalAssetsBefore);
     }
 
     /// @notice Returns the total assets in the vault
@@ -200,7 +198,8 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         return PlasmaVaultLib.getTotalAssetsInMarket(marketId);
     }
 
-    /// @notice Returns the unrealized management fee
+    /// @notice Returns the unrealized management fee in underlying token decimals
+    /// @dev Unrealized management fee is calculated based on the management fee in percentage and the time since the last update
     /// @return unrealized management fee, represented in underlying token decimals
     function getUnrealizedManagementFee() public view returns (uint256) {
         return _getUnrealizedManagementFee(_getTotalAssetsWithoutUnrealizedManagementFee());
@@ -248,11 +247,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
 
         _withdrawFromMarkets(assets, IERC20(asset()).balanceOf(address(this)));
 
-        uint256 totalAssetsAfter = totalAssets();
-
-        if (totalAssetsAfter > totalAssetsBefore) {
-            _addPerformanceFee(totalAssetsAfter - totalAssetsBefore);
-        }
+        _addPerformanceFee(totalAssetsBefore);
 
         return super.withdraw(assets, receiver, owner);
     }
@@ -283,13 +278,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
             _withdrawFromMarkets(_includeSlippage(assets), vaultCurrentBalanceUnderlying);
         }
 
-        assets = convertToAssets(shares);
-
-        uint256 totalAssetsAfter = totalAssets();
-
-        if (totalAssetsAfter > totalAssetsBefore) {
-            _addPerformanceFee(totalAssetsAfter - totalAssetsBefore);
-        }
+        _addPerformanceFee(totalAssetsBefore);
 
         return super.redeem(shares, receiver, owner);
     }
@@ -373,22 +362,6 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         PlasmaVaultLib.updateInstantWithdrawalFuses(fuses);
     }
 
-    /// TODO: use in fuse when fuse configurator contract is ready
-    //solhint-disable-next-line
-    function onMorphoFlashLoan(uint256 flashLoanAmount, bytes calldata data) external payable {
-        //        uint256 assetBalanceBeforeCalls = IERC20(WST_ETH).balanceOf(payable(this));
-
-        FuseAction[] memory calls = abi.decode(data, (FuseAction[]));
-
-        if (calls.length == 0) {
-            return;
-        }
-
-        PlasmaVault(payable(this)).execute(calls);
-
-        //        uint256 assetBalanceAfterCalls = IERC20(WST_ETH).balanceOf(payable(this));
-    }
-
     function addFuses(address[] calldata fuses) external onlyOwner {
         for (uint256 i; i < fuses.length; ++i) {
             FusesLib.addFuse(fuses[i]);
@@ -430,18 +403,24 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         PlasmaVaultLib.setPriceOracle(priceOracle);
     }
 
-    function configurePerformanceFeeData(address feeManager, uint256 feeInPercentage) external onlyOwner {
-        PlasmaVaultLib.configurePerformanceFeeData(feeManager, feeInPercentage);
+    function configurePerformanceFee(address feeManager, uint256 feeInPercentage) external onlyOwner {
+        PlasmaVaultLib.configurePerformanceFee(feeManager, feeInPercentage);
     }
 
-    function configureManagementFeeData(address feeManager, uint256 feeInPercentage) external onlyOwner {
-        PlasmaVaultLib.configureManagementFeeData(feeManager, feeInPercentage);
+    function configureManagementFee(address feeManager, uint256 feeInPercentage) external onlyOwner {
+        PlasmaVaultLib.configureManagementFee(feeManager, feeInPercentage);
     }
 
-    function _addPerformanceFee(uint256 deltasInUnderlying) internal {
+    function _addPerformanceFee(uint256 totalAssetsBefore) internal {
+        uint256 totalAssetsAfter = totalAssets();
+
+        if (totalAssetsAfter < totalAssetsBefore) {
+            return;
+        }
+
         PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
 
-        uint256 fee = Math.mulDiv(deltasInUnderlying, feeData.feeInPercentage, 1e4);
+        uint256 fee = Math.mulDiv(totalAssetsAfter - totalAssetsBefore, feeData.feeInPercentage, 1e4);
 
         _mint(feeData.feeManager, convertToShares(fee));
     }
@@ -451,10 +430,18 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
 
         uint256 unrealizedFeeInUnderlying = getUnrealizedManagementFee();
 
+        if (unrealizedFeeInUnderlying == 0) {
+            return;
+        }
+
         PlasmaVaultLib.updateManagementFeeData();
 
+        uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
+
         /// @dev minting is an act of management fee realization
-        _mint(feeData.feeManager, convertToShares(unrealizedFeeInUnderlying));
+        _mint(feeData.feeManager, unrealizedFeeInShares);
+
+        emit ManagementFeeRealized(unrealizedFeeInUnderlying, unrealizedFeeInShares);
     }
 
     function _includeSlippage(uint256 value) internal pure returns (uint256) {

@@ -61,13 +61,13 @@ library PlasmaVaultStorageLib {
     bytes32 private constant CFG_PLASMA_VAULT_FEE_CONFIG =
         0xc54b723690b3d8f5a3756b82753e38bca87e5d79881cee3d06a3f9eb950f0f00;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultPerformanceFeeBalance")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultPerformanceFeeData")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_PERFORMANCE_FEE_DATA =
-        0x85f2604ff2083d11fa5a4fd3dae6fc9bf13339301d6d5c1d657d69418cb3bb00;
+        0xa8ad752bed828f0b4a1b7e81147393b0a5446d2e62297cffa22cb84bfb19f100;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultManagementFeeBalance")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultManagementFeeData")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
-        0x0b4938b4d6832e477b3f9bc9bb46b333525f35f78b9667528a6f98094da8c800;
+        0x09d6601575ea05ac39a145900e734264a5a09fe803eeb2ccc2884e0dc893b100;
 
     struct TotalAssets {
         /// @dev total assets in the vault

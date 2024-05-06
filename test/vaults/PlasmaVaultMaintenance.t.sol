@@ -56,7 +56,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
 
         // when
-        plasmaVault.configurePerformanceFeeData(address(0x555), 55);
+        plasmaVault.configurePerformanceFee(address(0x555), 55);
 
         // then
         PlasmaVaultStorageLib.PerformanceFeeData memory feeData = plasmaVault.getPerformanceFeeData();
@@ -80,7 +80,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
 
         // when
-        plasmaVault.configureManagementFeeData(address(0x555), 55);
+        plasmaVault.configureManagementFee(address(0x555), 55);
 
         // then
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = plasmaVault.getManagementFeeData();
