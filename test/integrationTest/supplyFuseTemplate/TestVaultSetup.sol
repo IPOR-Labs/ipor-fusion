@@ -1,26 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-import {TestBase} from "forge-std/Base.sol";
-import {console2} from "forge-std/Test.sol";
 import {TestStorage} from "./TestStorage.sol";
-import {PlazmaVault} from "../../../contracts/vaults/PlazmaVault.sol";
+import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 
 abstract contract TestVaultSetup is TestStorage {
     function initPlasmaVault() public {
-        console2.log("initPlasmaVault");
         address owner = getOwner();
         address[] memory alphas = new address[](1);
         alphas[0] = alpha;
 
-        PlazmaVault.MarketSubstratesConfig[] memory marketConfigs = setupMarketConfigs();
-        address[] memory fuses = setupFuses();
-        PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses = setupBalanceFuses();
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = setupMarketConfigs();
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = setupBalanceFuses();
 
         plasmaVault = address(
-            new PlazmaVault(
+            new PlasmaVault(
                 owner,
                 "TEST PLASMA VAULT",
                 "TPLASMA",
@@ -29,14 +23,20 @@ abstract contract TestVaultSetup is TestStorage {
                 alphas,
                 marketConfigs,
                 fuses,
-                balanceFuses
+                balanceFuses,
+                feeManager,
+                0
             )
         );
     }
 
-    function setupMarketConfigs() public virtual returns (PlazmaVault.MarketSubstratesConfig[] memory marketConfigs);
+    function setupMarketConfigs() public virtual returns (PlasmaVault.MarketSubstratesConfig[] memory marketConfigs);
 
-    function setupFuses() public virtual returns (address[] memory fuses);
+    function setupFuses() public virtual;
 
-    function setupBalanceFuses() public virtual returns (PlazmaVault.MarketBalanceFuseConfig[] memory balanceFuses);
+    function setupBalanceFuses() public virtual returns (PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses);
+
+    function getEnterFuseData(uint256 amount_, bytes32[] memory data_) public view virtual returns (bytes memory data);
+
+    function getExitFuseData(uint256 amount_, bytes32[] memory data_) public view virtual returns (bytes memory data);
 }

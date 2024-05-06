@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
+import {FoundryRandom} from "foundry-random/FoundryRandom.sol";
 
 abstract contract TestStorage is Test {
     address[] public accounts;
@@ -9,6 +10,9 @@ abstract contract TestStorage is Test {
     address public plasmaVault;
     address public priceOracle;
     address public alpha;
+    address public feeManager;
+    FoundryRandom public random;
+    address[] public fuses;
 
     function getOwner() public view returns (address) {
         return accounts[0];
@@ -16,6 +20,7 @@ abstract contract TestStorage is Test {
 
     function initStorage() public {
         setupAsset();
+        random = new FoundryRandom();
     }
 
     function setupAsset() public virtual;
