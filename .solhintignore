@@ -4,4 +4,5 @@ package-lock.json
 package.json
 foundry.toml
 .solhint.json
+smart-contracts-build.yml
 

@@ -116,7 +116,7 @@ contract CompoundUsdcV3BalanceArbitrumFuse is Test {
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
         if (asset == 0xaf88d065e77c8cC2239327C5EDb3A432268e5831) {
             // USDC
-            vm.prank(0x47c031236e19d024b42f8AE6780E44A573170703); // AmmTreasuryUsdcProxy
+            vm.prank(0x47c031236e19d024b42f8AE6780E44A573170703);
             ERC20(asset).transfer(to, amount);
         } else {
             deal(asset, to, amount);

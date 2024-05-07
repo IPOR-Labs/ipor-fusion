@@ -56,6 +56,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
 
         // when
+        vm.prank(address(0x777));
         plasmaVault.configurePerformanceFee(address(0x555), 55);
 
         // then
@@ -80,6 +81,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
 
         // when
+        vm.prank(address(0x555));
         plasmaVault.configureManagementFee(address(0x555), 55);
 
         // then
