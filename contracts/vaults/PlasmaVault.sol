@@ -30,7 +30,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step, ReentrancyGuard {
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
-    modifier OnlyGrantedAccess() {
+    modifier onlyGrantedAccess() {
         AccessControlLib.isAccessGrantedToVault(msg.sender);
         _;
     }
@@ -42,6 +42,20 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step, ReentrancyGuard {
         _;
     }
 
+    modifier onlyPerformanceFeeManager() {
+        if (msg.sender != PlasmaVaultLib.getPerformanceFeeData().feeManager) {
+            revert SenderNotPerformanceFeeManager();
+        }
+        _;
+    }
+
+    modifier onlyManagementFeeManager() {
+        if (msg.sender != PlasmaVaultLib.getManagementFeeData().feeManager) {
+            revert SenderNotManagementFeeManager();
+        }
+        _;
+    }
+
     error NoSharesToRedeem();
     error NoSharesToMint();
     error NoAssetsToWithdraw();
@@ -49,6 +63,8 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step, ReentrancyGuard {
     error InvalidAlpha();
     error UnsupportedFuse();
     error SenderNotAlpha();
+    error SenderNotPerformanceFeeManager();
+    error SenderNotManagementFeeManager();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
@@ -194,10 +210,8 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step, ReentrancyGuard {
     /// @dev value not take into account runtime accrued interest in the markets, and NOT take into account runtime accrued management fee
     /// @return total assets in the vault, represented in underlying token decimals
     function totalAssets() public view virtual override returns (uint256) {
-        uint256 totalAssetsWithoutUnrealizedManagementFee = _getTotalAssetsWithoutUnrealizedManagementFee();
-        return
-            totalAssetsWithoutUnrealizedManagementFee -
-            _getUnrealizedManagementFee(totalAssetsWithoutUnrealizedManagementFee);
+        uint256 grossTotalAssets = _getGrossTotalAssets();
+        return grossTotalAssets - _getUnrealizedManagementFee(grossTotalAssets);
     }
 
     /// @notice Returns the total assets in the vault for a specific market
@@ -211,13 +225,13 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step, ReentrancyGuard {
     /// @dev Unrealized management fee is calculated based on the management fee in percentage and the time since the last update
     /// @return unrealized management fee, represented in underlying token decimals
     function getUnrealizedManagementFee() public view returns (uint256) {
-        return _getUnrealizedManagementFee(_getTotalAssetsWithoutUnrealizedManagementFee());
+        return _getUnrealizedManagementFee(_getGrossTotalAssets());
     }
 
     function deposit(
         uint256 assets,
         address receiver
-    ) public override nonReentrant OnlyGrantedAccess returns (uint256) {
+    ) public override nonReentrant onlyGrantedAccess returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToDeposit();
         }
@@ -230,7 +244,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step, ReentrancyGuard {
         return super.deposit(assets, receiver);
     }
 
-    function mint(uint256 shares, address receiver) public override nonReentrant OnlyGrantedAccess returns (uint256) {
+    function mint(uint256 shares, address receiver) public override nonReentrant onlyGrantedAccess returns (uint256) {
         if (shares == 0) {
             revert NoSharesToMint();
         }
@@ -417,11 +431,11 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step, ReentrancyGuard {
         PlasmaVaultLib.setPriceOracle(priceOracle);
     }
 
-    function configurePerformanceFee(address feeManager, uint256 feeInPercentage) external onlyOwner {
+    function configurePerformanceFee(address feeManager, uint256 feeInPercentage) external onlyPerformanceFeeManager {
         PlasmaVaultLib.configurePerformanceFee(feeManager, feeInPercentage);
     }
 
-    function configureManagementFee(address feeManager, uint256 feeInPercentage) external onlyOwner {
+    function configureManagementFee(address feeManager, uint256 feeInPercentage) external onlyManagementFeeManager {
         PlasmaVaultLib.configureManagementFee(feeManager, feeInPercentage);
     }
 
@@ -584,7 +598,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step, ReentrancyGuard {
         }
     }
 
-    function _getTotalAssetsWithoutUnrealizedManagementFee() internal view returns (uint256) {
+    function _getGrossTotalAssets() internal view returns (uint256) {
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
 

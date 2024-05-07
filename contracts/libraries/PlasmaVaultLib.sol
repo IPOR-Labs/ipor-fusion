@@ -95,7 +95,7 @@ library PlasmaVaultLib {
 
     function getPerformanceFeeData()
         internal
-        pure
+        view
         returns (PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData)
     {
         return PlasmaVaultStorageLib.getPerformanceFeeData();
