@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -22,7 +23,7 @@ import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-contract PlasmaVault is ERC4626Permit, Ownable2Step {
+contract PlasmaVault is ERC4626Permit, Ownable2Step, ReentrancyGuard {
     using Address for address;
     using SafeCast for int256;
 
@@ -34,12 +35,20 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         _;
     }
 
+    modifier onlyAlpha() {
+        if (!AlphasLib.isAlphaGranted(msg.sender)) {
+            revert SenderNotAlpha();
+        }
+        _;
+    }
+
     error NoSharesToRedeem();
     error NoSharesToMint();
     error NoAssetsToWithdraw();
     error NoAssetsToDeposit();
     error InvalidAlpha();
     error UnsupportedFuse();
+    error SenderNotAlpha();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
@@ -153,7 +162,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
     }
 
     /// @notice Execute multiple FuseActions by a Alpha. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
-    function execute(FuseAction[] calldata calls) external {
+    function execute(FuseAction[] calldata calls) external nonReentrant onlyAlpha {
         uint256 callsCount = calls.length;
         uint256[] memory markets = new uint256[](callsCount);
         uint256 marketIndex;
@@ -205,7 +214,10 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         return _getUnrealizedManagementFee(_getTotalAssetsWithoutUnrealizedManagementFee());
     }
 
-    function deposit(uint256 assets, address receiver) public override OnlyGrantedAccess returns (uint256) {
+    function deposit(
+        uint256 assets,
+        address receiver
+    ) public override nonReentrant OnlyGrantedAccess returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToDeposit();
         }
@@ -218,7 +230,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         return super.deposit(assets, receiver);
     }
 
-    function mint(uint256 shares, address receiver) public override OnlyGrantedAccess returns (uint256) {
+    function mint(uint256 shares, address receiver) public override nonReentrant OnlyGrantedAccess returns (uint256) {
         if (shares == 0) {
             revert NoSharesToMint();
         }
@@ -231,7 +243,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         return super.mint(shares, receiver);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
+    function withdraw(uint256 assets, address receiver, address owner) public override nonReentrant returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToWithdraw();
         }
@@ -252,7 +264,7 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         return super.withdraw(assets, receiver, owner);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
+    function redeem(uint256 shares, address receiver, address owner) public override nonReentrant returns (uint256) {
         if (shares == 0) {
             revert NoSharesToRedeem();
         }
@@ -356,10 +368,12 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
         PlasmaVaultConfigLib.grandMarketSubstrates(marketId, substrates);
     }
 
-    function updateInstantWithdrawalFuses(
+    /// @notice Configures the instant withdrawal fuses. Order of the fuse is important, as it will be used in the same order during the instant withdrawal process
+    /// @dev Order of the fuses is important, the same fuse can be used multiple times with different parameters (for example different assets, markets or any other substrate specific for the fuse)
+    function configureInstantWithdrawalFuses(
         PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[] calldata fuses
     ) external onlyOwner {
-        PlasmaVaultLib.updateInstantWithdrawalFuses(fuses);
+        PlasmaVaultLib.configureInstantWithdrawalFuses(fuses);
     }
 
     function addFuses(address[] calldata fuses) external onlyOwner {

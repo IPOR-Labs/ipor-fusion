@@ -65,17 +65,19 @@ library PlasmaVaultStorageLib {
     bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
         0x09d6601575ea05ac39a145900e734264a5a09fe803eeb2ccc2884e0dc893b100;
 
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultTotalAssetsInAllMarkets
     struct TotalAssets {
-        /// @dev total assets in the vault
+        /// @dev total assets in the Plasma Vault
         uint256 value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultTotalAssetsInMarket
     struct MarketTotalAssets {
         /// @dev marketId => total assets in the vault in the market
         mapping(uint256 => uint256) value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.alphas
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultAlphas
     struct Alphas {
         /// @dev alpha address => 1 - is granted, otherwise - not granted
         mapping(address => uint256) value;
@@ -91,59 +93,64 @@ library PlasmaVaultStorageLib {
         bytes32[] substrates;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultMarketSubstrates
     struct MarketSubstrates {
         /// @dev marketId => MarketSubstratesStruct
         mapping(uint256 => MarketSubstratesStruct) value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultFuses
     struct Fuses {
         /// @dev fuse address => 1 - is granted, otherwise - not granted
         mapping(address => uint256) value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultFusesArray
     struct FusesArray {
         /// @dev value is a fuse address
         address[] value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultBalanceFuses
     struct BalanceFuses {
         /// @dev marketId => balance fuse address
         mapping(uint256 => address) value;
     }
 
-    struct BalanceFusesArray {
-        /// @dev value is a marketId and fuse address: keccak256(abi.encode(marketId, fuse))
-        bytes32[] value;
-    }
-
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultInstantWithdrawalFusesArray
     struct InstantWithdrawalFuses {
-        /// @dev value is a fuse address used for instant withdrawal
+        /// @dev value is a Fuse address used for instant withdrawal
         address[] value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultInstantWithdrawalFusesParams
     struct InstantWithdrawalFusesParams {
         /// @dev key: fuse address and index in InstantWithdrawalFuses array, value: list of parameters used for instant withdrawal
         /// @dev first param always amount in underlying asset of PlasmaVault, second and next params are specific for the fuse and market
         mapping(bytes32 => bytes32[]) value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultGrantedAddressesToInteractWithVault
     struct GrantedAddressesToInteractWithVault {
         /// @dev The zero address serves as a flag indicating whether the vault has limited access.
         /// @dev address => 1 - is granted, otherwise - not granted
         mapping(address => uint256) value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultPerformanceFeeData
     struct PerformanceFeeData {
         address feeManager;
         uint16 feeInPercentage;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultManagementFeeData
     struct ManagementFeeData {
         address feeManager;
         uint16 feeInPercentage;
         uint32 lastUpdateTimestamp;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.priceOracle
     struct PriceOracle {
         address value;
     }

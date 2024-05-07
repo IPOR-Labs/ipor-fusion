@@ -210,7 +210,7 @@ contract PlasmaVaultWithdrawTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -330,7 +330,7 @@ contract PlasmaVaultWithdrawTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -430,7 +430,7 @@ contract PlasmaVaultWithdrawTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //then
         vm.expectEmit(true, true, true, true);
@@ -544,7 +544,7 @@ contract PlasmaVaultWithdrawTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //then
         vm.expectEmit(true, true, true, true);
@@ -678,7 +678,7 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
@@ -835,7 +835,7 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
@@ -984,7 +984,7 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
         plasmaVault.redeem(175 * 1e6, userOne, userOne);
@@ -1102,7 +1102,7 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
@@ -1210,7 +1210,7 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
@@ -1356,7 +1356,7 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
         plasmaVault.redeem(175 * 1e6, userOne, userOne);

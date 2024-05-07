@@ -449,7 +449,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -588,7 +588,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -722,7 +722,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -856,7 +856,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -974,7 +974,7 @@ contract PlasmaVaultFeeTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -1092,7 +1092,7 @@ contract PlasmaVaultFeeTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -1602,7 +1602,7 @@ contract PlasmaVaultFeeTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
