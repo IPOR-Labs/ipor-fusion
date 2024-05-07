@@ -247,6 +247,50 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         assertApproxEqAbs(assetsInMarketAfter + depositAmount, assetsInMarketBefore, ERROR_DELTA, "assetsInMarket");
     }
 
+    function testShouldUseExitMethodWithAllInMarketWhenTimeAndBlockWasMoved() external {
+        // given
+        address userOne = accounts[1];
+        uint256 depositAmount = random.randomNumber(
+            1 * 10 ** (ERC20(asset).decimals()),
+            10_000 * 10 ** (ERC20(asset).decimals())
+        );
+        vm.prank(userOne);
+        PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
+
+        bytes memory enterData = getEnterFuseData(depositAmount, new bytes32[](0));
+        PlasmaVault.FuseAction[] memory enterCalls = new PlasmaVault.FuseAction[](1);
+        enterCalls[0] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
+
+        PlasmaVault(plasmaVault).execute(enterCalls);
+
+        vm.roll(block.number + 1000);
+        vm.warp(block.timestamp + 12000);
+
+        uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
+        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        bytes memory exitData = getExitFuseData(assetsInMarketBefore, new bytes32[](0));
+
+        PlasmaVault.FuseAction[] memory exitCalls = new PlasmaVault.FuseAction[](1);
+        exitCalls[0] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("exit(bytes)", exitData));
+
+        uint256 userAssetsBefore = PlasmaVault(plasmaVault).convertToAssets(
+            PlasmaVault(plasmaVault).balanceOf(userOne)
+        );
+
+        // when
+        PlasmaVault(plasmaVault).execute(exitCalls);
+
+        // then
+
+        uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
+        uint256 userAssetsAfter = PlasmaVault(plasmaVault).convertToAssets(PlasmaVault(plasmaVault).balanceOf(userOne));
+        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+
+        assertGt(userAssetsAfter, userAssetsBefore, "userAssets from shares");
+        assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
+        assertApproxEqAbs(assetsInMarketAfter + depositAmount, assetsInMarketBefore, ERROR_DELTA, "assetsInMarket");
+    }
+
     function testShouldUseExitMethodTwice() external {
         // given
         address userOne = accounts[1];
