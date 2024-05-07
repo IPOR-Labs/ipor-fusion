@@ -158,7 +158,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
 
         // when
-
+        vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(calls);
 
         // then
@@ -195,7 +195,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
 
         // when
-
+        vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(calls);
 
         // then
@@ -223,6 +223,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         PlasmaVault.FuseAction[] memory enterCalls = new PlasmaVault.FuseAction[](1);
         enterCalls[0] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
 
+        vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(enterCalls);
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
@@ -234,6 +235,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         exitCalls[0] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("exit(bytes)", exitData));
 
         // when
+        vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(exitCalls);
 
         // then
@@ -261,6 +263,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         PlasmaVault.FuseAction[] memory enterCalls = new PlasmaVault.FuseAction[](1);
         enterCalls[0] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
 
+        vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(enterCalls);
 
         vm.roll(block.number + 1000);
@@ -278,6 +281,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         );
 
         // when
+        vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(exitCalls);
 
         // then
@@ -305,6 +309,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         PlasmaVault.FuseAction[] memory enterCalls = new PlasmaVault.FuseAction[](1);
         enterCalls[0] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
 
+        vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(enterCalls);
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
@@ -317,6 +322,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         exitCalls[1] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("exit(bytes)", exitData));
 
         // when
+        vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(exitCalls);
 
         // then
@@ -344,6 +350,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         PlasmaVault.FuseAction[] memory enterCalls = new PlasmaVault.FuseAction[](1);
         enterCalls[0] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
 
+        vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(enterCalls);
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
@@ -368,6 +375,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
                 PlasmaVault.FuseAction[] memory enterCalls = new PlasmaVault.FuseAction[](1);
                 enterCalls[0] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
 
+                vm.prank(alpha);
                 PlasmaVault(plasmaVault).execute(enterCalls);
             } else {
                 uint256 inMarket = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
@@ -382,6 +390,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
                 PlasmaVault.FuseAction[] memory exitCalls = new PlasmaVault.FuseAction[](1);
                 exitCalls[0] = PlasmaVault.FuseAction(fuses[0], abi.encodeWithSignature("exit(bytes)", exitData));
 
+                vm.prank(alpha);
                 PlasmaVault(plasmaVault).execute(exitCalls);
             }
         }

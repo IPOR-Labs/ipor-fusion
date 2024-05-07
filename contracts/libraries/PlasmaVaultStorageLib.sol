@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 /// @title Storage
 library PlasmaVaultStorageLib {
+    using SafeCast for uint256;
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
         0xf660efede6b8071aab61a75191de57a4a8a416b088f961d8c2a18168aa7c7700;
@@ -33,10 +37,6 @@ library PlasmaVaultStorageLib {
     bytes32 private constant CFG_PLASMA_VAULT_BALANCE_FUSES =
         0xa5d630b12943d05aa5b6826803880948eb9a1ad1cf4a04bb7a5d69aae8b60600;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultBalanceFusesArray")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CFG_PLASMA_VAULT_BALANCE_FUSES_ARRAY =
-        0xf531919d0b746f08e934928426e18847fe5fabaf4cddaf2d95b336c5765f0200;
-
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultInstantWithdrawalFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_INSTANT_WITHDRAWAL_FUSES_ARRAY =
         0x4320b221b0115d4c27700eb9530f9b97354a11fc1d15a3bfa71b7d6e46733f00;
@@ -53,20 +53,31 @@ library PlasmaVaultStorageLib {
     bytes32 private constant CFG_PLASMA_VAULT_GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT =
         0xfa87daeda1dbf9ff4e1e074074afad700558780bbfeeb3fc95c580b632362700;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultFees")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CFG_PLASMA_VAULT_FEES = 0x08218d6b001db865cb48a91c7dacc07e49d68c8ca266334a4720f2a519c85600;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultFeeConfig")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant CFG_PLASMA_VAULT_FEE_CONFIG =
+        0xc54b723690b3d8f5a3756b82753e38bca87e5d79881cee3d06a3f9eb950f0f00;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultPerformanceFeeData")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PLASMA_VAULT_PERFORMANCE_FEE_DATA =
+        0xa8ad752bed828f0b4a1b7e81147393b0a5446d2e62297cffa22cb84bfb19f100;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultManagementFeeData")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
+        0x09d6601575ea05ac39a145900e734264a5a09fe803eeb2ccc2884e0dc893b100;
+
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultTotalAssetsInAllMarkets
     struct TotalAssets {
-        /// @dev total assets in the vault
+        /// @dev total assets in the Plasma Vault
         uint256 value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultTotalAssetsInMarket
     struct MarketTotalAssets {
         /// @dev marketId => total assets in the vault in the market
         mapping(uint256 => uint256) value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.alphas
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultAlphas
     struct Alphas {
         /// @dev alpha address => 1 - is granted, otherwise - not granted
         mapping(address => uint256) value;
@@ -82,66 +93,64 @@ library PlasmaVaultStorageLib {
         bytes32[] substrates;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultMarketSubstrates
     struct MarketSubstrates {
         /// @dev marketId => MarketSubstratesStruct
         mapping(uint256 => MarketSubstratesStruct) value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultFuses
     struct Fuses {
         /// @dev fuse address => 1 - is granted, otherwise - not granted
         mapping(address => uint256) value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultFusesArray
     struct FusesArray {
         /// @dev value is a fuse address
         address[] value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultBalanceFuses
     struct BalanceFuses {
         /// @dev marketId => balance fuse address
         mapping(uint256 => address) value;
     }
 
-    struct BalanceFusesArray {
-        /// @dev value is a marketId and fuse address: keccak256(abi.encode(marketId, fuse))
-        bytes32[] value;
-    }
-
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultInstantWithdrawalFusesArray
     struct InstantWithdrawalFuses {
-        /// @dev value is a fuse address used for instant withdrawal
+        /// @dev value is a Fuse address used for instant withdrawal
         address[] value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultInstantWithdrawalFusesParams
     struct InstantWithdrawalFusesParams {
         /// @dev key: fuse address and index in InstantWithdrawalFuses array, value: list of parameters used for instant withdrawal
         /// @dev first param always amount in underlying asset of PlasmaVault, second and next params are specific for the fuse and market
         mapping(bytes32 => bytes32[]) value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultGrantedAddressesToInteractWithVault
     struct GrantedAddressesToInteractWithVault {
         /// @dev The zero address serves as a flag indicating whether the vault has limited access.
         /// @dev address => 1 - is granted, otherwise - not granted
         mapping(address => uint256) value;
     }
 
-    /// @notice Fee configuration and balance
-    struct Fees {
-        /// @notice Fee Manager address, all fees are sent to this address and then distributed based on logic implemented in the Fee Manager contract
-        address manager;
-        /// @notice Configuration of performance fee in percentage, represented in 2 decimals, 100% = 10000, 1% = 100, 0.01% = 1
-        uint16 cfgPerformanceFeeInPercentage;
-        /// @notice Configuration of management fee in percentage, represented in 2 decimals, 100% = 10000, 1% = 100, 0.01% = 1
-        uint16 cfgManagementFeeInPercentage;
-        /// @notice Performance fee balance, accounting for the performance fee
-        uint32 performanceFeeBalance;
-        /// @notice Management fee balance, accounting for the management fee
-        uint32 managementFeeBalance;
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultPerformanceFeeData
+    struct PerformanceFeeData {
+        address feeManager;
+        uint16 feeInPercentage;
     }
 
-    struct FeeStorage {
-        Fees value;
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultManagementFeeData
+    struct ManagementFeeData {
+        address feeManager;
+        uint16 feeInPercentage;
+        uint32 lastUpdateTimestamp;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.priceOracle
     struct PriceOracle {
         address value;
     }
@@ -189,12 +198,6 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getBalanceFusesArray() internal pure returns (BalanceFusesArray storage balanceFusesArray) {
-        assembly {
-            balanceFusesArray.slot := CFG_PLASMA_VAULT_BALANCE_FUSES_ARRAY
-        }
-    }
-
     function getInstantWithdrawalFusesArray()
         internal
         pure
@@ -225,15 +228,21 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getFees() internal pure returns (FeeStorage storage fees) {
-        assembly {
-            fees.slot := CFG_PLASMA_VAULT_FEES
-        }
-    }
-
     function getPriceOracle() internal pure returns (PriceOracle storage oracle) {
         assembly {
             oracle.slot := PRICE_ORACLE
+        }
+    }
+
+    function getPerformanceFeeData() internal pure returns (PerformanceFeeData storage performanceFeeData) {
+        assembly {
+            performanceFeeData.slot := PLASMA_VAULT_PERFORMANCE_FEE_DATA
+        }
+    }
+
+    function getManagementFeeData() internal pure returns (ManagementFeeData storage managementFeeData) {
+        assembly {
+            managementFeeData.slot := PLASMA_VAULT_MANAGEMENT_FEE_DATA
         }
     }
 }
