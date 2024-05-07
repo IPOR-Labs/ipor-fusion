@@ -424,12 +424,10 @@ contract PlasmaVault is ERC4626Permit, Ownable2Step {
             return;
         }
 
-        PlasmaVault(payable(this)).execute(calls);
+        PlasmaVault(this).execute(calls);
 
         //        uint256 assetBalanceAfterCalls = IERC20(WST_ETH).balanceOf(payable(this));
     }
-
-    receive() external payable {}
 
     fallback() external {
         ///TODO: read msg.sender (if Morpho) and read method signature to determine fuse address to execute
