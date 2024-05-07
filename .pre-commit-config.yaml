@@ -35,4 +35,5 @@ exclude: |
       .gitmodules|
       .gitignore|
       README.md|
+      smart-contracts-build.yml |
   )$
