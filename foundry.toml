@@ -3,7 +3,7 @@ solc = "0.8.20"
 src = 'contracts'
 out = 'out'
 libs = ["node_modules", "lib"]
-fs_permissions = [{ access = "read-write", path = "./"}]
+fs_permissions = [{ access = "read-write", path = "./" }]
 libraries = []
 remappings = [
     '@ensdomains/=node_modules/@ensdomains/',
@@ -11,8 +11,9 @@ remappings = [
     'eth-gas-reporter/=node_modules/eth-gas-reporter/',
     'ds-test/=lib/forge-std/lib/ds-test/src/',
     'forge-std/=lib/forge-std/src/',
+    'foundry-random=lib/foundry-random/src/',
     '@ipor-vaults/contracts/=contracts/',
-#    '@ipor-protocol/test/=test/'
+    #    '@ipor-protocol/test/=test/'
 ]
 optimizer_runs = 1000
 ignored_error_codes = [5667, 9302, 2462, 5574, 8760]

@@ -183,8 +183,7 @@ contract PlasmaVaultDepositTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
         return plasmaVault;
     }
@@ -232,8 +231,7 @@ contract PlasmaVaultDepositTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         return plasmaVault;

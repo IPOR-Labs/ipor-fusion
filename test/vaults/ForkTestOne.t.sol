@@ -21,7 +21,7 @@ contract ForkAmmGovernanceServiceTest is Test {
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
 
-    address payable public vaultWstEth;
+    address public vaultWstEth;
     address public flashLoanMorphoFuse;
     address public aaveV3SupplyFuse;
     address public aaveV3BorrowFuse;
@@ -83,7 +83,7 @@ contract ForkAmmGovernanceServiceTest is Test {
             )
         );
 
-        vaultWstEth = payable(
+        vaultWstEth = address(
             new PlasmaVault(
                 msg.sender,
                 "ipvwstETH",
@@ -94,8 +94,7 @@ contract ForkAmmGovernanceServiceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                address(0x777),
-                0
+                PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
             )
         );
 
