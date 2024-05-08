@@ -284,8 +284,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             supplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
@@ -361,8 +360,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         address[] memory newSupplyFuses = new address[](2);
@@ -411,8 +409,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -505,8 +502,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
@@ -549,8 +545,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
@@ -604,8 +599,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
@@ -677,8 +671,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
@@ -791,8 +784,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         address[] memory newSupplyFuses = new address[](2);
@@ -839,8 +831,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
@@ -887,8 +878,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             supplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(0x777));
@@ -938,8 +928,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         //when
@@ -993,8 +982,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             marketConfigs,
             initialSupplyFuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         address[] memory newSupplyFuses = new address[](1);
