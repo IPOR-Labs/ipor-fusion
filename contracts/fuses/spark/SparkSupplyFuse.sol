@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import {IFuse} from "../IFuse.sol";
 
-import {ISavingsDai} from "./ISavingsDai.sol";
+import {ISavingsDai} from "./ext/ISavingsDai.sol";
 
 struct SparkSupplyFuseEnterData {
     /// @dev amount od DAI to supply
@@ -17,6 +19,8 @@ struct SparkSupplyFuseExitData {
 }
 
 contract SparkSupplyFuse is IFuse {
+    using SafeERC20 for ERC20;
+
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant SDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
 
@@ -42,7 +46,7 @@ contract SparkSupplyFuse is IFuse {
     }
 
     function _enter(SparkSupplyFuseEnterData memory data) internal {
-        IERC20(DAI).approve(SDAI, data.amount);
+        ERC20(DAI).forceApprove(SDAI, data.amount);
         ISavingsDai(SDAI).deposit(data.amount, address(this));
 
         emit SparkSupplyEnterFuse(VERSION, data.amount);

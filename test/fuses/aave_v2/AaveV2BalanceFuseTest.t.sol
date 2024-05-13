@@ -3,17 +3,19 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/IAavePriceOracle.sol";
-import {IApproveERC20} from "../../../contracts/fuses/IApproveERC20.sol";
+import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {AaveV2BalanceFuseMock} from "./AaveV2BalanceFuseMock.sol";
-import {AaveLendingPoolV2} from "../../../contracts/fuses/aave_v2/AaveLendingPoolV2.sol";
+import {AaveLendingPoolV2} from "../../../contracts/fuses/aave_v2/ext/AaveLendingPoolV2.sol";
 
 contract AaveV3BalanceFuseTest is Test {
     struct SupportedToken {
         address token;
         string name;
     }
+
+    using SafeERC20 for ERC20;
 
     AaveLendingPoolV2 public constant AAVE_POOL = AaveLendingPoolV2(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
     IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0x54586bE62E3c3580375aE3723C145253060Ca0C2);
@@ -41,7 +43,7 @@ contract AaveV3BalanceFuseTest is Test {
         // when
 
         vm.prank(user);
-        IApproveERC20(activeTokens.token).approve(address(AAVE_POOL), amount);
+        ERC20(activeTokens.token).forceApprove(address(AAVE_POOL), amount);
         vm.prank(user);
         AAVE_POOL.deposit(activeTokens.token, amount, user, 0);
 

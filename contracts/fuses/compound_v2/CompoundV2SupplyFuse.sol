@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
-import {IApproveERC20} from "../IApproveERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {CErc20} from "./CErc20.sol";
+import {CErc20} from "./ext/CErc20.sol";
 
 struct CompoundV2SupplyFuseEnterData {
     /// @notis asset address to supply
@@ -24,6 +26,7 @@ struct CompoundV2SupplyFuseExitData {
 
 contract CompoundV2SupplyFuse is IFuse {
     using SafeCast for uint256;
+    using SafeERC20 for ERC20;
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -57,7 +60,7 @@ contract CompoundV2SupplyFuse is IFuse {
     function _enter(CompoundV2SupplyFuseEnterData memory data) internal {
         CErc20 cToken = CErc20(_getCToken(MARKET_ID, data.asset));
 
-        IApproveERC20(data.asset).approve(address(cToken), data.amount);
+        ERC20(data.asset).forceApprove(address(cToken), data.amount);
 
         cToken.mint(data.amount);
 

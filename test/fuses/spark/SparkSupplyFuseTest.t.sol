@@ -11,7 +11,7 @@ import {SDaiPriceFeed} from "../../../contracts/priceOracle/priceFeed/SDaiPriceF
 
 import {SparkBalanceFuse} from "../../../contracts/fuses/spark/SparkBalanceFuse.sol";
 import {SparkSupplyFuse, SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../../contracts/fuses/spark/SparkSupplyFuse.sol";
-import {ISavingsDai} from "../../../contracts/fuses/spark/ISavingsDai.sol";
+import {ISavingsDai} from "../../../contracts/fuses/spark/ext/ISavingsDai.sol";
 
 contract SparkSupplyFuseTest is Test {
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;

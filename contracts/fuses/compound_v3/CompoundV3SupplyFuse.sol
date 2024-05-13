@@ -2,10 +2,11 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
-import {IApproveERC20} from "../IApproveERC20.sol";
-import {IComet} from "./IComet.sol";
+import {IComet} from "./ext/IComet.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
@@ -26,6 +27,7 @@ struct CompoundV3SupplyFuseExitData {
 
 contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
+    using SafeERC20 for ERC20;
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -75,7 +77,7 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
             revert CompoundV3SupplyFuseUnsupportedAsset("enter", data.asset, Errors.UNSUPPORTED_ASSET);
         }
 
-        IApproveERC20(data.asset).approve(address(COMET), data.amount);
+        ERC20(data.asset).forceApprove(address(COMET), data.amount);
 
         COMET.supply(data.asset, data.amount);
 

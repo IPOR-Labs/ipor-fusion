@@ -7,7 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {CErc20} from "./CErc20.sol";
+import {CErc20} from "./ext/CErc20.sol";
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
 
 contract CompoundV2BalanceFuse is IMarketBalanceFuse {
