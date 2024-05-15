@@ -3,9 +3,10 @@ pragma solidity 0.8.20;
 
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
-import {IApproveERC20} from "../IApproveERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
@@ -27,6 +28,7 @@ struct Erc4626SupplyFuseExitData {
 // https://github.com/morpho-org/metamorpho
 contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
+    using SafeERC20 for ERC20;
 
     event Erc4626SupplyFuse(address version, string action, address asset, address market, uint256 amount);
 
@@ -74,7 +76,7 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
         }
 
         address underlineAsset = IERC4626(data.vault).asset();
-        IApproveERC20(underlineAsset).approve(data.vault, data.amount);
+        ERC20(underlineAsset).forceApprove(data.vault, data.amount);
 
         IERC4626(data.vault).deposit(data.amount, address(this));
 

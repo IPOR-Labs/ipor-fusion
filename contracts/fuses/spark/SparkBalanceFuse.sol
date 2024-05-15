@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {ISavingsDai} from "./ISavingsDai.sol";
+import {ISavingsDai} from "./ext/ISavingsDai.sol";
 
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";

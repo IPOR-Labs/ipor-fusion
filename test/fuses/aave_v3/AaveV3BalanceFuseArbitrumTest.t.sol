@@ -3,11 +3,11 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IPool} from "../../../contracts/vaults/interfaces/IPool.sol";
-import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/IAavePriceOracle.sol";
-import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
-import {IApproveERC20} from "../../../contracts/fuses/IApproveERC20.sol";
+import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
+import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {AaveV3BalanceFuseMock} from "./AaveV3BalanceFuseMock.sol";
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
@@ -16,6 +16,8 @@ contract AaveV3BalanceFuseArbitrumTest is Test {
         address token;
         string name;
     }
+
+    using SafeERC20 for ERC20;
 
     IPool public constant AAVE_POOL = IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD);
     IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7);
@@ -50,7 +52,7 @@ contract AaveV3BalanceFuseArbitrumTest is Test {
         // when
 
         vm.prank(user);
-        IApproveERC20(activeTokens.token).approve(address(AAVE_POOL), amount);
+        ERC20(activeTokens.token).forceApprove(address(AAVE_POOL), amount);
         vm.prank(user);
         AAVE_POOL.supply(activeTokens.token, amount, user, 0);
 
@@ -81,7 +83,7 @@ contract AaveV3BalanceFuseArbitrumTest is Test {
         aaveV3Balances.updateMarketConfiguration(assets);
 
         vm.prank(user);
-        IApproveERC20(activeTokens.token).approve(address(AAVE_POOL), amount);
+        ERC20(activeTokens.token).forceApprove(address(AAVE_POOL), amount);
         vm.prank(user);
         AAVE_POOL.supply(activeTokens.token, amount, user, 0);
 
