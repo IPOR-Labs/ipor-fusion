@@ -13,6 +13,7 @@ abstract contract TestStorage is Test {
     address public feeManager;
     FoundryRandom public random;
     address[] public fuses;
+    address public guardElectron;
 
     function getOwner() public view returns (address) {
         return accounts[0];

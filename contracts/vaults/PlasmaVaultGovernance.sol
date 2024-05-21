@@ -33,7 +33,9 @@ abstract contract PlasmaVaultGovernance is Ownable2Step {
     error SenderNotManagementFeeManager();
 
     /// @param initialOwner Address of the owner
-    constructor(address initialOwner) Ownable(initialOwner) {}
+    constructor(address initialOwner, address guardElectron) Ownable(initialOwner) {
+        PlasmaVaultLib.setGuardElectronAddress(guardElectron);
+    }
 
     function isAlphaGranted(address alpha) external view returns (bool) {
         return AlphasLib.isAlphaGranted(alpha);
@@ -163,6 +165,10 @@ abstract contract PlasmaVaultGovernance is Ownable2Step {
 
     function configureManagementFee(address feeManager, uint256 feeInPercentage) external onlyManagementFeeManager {
         PlasmaVaultLib.configureManagementFee(feeManager, feeInPercentage);
+    }
+
+    function getGuardElectronAddress() public view returns (address) {
+        return PlasmaVaultLib.getGuardElectronAddress();
     }
 
     function _addFuse(address fuse) internal {

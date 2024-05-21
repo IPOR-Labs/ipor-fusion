@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {FlashLoanMorphoFuse} from "../../contracts/vaults/poc/FlashLoanMorphoFuse.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BorrowFuse} from "../../contracts/vaults/poc/AaveV3BorrowFuse.sol";
@@ -14,6 +14,7 @@ import {AaveV3BalanceFuse} from "../../contracts/vaults/poc/AaveV3BalanceFuse.so
 
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
+import {GuardElectron} from "../../contracts/electrons/GuardElectron.sol";
 
 contract ForkAmmGovernanceServiceTest is Test {
     address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -60,16 +61,16 @@ contract ForkAmmGovernanceServiceTest is Test {
         fuses[3] = nativeSwapWethToWstEthFuse;
         fuses[4] = balanceFuse;
 
-        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig({marketId: aaveV3MarketId, fuse: balanceFuse});
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig({marketId: aaveV3MarketId, fuse: balanceFuse});
 
-        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
         bytes32[] memory marketAssets = new bytes32[](2);
         marketAssets[0] = PlasmaVaultConfigLib.addressToBytes32(WST_ETH);
         marketAssets[1] = PlasmaVaultConfigLib.addressToBytes32(W_ETH);
 
-        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig({marketId: aaveV3MarketId, substrates: marketAssets});
+        marketConfigs[0] = MarketSubstratesConfig({marketId: aaveV3MarketId, substrates: marketAssets});
 
         IporPriceOracle implementation = new IporPriceOracle(
             0x0000000000000000000000000000000000000348,
@@ -85,16 +86,19 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         vaultWstEth = address(
             new PlasmaVault(
-                msg.sender,
-                "ipvwstETH",
-                "IP PlasmaVault wstETH",
-                WST_ETH,
-                address(iporPriceOracleProxy),
-                alphas,
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
+                PlasmaVaultInitData(
+                    msg.sender,
+                    "ipvwstETH",
+                    "IP PlasmaVault wstETH",
+                    WST_ETH,
+                    address(iporPriceOracleProxy),
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses,
+                    FeeConfig(address(0x777), 0, address(0x555), 0),
+                    address(new GuardElectron(msg.sender, 1 hours))
+                )
             )
         );
 
@@ -115,11 +119,11 @@ contract ForkAmmGovernanceServiceTest is Test {
         //        uint256 amountVaultAfterDeposit = IERC20(wstETH).balanceOf(vaultWstEth);
         //        console2.log("amountVaultAfterDeposit", amountVaultAfterDeposit);
 
-        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
+        FuseAction[] memory calls = new FuseAction[](1);
 
-        PlasmaVault.FuseAction[] memory flashLoanCalls = new PlasmaVault.FuseAction[](5);
+        FuseAction[] memory flashLoanCalls = new FuseAction[](5);
 
-        flashLoanCalls[0] = PlasmaVault.FuseAction(
+        flashLoanCalls[0] = FuseAction(
             aaveV3SupplyFuse,
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -127,7 +131,7 @@ contract ForkAmmGovernanceServiceTest is Test {
             )
         );
 
-        flashLoanCalls[1] = PlasmaVault.FuseAction(
+        flashLoanCalls[1] = FuseAction(
             aaveV3BorrowFuse,
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -135,7 +139,7 @@ contract ForkAmmGovernanceServiceTest is Test {
             )
         );
 
-        flashLoanCalls[2] = PlasmaVault.FuseAction(
+        flashLoanCalls[2] = FuseAction(
             nativeSwapWethToWstEthFuse,
             abi.encodeWithSignature(
                 "enter(bytes)",
@@ -143,12 +147,12 @@ contract ForkAmmGovernanceServiceTest is Test {
             )
         );
 
-        flashLoanCalls[3] = PlasmaVault.FuseAction(
+        flashLoanCalls[3] = FuseAction(
             balanceFuse,
             abi.encodeWithSignature("balanceOf(address,address,address)", address(vaultWstEth), WST_ETH, WST_ETH)
         );
 
-        flashLoanCalls[4] = PlasmaVault.FuseAction(
+        flashLoanCalls[4] = FuseAction(
             balanceFuse,
             abi.encodeWithSignature("balanceOf(address,address,address)", address(vaultWstEth), WST_ETH, W_ETH)
         );
@@ -164,7 +168,7 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         bytes memory data = abi.encode(flashLoanData);
 
-        calls[0] = PlasmaVault.FuseAction(flashLoanMorphoFuse, abi.encodeWithSignature("enter(bytes)", data));
+        calls[0] = FuseAction(flashLoanMorphoFuse, abi.encodeWithSignature("enter(bytes)", data));
 
         PlasmaVault(payable(vaultWstEth)).execute(calls);
     }

@@ -23,6 +23,7 @@ library PlasmaVaultLib {
     event TotalAssetsInMarketAdded(uint256 marketId, int256 amount);
     event InstantWithdrawalFusesConfigured(InstantWithdrawalFusesParamsStruct[] fuses);
     event PriceOracleChanged(address newPriceOracle);
+    event GuardElectronChanged(address guardElectron);
     event PerformanceFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
 
@@ -175,5 +176,17 @@ library PlasmaVaultLib {
     function setPriceOracle(address priceOracle) internal {
         PlasmaVaultStorageLib.getPriceOracle().value = priceOracle;
         emit PriceOracleChanged(priceOracle);
+    }
+
+    function getGuardElectronAddress() internal view returns (address) {
+        return PlasmaVaultStorageLib.getGuardElectronAddress().value;
+    }
+
+    function setGuardElectronAddress(address guardElectronAddress) internal {
+        if (guardElectronAddress == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        PlasmaVaultStorageLib.getGuardElectronAddress().value = guardElectronAddress;
+        emit GuardElectronChanged(guardElectronAddress);
     }
 }

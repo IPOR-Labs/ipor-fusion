@@ -21,6 +21,58 @@ import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 
+struct PlasmaVaultInitData {
+    address initialOwner;
+    string assetName;
+    string assetSymbol;
+    address underlyingToken;
+    address iporPriceOracle;
+    address[] alphas;
+    MarketSubstratesConfig[] marketSubstratesConfigs;
+    address[] fuses;
+    MarketBalanceFuseConfig[] balanceFuses;
+    FeeConfig feeConfig;
+    address guardElectron;
+}
+
+/// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
+struct FuseAction {
+    /// @notice fuse is a address of the Fuse contract
+    address fuse;
+    /// @notice data is a bytes data that is passed to the Fuse contract
+    bytes data;
+}
+
+/// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
+struct MarketBalanceFuseConfig {
+    /// @notice When marketId is 0, then fuse is independent to a market - example flashloan fuse
+    uint256 marketId;
+    /// @notice address of the balance fuse
+    address fuse;
+}
+
+/// @notice MarketSubstratesConfig is a struct that represents a configuration of substrates for a specific market
+/// @notice substrates are assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
+struct MarketSubstratesConfig {
+    /// @notice marketId is a id of the market
+    uint256 marketId;
+    /// @notice substrates is a list of substrates for the market
+    /// @dev it could be list of assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
+    bytes32[] substrates;
+}
+
+/// @notice FeeConfig is a struct that represents a configuration of performance and management fees used during Plasma Vault construction
+struct FeeConfig {
+    /// @notice performanceFeeManager is a address of the performance fee manager
+    address performanceFeeManager;
+    /// @notice performanceFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    uint256 performanceFeeInPercentage;
+    /// @notice managementFeeManager is a address of the management fee manager
+    address managementFeeManager;
+    /// @notice managementFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    uint256 managementFeeInPercentage;
+}
+
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     using Address for address;
@@ -50,73 +102,17 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
-    /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
-    struct FuseAction {
-        /// @notice fuse is a address of the Fuse contract
-        address fuse;
-        /// @notice data is a bytes data that is passed to the Fuse contract
-        bytes data;
-    }
-
-    /// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
-    struct MarketBalanceFuseConfig {
-        /// @notice When marketId is 0, then fuse is independent to a market - example flashloan fuse
-        uint256 marketId;
-        /// @notice address of the balance fuse
-        address fuse;
-    }
-
-    /// @notice MarketSubstratesConfig is a struct that represents a configuration of substrates for a specific market
-    /// @notice substrates are assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
-    struct MarketSubstratesConfig {
-        /// @notice marketId is a id of the market
-        uint256 marketId;
-        /// @notice substrates is a list of substrates for the market
-        /// @dev it could be list of assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
-        bytes32[] substrates;
-    }
-
-    /// @notice FeeConfig is a struct that represents a configuration of performance and management fees used during Plasma Vault construction
-    struct FeeConfig {
-        /// @notice performanceFeeManager is a address of the performance fee manager
-        address performanceFeeManager;
-        /// @notice performanceFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-        uint256 performanceFeeInPercentage;
-        /// @notice managementFeeManager is a address of the management fee manager
-        address managementFeeManager;
-        /// @notice managementFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-        uint256 managementFeeInPercentage;
-    }
-
     uint256 public immutable BASE_CURRENCY_DECIMALS;
 
-    /// @param initialOwner Address of the owner
-    /// @param assetName Name of the asset
-    /// @param assetSymbol Symbol of the asset
-    /// @param underlyingToken Address of the underlying token
-    /// @param alphas Array of alphas initially granted to execute actions on the Plasma Vault
-    /// @param marketSubstratesConfigs Array of market configurations
-    /// @param fuses Array of fuses initially supported by the Plasma Vault
-    /// @param balanceFuses Array of balance fuses initially supported by the Plasma Vault
-    /// @param feeConfig Fee configuration, performance fee and management fee, with fee managers addresses
     constructor(
-        address initialOwner,
-        string memory assetName,
-        string memory assetSymbol,
-        address underlyingToken,
-        address iporPriceOracle,
-        address[] memory alphas,
-        MarketSubstratesConfig[] memory marketSubstratesConfigs,
-        address[] memory fuses,
-        MarketBalanceFuseConfig[] memory balanceFuses,
-        FeeConfig memory feeConfig
+        PlasmaVaultInitData memory initData
     )
-        ERC4626Permit(IERC20(underlyingToken))
-        ERC20Permit(assetName)
-        ERC20(assetName, assetSymbol)
-        PlasmaVaultGovernance(initialOwner)
+        ERC4626Permit(IERC20(initData.underlyingToken))
+        ERC20Permit(initData.assetName)
+        ERC20(initData.assetName, initData.assetSymbol)
+        PlasmaVaultGovernance(initData.initialOwner, initData.guardElectron)
     {
-        IIporPriceOracle priceOracle = IIporPriceOracle(iporPriceOracle);
+        IIporPriceOracle priceOracle = IIporPriceOracle(initData.iporPriceOracle);
 
         if (priceOracle.BASE_CURRENCY() != USD) {
             revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
@@ -124,29 +120,35 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
 
-        PlasmaVaultLib.setPriceOracle(iporPriceOracle);
+        PlasmaVaultLib.setPriceOracle(initData.iporPriceOracle);
 
-        for (uint256 i; i < alphas.length; ++i) {
-            _grantAlpha(alphas[i]);
+        for (uint256 i; i < initData.alphas.length; ++i) {
+            _grantAlpha(initData.alphas[i]);
         }
 
-        for (uint256 i; i < fuses.length; ++i) {
-            _addFuse(fuses[i]);
+        for (uint256 i; i < initData.fuses.length; ++i) {
+            _addFuse(initData.fuses[i]);
         }
 
-        for (uint256 i; i < balanceFuses.length; ++i) {
-            _addBalanceFuse(balanceFuses[i].marketId, balanceFuses[i].fuse);
+        for (uint256 i; i < initData.balanceFuses.length; ++i) {
+            _addBalanceFuse(initData.balanceFuses[i].marketId, initData.balanceFuses[i].fuse);
         }
 
-        for (uint256 i; i < marketSubstratesConfigs.length; ++i) {
+        for (uint256 i; i < initData.marketSubstratesConfigs.length; ++i) {
             PlasmaVaultConfigLib.grandMarketSubstrates(
-                marketSubstratesConfigs[i].marketId,
-                marketSubstratesConfigs[i].substrates
+                initData.marketSubstratesConfigs[i].marketId,
+                initData.marketSubstratesConfigs[i].substrates
             );
         }
 
-        PlasmaVaultLib.configurePerformanceFee(feeConfig.performanceFeeManager, feeConfig.performanceFeeInPercentage);
-        PlasmaVaultLib.configureManagementFee(feeConfig.managementFeeManager, feeConfig.managementFeeInPercentage);
+        PlasmaVaultLib.configurePerformanceFee(
+            initData.feeConfig.performanceFeeManager,
+            initData.feeConfig.performanceFeeInPercentage
+        );
+        PlasmaVaultLib.configureManagementFee(
+            initData.feeConfig.managementFeeManager,
+            initData.feeConfig.managementFeeInPercentage
+        );
 
         PlasmaVaultLib.updateManagementFeeData();
     }

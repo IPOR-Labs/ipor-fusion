@@ -8,13 +8,11 @@ import {TimeLockType} from "../../contracts/electrons/IGuardElectron.sol";
 contract GuardElectronTest is Test {
     address private _atomist;
     address private _actorOne;
-    address private _actorTwo;
     GuardElectron private _guardElectron;
 
     function setUp() public {
         _atomist = address(0x1000);
         _actorOne = address(0x11111);
-        _actorTwo = address(0x22222);
         _guardElectron = new GuardElectron(_atomist, 1 hours);
     }
 
@@ -24,7 +22,7 @@ contract GuardElectronTest is Test {
 
         // when
         vm.expectRevert(error);
-        GuardElectron guardElectron = new GuardElectron(address(0), 1 hours);
+        new GuardElectron(address(0), 1 hours);
     }
 
     function testShouldRevertWhenMinimalTimeLockLessThanOneHour() external {
@@ -33,7 +31,7 @@ contract GuardElectronTest is Test {
 
         // when
         vm.expectRevert(error);
-        GuardElectron guardElectron = new GuardElectron(_atomist, 59 minutes);
+        new GuardElectron(_atomist, 59 minutes);
     }
 
     function testShouldReturnAtomistAddress() external {
@@ -147,7 +145,6 @@ contract GuardElectronTest is Test {
         // given
         vm.prank(_atomist);
         _guardElectron.appointedToAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
 
         vm.warp(block.timestamp + 2 hours);
 
@@ -190,8 +187,6 @@ contract GuardElectronTest is Test {
 
     function testShouldBeAbleToRevokeAccess() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
-
         vm.prank(_atomist);
         _guardElectron.appointedToAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
         vm.warp(block.timestamp + 2 hours);
@@ -526,7 +521,6 @@ contract GuardElectronTest is Test {
 
     function testShouldHasAccessWhenDisabledWhiteList() external {
         // given
-        bytes32 key = keccak256(abi.encodePacked(address(this), bytes4(keccak256("test1()"))));
         vm.prank(_atomist);
         _guardElectron.disableWhiteList(address(this), bytes4(keccak256("test1()")));
 
