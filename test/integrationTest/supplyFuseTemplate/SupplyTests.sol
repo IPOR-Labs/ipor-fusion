@@ -423,6 +423,17 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
             plasmaVault,
             PlasmaVault.mint.selector
         );
+        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).appointedToAccess(
+            address(plasmaVault),
+            PlasmaVault.execute.selector,
+            alpha
+        );
+        vm.warp(block.timestamp + 2 hours);
+        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).grantAccess(
+            address(plasmaVault),
+            PlasmaVault.execute.selector,
+            alpha
+        );
         vm.stopPrank();
     }
 }

@@ -111,6 +111,8 @@ contract PlasmaVaultTest is Test {
             )
         );
 
+        disableGuardElectron(plasmaVault);
+
         FuseAction[] memory calls = new FuseAction[](1);
 
         amount = 100 * 1e18;
@@ -190,6 +192,7 @@ contract PlasmaVaultTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -272,6 +275,7 @@ contract PlasmaVaultTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -366,6 +370,7 @@ contract PlasmaVaultTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -671,6 +676,7 @@ contract PlasmaVaultTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -769,6 +775,7 @@ contract PlasmaVaultTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -849,6 +856,11 @@ contract PlasmaVaultTest is Test {
         GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
             address(plasmaVault),
             PlasmaVault.mint.selector
+        );
+        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).grantAccess(
+            address(plasmaVault),
+            PlasmaVault.execute.selector,
+            alpha
         );
     }
 }

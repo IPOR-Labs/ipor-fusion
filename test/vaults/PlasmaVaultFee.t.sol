@@ -1695,5 +1695,10 @@ contract PlasmaVaultFeeTest is Test {
             address(plasmaVault),
             PlasmaVault.mint.selector
         );
+        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).grantAccess(
+            address(plasmaVault),
+            PlasmaVault.execute.selector,
+            alpha
+        );
     }
 }
