@@ -132,6 +132,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -267,6 +268,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -400,6 +402,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -542,6 +545,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -679,6 +683,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -816,6 +821,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -949,6 +955,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -1070,6 +1077,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -1196,6 +1204,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -1293,6 +1302,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -1396,6 +1406,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -1496,6 +1507,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -1593,6 +1605,7 @@ contract PlasmaVaultFeeTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -1669,7 +1682,18 @@ contract PlasmaVaultFeeTest is Test {
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
-    function createGuardElectron() public returns (address) {
+    function createGuardElectron() private returns (address) {
         return address(new GuardElectron(owner, 1 hours));
+    }
+
+    function disableGuardElectron(PlasmaVault plasmaVault) private {
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
     }
 }

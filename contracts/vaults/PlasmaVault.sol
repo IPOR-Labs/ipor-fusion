@@ -20,6 +20,7 @@ import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
+import {IGuardElectron} from "../electrons/IGuardElectron.sol";
 
 struct PlasmaVaultInitData {
     address initialOwner;
@@ -82,7 +83,9 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
     modifier onlyGrantedAccess() {
-        AccessControlLib.isAccessGrantedToVault(msg.sender);
+        if (!IGuardElectron(getGuardElectronAddress()).hasAccess(address(this), msg.sig, msg.sender)) {
+            revert AccessControlLib.NoAccessToVault(msg.sender);
+        }
         _;
     }
 

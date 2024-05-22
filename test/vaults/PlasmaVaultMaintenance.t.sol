@@ -308,6 +308,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
@@ -439,6 +440,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
@@ -638,6 +640,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
@@ -713,6 +716,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
@@ -1560,5 +1564,16 @@ contract PlasmaVaultMaintenanceTest is Test {
 
     function createGuardElectron() public returns (address) {
         return address(new GuardElectron(owner, 1 hours));
+    }
+
+    function disableGuardElectron(PlasmaVault plasmaVault) private {
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
     }
 }

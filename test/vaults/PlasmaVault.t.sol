@@ -455,6 +455,7 @@ contract PlasmaVaultTest is Test {
                 createGuardElectron()
             )
         );
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -568,6 +569,8 @@ contract PlasmaVaultTest is Test {
                 createGuardElectron()
             )
         );
+
+        disableGuardElectron(plasmaVault);
 
         amount = 100 * 1e6;
 
@@ -836,5 +839,16 @@ contract PlasmaVaultTest is Test {
 
     function createGuardElectron() public returns (address) {
         return address(new GuardElectron(owner, 1 hours));
+    }
+
+    function disableGuardElectron(PlasmaVault plasmaVault) private {
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
     }
 }

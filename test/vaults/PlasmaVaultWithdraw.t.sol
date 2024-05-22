@@ -176,6 +176,14 @@ contract PlasmaVaultWithdrawTest is Test {
                 createGuardElectron()
             )
         );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
 
         amount = 100 * 1e6;
 
@@ -285,6 +293,15 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 createGuardElectron()
             )
+        );
+
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
         );
 
         amount = 100 * 1e6;
@@ -402,6 +419,14 @@ contract PlasmaVaultWithdrawTest is Test {
                 createGuardElectron()
             )
         );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
 
         amount = 100 * 1e6;
 
@@ -505,6 +530,15 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 createGuardElectron()
             )
+        );
+
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
         );
 
         amount = 100 * 1e6;
@@ -633,7 +667,14 @@ contract PlasmaVaultWithdrawTest is Test {
                 createGuardElectron()
             )
         );
-
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
         amount = 100 * 1e6;
 
         /// @dev user one
@@ -793,6 +834,14 @@ contract PlasmaVaultWithdrawTest is Test {
                 createGuardElectron()
             )
         );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
 
         amount = 100 * 1e6;
 
@@ -945,6 +994,14 @@ contract PlasmaVaultWithdrawTest is Test {
                 createGuardElectron()
             )
         );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
 
         amount = 100 * 1e6;
 
@@ -1088,6 +1145,14 @@ contract PlasmaVaultWithdrawTest is Test {
                 createGuardElectron()
             )
         );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
 
         amount = 100 * 1e6;
 
@@ -1198,6 +1263,14 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 createGuardElectron()
             )
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
         );
 
         amount = 100 * 1e6;
@@ -1325,6 +1398,14 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 createGuardElectron()
             )
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
         );
 
         amount = 100 * 1e6;
@@ -1525,6 +1606,15 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 createGuardElectron()
             )
+        );
+
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
         );
 
         return plasmaVault;

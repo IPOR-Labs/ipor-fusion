@@ -57,6 +57,14 @@ contract PlasmaVaultDepositTest is Test {
     function testShouldDepositToPlazamVaultWithDAIAsUnderlyingToken() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
 
         userOne = address(0x777);
 
@@ -174,6 +182,7 @@ contract PlasmaVaultDepositTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
+        address guardElectron = createGuardElectron();
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 owner,
@@ -186,9 +195,11 @@ contract PlasmaVaultDepositTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                guardElectron
             )
         );
+        GuardElectron(guardElectron).disableWhiteList(address(plasmaVault), PlasmaVault.deposit.selector);
+        GuardElectron(guardElectron).disableWhiteList(address(plasmaVault), PlasmaVault.mint.selector);
         return plasmaVault;
     }
 
@@ -282,6 +293,14 @@ contract PlasmaVaultDepositTest is Test {
     function testShouldDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
 
         address userOne = address(0x777);
 
@@ -369,6 +388,14 @@ contract PlasmaVaultDepositTest is Test {
     function testShouldMintToPlazamVaultWithDAIAsUnderlyingToken() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
 
         address userOne = address(0x777);
 
@@ -445,6 +472,14 @@ contract PlasmaVaultDepositTest is Test {
     function testShouldMintToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector
+        );
+        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
+            address(plasmaVault),
+            PlasmaVault.mint.selector
+        );
 
         address userOne = address(0x777);
 
