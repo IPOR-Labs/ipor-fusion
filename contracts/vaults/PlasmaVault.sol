@@ -10,7 +10,6 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
-import {AccessControlLib} from "../libraries/AccessControlLib.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
@@ -82,7 +81,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
     modifier onlyGrantedAccess() {
         if (!IGuardElectron(getGuardElectronAddress()).hasAccess(address(this), msg.sig, msg.sender)) {
-            revert AccessControlLib.NoAccessToVault(msg.sender);
+            revert Errors.NoAccessToVault(msg.sender);
         }
         _;
     }

@@ -38,6 +38,20 @@ contract GuardElectron is Ownable2Step, IGuardElectron {
     // @dev key = keccak256(abi.encodePacked(address contractAddress, byte4 functionSignature))
     mapping(bytes32 key => uint256 isRevoked) public disabledWhiteList;
 
+    modifier onlyPauseGuardian() {
+        if (pauseGuards[msg.sender] != 1) {
+            revert SenderNotGuardian(msg.sender);
+        }
+        _;
+    }
+
+    modifier onlyAtomist() {
+        if (msg.sender != getAtomist()) {
+            revert SenderNotAtomist(msg.sender);
+        }
+        _;
+    }
+
     constructor(address atomist_, uint32 minimalTimeLock_) Ownable(atomist_) {
         if (minimalTimeLock_ < minimalTimeLock) {
             revert TimeLockError(minimalTimeLock_, minimalTimeLock);
@@ -55,14 +69,14 @@ contract GuardElectron is Ownable2Step, IGuardElectron {
         address contractAddress_,
         bytes4 functionSignature_,
         address actor_
-    ) external view returns (bool) {
+    ) external view override returns (bool) {
         if (disabledWhiteList[keccak256(abi.encodePacked(contractAddress_, functionSignature_))] == 1) {
             return true;
         }
         return accesses[keccak256(abi.encodePacked(contractAddress_, functionSignature_, actor_))] == 1;
     }
 
-    function setTimeLock(TimeLockType timeLockType_, uint32 newTimeLock_) external onlyAtomist {
+    function setTimeLock(TimeLockType timeLockType_, uint32 newTimeLock_) external override onlyAtomist {
         if (newTimeLock_ < minimalTimeLock) {
             revert TimeLockError(newTimeLock_, minimalTimeLock);
         }
@@ -70,14 +84,18 @@ contract GuardElectron is Ownable2Step, IGuardElectron {
         emit TimeLockChanged(timeLockType_, newTimeLock_);
     }
 
-    function appointedToAccess(address contractAddress, bytes4 functionName, address actor) external onlyAtomist {
-        bytes32 key = keccak256(abi.encodePacked(contractAddress, functionName, actor));
+    function appointedToAccess(
+        address contractAddress_,
+        bytes4 functionName_,
+        address actor_
+    ) external override onlyAtomist {
+        bytes32 key = keccak256(abi.encodePacked(contractAddress_, functionName_, actor_));
         appointedToGrantAccess[key] = uint32(block.timestamp);
-        emit AppointedToAccess(contractAddress, functionName, actor);
+        emit AppointedToAccess(contractAddress_, functionName_, actor_);
     }
 
-    function grantAccess(address contractAddress, bytes4 functionName, address actor) external onlyAtomist {
-        bytes32 key = keccak256(abi.encodePacked(contractAddress, functionName, actor));
+    function grantAccess(address contractAddress_, bytes4 functionName_, address actor_) external override onlyAtomist {
+        bytes32 key = keccak256(abi.encodePacked(contractAddress_, functionName_, actor_));
         uint256 appointedTimeLock = appointedToGrantAccess[key];
         uint256 acceptTime = appointedTimeLock + timeLocks[TimeLockType.AccessControl];
         if (appointedTimeLock > 0 && acceptTime > block.timestamp) {
@@ -85,13 +103,17 @@ contract GuardElectron is Ownable2Step, IGuardElectron {
         }
         accesses[key] = 1;
         appointedToGrantAccess[key] = 0;
-        emit AccessGrated(contractAddress, functionName, actor);
+        emit AccessGrated(contractAddress_, functionName_, actor_);
     }
 
-    function revokeAccess(address contractAddress, bytes4 functionName, address actor) external onlyAtomist {
-        bytes32 key = keccak256(abi.encodePacked(contractAddress, functionName, actor));
+    function revokeAccess(
+        address contractAddress_,
+        bytes4 functionName_,
+        address actor_
+    ) external override onlyAtomist {
+        bytes32 key = keccak256(abi.encodePacked(contractAddress_, functionName_, actor_));
         accesses[key] = 0;
-        emit AccessRevoked(contractAddress, functionName, actor);
+        emit AccessRevoked(contractAddress_, functionName_, actor_);
     }
 
     function transferOwnership(address newOwner_) public override onlyAtomist {
@@ -109,14 +131,14 @@ contract GuardElectron is Ownable2Step, IGuardElectron {
         super.acceptOwnership();
     }
 
-    function addPauseGuardians(address[] calldata guardians_) external onlyAtomist {
+    function addPauseGuardians(address[] calldata guardians_) external override onlyAtomist {
         uint256 len = guardians_.length;
         for (uint256 i; i < len; ++i) {
             pauseGuards[guardians_[i]] = 1;
         }
     }
 
-    function removePauseGuardians(address[] calldata guardians_) external onlyAtomist {
+    function removePauseGuardians(address[] calldata guardians_) external override onlyAtomist {
         uint256 len = guardians_.length;
         for (uint256 i; i < len; ++i) {
             pauseGuards[guardians_[i]] = 0;
@@ -126,7 +148,7 @@ contract GuardElectron is Ownable2Step, IGuardElectron {
     function pause(
         address[] calldata contractAddresses_,
         bytes4[] memory functionSignatures_
-    ) external onlyPauseGuardian {
+    ) external override onlyPauseGuardian {
         uint256 len = contractAddresses_.length;
         if (len != functionSignatures_.length) {
             revert ArrayLengthMismatch(len, functionSignatures_.length);
@@ -138,7 +160,10 @@ contract GuardElectron is Ownable2Step, IGuardElectron {
         }
     }
 
-    function unpause(address[] calldata contractAddresses_, bytes4[] memory functionSignatures_) external onlyAtomist {
+    function unpause(
+        address[] calldata contractAddresses_,
+        bytes4[] memory functionSignatures_
+    ) external override onlyAtomist {
         uint256 len = contractAddresses_.length;
         if (len != functionSignatures_.length) {
             revert ArrayLengthMismatch(len, functionSignatures_.length);
@@ -149,27 +174,13 @@ contract GuardElectron is Ownable2Step, IGuardElectron {
         }
     }
 
-    function disableWhiteList(address contractAddress_, bytes4 functionSignature_) external onlyAtomist {
+    function disableWhiteList(address contractAddress_, bytes4 functionSignature_) external override onlyAtomist {
         bytes32 key = keccak256(abi.encodePacked(contractAddress_, functionSignature_));
         disabledWhiteList[key] = 1;
     }
 
-    function enableWhiteList(address contractAddress_, bytes4 functionSignature_) external onlyAtomist {
+    function enableWhiteList(address contractAddress_, bytes4 functionSignature_) external override onlyAtomist {
         bytes32 key = keccak256(abi.encodePacked(contractAddress_, functionSignature_));
         disabledWhiteList[key] = 0;
-    }
-
-    modifier onlyPauseGuardian() {
-        if (pauseGuards[msg.sender] != 1) {
-            revert SenderNotGuardian(msg.sender);
-        }
-        _;
-    }
-
-    modifier onlyAtomist() {
-        if (msg.sender != getAtomist()) {
-            revert SenderNotAtomist(msg.sender);
-        }
-        _;
     }
 }

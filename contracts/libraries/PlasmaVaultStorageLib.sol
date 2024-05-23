@@ -15,11 +15,6 @@ library PlasmaVaultStorageLib {
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_MARKET =
         0x4b7e21bd695ff47386ac5a9c91bc5af89ae8f70db8784eaaf7e339cf59a90400;
 
-    /// @notice List of alphas allowed to execute actions on the vault
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultAlphas")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CFG_PLASMA_VAULT_ALPHAS =
-        0xb4a789f3429f4117549bcd6c9310113f9405d6b1c930f53ac188a1907a86c400;
-
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultMarketSubstrates")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_MARKET_SUBSTRATES =
         0xfe9ad807db753417e8720b1fc03cc0413cb78b2a910b408a05319e9fda3ed100;
@@ -48,10 +43,6 @@ library PlasmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultInstantWithdrawalFusesParams")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_INSTANT_WITHDRAWAL_FUSES_PARAMS =
         0x471d4152a74f0c2d2daea41c6f0f65733a7bcc61fedc32bc0084a98c5f96ff00;
-
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultGrantedAddressesToInteractWithVault")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CFG_PLASMA_VAULT_GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT =
-        0xfa87daeda1dbf9ff4e1e074074afad700558780bbfeeb3fc95c580b632362700;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.cfgPlasmaVaultFeeConfig")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_FEE_CONFIG =
@@ -177,12 +168,6 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getAlphas() internal pure returns (Alphas storage alphas) {
-        assembly {
-            alphas.slot := CFG_PLASMA_VAULT_ALPHAS
-        }
-    }
-
     /// @notice Space in storage to store the market configuration for a given PlasmaVault
     function getMarketSubstrates() internal pure returns (MarketSubstrates storage marketSubstrates) {
         assembly {
@@ -225,16 +210,6 @@ library PlasmaVaultStorageLib {
     {
         assembly {
             instantWithdrawalFusesParams.slot := CFG_PLASMA_VAULT_INSTANT_WITHDRAWAL_FUSES_PARAMS
-        }
-    }
-
-    function getGrantedAddressesToInteractWithVault()
-        internal
-        pure
-        returns (GrantedAddressesToInteractWithVault storage grantedAddressesToInteractWithVault)
-    {
-        assembly {
-            grantedAddressesToInteractWithVault.slot := CFG_PLASMA_VAULT_GRANTED_ADDRESSES_TO_INTERACT_WITH_VAULT
         }
     }
 
