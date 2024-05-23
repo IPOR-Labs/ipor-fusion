@@ -271,9 +271,6 @@ contract PlasmaVaultDepositTest is Test {
         uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
         uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
-        vm.prank(owner);
-        plasmaVault.activateAccessControl();
-
         bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
 
         //when
@@ -292,17 +289,14 @@ contract PlasmaVaultDepositTest is Test {
 
     function testShouldDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
         //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.deposit.selector
-        );
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.mint.selector
-        );
-
         address userOne = address(0x777);
+
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).grantAccess(
+            address(plasmaVault),
+            PlasmaVault.deposit.selector,
+            userOne
+        );
 
         uint256 amount = 100 * 1e18;
 
@@ -313,12 +307,6 @@ contract PlasmaVaultDepositTest is Test {
 
         uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
         uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
-
-        vm.prank(owner);
-        plasmaVault.activateAccessControl();
-
-        vm.prank(owner);
-        plasmaVault.grantAccessToVault(userOne);
 
         //when
         vm.prank(userOne);
@@ -344,48 +332,7 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
-    function testShouldNotDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenRemoveFromAccessList() public {
-        //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
-
-        address userOne = address(0x777);
-
-        uint256 amount = 100 * 1e18;
-
-        deal(DAI, address(userOne), amount);
-
-        vm.prank(userOne);
-        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
-
-        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
-
-        vm.prank(owner);
-        plasmaVault.activateAccessControl();
-
-        vm.prank(owner);
-        plasmaVault.grantAccessToVault(userOne);
-
-        bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
-
-        //when
-        vm.prank(owner);
-        plasmaVault.revokeAccessToVault(userOne);
-
-        vm.prank(userOne);
-        vm.expectRevert(error);
-        plasmaVault.deposit(amount, userOne);
-
-        //then
-        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
-
-        assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
-
-        assertEq(userVaultBalanceBefore, userVaultBalanceAfter);
-    }
-
-    function testShouldMintToPlazamVaultWithDAIAsUnderlyingToken() public {
+    function testShouldMintToPlasmaVaultWithDAIAsUnderlyingToken() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
         GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
@@ -434,7 +381,7 @@ contract PlasmaVaultDepositTest is Test {
     }
 
     // todo
-    function testShouldNotMintToPlazamVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
+    function testShouldNotMintToPlasmaVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
@@ -449,9 +396,6 @@ contract PlasmaVaultDepositTest is Test {
 
         uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
         uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
-
-        vm.prank(owner);
-        plasmaVault.activateAccessControl();
 
         bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
 
@@ -471,17 +415,13 @@ contract PlasmaVaultDepositTest is Test {
 
     function testShouldMintToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
         //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.deposit.selector
-        );
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.mint.selector
-        );
-
         address userOne = address(0x777);
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).grantAccess(
+            address(plasmaVault),
+            PlasmaVault.mint.selector,
+            userOne
+        );
 
         uint256 amount = 100 * 1e18;
 
@@ -492,12 +432,6 @@ contract PlasmaVaultDepositTest is Test {
 
         uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
         uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
-
-        vm.prank(owner);
-        plasmaVault.activateAccessControl();
-
-        vm.prank(owner);
-        plasmaVault.grantAccessToVault(userOne);
 
         //when
         vm.prank(userOne);
@@ -521,47 +455,6 @@ contract PlasmaVaultDepositTest is Test {
 
         /// @dev no transfer to the market when depositing
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
-    }
-
-    function testShouldNotMintToPlazamVaultWithDAIAsUnderlyingTokenWhenRemoveFromAccessList() public {
-        //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
-
-        address userOne = address(0x777);
-
-        uint256 amount = 100 * 1e18;
-
-        deal(DAI, address(userOne), amount);
-
-        vm.prank(userOne);
-        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
-
-        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
-
-        vm.prank(owner);
-        plasmaVault.activateAccessControl();
-
-        vm.prank(owner);
-        plasmaVault.grantAccessToVault(userOne);
-
-        bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
-
-        //when
-        vm.prank(owner);
-        plasmaVault.revokeAccessToVault(userOne);
-
-        vm.prank(userOne);
-        vm.expectRevert(error);
-        plasmaVault.mint(amount, userOne);
-
-        //then
-        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
-        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
-
-        assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
-
-        assertEq(userVaultBalanceBefore, userVaultBalanceAfter);
     }
 
     function createGuardElectron() public returns (address) {

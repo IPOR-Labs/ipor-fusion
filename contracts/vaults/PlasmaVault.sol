@@ -124,10 +124,6 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         PlasmaVaultLib.setPriceOracle(initData.iporPriceOracle);
 
-        for (uint256 i; i < initData.alphas.length; ++i) {
-            _grantAlpha(initData.alphas[i]);
-        }
-
         for (uint256 i; i < initData.fuses.length; ++i) {
             _addFuse(initData.fuses[i]);
         }
