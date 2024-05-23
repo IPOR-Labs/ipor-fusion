@@ -18,16 +18,16 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenAtomistZeroAddress() external {
         // given
-        bytes memory error = abi.encodeWithSignature("OwnableInvalidOwner(address)", address(0x0));
+        bytes memory error = abi.encodeWithSignature("OwnableInvalidOwner(address)", address(0));
 
         // when
         vm.expectRevert(error);
-        new GuardElectron(address(0), 1 hours);
+        new GuardElectron(address(0), 2 hours);
     }
 
     function testShouldRevertWhenMinimalTimeLockLessThanOneHour() external {
         // given
-        bytes memory error = abi.encodeWithSignature("TimeLockError(uint256,uint256)", 59 minutes, 1 hours);
+        bytes memory error = abi.encodeWithSignature("TimelockError(uint256,uint256)", 59 minutes, 1 hours);
 
         // when
         vm.expectRevert(error);
@@ -44,44 +44,44 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenSetTimeLockLessThanMinimalTimeLock() external {
         // given
-        bytes memory error = abi.encodeWithSignature("TimeLockError(uint256,uint256)", 59 minutes, 1 hours);
+        bytes memory error = abi.encodeWithSignature("TimelockError(uint256,uint256)", 59 minutes, 1 hours);
 
         // when
         vm.expectRevert(error);
         vm.prank(_atomist);
-        _guardElectron.setTimeLock(TimeLockType.AtomistTransfer, 59 minutes);
+        _guardElectron.setTimeLock(TimeLockType.AtomistTransferOwnership, 59 minutes);
     }
 
     function testShouldRevertWhenSetTimlockSendNotByAtomist() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
+        bytes memory error = abi.encodeWithSignature("SenderNotAtomist()");
 
         // when
         vm.expectRevert(error);
-        _guardElectron.setTimeLock(TimeLockType.AtomistTransfer, 2 hours);
+        _guardElectron.setTimeLock(TimeLockType.AtomistTransferOwnership, 2 hours);
     }
 
     function testShouldBeAbleToUpdateTimeLockForAtomistTransfer() external {
-        uint256 timeLockBefore = _guardElectron.timeLocks(TimeLockType.AtomistTransfer);
+        uint256 timeLockBefore = _guardElectron.timelocks(TimeLockType.AtomistTransferOwnership);
         // when
         vm.prank(_atomist);
-        _guardElectron.setTimeLock(TimeLockType.AtomistTransfer, 2 hours);
+        _guardElectron.setTimeLock(TimeLockType.AtomistTransferOwnership, 2 hours);
 
         // then
-        uint256 timeLockAfter = _guardElectron.timeLocks(TimeLockType.AtomistTransfer);
+        uint256 timeLockAfter = _guardElectron.timelocks(TimeLockType.AtomistTransferOwnership);
 
         assertEq(1 hours, timeLockBefore, "Time lock for AtomistTransfer should be 1 hour");
         assertEq(2 hours, timeLockAfter, "Time lock for AtomistTransfer should be updated");
     }
 
     function testShouldBeAbleToSetupTimeLockForAccessControl() external {
-        uint256 timeLockBefore = _guardElectron.timeLocks(TimeLockType.AccessControl);
+        uint256 timeLockBefore = _guardElectron.timelocks(TimeLockType.AccessControl);
         // when
         vm.prank(_atomist);
         _guardElectron.setTimeLock(TimeLockType.AccessControl, 2 hours);
 
         // then
-        uint256 timeLockAfter = _guardElectron.timeLocks(TimeLockType.AccessControl);
+        uint256 timeLockAfter = _guardElectron.timelocks(TimeLockType.AccessControl);
 
         assertEq(1 hours, timeLockBefore, "Time lock for AccessControl should be 1 hour");
         assertEq(2 hours, timeLockAfter, "Time lock for AccessControl should be updated");
@@ -89,11 +89,11 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenNotAtomistSetupAppointedToAccess() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
+        bytes memory error = abi.encodeWithSignature("SenderNotAtomist()");
 
         // when
         vm.expectRevert(error);
-        _guardElectron.appointedToAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
+        _guardElectron.appointToGrantAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
     }
 
     function testShouldBeAbleToAppointToAccess() external {
@@ -103,7 +103,7 @@ contract GuardElectronTest is Test {
 
         // when
         vm.prank(_atomist);
-        _guardElectron.appointedToAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
+        _guardElectron.appointToGrantAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
 
         // then
         bool isAppointedAfter = _guardElectron.appointedToGrantAccess(key) == 1;
@@ -115,8 +115,8 @@ contract GuardElectronTest is Test {
     function testShouldRewertWhenNotAtomistTryToGrantAccess() external {
         // given
         vm.prank(_atomist);
-        _guardElectron.appointedToAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
+        _guardElectron.appointToGrantAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
+        bytes memory error = abi.encodeWithSignature("SenderNotAtomist()");
 
         vm.warp(block.timestamp + 2 hours);
 
@@ -128,9 +128,9 @@ contract GuardElectronTest is Test {
     function testShouldRevertWhenTryToGrantAccessBeforeTimeLock() external {
         // given
         vm.prank(_atomist);
-        _guardElectron.appointedToAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
+        _guardElectron.appointToGrantAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
         bytes memory error = abi.encodeWithSignature(
-            "TimeLockError(uint256,uint256)",
+            "TimelockError(uint256,uint256)",
             block.timestamp,
             block.timestamp + 1 hours
         );
@@ -144,7 +144,7 @@ contract GuardElectronTest is Test {
     function testShouldBeAbleToGrantAccess() external {
         // given
         vm.prank(_atomist);
-        _guardElectron.appointedToAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
+        _guardElectron.appointToGrantAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
 
         vm.warp(block.timestamp + 2 hours);
 
@@ -163,10 +163,10 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenNotAtomistTryToRevokeAccess() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
+        bytes memory error = abi.encodeWithSignature("SenderNotAtomist()");
 
         vm.prank(_atomist);
-        _guardElectron.appointedToAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
+        _guardElectron.appointToGrantAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
         vm.warp(block.timestamp + 2 hours);
 
         vm.prank(_atomist);
@@ -188,7 +188,7 @@ contract GuardElectronTest is Test {
     function testShouldBeAbleToRevokeAccess() external {
         // given
         vm.prank(_atomist);
-        _guardElectron.appointedToAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
+        _guardElectron.appointToGrantAccess(address(this), bytes4(keccak256("test1()")), _actorOne);
         vm.warp(block.timestamp + 2 hours);
 
         vm.prank(_atomist);
@@ -209,7 +209,7 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenNotAtomistTryToTransferOwnership() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
+        bytes memory error = abi.encodeWithSignature("SenderNotAtomist()");
 
         // when
         vm.expectRevert(error);
@@ -219,14 +219,18 @@ contract GuardElectronTest is Test {
     function testShouldBeAbleToTransferOwnership() external {
         // given
         vm.warp(block.timestamp + 2 hours);
-        bool isAppointedToTransferOwnershipBefore = _guardElectron.appointedTimeLocks(TimeLockType.AtomistTransfer) > 1;
+        bool isAppointedToTransferOwnershipBefore = _guardElectron.appointedTimeLocks(
+            TimeLockType.AtomistTransferOwnership
+        ) > 1;
 
         // when
         vm.prank(_atomist);
         _guardElectron.transferOwnership(_actorOne);
 
         // then
-        bool isAppointedToTransferOwnershipAfter = _guardElectron.appointedTimeLocks(TimeLockType.AtomistTransfer) > 1;
+        bool isAppointedToTransferOwnershipAfter = _guardElectron.appointedTimeLocks(
+            TimeLockType.AtomistTransferOwnership
+        ) > 1;
 
         assertFalse(isAppointedToTransferOwnershipBefore, "Ownership should not be appointed before");
         assertTrue(isAppointedToTransferOwnershipAfter, "Ownership should be appointed after");
@@ -239,11 +243,13 @@ contract GuardElectronTest is Test {
         vm.prank(_atomist);
         _guardElectron.transferOwnership(_actorOne);
 
-        bool isAppointedToTransferOwnershipBefore = _guardElectron.appointedTimeLocks(TimeLockType.AtomistTransfer) > 1;
+        bool isAppointedToTransferOwnershipBefore = _guardElectron.appointedTimeLocks(
+            TimeLockType.AtomistTransferOwnership
+        ) > 1;
 
         vm.warp(block.timestamp + 56 minutes);
 
-        bytes memory error = abi.encodeWithSignature("TimeLockError(uint256,uint256)", 10561, 10801);
+        bytes memory error = abi.encodeWithSignature("TimelockError(uint256,uint256)", 10561, 10801);
 
         // when
         vm.expectRevert(error);
@@ -251,7 +257,9 @@ contract GuardElectronTest is Test {
         _guardElectron.acceptOwnership();
 
         // then
-        bool isAppointedToTransferOwnershipAfter = _guardElectron.appointedTimeLocks(TimeLockType.AtomistTransfer) > 1;
+        bool isAppointedToTransferOwnershipAfter = _guardElectron.appointedTimeLocks(
+            TimeLockType.AtomistTransferOwnership
+        ) > 1;
 
         assertTrue(isAppointedToTransferOwnershipBefore, "Ownership should be appointed before");
         assertTrue(isAppointedToTransferOwnershipAfter, "Ownership should be appointed after");
@@ -281,7 +289,7 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenNotAtomistTryAddPauseGuardian() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
+        bytes memory error = abi.encodeWithSignature("SenderNotAtomist()");
 
         address[] memory guardians = new address[](1);
         guardians[0] = _actorOne;
@@ -296,14 +304,14 @@ contract GuardElectronTest is Test {
         address[] memory guardians = new address[](1);
         guardians[0] = _actorOne;
 
-        bool isPauseGuardBefore = _guardElectron.pauseGuards(_actorOne) == 1;
+        bool isPauseGuardBefore = _guardElectron.pauseGuardians(_actorOne) == 1;
 
         // when
         vm.prank(_atomist);
         _guardElectron.addPauseGuardians(guardians);
 
         // then
-        bool isPauseGuardAfter = _guardElectron.pauseGuards(_actorOne) == 1;
+        bool isPauseGuardAfter = _guardElectron.pauseGuardians(_actorOne) == 1;
 
         assertFalse(isPauseGuardBefore, "Pause guard should not be before");
         assertTrue(isPauseGuardAfter, "Pause guard should be after");
@@ -311,21 +319,21 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenNotAtomistTryRemovePauseGuardian() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
+        bytes memory error = abi.encodeWithSignature("SenderNotAtomist()");
 
         address[] memory guardians = new address[](1);
         guardians[0] = _actorOne;
         vm.prank(_atomist);
         _guardElectron.addPauseGuardians(guardians);
 
-        bool isPauseGuardBefore = _guardElectron.pauseGuards(_actorOne) == 1;
+        bool isPauseGuardBefore = _guardElectron.pauseGuardians(_actorOne) == 1;
 
         // when
         vm.expectRevert(error);
         _guardElectron.removePauseGuardians(guardians);
 
         // then
-        bool isPauseGuardAfter = _guardElectron.pauseGuards(_actorOne) == 1;
+        bool isPauseGuardAfter = _guardElectron.pauseGuardians(_actorOne) == 1;
 
         assertTrue(isPauseGuardBefore, "Pause guard should be before");
         assertTrue(isPauseGuardAfter, "Pause guard should be after");
@@ -338,14 +346,14 @@ contract GuardElectronTest is Test {
         vm.prank(_atomist);
         _guardElectron.addPauseGuardians(guardians);
 
-        bool isPauseGuardBefore = _guardElectron.pauseGuards(_actorOne) == 1;
+        bool isPauseGuardBefore = _guardElectron.pauseGuardians(_actorOne) == 1;
 
         // when
         vm.prank(_atomist);
         _guardElectron.removePauseGuardians(guardians);
 
         // then
-        bool isPauseGuardAfter = _guardElectron.pauseGuards(_actorOne) == 1;
+        bool isPauseGuardAfter = _guardElectron.pauseGuardians(_actorOne) == 1;
 
         assertTrue(isPauseGuardBefore, "Pause guard should be before");
         assertFalse(isPauseGuardAfter, "Pause guard should not be after");
@@ -353,7 +361,7 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenNotPauseGuardianTryToPause() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotGuardian(address)", address(this));
+        bytes memory error = abi.encodeWithSignature("SenderNotGuardian()");
 
         address[] memory contractAddresses = new address[](1);
         contractAddresses[0] = address(this);
@@ -426,7 +434,7 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenNotAtomistTryToUnpause() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
+        bytes memory error = abi.encodeWithSignature("SenderNotAtomist()");
 
         address[] memory guardians = new address[](1);
         guardians[0] = _actorOne;
@@ -488,7 +496,7 @@ contract GuardElectronTest is Test {
 
     function testShouldRevertWhenNotAtomistTryToDisableWhiteList() external {
         // given
-        bytes memory error = abi.encodeWithSignature("SenderNotAtomist(address)", address(this));
+        bytes memory error = abi.encodeWithSignature("SenderNotAtomist()");
 
         // when
         vm.expectRevert(error);
@@ -498,14 +506,14 @@ contract GuardElectronTest is Test {
     function testShouldBeAbleToDisableWhiteList() external {
         // given
         bytes32 key = keccak256(abi.encodePacked(address(this), bytes4(keccak256("test1()"))));
-        bool isDisabledBefore = _guardElectron.disabledWhiteList(key) == 1;
+        bool isDisabledBefore = _guardElectron.disabledWhitelist(key) == 1;
 
         // when
         vm.prank(_atomist);
         _guardElectron.disableWhiteList(address(this), bytes4(keccak256("test1()")));
 
         // then
-        bool isDisabledAfter = _guardElectron.disabledWhiteList(key) == 1;
+        bool isDisabledAfter = _guardElectron.disabledWhitelist(key) == 1;
 
         assertFalse(isDisabledBefore, "White list should not be disabled before");
         assertTrue(isDisabledAfter, "White list should be disabled after");

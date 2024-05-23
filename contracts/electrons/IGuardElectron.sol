@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 enum TimeLockType {
-    AtomistTransfer,
+    AtomistTransferOwnership,
     AccessControl
 }
 
@@ -14,15 +14,11 @@ interface IGuardElectron {
 
     /// @notice It checks if the specified actor has access to a given function in a contract.
     /// @param contractAddress_ The address of the contract to check.
-    /// @param functionSignature_ The signature of the function to check.
+    /// @param functionSig_ The signature of the function to check.
     /// @param actor_ The address of the actor to check for access.
     /// @return True if the actor has access to the specified function in the given contract, otherwise false.
     /// @dev This function verifies whether a particular actor has been granted access to a specific function in a contract.
-    function hasAccess(
-        address contractAddress_,
-        bytes4 functionSignature_,
-        address actor_
-    ) external view returns (bool);
+    function hasAccess(address contractAddress_, bytes4 functionSig_, address actor_) external view returns (bool);
 
     /// @notice It sets a new time lock for a specified TimeLockType.
     /// @param timeLockType_ The type of time lock to set.
@@ -35,7 +31,7 @@ interface IGuardElectron {
     /// @param functionName_ The signature of the function to which access is being granted.
     /// @param actor_ The address of the actor being granted access.
     /// @dev This function is used to appoint an actor with access rights to a specific function within a contract.
-    function appointedToAccess(address contractAddress_, bytes4 functionName_, address actor_) external;
+    function appointToGrantAccess(address contractAddress_, bytes4 functionName_, address actor_) external;
 
     /// @notice It grants access to a specific function in a contract to a specified actor.
     /// @param contractAddress_ The address of the contract to which access is being granted.
@@ -43,6 +39,14 @@ interface IGuardElectron {
     /// @param actor_ The address of the actor being granted access.
     /// @dev This function allows granting access to a specific function within a contract to a specified actor.
     function grantAccess(address contractAddress_, bytes4 functionName_, address actor_) external;
+
+    /// @notice It checks if there is a pending access appointment for a specific function in a contract for a specified actor.
+    /// @param contractAddress_ The address of the contract to check.
+    /// @param functionSig_ The signature of the function to check.
+    /// @param actor_ The address of the actor to check for pending access.
+    /// @return True if there is a pending access appointment for the specified function and actor, otherwise false.
+    /// @dev This function verifies whether there is a pending access appointment for a particular actor to a specific function within a contract.
+    function pendingAccess(address contractAddress_, bytes4 functionSig_, address actor_) external view returns (bool);
 
     /// @notice It revokes access to a specific function in a contract from a specified actor.
     /// @param contractAddress_ The address of the contract from which access is being revoked.
@@ -75,13 +79,13 @@ interface IGuardElectron {
 
     /// @notice It disables the whitelist for a specific function in a contract.
     /// @param contractAddress_ The address of the contract for which the whitelist is being disabled.
-    /// @param functionSignature_ The signature of the function for which the whitelist is being disabled.
+    /// @param functionSig_ The signature of the function for which the whitelist is being disabled.
     /// @dev This function allows disabling the whitelist for a specific function within a contract.
-    function disableWhiteList(address contractAddress_, bytes4 functionSignature_) external;
+    function disableWhiteList(address contractAddress_, bytes4 functionSig_) external;
 
     /// @notice It enables the whitelist for a specific function in a contract.
     /// @param contractAddress_ The address of the contract for which the whitelist is being enabled.
-    /// @param functionSignature_ The signature of the function for which the whitelist is being enabled.
+    /// @param functionSig_ The signature of the function for which the whitelist is being enabled.
     /// @dev This function allows enabling the whitelist for a specific function within a contract.
-    function enableWhiteList(address contractAddress_, bytes4 functionSignature_) external;
+    function enableWhiteList(address contractAddress_, bytes4 functionSig_) external;
 }
