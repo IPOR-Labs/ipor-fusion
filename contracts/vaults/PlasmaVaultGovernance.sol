@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
@@ -12,7 +10,7 @@ import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {IGuardElectron} from "../electrons/IGuardElectron.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-abstract contract PlasmaVaultGovernance is Ownable2Step {
+abstract contract PlasmaVaultGovernance {
     modifier onlyPerformanceFeeManager() {
         if (!IGuardElectron(getGuardElectronAddress()).hasAccess(address(this), msg.sig, msg.sender)) {
             revert SenderNotPerformanceFeeManager();
@@ -39,8 +37,7 @@ abstract contract PlasmaVaultGovernance is Ownable2Step {
     error SenderNotManagementFeeManager();
     error SenderNotAtomist(address sender);
 
-    /// @param initialOwner Address of the owner
-    constructor(address initialOwner, address guardElectron) Ownable(initialOwner) {
+    constructor(address guardElectron) {
         PlasmaVaultLib.setGuardElectronAddress(guardElectron);
     }
 

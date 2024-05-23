@@ -163,7 +163,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -275,7 +274,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -393,7 +391,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -498,7 +495,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -627,7 +623,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -789,7 +784,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -943,7 +937,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1088,7 +1081,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1201,7 +1193,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1330,7 +1321,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1481,7 +1471,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1532,7 +1521,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,

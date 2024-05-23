@@ -18,7 +18,6 @@ abstract contract TestVaultSetup is TestStorage {
         plasmaVault = address(
             new PlasmaVault(
                 PlasmaVaultInitData(
-                    owner,
                     "TEST PLASMA VAULT",
                     "TPLASMA",
                     asset,

@@ -62,7 +62,6 @@ contract PlasmaVaultMaintenanceTest is Test {
         // given
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 "IPOR Fusion DAI",
                 "ipfDAI",
                 DAI,
@@ -96,7 +95,6 @@ contract PlasmaVaultMaintenanceTest is Test {
         // given
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 "IPOR Fusion DAI",
                 "ipfDAI",
                 DAI,
@@ -149,7 +147,6 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -190,7 +187,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -232,7 +228,6 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -264,7 +259,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -308,7 +302,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -388,7 +381,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -440,7 +432,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -537,7 +528,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -583,7 +573,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -640,7 +629,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -716,7 +704,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -790,7 +777,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -836,7 +822,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -886,7 +871,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -936,7 +920,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -989,7 +972,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1046,7 +1028,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1095,7 +1076,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1139,7 +1119,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1190,7 +1169,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1241,7 +1219,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                atomist,
                 assetName,
                 assetSymbol,
                 underlyingToken,

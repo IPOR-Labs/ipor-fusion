@@ -22,7 +22,6 @@ import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IGuardElectron} from "../electrons/IGuardElectron.sol";
 
 struct PlasmaVaultInitData {
-    address initialOwner;
     string assetName;
     string assetSymbol;
     address underlyingToken;
@@ -112,7 +111,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         ERC4626Permit(IERC20(initData.underlyingToken))
         ERC20Permit(initData.assetName)
         ERC20(initData.assetName, initData.assetSymbol)
-        PlasmaVaultGovernance(initData.initialOwner, initData.guardElectron)
+        PlasmaVaultGovernance(initData.guardElectron)
     {
         IIporPriceOracle priceOracle = IIporPriceOracle(initData.iporPriceOracle);
 

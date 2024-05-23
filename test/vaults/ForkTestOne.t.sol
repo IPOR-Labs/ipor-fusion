@@ -87,7 +87,6 @@ contract ForkAmmGovernanceServiceTest is Test {
         vaultWstEth = address(
             new PlasmaVault(
                 PlasmaVaultInitData(
-                    msg.sender,
                     "ipvwstETH",
                     "IP PlasmaVault wstETH",
                     WST_ETH,

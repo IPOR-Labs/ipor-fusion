@@ -185,7 +185,6 @@ contract PlasmaVaultDepositTest is Test {
         address guardElectron = createGuardElectron();
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -238,7 +237,6 @@ contract PlasmaVaultDepositTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,

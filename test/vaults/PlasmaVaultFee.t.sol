@@ -119,7 +119,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -255,7 +254,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -389,7 +387,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -532,7 +529,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -670,7 +666,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -808,7 +803,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -942,7 +936,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1064,7 +1057,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1186,7 +1178,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1284,7 +1275,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1388,7 +1378,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1489,7 +1478,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -1587,7 +1575,6 @@ contract PlasmaVaultFeeTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,

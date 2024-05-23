@@ -97,7 +97,6 @@ contract PlasmaVaultTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -179,7 +178,6 @@ contract PlasmaVaultTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -262,7 +260,6 @@ contract PlasmaVaultTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -357,7 +354,6 @@ contract PlasmaVaultTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -447,7 +443,6 @@ contract PlasmaVaultTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -561,7 +556,6 @@ contract PlasmaVaultTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -663,7 +657,6 @@ contract PlasmaVaultTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
@@ -762,7 +755,6 @@ contract PlasmaVaultTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                owner,
                 assetName,
                 assetSymbol,
                 underlyingToken,
