@@ -5,7 +5,7 @@ library Errors {
     error WrongAddress();
     error UnsupportedBaseCurrencyFromOracle(string errorCode);
     error UnsupportedPriceOracle(string errorCode);
-    error NoAccessToVault(address account);
+
     /// TODO: common sustom errors plase here
     string public constant UNSUPPORTED_ASSET = "IPF_001";
     string public constant UNSUPPORTED_ERC4626 = "IPF_002";
