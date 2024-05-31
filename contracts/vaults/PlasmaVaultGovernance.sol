@@ -11,9 +11,7 @@ import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 abstract contract PlasmaVaultGovernance is AccessManaged {
-    constructor(address guardElectron) AccessManaged(guardElectron) {
-        PlasmaVaultLib.setGuardElectronAddress(guardElectron);
-    }
+    constructor(address guardElectron) AccessManaged(guardElectron) {}
 
     function isMarketSubstrateGranted(uint256 marketId, bytes32 substrate) external view returns (bool) {
         return PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId, substrate);
@@ -108,7 +106,15 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
     }
 
     function getAccessElectronAddress() public view returns (address) {
-        return PlasmaVaultLib.getAccessElectronAddress();
+        return authority();
+    }
+
+    function getRewardElectronAddress() public view returns (address) {
+        return PlasmaVaultLib.getRewardElectronAddress();
+    }
+
+    function setRewardElectronAddress(address rewardElectronAddress) public restricted {
+        PlasmaVaultLib.setRewardElectronAddress(rewardElectronAddress);
     }
 
     function _addFuse(address fuse) internal {

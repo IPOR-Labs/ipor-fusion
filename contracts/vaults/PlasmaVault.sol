@@ -19,6 +19,7 @@ import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 
+// TODO: ADD WITHDRAW FROM REWARD ELECTRON FUSE
 struct PlasmaVaultInitData {
     string assetName;
     string assetSymbol;
@@ -162,6 +163,13 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         _updateMarketsBalances(markets);
 
         _addPerformanceFee(totalAssetsBefore);
+    }
+
+    function executeClaimRewards(FuseAction[] calldata calls) external nonReentrant restricted {
+        uint256 callsCount = calls.length;
+        for (uint256 i; i < callsCount; ++i) {
+            calls[i].fuse.functionDelegateCall(calls[i].data);
+        }
     }
 
     function deposit(uint256 assets, address receiver) public override nonReentrant restricted returns (uint256) {
@@ -402,6 +410,13 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     function _getGrossTotalAssets() internal view returns (uint256) {
+        address rewardElectronAddress = getRewardElectronAddress();
+        if (rewardElectronAddress != address(0)) {
+            return
+                IERC20(asset()).balanceOf(address(this)) +
+                PlasmaVaultLib.getTotalAssetsInAllMarkets() +
+                IERC20(rewardElectronAddress).balanceOf(address(this));
+        }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
