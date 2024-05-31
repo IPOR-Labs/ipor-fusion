@@ -3,11 +3,11 @@ pragma solidity 0.8.20;
 
 import {TestStorage} from "./TestStorage.sol";
 import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
-import {GuardElectron} from "../../../contracts/electrons/GuardElectron.sol";
+import {AccessElectron} from "../../../contracts/electrons/AccessElectron.sol";
+import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
 abstract contract TestVaultSetup is TestStorage {
     function initPlasmaVault() public {
-        address owner = getOwner();
         address[] memory alphas = new address[](1);
         alphas[0] = alpha;
 
@@ -15,6 +15,7 @@ abstract contract TestVaultSetup is TestStorage {
         MarketBalanceFuseConfig[] memory balanceFuses = setupBalanceFuses();
         FeeConfig memory feeConfig = setupFeeConfig();
 
+        createAccessElectron();
         plasmaVault = address(
             new PlasmaVault(
                 PlasmaVaultInitData(
@@ -27,10 +28,12 @@ abstract contract TestVaultSetup is TestStorage {
                     fuses,
                     balanceFuses,
                     feeConfig,
-                    address(new GuardElectron(owner, 1 hours))
+                    accessElectron
                 )
             )
         );
+
+        setupRoles();
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault
@@ -41,6 +44,23 @@ abstract contract TestVaultSetup is TestStorage {
             managementFeeManager: address(this),
             managementFeeInPercentage: 0
         });
+    }
+
+    function createAccessElectron() private {
+        UsersToRoles memory usersToRoles;
+        usersToRoles.superAdmin = accounts[0];
+        usersToRoles.atomist = accounts[0];
+        address[] memory alphas = new address[](1);
+        alphas[0] = alpha;
+        usersToRoles.alphas = alphas;
+        accessElectron = address(RoleLib.createAccessElectron(usersToRoles, vm));
+    }
+
+    function setupRoles() private {
+        UsersToRoles memory usersToRoles;
+        usersToRoles.superAdmin = accounts[0];
+        usersToRoles.atomist = accounts[0];
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, plasmaVault, AccessElectron(accessElectron));
     }
 
     function setupMarketConfigs() public virtual returns (MarketSubstratesConfig[] memory marketConfigs);

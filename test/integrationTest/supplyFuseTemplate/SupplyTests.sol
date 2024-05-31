@@ -7,7 +7,6 @@ import {TestAccountSetup} from "./TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "./TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "./TestVaultSetup.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
-import {GuardElectron} from "../../../contracts/electrons/GuardElectron.sol";
 
 abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {
     uint256 private constant ERROR_DELTA = 100;
@@ -46,9 +45,9 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function testShouldDepositRandomAmount() external {
         // given
         uint256 sum;
-        disableGuardElectron(plasmaVault);
+
         // when
-        for (uint256 i; i < 5; i++) {
+        for (uint256 i = 2; i < 5; i++) {
             uint256 amount = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
             sum += amount;
             vm.prank(accounts[i]);
@@ -66,7 +65,6 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function testShouldDepositRandomAmountWhenMoveBlockNumberAndTimestamp() external {
         // given
         uint256 sum;
-        disableGuardElectron(plasmaVault);
 
         // when
         for (uint256 i; i < 10; i++) {
@@ -91,7 +89,6 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function testShouldMintRandomAmount() external {
         // given
         uint256 sum;
-        disableGuardElectron(plasmaVault);
 
         // when
         for (uint256 i; i < 5; i++) {
@@ -112,7 +109,6 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function testShouldMintRandomAmountWhenMoveBlockNumberAndTimestamp() external {
         // given
         uint256 sum;
-        disableGuardElectron(plasmaVault);
 
         // when
         for (uint256 i; i < 10; i++) {
@@ -136,7 +132,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
     function testShouldUseEnterMethodWithAllDepositAssets() external {
         // given
-        disableGuardElectron(plasmaVault);
+
         address userOne = accounts[1];
         uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
@@ -171,7 +167,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
     function testShouldUseEnterTwiceMethod() external {
         // given
-        disableGuardElectron(plasmaVault);
+
         address userOne = accounts[1];
         uint256 depositAmount = random.randomNumber(
             2 * 10 ** (ERC20(asset).decimals()),
@@ -209,7 +205,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
     function testShouldUseExitMethodWithAllInMarket() external {
         // given
-        disableGuardElectron(plasmaVault);
+
         address userOne = accounts[1];
         uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
@@ -250,7 +246,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
     function testShouldUseExitMethodWithAllInMarketWhenTimeAndBlockWasMoved() external {
         // given
-        disableGuardElectron(plasmaVault);
+
         address userOne = accounts[1];
         uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
@@ -297,7 +293,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
     function testShouldUseExitMethodTwice() external {
         // given
-        disableGuardElectron(plasmaVault);
+
         address userOne = accounts[1];
         uint256 depositAmount = random.randomNumber(
             10_000 * 10 ** (ERC20(asset).decimals()),
@@ -339,7 +335,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
     function testShouldRandomEnterExitFromMarket() external {
         // given
-        disableGuardElectron(plasmaVault);
+
         address userOne = accounts[1];
         uint256 depositAmount = random.randomNumber(
             10_000 * 10 ** (ERC20(asset).decimals()),
@@ -411,29 +407,5 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
             ERROR_DELTA,
             "totalAssetsAfter"
         );
-    }
-
-    function disableGuardElectron(address plasmaVault) private {
-        vm.startPrank(getOwner());
-        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).disableWhiteList(
-            plasmaVault,
-            PlasmaVault.deposit.selector
-        );
-        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).disableWhiteList(
-            plasmaVault,
-            PlasmaVault.mint.selector
-        );
-        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).appointToGrantAccess(
-            address(plasmaVault),
-            PlasmaVault.execute.selector,
-            alpha
-        );
-        vm.warp(block.timestamp + 2 hours);
-        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).grantAccess(
-            address(plasmaVault),
-            PlasmaVault.execute.selector,
-            alpha
-        );
-        vm.stopPrank();
     }
 }

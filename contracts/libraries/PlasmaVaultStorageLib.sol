@@ -56,12 +56,13 @@ library PlasmaVaultStorageLib {
     bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
         0x09d6601575ea05ac39a145900e734264a5a09fe803eeb2ccc2884e0dc893b100;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.GuardElectronAddress")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant GUARD_ELECTRON_ADDRESS =
-        0x1d837bda66eda2b966284a462b263d42e3c52c1a03b8f9bf5ac4e36868494800;
+    //TODO: Update the key
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.AccessElectronAddress")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant ACCESS_ELECTRON_ADDRESS =
+        0x9da6664af4fcf6611fc90744487763fb1033428596f136ee0d584e6a2d1f9300;
 
-    /// @custom:storage-location erc7201:io.ipor.plasmaVaultTotalAssetsInAllMarkets
-    struct GuardElectronAddress {
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultAccessElectronAddress
+    struct AccessElectronAddress {
         /// @dev total assets in the Plasma Vault
         address value;
     }
@@ -231,9 +232,9 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getGuardElectronAddress() internal pure returns (GuardElectronAddress storage guardElectronAddress) {
+    function getAccessElectronAddress() internal pure returns (AccessElectronAddress storage guardElectronAddress) {
         assembly {
-            guardElectronAddress.slot := GUARD_ELECTRON_ADDRESS
+            guardElectronAddress.slot := ACCESS_ELECTRON_ADDRESS
         }
     }
 }

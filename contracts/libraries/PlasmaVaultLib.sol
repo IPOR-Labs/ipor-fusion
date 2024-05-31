@@ -178,15 +178,15 @@ library PlasmaVaultLib {
         emit PriceOracleChanged(priceOracle);
     }
 
-    function getGuardElectronAddress() internal view returns (address) {
-        return PlasmaVaultStorageLib.getGuardElectronAddress().value;
+    function getAccessElectronAddress() internal view returns (address) {
+        return PlasmaVaultStorageLib.getAccessElectronAddress().value;
     }
 
     function setGuardElectronAddress(address guardElectronAddress) internal {
         if (guardElectronAddress == address(0)) {
             revert Errors.WrongAddress();
         }
-        PlasmaVaultStorageLib.getGuardElectronAddress().value = guardElectronAddress;
+        PlasmaVaultStorageLib.getAccessElectronAddress().value = guardElectronAddress;
         emit GuardElectronChanged(guardElectronAddress);
     }
 }

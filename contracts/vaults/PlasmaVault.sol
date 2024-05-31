@@ -18,7 +18,6 @@ import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
-import {IGuardElectron} from "../electrons/IGuardElectron.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
@@ -30,7 +29,7 @@ struct PlasmaVaultInitData {
     address[] fuses;
     MarketBalanceFuseConfig[] balanceFuses;
     FeeConfig feeConfig;
-    address guardElectron;
+    address accessElectron;
 }
 
 /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
@@ -79,26 +78,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
-    modifier onlyGrantedAccess() {
-        if (!IGuardElectron(getGuardElectronAddress()).hasAccess(address(this), msg.sig, msg.sender)) {
-            revert Errors.NoAccessToVault(msg.sender);
-        }
-        _;
-    }
-
-    modifier onlyAlpha() {
-        if (!IGuardElectron(getGuardElectronAddress()).hasAccess(address(this), msg.sig, msg.sender)) {
-            revert SenderNotAlpha();
-        }
-        _;
-    }
-
     error NoSharesToRedeem();
     error NoSharesToMint();
     error NoAssetsToWithdraw();
     error NoAssetsToDeposit();
     error UnsupportedFuse();
-    error SenderNotAlpha();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
@@ -110,7 +94,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         ERC4626Permit(IERC20(initData.underlyingToken))
         ERC20Permit(initData.assetName)
         ERC20(initData.assetName, initData.assetSymbol)
-        PlasmaVaultGovernance(initData.guardElectron)
+        PlasmaVaultGovernance(initData.accessElectron)
     {
         IIporPriceOracle priceOracle = IIporPriceOracle(initData.iporPriceOracle);
 
@@ -152,7 +136,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     fallback() external {}
 
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
-    function execute(FuseAction[] calldata calls) external nonReentrant onlyAlpha {
+    function execute(FuseAction[] calldata calls) external nonReentrant restricted {
         uint256 callsCount = calls.length;
         uint256[] memory markets = new uint256[](callsCount);
         uint256 marketIndex;
@@ -180,10 +164,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         _addPerformanceFee(totalAssetsBefore);
     }
 
-    function deposit(
-        uint256 assets,
-        address receiver
-    ) public override nonReentrant onlyGrantedAccess returns (uint256) {
+    function deposit(uint256 assets, address receiver) public override nonReentrant restricted returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToDeposit();
         }
@@ -196,7 +177,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.deposit(assets, receiver);
     }
 
-    function mint(uint256 shares, address receiver) public override nonReentrant onlyGrantedAccess returns (uint256) {
+    function mint(uint256 shares, address receiver) public override nonReentrant restricted returns (uint256) {
         if (shares == 0) {
             revert NoSharesToMint();
         }

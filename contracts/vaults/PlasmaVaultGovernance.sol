@@ -1,43 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
-import {IGuardElectron} from "../electrons/IGuardElectron.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-abstract contract PlasmaVaultGovernance {
-    modifier onlyPerformanceFeeManager() {
-        if (!IGuardElectron(getGuardElectronAddress()).hasAccess(address(this), msg.sig, msg.sender)) {
-            revert SenderNotPerformanceFeeManager();
-        }
-        _;
-    }
-
-    modifier onlyManagementFeeManager() {
-        if (!IGuardElectron(getGuardElectronAddress()).hasAccess(address(this), msg.sig, msg.sender)) {
-            revert SenderNotManagementFeeManager();
-        }
-        _;
-    }
-
-    modifier onlyAtomist() {
-        if (msg.sender != IGuardElectron(getGuardElectronAddress()).getAtomist()) {
-            revert SenderNotAtomist(msg.sender);
-        }
-        _;
-    }
-
-    error InvalidAlpha();
-    error SenderNotPerformanceFeeManager();
-    error SenderNotManagementFeeManager();
-    error SenderNotAtomist(address sender);
-
-    constructor(address guardElectron) {
+abstract contract PlasmaVaultGovernance is AccessManaged {
+    constructor(address guardElectron) AccessManaged(guardElectron) {
         PlasmaVaultLib.setGuardElectronAddress(guardElectron);
     }
 
@@ -69,26 +43,26 @@ abstract contract PlasmaVaultGovernance {
         feeData = PlasmaVaultLib.getManagementFeeData();
     }
 
-    function addFuse(address fuse) external onlyAtomist {
+    function addFuse(address fuse) external restricted {
         _addFuse(fuse);
     }
 
-    function removeFuse(address fuse) external onlyAtomist {
+    function removeFuse(address fuse) external restricted {
         if (fuse == address(0)) {
             revert Errors.WrongAddress();
         }
         FusesLib.removeFuse(fuse);
     }
 
-    function addBalanceFuse(uint256 marketId, address fuse) external onlyAtomist {
+    function addBalanceFuse(uint256 marketId, address fuse) external restricted {
         _addBalanceFuse(marketId, fuse);
     }
 
-    function removeBalanceFuse(uint256 marketId, address fuse) external onlyAtomist {
+    function removeBalanceFuse(uint256 marketId, address fuse) external restricted {
         FusesLib.removeBalanceFuse(marketId, fuse);
     }
 
-    function grandMarketSubstrates(uint256 marketId, bytes32[] calldata substrates) external onlyAtomist {
+    function grandMarketSubstrates(uint256 marketId, bytes32[] calldata substrates) external restricted {
         PlasmaVaultConfigLib.grandMarketSubstrates(marketId, substrates);
     }
 
@@ -96,23 +70,23 @@ abstract contract PlasmaVaultGovernance {
     /// @dev Order of the fuses is important, the same fuse can be used multiple times with different parameters (for example different assets, markets or any other substrate specific for the fuse)
     function configureInstantWithdrawalFuses(
         PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[] calldata fuses
-    ) external onlyAtomist {
+    ) external restricted {
         PlasmaVaultLib.configureInstantWithdrawalFuses(fuses);
     }
 
-    function addFuses(address[] calldata fuses) external onlyAtomist {
+    function addFuses(address[] calldata fuses) external restricted {
         for (uint256 i; i < fuses.length; ++i) {
             FusesLib.addFuse(fuses[i]);
         }
     }
 
-    function removeFuses(address[] calldata fuses) external onlyAtomist {
+    function removeFuses(address[] calldata fuses) external restricted {
         for (uint256 i; i < fuses.length; ++i) {
             FusesLib.removeFuse(fuses[i]);
         }
     }
 
-    function setPriceOracle(address priceOracle) external onlyAtomist {
+    function setPriceOracle(address priceOracle) external restricted {
         IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlasmaVaultLib.getPriceOracle());
         IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
         if (
@@ -125,16 +99,16 @@ abstract contract PlasmaVaultGovernance {
         PlasmaVaultLib.setPriceOracle(priceOracle);
     }
 
-    function configurePerformanceFee(address feeManager, uint256 feeInPercentage) external onlyPerformanceFeeManager {
+    function configurePerformanceFee(address feeManager, uint256 feeInPercentage) external restricted {
         PlasmaVaultLib.configurePerformanceFee(feeManager, feeInPercentage);
     }
 
-    function configureManagementFee(address feeManager, uint256 feeInPercentage) external onlyManagementFeeManager {
+    function configureManagementFee(address feeManager, uint256 feeInPercentage) external restricted {
         PlasmaVaultLib.configureManagementFee(feeManager, feeInPercentage);
     }
 
-    function getGuardElectronAddress() public view returns (address) {
-        return PlasmaVaultLib.getGuardElectronAddress();
+    function getAccessElectronAddress() public view returns (address) {
+        return PlasmaVaultLib.getAccessElectronAddress();
     }
 
     function _addFuse(address fuse) internal {

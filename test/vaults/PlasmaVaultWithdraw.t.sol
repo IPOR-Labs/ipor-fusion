@@ -15,7 +15,8 @@ import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {AaveConstants} from "../../contracts/fuses/aave_v3/AaveConstants.sol";
-import {GuardElectron} from "../../contracts/electrons/GuardElectron.sol";
+import {AccessElectron} from "../../contracts/electrons/AccessElectron.sol";
+import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -38,7 +39,7 @@ contract PlasmaVaultWithdrawTest is Test {
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
-    address public owner = address(this);
+    address public atomist = address(this);
 
     string public assetName;
     string public assetSymbol;
@@ -50,7 +51,8 @@ contract PlasmaVaultWithdrawTest is Test {
     address public userOne;
     address public userTwo;
 
-    IporPriceOracle private iporPriceOracleProxy;
+    IporPriceOracle public iporPriceOracleProxy;
+    UsersToRoles public usersToRoles;
 
     event AaveV3SupplyExitFuse(address version, address asset, uint256 amount);
     event CompoundV3SupplyExitFuse(address version, address asset, address market, uint256 amount);
@@ -161,6 +163,8 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -172,11 +176,10 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
-
-        disableGuardElectron(plasmaVault);
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -272,6 +275,8 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -283,11 +288,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
 
-        disableGuardElectron(plasmaVault);
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -389,6 +394,8 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -400,10 +407,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
-        disableGuardElectron(plasmaVault);
+
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -493,6 +501,8 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -504,11 +514,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
 
-        disableGuardElectron(plasmaVault);
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -621,6 +631,8 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -632,11 +644,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
 
-        disableGuardElectron(plasmaVault);
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -782,6 +794,8 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -793,11 +807,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
 
-        disableGuardElectron(plasmaVault);
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -935,6 +949,8 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -946,11 +962,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
 
-        disableGuardElectron(plasmaVault);
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -1079,6 +1095,8 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1090,11 +1108,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
 
-        disableGuardElectron(plasmaVault);
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -1191,6 +1209,8 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1202,11 +1222,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
 
-        disableGuardElectron(plasmaVault);
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -1319,6 +1339,8 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1330,11 +1352,10 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
-
-        disableGuardElectron(plasmaVault);
+        setupRoles(plasmaVault, accessElectron);
 
         amount = 100 * 1e6;
 
@@ -1469,6 +1490,8 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1480,9 +1503,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
+
+        setupRoles(plasmaVault, accessElectron);
         return plasmaVault;
     }
 
@@ -1519,6 +1544,8 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1530,39 +1557,29 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
 
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.deposit.selector
-        );
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.mint.selector
-        );
+        setupRoles(plasmaVault, accessElectron);
 
         return plasmaVault;
     }
 
-    function createGuardElectron() public returns (address) {
-        return address(new GuardElectron(owner, 1 hours));
+    function createAccessElectron(UsersToRoles memory usersToRoles) public returns (AccessElectron) {
+        if (usersToRoles.superAdmin == address(0)) {
+            usersToRoles.superAdmin = atomist;
+            usersToRoles.atomist = atomist;
+            address[] memory alphas = new address[](1);
+            alphas[0] = alpha;
+            usersToRoles.alphas = alphas;
+        }
+        return RoleLib.createAccessElectron(usersToRoles, vm);
     }
 
-    function disableGuardElectron(PlasmaVault plasmaVault) private {
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.deposit.selector
-        );
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.mint.selector
-        );
-        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).grantAccess(
-            address(plasmaVault),
-            PlasmaVault.execute.selector,
-            alpha
-        );
+    function setupRoles(PlasmaVault plasmaVault, AccessElectron accessElectron) public {
+        usersToRoles.superAdmin = atomist;
+        usersToRoles.atomist = atomist;
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessElectron);
     }
 }

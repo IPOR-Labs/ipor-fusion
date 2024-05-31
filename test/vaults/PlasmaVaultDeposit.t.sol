@@ -12,7 +12,8 @@ import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigL
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {GuardElectron} from "../../contracts/electrons/GuardElectron.sol";
+import {AccessElectron} from "../../contracts/electrons/AccessElectron.sol";
+import {RoleLib, UsersToRoles, WHITELIST_DEPOSIT_ROLE} from "../RoleLib.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -30,12 +31,14 @@ contract PlasmaVaultDepositTest is Test {
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
-    address public owner = address(this);
+    address public atomist = address(this);
+    address public alpha = address(0x0001);
 
     uint256 public amount;
     address public userOne;
 
-    IporPriceOracle private iporPriceOracleProxy;
+    IporPriceOracle public iporPriceOracleProxy;
+    UsersToRoles public usersToRoles;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
@@ -57,14 +60,6 @@ contract PlasmaVaultDepositTest is Test {
     function testShouldDepositToPlazamVaultWithDAIAsUnderlyingToken() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.deposit.selector
-        );
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.mint.selector
-        );
 
         userOne = address(0x777);
 
@@ -182,7 +177,8 @@ contract PlasmaVaultDepositTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        address guardElectron = createGuardElectron();
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -194,11 +190,11 @@ contract PlasmaVaultDepositTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                guardElectron
+                address(accessElectron)
             )
         );
-        GuardElectron(guardElectron).disableWhiteList(address(plasmaVault), PlasmaVault.deposit.selector);
-        GuardElectron(guardElectron).disableWhiteList(address(plasmaVault), PlasmaVault.mint.selector);
+
+        setupRoles(plasmaVault, accessElectron);
         return plasmaVault;
     }
 
@@ -234,6 +230,7 @@ contract PlasmaVaultDepositTest is Test {
 
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+        AccessElectron accessElectron = createAccessElectron(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -246,9 +243,10 @@ contract PlasmaVaultDepositTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                createGuardElectron()
+                address(accessElectron)
             )
         );
+        setupRoles(plasmaVault, accessElectron);
 
         return plasmaVault;
     }
@@ -269,7 +267,17 @@ contract PlasmaVaultDepositTest is Test {
         uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
         uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
-        bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
+        bytes4[] memory sig = new bytes4[](1);
+        sig[0] = PlasmaVault.deposit.selector;
+
+        vm.prank(atomist);
+        AccessElectron(plasmaVault.getAccessElectronAddress()).setTargetFunctionRole(
+            address(plasmaVault),
+            sig,
+            WHITELIST_DEPOSIT_ROLE
+        );
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", userOne);
 
         //when
         vm.prank(userOne);
@@ -290,11 +298,6 @@ contract PlasmaVaultDepositTest is Test {
         address userOne = address(0x777);
 
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
-        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).grantAccess(
-            address(plasmaVault),
-            PlasmaVault.deposit.selector,
-            userOne
-        );
 
         uint256 amount = 100 * 1e18;
 
@@ -333,14 +336,6 @@ contract PlasmaVaultDepositTest is Test {
     function testShouldMintToPlasmaVaultWithDAIAsUnderlyingToken() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.deposit.selector
-        );
-        GuardElectron(plasmaVault.getGuardElectronAddress()).disableWhiteList(
-            address(plasmaVault),
-            PlasmaVault.mint.selector
-        );
 
         address userOne = address(0x777);
 
@@ -378,7 +373,6 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
-    // todo
     function testShouldNotMintToPlasmaVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
@@ -395,7 +389,17 @@ contract PlasmaVaultDepositTest is Test {
         uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
         uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
-        bytes memory error = abi.encodeWithSignature("NoAccessToVault(address)", userOne);
+        bytes4[] memory sig = new bytes4[](1);
+        sig[0] = PlasmaVault.mint.selector;
+
+        vm.prank(atomist);
+        AccessElectron(plasmaVault.getAccessElectronAddress()).setTargetFunctionRole(
+            address(plasmaVault),
+            sig,
+            WHITELIST_DEPOSIT_ROLE
+        );
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", userOne);
 
         //when
         vm.prank(userOne);
@@ -415,11 +419,6 @@ contract PlasmaVaultDepositTest is Test {
         //given
         address userOne = address(0x777);
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
-        GuardElectron(PlasmaVault(plasmaVault).getGuardElectronAddress()).grantAccess(
-            address(plasmaVault),
-            PlasmaVault.mint.selector,
-            userOne
-        );
 
         uint256 amount = 100 * 1e18;
 
@@ -455,7 +454,20 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
-    function createGuardElectron() public returns (address) {
-        return address(new GuardElectron(owner, 1 hours));
+    function createAccessElectron(UsersToRoles memory usersToRoles) public returns (AccessElectron) {
+        if (usersToRoles.superAdmin == address(0)) {
+            usersToRoles.superAdmin = atomist;
+            usersToRoles.atomist = atomist;
+            address[] memory alphas = new address[](1);
+            alphas[0] = alpha;
+            usersToRoles.alphas = alphas;
+        }
+        return RoleLib.createAccessElectron(usersToRoles, vm);
+    }
+
+    function setupRoles(PlasmaVault plasmaVault, AccessElectron accessElectron) public {
+        usersToRoles.superAdmin = atomist;
+        usersToRoles.atomist = atomist;
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessElectron);
     }
 }
