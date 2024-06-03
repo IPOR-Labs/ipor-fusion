@@ -56,10 +56,9 @@ library PlasmaVaultStorageLib {
     bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
         0x09d6601575ea05ac39a145900e734264a5a09fe803eeb2ccc2884e0dc893b100;
 
-    //TODO: Update the key
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.RewardElectronAddress")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant REWARD_ELECTRON_ADDRESS =
-        0x9da6664af4fcf6611fc90744487763fb1033428596f136ee0d584e6a2d1f9301;
+        0x33420bf4a5ed1298cf2d2d9b469b5e8a16f2012dd073a10231f768e03ad9f900;
 
     /// @custom:storage-location erc7201:io.ipor.plasmaVaultRewardElectronAddress
     struct RewardElectronAddress {
