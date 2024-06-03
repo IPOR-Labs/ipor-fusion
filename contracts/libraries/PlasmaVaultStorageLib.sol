@@ -58,7 +58,7 @@ library PlasmaVaultStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.RewardElectronAddress")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant REWARD_ELECTRON_ADDRESS =
-        0x33420bf4a5ed1298cf2d2d9b469b5e8a16f2012dd073a10231f768e03ad9f900;
+        0xe5f25577bd15ab56ea4401103d42b7357d97bc6f4206aeda065a15d503d5c700;
 
     /// @custom:storage-location erc7201:io.ipor.plasmaVaultRewardElectronAddress
     struct RewardElectronAddress {
