@@ -17,7 +17,7 @@ library ElectronStorageLib {
     using SafeCast for uint256;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.ElectronVestingData")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant VESTING_DATA = 0x7dd7151eda9a8aa729c84433daab8cd1eaf1f4ce42af566ab5ad0e56a8023100; // todo update value
+    bytes32 private constant VESTING_DATA = 0x33420bf4a5ed1298cf2d2d9b469b5e8a16f2012dd073a10231f768e03ad9f900;
 
     event VestingDataUpdated(
         uint128 releasedTokens,
