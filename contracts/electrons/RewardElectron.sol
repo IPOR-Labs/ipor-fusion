@@ -20,15 +20,16 @@ contract RewardElectron is AccessManaged {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
-    address public immutable underlineToken;
-    address public immutable plasmaVault;
+    address public immutable UNDERLINE_TOKEN;
+    address public immutable PLASMA_VAULT;
 
     constructor(address initialAuthority_, address plasmaVault_) AccessManaged(initialAuthority_) {
-        underlineToken = PlasmaVault(plasmaVault_).asset();
-        plasmaVault = plasmaVault_;
+        UNDERLINE_TOKEN = PlasmaVault(plasmaVault_).asset();
+        PLASMA_VAULT = plasmaVault_;
     }
 
     /// @dev param account is not used and it is left to be aligned with ERC20 standard for this method
+    //solhint-disable-next-line no-unused-vars
     function balanceOf(address account) public view returns (uint256) {
         VestingData memory data = ElectronStorageLib.getVestingData();
 
@@ -57,7 +58,7 @@ contract RewardElectron is AccessManaged {
     }
 
     function transfer(address asset_, address to_, uint256 amount_) external restricted {
-        if (asset_ == underlineToken) {
+        if (asset_ == UNDERLINE_TOKEN) {
             revert UnableToTransferUnderlineToken();
         }
         IERC20(asset_).safeTransfer(to_, amount_);
@@ -82,7 +83,7 @@ contract RewardElectron is AccessManaged {
             }
         }
 
-        PlasmaVault(plasmaVault).executeClaimRewards(calls_);
+        PlasmaVault(PLASMA_VAULT).executeClaimRewards(calls_);
     }
 
     function setupVesting(uint256 releaseTokensDelay_) external restricted {
@@ -92,18 +93,18 @@ contract RewardElectron is AccessManaged {
     function updateBalance() external restricted {
         VestingData memory data = ElectronStorageLib.getVestingData();
         data.updateBalanceTimestamp = block.timestamp.toUint32();
-        data.balanceOnLastUpdate = IERC20(underlineToken).balanceOf(address(this)).toUint128();
+        data.balanceOnLastUpdate = IERC20(UNDERLINE_TOKEN).balanceOf(address(this)).toUint128();
         data.releasedTokens = 0;
 
         ElectronStorageLib.setVestingData(data);
     }
 
     function transferVestedTokens() external restricted {
-        uint256 balance = balanceOf(plasmaVault);
+        uint256 balance = balanceOf(PLASMA_VAULT);
         if (balance == 0) {
             return;
         }
-        IERC20(underlineToken).safeTransfer(plasmaVault, balance);
+        IERC20(UNDERLINE_TOKEN).safeTransfer(PLASMA_VAULT, balance);
         ElectronStorageLib.updateReleasedTokens(balance);
         emit AmountWithdrawn(balance);
     }

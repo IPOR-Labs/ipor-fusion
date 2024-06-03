@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 contract MockPlasmaVault {
+    //solhint-disable-next-line immutable-vars-naming
     address public immutable asset;
 
     constructor(address asset_) {

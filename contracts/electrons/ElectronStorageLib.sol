@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Errors} from "../libraries/errors/Errors.sol";
 
 /// @custom:storage-location erc7201:io.ipor.electron.FoundsReleaseData
 struct VestingData {
