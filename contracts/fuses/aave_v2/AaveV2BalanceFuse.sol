@@ -4,11 +4,11 @@ pragma solidity 0.8.20;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {IAavePriceOracle} from "./IAavePriceOracle.sol";
+import {IAavePriceOracle} from "./ext/IAavePriceOracle.sol";
 import {AaveConstants} from "./AaveConstants.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {AaveLendingPoolV2, ReserveData} from "./AaveLendingPoolV2.sol";
+import {AaveLendingPoolV2, ReserveData} from "./ext/AaveLendingPoolV2.sol";
 
 contract AaveV2BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;

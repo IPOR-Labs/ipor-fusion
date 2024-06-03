@@ -9,7 +9,7 @@ import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
+import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
@@ -45,8 +45,10 @@ contract PlasmaVaultFeeTest is Test {
 
     address public userOne;
     address public userTwo;
-    address public dao;
+    address public performanceFeeManager;
     uint256 public performanceFeeInPercentage;
+    address public managementFeeManager;
+    uint256 public managementFeeInPercentage;
 
     IporPriceOracle private iporPriceOracleProxy;
 
@@ -55,7 +57,8 @@ contract PlasmaVaultFeeTest is Test {
 
         userOne = address(0x777);
         userTwo = address(0x888);
-        dao = address(0x999);
+        performanceFeeManager = address(0x999);
+        managementFeeManager = address(0x555);
 
         IporPriceOracle implementation = new IporPriceOracle(
             0x0000000000000000000000000000000000000348,
@@ -72,7 +75,7 @@ contract PlasmaVaultFeeTest is Test {
 
     function testShouldExitFromTwoMarketsAaveV3SupplyAndCompoundV3SupplyAndCalculatePerformanceFee() public {
         //given
-        performanceFeeInPercentage = 5;
+        performanceFeeInPercentage = 500;
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -123,8 +126,7 @@ contract PlasmaVaultFeeTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            dao,
-            performanceFeeInPercentage
+            PlasmaVault.FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0)
         );
 
         PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
@@ -192,18 +194,20 @@ contract PlasmaVaultFeeTest is Test {
         //then
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
-        uint256 daoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(dao));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
 
         assertEq(userOneBalanceOfAssets, 108536113);
         assertEq(userTwoBalanceOfAssets, 108536113);
-        assertEq(daoBalanceOfAssets, 894656);
+        assertEq(performanceFeeManagerBalanceOfAssets, 894656);
     }
 
     function testShouldExitFromTwoMarketsAaveV3SupplyAndCompoundV3SupplyAndCalculatePerformanceFeeTimeIsNotChanged()
         public
     {
         //given
-        performanceFeeInPercentage = 5;
+        performanceFeeInPercentage = 500;
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -254,8 +258,7 @@ contract PlasmaVaultFeeTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            dao,
-            performanceFeeInPercentage
+            PlasmaVault.FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0)
         );
 
         PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
@@ -323,16 +326,18 @@ contract PlasmaVaultFeeTest is Test {
         //then
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
-        uint256 daoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(dao));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
 
         assertEq(userOneBalanceOfAssets, 99999999);
         assertEq(userTwoBalanceOfAssets, 99999999);
-        assertEq(daoBalanceOfAssets, 0);
+        assertEq(performanceFeeManagerBalanceOfAssets, 0);
     }
 
     function testShouldInstantWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3AndCalculatePerformanceFee() public {
         //given
-        performanceFeeInPercentage = 5;
+        performanceFeeInPercentage = 500;
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -383,8 +388,7 @@ contract PlasmaVaultFeeTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            dao,
-            performanceFeeInPercentage
+            PlasmaVault.FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0)
         );
 
         amount = 100 * 1e6;
@@ -445,7 +449,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -458,11 +462,13 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
-        uint256 daoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(dao));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
 
         assertEq(userOneBalanceOfAssets, 28798996, "userOneBalanceOfAssets");
         assertEq(userTwoBalanceOfAssets, 103798996, "userTwoBalanceOfAssets");
-        assertEq(daoBalanceOfAssets, 399085, "daoBalanceOfAssets");
+        assertEq(performanceFeeManagerBalanceOfAssets, 399085, "daoBalanceOfAssets");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -470,7 +476,7 @@ contract PlasmaVaultFeeTest is Test {
         public
     {
         //given
-        performanceFeeInPercentage = 5;
+        performanceFeeInPercentage = 500;
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -521,8 +527,7 @@ contract PlasmaVaultFeeTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            dao,
-            performanceFeeInPercentage
+            PlasmaVault.FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0)
         );
 
         amount = 100 * 1e6;
@@ -583,7 +588,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -593,17 +598,19 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
-        uint256 daoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(dao));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
 
         assertEq(userOneBalanceOfAssets, 24999998, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
         assertEq(userTwoBalanceOfAssets, 99999999, "userTwoBalanceOfAssets on plasma vault stayed 100 usd");
-        assertEq(daoBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
+        assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
     function testShouldInstantWithdrawNoTouchedMarketsAndCalculatePerformanceFeeTimeIsNotChanged() public {
         //given
-        performanceFeeInPercentage = 5;
+        performanceFeeInPercentage = 500;
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -654,8 +661,7 @@ contract PlasmaVaultFeeTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            dao,
-            performanceFeeInPercentage
+            PlasmaVault.FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0)
         );
 
         amount = 100 * 1e6;
@@ -716,7 +722,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -726,17 +732,19 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
-        uint256 daoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(dao));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
 
         assertEq(userOneBalanceOfAssets, 24999999, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
         assertEq(userTwoBalanceOfAssets, 100000000, "userTwoBalanceOfAssets on plasma vault stayed 100 usd");
-        assertEq(daoBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
+        assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
     function testShouldInstantWithdrawNoTouchedMarketsAndCalculatePerformanceFeeTimeChanged365days() public {
         //given
-        performanceFeeInPercentage = 5;
+        performanceFeeInPercentage = 500;
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -787,8 +795,7 @@ contract PlasmaVaultFeeTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            dao,
-            performanceFeeInPercentage
+            PlasmaVault.FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0)
         );
 
         amount = 100 * 1e6;
@@ -849,7 +856,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -862,17 +869,19 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
-        uint256 daoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(dao));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
 
         assertEq(userOneBalanceOfAssets, 24999999, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
         assertEq(userTwoBalanceOfAssets, 100000000, "userTwoBalanceOfAssets on plasma vault stayed 100 usd");
-        assertEq(daoBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
+        assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
     function testShouldRedeemExitFromOneMarketAaveV3AndCalculatePerformanceFeeTimeIsChanged() public {
         //given
-        performanceFeeInPercentage = 5;
+        performanceFeeInPercentage = 500;
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -916,8 +925,7 @@ contract PlasmaVaultFeeTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            dao,
-            performanceFeeInPercentage
+            PlasmaVault.FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0)
         );
 
         amount = 100 * 1e6;
@@ -966,7 +974,7 @@ contract PlasmaVaultFeeTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -979,17 +987,19 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
-        uint256 daoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(dao));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
 
         assertEq(userOneBalanceOfAssets, 32279599, "userOneBalanceOfAssets on plasma vault");
         assertEq(userTwoBalanceOfAssets, 107598665, "userTwoBalanceOfAssets on plasma vault");
-        assertEq(daoBalanceOfAssets, 796753, "daoBalanceOfAssets");
+        assertEq(performanceFeeManagerBalanceOfAssets, 796753, "daoBalanceOfAssets");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
     function testShouldRedeemExitFromOneMarketAaveV3AndCalculatePerformanceFeeTimeIsNOTChanged() public {
         //given
-        performanceFeeInPercentage = 5;
+        performanceFeeInPercentage = 500;
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -1033,8 +1043,7 @@ contract PlasmaVaultFeeTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            dao,
-            performanceFeeInPercentage
+            PlasmaVault.FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0)
         );
 
         amount = 100 * 1e6;
@@ -1083,7 +1092,7 @@ contract PlasmaVaultFeeTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.updateInstantWithdrawalFuses(instantWithdrawFuses);
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -1093,11 +1102,530 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
-        uint256 daoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(dao));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
 
         assertEq(userOneBalanceOfAssets, 30000000, "userOneBalanceOfAssets on plasma vault");
         assertEq(userTwoBalanceOfAssets, 100000000, "userTwoBalanceOfAssets on plasma vault");
-        assertEq(daoBalanceOfAssets, 0, "daoBalanceOfAssets");
+        assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets");
+        assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
+    }
+
+    function testShouldCalculateManagementFeeWhenTwoDepositsInDifferentTime() public {
+        //given
+        performanceFeeInPercentage = 0;
+        managementFeeInPercentage = 500;
+
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alphas = new address[](1);
+        alpha = address(0x1);
+
+        alphas[0] = alpha;
+
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseAaveV3);
+
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        vm.warp(block.timestamp);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            PlasmaVault.FeeConfig(
+                performanceFeeManager,
+                performanceFeeInPercentage,
+                managementFeeManager,
+                managementFeeInPercentage
+            )
+        );
+
+        amount = 100 * 1e6;
+
+        //user one
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        vm.warp(block.timestamp + 365 days);
+
+        //user two
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userTwo), amount);
+        vm.prank(userTwo);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userTwo);
+        plasmaVault.deposit(amount, userTwo);
+        uint256 userTwoBalanceOfSharesBefore = plasmaVault.balanceOf(userTwo);
+
+        //then
+        uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
+        uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
+        uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
+        uint256 managementFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(managementFeeManager)
+        );
+
+        assertEq(userOneBalanceOfAssets, 95238095, "userOneBalanceOfAssets on plasma vault");
+        assertEq(userTwoBalanceOfAssets, 99999999, "userTwoBalanceOfAssets on plasma vault");
+        assertEq(performanceFeeManagerBalanceOfAssets, 0, "performanceFeeManagerBalanceOfAssets");
+        assertEq(managementFeeManagerBalanceOfAssets, 4761904, "managementFeeManagerBalanceOfAssets");
+        assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
+    }
+
+    function testShouldCalculateManagementFeeWhenTwoMintsInDifferentTime() public {
+        //given
+        performanceFeeInPercentage = 0;
+        managementFeeInPercentage = 500;
+
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alphas = new address[](1);
+        alpha = address(0x1);
+
+        alphas[0] = alpha;
+
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseAaveV3);
+
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            PlasmaVault.FeeConfig(
+                performanceFeeManager,
+                performanceFeeInPercentage,
+                managementFeeManager,
+                managementFeeInPercentage
+            )
+        );
+
+        amount = 100 * 1e6;
+
+        vm.warp(block.timestamp);
+
+        //user one
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userOne);
+        plasmaVault.mint(amount, userOne);
+
+        uint256 userOneBalanceOfAssetsBefore = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
+
+        vm.warp(block.timestamp + 365 days);
+
+        //user two
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userTwo), amount);
+        vm.prank(userTwo);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userTwo);
+        plasmaVault.mint(amount, userTwo);
+        uint256 userTwoBalanceOfSharesBefore = plasmaVault.balanceOf(userTwo);
+
+        //then
+        uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
+        uint256 userOneBalanceOfAssetsAfter = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
+        uint256 userTwoBalanceOfAssetsAfter = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
+        uint256 managementFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(managementFeeManager)
+        );
+
+        assertEq(userOneBalanceOfAssetsBefore, 100000000, "userOneBalanceOfAssetsBefore");
+        assertEq(userOneBalanceOfAssetsAfter, 95238095, "userOneBalanceOfAssetsAfter");
+
+        assertEq(userTwoBalanceOfAssetsAfter, 95238095, "userTwoBalanceOfAssetsAfter");
+        assertEq(performanceFeeManagerBalanceOfAssets, 0, "performanceFeeManagerBalanceOfAssets");
+        assertEq(managementFeeManagerBalanceOfAssets, 4761904, "managementFeeManagerBalanceOfAssets");
+        assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
+    }
+
+    function testShouldNOTCalculateManagementFeeWhenTwoDepositsInDifferentTime() public {
+        //given
+        performanceFeeInPercentage = 0;
+        managementFeeInPercentage = 0; /// @dev management fee is 0
+
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alphas = new address[](1);
+        alpha = address(0x1);
+
+        alphas[0] = alpha;
+
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseAaveV3);
+
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            PlasmaVault.FeeConfig(
+                performanceFeeManager,
+                performanceFeeInPercentage,
+                managementFeeManager,
+                managementFeeInPercentage
+            )
+        );
+
+        amount = 100 * 1e6;
+
+        vm.warp(block.timestamp);
+
+        //user one
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        /// @dev move time to gather potential management fee
+        vm.warp(block.timestamp + 365 days);
+
+        //user two
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userTwo), amount);
+        vm.prank(userTwo);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userTwo);
+        plasmaVault.deposit(amount, userTwo);
+        uint256 userTwoBalanceOfSharesBefore = plasmaVault.balanceOf(userTwo);
+
+        //then
+        uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
+        uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
+        uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
+        uint256 managementFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(managementFeeManager)
+        );
+
+        assertEq(userOneBalanceOfAssets, 100000000, "userOneBalanceOfAssets on plasma vault");
+        assertEq(userTwoBalanceOfAssets, 100000000, "userTwoBalanceOfAssets on plasma vault");
+        assertEq(performanceFeeManagerBalanceOfAssets, 0, "performanceFeeManagerBalanceOfAssets");
+        assertEq(managementFeeManagerBalanceOfAssets, 0, "managementFeeManagerBalanceOfAssets");
+        assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
+    }
+
+    function testShouldCalculateManagementFeeWhenTwoDepositsInTheSameTime() public {
+        //given
+        performanceFeeInPercentage = 0;
+        managementFeeInPercentage = 500;
+
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alphas = new address[](1);
+        alpha = address(0x1);
+
+        alphas[0] = alpha;
+
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseAaveV3);
+
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            PlasmaVault.FeeConfig(
+                performanceFeeManager,
+                performanceFeeInPercentage,
+                managementFeeManager,
+                managementFeeInPercentage
+            )
+        );
+
+        amount = 100 * 1e6;
+
+        vm.warp(block.timestamp);
+
+        //user one
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        //user two
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userTwo), amount);
+        vm.prank(userTwo);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userTwo);
+        plasmaVault.deposit(amount, userTwo);
+        uint256 userTwoBalanceOfSharesBefore = plasmaVault.balanceOf(userTwo);
+
+        //then
+        uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
+        uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
+        uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
+        uint256 managementFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(managementFeeManager)
+        );
+
+        assertEq(userOneBalanceOfAssets, 100000000, "userOneBalanceOfAssets on plasma vault");
+        assertEq(userTwoBalanceOfAssets, 100000000, "userTwoBalanceOfAssets on plasma vault");
+        assertEq(performanceFeeManagerBalanceOfAssets, 0, "performanceFeeManagerBalanceOfAssets");
+        assertEq(managementFeeManagerBalanceOfAssets, 0, "managementFeeManagerBalanceOfAssets");
+        assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
+    }
+
+    function testShouldRedeemExitFromOneMarketAaveV3AndCalculateManagementFeeTimeIsChanged() public {
+        //given
+        performanceFeeInPercentage = 0;
+        managementFeeInPercentage = 500;
+
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alphas = new address[](1);
+        alpha = address(0x1);
+
+        alphas[0] = alpha;
+
+        PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseAaveV3);
+
+        PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            owner,
+            assetName,
+            assetSymbol,
+            underlyingToken,
+            address(iporPriceOracleProxy),
+            alphas,
+            marketConfigs,
+            fuses,
+            balanceFuses,
+            PlasmaVault.FeeConfig(
+                performanceFeeManager,
+                performanceFeeInPercentage,
+                managementFeeManager,
+                managementFeeInPercentage
+            )
+        );
+
+        amount = 100 * 1e6;
+
+        vm.warp(block.timestamp);
+
+        //user one
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        //user two
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userTwo), amount);
+        vm.prank(userTwo);
+        ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+        vm.prank(userTwo);
+        plasmaVault.deposit(amount, userTwo);
+        uint256 userTwoBalanceOfSharesBefore = plasmaVault.balanceOf(userTwo);
+
+        PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
+
+        calls[0] = PlasmaVault.FuseAction(
+            address(supplyFuseAaveV3),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6}))
+            )
+        );
+
+        /// @dev first call to move some assets to a external market
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+
+        /// @dev prepare instant withdraw config
+        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
+            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory instantWithdrawParams = new bytes32[](2);
+        instantWithdrawParams[0] = 0;
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+            fuse: address(supplyFuseAaveV3),
+            params: instantWithdrawParams
+        });
+
+        /// @dev configure order for instant withdraw
+        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+
+        /// @dev move time to gather interest
+        vm.warp(block.timestamp + 365 days);
+
+        //when
+        vm.prank(userOne);
+        plasmaVault.redeem(70 * 1e6, userOne, userOne);
+
+        //then
+        uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
+        uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
+        uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
+        uint256 performanceFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(performanceFeeManager)
+        );
+        uint256 managementFeeManagerBalanceOfAssets = plasmaVault.convertToAssets(
+            plasmaVault.balanceOf(managementFeeManager)
+        );
+
+        assertEq(userOneBalanceOfAssets, 30856297, "userOneBalanceOfAssets on plasma vault");
+        assertEq(userTwoBalanceOfAssets, 102854325, "userTwoBalanceOfAssets on plasma vault");
+        assertEq(performanceFeeManagerBalanceOfAssets, 0, "performanceFeeManagerBalanceOfAssets");
+        assertEq(managementFeeManagerBalanceOfAssets, 10285432, "managementFeeManagerBalanceOfAssets");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 }

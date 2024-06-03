@@ -12,6 +12,7 @@ abstract contract TestVaultSetup is TestStorage {
 
         PlasmaVault.MarketSubstratesConfig[] memory marketConfigs = setupMarketConfigs();
         PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses = setupBalanceFuses();
+        PlasmaVault.FeeConfig memory feeConfig = setupFeeConfig();
 
         plasmaVault = address(
             new PlasmaVault(
@@ -24,10 +25,19 @@ abstract contract TestVaultSetup is TestStorage {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                feeManager,
-                0
+                feeConfig
             )
         );
+    }
+
+    /// @dev Setup default  fee configuration for the PlasmaVault
+    function setupFeeConfig() public view virtual returns (PlasmaVault.FeeConfig memory feeConfig) {
+        feeConfig = PlasmaVault.FeeConfig({
+            performanceFeeManager: address(this),
+            performanceFeeInPercentage: 0,
+            managementFeeManager: address(this),
+            managementFeeInPercentage: 0
+        });
     }
 
     function setupMarketConfigs() public virtual returns (PlasmaVault.MarketSubstratesConfig[] memory marketConfigs);

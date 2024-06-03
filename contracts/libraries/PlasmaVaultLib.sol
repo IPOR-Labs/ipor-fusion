@@ -2,11 +2,14 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Errors} from "./errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 
 library PlasmaVaultLib {
     using SafeCast for uint256;
     using SafeCast for int256;
+
+    error InvalidPerformanceFee(uint256 feeInPercentage);
 
     /// @notice Technical struct used to pass parameters in the `updateInstantWithdrawalFuses` function
     struct InstantWithdrawalFusesParamsStruct {
@@ -18,8 +21,10 @@ library PlasmaVaultLib {
 
     event TotalAssetsInAllMarketsAdded(int256 amount);
     event TotalAssetsInMarketAdded(uint256 marketId, int256 amount);
-    event InstantWithdrawalFusesUpdated(InstantWithdrawalFusesParamsStruct[] fuses);
+    event InstantWithdrawalFusesConfigured(InstantWithdrawalFusesParamsStruct[] fuses);
     event PriceOracleChanged(address newPriceOracle);
+    event PerformanceFeeDataConfigured(address feeManager, uint256 feeInPercentage);
+    event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
 
     /// @notice Gets the total assets in the vault for all markets
     /// @return The total assets in the vault for all markets, represented in decimals of the underlying asset
@@ -46,7 +51,7 @@ library PlasmaVaultLib {
         emit TotalAssetsInAllMarketsAdded(amount);
     }
 
-    /// @notice Updates the total assets in the vault for a specific market
+    /// @notice Updates the total assets in the Plasma Vault for a specific market
     /// @param marketId The market id
     /// @param newTotalAssetsInUnderlying The new total assets in the vault for the market, represented in decimals of the underlying asset
     function updateTotalAssetsInMarket(
@@ -60,22 +65,67 @@ library PlasmaVaultLib {
         emit TotalAssetsInMarketAdded(marketId, deltaInUnderlying);
     }
 
-    function getFees() internal view returns (PlasmaVaultStorageLib.Fees memory fees) {
-        return PlasmaVaultStorageLib.getFees().value;
+    function getManagementFeeData()
+        internal
+        pure
+        returns (PlasmaVaultStorageLib.ManagementFeeData memory managementFeeData)
+    {
+        return PlasmaVaultStorageLib.getManagementFeeData();
     }
 
-    function setFeeManager(address newFeeManager) internal {
-        PlasmaVaultStorageLib.getFees().value.manager = newFeeManager;
+    /// @notice Configures the management fee data like the fee manager and the fee in percentage
+    /// @param feeManager The address of the fee manager reponsible for managing the management fee
+    /// @param feeInPercentage The fee in percentage, represented in 4 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
+    function configureManagementFee(address feeManager, uint256 feeInPercentage) internal {
+        if (feeManager == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        if (feeInPercentage > 10000) {
+            revert InvalidPerformanceFee(feeInPercentage);
+        }
+
+        PlasmaVaultStorageLib.ManagementFeeData storage managementFeeData = PlasmaVaultStorageLib
+            .getManagementFeeData();
+
+        managementFeeData.feeManager = feeManager;
+        managementFeeData.feeInPercentage = feeInPercentage.toUint16();
+
+        emit ManagementFeeDataConfigured(feeManager, feeInPercentage);
     }
 
-    function setFeeConfiguration(uint256 newPerformanceFeeInPercentage, uint256 newManagementFeeInPercentage) internal {
-        PlasmaVaultStorageLib.getFees().value.cfgPerformanceFeeInPercentage = newPerformanceFeeInPercentage.toUint16();
-        PlasmaVaultStorageLib.getFees().value.cfgManagementFeeInPercentage = newManagementFeeInPercentage.toUint16();
+    function getPerformanceFeeData()
+        internal
+        view
+        returns (PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData)
+    {
+        return PlasmaVaultStorageLib.getPerformanceFeeData();
     }
 
-    function addFeeBalance(uint256 newPerformanceFeeBalance, uint256 newManagementFeeBalance) internal {
-        PlasmaVaultStorageLib.getFees().value.performanceFeeBalance += newPerformanceFeeBalance.toUint32();
-        PlasmaVaultStorageLib.getFees().value.managementFeeBalance += newManagementFeeBalance.toUint32();
+    /// @notice Configures the performance fee data like the fee manager and the fee in percentage
+    /// @param feeManager The address of the fee manager reponsible for managing the performance fee
+    /// @param feeInPercentage The fee in percentage, represented in 4 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
+    function configurePerformanceFee(address feeManager, uint256 feeInPercentage) internal {
+        if (feeManager == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        if (feeInPercentage > 10000) {
+            revert InvalidPerformanceFee(feeInPercentage);
+        }
+
+        PlasmaVaultStorageLib.PerformanceFeeData storage performanceFeeData = PlasmaVaultStorageLib
+            .getPerformanceFeeData();
+
+        performanceFeeData.feeManager = feeManager;
+        performanceFeeData.feeInPercentage = feeInPercentage.toUint16();
+
+        emit PerformanceFeeDataConfigured(feeManager, feeInPercentage);
+    }
+
+    /// @notice Updates the management fee data with the current timestamp
+    /// @dev lastUpdateTimestamp is used to calculate unrealized management fees
+    function updateManagementFeeData() internal {
+        PlasmaVaultStorageLib.ManagementFeeData storage feeData = PlasmaVaultStorageLib.getManagementFeeData();
+        feeData.lastUpdateTimestamp = block.timestamp.toUint32();
     }
 
     function getInstantWithdrawalFuses() internal view returns (address[] memory) {
@@ -86,7 +136,10 @@ library PlasmaVaultLib {
         return PlasmaVaultStorageLib.getInstantWithdrawalFusesParams().value[keccak256(abi.encodePacked(fuse, index))];
     }
 
-    function updateInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses) internal {
+    /// @notice Configures the instant withdrawal fuses. Order of the fuse is important, as it will be used in the same order during the instant withdrawal process
+    /// @param fuses The fuses to configure
+    /// @dev Order of the fuses is important, the same fuse can be used multiple times with different parameters (for example different assets, markets or any other substrate specific for the fuse)
+    function configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses) internal {
         address[] memory fusesList = new address[](fuses.length);
 
         PlasmaVaultStorageLib.InstantWithdrawalFusesParams storage instantWithdrawalFusesParams = PlasmaVaultStorageLib
@@ -109,7 +162,7 @@ library PlasmaVaultLib {
 
         PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value = fusesList;
 
-        emit InstantWithdrawalFusesUpdated(fuses);
+        emit InstantWithdrawalFusesConfigured(fuses);
     }
 
     /// @notice Gets the price oracle address

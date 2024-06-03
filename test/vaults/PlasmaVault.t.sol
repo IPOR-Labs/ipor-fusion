@@ -9,7 +9,7 @@ import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
+import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -104,8 +104,7 @@ contract PlasmaVaultTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
@@ -182,8 +181,7 @@ contract PlasmaVaultTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
@@ -262,8 +260,7 @@ contract PlasmaVaultTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
@@ -354,8 +351,7 @@ contract PlasmaVaultTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);
@@ -441,8 +437,7 @@ contract PlasmaVaultTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         amount = 100 * 1e6;
@@ -552,8 +547,7 @@ contract PlasmaVaultTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         amount = 100 * 1e6;
@@ -650,8 +644,7 @@ contract PlasmaVaultTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](1);
@@ -746,8 +739,7 @@ contract PlasmaVaultTest is Test {
             marketConfigs,
             fuses,
             balanceFuses,
-            address(0x777),
-            0
+            PlasmaVault.FeeConfig(address(0x777), 0, address(0x555), 0)
         );
 
         PlasmaVault.FuseAction[] memory calls = new PlasmaVault.FuseAction[](2);

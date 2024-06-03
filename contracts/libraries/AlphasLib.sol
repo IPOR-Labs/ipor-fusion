@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 
-//TODO: wait for confirmation the name to Alpha instead of Alpha
 library AlphasLib {
     event AlphaGranted(address alpha);
     event AlphaRevoked(address alpha);

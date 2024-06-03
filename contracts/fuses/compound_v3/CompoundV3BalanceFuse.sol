@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {IComet} from "./IComet.sol";
+import {IComet} from "./ext/IComet.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 contract CompoundV3BalanceFuse is IMarketBalanceFuse {
