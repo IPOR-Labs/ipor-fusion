@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {AccessElectron} from "../../contracts/electrons/AccessElectron.sol";
 import {RewardElectron} from "../../contracts/electrons/RewardElectron.sol";
@@ -316,5 +317,13 @@ contract RewardElectronTest is Test {
 
         assertEq(vestedBalanceBefore, 1_000e18, "Vested balance before should be 1_000e18");
         assertEq(vestedBalanceAfter, 1_000e18, "Vested balance after should be 1_000e18");
+    }
+
+    function testTTT() external {
+        console2.log("XXXXXXXXXXXXX");
+
+        console2.logBytes32(
+            keccak256(abi.encode(uint256(keccak256("io.ipor.ElectronPlasmaVault")) - 1)) & ~bytes32(uint256(0xff))
+        );
     }
 }

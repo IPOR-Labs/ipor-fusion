@@ -96,5 +96,12 @@ library RoleLib {
 
         vm.prank(usersWithRoles.superAdmin);
         accessElectron.setTargetFunctionRole(plasmaVault, publicSig, PUBLIC_ROLE);
+
+        // @dev this is not able to do on production
+        bytes4[] memory publicAccessElectronSig = new bytes4[](1);
+        publicSig[0] = AccessElectron.canCallAndUpdate.selector;
+
+        vm.prank(usersWithRoles.superAdmin);
+        accessElectron.setTargetFunctionRole(address(accessElectron), publicSig, PUBLIC_ROLE);
     }
 }

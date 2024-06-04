@@ -9,6 +9,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
@@ -18,6 +20,7 @@ import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
+import {AccessElectron} from "../electrons/AccessElectron.sol";
 
 // TODO: ADD WITHDRAW FROM REWARD ELECTRON FUSE
 struct PlasmaVaultInitData {
@@ -88,6 +91,8 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
+
+    bool private _consumingSchedule;
 
     constructor(
         PlasmaVaultInitData memory initData
@@ -435,5 +440,58 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         return
             (totalAssets * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
+    }
+
+    /**
+     * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
+     * is less than 4 bytes long.
+     */
+    function _checkCanCall(address caller, bytes calldata data) internal virtual override {
+        bytes4 sig = bytes4(data[0:4]);
+        bool immediate;
+        uint32 delay;
+        if (
+            this.deposit.selector == sig ||
+            this.mint.selector == sig ||
+            this.withdraw.selector == sig ||
+            this.redeem.selector == sig
+        ) {
+            (immediate, delay) = canCallWithUpdate(authority(), caller, address(this), sig);
+        } else {
+            (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller, address(this), sig);
+        }
+        if (!immediate) {
+            if (delay > 0) {
+                _consumingSchedule = true;
+                IAccessManager(authority()).consumeScheduledOp(caller, data);
+                _consumingSchedule = false;
+            } else {
+                revert AccessManagedUnauthorized(caller);
+            }
+        }
+    }
+
+    /**
+     * @dev Since `AccessManager` implements an extended IAuthority interface, invoking `canCall` with backwards compatibility
+     * for the preexisting `IAuthority` interface requires special care to avoid reverting on insufficient return data.
+     * This helper function takes care of invoking `canCall` in a backwards compatible way without reverting.
+     */
+    function canCallWithUpdate(
+        address authority,
+        address caller,
+        address target,
+        bytes4 selector
+    ) internal view returns (bool immediate, uint32 delay) {
+        (bool success, bytes memory data) = authority.staticcall(
+            abi.encodeCall(AccessElectron.canCallAndUpdate, (caller, target, selector)) // TODO: convert AccessElectron -> Interface
+        );
+        if (success) {
+            if (data.length >= 0x40) {
+                (immediate, delay) = abi.decode(data, (bool, uint32));
+            } else if (data.length >= 0x20) {
+                immediate = abi.decode(data, (bool));
+            }
+        }
+        return (immediate, delay);
     }
 }
