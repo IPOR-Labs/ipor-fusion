@@ -64,9 +64,9 @@ interface IRewardsManager {
     /// state to reflect the latest balance.
     function updateBalance() external;
 
-    /// @notice Transfers vested tokens to the Plasma Vault.
-    /// @dev This method transfers the tokens that have vested according to the vesting schedule
-    /// to the designated Plasma Vault. It ensures that only the vested portion of the tokens
+    /// @notice Transfers vested underlying tokens to the Plasma Vault.
+    /// @dev This method transfers the underlying tokens that have vested according to the vesting schedule
+    /// to the designated Plasma Vault. It ensures that only the vested portion of the underlying tokens
     /// is transferred.
     function transferVestedTokensToVault() external;
 }
