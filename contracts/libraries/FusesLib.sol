@@ -11,6 +11,7 @@ library FusesLib {
 
     error FuseAlreadyExists();
     error FuseDoesNotExist();
+    error FuseUnsupported(address fuse);
     error BalanceFuseAlreadyExists(uint256 marketId, address fuse);
     error BalanceFuseDoesNotExist(uint256 marketId, address fuse);
 

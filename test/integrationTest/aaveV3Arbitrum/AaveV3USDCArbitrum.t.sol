@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
-import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
+import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 
@@ -37,11 +37,11 @@ contract AaveV3USDCArbitrum is SupplyTest {
         sources[0] = CHAINLINK_USDC;
     }
 
-    function setupMarketConfigs() public override returns (PlasmaVault.MarketSubstratesConfig[] memory marketConfigs) {
-        marketConfigs = new PlasmaVault.MarketSubstratesConfig[](1);
+    function setupMarketConfigs() public override returns (MarketSubstratesConfig[] memory marketConfigs) {
+        marketConfigs = new MarketSubstratesConfig[](1);
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        marketConfigs[0] = PlasmaVault.MarketSubstratesConfig(MARKET_ID, assets);
+        marketConfigs[0] = MarketSubstratesConfig(MARKET_ID, assets);
     }
 
     function setupFuses() public override {
@@ -50,11 +50,11 @@ contract AaveV3USDCArbitrum is SupplyTest {
         fuses[0] = address(fuse);
     }
 
-    function setupBalanceFuses() public override returns (PlasmaVault.MarketBalanceFuseConfig[] memory balanceFuses) {
+    function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(MARKET_ID, AAVE_PRICE_ORACLE, AAVE_POOL_DATA_PROVIDER);
 
-        balanceFuses = new PlasmaVault.MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = PlasmaVault.MarketBalanceFuseConfig(MARKET_ID, address(aaveV3Balances));
+        balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig(MARKET_ID, address(aaveV3Balances));
     }
 
     function getEnterFuseData(
