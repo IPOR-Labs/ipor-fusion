@@ -410,12 +410,12 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     function _getGrossTotalAssets() internal view returns (uint256) {
-        address rewardManagerAddress = getRewardManagerAddress();
-        if (rewardManagerAddress != address(0)) {
+        address rewardsManagerAddress = getRewardsManagerAddress();
+        if (rewardsManagerAddress != address(0)) {
             return
                 IERC20(asset()).balanceOf(address(this)) +
                 PlasmaVaultLib.getTotalAssetsInAllMarkets() +
-                IRewardsManager(rewardManagerAddress).balanceOf();
+                IRewardsManager(rewardsManagerAddress).balanceOf();
         }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
