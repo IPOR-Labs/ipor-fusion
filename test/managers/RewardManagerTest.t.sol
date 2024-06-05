@@ -172,7 +172,7 @@ contract RewardManagerTest is Test {
         assertEq(userTwoBalanceAfter, 0, "User two balance after should be 1_000e18");
     }
 
-    function testShouldBeAbleToaddRewardFuses() external {
+    function testShouldBeAbleToAddRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
@@ -190,7 +190,7 @@ contract RewardManagerTest is Test {
         assertEq(isSupportedAfter, true, "Fuse should be supported after");
     }
 
-    function testShouldRevertWhenUserDontHaveRoleToaddRewardFuses() external {
+    function testShouldRevertWhenUserDontHaveRoleToAddRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
@@ -210,7 +210,7 @@ contract RewardManagerTest is Test {
         assertEq(isSupportedAfter, false, "Fuse should not be supported after");
     }
 
-    function testShouldBeAbleToremoveRewardFuses() external {
+    function testShouldBeAbleToRemoveRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
@@ -231,7 +231,7 @@ contract RewardManagerTest is Test {
         assertEq(isSupportedAfter, false, "Fuse should not be supported after");
     }
 
-    function testShouldRevertWhenUserDontHaveRoleToremoveRewardFuses() external {
+    function testShouldRevertWhenUserDontHaveRoleToRemoveRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
