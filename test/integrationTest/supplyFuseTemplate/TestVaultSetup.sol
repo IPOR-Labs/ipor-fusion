@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {TestStorage} from "./TestStorage.sol";
 import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
-import {AccessElectron} from "../../../contracts/electrons/AccessElectron.sol";
+import {PlasmaVaultAccessManager} from "../../../contracts/managers/PlasmaVaultAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
 abstract contract TestVaultSetup is TestStorage {
@@ -60,7 +60,7 @@ abstract contract TestVaultSetup is TestStorage {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = accounts[0];
         usersToRoles.atomist = accounts[0];
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, plasmaVault, AccessElectron(accessElectron));
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, plasmaVault, PlasmaVaultAccessManager(accessElectron));
     }
 
     function setupMarketConfigs() public virtual returns (MarketSubstratesConfig[] memory marketConfigs);

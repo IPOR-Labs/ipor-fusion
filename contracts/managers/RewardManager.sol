@@ -9,10 +9,11 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {FuseAction} from "../vaults/PlasmaVault.sol";
-import {ElectronStorageLib, VestingData} from "./ElectronStorageLib.sol";
+import {RewardsManagerStorageLib, VestingData} from "./RewardsManagerStorageLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
+import {IRewardManager} from "./IRewardManager.sol";
 
-contract RewardElectron is AccessManaged {
+contract RewardManager is AccessManaged, IRewardManager {
     error UnableToTransferUnderlineToken();
 
     event AmountWithdrawn(uint256 amount);
@@ -20,18 +21,16 @@ contract RewardElectron is AccessManaged {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
-    address public immutable UNDERLINE_TOKEN;
+    address public immutable UNDERLYING_TOKEN;
     address public immutable PLASMA_VAULT;
 
     constructor(address initialAuthority_, address plasmaVault_) AccessManaged(initialAuthority_) {
-        UNDERLINE_TOKEN = PlasmaVault(plasmaVault_).asset();
+        UNDERLYING_TOKEN = PlasmaVault(plasmaVault_).asset();
         PLASMA_VAULT = plasmaVault_;
     }
 
-    /// @dev param account is not used and it is left to be aligned with ERC20 standard for this method
-    //solhint-disable-next-line no-unused-vars
-    function balanceOf(address account) public view returns (uint256) {
-        VestingData memory data = ElectronStorageLib.getVestingData();
+    function balanceOf() public view returns (uint256) {
+        VestingData memory data = RewardsManagerStorageLib.getVestingData();
 
         if (data.updateBalanceTimestamp == 0) {
             return 0;
@@ -39,13 +38,13 @@ contract RewardElectron is AccessManaged {
 
         uint256 ratio = 1e18;
         if (block.timestamp >= data.updateBalanceTimestamp) {
-            ratio = ((block.timestamp - data.updateBalanceTimestamp) * 1e18) / data.vesting;
+            ratio = ((block.timestamp - data.updateBalanceTimestamp) * 1e18) / data.vestingTime;
         }
 
         if (ratio >= 1e18) {
-            return data.balanceOnLastUpdate - data.releasedTokens;
+            return data.lastUpdateBalance - data.transferredTokens;
         } else {
-            return Math.mulDiv(data.balanceOnLastUpdate, ratio, 1e18) - data.releasedTokens;
+            return Math.mulDiv(data.lastUpdateBalance, ratio, 1e18) - data.transferredTokens;
         }
     }
 
@@ -54,11 +53,11 @@ contract RewardElectron is AccessManaged {
     }
 
     function getVestingData() external view returns (VestingData memory) {
-        return ElectronStorageLib.getVestingData();
+        return RewardsManagerStorageLib.getVestingData();
     }
 
     function transfer(address asset_, address to_, uint256 amount_) external restricted {
-        if (asset_ == UNDERLINE_TOKEN) {
+        if (asset_ == UNDERLYING_TOKEN) {
             revert UnableToTransferUnderlineToken();
         }
         IERC20(asset_).safeTransfer(to_, amount_);
@@ -83,29 +82,29 @@ contract RewardElectron is AccessManaged {
             }
         }
 
-        PlasmaVault(PLASMA_VAULT).executeClaimRewards(calls_);
+        PlasmaVault(PLASMA_VAULT).claimRewards(calls_);
     }
 
-    function setupVesting(uint256 releaseTokensDelay_) external restricted {
-        ElectronStorageLib.setupVesting(releaseTokensDelay_);
+    function setupVesting(uint256 vestingTime_) external restricted {
+        RewardsManagerStorageLib.setupVestingTime(vestingTime_);
     }
 
     function updateBalance() external restricted {
-        VestingData memory data = ElectronStorageLib.getVestingData();
+        VestingData memory data = RewardsManagerStorageLib.getVestingData();
         data.updateBalanceTimestamp = block.timestamp.toUint32();
-        data.balanceOnLastUpdate = IERC20(UNDERLINE_TOKEN).balanceOf(address(this)).toUint128();
-        data.releasedTokens = 0;
+        data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN).balanceOf(address(this)).toUint128();
+        data.transferredTokens = 0;
 
-        ElectronStorageLib.setVestingData(data);
+        RewardsManagerStorageLib.setVestingData(data);
     }
 
-    function transferVestedTokens() external restricted {
-        uint256 balance = balanceOf(PLASMA_VAULT);
+    function transferVestedTokensToVault() external restricted {
+        uint256 balance = balanceOf();
         if (balance == 0) {
             return;
         }
-        IERC20(UNDERLINE_TOKEN).safeTransfer(PLASMA_VAULT, balance);
-        ElectronStorageLib.updateReleasedTokens(balance);
+        IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
+        RewardsManagerStorageLib.updateTransferredTokens(balance);
         emit AmountWithdrawn(balance);
     }
 }

@@ -18,8 +18,8 @@ import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
+import {IRewardManager} from "../managers/IRewardManager.sol";
 
-// TODO: ADD WITHDRAW FROM REWARD ELECTRON FUSE
 struct PlasmaVaultInitData {
     string assetName;
     string assetSymbol;
@@ -165,7 +165,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         _addPerformanceFee(totalAssetsBefore);
     }
 
-    function executeClaimRewards(FuseAction[] calldata calls) external nonReentrant restricted {
+    function claimRewards(FuseAction[] calldata calls) external nonReentrant restricted {
         uint256 callsCount = calls.length;
         for (uint256 i; i < callsCount; ++i) {
             calls[i].fuse.functionDelegateCall(calls[i].data);
@@ -415,7 +415,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
             return
                 IERC20(asset()).balanceOf(address(this)) +
                 PlasmaVaultLib.getTotalAssetsInAllMarkets() +
-                IERC20(rewardElectronAddress).balanceOf(address(this));
+                IRewardManager(rewardElectronAddress).balanceOf();
         }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
