@@ -14,7 +14,7 @@ import {AaveV3BalanceFuse} from "../../contracts/vaults/poc/AaveV3BalanceFuse.so
 
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
-import {AccessElectron} from "../../contracts/electrons/AccessElectron.sol";
+import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
 
 contract ForkAmmGovernanceServiceTest is Test {
     address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -96,7 +96,7 @@ contract ForkAmmGovernanceServiceTest is Test {
                     fuses,
                     balanceFuses,
                     FeeConfig(address(0x777), 0, address(0x555), 0),
-                    address(new AccessElectron(msg.sender))
+                    address(new PlasmaVaultAccessManager(msg.sender))
                 )
             )
         );

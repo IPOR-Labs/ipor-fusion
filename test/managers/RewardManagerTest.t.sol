@@ -4,22 +4,22 @@ pragma solidity 0.8.20;
 import {Test, console2} from "forge-std/Test.sol";
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {AccessElectron} from "../../contracts/electrons/AccessElectron.sol";
-import {RewardElectron} from "../../contracts/electrons/RewardElectron.sol";
+import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
+import {RewardManager} from "../../contracts/managers/RewardManager.sol";
 import {MockPlasmaVault} from "./MockPlasmaVault.sol";
 import {MockToken} from "./MockToken.sol";
 
-contract RewardElectronTest is Test {
+contract RewardManagerTest is Test {
     uint64 private constant _REWARD_ELECTRON_ROLE = 1001;
 
     address private _atomist;
     address private _userOne;
     address private _userTwo;
     MockPlasmaVault private _plasmaVault;
-    AccessElectron private _accessElectron;
+    PlasmaVaultAccessManager private _accessElectron;
     address private _underlyingToken;
     address private _rewardsToken;
-    RewardElectron private _rewardElectron;
+    RewardManager private _rewardElectron;
 
     function setUp() public {
         _atomist = address(0x1111);
@@ -27,10 +27,10 @@ contract RewardElectronTest is Test {
         _userTwo = address(0x3333);
         _underlyingToken = address(new MockToken("Underlying Token", "UT"));
         _rewardsToken = address(new MockToken("Rewards Token", "RT"));
-        _accessElectron = new AccessElectron(_atomist);
+        _accessElectron = new PlasmaVaultAccessManager(_atomist);
         _plasmaVault = new MockPlasmaVault(address(_underlyingToken));
 
-        _rewardElectron = new RewardElectron(address(_accessElectron), address(_plasmaVault));
+        _rewardElectron = new RewardManager(address(_accessElectron), address(_plasmaVault));
 
         deal(_underlyingToken, _userOne, 1_000_000e18);
         deal(_underlyingToken, _userTwo, 1_000_000e18);
@@ -41,20 +41,20 @@ contract RewardElectronTest is Test {
         _accessElectron.grantRole(_REWARD_ELECTRON_ROLE, _userOne, 0);
 
         bytes4[] memory sig = new bytes4[](7);
-        sig[0] = RewardElectron.transfer.selector;
-        sig[1] = RewardElectron.addRewardFuse.selector;
-        sig[2] = RewardElectron.removeRewardFuse.selector;
-        sig[3] = RewardElectron.claimRewards.selector;
-        sig[4] = RewardElectron.setupVesting.selector;
-        sig[5] = RewardElectron.transferVestedTokens.selector;
-        sig[6] = RewardElectron.updateBalance.selector;
+        sig[0] = RewardManager.transfer.selector;
+        sig[1] = RewardManager.addRewardFuse.selector;
+        sig[2] = RewardManager.removeRewardFuse.selector;
+        sig[3] = RewardManager.claimRewards.selector;
+        sig[4] = RewardManager.setupVesting.selector;
+        sig[5] = RewardManager.transferVestedTokensToVault.selector;
+        sig[6] = RewardManager.updateBalance.selector;
 
         vm.prank(_atomist);
         _accessElectron.setTargetFunctionRole(address(_rewardElectron), sig, _REWARD_ELECTRON_ROLE);
     }
 
     function testShouldGetInitialBalanceZero() public {
-        assertEq(_rewardElectron.balanceOf(address(_plasmaVault)), 0, "Initial balance should be zero");
+        assertEq(_rewardElectron.balanceOf(), 0, "Initial balance should be zero");
     }
 
     function testShouldBalanceZeroWhenTransferUnderlineTokenToRewardElectron() public {
@@ -65,7 +65,7 @@ contract RewardElectronTest is Test {
         uint256 rewardElectionBalanceBefore = ERC20(_underlyingToken).balanceOf(address(_rewardElectron));
 
         // when
-        uint256 vestedBalance = _rewardElectron.balanceOf(address(_plasmaVault));
+        uint256 vestedBalance = _rewardElectron.balanceOf();
 
         // then
 
@@ -82,7 +82,7 @@ contract RewardElectronTest is Test {
         vm.prank(_userOne);
         ERC20(_underlyingToken).transfer(address(_rewardElectron), 1_000e18);
 
-        uint256 vestedBalanceBefore = _rewardElectron.balanceOf(address(_plasmaVault));
+        uint256 vestedBalanceBefore = _rewardElectron.balanceOf();
 
         // when
         vm.prank(_userOne);
@@ -90,7 +90,7 @@ contract RewardElectronTest is Test {
         vm.warp(block.number + 12 hours);
 
         // then
-        uint256 vestedBalanceAfter = _rewardElectron.balanceOf(address(_plasmaVault));
+        uint256 vestedBalanceAfter = _rewardElectron.balanceOf();
 
         assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
         assertGt(
@@ -109,7 +109,7 @@ contract RewardElectronTest is Test {
         vm.prank(_userOne);
         ERC20(_underlyingToken).transfer(address(_rewardElectron), 1_000e18);
 
-        uint256 vestedBalanceBefore = _rewardElectron.balanceOf(address(_plasmaVault));
+        uint256 vestedBalanceBefore = _rewardElectron.balanceOf();
 
         // when
         vm.prank(_userOne);
@@ -117,7 +117,7 @@ contract RewardElectronTest is Test {
         vm.warp(block.number + 2 days);
 
         // then
-        uint256 vestedBalanceAfter = _rewardElectron.balanceOf(address(_plasmaVault));
+        uint256 vestedBalanceAfter = _rewardElectron.balanceOf();
 
         assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
         assertEq(vestedBalanceAfter, 1_000e18, "Vested balance after should be 1_000e18");
@@ -278,14 +278,14 @@ contract RewardElectronTest is Test {
         _rewardElectron.updateBalance();
         vm.warp(block.number + 2 days);
 
-        uint256 vestedBalanceBefore = _rewardElectron.balanceOf(address(_plasmaVault));
+        uint256 vestedBalanceBefore = _rewardElectron.balanceOf();
 
         //when
         vm.prank(_userOne);
-        _rewardElectron.transferVestedTokens();
+        _rewardElectron.transferVestedTokensToVault();
 
         //then
-        uint256 vestedBalanceAfter = _rewardElectron.balanceOf(address(_plasmaVault));
+        uint256 vestedBalanceAfter = _rewardElectron.balanceOf();
 
         assertEq(vestedBalanceBefore, 1_000e18, "Vested balance before should be 1_000e18");
         assertEq(vestedBalanceAfter, 0, "Vested balance after should be zero");
@@ -304,16 +304,16 @@ contract RewardElectronTest is Test {
         _rewardElectron.updateBalance();
         vm.warp(block.number + 2 days);
 
-        uint256 vestedBalanceBefore = _rewardElectron.balanceOf(address(_plasmaVault));
+        uint256 vestedBalanceBefore = _rewardElectron.balanceOf();
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _userTwo);
 
         //when
         vm.prank(_userTwo);
         vm.expectRevert(error);
-        _rewardElectron.transferVestedTokens();
+        _rewardElectron.transferVestedTokensToVault();
 
         //then
-        uint256 vestedBalanceAfter = _rewardElectron.balanceOf(address(_plasmaVault));
+        uint256 vestedBalanceAfter = _rewardElectron.balanceOf();
 
         assertEq(vestedBalanceBefore, 1_000e18, "Vested balance before should be 1_000e18");
         assertEq(vestedBalanceAfter, 1_000e18, "Vested balance after should be 1_000e18");

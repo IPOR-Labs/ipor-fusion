@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 
-contract AccessElectron is AccessManager {
+contract PlasmaVaultAccessManager is AccessManager {
     constructor(address initialAdmin_) AccessManager(initialAdmin_) {}
 
     function canCallAndUpdate(

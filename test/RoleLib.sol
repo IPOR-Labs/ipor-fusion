@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {AccessElectron} from "../contracts/electrons/AccessElectron.sol";
+import {PlasmaVaultAccessManager} from "../contracts/managers/PlasmaVaultAccessManager.sol";
 import {Vm} from "forge-std/Test.sol";
 import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
@@ -24,8 +24,8 @@ uint64 constant PUBLIC_ROLE = type(uint64).max;
 
 /// @title Storage
 library RoleLib {
-    function createAccessElectron(UsersToRoles memory usersWithRoles, Vm vm) public returns (AccessElectron) {
-        AccessElectron accessElectron = new AccessElectron(usersWithRoles.superAdmin);
+    function createAccessElectron(UsersToRoles memory usersWithRoles, Vm vm) public returns (PlasmaVaultAccessManager) {
+        PlasmaVaultAccessManager accessElectron = new PlasmaVaultAccessManager(usersWithRoles.superAdmin);
 
         vm.prank(usersWithRoles.superAdmin);
         accessElectron.setRoleAdmin(ALPHA_ROLE, ATOMIST_ROLE);
@@ -59,7 +59,7 @@ library RoleLib {
         UsersToRoles memory usersWithRoles,
         Vm vm,
         address plasmaVault,
-        AccessElectron accessElectron
+        PlasmaVaultAccessManager accessElectron
     ) public {
         bytes4[] memory performanceFeeSig = new bytes4[](1);
         performanceFeeSig[0] = PlasmaVaultGovernance.configurePerformanceFee.selector;

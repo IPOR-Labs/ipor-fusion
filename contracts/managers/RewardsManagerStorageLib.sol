@@ -6,10 +6,10 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 /// @custom:storage-location erc7201:io.ipor.electron.FoundsReleaseData
 struct VestingData {
     /// @dev value in seconds
-    uint32 vesting;
+    uint32 vestingTime;
     uint32 updateBalanceTimestamp;
-    uint128 releasedTokens;
-    uint128 balanceOnLastUpdate;
+    uint128 transferredTokens;
+    uint128 lastUpdateBalance;
 }
 
 struct RedemptionLocks {
@@ -25,7 +25,7 @@ struct PlasmaVaultAddress {
 }
 
 /// @title Storage
-library ElectronStorageLib {
+library RewardsManagerStorageLib {
     using SafeCast for uint256;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.ElectronVestingData")) - 1)) & ~bytes32(uint256(0xff));
@@ -41,22 +41,17 @@ library ElectronStorageLib {
     bytes32 private constant PLASMA_VAULT = 0x1347d33dc8b9c73cd60c6cf9da27f486ee0dbb247e728b1acd4ccea4b4cd8700;
 
     event VestingDataUpdated(
-        uint128 releasedTokens,
+        uint128 transferredTokens,
         uint128 balanceOnLastUpdate,
-        uint32 vesting,
-        uint32 updateBalanceTimestamp
+        uint32 vestingTime,
+        uint32 lastUpdateBalance
     );
+    event VestingTimeUpdated(uint256 vestingTime);
+    event TransferredTokensUpdated(uint128 transferredTokens);
 
-    event VestingUpdated(uint256 releaseTokensDelay);
     event ReleasedTokensUpdated(uint128 releaseTokensDelay);
     event RedemptionDelayUpdated(uint256 redemptionDelay);
     event RedemptionLocksUpdated(address account, uint256 locksTime);
-
-    function _getVestingData() private pure returns (VestingData storage foundsReleaseData) {
-        assembly {
-            foundsReleaseData.slot := VESTING_DATA
-        }
-    }
 
     function _getRedemptionDelay() private pure returns (RedemptionDelay storage redemptionDelay) {
         assembly {
@@ -98,27 +93,33 @@ library ElectronStorageLib {
 
     function setVestingData(VestingData memory vestingData_) internal {
         VestingData storage foundsReleaseData = _getVestingData();
-        foundsReleaseData.vesting = vestingData_.vesting;
+        foundsReleaseData.vestingTime = vestingData_.vestingTime;
         foundsReleaseData.updateBalanceTimestamp = vestingData_.updateBalanceTimestamp;
-        foundsReleaseData.releasedTokens = vestingData_.releasedTokens;
-        foundsReleaseData.balanceOnLastUpdate = vestingData_.balanceOnLastUpdate;
+        foundsReleaseData.transferredTokens = vestingData_.transferredTokens;
+        foundsReleaseData.lastUpdateBalance = vestingData_.lastUpdateBalance;
         emit VestingDataUpdated(
-            foundsReleaseData.releasedTokens,
-            foundsReleaseData.balanceOnLastUpdate,
-            foundsReleaseData.vesting,
+            foundsReleaseData.transferredTokens,
+            foundsReleaseData.lastUpdateBalance,
+            foundsReleaseData.vestingTime,
             foundsReleaseData.updateBalanceTimestamp
         );
     }
 
-    function setupVesting(uint256 vesting_) internal {
-        _getVestingData().vesting = vesting_.toUint32();
-        emit VestingUpdated(vesting_);
+    function setupVestingTime(uint256 vesting_) internal {
+        _getVestingData().vestingTime = vesting_.toUint32();
+        emit VestingTimeUpdated(vesting_);
     }
 
-    function updateReleasedTokens(uint256 amount_) internal {
-        VestingData storage foundsReleaseData = _getVestingData();
-        uint128 releasedTokens = foundsReleaseData.releasedTokens + amount_.toUint128();
-        foundsReleaseData.releasedTokens = releasedTokens;
-        emit ReleasedTokensUpdated(releasedTokens);
+    function updateTransferredTokens(uint256 amount_) internal {
+        VestingData storage vestingData = _getVestingData();
+        uint128 releasedTokens = vestingData.transferredTokens + amount_.toUint128();
+        vestingData.transferredTokens = releasedTokens;
+        emit TransferredTokensUpdated(releasedTokens);
+    }
+
+    function _getVestingData() private pure returns (VestingData storage foundsReleaseData) {
+        assembly {
+            foundsReleaseData.slot := VESTING_DATA
+        }
     }
 }

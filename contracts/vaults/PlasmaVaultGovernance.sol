@@ -110,7 +110,7 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
     }
 
     function getRewardElectronAddress() public view returns (address) {
-        return PlasmaVaultLib.getRewardElectronAddress();
+        return PlasmaVaultLib.getRewardsManagerAddress();
     }
 
     function setRewardElectronAddress(address rewardElectronAddress) public restricted {
