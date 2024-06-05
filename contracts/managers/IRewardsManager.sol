@@ -56,7 +56,8 @@ interface IRewardsManager {
     /// @param releaseTokensDelay_ The delay in seconds before the tokens are released.
     /// @dev This method configures the vesting schedule by setting the delay time for token release.
     /// The delay defines the period that must pass before the tokens can be released to the beneficiary.
-    function setupVesting(uint256 releaseTokensDelay_) external;
+    // @dev setting up this to zero will stopped vesting and freeze underling token on the contract
+    function setupVestingTime(uint256 releaseTokensDelay_) external;
 
     /// @notice Updates the balance based on the current vesting schedule and transferred tokens.
     /// @dev This method recalculates the balance considering the elapsed time, vesting schedule,

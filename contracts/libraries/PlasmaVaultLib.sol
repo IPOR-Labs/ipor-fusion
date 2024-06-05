@@ -181,7 +181,7 @@ library PlasmaVaultLib {
         return PlasmaVaultStorageLib.getRewardsManagerAddress().value;
     }
 
-    function setRewardElectronAddress(address rewardElectronAddress) internal {
-        PlasmaVaultStorageLib.getRewardsManagerAddress().value = rewardElectronAddress;
+    function setRewardManagerAddress(address rewardManagerAddress_) internal {
+        PlasmaVaultStorageLib.getRewardsManagerAddress().value = rewardManagerAddress_;
     }
 }

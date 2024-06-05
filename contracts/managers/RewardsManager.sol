@@ -14,15 +14,15 @@ import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 import {IRewardsManager} from "./IRewardsManager.sol";
 
 contract RewardsManager is AccessManaged, IRewardsManager {
-    error UnableToTransferUnderlineToken();
-
-    event AmountWithdrawn(uint256 amount);
-
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
     address public immutable UNDERLYING_TOKEN;
     address public immutable PLASMA_VAULT;
+
+    error UnableToTransferUnderlineToken();
+
+    event AmountWithdrawn(uint256 amount);
 
     constructor(address initialAuthority_, address plasmaVault_) AccessManaged(initialAuthority_) {
         UNDERLYING_TOKEN = PlasmaVault(plasmaVault_).asset();
@@ -32,13 +32,17 @@ contract RewardsManager is AccessManaged, IRewardsManager {
     function balanceOf() public view returns (uint256) {
         VestingData memory data = ManagersStorageLib.getVestingData();
 
-        if (data.updateBalanceTimestamp == 0) {
+        if (data.updateBalanceTimestamp == 0 || data.vestingTime == 0) {
             return 0;
         }
 
         uint256 ratio = 1e18;
         if (block.timestamp >= data.updateBalanceTimestamp) {
             ratio = ((block.timestamp - data.updateBalanceTimestamp) * 1e18) / data.vestingTime;
+        }
+
+        if (ratio == 0) {
+            return 0;
         }
 
         if (ratio >= 1e18) {
@@ -88,7 +92,7 @@ contract RewardsManager is AccessManaged, IRewardsManager {
         PlasmaVault(PLASMA_VAULT).claimRewards(calls_);
     }
 
-    function setupVesting(uint256 vestingTime_) external restricted {
+    function setupVestingTime(uint256 vestingTime_) external restricted {
         ManagersStorageLib.setupVestingTime(vestingTime_);
     }
 

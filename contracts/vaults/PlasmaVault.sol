@@ -30,7 +30,7 @@ struct PlasmaVaultInitData {
     address[] fuses;
     MarketBalanceFuseConfig[] balanceFuses;
     FeeConfig feeConfig;
-    address accessElectron;
+    address accessManager;
 }
 
 /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
@@ -95,7 +95,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         ERC4626Permit(IERC20(initData.underlyingToken))
         ERC20Permit(initData.assetName)
         ERC20(initData.assetName, initData.assetSymbol)
-        PlasmaVaultGovernance(initData.accessElectron)
+        PlasmaVaultGovernance(initData.accessManager)
     {
         IIporPriceOracle priceOracle = IIporPriceOracle(initData.iporPriceOracle);
 
@@ -410,12 +410,12 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     function _getGrossTotalAssets() internal view returns (uint256) {
-        address rewardElectronAddress = getRewardElectronAddress();
-        if (rewardElectronAddress != address(0)) {
+        address rewardManagerAddress = getRewardManagerAddress();
+        if (rewardManagerAddress != address(0)) {
             return
                 IERC20(asset()).balanceOf(address(this)) +
                 PlasmaVaultLib.getTotalAssetsInAllMarkets() +
-                IRewardsManager(rewardElectronAddress).balanceOf();
+                IRewardsManager(rewardManagerAddress).balanceOf();
         }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }

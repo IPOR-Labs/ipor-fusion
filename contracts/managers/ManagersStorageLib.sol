@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-/// @custom:storage-location erc7201:io.ipor.electron.FoundsReleaseData
+/// @custom:storage-location erc7201:io.ipor.menagers.FoundsReleaseData
 struct VestingData {
     /// @dev value in seconds
     uint32 vestingTime;
@@ -16,8 +16,8 @@ struct VestingData {
 library ManagersStorageLib {
     using SafeCast for uint256;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.ElectronVestingData")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant VESTING_DATA = 0x33420bf4a5ed1298cf2d2d9b469b5e8a16f2012dd073a10231f768e03ad9f900;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.ManagerVestingData")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant VESTING_DATA = 0x7cf25f874e1d9eb28b33703e6d5459f9483631969188b4474c6a9598b78b4c00;
 
     event VestingDataUpdated(
         uint128 transferredTokens,

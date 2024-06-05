@@ -11,7 +11,6 @@ contract PlasmaVaultAccessManager is AccessManager {
         address target,
         bytes4 selector
     ) public view override returns (bool immediate, uint32 delay) {
-        // TODO implement the logic for the AccessElectron
         return super.canCall(caller, target, selector);
     }
 }
