@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {VestingData} from "./RewardsManagerStorageLib.sol";
+import {VestingData} from "./ManagersStorageLib.sol";
 import {FuseAction} from "../vaults/PlasmaVault.sol";
 
-interface IRewardManager {
+interface IRewardsManager {
     /// @notice Retrieves the balance of the vesting data.
     /// @return balance The balance of the vesting data in uint256.
     /// @dev This method calculates the current balance based on the vesting schedule.

@@ -18,7 +18,7 @@ import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
-import {IRewardManager} from "../managers/IRewardManager.sol";
+import {IRewardsManager} from "../managers/IRewardsManager.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
@@ -415,7 +415,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
             return
                 IERC20(asset()).balanceOf(address(this)) +
                 PlasmaVaultLib.getTotalAssetsInAllMarkets() +
-                IRewardManager(rewardElectronAddress).balanceOf();
+                IRewardsManager(rewardElectronAddress).balanceOf();
         }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }

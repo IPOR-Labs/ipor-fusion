@@ -13,7 +13,7 @@ struct VestingData {
 }
 
 /// @title Storage
-library RewardsManagerStorageLib {
+library ManagersStorageLib {
     using SafeCast for uint256;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.ElectronVestingData")) - 1)) & ~bytes32(uint256(0xff));

@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
-import {RewardManager} from "../../contracts/managers/RewardManager.sol";
+import {RewardsManager} from "../../contracts/managers/RewardsManager.sol";
 import {MockPlasmaVault} from "./MockPlasmaVault.sol";
 import {MockToken} from "./MockToken.sol";
 
@@ -18,7 +18,7 @@ contract RewardManagerTest is Test {
     PlasmaVaultAccessManager private _accessElectron;
     address private _underlyingToken;
     address private _rewardsToken;
-    RewardManager private _rewardElectron;
+    RewardsManager private _rewardElectron;
 
     function setUp() public {
         _atomist = address(0x1111);
@@ -29,7 +29,7 @@ contract RewardManagerTest is Test {
         _accessElectron = new PlasmaVaultAccessManager(_atomist);
         _plasmaVault = new MockPlasmaVault(address(_underlyingToken));
 
-        _rewardElectron = new RewardManager(address(_accessElectron), address(_plasmaVault));
+        _rewardElectron = new RewardsManager(address(_accessElectron), address(_plasmaVault));
 
         deal(_underlyingToken, _userOne, 1_000_000e18);
         deal(_underlyingToken, _userTwo, 1_000_000e18);
@@ -40,13 +40,13 @@ contract RewardManagerTest is Test {
         _accessElectron.grantRole(_REWARD_ELECTRON_ROLE, _userOne, 0);
 
         bytes4[] memory sig = new bytes4[](7);
-        sig[0] = RewardManager.transfer.selector;
-        sig[1] = RewardManager.addRewardFuse.selector;
-        sig[2] = RewardManager.removeRewardFuse.selector;
-        sig[3] = RewardManager.claimRewards.selector;
-        sig[4] = RewardManager.setupVesting.selector;
-        sig[5] = RewardManager.transferVestedTokensToVault.selector;
-        sig[6] = RewardManager.updateBalance.selector;
+        sig[0] = RewardsManager.transfer.selector;
+        sig[1] = RewardsManager.addRewardFuse.selector;
+        sig[2] = RewardsManager.removeRewardFuse.selector;
+        sig[3] = RewardsManager.claimRewards.selector;
+        sig[4] = RewardsManager.setupVesting.selector;
+        sig[5] = RewardsManager.transferVestedTokensToVault.selector;
+        sig[6] = RewardsManager.updateBalance.selector;
 
         vm.prank(_atomist);
         _accessElectron.setTargetFunctionRole(address(_rewardElectron), sig, _REWARD_ELECTRON_ROLE);

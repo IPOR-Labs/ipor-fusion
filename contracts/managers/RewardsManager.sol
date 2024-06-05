@@ -9,11 +9,11 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {FuseAction} from "../vaults/PlasmaVault.sol";
-import {RewardsManagerStorageLib, VestingData} from "./RewardsManagerStorageLib.sol";
+import {ManagersStorageLib, VestingData} from "./ManagersStorageLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
-import {IRewardManager} from "./IRewardManager.sol";
+import {IRewardsManager} from "./IRewardsManager.sol";
 
-contract RewardManager is AccessManaged, IRewardManager {
+contract RewardsManager is AccessManaged, IRewardsManager {
     error UnableToTransferUnderlineToken();
 
     event AmountWithdrawn(uint256 amount);
@@ -30,7 +30,7 @@ contract RewardManager is AccessManaged, IRewardManager {
     }
 
     function balanceOf() public view returns (uint256) {
-        VestingData memory data = RewardsManagerStorageLib.getVestingData();
+        VestingData memory data = ManagersStorageLib.getVestingData();
 
         if (data.updateBalanceTimestamp == 0) {
             return 0;
@@ -53,7 +53,7 @@ contract RewardManager is AccessManaged, IRewardManager {
     }
 
     function getVestingData() external view returns (VestingData memory) {
-        return RewardsManagerStorageLib.getVestingData();
+        return ManagersStorageLib.getVestingData();
     }
 
     function transfer(address asset_, address to_, uint256 amount_) external restricted {
@@ -86,16 +86,16 @@ contract RewardManager is AccessManaged, IRewardManager {
     }
 
     function setupVesting(uint256 vestingTime_) external restricted {
-        RewardsManagerStorageLib.setupVestingTime(vestingTime_);
+        ManagersStorageLib.setupVestingTime(vestingTime_);
     }
 
     function updateBalance() external restricted {
-        VestingData memory data = RewardsManagerStorageLib.getVestingData();
+        VestingData memory data = ManagersStorageLib.getVestingData();
         data.updateBalanceTimestamp = block.timestamp.toUint32();
         data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN).balanceOf(address(this)).toUint128();
         data.transferredTokens = 0;
 
-        RewardsManagerStorageLib.setVestingData(data);
+        ManagersStorageLib.setVestingData(data);
     }
 
     function transferVestedTokensToVault() external restricted {
@@ -104,7 +104,7 @@ contract RewardManager is AccessManaged, IRewardManager {
             return;
         }
         IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
-        RewardsManagerStorageLib.updateTransferredTokens(balance);
+        ManagersStorageLib.updateTransferredTokens(balance);
         emit AmountWithdrawn(balance);
     }
 }
