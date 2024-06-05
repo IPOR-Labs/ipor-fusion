@@ -41,8 +41,8 @@ contract RewardManagerTest is Test {
 
         bytes4[] memory sig = new bytes4[](7);
         sig[0] = RewardsManager.transfer.selector;
-        sig[1] = RewardsManager.addRewardFuse.selector;
-        sig[2] = RewardsManager.removeRewardFuse.selector;
+        sig[1] = RewardsManager.addRewardFuses.selector;
+        sig[2] = RewardsManager.removeRewardFuses.selector;
         sig[3] = RewardsManager.claimRewards.selector;
         sig[4] = RewardsManager.setupVesting.selector;
         sig[5] = RewardsManager.transferVestedTokensToVault.selector;
@@ -172,7 +172,7 @@ contract RewardManagerTest is Test {
         assertEq(userTwoBalanceAfter, 0, "User two balance after should be 1_000e18");
     }
 
-    function testShouldBeAbleToAddRewardFuse() external {
+    function testShouldBeAbleToaddRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
@@ -181,7 +181,7 @@ contract RewardManagerTest is Test {
 
         //when
         vm.prank(_userOne);
-        _rewardElectron.addRewardFuse(fuses);
+        _rewardElectron.addRewardFuses(fuses);
 
         //then
         bool isSupportedAfter = _rewardElectron.isRewardFuseSupported(address(0x4444));
@@ -190,7 +190,7 @@ contract RewardManagerTest is Test {
         assertEq(isSupportedAfter, true, "Fuse should be supported after");
     }
 
-    function testShouldRevertWhenUserDontHaveRoleToAddRewardFuse() external {
+    function testShouldRevertWhenUserDontHaveRoleToaddRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
@@ -201,7 +201,7 @@ contract RewardManagerTest is Test {
         //when
         vm.prank(_userTwo);
         vm.expectRevert(error);
-        _rewardElectron.addRewardFuse(fuses);
+        _rewardElectron.addRewardFuses(fuses);
 
         //then
         bool isSupportedAfter = _rewardElectron.isRewardFuseSupported(address(0x4444));
@@ -210,19 +210,19 @@ contract RewardManagerTest is Test {
         assertEq(isSupportedAfter, false, "Fuse should not be supported after");
     }
 
-    function testShouldBeAbleToRemoveRewardFuse() external {
+    function testShouldBeAbleToremoveRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
 
         vm.prank(_userOne);
-        _rewardElectron.addRewardFuse(fuses);
+        _rewardElectron.addRewardFuses(fuses);
 
         bool isSupportedBefore = _rewardElectron.isRewardFuseSupported(address(0x4444));
 
         //when
         vm.prank(_userOne);
-        _rewardElectron.removeRewardFuse(address(0x4444));
+        _rewardElectron.removeRewardFuses(fuses);
 
         //then
         bool isSupportedAfter = _rewardElectron.isRewardFuseSupported(address(0x4444));
@@ -231,13 +231,13 @@ contract RewardManagerTest is Test {
         assertEq(isSupportedAfter, false, "Fuse should not be supported after");
     }
 
-    function testShouldRevertWhenUserDontHaveRoleToRemoveRewardFuse() external {
+    function testShouldRevertWhenUserDontHaveRoleToremoveRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
 
         vm.prank(_userOne);
-        _rewardElectron.addRewardFuse(fuses);
+        _rewardElectron.addRewardFuses(fuses);
 
         bool isSupportedBefore = _rewardElectron.isRewardFuseSupported(address(0x4444));
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _userTwo);
@@ -245,7 +245,7 @@ contract RewardManagerTest is Test {
         //when
         vm.prank(_userTwo);
         vm.expectRevert(error);
-        _rewardElectron.removeRewardFuse(address(0x4444));
+        _rewardElectron.removeRewardFuses(fuses);
 
         //then
         bool isSupportedAfter = _rewardElectron.isRewardFuseSupported(address(0x4444));

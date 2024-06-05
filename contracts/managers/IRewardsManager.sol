@@ -38,13 +38,13 @@ interface IRewardsManager {
     /// @param fuses_ An array of addresses representing the fuses to be added.
     /// @dev This method adds the provided list of fuse addresses to the contract's configuration.
     /// It allows the inclusion of multiple fuses in a single transaction for reward management purposes.
-    function addRewardFuse(address[] calldata fuses_) external;
+    function addRewardFuses(address[] calldata fuses_) external;
 
     /// @notice Removes a specified reward fuse.
-    /// @param fuse_ The address of the fuse to be removed.
+    /// @param fuses_ The addresses of the fuse to be removed.
     /// @dev This method removes the provided fuse address from the contract's configuration.
     /// It is used to manage and update the list of supported reward fuses.
-    function removeRewardFuse(address fuse_) external;
+    function removeRewardFuses(address[] calldata fuses_) external;
 
     /// @notice Claims rewards based on the provided fuse actions.
     /// @param calls_ An array of FuseAction structs representing the actions for claiming rewards.

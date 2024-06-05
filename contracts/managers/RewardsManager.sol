@@ -63,15 +63,18 @@ contract RewardsManager is AccessManaged, IRewardsManager {
         IERC20(asset_).safeTransfer(to_, amount_);
     }
 
-    function addRewardFuse(address[] calldata fuses_) external restricted {
+    function addRewardFuses(address[] calldata fuses_) external restricted {
         uint256 len = fuses_.length;
         for (uint256 i; i < len; ++i) {
             FusesLib.addFuse(fuses_[i]);
         }
     }
 
-    function removeRewardFuse(address fuse_) external restricted {
-        FusesLib.removeFuse(fuse_);
+    function removeRewardFuses(address[] calldata fuses_) external restricted {
+        uint256 len = fuses_.length;
+        for (uint256 i; i < len; ++i) {
+            FusesLib.removeFuse(fuses_[i]);
+        }
     }
 
     function claimRewards(FuseAction[] calldata calls_) external restricted {
