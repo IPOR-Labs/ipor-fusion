@@ -59,25 +59,25 @@ library RoleLib {
         UsersToRoles memory usersWithRoles,
         Vm vm,
         address plasmaVault,
-        PlasmaVaultAccessManager accessElectron
+        PlasmaVaultAccessManager accessManager
     ) public {
         bytes4[] memory performanceFeeSig = new bytes4[](1);
         performanceFeeSig[0] = PlasmaVaultGovernance.configurePerformanceFee.selector;
 
         vm.prank(usersWithRoles.superAdmin);
-        accessElectron.setTargetFunctionRole(plasmaVault, performanceFeeSig, PERFORMANCE_FEE_MANAGER_ROLE);
+        accessManager.setTargetFunctionRole(plasmaVault, performanceFeeSig, PERFORMANCE_FEE_MANAGER_ROLE);
 
         bytes4[] memory managementFeeSig = new bytes4[](1);
         managementFeeSig[0] = PlasmaVaultGovernance.configureManagementFee.selector;
 
         vm.prank(usersWithRoles.superAdmin);
-        accessElectron.setTargetFunctionRole(plasmaVault, managementFeeSig, MANAGEMENT_FEE_MANAGER_ROLE);
+        accessManager.setTargetFunctionRole(plasmaVault, managementFeeSig, MANAGEMENT_FEE_MANAGER_ROLE);
 
         bytes4[] memory alphaSig = new bytes4[](1);
         alphaSig[0] = PlasmaVault.execute.selector;
 
         vm.prank(usersWithRoles.superAdmin);
-        accessElectron.setTargetFunctionRole(plasmaVault, alphaSig, ALPHA_ROLE);
+        accessManager.setTargetFunctionRole(plasmaVault, alphaSig, ALPHA_ROLE);
 
         bytes4[] memory atomistsSig = new bytes4[](6);
         atomistsSig[0] = PlasmaVaultGovernance.addBalanceFuse.selector;
@@ -88,20 +88,20 @@ library RoleLib {
         atomistsSig[5] = PlasmaVaultGovernance.setPriceOracle.selector;
 
         vm.prank(usersWithRoles.superAdmin);
-        accessElectron.setTargetFunctionRole(plasmaVault, atomistsSig, ATOMIST_ROLE);
+        accessManager.setTargetFunctionRole(plasmaVault, atomistsSig, ATOMIST_ROLE);
 
         bytes4[] memory publicSig = new bytes4[](2);
         publicSig[0] = PlasmaVault.deposit.selector;
         publicSig[1] = PlasmaVault.mint.selector;
 
         vm.prank(usersWithRoles.superAdmin);
-        accessElectron.setTargetFunctionRole(plasmaVault, publicSig, PUBLIC_ROLE);
+        accessManager.setTargetFunctionRole(plasmaVault, publicSig, PUBLIC_ROLE);
 
         // @dev this is not able to do on production
         bytes4[] memory publicAccessElectronSig = new bytes4[](1);
-        publicSig[0] = AccessElectron.canCallAndUpdate.selector;
+        publicSig[0] = PlasmaVaultAccessManager.canCallAndUpdate.selector;
 
         vm.prank(usersWithRoles.superAdmin);
-        accessElectron.setTargetFunctionRole(address(accessElectron), publicSig, PUBLIC_ROLE);
+        accessManager.setTargetFunctionRole(address(accessManager), publicSig, PUBLIC_ROLE);
     }
 }
