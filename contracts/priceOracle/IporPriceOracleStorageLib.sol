@@ -6,7 +6,7 @@ import {Errors} from "../libraries/errors/Errors.sol";
 /// @title Storage
 library IporPriceOracleStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.assetsSources")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant ASSETS_SOURCES = 0x7dd7151eda9a8aa729c84433daab8cd1eaf1f4ce42af566ab5ad0e56a8023100; // todo update value
+    bytes32 private constant ASSETS_SOURCES = 0xd12d38cc8fce64bbd07b3f1346bd7dd01071b1a6feaf308124f3fc4f8df3c000;
 
     /// @custom:storage-location erc7201:io.ipor.assetsSources
     struct AssetsSources {
