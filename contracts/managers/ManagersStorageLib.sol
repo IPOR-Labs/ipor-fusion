@@ -33,16 +33,16 @@ library ManagersStorageLib {
     }
 
     function setVestingData(VestingData memory vestingData_) internal {
-        VestingData storage foundsReleaseData = _getVestingData();
-        foundsReleaseData.vestingTime = vestingData_.vestingTime;
-        foundsReleaseData.updateBalanceTimestamp = vestingData_.updateBalanceTimestamp;
-        foundsReleaseData.transferredTokens = vestingData_.transferredTokens;
-        foundsReleaseData.lastUpdateBalance = vestingData_.lastUpdateBalance;
+        VestingData storage vestingData = _getVestingData();
+        vestingData.vestingTime = vestingData_.vestingTime;
+        vestingData.updateBalanceTimestamp = vestingData_.updateBalanceTimestamp;
+        vestingData.transferredTokens = vestingData_.transferredTokens;
+        vestingData.lastUpdateBalance = vestingData_.lastUpdateBalance;
         emit VestingDataUpdated(
-            foundsReleaseData.transferredTokens,
-            foundsReleaseData.lastUpdateBalance,
-            foundsReleaseData.vestingTime,
-            foundsReleaseData.updateBalanceTimestamp
+            vestingData.transferredTokens,
+            vestingData.lastUpdateBalance,
+            vestingData.vestingTime,
+            vestingData.updateBalanceTimestamp
         );
     }
 
