@@ -41,6 +41,14 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
         feeData = PlasmaVaultLib.getManagementFeeData();
     }
 
+    function getAccessManagerAddress() public view returns (address) {
+        return authority();
+    }
+
+    function getRewardsManagerAddress() public view returns (address) {
+        return PlasmaVaultLib.getRewardsManagerAddress();
+    }
+
     function addBalanceFuse(uint256 marketId, address fuse) external restricted {
         _addBalanceFuse(marketId, fuse);
     }
@@ -92,14 +100,6 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
 
     function configureManagementFee(address feeManager, uint256 feeInPercentage) external restricted {
         PlasmaVaultLib.configureManagementFee(feeManager, feeInPercentage);
-    }
-
-    function getAccessManagerAddress() public view returns (address) {
-        return authority();
-    }
-
-    function getRewardsManagerAddress() public view returns (address) {
-        return PlasmaVaultLib.getRewardsManagerAddress();
     }
 
     function setRewardsManagerAddress(address rewardsManagerAddress_) public restricted {
