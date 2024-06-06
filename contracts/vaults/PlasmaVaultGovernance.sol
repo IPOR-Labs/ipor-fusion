@@ -11,7 +11,7 @@ import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 abstract contract PlasmaVaultGovernance is AccessManaged {
-    constructor(address guardElectron) AccessManaged(guardElectron) {}
+    constructor(address accessManager_) AccessManaged(accessManager_) {}
 
     function isMarketSubstrateGranted(uint256 marketId, bytes32 substrate) external view returns (bool) {
         return PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId, substrate);
@@ -39,17 +39,6 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
 
     function getManagementFeeData() external view returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData) {
         feeData = PlasmaVaultLib.getManagementFeeData();
-    }
-
-    function addFuse(address fuse) external restricted {
-        _addFuse(fuse);
-    }
-
-    function removeFuse(address fuse) external restricted {
-        if (fuse == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        FusesLib.removeFuse(fuse);
     }
 
     function addBalanceFuse(uint256 marketId, address fuse) external restricted {
@@ -105,16 +94,16 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
         PlasmaVaultLib.configureManagementFee(feeManager, feeInPercentage);
     }
 
-    function getAccessElectronAddress() public view returns (address) {
+    function getAccessManagerAddress() public view returns (address) {
         return authority();
     }
 
-    function getRewardElectronAddress() public view returns (address) {
+    function getRewardsManagerAddress() public view returns (address) {
         return PlasmaVaultLib.getRewardsManagerAddress();
     }
 
-    function setRewardElectronAddress(address rewardElectronAddress) public restricted {
-        PlasmaVaultLib.setRewardElectronAddress(rewardElectronAddress);
+    function setRewardsManagerAddress(address rewardsManagerAddress_) public restricted {
+        PlasmaVaultLib.setRewardsManagerAddress(rewardsManagerAddress_);
     }
 
     function _addFuse(address fuse) internal {

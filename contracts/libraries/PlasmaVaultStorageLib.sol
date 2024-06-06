@@ -56,12 +56,12 @@ library PlasmaVaultStorageLib {
     bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
         0x09d6601575ea05ac39a145900e734264a5a09fe803eeb2ccc2884e0dc893b100;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.RewardManagerAddress")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.RewardsManagerAddress")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant REWARDS_MANAGER_ADDRESS =
-        0x22f9f03b058eac08a7f4791d12da44be90ca09d40155d76ae52a46a5ad7c8700;
+        0x9ed69544a87a344f5ba7f7bca332f231474aa925968a6f919e1a73cc396b6300;
 
-    /// @custom:storage-location erc7201:io.ipor.plasmaVaultRewardElectronAddress
-    struct RewardElectronAddress {
+    /// @custom:storage-location erc7201:io.ipor.plasmaVaultRewardsManagerAddress
+    struct RewardsManagerAddress {
         /// @dev total assets in the Plasma Vault
         address value;
     }
@@ -231,9 +231,9 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getRewardsManagerAddress() internal pure returns (RewardElectronAddress storage rewardElectronAddress) {
+    function getRewardsManagerAddress() internal pure returns (RewardsManagerAddress storage rewardsManagerAddress_) {
         assembly {
-            rewardElectronAddress.slot := REWARDS_MANAGER_ADDRESS
+            rewardsManagerAddress_.slot := REWARDS_MANAGER_ADDRESS
         }
     }
 }

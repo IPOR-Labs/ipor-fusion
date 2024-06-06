@@ -9,7 +9,7 @@ import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/IAavePoolDataProvider.sol";
+import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
 import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -97,7 +97,7 @@ contract PlasmaVaultTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlasmaVaultAccessManager accessElectron = createAccessElectron(usersToRoles);
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -110,11 +110,11 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessElectron)
+                address(accessManager)
             )
         );
 
-        setupRoles(plasmaVault, accessElectron);
+        setupRoles(plasmaVault, accessManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -180,7 +180,7 @@ contract PlasmaVaultTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlasmaVaultAccessManager accessElectron = createAccessElectron(usersToRoles);
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -193,11 +193,11 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessElectron)
+                address(accessManager)
             )
         );
 
-        setupRoles(plasmaVault, accessElectron);
+        setupRoles(plasmaVault, accessManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -265,7 +265,7 @@ contract PlasmaVaultTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlasmaVaultAccessManager accessElectron = createAccessElectron(usersToRoles);
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -278,11 +278,11 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessElectron)
+                address(accessManager)
             )
         );
 
-        setupRoles(plasmaVault, accessElectron);
+        setupRoles(plasmaVault, accessManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -361,7 +361,7 @@ contract PlasmaVaultTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](2);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
-        PlasmaVaultAccessManager accessElectron = createAccessElectron(usersToRoles);
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -373,10 +373,10 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessElectron)
+                address(accessManager)
             )
         );
-        setupRoles(plasmaVault, accessElectron);
+        setupRoles(plasmaVault, accessManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -451,7 +451,7 @@ contract PlasmaVaultTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        PlasmaVaultAccessManager accessElectron = createAccessElectron(usersToRoles);
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -464,10 +464,10 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessElectron)
+                address(accessManager)
             )
         );
-        setupRoles(plasmaVault, accessElectron);
+        setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
 
@@ -566,7 +566,7 @@ contract PlasmaVaultTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlasmaVaultAccessManager accessElectron = createAccessElectron(usersToRoles);
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -579,11 +579,11 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessElectron)
+                address(accessManager)
             )
         );
 
-        setupRoles(plasmaVault, accessElectron);
+        setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
 
@@ -669,7 +669,7 @@ contract PlasmaVaultTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        PlasmaVaultAccessManager accessElectron = createAccessElectron(usersToRoles);
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -682,10 +682,10 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessElectron)
+                address(accessManager)
             )
         );
-        setupRoles(plasmaVault, accessElectron);
+        setupRoles(plasmaVault, accessManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -769,7 +769,7 @@ contract PlasmaVaultTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlasmaVaultAccessManager accessElectron = createAccessElectron(usersToRoles);
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -782,10 +782,10 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessElectron)
+                address(accessManager)
             )
         );
-        setupRoles(plasmaVault, accessElectron);
+        setupRoles(plasmaVault, accessManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -854,7 +854,7 @@ contract PlasmaVaultTest is Test {
         );
     }
 
-    function createAccessElectron(UsersToRoles memory usersToRoles) public returns (PlasmaVaultAccessManager) {
+    function createAccessManager(UsersToRoles memory usersToRoles) public returns (PlasmaVaultAccessManager) {
         if (usersToRoles.superAdmin == address(0)) {
             usersToRoles.superAdmin = atomist;
             usersToRoles.atomist = atomist;
@@ -862,12 +862,12 @@ contract PlasmaVaultTest is Test {
             alphas[0] = alpha;
             usersToRoles.alphas = alphas;
         }
-        return RoleLib.createAccessElectron(usersToRoles, vm);
+        return RoleLib.createAccessManager(usersToRoles, vm);
     }
 
-    function setupRoles(PlasmaVault plasmaVault, PlasmaVaultAccessManager accessElectron) public {
+    function setupRoles(PlasmaVault plasmaVault, PlasmaVaultAccessManager accessManager) public {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessElectron);
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
     }
 }

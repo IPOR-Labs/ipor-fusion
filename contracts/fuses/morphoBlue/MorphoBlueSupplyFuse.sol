@@ -2,9 +2,10 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
-import {IApproveERC20} from "../IApproveERC20.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
@@ -31,6 +32,7 @@ struct MorphoBlueSupplyFuseExitData {
 
 contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
+    using SafeERC20 for ERC20;
     using MorphoBalancesLib for IMorpho;
     using MorphoLib for IMorpho;
     using SharesMathLib for uint256;
@@ -84,7 +86,7 @@ contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
 
         MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data.morphoBlueMarketId));
 
-        IApproveERC20(marketParams.loanToken).approve(address(MORPHO), data.amount);
+        ERC20(marketParams.loanToken).forceApprove(address(MORPHO), data.amount);
 
         (uint256 assetsSupplied, ) = MORPHO.supply(marketParams, data.amount, 0, address(this), bytes(""));
 

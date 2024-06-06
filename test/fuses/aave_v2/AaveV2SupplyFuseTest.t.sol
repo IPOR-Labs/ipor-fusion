@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/IAavePriceOracle.sol";
-import {AaveLendingPoolV2, ReserveData} from "../../../contracts/fuses/aave_v2/AaveLendingPoolV2.sol";
+import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
+import {AaveLendingPoolV2, ReserveData} from "../../../contracts/fuses/aave_v2/ext/AaveLendingPoolV2.sol";
 import {AaveV2SupplyFuse, AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
 import {AaveV2SupplyFuseMock} from "./AaveV2SupplyFuseMock.sol";
 import {ILendingPoolAddressesProvider} from "./ILendingPoolAddressesProvider.sol";

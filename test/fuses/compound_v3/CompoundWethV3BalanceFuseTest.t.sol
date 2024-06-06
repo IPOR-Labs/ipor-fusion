@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {CompoundConstants} from "../../../contracts/fuses/compound_v3/CompoundConstants.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {IComet} from "../../../contracts/fuses/compound_v3/IComet.sol";
+import {IComet} from "../../../contracts/fuses/compound_v3/ext/IComet.sol";
 
 import {CompoundV3SupplyFuseMock} from "./CompoundV3SupplyFuseMock.sol";
 import {CompoundV3BalanceFuseMock} from "./CompoundV3BalanceFuseMock.sol";

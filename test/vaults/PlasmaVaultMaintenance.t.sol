@@ -259,129 +259,6 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertTrue(plasmaVault.isFuseSupported(address(fuse)), "Fuse should be supported");
     }
 
-    function testShouldAddFuseByAtomist() public {
-        // given
-        address underlyingToken = DAI;
-
-        bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
-
-        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
-
-        address[] memory fuses = new address[](0);
-        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
-
-        UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(iporPriceOracleProxy),
-                alphas,
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager);
-
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
-
-        //when
-        plasmaVault.addFuse(address(fuse));
-
-        //then
-        assertTrue(plasmaVault.isFuseSupported(address(fuse)), "Fuse should be supported");
-    }
-
-    function testShouldAddFuseByAtomistAndExecuteAction() public {
-        // given
-        address underlyingToken = DAI;
-
-        bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
-
-        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
-        marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
-
-        address[] memory supplyFuses = new address[](0);
-        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
-            AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
-        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
-
-        UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(iporPriceOracleProxy),
-                alphas,
-                marketConfigs,
-                supplyFuses,
-                balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager);
-
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
-            AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
-
-        FuseAction[] memory calls = new FuseAction[](1);
-
-        uint256 amount = 100 * 1e18;
-
-        deal(DAI, address(this), amount);
-
-        ERC20(DAI).approve(address(plasmaVault), amount);
-
-        plasmaVault.deposit(amount, address(this));
-
-        calls[0] = FuseAction(
-            address(supplyFuse),
-            abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
-            )
-        );
-
-        // when
-        plasmaVault.addFuse(address(supplyFuse));
-        vm.prank(alpha);
-        plasmaVault.execute(calls);
-
-        // then
-        uint256 vaultTotalAssets = plasmaVault.totalAssets();
-        uint256 vaultTotalAssetsInMarket = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
-
-        assertTrue(plasmaVault.isFuseSupported(address(supplyFuse)), "Fuse should be supported");
-        assertEq(vaultTotalAssets, amount, "Vault total assets should be equal to amount");
-        assertEq(vaultTotalAssetsInMarket, amount, "Vault total assets in market should be equal to amount");
-        assertEq(
-            vaultTotalAssets,
-            vaultTotalAssetsInMarket,
-            "Vault total assets should be equal to vault total assets in market"
-        );
-    }
-
     function testShouldAddFusesByAtomist() public {
         // given
         address underlyingToken = DAI;
@@ -542,51 +419,6 @@ contract PlasmaVaultMaintenanceTest is Test {
             99999999,
             "Vault total assets in market Compound V3 should be equal to amount"
         );
-    }
-
-    function testShouldNotAddFuseWhenNotAtomist() public {
-        // given
-        address underlyingToken = DAI;
-
-        bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
-
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
-
-        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
-
-        address[] memory initialSupplyFuses = new address[](0);
-        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
-
-        UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(iporPriceOracleProxy),
-                alphas,
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager);
-
-        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
-
-        // when
-        vm.expectRevert(error);
-        vm.prank(address(0x777));
-        plasmaVault.addFuse(address(supplyFuse));
-
-        // then
-        assertFalse(plasmaVault.isFuseSupported(address(supplyFuse)), "Fuse should not be supported when not owner");
     }
 
     function testShouldNotAddFusesWhenNotAtomist() public {
@@ -794,9 +626,11 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         bytes memory error = abi.encodeWithSignature("UnsupportedFuse()");
 
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuse);
         // when
-        plasmaVault.addFuse(address(supplyFuse));
-        plasmaVault.removeFuse(address(supplyFuse));
+        plasmaVault.addFuses(fuses);
+        plasmaVault.removeFuses(fuses);
         vm.expectRevert(error);
         vm.prank(alpha);
         plasmaVault.execute(calls);
@@ -846,7 +680,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         //when
-        plasmaVault.removeFuse(address(fuse));
+        plasmaVault.removeFuses(fuses);
 
         //then
         assertFalse(plasmaVault.isFuseSupported(address(fuse)), "Fuse should not be supported");
@@ -911,53 +745,6 @@ contract PlasmaVaultMaintenanceTest is Test {
             plasmaVault.isFuseSupported(address(supplyFuseCompoundV3)),
             "Compound V3 supply fuse should not be supported"
         );
-    }
-
-    function testShouldNotRemoveFuseWhenNotAtomist() public {
-        // given
-        address underlyingToken = DAI;
-
-        bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
-
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
-
-        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
-
-        address[] memory initialSupplyFuses = new address[](1);
-        initialSupplyFuses[0] = address(supplyFuse);
-
-        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
-
-        UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(iporPriceOracleProxy),
-                alphas,
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager);
-
-        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
-
-        // when
-        vm.expectRevert(error);
-        vm.prank(address(0x777));
-        plasmaVault.removeFuse(address(supplyFuse));
-
-        // then
-        assertTrue(plasmaVault.isFuseSupported(address(supplyFuse)), "Fuse should be supported");
     }
 
     function testShouldNotRemoveFusesWhenNotAtomist() public {
@@ -1060,8 +847,10 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseCompoundV3);
         //when
-        plasmaVault.addFuse(address(supplyFuseCompoundV3));
+        plasmaVault.addFuses(fuses);
 
         //then
         assertTrue(
@@ -1069,8 +858,11 @@ contract PlasmaVaultMaintenanceTest is Test {
             "Compound V3 supply fuse should be supported"
         );
 
+        address[] memory fuses2 = new address[](1);
+        fuses2[0] = address(supplyFuseAaveV3);
+
         //when
-        plasmaVault.removeFuse(address(supplyFuseAaveV3));
+        plasmaVault.removeFuses(fuses2);
 
         //then
         assertFalse(
@@ -1365,7 +1157,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             alphas[0] = alpha;
             usersToRoles.alphas = alphas;
         }
-        return RoleLib.createAccessElectron(usersToRoles, vm);
+        return RoleLib.createAccessManager(usersToRoles, vm);
     }
 
     function setupRoles(PlasmaVault plasmaVault, PlasmaVaultAccessManager accessManager) public {

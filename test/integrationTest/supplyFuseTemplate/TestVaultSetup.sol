@@ -15,7 +15,7 @@ abstract contract TestVaultSetup is TestStorage {
         MarketBalanceFuseConfig[] memory balanceFuses = setupBalanceFuses();
         FeeConfig memory feeConfig = setupFeeConfig();
 
-        createAccessElectron();
+        createAccessManager();
         plasmaVault = address(
             new PlasmaVault(
                 PlasmaVaultInitData(
@@ -28,7 +28,7 @@ abstract contract TestVaultSetup is TestStorage {
                     fuses,
                     balanceFuses,
                     feeConfig,
-                    accessElectron
+                    accessManager
                 )
             )
         );
@@ -46,21 +46,21 @@ abstract contract TestVaultSetup is TestStorage {
         });
     }
 
-    function createAccessElectron() private {
+    function createAccessManager() private {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = accounts[0];
         usersToRoles.atomist = accounts[0];
         address[] memory alphas = new address[](1);
         alphas[0] = alpha;
         usersToRoles.alphas = alphas;
-        accessElectron = address(RoleLib.createAccessElectron(usersToRoles, vm));
+        accessManager = address(RoleLib.createAccessManager(usersToRoles, vm));
     }
 
     function setupRoles() private {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = accounts[0];
         usersToRoles.atomist = accounts[0];
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, plasmaVault, PlasmaVaultAccessManager(accessElectron));
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, plasmaVault, PlasmaVaultAccessManager(accessManager));
     }
 
     function setupMarketConfigs() public virtual returns (MarketSubstratesConfig[] memory marketConfigs);

@@ -9,8 +9,6 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
-import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
@@ -20,9 +18,8 @@ import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
-import {PlasmaVaultAccessManager} from "../managers/PlasmaVaultAccessManager.sol";
+import {IRewardsManager} from "../managers/IRewardsManager.sol";
 
-import {IRewardManager} from "../managers/IRewardManager.sol";
 struct PlasmaVaultInitData {
     string assetName;
     string assetSymbol;
@@ -33,7 +30,7 @@ struct PlasmaVaultInitData {
     address[] fuses;
     MarketBalanceFuseConfig[] balanceFuses;
     FeeConfig feeConfig;
-    address accessElectron;
+    address accessManager;
 }
 
 /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
@@ -91,7 +88,6 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
-
     bool private _consumingSchedule;
 
     constructor(
@@ -100,7 +96,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         ERC4626Permit(IERC20(initData.underlyingToken))
         ERC20Permit(initData.assetName)
         ERC20(initData.assetName, initData.assetSymbol)
-        PlasmaVaultGovernance(initData.accessElectron)
+        PlasmaVaultGovernance(initData.accessManager)
     {
         IIporPriceOracle priceOracle = IIporPriceOracle(initData.iporPriceOracle);
 
@@ -415,12 +411,12 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     function _getGrossTotalAssets() internal view returns (uint256) {
-        address rewardElectronAddress = getRewardElectronAddress();
-        if (rewardElectronAddress != address(0)) {
+        address rewardsManagerAddress = getRewardsManagerAddress();
+        if (rewardsManagerAddress != address(0)) {
             return
                 IERC20(asset()).balanceOf(address(this)) +
                 PlasmaVaultLib.getTotalAssetsInAllMarkets() +
-                IRewardManager(rewardElectronAddress).balanceOf();
+                IRewardsManager(rewardsManagerAddress).balanceOf();
         }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
