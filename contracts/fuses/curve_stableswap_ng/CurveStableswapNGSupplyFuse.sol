@@ -120,17 +120,12 @@ contract CurveStableswapNGSupplyFuse is IFuse {
             ERC20 asset = ERC20(CURVE_STABLESWAP_NG.coins(i));
             asset.forceApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
         }
-        uint256 mintAmount = CURVE_STABLESWAP_NG.add_liquidity(data.amounts, data.minMintAmount, data.receiver);
+        CURVE_STABLESWAP_NG.add_liquidity(data.amounts, data.minMintAmount, data.receiver);
         emit CurveSupplyStableswapNGSupplyEnterFuse(VERSION, data.amounts, data.minMintAmount, data.receiver);
     }
 
     function _exit(CurveStableswapNGSupplyFuseExitData memory data) internal {
-        uint256[] memory amounts = CURVE_STABLESWAP_NG.remove_liquidity(
-            data.burnAmount,
-            data.minAmounts,
-            data.receiver,
-            data.claimAdminFees
-        );
+        CURVE_STABLESWAP_NG.remove_liquidity(data.burnAmount, data.minAmounts, data.receiver, data.claimAdminFees);
         emit CurveSupplyStableswapNGSupplyExitFuse(
             VERSION,
             data.burnAmount,
@@ -141,12 +136,7 @@ contract CurveStableswapNGSupplyFuse is IFuse {
     }
 
     function _exitOneCoin(CurveStableswapNGSupplyFuseExitOneCoinData memory data) internal {
-        uint256 amountReceived = CURVE_STABLESWAP_NG.remove_liquidity_one_coin(
-            data.burnAmount,
-            data.coinIndex,
-            data.minReceived,
-            data.receiver
-        );
+        CURVE_STABLESWAP_NG.remove_liquidity_one_coin(data.burnAmount, data.coinIndex, data.minReceived, data.receiver);
         emit CurveSupplyStableswapNGSupplyExitOneCoinFuse(
             VERSION,
             data.burnAmount,
