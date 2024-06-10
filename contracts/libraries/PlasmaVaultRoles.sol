@@ -7,7 +7,7 @@ library PlasmaVaultRoles {
     /// @dev Managed by the Admin
     uint64 public constant ADMIN_ROLE = 0;
 
-    /// @dev Managed by the Owner
+    /// @dev Managed by the Owner, if applicable managed by the Admin
     uint64 public constant OWNER_ROLE = 1;
 
     /// @dev Managed by the Owner
