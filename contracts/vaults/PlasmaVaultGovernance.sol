@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
+import {AccessManaged} from "../managers/AccessManaged.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 abstract contract PlasmaVaultGovernance is AccessManaged {

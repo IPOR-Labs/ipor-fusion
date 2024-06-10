@@ -37,8 +37,8 @@ library ManagersStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.redemptionLocks")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant REDEMPTION_LOCKS = 0x64f822be72115f7a1b8b1e01aaffa6c3b18be496e0df14d2a543d41dff19e400;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.ElectronPlasmaVault")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant PLASMA_VAULT = 0x1347d33dc8b9c73cd60c6cf9da27f486ee0dbb247e728b1acd4ccea4b4cd8700;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVault")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PLASMA_VAULT = 0xe68b25ac473a846050d0d3967f61d9c6bf61aafc3bb399481bd85a09736d2b00;
 
     event VestingDataUpdated(
         uint128 transferredTokens,

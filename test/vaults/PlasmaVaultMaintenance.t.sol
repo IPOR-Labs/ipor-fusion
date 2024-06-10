@@ -205,11 +205,11 @@ contract PlasmaVaultMaintenanceTest is Test {
         bytes memory data = abi.encodeWithSignature("configureManagementFee(address,uint256)", address(0x555), 55);
 
         vm.prank(address(0x555));
-        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+        (bytes32 operationId, ) = accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
 
         vm.warp(block.timestamp + 1 hours);
 
-        bytes memory error = abi.encodeWithSignature("AccessManagerUnauthorizedConsume(address)", target);
+        bytes memory error = abi.encodeWithSignature("AccessManagerNotReady(bytes32)", operationId);
 
         // when
         vm.expectRevert(error);
@@ -334,11 +334,11 @@ contract PlasmaVaultMaintenanceTest is Test {
         bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x777), 55);
 
         vm.prank(address(0x777));
-        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+        (bytes32 operationId, ) = accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
 
         vm.warp(block.timestamp + 1 hours);
 
-        bytes memory error = abi.encodeWithSignature("AccessManagerUnauthorizedConsume(address)", target);
+        bytes memory error = abi.encodeWithSignature("AccessManagerNotReady(bytes32)", operationId);
 
         // when
         vm.expectRevert(error);

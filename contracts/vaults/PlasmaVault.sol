@@ -91,7 +91,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
-    bool private _consumingSchedule;
+    bool private _costumeConsumingSchedule;
 
     constructor(
         PlasmaVaultInitData memory initData
@@ -463,32 +463,22 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
             this.withdraw.selector == sig ||
             this.redeem.selector == sig
         ) {
-            (immediate, delay) = canCallWithUpdate(authority(), caller, address(this), sig);
+            (immediate, delay) = PlasmaVaultAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
         } else {
             (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller, address(this), sig);
         }
         if (!immediate) {
             if (delay > 0) {
-                _consumingSchedule = true;
+                _costumeConsumingSchedule = true;
                 IAccessManager(authority()).consumeScheduledOp(caller, data);
-                _consumingSchedule = false;
+                _costumeConsumingSchedule = false;
             } else {
                 revert AccessManagedUnauthorized(caller);
             }
         }
     }
 
-    /**
-     * @dev Since `AccessManager` implements an extended IAuthority interface, invoking `canCall` with backwards compatibility
-     * for the preexisting `IAuthority` interface requires special care to avoid reverting on insufficient return data.
-     * This helper function takes care of invoking `canCall` in a backwards compatible way without reverting.
-     */
-    function canCallWithUpdate(
-        address authority,
-        address caller,
-        address target,
-        bytes4 selector
-    ) internal returns (bool immediate, uint32 delay) {
-        return PlasmaVaultAccessManager(authority).canCallAndUpdate(caller, target, selector);
+    function isConsumingScheduledOp() public view override returns (bytes4) {
+        return _costumeConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
     }
 }
