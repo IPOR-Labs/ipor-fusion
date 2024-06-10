@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
-import {ICurveStableSwapNG} from "./ext/ICurveStableSwapNG.sol";
+import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
 import {IFuse} from "../IFuse.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
