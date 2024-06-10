@@ -47,7 +47,7 @@ contract CurveStableswapNGSupplyFuse is IFuse {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
-    ICurveStableSwapNG public immutable CURVE_STABLESWAP_NG;
+    ICurveStableswapNG public immutable CURVE_STABLESWAP_NG;
 
     event CurveSupplyStableswapNGSupplyEnterFuse(
         address indexed version,
@@ -79,7 +79,7 @@ contract CurveStableswapNGSupplyFuse is IFuse {
     constructor(uint256 marketIdInput, address curveStableswapNGInput) {
         VERSION = address(this);
         MARKET_ID = marketIdInput;
-        CURVE_STABLESWAP_NG = ICurveStableSwapNG(curveStableswapNGInput);
+        CURVE_STABLESWAP_NG = ICurveStableswapNG(curveStableswapNGInput);
     }
 
     function enter(bytes calldata data) external override {
