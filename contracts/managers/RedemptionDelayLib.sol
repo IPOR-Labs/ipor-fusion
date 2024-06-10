@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
-import {RewardsManagerStorageLib} from "./RewardsManagerStorageLib.sol";
+import {ManagersStorageLib} from "./ManagersStorageLib.sol";
 
 bytes4 constant DEPOSIT_SELECTOR = PlasmaVault.deposit.selector;
 bytes4 constant MINT_SELECTOR = PlasmaVault.mint.selector;
@@ -14,20 +14,20 @@ library RedemptionDelayLib {
 
     function lockChecks(address account_, bytes4 sig_) internal {
         if (sig_ == WITHDRAW_SELECTOR || sig_ == REDEEM_SELECTOR) {
-            uint256 unlockTime = RewardsManagerStorageLib.getRedemptionLocks().redemptionLock[account_];
+            uint256 unlockTime = ManagersStorageLib.getRedemptionLocks().redemptionLock[account_];
             if (unlockTime > block.timestamp) {
                 revert AccountIsLocked(unlockTime);
             }
         } else if (sig_ == DEPOSIT_SELECTOR || sig_ == MINT_SELECTOR) {
-            RewardsManagerStorageLib.setRedemptionLocks(account_);
+            ManagersStorageLib.setRedemptionLocks(account_);
         }
     }
 
     function setRedemptionDelay(uint256 delay_) internal {
-        RewardsManagerStorageLib.getRedemptionDelay().redemptionDelay = delay_;
+        ManagersStorageLib.getRedemptionDelay().redemptionDelay = delay_;
     }
 
     function getAccountLockTime(address account_) internal view returns (uint256) {
-        return RewardsManagerStorageLib.getRedemptionLocks().redemptionLock[account_];
+        return ManagersStorageLib.getRedemptionLocks().redemptionLock[account_];
     }
 }
