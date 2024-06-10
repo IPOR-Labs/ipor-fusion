@@ -69,7 +69,7 @@ library RewardsManagerStorageLib {
         return _getVestingData();
     }
 
-    function getRedemptionDelay() internal view returns (RedemptionDelay memory) {
+    function getRedemptionDelay() internal view returns (RedemptionDelay storage) {
         return _getRedemptionDelay();
     }
 

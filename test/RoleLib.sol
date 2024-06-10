@@ -97,9 +97,17 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, atomistsSig, ATOMIST_ROLE);
 
-        bytes4[] memory publicSig = new bytes4[](2);
+        bytes4[] memory atomistsSig2 = new bytes4[](1);
+        atomistsSig2[0] = PlasmaVaultAccessManager.setRedemptionDelay.selector;
+
+        vm_.prank(usersWithRoles_.superAdmin);
+        accessManager_.setTargetFunctionRole(address(accessManager_), atomistsSig2, ATOMIST_ROLE);
+
+        bytes4[] memory publicSig = new bytes4[](4);
         publicSig[0] = PlasmaVault.deposit.selector;
         publicSig[1] = PlasmaVault.mint.selector;
+        publicSig[2] = PlasmaVault.withdraw.selector;
+        publicSig[3] = PlasmaVault.redeem.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, publicSig, PUBLIC_ROLE);

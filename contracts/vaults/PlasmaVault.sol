@@ -202,7 +202,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.mint(shares, receiver);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner) public override nonReentrant returns (uint256) {
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override nonReentrant restricted returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToWithdraw();
         }
@@ -223,7 +227,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.withdraw(assets, receiver, owner);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) public override nonReentrant returns (uint256) {
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override nonReentrant restricted returns (uint256) {
         if (shares == 0) {
             revert NoSharesToRedeem();
         }
@@ -480,17 +488,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         address caller,
         address target,
         bytes4 selector
-    ) internal view returns (bool immediate, uint32 delay) {
-        (bool success, bytes memory data) = authority.staticcall(
-            abi.encodeCall(PlasmaVaultAccessManager.canCallAndUpdate, (caller, target, selector))
-        );
-        if (success) {
-            if (data.length >= 0x40) {
-                (immediate, delay) = abi.decode(data, (bool, uint32));
-            } else if (data.length >= 0x20) {
-                immediate = abi.decode(data, (bool));
-            }
-        }
-        return (immediate, delay);
+    ) internal returns (bool immediate, uint32 delay) {
+        return PlasmaVaultAccessManager(authority).canCallAndUpdate(caller, target, selector);
     }
 }
