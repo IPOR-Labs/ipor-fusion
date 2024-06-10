@@ -99,6 +99,44 @@ contract RewardsManagerTest is Test {
         );
     }
 
+    function testShouldTransferTokenWhenUpdateBalance() public {
+        // given
+        vm.warp(1000 days);
+        vm.prank(_userOne);
+        _rewardsManager.setupVestingTime(1 days);
+
+        vm.prank(_userOne);
+        ERC20(_underlyingToken).transfer(address(_rewardsManager), 1_000e18);
+
+        uint256 vestedBalanceBefore = _rewardsManager.balanceOf();
+
+        vm.prank(_userOne);
+        _rewardsManager.updateBalance();
+
+        vm.warp(block.number + 12 hours);
+        uint256 plasmaVaultBalanceBefore = ERC20(_underlyingToken).balanceOf(address(_plasmaVault));
+
+        // when
+        vm.prank(_userOne);
+        _rewardsManager.updateBalance();
+
+        // then
+        uint256 vestedBalanceAfter = _rewardsManager.balanceOf();
+        uint256 plasmaVaultBalanceAfter = ERC20(_underlyingToken).balanceOf(address(_plasmaVault));
+
+        assertGt(
+            plasmaVaultBalanceAfter,
+            plasmaVaultBalanceBefore,
+            "Plasma vault balance after should be greater than plasma vault balance before"
+        );
+        assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
+        assertEq(
+            vestedBalanceAfter,
+            vestedBalanceBefore,
+            "Vested balance after should be equal to vested balance before"
+        );
+    }
+
     function testShouldVestedAllTokensOnAddress() external {
         // given
         vm.warp(1000 days);
