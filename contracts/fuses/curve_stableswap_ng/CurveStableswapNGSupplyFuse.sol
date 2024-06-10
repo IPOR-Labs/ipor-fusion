@@ -76,6 +76,8 @@ contract CurveStableswapNGSupplyFuse is IFuse {
     bytes4 private constant EXIT_ONE_COIN_SELECTOR =
         bytes4(keccak256("exitOneCoin(CurveStableswapNGSupplyFuseExitOneCoinData)"));
 
+    error CurveStableswapNGSupplyFuseUnsupportedAsset(address asset, string errorCode);
+
     constructor(uint256 marketIdInput, address curveStableswapNGInput) {
         VERSION = address(this);
         MARKET_ID = marketIdInput;
@@ -112,14 +114,11 @@ contract CurveStableswapNGSupplyFuse is IFuse {
 
     function _enter(CurveStableswapNGSupplyFuseEnterData memory data) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(CURVE_STABLESWAP_NG))) {
-            revert Errors.CurveStableswapNGSupplyFuseUnsupportedAsset(
-                address(CURVE_STABLESWAP_NG),
-                Errors.UNSUPPORTED_ASSET
-            );
+            revert CurveStableswapNGSupplyFuseUnsupportedAsset(address(CURVE_STABLESWAP_NG), Errors.UNSUPPORTED_ASSET);
         }
         for (uint256 i = 0; i < data.amounts.length; ++i) {
             ERC20 asset = ERC20(CURVE_STABLESWAP_NG.coins(i));
-            asset.safeApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
+            asset.forceApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
         }
         uint256 mintAmount = CURVE_STABLESWAP_NG.add_liquidity(data.amounts, data.minMintAmount, data.receiver);
         emit CurveSupplyStableswapNGSupplyEnterFuse(VERSION, data.amounts, data.minMintAmount, data.receiver);

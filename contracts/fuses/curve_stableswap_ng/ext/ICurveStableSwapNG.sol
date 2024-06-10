@@ -8,10 +8,11 @@ pragma solidity 0.8.20;
 
 interface ICurveStableswapNG {
     /**
-     * @dev Get the list of coins in the pool
-     * @return List of coin addresses
+     * @dev Return the coin address at index i
+     * @param i Index of the coin
+     * @return Address of the coin
      */
-    function coins() external view returns (address[] memory);
+    function coins(uint256 i) external view returns (address);
 
     /**
      * @dev Calculate addition or reduction in token supply from a deposit or withdrawal
