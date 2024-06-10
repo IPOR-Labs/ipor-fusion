@@ -19,6 +19,9 @@ import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IRewardsManager} from "../managers/IRewardsManager.sol";
+import {PlasmaVaultAccessManager} from "../managers/PlasmaVaultAccessManager.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
@@ -479,7 +482,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         bytes4 selector
     ) internal view returns (bool immediate, uint32 delay) {
         (bool success, bytes memory data) = authority.staticcall(
-            abi.encodeCall(PlasmaVaultAccessManager.canCallAndUpdate, (caller, target, selector)) // TODO: convert AccessElectron -> Interface
+            abi.encodeCall(PlasmaVaultAccessManager.canCallAndUpdate, (caller, target, selector))
         );
         if (success) {
             if (data.length >= 0x40) {

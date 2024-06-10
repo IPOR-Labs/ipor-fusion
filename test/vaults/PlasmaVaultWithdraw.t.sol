@@ -109,6 +109,45 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(vaultTotalAssetsAfter, 0);
     }
 
+    function testShouldNotBeAbleWithdrawInOneBlock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        PlasmaVaultAccessManager accessManager = PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress());
+
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(1 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when
+        vm.warp(10 minutes);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore, vaultTotalAssetsAfter);
+        assertEq(userVaultBalanceBefore, userVaultBalanceAfter);
+
+        assertEq(vaultTotalAssetsAfter, 0);
+    }
+
     function testShouldNotInstantWithdrawBecauseNoShares() public {
         // given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();

@@ -129,6 +129,265 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertEq(feeData.feeInPercentage, 55);
     }
 
+    function testShouldConfigureManagementFeeDataWhenTimelock() public {
+        // given
+
+        UsersToRoles memory usersToRoles;
+        address[] memory managementFeeManagers = new address[](1);
+        managementFeeManagers[0] = address(0x555);
+        usersToRoles.managementFeeManagers = managementFeeManagers;
+        usersToRoles.feeTimelock = 1 days;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(iporPriceOracleProxy),
+                new address[](0),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        address target = address(plasmaVault);
+        bytes memory data = abi.encodeWithSignature("configureManagementFee(address,uint256)", address(0x555), 55);
+
+        vm.prank(address(0x555));
+        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 days);
+
+        // when
+        vm.prank(address(0x555));
+        accessManager.execute(target, data);
+
+        // then
+        PlasmaVaultStorageLib.ManagementFeeData memory feeData = plasmaVault.getManagementFeeData();
+        assertEq(feeData.feeManager, address(0x555));
+        assertEq(feeData.feeInPercentage, 55);
+    }
+
+    function testShouldRevertWhenConfigureManagementFeeDontPassTimelock() public {
+        // given
+
+        UsersToRoles memory usersToRoles;
+        address[] memory managementFeeManagers = new address[](1);
+        managementFeeManagers[0] = address(0x555);
+        usersToRoles.managementFeeManagers = managementFeeManagers;
+        usersToRoles.feeTimelock = 1 days;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(iporPriceOracleProxy),
+                new address[](0),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        address target = address(plasmaVault);
+        bytes memory data = abi.encodeWithSignature("configureManagementFee(address,uint256)", address(0x555), 55);
+
+        vm.prank(address(0x555));
+        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 hours);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagerUnauthorizedConsume(address)", target);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x555));
+        plasmaVault.configureManagementFee(address(0x555), 55);
+    }
+
+    function testShouldRevertWhenConfigureManagementFeeCallWithoutShouldExecute() public {
+        // given
+
+        UsersToRoles memory usersToRoles;
+        address[] memory managementFeeManagers = new address[](1);
+        managementFeeManagers[0] = address(0x555);
+        usersToRoles.managementFeeManagers = managementFeeManagers;
+        usersToRoles.feeTimelock = 1 days;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(iporPriceOracleProxy),
+                new address[](0),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        address target = address(plasmaVault);
+        bytes memory data = abi.encodeWithSignature("configureManagementFee(address,uint256)", address(0x555), 55);
+
+        vm.prank(address(0x555));
+        (bytes32 operationId, ) = accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 hours);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagerNotReady(bytes32)", operationId);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x555));
+        accessManager.execute(target, data);
+    }
+
+    function testShouldConfigurePerformanceFeeDataWhenTimelock() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory performanceFeeManagers = new address[](1);
+        performanceFeeManagers[0] = address(0x555);
+        usersToRoles.performanceFeeManagers = performanceFeeManagers;
+        usersToRoles.feeTimelock = 1 days;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(iporPriceOracleProxy),
+                new address[](0),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        address target = address(plasmaVault);
+        bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x555), 55);
+
+        vm.prank(address(0x555));
+        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 days);
+
+        // when
+        vm.prank(address(0x555));
+        accessManager.execute(target, data);
+
+        // then
+        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = plasmaVault.getPerformanceFeeData();
+        assertEq(feeData.feeManager, address(0x555));
+        assertEq(feeData.feeInPercentage, 55);
+    }
+
+    function testShouldRevertWhenConfigurePerformanceFeeDontPassTimelock() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory performanceFeeManagers = new address[](1);
+        performanceFeeManagers[0] = address(0x777);
+        usersToRoles.performanceFeeManagers = performanceFeeManagers;
+        usersToRoles.feeTimelock = 1 days;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(iporPriceOracleProxy),
+                new address[](0),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        address target = address(plasmaVault);
+        bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x777), 55);
+
+        vm.prank(address(0x777));
+        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 hours);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagerUnauthorizedConsume(address)", target);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        plasmaVault.configurePerformanceFee(address(0x777), 55);
+    }
+
+    function testShouldRevertWhenConfigurePerformanceFeeCallWithoutShouldExecute() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory performanceFeeManagers = new address[](1);
+        performanceFeeManagers[0] = address(0x777);
+        usersToRoles.performanceFeeManagers = performanceFeeManagers;
+        usersToRoles.feeTimelock = 1 days;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(iporPriceOracleProxy),
+                new address[](0),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        address target = address(plasmaVault);
+        bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x777), 55);
+
+        vm.prank(address(0x777));
+        (bytes32 operationId, ) = accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 hours);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagerNotReady(bytes32)", operationId);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        accessManager.execute(target, data);
+    }
+
     function testShouldSetupBalanceFusesWhenVaultCreated() public {
         // given
         address underlyingToken = DAI;
