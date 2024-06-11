@@ -9,9 +9,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {AlphasLib} from "../libraries/AlphasLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
-import {AccessControlLib} from "../libraries/AccessControlLib.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
@@ -20,6 +18,61 @@ import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
+import {IRewardsManager} from "../managers/IRewardsManager.sol";
+import {PlasmaVaultAccessManager} from "../managers/PlasmaVaultAccessManager.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
+
+struct PlasmaVaultInitData {
+    string assetName;
+    string assetSymbol;
+    address underlyingToken;
+    address iporPriceOracle;
+    address[] alphas;
+    MarketSubstratesConfig[] marketSubstratesConfigs;
+    address[] fuses;
+    MarketBalanceFuseConfig[] balanceFuses;
+    FeeConfig feeConfig;
+    address accessManager;
+}
+
+/// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
+struct FuseAction {
+    /// @notice fuse is a address of the Fuse contract
+    address fuse;
+    /// @notice data is a bytes data that is passed to the Fuse contract
+    bytes data;
+}
+
+/// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
+struct MarketBalanceFuseConfig {
+    /// @notice When marketId is 0, then fuse is independent to a market - example flashloan fuse
+    uint256 marketId;
+    /// @notice address of the balance fuse
+    address fuse;
+}
+
+/// @notice MarketSubstratesConfig is a struct that represents a configuration of substrates for a specific market
+/// @notice substrates are assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
+struct MarketSubstratesConfig {
+    /// @notice marketId is a id of the market
+    uint256 marketId;
+    /// @notice substrates is a list of substrates for the market
+    /// @dev it could be list of assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
+    bytes32[] substrates;
+}
+
+/// @notice FeeConfig is a struct that represents a configuration of performance and management fees used during Plasma Vault construction
+struct FeeConfig {
+    /// @notice performanceFeeManager is a address of the performance fee manager
+    address performanceFeeManager;
+    /// @notice performanceFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    uint256 performanceFeeInPercentage;
+    /// @notice managementFeeManager is a address of the management fee manager
+    address managementFeeManager;
+    /// @notice managementFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    uint256 managementFeeInPercentage;
+}
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
@@ -29,94 +82,26 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
-    modifier onlyGrantedAccess() {
-        AccessControlLib.isAccessGrantedToVault(msg.sender);
-        _;
-    }
-
-    modifier onlyAlpha() {
-        if (!AlphasLib.isAlphaGranted(msg.sender)) {
-            revert SenderNotAlpha();
-        }
-        _;
-    }
-
     error NoSharesToRedeem();
     error NoSharesToMint();
     error NoAssetsToWithdraw();
     error NoAssetsToDeposit();
     error UnsupportedFuse();
-    error SenderNotAlpha();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
-    /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
-    struct FuseAction {
-        /// @notice fuse is a address of the Fuse contract
-        address fuse;
-        /// @notice data is a bytes data that is passed to the Fuse contract
-        bytes data;
-    }
-
-    /// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
-    struct MarketBalanceFuseConfig {
-        /// @notice When marketId is 0, then fuse is independent to a market - example flashloan fuse
-        uint256 marketId;
-        /// @notice address of the balance fuse
-        address fuse;
-    }
-
-    /// @notice MarketSubstratesConfig is a struct that represents a configuration of substrates for a specific market
-    /// @notice substrates are assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
-    struct MarketSubstratesConfig {
-        /// @notice marketId is a id of the market
-        uint256 marketId;
-        /// @notice substrates is a list of substrates for the market
-        /// @dev it could be list of assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
-        bytes32[] substrates;
-    }
-
-    /// @notice FeeConfig is a struct that represents a configuration of performance and management fees used during Plasma Vault construction
-    struct FeeConfig {
-        /// @notice performanceFeeManager is a address of the performance fee manager
-        address performanceFeeManager;
-        /// @notice performanceFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-        uint256 performanceFeeInPercentage;
-        /// @notice managementFeeManager is a address of the management fee manager
-        address managementFeeManager;
-        /// @notice managementFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-        uint256 managementFeeInPercentage;
-    }
-
     uint256 public immutable BASE_CURRENCY_DECIMALS;
+    bool private _customConsumingSchedule;
 
-    /// @param initialOwner Address of the owner
-    /// @param assetName Name of the asset
-    /// @param assetSymbol Symbol of the asset
-    /// @param underlyingToken Address of the underlying token
-    /// @param alphas Array of alphas initially granted to execute actions on the Plasma Vault
-    /// @param marketSubstratesConfigs Array of market configurations
-    /// @param fuses Array of fuses initially supported by the Plasma Vault
-    /// @param balanceFuses Array of balance fuses initially supported by the Plasma Vault
-    /// @param feeConfig Fee configuration, performance fee and management fee, with fee managers addresses
     constructor(
-        address initialOwner,
-        string memory assetName,
-        string memory assetSymbol,
-        address underlyingToken,
-        address iporPriceOracle,
-        address[] memory alphas,
-        MarketSubstratesConfig[] memory marketSubstratesConfigs,
-        address[] memory fuses,
-        MarketBalanceFuseConfig[] memory balanceFuses,
-        FeeConfig memory feeConfig
+        PlasmaVaultInitData memory initData
     )
-        ERC4626Permit(IERC20(underlyingToken))
-        ERC20Permit(assetName)
-        ERC20(assetName, assetSymbol)
-        PlasmaVaultGovernance(initialOwner)
+        ERC4626Permit(IERC20(initData.underlyingToken))
+        ERC20Permit(initData.assetName)
+        ERC20(initData.assetName, initData.assetSymbol)
+        PlasmaVaultGovernance(initData.accessManager)
     {
-        IIporPriceOracle priceOracle = IIporPriceOracle(iporPriceOracle);
+        IIporPriceOracle priceOracle = IIporPriceOracle(initData.iporPriceOracle);
 
         if (priceOracle.BASE_CURRENCY() != USD) {
             revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
@@ -124,37 +109,43 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
 
-        PlasmaVaultLib.setPriceOracle(iporPriceOracle);
+        PlasmaVaultLib.setPriceOracle(initData.iporPriceOracle);
 
-        for (uint256 i; i < alphas.length; ++i) {
-            _grantAlpha(alphas[i]);
+        for (uint256 i; i < initData.fuses.length; ++i) {
+            _addFuse(initData.fuses[i]);
         }
 
-        for (uint256 i; i < fuses.length; ++i) {
-            _addFuse(fuses[i]);
+        for (uint256 i; i < initData.balanceFuses.length; ++i) {
+            _addBalanceFuse(initData.balanceFuses[i].marketId, initData.balanceFuses[i].fuse);
         }
 
-        for (uint256 i; i < balanceFuses.length; ++i) {
-            _addBalanceFuse(balanceFuses[i].marketId, balanceFuses[i].fuse);
-        }
-
-        for (uint256 i; i < marketSubstratesConfigs.length; ++i) {
+        for (uint256 i; i < initData.marketSubstratesConfigs.length; ++i) {
             PlasmaVaultConfigLib.grandMarketSubstrates(
-                marketSubstratesConfigs[i].marketId,
-                marketSubstratesConfigs[i].substrates
+                initData.marketSubstratesConfigs[i].marketId,
+                initData.marketSubstratesConfigs[i].substrates
             );
         }
 
-        PlasmaVaultLib.configurePerformanceFee(feeConfig.performanceFeeManager, feeConfig.performanceFeeInPercentage);
-        PlasmaVaultLib.configureManagementFee(feeConfig.managementFeeManager, feeConfig.managementFeeInPercentage);
+        PlasmaVaultLib.configurePerformanceFee(
+            initData.feeConfig.performanceFeeManager,
+            initData.feeConfig.performanceFeeInPercentage
+        );
+        PlasmaVaultLib.configureManagementFee(
+            initData.feeConfig.managementFeeManager,
+            initData.feeConfig.managementFeeInPercentage
+        );
 
         PlasmaVaultLib.updateManagementFeeData();
     }
 
     fallback() external {}
 
+    function isConsumingScheduledOp() public view override returns (bytes4) {
+        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
+    }
+
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
-    function execute(FuseAction[] calldata calls) external nonReentrant onlyAlpha {
+    function execute(FuseAction[] calldata calls) external nonReentrant restricted {
         uint256 callsCount = calls.length;
         uint256[] memory markets = new uint256[](callsCount);
         uint256 marketIndex;
@@ -182,10 +173,14 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         _addPerformanceFee(totalAssetsBefore);
     }
 
-    function deposit(
-        uint256 assets,
-        address receiver
-    ) public override nonReentrant onlyGrantedAccess returns (uint256) {
+    function claimRewards(FuseAction[] calldata calls) external nonReentrant restricted {
+        uint256 callsCount = calls.length;
+        for (uint256 i; i < callsCount; ++i) {
+            calls[i].fuse.functionDelegateCall(calls[i].data);
+        }
+    }
+
+    function deposit(uint256 assets, address receiver) public override nonReentrant restricted returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToDeposit();
         }
@@ -198,7 +193,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.deposit(assets, receiver);
     }
 
-    function mint(uint256 shares, address receiver) public override nonReentrant onlyGrantedAccess returns (uint256) {
+    function mint(uint256 shares, address receiver) public override nonReentrant restricted returns (uint256) {
         if (shares == 0) {
             revert NoSharesToMint();
         }
@@ -211,7 +206,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.mint(shares, receiver);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner) public override nonReentrant returns (uint256) {
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override nonReentrant restricted returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToWithdraw();
         }
@@ -232,7 +231,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.withdraw(assets, receiver, owner);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) public override nonReentrant returns (uint256) {
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override nonReentrant restricted returns (uint256) {
         if (shares == 0) {
             revert NoSharesToRedeem();
         }
@@ -423,6 +426,13 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     function _getGrossTotalAssets() internal view returns (uint256) {
+        address rewardsManagerAddress = getRewardsManagerAddress();
+        if (rewardsManagerAddress != address(0)) {
+            return
+                IERC20(asset()).balanceOf(address(this)) +
+                PlasmaVaultLib.getTotalAssetsInAllMarkets() +
+                IRewardsManager(rewardsManagerAddress).balanceOf();
+        }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
@@ -441,5 +451,34 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         return
             (totalAssets * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
+    }
+
+    /**
+     * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
+     * is less than 4 bytes long.
+     */
+    function _checkCanCall(address caller, bytes calldata data) internal virtual override {
+        bytes4 sig = bytes4(data[0:4]);
+        bool immediate;
+        uint32 delay;
+        if (
+            this.deposit.selector == sig ||
+            this.mint.selector == sig ||
+            this.withdraw.selector == sig ||
+            this.redeem.selector == sig
+        ) {
+            (immediate, delay) = PlasmaVaultAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
+        } else {
+            (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller, address(this), sig);
+        }
+        if (!immediate) {
+            if (delay > 0) {
+                _customConsumingSchedule = true;
+                IAccessManager(authority()).consumeScheduledOp(caller, data);
+                _customConsumingSchedule = false;
+            } else {
+                revert AccessManagedUnauthorized(caller);
+            }
+        }
     }
 }

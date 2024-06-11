@@ -6,6 +6,7 @@ library Errors {
     error InvalidInput();
     error UnsupportedBaseCurrencyFromOracle(string errorCode);
     error UnsupportedPriceOracle(string errorCode);
+
     /// TODO: common sustom errors plase here
     string public constant UNSUPPORTED_ASSET = "IPF_001";
     string public constant UNSUPPORTED_ERC4626 = "IPF_002";

@@ -176,4 +176,12 @@ library PlasmaVaultLib {
         PlasmaVaultStorageLib.getPriceOracle().value = priceOracle;
         emit PriceOracleChanged(priceOracle);
     }
+
+    function getRewardsManagerAddress() internal view returns (address) {
+        return PlasmaVaultStorageLib.getRewardsManagerAddress().value;
+    }
+
+    function setRewardsManagerAddress(address rewardsManagerAddress_) internal {
+        PlasmaVaultStorageLib.getRewardsManagerAddress().value = rewardsManagerAddress_;
+    }
 }

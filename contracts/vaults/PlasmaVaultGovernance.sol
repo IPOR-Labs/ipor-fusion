@@ -1,43 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {AlphasLib} from "../libraries/AlphasLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
-import {AccessControlLib} from "../libraries/AccessControlLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
+import {AccessManaged} from "../managers/AccessManaged.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-abstract contract PlasmaVaultGovernance is Ownable2Step {
-    modifier onlyPerformanceFeeManager() {
-        if (msg.sender != PlasmaVaultLib.getPerformanceFeeData().feeManager) {
-            revert SenderNotPerformanceFeeManager();
-        }
-        _;
-    }
-
-    modifier onlyManagementFeeManager() {
-        if (msg.sender != PlasmaVaultLib.getManagementFeeData().feeManager) {
-            revert SenderNotManagementFeeManager();
-        }
-        _;
-    }
-
-    error InvalidAlpha();
-    error SenderNotPerformanceFeeManager();
-    error SenderNotManagementFeeManager();
-
-    /// @param initialOwner Address of the owner
-    constructor(address initialOwner) Ownable(initialOwner) {}
-
-    function isAlphaGranted(address alpha) external view returns (bool) {
-        return AlphasLib.isAlphaGranted(alpha);
-    }
+abstract contract PlasmaVaultGovernance is AccessManaged {
+    constructor(address accessManager_) AccessManaged(accessManager_) {}
 
     function isMarketSubstrateGranted(uint256 marketId, bytes32 substrate) external view returns (bool) {
         return PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId, substrate);
@@ -55,10 +29,6 @@ abstract contract PlasmaVaultGovernance is Ownable2Step {
         return FusesLib.getFusesArray();
     }
 
-    function isAccessControlActivated() external view returns (bool) {
-        return AccessControlLib.isControlAccessActivated();
-    }
-
     function getPriceOracle() external view returns (address) {
         return PlasmaVaultLib.getPriceOracle();
     }
@@ -71,40 +41,23 @@ abstract contract PlasmaVaultGovernance is Ownable2Step {
         feeData = PlasmaVaultLib.getManagementFeeData();
     }
 
-    function grantAlpha(address alpha) external onlyOwner {
-        if (alpha == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        _grantAlpha(alpha);
+    function getAccessManagerAddress() public view returns (address) {
+        return authority();
     }
 
-    function revokeAlpha(address alpha) external onlyOwner {
-        if (alpha == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        AlphasLib.revokeAlpha(alpha);
+    function getRewardsManagerAddress() public view returns (address) {
+        return PlasmaVaultLib.getRewardsManagerAddress();
     }
 
-    function addFuse(address fuse) external onlyOwner {
-        _addFuse(fuse);
-    }
-
-    function removeFuse(address fuse) external onlyOwner {
-        if (fuse == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        FusesLib.removeFuse(fuse);
-    }
-
-    function addBalanceFuse(uint256 marketId, address fuse) external onlyOwner {
+    function addBalanceFuse(uint256 marketId, address fuse) external restricted {
         _addBalanceFuse(marketId, fuse);
     }
 
-    function removeBalanceFuse(uint256 marketId, address fuse) external onlyOwner {
+    function removeBalanceFuse(uint256 marketId, address fuse) external restricted {
         FusesLib.removeBalanceFuse(marketId, fuse);
     }
 
-    function grandMarketSubstrates(uint256 marketId, bytes32[] calldata substrates) external onlyOwner {
+    function grandMarketSubstrates(uint256 marketId, bytes32[] calldata substrates) external restricted {
         PlasmaVaultConfigLib.grandMarketSubstrates(marketId, substrates);
     }
 
@@ -112,39 +65,23 @@ abstract contract PlasmaVaultGovernance is Ownable2Step {
     /// @dev Order of the fuses is important, the same fuse can be used multiple times with different parameters (for example different assets, markets or any other substrate specific for the fuse)
     function configureInstantWithdrawalFuses(
         PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[] calldata fuses
-    ) external onlyOwner {
+    ) external restricted {
         PlasmaVaultLib.configureInstantWithdrawalFuses(fuses);
     }
 
-    function addFuses(address[] calldata fuses) external onlyOwner {
+    function addFuses(address[] calldata fuses) external restricted {
         for (uint256 i; i < fuses.length; ++i) {
             FusesLib.addFuse(fuses[i]);
         }
     }
 
-    function removeFuses(address[] calldata fuses) external onlyOwner {
+    function removeFuses(address[] calldata fuses) external restricted {
         for (uint256 i; i < fuses.length; ++i) {
             FusesLib.removeFuse(fuses[i]);
         }
     }
 
-    function activateAccessControl() external onlyOwner {
-        AccessControlLib.activateAccessControl();
-    }
-
-    function grantAccessToVault(address account) external onlyOwner {
-        AccessControlLib.grantAccessToVault(account);
-    }
-
-    function revokeAccessToVault(address account) external onlyOwner {
-        AccessControlLib.revokeAccessToVault(account);
-    }
-
-    function deactivateAccessControl() external onlyOwner {
-        AccessControlLib.deactivateAccessControl();
-    }
-
-    function setPriceOracle(address priceOracle) external onlyOwner {
+    function setPriceOracle(address priceOracle) external restricted {
         IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlasmaVaultLib.getPriceOracle());
         IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
         if (
@@ -157,12 +94,16 @@ abstract contract PlasmaVaultGovernance is Ownable2Step {
         PlasmaVaultLib.setPriceOracle(priceOracle);
     }
 
-    function configurePerformanceFee(address feeManager, uint256 feeInPercentage) external onlyPerformanceFeeManager {
+    function configurePerformanceFee(address feeManager, uint256 feeInPercentage) external restricted {
         PlasmaVaultLib.configurePerformanceFee(feeManager, feeInPercentage);
     }
 
-    function configureManagementFee(address feeManager, uint256 feeInPercentage) external onlyManagementFeeManager {
+    function configureManagementFee(address feeManager, uint256 feeInPercentage) external restricted {
         PlasmaVaultLib.configureManagementFee(feeManager, feeInPercentage);
+    }
+
+    function setRewardsManagerAddress(address rewardsManagerAddress_) public restricted {
+        PlasmaVaultLib.setRewardsManagerAddress(rewardsManagerAddress_);
     }
 
     function _addFuse(address fuse) internal {
@@ -177,13 +118,5 @@ abstract contract PlasmaVaultGovernance is Ownable2Step {
             revert Errors.WrongAddress();
         }
         FusesLib.addBalanceFuse(marketId, fuse);
-    }
-
-    function _grantAlpha(address alpha) internal {
-        if (alpha == address(0)) {
-            revert InvalidAlpha();
-        }
-
-        AlphasLib.grantAlpha(alpha);
     }
 }
