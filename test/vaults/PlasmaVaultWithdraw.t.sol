@@ -109,6 +109,144 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(vaultTotalAssetsAfter, 0);
     }
 
+    function testShouldBeAbleWithdrawAfterRedemptioLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        PlasmaVaultAccessManager accessManager = PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress());
+
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(10 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when
+        vm.warp(block.timestamp + 15 minutes);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
+        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+
+        assertEq(vaultTotalAssetsAfter, 0);
+    }
+
+    function testShouldBeAbleRedeemAfterRedemptioLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        PlasmaVaultAccessManager accessManager = PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress());
+
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(10 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when
+        vm.warp(block.timestamp + 15 minutes);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
+        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+
+        assertEq(vaultTotalAssetsAfter, 0);
+    }
+
+    function testShouldNotBeAbleWithdrawDuringRedemptioLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        PlasmaVaultAccessManager accessManager = PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress());
+
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(10 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1713956927);
+
+        //when
+        vm.warp(block.timestamp + 5 minutes);
+        vm.expectRevert(error);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+    }
+
+    function testShouldNotBeAbleRedeemDuringRedemptioLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        PlasmaVaultAccessManager accessManager = PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress());
+
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(10 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1713956927);
+
+        //when
+        vm.warp(block.timestamp + 5 minutes);
+        vm.expectRevert(error);
+        vm.prank(userOne);
+        plasmaVault.redeem(10e18, userOne, userOne);
+    }
+
     function testShouldNotInstantWithdrawBecauseNoShares() public {
         // given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();

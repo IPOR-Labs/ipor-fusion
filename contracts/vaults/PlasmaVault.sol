@@ -19,6 +19,9 @@ import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IRewardsManager} from "../managers/IRewardsManager.sol";
+import {PlasmaVaultAccessManager} from "../managers/PlasmaVaultAccessManager.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
@@ -88,6 +91,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
+    bool private _customConsumingSchedule;
 
     constructor(
         PlasmaVaultInitData memory initData
@@ -135,6 +139,10 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     fallback() external {}
+
+    function isConsumingScheduledOp() public view override returns (bytes4) {
+        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
+    }
 
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls) external nonReentrant restricted {
@@ -198,7 +206,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.mint(shares, receiver);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner) public override nonReentrant returns (uint256) {
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override nonReentrant restricted returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToWithdraw();
         }
@@ -219,7 +231,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.withdraw(assets, receiver, owner);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) public override nonReentrant returns (uint256) {
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override nonReentrant restricted returns (uint256) {
         if (shares == 0) {
             revert NoSharesToRedeem();
         }
@@ -435,5 +451,34 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         return
             (totalAssets * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
+    }
+
+    /**
+     * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
+     * is less than 4 bytes long.
+     */
+    function _checkCanCall(address caller, bytes calldata data) internal virtual override {
+        bytes4 sig = bytes4(data[0:4]);
+        bool immediate;
+        uint32 delay;
+        if (
+            this.deposit.selector == sig ||
+            this.mint.selector == sig ||
+            this.withdraw.selector == sig ||
+            this.redeem.selector == sig
+        ) {
+            (immediate, delay) = PlasmaVaultAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
+        } else {
+            (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller, address(this), sig);
+        }
+        if (!immediate) {
+            if (delay > 0) {
+                _customConsumingSchedule = true;
+                IAccessManager(authority()).consumeScheduledOp(caller, data);
+                _customConsumingSchedule = false;
+            } else {
+                revert AccessManagedUnauthorized(caller);
+            }
+        }
     }
 }
