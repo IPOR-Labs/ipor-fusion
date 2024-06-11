@@ -9,7 +9,7 @@ import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 contract PlasmaVaultAccessManager is AccessManager {
     error AccessManagedUnauthorized(address caller);
 
-    bool private _costumeConsumingSchedule;
+    bool private _customConsumingSchedule;
 
     constructor(address initialAdmin_) AccessManager(initialAdmin_) {}
 
@@ -38,22 +38,26 @@ contract PlasmaVaultAccessManager is AccessManager {
         return RedemptionDelayLib.getAccountLockTime(account_);
     }
 
+    function getRedemptionDelay() external view returns (uint256) {
+        return RedemptionDelayLib.getRedemptionDelay();
+    }
+
     modifier restricted() {
         _checkCanCall(_msgSender(), _msgData());
         _;
     }
 
     function isConsumingScheduledOp() public view returns (bytes4) {
-        return _costumeConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
+        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
     }
 
     function _checkCanCall(address caller, bytes calldata data) internal virtual {
         (bool immediate, uint32 delay) = canCall(caller, address(this), bytes4(data[0:4]));
         if (!immediate) {
             if (delay > 0) {
-                _costumeConsumingSchedule = true;
+                _customConsumingSchedule = true;
                 IAccessManager(address(this)).consumeScheduledOp(caller, data);
-                _costumeConsumingSchedule = false;
+                _customConsumingSchedule = false;
             } else {
                 revert AccessManagedUnauthorized(caller);
             }

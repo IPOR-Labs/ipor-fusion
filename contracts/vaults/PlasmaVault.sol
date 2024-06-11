@@ -91,7 +91,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
-    bool private _costumeConsumingSchedule;
+    bool private _customConsumingSchedule;
 
     constructor(
         PlasmaVaultInitData memory initData
@@ -139,6 +139,10 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     fallback() external {}
+
+    function isConsumingScheduledOp() public view override returns (bytes4) {
+        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
+    }
 
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls) external nonReentrant restricted {
@@ -469,16 +473,12 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         }
         if (!immediate) {
             if (delay > 0) {
-                _costumeConsumingSchedule = true;
+                _customConsumingSchedule = true;
                 IAccessManager(authority()).consumeScheduledOp(caller, data);
-                _costumeConsumingSchedule = false;
+                _customConsumingSchedule = false;
             } else {
                 revert AccessManagedUnauthorized(caller);
             }
         }
-    }
-
-    function isConsumingScheduledOp() public view override returns (bytes4) {
-        return _costumeConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
     }
 }

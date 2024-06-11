@@ -24,7 +24,11 @@ library RedemptionDelayLib {
     }
 
     function setRedemptionDelay(uint256 delay_) internal {
-        ManagersStorageLib.getRedemptionDelay().redemptionDelay = delay_;
+        ManagersStorageLib.setRedemptionDelay(delay_);
+    }
+
+    function getRedemptionDelay() internal view returns (uint256) {
+        return ManagersStorageLib.getRedemptionDelay().redemptionDelay;
     }
 
     function getAccountLockTime(address account_) internal view returns (uint256) {

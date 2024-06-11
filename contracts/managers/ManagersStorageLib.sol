@@ -48,10 +48,8 @@ library ManagersStorageLib {
     );
     event VestingTimeUpdated(uint256 vestingTime);
     event TransferredTokensUpdated(uint128 transferredTokens);
-
-    event ReleasedTokensUpdated(uint128 releaseTokensDelay);
     event RedemptionDelayUpdated(uint256 redemptionDelay);
-    event RedemptionLocksUpdated(address account, uint256 locksTime);
+    event RedemptionDelayForAccountUpdated(address account, uint256 redemptionDelay);
 
     function getVestingData() internal view returns (VestingData memory) {
         return _getVestingData();
@@ -102,7 +100,9 @@ library ManagersStorageLib {
             return;
         }
         RedemptionLocks storage redemptionLocks = _getRedemptionLocks();
-        redemptionLocks.redemptionLock[account_] = uint256(block.timestamp) + redemptionDelay;
+        uint256 redemptionLock = uint256(block.timestamp) + redemptionDelay;
+        redemptionLocks.redemptionLock[account_] = redemptionLock;
+        emit RedemptionDelayForAccountUpdated(account_, redemptionLock);
     }
 
     function _getVestingData() private pure returns (VestingData storage foundsReleaseData) {
