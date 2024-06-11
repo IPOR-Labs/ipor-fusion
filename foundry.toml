@@ -7,12 +7,12 @@ fs_permissions = [{ access = "read-write", path = "./" }]
 libraries = []
 remappings = [
     '@ensdomains/=node_modules/@ensdomains/',
-    '@openzeppelin/=node_modules/@openzeppelin/',
+    '@fusion/@openzeppelin/=node_modules/@openzeppelin/',
     'eth-gas-reporter/=node_modules/eth-gas-reporter/',
     'ds-test/=lib/forge-std/lib/ds-test/src/',
     'forge-std/=lib/forge-std/src/',
     'foundry-random=lib/foundry-random/src/',
-    '@ipor-vaults/contracts/=contracts/',
+    '@ipor-fusion/contracts/=contracts/',
     #    '@ipor-protocol/test/=test/'
 ]
 optimizer_runs = 1000

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@fusion/@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@fusion/@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "../AggregatorV3Interface.sol";
 
 import {IIporPriceFeed} from "../IIporPriceFeed.sol";

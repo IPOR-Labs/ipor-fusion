@@ -2,8 +2,8 @@
 pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC4626} from "@fusion/@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {ERC20} from "@fusion/@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {VaultERC4626Mock} from "./VaultERC4626Mock.sol";

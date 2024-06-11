@@ -4,13 +4,13 @@
 
 pragma solidity ^0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IERC20} from "@fusion/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@fusion/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {ERC20} from "@fusion/@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Permit} from "@fusion/@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {SafeERC20} from "@fusion/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC4626} from "@fusion/@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {Math} from "@fusion/@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @dev Implementation of the ERC4626 "Tokenized Vault Standard" as defined in

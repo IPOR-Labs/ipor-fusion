@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafeCast} from "@fusion/@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @custom:storage-location erc7201:io.ipor.menagers.FoundsReleaseData
 struct VestingData {

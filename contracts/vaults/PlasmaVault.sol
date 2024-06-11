@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@fusion/@openzeppelin/contracts/utils/math/Math.sol";
+import {ReentrancyGuard} from "@fusion/@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ERC20Permit} from "@fusion/@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {IERC20} from "@fusion/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@fusion/@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeCast} from "@fusion/@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {Address} from "@fusion/@openzeppelin/contracts/utils/Address.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
@@ -20,8 +20,8 @@ import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IRewardsManager} from "../managers/IRewardsManager.sol";
 import {PlasmaVaultAccessManager} from "../managers/PlasmaVaultAccessManager.sol";
-import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
-import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
+import {IAccessManager} from "@fusion/@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {AuthorityUtils} from "@fusion/@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 
 struct PlasmaVaultInitData {
     string assetName;

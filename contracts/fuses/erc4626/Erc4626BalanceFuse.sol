@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {SafeCast} from "@fusion/@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IERC4626} from "@fusion/@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";

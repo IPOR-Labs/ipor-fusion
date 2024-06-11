@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {Address} from "@fusion/@openzeppelin/contracts/utils/Address.sol";
 import {CompoundV2SupplyFuse, CompoundV2SupplyFuseEnterData, CompoundV2SupplyFuseExitData} from "../../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 

@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {TestStorage} from "./TestStorage.sol";
 import {IporPriceOracle} from "../../../contracts/priceOracle/IporPriceOracle.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ERC1967Proxy} from "@fusion/@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 abstract contract TestPriceOracleSetup is TestStorage {
     function initPriceOracle() public {

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IERC20} from "@fusion/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AccessManaged} from "@fusion/@openzeppelin/contracts/access/manager/AccessManaged.sol";
+import {SafeERC20} from "@fusion/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeCast} from "@fusion/@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@fusion/@openzeppelin/contracts/utils/math/Math.sol";
 
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {FuseAction} from "../vaults/PlasmaVault.sol";
