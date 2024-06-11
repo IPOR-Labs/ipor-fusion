@@ -11,6 +11,11 @@ contract PlasmaVaultAccessManager is AccessManager {
 
     bool private _customConsumingSchedule;
 
+    modifier restricted() {
+        _checkCanCall(_msgSender(), _msgData());
+        _;
+    }
+
     constructor(address initialAdmin_) AccessManager(initialAdmin_) {}
 
     function canCallAndUpdate(
@@ -40,11 +45,6 @@ contract PlasmaVaultAccessManager is AccessManager {
 
     function getRedemptionDelay() external view returns (uint256) {
         return RedemptionDelayLib.getRedemptionDelay();
-    }
-
-    modifier restricted() {
-        _checkCanCall(_msgSender(), _msgData());
-        _;
     }
 
     function isConsumingScheduledOp() public view returns (bytes4) {
