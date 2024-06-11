@@ -97,6 +97,10 @@ contract RewardsManager is AccessManaged, IRewardsManager {
     }
 
     function updateBalance() external restricted {
+        uint256 balance = balanceOf();
+        if (balance > 0) {
+            IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
+        }
         VestingData memory data = ManagersStorageLib.getVestingData();
         data.updateBalanceTimestamp = block.timestamp.toUint32();
         data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN).balanceOf(address(this)).toUint128();
