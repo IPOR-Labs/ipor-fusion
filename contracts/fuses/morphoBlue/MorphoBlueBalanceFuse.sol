@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
-import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
+import {IPriceOracleMiddleware} from "../../priceOracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
@@ -27,11 +27,11 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
     address private constant USD = address(0x0000000000000000000000000000000000000348);
 
     uint256 public immutable MARKET_ID;
-    IIporPriceOracle public immutable PRICE_ORACLE;
+    IPriceOracleMiddleware public immutable PRICE_ORACLE;
 
     constructor(uint256 marketIdInput, address priceOracle) {
         MARKET_ID = marketIdInput;
-        PRICE_ORACLE = IIporPriceOracle(priceOracle);
+        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle);
         if (PRICE_ORACLE.BASE_CURRENCY() != USD) {
             revert UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
         }

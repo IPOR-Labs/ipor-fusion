@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
-import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
+import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {AccessManaged} from "../managers/AccessManaged.sol";
@@ -82,8 +82,8 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
     }
 
     function setPriceOracle(address priceOracle) external restricted {
-        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlasmaVaultLib.getPriceOracle());
-        IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
+        IPriceOracleMiddleware oldPriceOracle = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle());
+        IPriceOracleMiddleware newPriceOracle = IPriceOracleMiddleware(priceOracle);
         if (
             oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
             oldPriceOracle.BASE_CURRENCY_DECIMALS() != newPriceOracle.BASE_CURRENCY_DECIMALS()

@@ -11,7 +11,7 @@ import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
-import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
+import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {AaveConstants} from "../../contracts/fuses/aave_v3/AaveConstants.sol";
@@ -51,7 +51,7 @@ contract PlasmaVaultWithdrawTest is Test {
     address public userOne;
     address public userTwo;
 
-    IporPriceOracle public iporPriceOracleProxy;
+    PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
 
     event AaveV3SupplyExitFuse(address version, address asset, uint256 amount);
@@ -63,13 +63,13 @@ contract PlasmaVaultWithdrawTest is Test {
         userOne = address(0x777);
         userTwo = address(0x888);
 
-        IporPriceOracle implementation = new IporPriceOracle(
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             0x0000000000000000000000000000000000000348,
             8,
             0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
         );
 
-        iporPriceOracleProxy = IporPriceOracle(
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
@@ -308,7 +308,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -420,7 +420,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -539,7 +539,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -646,7 +646,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -776,7 +776,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -939,7 +939,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1094,7 +1094,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1240,7 +1240,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1354,7 +1354,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1484,7 +1484,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1635,7 +1635,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1689,7 +1689,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,

@@ -14,7 +14,7 @@ import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
-import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
+import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
@@ -27,7 +27,7 @@ struct PlasmaVaultInitData {
     string assetName;
     string assetSymbol;
     address underlyingToken;
-    address iporPriceOracle;
+    address priceOracle;
     address[] alphas;
     MarketSubstratesConfig[] marketSubstratesConfigs;
     address[] fuses;
@@ -101,7 +101,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         ERC20(initData.assetName, initData.assetSymbol)
         PlasmaVaultGovernance(initData.accessManager)
     {
-        IIporPriceOracle priceOracle = IIporPriceOracle(initData.iporPriceOracle);
+        IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracle);
 
         if (priceOracle.BASE_CURRENCY() != USD) {
             revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
@@ -109,7 +109,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
 
-        PlasmaVaultLib.setPriceOracle(initData.iporPriceOracle);
+        PlasmaVaultLib.setPriceOracle(initData.priceOracle);
 
         for (uint256 i; i < initData.fuses.length; ++i) {
             _addFuse(initData.fuses[i]);
@@ -383,7 +383,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         int256 deltasInUnderlying;
 
         /// @dev USD price is represented in 8 decimals
-        uint256 underlyingAssetPrice = IIporPriceOracle(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
+        uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
 
         for (uint256 i; i < markets.length; ++i) {
             if (markets[i] == 0) {
@@ -436,7 +436,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
-    function _getUnrealizedManagementFee(uint256 totalAssets) internal view returns (uint256) {
+    function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
 
         uint256 blockTimestamp = block.timestamp;
@@ -450,7 +450,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         }
 
         return
-            (totalAssets * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
+            (totalAssets_ * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
     }
 
     /**

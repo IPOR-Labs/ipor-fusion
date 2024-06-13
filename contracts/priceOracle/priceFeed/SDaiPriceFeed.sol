@@ -5,10 +5,10 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "../AggregatorV3Interface.sol";
 
-import {IIporPriceFeed} from "../IIporPriceFeed.sol";
+import {IPriceFeed} from "../IPriceFeed.sol";
 import {ISavingsDai} from "./ISavingsDai.sol";
 
-contract SDaiPriceFeed is IIporPriceFeed {
+contract SDaiPriceFeed is IPriceFeed {
     using SafeCast for int256;
     using SafeCast for uint256;
     // dai/usd
