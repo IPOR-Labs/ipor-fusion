@@ -21,7 +21,7 @@ contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
         PRICE_ORACLE = IIporPriceOracle(priceOracle);
     }
 
-    function balanceOf(address plasmaVault) external override returns (uint256) {
+    function balanceOf(address plasmaVault) external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
@@ -30,15 +30,11 @@ contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
         }
 
         uint256 balance;
-        uint256 decimals;
-        // @dev this value has 8 decimals
-        uint256 price;
         address asset;
 
         for (uint256 i; i < len; ++i) {
-            balanceInLoop = 0;
             asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
-            balance += IporMath.convertToWadInt(
+            balance += IporMath.convertToWad(
                 ERC20(asset).balanceOf(plasmaVault) * PRICE_ORACLE.getAssetPrice(asset),
                 ERC20(asset).decimals() + PRICE_DECIMALS
             );
