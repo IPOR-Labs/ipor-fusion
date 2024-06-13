@@ -169,11 +169,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         _addPerformanceFee(totalAssetsBefore);
     }
 
-    function transfer(address to, uint256 value) public override virtual restricted returns (bool) {
+    function transfer(address to, uint256 value) public override(IERC20, ERC20) virtual restricted returns (bool) {
         return super.transfer(to, value);
     }
 
-    function transferFrom(address from, address to, uint256 value) public override virtual restricted returns (bool) {
+    function transferFrom(address from, address to, uint256 value) public override(IERC20, ERC20) virtual restricted returns (bool) {
         return super.transferFrom(from, to, value);
     }
 
