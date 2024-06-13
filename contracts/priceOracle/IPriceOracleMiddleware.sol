@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.24;
+pragma solidity 0.8.20;
 
-interface IIporPriceOracle {
+interface IPriceOracleMiddleware {
     /// @notice Returns the price of the given asset in 8 decimals
     /// @return price of the asset in 8 decimals
     function getAssetPrice(address asset) external view returns (uint256);

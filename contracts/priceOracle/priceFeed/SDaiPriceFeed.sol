@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.24;
+pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "../AggregatorV3Interface.sol";
 
-import {IIporPriceFeed} from "../IIporPriceFeed.sol";
+import {IPriceOracleMiddlewareFeed} from "../IPriceOracleMiddlewareFeed.sol";
 import {ISavingsDai} from "./ISavingsDai.sol";
 
-contract SDaiPriceFeed is IIporPriceFeed {
+contract SDaiPriceFeed is IPriceOracleMiddlewareFeed {
     using SafeCast for int256;
     using SafeCast for uint256;
     // dai/usd

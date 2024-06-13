@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.24;
+pragma solidity 0.8.20;
 
-import {IIporPriceOracle} from "../../contracts/priceOracle/IIporPriceOracle.sol";
+import {IPriceOracleMiddleware} from "../../contracts/priceOracle/IPriceOracleMiddleware.sol";
 
-contract IporPriceOracleMock is IIporPriceOracle {
+contract PriceOracleMiddlewareMock is IPriceOracleMiddleware {
     //solhint-disable-next-line
     address public BASE_CURRENCY;
     // usd - 8

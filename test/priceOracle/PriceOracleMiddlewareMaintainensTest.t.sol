@@ -1,36 +1,36 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.24;
+pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
+import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 
-contract IporPriceOracleMaintenanceTest is Test {
+contract PriceOracleMiddlewareMaintenanceTest is Test {
     address private constant CHAINLINK_FEED_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
     address public constant BASE_CURRENCY = 0x0000000000000000000000000000000000000348;
     uint256 public constant BASE_CURRENCY_DECIMALS = 8;
     address public constant OWNER = 0xD92E9F039E4189c342b4067CC61f5d063960D248;
 
-    IporPriceOracle private iporPriceOracleProxy;
+    PriceOracleMiddleware private priceOracleMiddlewareProxy;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19574589);
-        IporPriceOracle implementation = new IporPriceOracle(
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             BASE_CURRENCY,
             BASE_CURRENCY_DECIMALS,
             CHAINLINK_FEED_REGISTRY
         );
 
-        iporPriceOracleProxy = IporPriceOracle(
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
     }
 
     function testShouldSetupInitialOwner() external {
         // when
-        address owner = iporPriceOracleProxy.owner();
+        address owner = priceOracleMiddlewareProxy.owner();
 
         // then
         assertEq(owner, OWNER, "Owner should be set correctly");
@@ -46,7 +46,7 @@ contract IporPriceOracleMaintenanceTest is Test {
 
         // when
         vm.expectRevert(error);
-        new IporPriceOracle(address(0), BASE_CURRENCY_DECIMALS, CHAINLINK_FEED_REGISTRY);
+        new PriceOracleMiddleware(address(0), BASE_CURRENCY_DECIMALS, CHAINLINK_FEED_REGISTRY);
     }
 
     function testShouldNotBeAbleToSetAssetWithEmptyArrays() external {
@@ -60,7 +60,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        iporPriceOracleProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetSourceWithEmptyArrays() external {
@@ -74,7 +74,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        iporPriceOracleProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetAssetWithDifferentLengths() external {
@@ -90,7 +90,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        iporPriceOracleProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetAssetSourcesWhenSenderNotOwner() external {
@@ -104,7 +104,7 @@ contract IporPriceOracleMaintenanceTest is Test {
 
         // when
         vm.expectRevert(error);
-        iporPriceOracleProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetAssetAsZeroAddress() external {
@@ -122,7 +122,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        iporPriceOracleProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetSourceAsZeroAddress() external {
@@ -140,7 +140,7 @@ contract IporPriceOracleMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        iporPriceOracleProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
     }
 
     function testShouldBeAbleToSetupAssetAndSource() external {
@@ -152,9 +152,9 @@ contract IporPriceOracleMaintenanceTest is Test {
 
         // when
         vm.prank(OWNER);
-        iporPriceOracleProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
 
         // then
-        assertEq(iporPriceOracleProxy.getSourceOfAsset(assets[0]), sources[0], "Source should be set correctly");
+        assertEq(priceOracleMiddlewareProxy.getSourceOfAsset(assets[0]), sources[0], "Source should be set correctly");
     }
 }

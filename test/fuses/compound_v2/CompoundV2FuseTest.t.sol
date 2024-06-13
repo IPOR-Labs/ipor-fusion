@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.24;
+pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {VaultCompoundV2Mock} from "./VaultCompoundV2Mock.sol";
-import {IporPriceOracle} from "../../../contracts/priceOracle/IporPriceOracle.sol";
+import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {CompoundV2BalanceFuse} from "../../../contracts/fuses/compound_v2/CompoundV2BalanceFuse.sol";
 import {CompoundV2SupplyFuse, CompoundV2SupplyFuseExitData, CompoundV2SupplyFuseEnterData} from "../../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
 
@@ -15,17 +15,17 @@ contract SparkSupplyFuseTest is Test {
     address private constant CDAI = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
     address public constant OWNER = 0xD92E9F039E4189c342b4067CC61f5d063960D248;
 
-    IporPriceOracle private iporPriceOracleProxy;
+    PriceOracleMiddleware private priceOracleMiddlewareProxy;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
-        IporPriceOracle implementation = new IporPriceOracle(
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             0x0000000000000000000000000000000000000348,
             8,
             0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
         );
 
-        iporPriceOracleProxy = IporPriceOracle(
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
     }
@@ -34,7 +34,7 @@ contract SparkSupplyFuseTest is Test {
         // given
         // sDAI/DAI
 
-        CompoundV2BalanceFuse balanceFuse = new CompoundV2BalanceFuse(1, address(iporPriceOracleProxy));
+        CompoundV2BalanceFuse balanceFuse = new CompoundV2BalanceFuse(1, address(priceOracleMiddlewareProxy));
         CompoundV2SupplyFuse fuse = new CompoundV2SupplyFuse(1);
         VaultCompoundV2Mock vaultMock = new VaultCompoundV2Mock(address(fuse), address(balanceFuse));
 
@@ -70,7 +70,7 @@ contract SparkSupplyFuseTest is Test {
     function testShouldBeAbleToWithdrawDai() external {
         // given
 
-        CompoundV2BalanceFuse balanceFuse = new CompoundV2BalanceFuse(1, address(iporPriceOracleProxy));
+        CompoundV2BalanceFuse balanceFuse = new CompoundV2BalanceFuse(1, address(priceOracleMiddlewareProxy));
         CompoundV2SupplyFuse fuse = new CompoundV2SupplyFuse(1);
         VaultCompoundV2Mock vaultMock = new VaultCompoundV2Mock(address(fuse), address(balanceFuse));
 
