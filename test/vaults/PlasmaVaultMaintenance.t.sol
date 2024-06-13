@@ -1416,7 +1416,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             alphas[0] = alpha;
             usersToRoles_.alphas = alphas;
         }
-        return RoleLib.createAccessManager(usersToRoles, vm);
+        return RoleLib.createAccessManager(usersToRoles_, vm);
     }
 
     function setupRoles(PlasmaVault plasmaVault, PlasmaVaultAccessManager accessManager) public {
