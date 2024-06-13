@@ -19,7 +19,7 @@ import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IRewardsManager} from "../managers/IRewardsManager.sol";
-import {PlasmaVaultAccessManager} from "../managers/PlasmaVaultAccessManager.sol";
+import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 
@@ -475,7 +475,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
             this.withdraw.selector == sig ||
             this.redeem.selector == sig
         ) {
-            (immediate, delay) = PlasmaVaultAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
+            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
         } else {
             (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller, address(this), sig);
         }
