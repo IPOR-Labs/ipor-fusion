@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVault, FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
@@ -11,7 +11,7 @@ import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFus
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";
-import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
+import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
@@ -44,20 +44,20 @@ contract PlasmaVaultTest is Test {
 
     address public userOne;
 
-    IporPriceOracle public iporPriceOracleProxy;
+    PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
         userOne = address(0x777);
 
-        IporPriceOracle implementation = new IporPriceOracle(
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             0x0000000000000000000000000000000000000348,
             8,
             0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
         );
 
-        iporPriceOracleProxy = IporPriceOracle(
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
@@ -105,7 +105,7 @@ contract PlasmaVaultTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -188,7 +188,7 @@ contract PlasmaVaultTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -273,7 +273,7 @@ contract PlasmaVaultTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -368,7 +368,7 @@ contract PlasmaVaultTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -459,7 +459,7 @@ contract PlasmaVaultTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -574,7 +574,7 @@ contract PlasmaVaultTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -677,7 +677,7 @@ contract PlasmaVaultTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -777,7 +777,7 @@ contract PlasmaVaultTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,

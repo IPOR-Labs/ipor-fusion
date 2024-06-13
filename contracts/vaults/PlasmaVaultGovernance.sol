@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
-import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
-import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
+import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
+import {AccessManaged} from "../managers/AccessManaged.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 abstract contract PlasmaVaultGovernance is AccessManaged {
@@ -40,6 +40,14 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
 
     function getManagementFeeData() external view returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData) {
         feeData = PlasmaVaultLib.getManagementFeeData();
+    }
+
+    function getAccessManagerAddress() public view returns (address) {
+        return authority();
+    }
+
+    function getRewardsManagerAddress() public view returns (address) {
+        return PlasmaVaultLib.getRewardsManagerAddress();
     }
 
     function addBalanceFuse(uint256 marketId, address fuse) external restricted {
@@ -75,8 +83,8 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
     }
 
     function setPriceOracle(address priceOracle) external restricted {
-        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlasmaVaultLib.getPriceOracle());
-        IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
+        IPriceOracleMiddleware oldPriceOracle = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle());
+        IPriceOracleMiddleware newPriceOracle = IPriceOracleMiddleware(priceOracle);
         if (
             oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
             oldPriceOracle.BASE_CURRENCY_DECIMALS() != newPriceOracle.BASE_CURRENCY_DECIMALS()
@@ -93,14 +101,6 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
 
     function configureManagementFee(address feeManager, uint256 feeInPercentage) external restricted {
         PlasmaVaultLib.configureManagementFee(feeManager, feeInPercentage);
-    }
-
-    function getAccessManagerAddress() public view returns (address) {
-        return authority();
-    }
-
-    function getRewardsManagerAddress() public view returns (address) {
-        return PlasmaVaultLib.getRewardsManagerAddress();
     }
 
     function setRewardsManagerAddress(address rewardsManagerAddress_) public restricted {

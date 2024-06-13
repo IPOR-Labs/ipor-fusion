@@ -12,6 +12,7 @@ struct UsersToRoles {
     address[] alphas;
     address[] performanceFeeManagers;
     address[] managementFeeManagers;
+    uint32 feeTimelock;
 }
 
 uint64 constant SUPER_ADMIN_ROLE = 0;
@@ -44,12 +45,20 @@ library RoleLib {
 
         for (uint256 i; i < usersWithRoles.performanceFeeManagers.length; i++) {
             vm.prank(usersWithRoles.atomist);
-            accessManager.grantRole(PERFORMANCE_FEE_MANAGER_ROLE, usersWithRoles.performanceFeeManagers[i], 0);
+            accessManager.grantRole(
+                PERFORMANCE_FEE_MANAGER_ROLE,
+                usersWithRoles.performanceFeeManagers[i],
+                usersWithRoles.feeTimelock
+            );
         }
 
         for (uint256 i; i < usersWithRoles.managementFeeManagers.length; i++) {
             vm.prank(usersWithRoles.atomist);
-            accessManager.grantRole(MANAGEMENT_FEE_MANAGER_ROLE, usersWithRoles.managementFeeManagers[i], 0);
+            accessManager.grantRole(
+                MANAGEMENT_FEE_MANAGER_ROLE,
+                usersWithRoles.managementFeeManagers[i],
+                usersWithRoles.feeTimelock
+            );
         }
 
         return accessManager;
@@ -91,9 +100,17 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, atomistsSig, ATOMIST_ROLE);
 
-        bytes4[] memory publicSig = new bytes4[](2);
+        bytes4[] memory atomistsSig2 = new bytes4[](1);
+        atomistsSig2[0] = PlasmaVaultAccessManager.setRedemptionDelay.selector;
+
+        vm_.prank(usersWithRoles_.superAdmin);
+        accessManager_.setTargetFunctionRole(address(accessManager_), atomistsSig2, ATOMIST_ROLE);
+
+        bytes4[] memory publicSig = new bytes4[](4);
         publicSig[0] = PlasmaVault.deposit.selector;
         publicSig[1] = PlasmaVault.mint.selector;
+        publicSig[2] = PlasmaVault.withdraw.selector;
+        publicSig[3] = PlasmaVault.redeem.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, publicSig, PUBLIC_ROLE);

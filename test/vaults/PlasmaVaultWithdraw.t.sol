@@ -11,7 +11,7 @@ import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
-import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
+import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {AaveConstants} from "../../contracts/fuses/aave_v3/AaveConstants.sol";
@@ -51,7 +51,7 @@ contract PlasmaVaultWithdrawTest is Test {
     address public userOne;
     address public userTwo;
 
-    IporPriceOracle public iporPriceOracleProxy;
+    PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
 
     event AaveV3SupplyExitFuse(address version, address asset, uint256 amount);
@@ -63,13 +63,13 @@ contract PlasmaVaultWithdrawTest is Test {
         userOne = address(0x777);
         userTwo = address(0x888);
 
-        IporPriceOracle implementation = new IporPriceOracle(
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             0x0000000000000000000000000000000000000348,
             8,
             0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
         );
 
-        iporPriceOracleProxy = IporPriceOracle(
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
@@ -107,6 +107,144 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
 
         assertEq(vaultTotalAssetsAfter, 0);
+    }
+
+    function testShouldBeAbleWithdrawAfterRedemptioLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        PlasmaVaultAccessManager accessManager = PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress());
+
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(10 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when
+        vm.warp(block.timestamp + 15 minutes);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
+        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+
+        assertEq(vaultTotalAssetsAfter, 0);
+    }
+
+    function testShouldBeAbleRedeemAfterRedemptioLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        PlasmaVaultAccessManager accessManager = PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress());
+
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(10 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when
+        vm.warp(block.timestamp + 15 minutes);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
+        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+
+        assertEq(vaultTotalAssetsAfter, 0);
+    }
+
+    function testShouldNotBeAbleWithdrawDuringRedemptioLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        PlasmaVaultAccessManager accessManager = PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress());
+
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(10 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1713956927);
+
+        //when
+        vm.warp(block.timestamp + 5 minutes);
+        vm.expectRevert(error);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+    }
+
+    function testShouldNotBeAbleRedeemDuringRedemptioLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        PlasmaVaultAccessManager accessManager = PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress());
+
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(10 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1713956927);
+
+        //when
+        vm.warp(block.timestamp + 5 minutes);
+        vm.expectRevert(error);
+        vm.prank(userOne);
+        plasmaVault.redeem(10e18, userOne, userOne);
     }
 
     function testShouldNotInstantWithdrawBecauseNoShares() public {
@@ -170,7 +308,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -282,7 +420,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -401,7 +539,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -508,7 +646,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -638,7 +776,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -801,7 +939,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -956,7 +1094,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1102,7 +1240,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1216,7 +1354,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1346,7 +1484,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1497,7 +1635,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -1551,7 +1689,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,

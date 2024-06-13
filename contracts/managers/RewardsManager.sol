@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -97,6 +97,10 @@ contract RewardsManager is AccessManaged, IRewardsManager {
     }
 
     function updateBalance() external restricted {
+        uint256 balance = balanceOf();
+        if (balance > 0) {
+            IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
+        }
         VestingData memory data = ManagersStorageLib.getVestingData();
         data.updateBalanceTimestamp = block.timestamp.toUint32();
         data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN).balanceOf(address(this)).toUint128();

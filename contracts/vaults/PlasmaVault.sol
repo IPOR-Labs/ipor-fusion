@@ -14,18 +14,21 @@ import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
-import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
+import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IRewardsManager} from "../managers/IRewardsManager.sol";
 import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
+import {PlasmaVaultAccessManager} from "../managers/PlasmaVaultAccessManager.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
     string assetSymbol;
     address underlyingToken;
-    address iporPriceOracle;
+    address priceOracle;
     address[] alphas;
     MarketSubstratesConfig[] marketSubstratesConfigs;
     address[] fuses;
@@ -89,6 +92,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
+    bool private _customConsumingSchedule;
 
     constructor(
         PlasmaVaultInitData memory initData
@@ -98,7 +102,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         ERC20(initData.assetName, initData.assetSymbol)
         PlasmaVaultGovernance(initData.accessManager)
     {
-        IIporPriceOracle priceOracle = IIporPriceOracle(initData.iporPriceOracle);
+        IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracle);
 
         if (priceOracle.BASE_CURRENCY() != USD) {
             revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
@@ -106,7 +110,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
 
-        PlasmaVaultLib.setPriceOracle(initData.iporPriceOracle);
+        PlasmaVaultLib.setPriceOracle(initData.priceOracle);
 
         for (uint256 i; i < initData.fuses.length; ++i) {
             _addFuse(initData.fuses[i]);
@@ -136,6 +140,10 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     fallback() external {}
+
+    function isConsumingScheduledOp() public view override returns (bytes4) {
+        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
+    }
 
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls) external nonReentrant restricted {
@@ -199,7 +207,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.mint(shares, receiver);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner) public override nonReentrant returns (uint256) {
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override nonReentrant restricted returns (uint256) {
         if (assets == 0) {
             revert NoAssetsToWithdraw();
         }
@@ -220,7 +232,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.withdraw(assets, receiver, owner);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) public override nonReentrant returns (uint256) {
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override nonReentrant restricted returns (uint256) {
         if (shares == 0) {
             revert NoSharesToRedeem();
         }
@@ -369,7 +385,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         int256 deltasInUnderlying;
         uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
-        uint256 underlyingAssetPrice = IIporPriceOracle(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
+        uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
 
         dataToCheck.marketsToCheck = new MarketToCheck[](marketsLength);
         for (uint256 i; i < marketsLength; ++i) {
@@ -424,7 +440,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
-    function _getUnrealizedManagementFee(uint256 totalAssets) internal view returns (uint256) {
+    function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
 
         uint256 blockTimestamp = block.timestamp;
@@ -438,6 +454,35 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         }
 
         return
-            (totalAssets * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
+            (totalAssets_ * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
+    }
+
+    /**
+     * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
+     * is less than 4 bytes long.
+     */
+    function _checkCanCall(address caller, bytes calldata data) internal virtual override {
+        bytes4 sig = bytes4(data[0:4]);
+        bool immediate;
+        uint32 delay;
+        if (
+            this.deposit.selector == sig ||
+            this.mint.selector == sig ||
+            this.withdraw.selector == sig ||
+            this.redeem.selector == sig
+        ) {
+            (immediate, delay) = PlasmaVaultAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
+        } else {
+            (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller, address(this), sig);
+        }
+        if (!immediate) {
+            if (delay > 0) {
+                _customConsumingSchedule = true;
+                IAccessManager(authority()).consumeScheduledOp(caller, data);
+                _customConsumingSchedule = false;
+            } else {
+                revert AccessManagedUnauthorized(caller);
+            }
+        }
     }
 }
