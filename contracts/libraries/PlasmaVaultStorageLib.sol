@@ -61,7 +61,7 @@ library PlasmaVaultStorageLib {
         0x9ed69544a87a344f5ba7f7bca332f231474aa925968a6f919e1a73cc396b6300;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.MarketLimits")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant MARKET_LIMITS = 0x9ed69544a87a344f5ba7f7bca332f231474aa925968a6f919e1a73cc396b6300; // TODO change this
+    bytes32 private constant MARKET_LIMITS = 0x9ed69544a87a344f5ba7f7bca332f231474aa925968a6f919e1a73cc396b6234; // TODO change this
 
     /// @custom:storage-location erc7201:io.ipor.plasmaVaultRewardsManagerAddress
     struct RewardsManagerAddress {
@@ -161,7 +161,7 @@ library PlasmaVaultStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.matrketLimits
     /// @dev limit is persemtage of total assets in the market in 18 decimals
-    /// @deb if limit for zero address is greater than 0, then limits is activated
+    /// @deb if limit for zero marketId is greater than 0, then limits are activated
     struct MarketLimits {
         mapping(uint256 marketId => uint256 limit) marketLimits;
     }
@@ -244,6 +244,12 @@ library PlasmaVaultStorageLib {
     function getRewardsManagerAddress() internal pure returns (RewardsManagerAddress storage rewardsManagerAddress_) {
         assembly {
             rewardsManagerAddress_.slot := REWARDS_MANAGER_ADDRESS
+        }
+    }
+
+    function getMarketsLimits() internal pure returns (MarketLimits storage marketLimits) {
+        assembly {
+            marketLimits.slot := MARKET_LIMITS
         }
     }
 }
