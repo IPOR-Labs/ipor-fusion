@@ -436,7 +436,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
-    function _getUnrealizedManagementFee(uint256 totalAssets) internal view returns (uint256) {
+    function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
 
         uint256 blockTimestamp = block.timestamp;
@@ -450,7 +450,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         }
 
         return
-            (totalAssets * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
+            (totalAssets_ * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
     }
 
     /**
