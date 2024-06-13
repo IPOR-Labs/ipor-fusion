@@ -32,7 +32,7 @@ library PlasmaVaultRoles {
     uint64 public constant REWARDS_MANAGER_ROLE = 600;
 
     /// @dev Managed by the Atomist
-    uint64 public constant WHITELIST_ROLE = 600;
+    uint64 public constant WHITELIST_ROLE = 700;
 
     uint64 public constant PUBLIC_ROLE = type(uint64).max;
 }
