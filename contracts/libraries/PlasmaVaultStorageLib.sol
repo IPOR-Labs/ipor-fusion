@@ -61,7 +61,7 @@ library PlasmaVaultStorageLib {
         0x9ed69544a87a344f5ba7f7bca332f231474aa925968a6f919e1a73cc396b6300;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.MarketLimits")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant MARKET_LIMITS = 0x9ed69544a87a344f5ba7f7bca332f231474aa925968a6f919e1a73cc396b6234; // TODO change this
+    bytes32 private constant MARKET_LIMITS = 0xc2733c187287f795e2e6e84d35552a190e774125367241c3e99e955f4babf000;
 
     /// @custom:storage-location erc7201:io.ipor.plasmaVaultRewardsManagerAddress
     struct RewardsManagerAddress {
