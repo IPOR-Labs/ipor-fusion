@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.20;
+pragma solidity 0.8.24;
 
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {ISavingsDai} from "./ext/ISavingsDai.sol";

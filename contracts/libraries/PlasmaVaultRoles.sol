@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.24;
 
 /// @title Predefined roles used in the PlasmaVault contract and its perypheral contracts (managers, fuses, etc.)
 /// @notice For documentation purposes: When new roles are added by authorized property of PlasmaVault during runtime, they should be added and described here as well.

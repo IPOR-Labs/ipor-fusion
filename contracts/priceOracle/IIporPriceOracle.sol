@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.20;
+pragma solidity 0.8.24;
 
 interface IIporPriceOracle {
     /// @notice Returns the price of the given asset in 8 decimals

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.20;
+pragma solidity 0.8.24;
 
 import {IPool} from "../interfaces/IPool.sol";
 import {IFuseCommon} from "../../fuses/IFuseCommon.sol";
