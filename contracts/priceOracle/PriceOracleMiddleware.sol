@@ -7,7 +7,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 
 import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
-import {IPriceOracleMiddlewareFeed} from "./IPriceOracleMiddlewareFeed.sol";
+import {IPriceFeed} from "./IPriceFeed.sol";
 import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 
@@ -77,7 +77,7 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         uint256 time;
         uint80 answeredInRound;
         if (source != address(0)) {
-            (roundId, price, startedAt, time, answeredInRound) = IPriceOracleMiddlewareFeed(source).latestRoundData();
+            (roundId, price, startedAt, time, answeredInRound) = IPriceFeed(source).latestRoundData();
         } else {
             if (CHAINLINK_FEED_REGISTRY == address(0)) {
                 revert IPriceOracleMiddleware.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);

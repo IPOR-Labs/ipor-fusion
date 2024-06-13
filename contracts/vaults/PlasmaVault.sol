@@ -101,7 +101,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         ERC20(initData.assetName, initData.assetSymbol)
         PlasmaVaultGovernance(initData.accessManager)
     {
-        IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracleMiddleware);
+        IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracle);
 
         if (priceOracle.BASE_CURRENCY() != USD) {
             revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);

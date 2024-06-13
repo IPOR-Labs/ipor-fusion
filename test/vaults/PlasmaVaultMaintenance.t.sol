@@ -1408,13 +1408,13 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
     }
 
-    function createAccessManager(UsersToRoles memory usersToRoles) public returns (PlasmaVaultAccessManager) {
-        if (usersToRoles.superAdmin == address(0)) {
-            usersToRoles.superAdmin = atomist;
-            usersToRoles.atomist = atomist;
+    function createAccessManager(UsersToRoles memory usersToRoles_) public returns (PlasmaVaultAccessManager) {
+        if (usersToRoles_.superAdmin == address(0)) {
+            usersToRoles_.superAdmin = atomist;
+            usersToRoles_.atomist = atomist;
             address[] memory alphas = new address[](1);
             alphas[0] = alpha;
-            usersToRoles.alphas = alphas;
+            usersToRoles_.alphas = alphas;
         }
         return RoleLib.createAccessManager(usersToRoles, vm);
     }
