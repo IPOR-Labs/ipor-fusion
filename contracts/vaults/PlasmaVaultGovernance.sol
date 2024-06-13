@@ -8,6 +8,7 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
+import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 abstract contract PlasmaVaultGovernance is AccessManaged {
@@ -104,6 +105,26 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
 
     function setRewardsManagerAddress(address rewardsManagerAddress_) public restricted {
         PlasmaVaultLib.setRewardsManagerAddress(rewardsManagerAddress_);
+    }
+
+    function setupMarketsLimits(MarketLimit[] calldata marketsLimits) external restricted {
+        AssetDistributionProtectionLib.setupMarketsLimits(marketsLimits);
+    }
+
+    function getMarketLimit(uint256 marketId) public view returns (uint256) {
+        return PlasmaVaultStorageLib.getMarketsLimits().marketLimits[marketId];
+    }
+
+    function isMarketsLimitsActivated() public view returns (bool) {
+        return AssetDistributionProtectionLib.isMarketsLimitsActivated();
+    }
+
+    function activateMarketsLimits() public restricted {
+        AssetDistributionProtectionLib.activateMarketsLimits();
+    }
+
+    function deactivateMarketsLimits() public restricted {
+        AssetDistributionProtectionLib.deactivateMarketsLimits();
     }
 
     function _addFuse(address fuse) internal {

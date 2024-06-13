@@ -16,6 +16,7 @@ import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
+import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -1165,5 +1166,272 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+    }
+
+    function testShouldNotActivateMarketsLimitWhenNotAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(iporPriceOracleProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        plasmaVault.activateMarketsLimits();
+    }
+
+    function testShouldActivateMarketsLimitWhenAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(iporPriceOracleProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bool isMarketsLimitsActivatedBefore = plasmaVault.isMarketsLimitsActivated();
+
+        // when
+        vm.prank(atomist);
+        plasmaVault.activateMarketsLimits();
+
+        // then
+        bool isMarketsLimitsActivatedAfter = plasmaVault.isMarketsLimitsActivated();
+
+        assertFalse(isMarketsLimitsActivatedBefore, "Markets limits should not be activated before");
+        assertTrue(isMarketsLimitsActivatedAfter, "Markets limits should be activated after");
+    }
+
+    function testShouldDeactivateMarketsLimitWhenAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(iporPriceOracleProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        vm.prank(atomist);
+        plasmaVault.activateMarketsLimits();
+
+        bool isMarketsLimitsActivatedBefore = plasmaVault.isMarketsLimitsActivated();
+
+        // when
+        vm.prank(atomist);
+        plasmaVault.deactivateMarketsLimits();
+
+        // then
+        bool isMarketsLimitsActivatedAfter = plasmaVault.isMarketsLimitsActivated();
+
+        assertTrue(isMarketsLimitsActivatedBefore, "Markets limits should be activated before");
+        assertFalse(isMarketsLimitsActivatedAfter, "Markets limits should not be activated after");
+    }
+
+    function testShouldNotDeactivateMarketsLimitWhenNotAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(iporPriceOracleProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
+
+        vm.prank(atomist);
+        plasmaVault.activateMarketsLimits();
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        plasmaVault.deactivateMarketsLimits();
+    }
+
+    function testShouldNotBeAbleToSetupLimitForMarketWhenNotAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(iporPriceOracleProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
+
+        vm.prank(atomist);
+        plasmaVault.activateMarketsLimits();
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        plasmaVault.deactivateMarketsLimits();
+    }
+
+    function testShouldBeAbleToSetupLimitForMarketWhenAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(iporPriceOracleProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint256 limitBefore = plasmaVault.getMarketLimit(AAVE_V3_MARKET_ID);
+
+        MarketLimit[] memory marketsLimits = new MarketLimit[](1);
+        marketsLimits[0] = MarketLimit(AAVE_V3_MARKET_ID, 1e17);
+
+        // when
+        vm.prank(atomist);
+        plasmaVault.setupMarketsLimits(marketsLimits);
+
+        //then
+        uint256 limitAfter = plasmaVault.getMarketLimit(AAVE_V3_MARKET_ID);
+
+        assertEq(limitBefore, 0, "Limit before should be equal to 0");
+        assertEq(limitAfter, 1e17, "Limit after should be equal to 1e17");
     }
 }

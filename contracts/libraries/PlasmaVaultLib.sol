@@ -41,20 +41,14 @@ library PlasmaVaultLib {
 
     /// @notice Adds an amount to the total assets in the vault for all markets
     /// @param amount The amount to add, represented in decimals of the underlying asset
-    /// @return The new total assets in the vault for all markets, represented in decimals of the underlying asset
-    function addToTotalAssetsInAllMarkets(int256 amount) internal returns (uint256) {
-        uint256 totalAssetsInAllMarketsOld = PlasmaVaultStorageLib.getTotalAssets().value;
-        uint256 totalAssetsInAllMarketsNew;
+    function addToTotalAssetsInAllMarkets(int256 amount) internal {
         if (amount < 0) {
-            totalAssetsInAllMarketsNew = (totalAssetsInAllMarketsOld.toInt256() - amount).toUint256();
+            PlasmaVaultStorageLib.getTotalAssets().value -= (-amount).toUint256();
         } else {
-            totalAssetsInAllMarketsNew = totalAssetsInAllMarketsOld + amount.toUint256();
+            PlasmaVaultStorageLib.getTotalAssets().value += amount.toUint256();
         }
-        PlasmaVaultStorageLib.getTotalAssets().value = totalAssetsInAllMarketsNew;
 
         emit TotalAssetsInAllMarketsAdded(amount);
-
-        return totalAssetsInAllMarketsNew;
     }
 
     /// @notice Updates the total assets in the Plasma Vault for a specific market

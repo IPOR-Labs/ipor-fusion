@@ -15,6 +15,7 @@ import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
+import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
 
 contract PlasmaVaultTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -852,6 +853,298 @@ contract PlasmaVaultTest is Test {
             totalAssetsInMarketAfterCompound,
             "Total assets in market should be decreased by amount"
         );
+    }
+
+    function testShouldExecuteWhenNotExtendMarketLimitSetup() public {
+        //given
+        assetName = "IPOR Fusion DAI";
+        assetSymbol = "ipfDAI";
+        underlyingToken = DAI;
+        alphas = new address[](1);
+
+        alpha = address(0x1);
+        alphas[0] = alpha;
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuse);
+
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(iporPriceOracleProxy),
+                alphas,
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+
+        amount = 100 * 1e18;
+
+        deal(DAI, userOne, amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        calls[0] = FuseAction(
+            address(supplyFuse),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount / 2, userEModeCategoryId: 70e18}))
+            )
+        );
+
+        MarketLimit[] memory marketsLimits = new MarketLimit[](1);
+        marketsLimits[0] = MarketLimit(AAVE_V3_MARKET_ID, 6e17); // 60%
+
+        vm.prank(atomist);
+        plasmaVault.activateMarketsLimits();
+
+        vm.prank(atomist);
+        plasmaVault.setupMarketsLimits(marketsLimits);
+
+        //when
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+
+        //then
+        /// @dev if is here then it means that the transaction was successful
+        assertTrue(true);
+    }
+
+    function testShouldNotExecuteWhenExtendMarketLimitSetup() public {
+        //given
+        assetName = "IPOR Fusion DAI";
+        assetSymbol = "ipfDAI";
+        underlyingToken = DAI;
+        alphas = new address[](1);
+
+        alpha = address(0x1);
+        alphas[0] = alpha;
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuse);
+
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(iporPriceOracleProxy),
+                alphas,
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+
+        amount = 100 * 1e18;
+
+        deal(DAI, userOne, amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        calls[0] = FuseAction(
+            address(supplyFuse),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount / 2, userEModeCategoryId: 70e18}))
+            )
+        );
+
+        MarketLimit[] memory marketsLimits = new MarketLimit[](1);
+        marketsLimits[0] = MarketLimit(AAVE_V3_MARKET_ID, 3e17); // 30%
+
+        vm.prank(atomist);
+        plasmaVault.activateMarketsLimits();
+
+        vm.prank(atomist);
+        plasmaVault.setupMarketsLimits(marketsLimits);
+
+        bytes memory error = abi.encodeWithSignature(
+            "MarketLimitHasBeenExceeded(uint256,uint256,uint256)",
+            uint256(1),
+            uint256(50000000000000000000),
+            uint256(3e19)
+        );
+
+        //when
+        vm.expectRevert(error);
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+
+        //then
+        /// @dev if is here then it means that the transaction was successful
+        assertTrue(true);
+    }
+
+    function testShouldNotExecuteSecondTimeWhenExtendMarketLimitSetup() public {
+        //given
+        assetName = "IPOR Fusion DAI";
+        assetSymbol = "ipfDAI";
+        underlyingToken = DAI;
+        alphas = new address[](1);
+
+        alpha = address(0x1);
+        alphas[0] = alpha;
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+
+        AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuse);
+
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
+
+        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(iporPriceOracleProxy),
+                alphas,
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+
+        amount = 100 * 1e18;
+
+        deal(DAI, userOne, amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        calls[0] = FuseAction(
+            address(supplyFuse),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: 45e18, userEModeCategoryId: 70e18}))
+            )
+        );
+
+        MarketLimit[] memory marketsLimits = new MarketLimit[](1);
+        marketsLimits[0] = MarketLimit(AAVE_V3_MARKET_ID, 8e17); // 80%
+
+        vm.prank(atomist);
+        plasmaVault.activateMarketsLimits();
+
+        vm.prank(atomist);
+        plasmaVault.setupMarketsLimits(marketsLimits);
+
+        bytes memory error = abi.encodeWithSignature(
+            "MarketLimitHasBeenExceeded(uint256,uint256,uint256)",
+            uint256(1),
+            uint256(90000000000000000000),
+            uint256(80000000000000000000)
+        );
+
+        //when
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+
+        vm.expectRevert(error);
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+
+        //then
+        /// @dev if is here then it means that the transaction was successful
+        assertTrue(true);
     }
 
     function createAccessManager(UsersToRoles memory usersToRoles) public returns (PlasmaVaultAccessManager) {

@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
 struct MarketToCheck {
     uint256 marketId;
     uint256 balanceInMarket;
@@ -45,7 +44,7 @@ library AssetDistributionProtectionLib {
     }
 
     function checkLimits(DataToCheck memory data) internal view {
-        if (!isMarketLimitActivated()) {
+        if (!isMarketsLimitsActivated()) {
             return;
         }
         uint256 len = data.marketsToCheck.length;
@@ -55,8 +54,7 @@ library AssetDistributionProtectionLib {
                 data.totalBalanceInVault,
                 1e18
             );
-
-            if (limit > data.marketsToCheck[i].balanceInMarket) {
+            if (limit < data.marketsToCheck[i].balanceInMarket) {
                 revert MarketLimitHasBeenExceeded(
                     data.marketsToCheck[i].marketId,
                     data.marketsToCheck[i].balanceInMarket,
@@ -66,7 +64,7 @@ library AssetDistributionProtectionLib {
         }
     }
 
-    function isMarketLimitActivated() private view returns (bool) {
+    function isMarketsLimitsActivated() internal view returns (bool) {
         return PlasmaVaultStorageLib.getMarketsLimits().marketLimits[0] != 0;
     }
 }
