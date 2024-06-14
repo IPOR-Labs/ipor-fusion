@@ -60,28 +60,25 @@ library PlasmaVaultStorageLib {
     bytes32 private constant REWARDS_CLAIM_MANAGER_ADDRESS =
     0x08c469289c3f85d9b575f3ae9be6831541ff770a06ea135aa343a4de7c962d00;
 
-    /// @custom:storage-location erc7201:io.ipor.PlasmaVaultRewardsClaimManagerAddress
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.MarketLimits")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MARKET_LIMITS = 0xc2733c187287f795e2e6e84d35552a190e774125367241c3e99e955f4babf000;
+
+    /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
     struct RewardsClaimManagerAddress {
         /// @dev total assets in the Plasma Vault
         address value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.plasmaVaultTotalAssetsInAllMarkets
+    /// @custom:storage-location erc7201:io.ipor.PlasmaVaultTotalAssetsInAllMarkets
     struct TotalAssets {
         /// @dev total assets in the Plasma Vault
         uint256 value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.plasmaVaultTotalAssetsInMarket
+    /// @custom:storage-location erc7201:io.ipor.PlasmaVaultTotalAssetsInMarket
     struct MarketTotalAssets {
         /// @dev marketId => total assets in the vault in the market
         mapping(uint256 => uint256) value;
-    }
-
-    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultAlphas
-    struct Alphas {
-        /// @dev alpha address => 1 - is granted, otherwise - not granted
-        mapping(address => uint256) value;
     }
 
     /// @notice Market Substrates configuration
@@ -94,7 +91,7 @@ library PlasmaVaultStorageLib {
         bytes32[] substrates;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultMarketSubstrates
+    /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultMarketSubstrates
     struct MarketSubstrates {
         /// @dev marketId => MarketSubstratesStruct
         mapping(uint256 => MarketSubstratesStruct) value;
@@ -106,54 +103,54 @@ library PlasmaVaultStorageLib {
         mapping(address => uint256) value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultFusesArray
+    /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultFusesArray
     struct FusesArray {
         /// @dev value is a fuse address
         address[] value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultBalanceFuses
+    /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultBalanceFuses
     struct BalanceFuses {
         /// @dev marketId => balance fuse address
         mapping(uint256 => address) value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultInstantWithdrawalFusesArray
+    /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultInstantWithdrawalFusesArray
     struct InstantWithdrawalFuses {
         /// @dev value is a Fuse address used for instant withdrawal
         address[] value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultInstantWithdrawalFusesParams
+    /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultInstantWithdrawalFusesParams
     struct InstantWithdrawalFusesParams {
         /// @dev key: fuse address and index in InstantWithdrawalFuses array, value: list of parameters used for instant withdrawal
         /// @dev first param always amount in underlying asset of PlasmaVault, second and next params are specific for the fuse and market
         mapping(bytes32 => bytes32[]) value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultGrantedAddressesToInteractWithVault
-    struct GrantedAddressesToInteractWithVault {
-        /// @dev The zero address serves as a flag indicating whether the vault has limited access.
-        /// @dev address => 1 - is granted, otherwise - not granted
-        mapping(address => uint256) value;
-    }
-
-    /// @custom:storage-location erc7201:io.ipor.plasmaVaultPerformanceFeeData
+    /// @custom:storage-location erc7201:io.ipor.PlasmaVaultPerformanceFeeData
     struct PerformanceFeeData {
         address feeManager;
         uint16 feeInPercentage;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.plasmaVaultManagementFeeData
+    /// @custom:storage-location erc7201:io.ipor.PlasmaVaultManagementFeeData
     struct ManagementFeeData {
         address feeManager;
         uint16 feeInPercentage;
         uint32 lastUpdateTimestamp;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.priceOracle
+    /// @custom:storage-location erc7201:io.ipor.PriceOracle
     struct PriceOracle {
         address value;
+    }
+
+    /// @custom:storage-location erc7201:io.ipor.matrketLimits
+    /// @dev limit is percentage of total assets in the market in 18 decimals, 1e18 is 100%
+    /// @deb if limit for zero marketId is greater than 0, then limits are activated
+    struct MarketLimits {
+        mapping(uint256 marketId => uint256 limit) limitInPercentage;
     }
 
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
@@ -238,6 +235,12 @@ library PlasmaVaultStorageLib {
     {
         assembly {
             rewardsClaimManagerAddress_.slot := REWARDS_CLAIM_MANAGER_ADDRESS
+        }
+    }
+
+    function getMarketsLimits() internal pure returns (MarketLimits storage marketLimits) {
+        assembly {
+            marketLimits.slot := MARKET_LIMITS
         }
     }
 }

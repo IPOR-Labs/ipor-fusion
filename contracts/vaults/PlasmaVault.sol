@@ -19,6 +19,7 @@ import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
+import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
 import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
@@ -391,13 +392,15 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     /// @param markets Array of market ids touched by the fuses in the FuseActions
     function _updateMarketsBalances(uint256[] memory markets) internal {
         uint256 wadBalanceAmountInUSD;
+        DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-
+        uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
         uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
 
-        for (uint256 i; i < markets.length; ++i) {
+        dataToCheck.marketsToCheck = new MarketToCheck[](marketsLength);
+        for (uint256 i; i < marketsLength; ++i) {
             if (markets[i] == 0) {
                 break;
             }
@@ -408,21 +411,22 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
                 balanceFuse.functionDelegateCall(abi.encodeWithSignature("balanceOf(address)", address(this))),
                 (uint256)
             );
-
+            dataToCheck.marketsToCheck[i].marketId = markets[i];
+            dataToCheck.marketsToCheck[i].balanceInMarket = IporMath.convertWadToAssetDecimals(
+                IporMath.division(wadBalanceAmountInUSD * 10 ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
+                decimals()
+            );
             deltasInUnderlying =
                 deltasInUnderlying +
-                PlasmaVaultLib.updateTotalAssetsInMarket(
-                    markets[i],
-                    IporMath.convertWadToAssetDecimals(
-                        IporMath.division(wadBalanceAmountInUSD * 10 ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
-                        decimals()
-                    )
-                );
+                PlasmaVaultLib.updateTotalAssetsInMarket(markets[i], dataToCheck.marketsToCheck[i].balanceInMarket);
         }
 
         if (deltasInUnderlying != 0) {
             PlasmaVaultLib.addToTotalAssetsInAllMarkets(deltasInUnderlying);
         }
+
+        dataToCheck.totalBalanceInVault = _getGrossTotalAssets();
+        AssetDistributionProtectionLib.checkLimits(dataToCheck);
     }
 
     function _checkIfExistsMarket(uint256[] memory markets, uint256 marketId) internal pure returns (bool exists) {

@@ -88,11 +88,14 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, alphaSig, ALPHA_ROLE);
 
-        bytes4[] memory atomistsSig = new bytes4[](4);
+        bytes4[] memory atomistsSig = new bytes4[](7);
         atomistsSig[0] = PlasmaVaultGovernance.addBalanceFuse.selector;
         atomistsSig[1] = PlasmaVaultGovernance.addFuses.selector;
         atomistsSig[2] = PlasmaVaultGovernance.removeFuses.selector;
         atomistsSig[3] = PlasmaVaultGovernance.setPriceOracle.selector;
+        atomistsSig[4] = PlasmaVaultGovernance.setupMarketsLimits.selector;
+        atomistsSig[5] = PlasmaVaultGovernance.activateMarketsLimits.selector;
+        atomistsSig[6] = PlasmaVaultGovernance.deactivateMarketsLimits.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, atomistsSig, ATOMIST_ROLE);

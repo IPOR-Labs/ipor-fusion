@@ -7,6 +7,7 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
+import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
 import {AccessManaged} from "../managers/AccessManaged.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
@@ -104,6 +105,29 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
 
     function setRewardsClaimManagerAddress(address rewardsClaimManagerAddress_) public restricted {
         PlasmaVaultLib.setRewardsClaimManagerAddress(rewardsClaimManagerAddress_);
+    }
+
+    function setupMarketsLimits(MarketLimit[] calldata marketsLimits) external restricted {
+        AssetDistributionProtectionLib.setupMarketsLimits(marketsLimits);
+    }
+
+    function getMarketLimit(uint256 marketId) public view returns (uint256) {
+        return PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[marketId];
+    }
+
+    function isMarketsLimitsActivated() public view returns (bool) {
+        return AssetDistributionProtectionLib.isMarketsLimitsActivated();
+    }
+
+    /// @notice Activates the markets limits protection, by default it is deactivated. After activation the limits
+    /// is setup for each market separately.
+    function activateMarketsLimits() public restricted {
+        AssetDistributionProtectionLib.activateMarketsLimits();
+    }
+
+    /// @notice Deactivates the markets limits protection.
+    function deactivateMarketsLimits() public restricted {
+        AssetDistributionProtectionLib.deactivateMarketsLimits();
     }
 
     function _addFuse(address fuse) internal {
