@@ -18,7 +18,7 @@ import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol"
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
-import {IRewardsManager} from "../managers/IRewardsManager.sol";
+import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
 import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
 import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
@@ -442,12 +442,12 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     function _getGrossTotalAssets() internal view returns (uint256) {
-        address rewardsManagerAddress = getRewardsManagerAddress();
-        if (rewardsManagerAddress != address(0)) {
+        address rewardsClaimManagerAddress = getRewardsClaimManagerAddress();
+        if (rewardsClaimManagerAddress != address(0)) {
             return
                 IERC20(asset()).balanceOf(address(this)) +
                 PlasmaVaultLib.getTotalAssetsInAllMarkets() +
-                IRewardsManager(rewardsManagerAddress).balanceOf();
+                IRewardsClaimManager(rewardsClaimManagerAddress).balanceOf();
         }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }

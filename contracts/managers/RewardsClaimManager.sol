@@ -11,9 +11,9 @@ import {FusesLib} from "../libraries/FusesLib.sol";
 import {FuseAction} from "../vaults/PlasmaVault.sol";
 import {ManagersStorageLib, VestingData} from "./ManagersStorageLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
-import {IRewardsManager} from "./IRewardsManager.sol";
+import {IRewardsClaimManager} from "./IRewardsClaimManager.sol";
 
-contract RewardsManager is AccessManaged, IRewardsManager {
+contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 

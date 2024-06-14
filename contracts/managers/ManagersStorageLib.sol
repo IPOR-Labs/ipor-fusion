@@ -28,17 +28,17 @@ struct PlasmaVaultAddress {
 library ManagersStorageLib {
     using SafeCast for uint256;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.ManagerVestingData")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant VESTING_DATA = 0x7cf25f874e1d9eb28b33703e6d5459f9483631969188b4474c6a9598b78b4c00;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.VestingData")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant VESTING_DATA = 0x0d045b5703684afaa183a07037de996bd8cd6d6b3ff96656a7ee811227ddf700;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.redemptionDelay")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant REDEMPTION_DELAY = 0x88ed68bfe7fb6e54dd3b39452c38a9866e5bb6339724eb20da899aa3bb999700;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.RedemptionDelay")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant REDEMPTION_DELAY = 0xcd3f64412f7e3e03fd4a055a0b9215638f10bd88b6e2999623a4fbce73568b00;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.redemptionLocks")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant REDEMPTION_LOCKS = 0x64f822be72115f7a1b8b1e01aaffa6c3b18be496e0df14d2a543d41dff19e400;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.RedemptionLocks")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant REDEMPTION_LOCKS = 0x1df8c3be97c2c624569b6b4d642cde88d3084fa39c37b3ca0e61dbd22d5c4200;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVault")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant PLASMA_VAULT = 0xe68b25ac473a846050d0d3967f61d9c6bf61aafc3bb399481bd85a09736d2b00;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVault")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PLASMA_VAULT = 0x1469611b48a54264f469346102240688dc1bf1295d466f17eb541c87bd55d300;
 
     event VestingDataUpdated(
         uint128 transferredTokens,
