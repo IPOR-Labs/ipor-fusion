@@ -116,9 +116,9 @@ contract CurveStableswapNGSupplyFuse is IFuse {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(CURVE_STABLESWAP_NG))) {
             revert CurveStableswapNGSupplyFuseUnsupportedAsset(address(CURVE_STABLESWAP_NG), Errors.UNSUPPORTED_ASSET);
         }
-        for (uint256 i = 0; i < data.amounts.length; ++i) {
-            ERC20 asset = ERC20(CURVE_STABLESWAP_NG.coins(i));
-            asset.forceApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
+        uint256 len = data.amounts.length;
+        for (uint256 i; i < len; ++i) {
+            ERC20(CURVE_STABLESWAP_NG.coins(i)).forceApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
         }
         CURVE_STABLESWAP_NG.add_liquidity(data.amounts, data.minMintAmount, data.receiver);
         emit CurveSupplyStableswapNGSupplyEnterFuse(VERSION, data.amounts, data.minMintAmount, data.receiver);

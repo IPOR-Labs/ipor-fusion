@@ -84,4 +84,13 @@ interface ICurveStableswapNG {
         uint256 _min_received,
         address _receiver
     ) external returns (uint256);
+
+    /**
+    * @notice The current virtual price of the pool LP token
+    * @dev Useful for calculating profits.
+        The method may be vulnerable to donation-style attacks if implementation
+        contains rebasing tokens. For integrators, caution is advised.
+    * @return LP token virtual price normalized to 1e18
+     */
+    function get_virtual_price() external view returns (uint256);
 }

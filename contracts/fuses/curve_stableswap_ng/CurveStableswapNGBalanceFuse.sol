@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "./../IMarketBalanceFuse.sol";
 import {IporMath} from "./../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
-import {IIporPriceOracle} from "./../../priceOracle/IIporPriceOracle.sol";
+import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
 
 contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
@@ -14,11 +14,11 @@ contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
     uint256 private constant PRICE_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
-    IIporPriceOracle public immutable PRICE_ORACLE;
+    ICurveStableswapNG public immutable CURVE_STABLESWAP_NG;
 
-    constructor(uint256 marketIdInput, address priceOracle) {
+    constructor(uint256 marketIdInput, address curveStableswapNG) {
         MARKET_ID = marketIdInput;
-        PRICE_ORACLE = IIporPriceOracle(priceOracle);
+        CURVE_STABLESWAP_NG = ICurveStableswapNG(curveStableswapNG);
     }
 
     function balanceOf(address plasmaVault) external view override returns (uint256) {
@@ -34,8 +34,9 @@ contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
+            // TODO Currently vulnerable to donation-style attacks for rebasing tokens
             balance += IporMath.convertToWad(
-                ERC20(asset).balanceOf(plasmaVault) * PRICE_ORACLE.getAssetPrice(asset),
+                ERC20(asset).balanceOf(plasmaVault) * CURVE_STABLESWAP_NG.get_virtual_price(),
                 ERC20(asset).decimals() + PRICE_DECIMALS
             );
         }
