@@ -14,7 +14,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {PriceOracleMiddlewareMock} from "../priceOracle/PriceOracleMiddlewareMock.sol";
 import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
-import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
 
@@ -66,7 +66,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory performanceFeeManagers = new address[](1);
         performanceFeeManagers[0] = address(0x777);
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -101,7 +101,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory managementFeeManagers = new address[](1);
         managementFeeManagers[0] = address(0x555);
         usersToRoles.managementFeeManagers = managementFeeManagers;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -138,7 +138,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         managementFeeManagers[0] = address(0x555);
         usersToRoles.managementFeeManagers = managementFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -183,7 +183,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         managementFeeManagers[0] = address(0x555);
         usersToRoles.managementFeeManagers = managementFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -226,7 +226,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         managementFeeManagers[0] = address(0x555);
         usersToRoles.managementFeeManagers = managementFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -268,7 +268,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         performanceFeeManagers[0] = address(0x555);
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -312,7 +312,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         performanceFeeManagers[0] = address(0x777);
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -354,7 +354,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         performanceFeeManagers[0] = address(0x777);
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -410,7 +410,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         // when
         PlasmaVault plasmaVault = new PlasmaVault(
@@ -454,7 +454,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -497,7 +497,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         // when
         PlasmaVault plasmaVault = new PlasmaVault(
@@ -540,7 +540,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -596,7 +596,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -701,7 +701,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -762,7 +762,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -841,7 +841,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -920,7 +920,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -970,7 +970,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1031,7 +1031,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1088,7 +1088,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1154,7 +1154,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1207,7 +1207,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1255,7 +1255,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1310,7 +1310,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1365,7 +1365,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1409,7 +1409,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
     }
 
-    function createAccessManager(UsersToRoles memory usersToRoles_) public returns (PlasmaVaultAccessManager) {
+    function createAccessManager(UsersToRoles memory usersToRoles_) public returns (IporFusionAccessManager) {
         if (usersToRoles_.superAdmin == address(0)) {
             usersToRoles_.superAdmin = atomist;
             usersToRoles_.atomist = atomist;
@@ -1420,7 +1420,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         return RoleLib.createAccessManager(usersToRoles_, vm);
     }
 
-    function setupRoles(PlasmaVault plasmaVault, PlasmaVaultAccessManager accessManager) public {
+    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
@@ -1440,7 +1440,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1480,7 +1480,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1525,7 +1525,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1573,7 +1573,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1616,7 +1616,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1659,7 +1659,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(

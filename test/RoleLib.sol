@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {PlasmaVaultAccessManager} from "../contracts/managers/PlasmaVaultAccessManager.sol";
+import {IporFusionAccessManager} from "../contracts/managers/IporFusionAccessManager.sol";
 import {Vm} from "forge-std/Test.sol";
 import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
@@ -25,8 +25,8 @@ uint64 constant PUBLIC_ROLE = type(uint64).max;
 
 /// @title Storage
 library RoleLib {
-    function createAccessManager(UsersToRoles memory usersWithRoles, Vm vm) public returns (PlasmaVaultAccessManager) {
-        PlasmaVaultAccessManager accessManager = new PlasmaVaultAccessManager(usersWithRoles.superAdmin);
+    function createAccessManager(UsersToRoles memory usersWithRoles, Vm vm) public returns (IporFusionAccessManager) {
+        IporFusionAccessManager accessManager = new IporFusionAccessManager(usersWithRoles.superAdmin);
 
         vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(ALPHA_ROLE, ATOMIST_ROLE);
@@ -68,7 +68,7 @@ library RoleLib {
         UsersToRoles memory usersWithRoles_,
         Vm vm_,
         address plasmaVault_,
-        PlasmaVaultAccessManager accessManager_
+        IporFusionAccessManager accessManager_
     ) public {
         bytes4[] memory performanceFeeSig = new bytes4[](1);
         performanceFeeSig[0] = PlasmaVaultGovernance.configurePerformanceFee.selector;
@@ -101,7 +101,7 @@ library RoleLib {
         accessManager_.setTargetFunctionRole(plasmaVault_, atomistsSig, ATOMIST_ROLE);
 
         bytes4[] memory atomistsSig2 = new bytes4[](1);
-        atomistsSig2[0] = PlasmaVaultAccessManager.setRedemptionDelay.selector;
+        atomistsSig2[0] = IporFusionAccessManager.setRedemptionDelay.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(address(accessManager_), atomistsSig2, ATOMIST_ROLE);
