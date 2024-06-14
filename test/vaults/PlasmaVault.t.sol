@@ -1029,7 +1029,7 @@ contract PlasmaVaultTest is Test {
         plasmaVault.setupMarketsLimits(marketsLimits);
 
         bytes memory error = abi.encodeWithSignature(
-            "MarketLimitHasBeenExceeded(uint256,uint256,uint256)",
+            "MarketLimitExceeded(uint256,uint256,uint256)",
             uint256(1),
             uint256(50000000000000000000),
             uint256(3e19)
@@ -1128,7 +1128,7 @@ contract PlasmaVaultTest is Test {
         plasmaVault.setupMarketsLimits(marketsLimits);
 
         bytes memory error = abi.encodeWithSignature(
-            "MarketLimitHasBeenExceeded(uint256,uint256,uint256)",
+            "MarketLimitExceeded(uint256,uint256,uint256)",
             uint256(1),
             uint256(90000000000000000000),
             uint256(80000000000000000000)

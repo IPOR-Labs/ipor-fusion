@@ -160,10 +160,10 @@ library PlasmaVaultStorageLib {
     }
 
     /// @custom:storage-location erc7201:io.ipor.matrketLimits
-    /// @dev limit is persemtage of total assets in the market in 18 decimals
+    /// @dev limit is percentage of total assets in the market in 18 decimals, 1e18 is 100%
     /// @deb if limit for zero marketId is greater than 0, then limits are activated
     struct MarketLimits {
-        mapping(uint256 marketId => uint256 limit) marketLimits;
+        mapping(uint256 marketId => uint256 limit) limitInPercentage;
     }
 
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {

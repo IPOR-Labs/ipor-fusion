@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 struct MarketToCheck {
     uint256 marketId;
     uint256 balanceInMarket;
@@ -14,8 +15,10 @@ struct DataToCheck {
 }
 
 struct MarketLimit {
+    /// @dev MarketId: the same value as used in fuse
     uint256 marketId;
-    uint256 limit;
+    /// @dev Limit in percentage of the total balance in the vault, use 1e18 as 100%
+    uint256 limitInPercentage;
 }
 
 library AssetDistributionProtectionLib {
@@ -23,23 +26,31 @@ library AssetDistributionProtectionLib {
     event MarketsLimitsDeactivated();
     event MarketLimitUpdated(uint256 marketId, uint256 newLimit);
 
-    error MarketLimitHasBeenExceeded(uint256 marketId, uint256 balanceInMarket, uint256 limit);
+    error MarketLimitExceeded(uint256 marketId, uint256 balanceInMarket, uint256 limit);
+    error WrongMarketId(uint256 marketId);
 
+    /// @notice Activates the markets limits protection, by default it is deactivated. After activation the limits
+    /// is setup for each market separately.
     function activateMarketsLimits() internal {
-        PlasmaVaultStorageLib.getMarketsLimits().marketLimits[0] = 1;
+        PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[0] = 1;
         emit MarketsLimitsActivated();
     }
 
+    /// @notice Deactivates the markets limits protection.
     function deactivateMarketsLimits() internal {
-        PlasmaVaultStorageLib.getMarketsLimits().marketLimits[0] = 0;
+        PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[0] = 0;
         emit MarketsLimitsDeactivated();
     }
 
     function setupMarketsLimits(MarketLimit[] calldata marketsLimits) internal {
         uint256 len = marketsLimits.length;
         for (uint256 i; i < len; ++i) {
-            PlasmaVaultStorageLib.getMarketsLimits().marketLimits[marketsLimits[i].marketId] = marketsLimits[i].limit;
-            emit MarketLimitUpdated(marketsLimits[i].marketId, marketsLimits[i].limit);
+            if (marketsLimits[i].marketId == 0) {
+                revert WrongMarketId(marketsLimits[i].marketId);
+            }
+            PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[marketsLimits[i].marketId] = marketsLimits[i]
+                .limitInPercentage;
+            emit MarketLimitUpdated(marketsLimits[i].marketId, marketsLimits[i].limitInPercentage);
         }
     }
 
@@ -50,12 +61,12 @@ library AssetDistributionProtectionLib {
         uint256 len = data.marketsToCheck.length;
         for (uint256 i; i < len; ++i) {
             uint256 limit = Math.mulDiv(
-                PlasmaVaultStorageLib.getMarketsLimits().marketLimits[data.marketsToCheck[i].marketId],
+                PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[data.marketsToCheck[i].marketId],
                 data.totalBalanceInVault,
                 1e18
             );
             if (limit < data.marketsToCheck[i].balanceInMarket) {
-                revert MarketLimitHasBeenExceeded(
+                revert MarketLimitExceeded(
                     data.marketsToCheck[i].marketId,
                     data.marketsToCheck[i].balanceInMarket,
                     limit
@@ -65,6 +76,6 @@ library AssetDistributionProtectionLib {
     }
 
     function isMarketsLimitsActivated() internal view returns (bool) {
-        return PlasmaVaultStorageLib.getMarketsLimits().marketLimits[0] != 0;
+        return PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[0] != 0;
     }
 }

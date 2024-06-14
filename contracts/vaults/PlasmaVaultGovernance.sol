@@ -112,17 +112,20 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
     }
 
     function getMarketLimit(uint256 marketId) public view returns (uint256) {
-        return PlasmaVaultStorageLib.getMarketsLimits().marketLimits[marketId];
+        return PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[marketId];
     }
 
     function isMarketsLimitsActivated() public view returns (bool) {
         return AssetDistributionProtectionLib.isMarketsLimitsActivated();
     }
 
+    /// @notice Activates the markets limits protection, by default it is deactivated. After activation the limits
+    /// is setup for each market separately.
     function activateMarketsLimits() public restricted {
         AssetDistributionProtectionLib.activateMarketsLimits();
     }
 
+    /// @notice Deactivates the markets limits protection.
     function deactivateMarketsLimits() public restricted {
         AssetDistributionProtectionLib.deactivateMarketsLimits();
     }
