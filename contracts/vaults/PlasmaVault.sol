@@ -19,7 +19,7 @@ import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IRewardsManager} from "../managers/IRewardsManager.sol";
-import {PlasmaVaultAccessManager} from "../managers/PlasmaVaultAccessManager.sol";
+import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 
@@ -140,10 +140,6 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
     fallback() external {}
 
-    function isConsumingScheduledOp() public view override returns (bytes4) {
-        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
-    }
-
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls) external nonReentrant restricted {
         uint256 callsCount = calls.length;
@@ -173,11 +169,12 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         _addPerformanceFee(totalAssetsBefore);
     }
 
-    function claimRewards(FuseAction[] calldata calls) external nonReentrant restricted {
-        uint256 callsCount = calls.length;
-        for (uint256 i; i < callsCount; ++i) {
-            calls[i].fuse.functionDelegateCall(calls[i].data);
-        }
+    function transfer(address to, uint256 value) public override(IERC20, ERC20) virtual restricted returns (bool) {
+        return super.transfer(to, value);
+    }
+
+    function transferFrom(address from, address to, uint256 value) public override(IERC20, ERC20) virtual restricted returns (bool) {
+        return super.transferFrom(from, to, value);
     }
 
     function deposit(uint256 assets, address receiver) public override nonReentrant restricted returns (uint256) {
@@ -266,6 +263,13 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.redeem(shares, receiver, owner);
     }
 
+    function claimRewards(FuseAction[] calldata calls) external nonReentrant restricted {
+        uint256 callsCount = calls.length;
+        for (uint256 i; i < callsCount; ++i) {
+            calls[i].fuse.functionDelegateCall(calls[i].data);
+        }
+    }
+
     /// @notice Returns the total assets in the vault
     /// @dev value not take into account runtime accrued interest in the markets, and NOT take into account runtime accrued management fee
     /// @return total assets in the vault, represented in underlying token decimals
@@ -279,6 +283,10 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     /// @return total assets in the vault for the market, represented in underlying token decimals
     function totalAssetsInMarket(uint256 marketId) public view virtual returns (uint256) {
         return PlasmaVaultLib.getTotalAssetsInMarket(marketId);
+    }
+
+    function isConsumingScheduledOp() public view override returns (bytes4) {
+        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
     }
 
     /// @notice Returns the unrealized management fee in underlying token decimals
@@ -467,7 +475,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
             this.withdraw.selector == sig ||
             this.redeem.selector == sig
         ) {
-            (immediate, delay) = PlasmaVaultAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
+            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
         } else {
             (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller, address(this), sig);
         }

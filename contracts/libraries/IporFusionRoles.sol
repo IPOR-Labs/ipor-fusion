@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-/// @title Predefined roles used in the PlasmaVault contract and its perypheral contracts (managers, fuses, etc.)
+/// @title Predefined roles used in the IPOR Fusion protocol
 /// @notice For documentation purposes: When new roles are added by authorized property of PlasmaVault during runtime, they should be added and described here as well.
-library PlasmaVaultRoles {
+library IporFusionRoles {
     /// @dev Managed by the Admin
     uint64 public constant ADMIN_ROLE = 0;
 

@@ -6,7 +6,7 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 
-contract PlasmaVaultAccessManager is AccessManager {
+contract IporFusionAccessManager is AccessManager {
     error AccessManagedUnauthorized(address caller);
 
     bool private _customConsumingSchedule;
