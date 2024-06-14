@@ -18,7 +18,11 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(BASE_CURRENCY, BASE_CURRENCY_DECIMALS, address(0));
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
+            BASE_CURRENCY,
+            BASE_CURRENCY_DECIMALS,
+            address(0)
+        );
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
