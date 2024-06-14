@@ -280,7 +280,13 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     /// @return total assets in the vault, represented in underlying token decimals
     function totalAssets() public view virtual override returns (uint256) {
         uint256 grossTotalAssets = _getGrossTotalAssets();
-        return grossTotalAssets - _getUnrealizedManagementFee(grossTotalAssets);
+        uint256 unrealizedManagementFee = _getUnrealizedManagementFee(grossTotalAssets);
+        if (unrealizedManagementFee >= grossTotalAssets) {
+            return 0;
+        } else {
+            return grossTotalAssets - _getUnrealizedManagementFee(grossTotalAssets);
+        }
+
     }
 
     /// @notice Returns the total assets in the vault for a specific market
@@ -466,7 +472,11 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         }
 
         return
-            (totalAssets_ * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
+            Math.mulDiv(
+                Math.mulDiv(totalAssets_, blockTimestamp - feeData.lastUpdateTimestamp, 1e4),
+                feeData.feeInPercentage,
+                365 days
+            );
     }
 
     /**

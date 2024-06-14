@@ -9,32 +9,32 @@ library PlasmaVaultStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
-    0x24e02552e88772b8e8fd15f3e6699ba530635ffc6b52322da922b0b497a77300;
+        0x24e02552e88772b8e8fd15f3e6699ba530635ffc6b52322da922b0b497a77300;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultTotalAssetsInMarket")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_MARKET =
-    0x656f5ca8c676f20b936e991a840e1130bdd664385322f33b6642ec86729ee600;
+        0x656f5ca8c676f20b936e991a840e1130bdd664385322f33b6642ec86729ee600;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultMarketSubstrates")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_MARKET_SUBSTRATES =
-    0x78e40624004925a4ef6749756748b1deddc674477302d5b7fe18e5335cde3900;
+        0x78e40624004925a4ef6749756748b1deddc674477302d5b7fe18e5335cde3900;
 
     /// @notice List of fuses ass
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultFuses")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_FUSES =
-    0xb51560274e32ee3aa5950cd99ede1261a60520ae70eca2e5b2e0df1ab5340000;
+        0xb51560274e32ee3aa5950cd99ede1261a60520ae70eca2e5b2e0df1ab5340000;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_FUSES_ARRAY =
-    0x7e27ab4f0ce7a13bf94cb7667cbc77f39749d1cc36801f4d0f5d3bda3450e900;
+        0x7e27ab4f0ce7a13bf94cb7667cbc77f39749d1cc36801f4d0f5d3bda3450e900;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultBalanceFuses")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_BALANCE_FUSES =
-    0x150144dd6af711bac4392499881ec6649090601bd196a5ece5174c1400b1f700;
+        0x150144dd6af711bac4392499881ec6649090601bd196a5ece5174c1400b1f700;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultInstantWithdrawalFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_INSTANT_WITHDRAWAL_FUSES_ARRAY =
-    0xd243afa3da07e6bdec20fdd573a17f99411aa8a62ae64ca2c426d3a86ae0ac00;
+        0xd243afa3da07e6bdec20fdd573a17f99411aa8a62ae64ca2c426d3a86ae0ac00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PriceOracle")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PRICE_ORACLE = 0x13673b0e97c9c64fe16a7d0ebe40964562729b0147b60cb9a5240695a3704a00;
@@ -42,23 +42,23 @@ library PlasmaVaultStorageLib {
     /// @notice Every fuse has a list of parameters used for instant withdrawal
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultInstantWithdrawalFusesParams")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_INSTANT_WITHDRAWAL_FUSES_PARAMS =
-    0x45a704819a9dcb1bb5b8cff129eda642cf0e926a9ef104e27aa53f1d1fa47b00;
+        0x45a704819a9dcb1bb5b8cff129eda642cf0e926a9ef104e27aa53f1d1fa47b00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultFeeConfig")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_FEE_CONFIG =
-    0x78b5ce597bdb64d5aa30a201c7580beefe408ff13963b5d5f3dce2dc09e89c00;
+        0x78b5ce597bdb64d5aa30a201c7580beefe408ff13963b5d5f3dce2dc09e89c00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultPerformanceFeeData")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_PERFORMANCE_FEE_DATA =
-    0x9399757a27831a6cfb6cf4cd5c97a908a2f8f41e95a5952fbf83a04e05288400;
+        0x9399757a27831a6cfb6cf4cd5c97a908a2f8f41e95a5952fbf83a04e05288400;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultManagementFeeData")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
-    0x239dd7e43331d2af55e2a25a6908f3bcec2957025f1459db97dcdc37c0003f00;
+        0x239dd7e43331d2af55e2a25a6908f3bcec2957025f1459db97dcdc37c0003f00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.RewardsClaimManagerAddress")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant REWARDS_CLAIM_MANAGER_ADDRESS =
-    0x08c469289c3f85d9b575f3ae9be6831541ff770a06ea135aa343a4de7c962d00;
+        0x08c469289c3f85d9b575f3ae9be6831541ff770a06ea135aa343a4de7c962d00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.MarketLimits")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant MARKET_LIMITS = 0xc2733c187287f795e2e6e84d35552a190e774125367241c3e99e955f4babf000;
