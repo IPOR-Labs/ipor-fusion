@@ -18,7 +18,7 @@ import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol"
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
-import {IRewardsManager} from "../managers/IRewardsManager.sol";
+import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
 import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
@@ -169,11 +169,15 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         _addPerformanceFee(totalAssetsBefore);
     }
 
-    function transfer(address to, uint256 value) public override(IERC20, ERC20) virtual restricted returns (bool) {
+    function transfer(address to, uint256 value) public virtual override(IERC20, ERC20) restricted returns (bool) {
         return super.transfer(to, value);
     }
 
-    function transferFrom(address from, address to, uint256 value) public override(IERC20, ERC20) virtual restricted returns (bool) {
+    function transferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) public virtual override(IERC20, ERC20) restricted returns (bool) {
         return super.transferFrom(from, to, value);
     }
 
@@ -434,12 +438,12 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     }
 
     function _getGrossTotalAssets() internal view returns (uint256) {
-        address rewardsManagerAddress = getRewardsManagerAddress();
-        if (rewardsManagerAddress != address(0)) {
+        address rewardsClaimManagerAddress = getRewardsClaimManagerAddress();
+        if (rewardsClaimManagerAddress != address(0)) {
             return
                 IERC20(asset()).balanceOf(address(this)) +
                 PlasmaVaultLib.getTotalAssetsInAllMarkets() +
-                IRewardsManager(rewardsManagerAddress).balanceOf();
+                IRewardsClaimManager(rewardsClaimManagerAddress).balanceOf();
         }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }

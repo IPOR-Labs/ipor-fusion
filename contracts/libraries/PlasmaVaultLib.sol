@@ -177,11 +177,11 @@ library PlasmaVaultLib {
         emit PriceOracleChanged(priceOracle);
     }
 
-    function getRewardsManagerAddress() internal view returns (address) {
-        return PlasmaVaultStorageLib.getRewardsManagerAddress().value;
+    function getRewardsClaimManagerAddress() internal view returns (address) {
+        return PlasmaVaultStorageLib.getRewardsClaimManagerAddress().value;
     }
 
-    function setRewardsManagerAddress(address rewardsManagerAddress_) internal {
-        PlasmaVaultStorageLib.getRewardsManagerAddress().value = rewardsManagerAddress_;
+    function setRewardsClaimManagerAddress(address rewardsClaimManagerAddress_) internal {
+        PlasmaVaultStorageLib.getRewardsClaimManagerAddress().value = rewardsClaimManagerAddress_;
     }
 }

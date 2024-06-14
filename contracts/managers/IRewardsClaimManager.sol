@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import {VestingData} from "./ManagersStorageLib.sol";
 import {FuseAction} from "../vaults/PlasmaVault.sol";
 
-interface IRewardsManager {
-    /// @notice Retrieves the balance of linear vested underlying tokens owned by RewardsManager contract
+interface IRewardsClaimManager {
+    /// @notice Retrieves the balance of linear vested underlying tokens owned by RewardsClaimManager.sol contract
     /// @return balance The balance of the vesting data in uint256.
     /// @dev This method calculates the current balance based on the vesting schedule.
     /// If the `updateBalanceTimestamp` is zero, it returns zero. Otherwise, it calculates

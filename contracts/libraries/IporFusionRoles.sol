@@ -29,10 +29,13 @@ library IporFusionRoles {
     uint64 public constant MANAGEMENT_FEE_MANAGER_ROLE = 500;
 
     /// @dev Managed by the Atomist
-    uint64 public constant REWARDS_MANAGER_ROLE = 600;
+    uint64 public constant CLAIM_REWARDS_ROLE = 600;
 
     /// @dev Managed by the Atomist
-    uint64 public constant WHITELIST_ROLE = 700;
+    uint64 public constant TRANSFER_REWARDS_ROLE = 700;
+
+    /// @dev Managed by the Atomist
+    uint64 public constant WHITELIST_ROLE = 800;
 
     uint64 public constant PUBLIC_ROLE = type(uint64).max;
 }
