@@ -65,7 +65,7 @@ contract AaveV3BalanceFuseArbitrumTest is Test {
 
     function testShouldDecreaseBalanceWhenBorrowVariable() external iterateSupportedTokens {
         // given
-        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"));
+        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
         AaveV3BalanceFuseMock aaveV3Balances = new AaveV3BalanceFuseMock(
             1,
             address(AAVE_PRICE_ORACLE),

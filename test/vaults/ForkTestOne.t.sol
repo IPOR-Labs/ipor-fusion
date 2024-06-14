@@ -13,8 +13,8 @@ import {PriceAdapter} from "../../contracts/vaults/poc/PriceAdapter.sol";
 import {AaveV3BalanceFuse} from "../../contracts/vaults/poc/AaveV3BalanceFuse.sol";
 
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
-import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
+import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 
 contract ForkAmmGovernanceServiceTest is Test {
     address public constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -34,7 +34,7 @@ contract ForkAmmGovernanceServiceTest is Test {
 
     address internal priceAdapter;
 
-    IporPriceOracle private iporPriceOracleProxy;
+    PriceOracleMiddleware private priceOracleMiddlewareProxy;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19368505);
@@ -72,13 +72,13 @@ contract ForkAmmGovernanceServiceTest is Test {
 
         marketConfigs[0] = MarketSubstratesConfig({marketId: aaveV3MarketId, substrates: marketAssets});
 
-        IporPriceOracle implementation = new IporPriceOracle(
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             0x0000000000000000000000000000000000000348,
             8,
             0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
         );
 
-        iporPriceOracleProxy = IporPriceOracle(
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
@@ -90,13 +90,13 @@ contract ForkAmmGovernanceServiceTest is Test {
                     "ipvwstETH",
                     "IP PlasmaVault wstETH",
                     WST_ETH,
-                    address(iporPriceOracleProxy),
+                    address(priceOracleMiddlewareProxy),
                     alphas,
                     marketConfigs,
                     fuses,
                     balanceFuses,
                     FeeConfig(address(0x777), 0, address(0x555), 0),
-                    address(new PlasmaVaultAccessManager(msg.sender))
+                    address(new IporFusionAccessManager(msg.sender))
                 )
             )
         );

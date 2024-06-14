@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {IIporPriceOracle} from "../../priceOracle/IIporPriceOracle.sol";
+import {IPriceOracleMiddleware} from "../../priceOracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
@@ -14,11 +14,11 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
     uint256 private constant PRICE_DECIMALS = 8;
     uint256 public immutable MARKET_ID;
 
-    IIporPriceOracle public immutable PRICE_ORACLE;
+    IPriceOracleMiddleware public immutable PRICE_ORACLE;
 
     constructor(uint256 marketIdInput, address priceOracle) {
         MARKET_ID = marketIdInput;
-        PRICE_ORACLE = IIporPriceOracle(priceOracle);
+        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle);
     }
 
     function balanceOf(address plasmaVault) external view override returns (uint256) {

@@ -13,7 +13,7 @@ import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery
 import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib.sol";
 import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParamsLib.sol";
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
-import {IporPriceOracle} from "../../../contracts/priceOracle/IporPriceOracle.sol";
+import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
 
 contract MorphoBlueSupplyFuseTest is Test {
     using MorphoBalancesLib for IMorpho;
@@ -23,17 +23,17 @@ contract MorphoBlueSupplyFuseTest is Test {
 
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
-    IporPriceOracle private iporPriceOracleProxy;
+    PriceOracleMiddleware private priceOracleMiddlewareProxy;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
-        IporPriceOracle implementation = new IporPriceOracle(
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             0x0000000000000000000000000000000000000348,
             8,
             0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
         );
 
-        iporPriceOracleProxy = IporPriceOracle(
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
@@ -46,7 +46,7 @@ contract MorphoBlueSupplyFuseTest is Test {
         bytes32 marketIdBytes32 = 0xb1eac1c0f3ad13fb45b01beac8458c055c903b1bff8cb882346635996a774f77;
         Id marketId = Id.wrap(marketIdBytes32);
 
-        MorphoBlueBalanceFuse balanceFuse = new MorphoBlueBalanceFuse(1, address(iporPriceOracleProxy));
+        MorphoBlueBalanceFuse balanceFuse = new MorphoBlueBalanceFuse(1, address(priceOracleMiddlewareProxy));
         MorphoBlueSupplyFuse fuse = new MorphoBlueSupplyFuse(1);
         VaultMorphoBlueMock vaultMock = new VaultMorphoBlueMock(address(fuse), address(balanceFuse));
 

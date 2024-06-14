@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {Errors} from "../libraries/errors/Errors.sol";
 
 /// @title Storage
-library IporPriceOracleStorageLib {
+library PriceOracleMiddlewareStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.assetsSources")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant ASSETS_SOURCES = 0xd12d38cc8fce64bbd07b3f1346bd7dd01071b1a6feaf308124f3fc4f8df3c000;
 

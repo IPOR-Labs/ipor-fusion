@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 import {RewardsManager} from "../../contracts/managers/RewardsManager.sol";
 import {MockPlasmaVault} from "./MockPlasmaVault.sol";
 import {MockToken} from "./MockToken.sol";
@@ -15,7 +15,7 @@ contract RewardsManagerTest is Test {
     address private _userOne;
     address private _userTwo;
     MockPlasmaVault private _plasmaVault;
-    PlasmaVaultAccessManager private _accessManager;
+    IporFusionAccessManager private _accessManager;
     address private _underlyingToken;
     address private _rewardsToken;
     RewardsManager private _rewardsManager;
@@ -26,7 +26,7 @@ contract RewardsManagerTest is Test {
         _userTwo = address(0x3333);
         _underlyingToken = address(new MockToken("Underlying Token", "UT"));
         _rewardsToken = address(new MockToken("Rewards Token", "RT"));
-        _accessManager = new PlasmaVaultAccessManager(_atomist);
+        _accessManager = new IporFusionAccessManager(_atomist);
         _plasmaVault = new MockPlasmaVault(address(_underlyingToken));
 
         _rewardsManager = new RewardsManager(address(_accessManager), address(_plasmaVault));

@@ -10,9 +10,9 @@ import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV
 import {CompoundV3SupplyFuse} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
-import {IporPriceOracle} from "../../contracts/priceOracle/IporPriceOracle.sol";
+import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PlasmaVaultAccessManager} from "../../contracts/managers/PlasmaVaultAccessManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles, WHITELIST_DEPOSIT_ROLE} from "../RoleLib.sol";
 
 contract PlasmaVaultDepositTest is Test {
@@ -37,20 +37,20 @@ contract PlasmaVaultDepositTest is Test {
     uint256 public amount;
     address public userOne;
 
-    IporPriceOracle public iporPriceOracleProxy;
+    PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
         userOne = address(0x777);
 
-        IporPriceOracle implementation = new IporPriceOracle(
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             0x0000000000000000000000000000000000000348,
             8,
             0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
         );
 
-        iporPriceOracleProxy = IporPriceOracle(
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
@@ -177,14 +177,14 @@ contract PlasmaVaultDepositTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -230,14 +230,14 @@ contract PlasmaVaultDepositTest is Test {
 
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
-        PlasmaVaultAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(iporPriceOracleProxy),
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -271,7 +271,7 @@ contract PlasmaVaultDepositTest is Test {
         sig[0] = PlasmaVault.deposit.selector;
 
         vm.prank(atomist);
-        PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress()).setTargetFunctionRole(
+        IporFusionAccessManager(plasmaVault.getAccessManagerAddress()).setTargetFunctionRole(
             address(plasmaVault),
             sig,
             WHITELIST_DEPOSIT_ROLE
@@ -393,7 +393,7 @@ contract PlasmaVaultDepositTest is Test {
         sig[0] = PlasmaVault.mint.selector;
 
         vm.prank(atomist);
-        PlasmaVaultAccessManager(plasmaVault.getAccessManagerAddress()).setTargetFunctionRole(
+        IporFusionAccessManager(plasmaVault.getAccessManagerAddress()).setTargetFunctionRole(
             address(plasmaVault),
             sig,
             WHITELIST_DEPOSIT_ROLE
@@ -454,7 +454,7 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
-    function createAccessManager(UsersToRoles memory usersToRoles) public returns (PlasmaVaultAccessManager) {
+    function createAccessManager(UsersToRoles memory usersToRoles) public returns (IporFusionAccessManager) {
         if (usersToRoles.superAdmin == address(0)) {
             usersToRoles.superAdmin = atomist;
             usersToRoles.atomist = atomist;
@@ -465,7 +465,7 @@ contract PlasmaVaultDepositTest is Test {
         return RoleLib.createAccessManager(usersToRoles, vm);
     }
 
-    function setupRoles(PlasmaVault plasmaVault, PlasmaVaultAccessManager accessManager) public {
+    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);

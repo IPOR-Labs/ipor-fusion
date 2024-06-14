@@ -4,9 +4,10 @@ pragma solidity 0.8.20;
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
-import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
+import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
+import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
 import {AccessManaged} from "../managers/AccessManaged.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
@@ -82,8 +83,8 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
     }
 
     function setPriceOracle(address priceOracle) external restricted {
-        IIporPriceOracle oldPriceOracle = IIporPriceOracle(PlasmaVaultLib.getPriceOracle());
-        IIporPriceOracle newPriceOracle = IIporPriceOracle(priceOracle);
+        IPriceOracleMiddleware oldPriceOracle = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle());
+        IPriceOracleMiddleware newPriceOracle = IPriceOracleMiddleware(priceOracle);
         if (
             oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
             oldPriceOracle.BASE_CURRENCY_DECIMALS() != newPriceOracle.BASE_CURRENCY_DECIMALS()
@@ -104,6 +105,29 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
 
     function setRewardsManagerAddress(address rewardsManagerAddress_) public restricted {
         PlasmaVaultLib.setRewardsManagerAddress(rewardsManagerAddress_);
+    }
+
+    function setupMarketsLimits(MarketLimit[] calldata marketsLimits) external restricted {
+        AssetDistributionProtectionLib.setupMarketsLimits(marketsLimits);
+    }
+
+    function getMarketLimit(uint256 marketId) public view returns (uint256) {
+        return PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[marketId];
+    }
+
+    function isMarketsLimitsActivated() public view returns (bool) {
+        return AssetDistributionProtectionLib.isMarketsLimitsActivated();
+    }
+
+    /// @notice Activates the markets limits protection, by default it is deactivated. After activation the limits
+    /// is setup for each market separately.
+    function activateMarketsLimits() public restricted {
+        AssetDistributionProtectionLib.activateMarketsLimits();
+    }
+
+    /// @notice Deactivates the markets limits protection.
+    function deactivateMarketsLimits() public restricted {
+        AssetDistributionProtectionLib.deactivateMarketsLimits();
     }
 
     function _addFuse(address fuse) internal {

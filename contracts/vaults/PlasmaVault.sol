@@ -14,12 +14,13 @@ import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
-import {IIporPriceOracle} from "../priceOracle/IIporPriceOracle.sol";
+import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IRewardsManager} from "../managers/IRewardsManager.sol";
-import {PlasmaVaultAccessManager} from "../managers/PlasmaVaultAccessManager.sol";
+import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
+import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 
@@ -27,7 +28,7 @@ struct PlasmaVaultInitData {
     string assetName;
     string assetSymbol;
     address underlyingToken;
-    address iporPriceOracle;
+    address priceOracle;
     address[] alphas;
     MarketSubstratesConfig[] marketSubstratesConfigs;
     address[] fuses;
@@ -101,7 +102,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         ERC20(initData.assetName, initData.assetSymbol)
         PlasmaVaultGovernance(initData.accessManager)
     {
-        IIporPriceOracle priceOracle = IIporPriceOracle(initData.iporPriceOracle);
+        IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracle);
 
         if (priceOracle.BASE_CURRENCY() != USD) {
             revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
@@ -109,7 +110,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
 
-        PlasmaVaultLib.setPriceOracle(initData.iporPriceOracle);
+        PlasmaVaultLib.setPriceOracle(initData.priceOracle);
 
         for (uint256 i; i < initData.fuses.length; ++i) {
             _addFuse(initData.fuses[i]);
@@ -140,10 +141,6 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
     fallback() external {}
 
-    function isConsumingScheduledOp() public view override returns (bytes4) {
-        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
-    }
-
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls) external nonReentrant restricted {
         uint256 callsCount = calls.length;
@@ -173,11 +170,16 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         _addPerformanceFee(totalAssetsBefore);
     }
 
-    function claimRewards(FuseAction[] calldata calls) external nonReentrant restricted {
-        uint256 callsCount = calls.length;
-        for (uint256 i; i < callsCount; ++i) {
-            calls[i].fuse.functionDelegateCall(calls[i].data);
-        }
+    function transfer(address to, uint256 value) public virtual override(IERC20, ERC20) restricted returns (bool) {
+        return super.transfer(to, value);
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) public virtual override(IERC20, ERC20) restricted returns (bool) {
+        return super.transferFrom(from, to, value);
     }
 
     function deposit(uint256 assets, address receiver) public override nonReentrant restricted returns (uint256) {
@@ -266,6 +268,13 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return super.redeem(shares, receiver, owner);
     }
 
+    function claimRewards(FuseAction[] calldata calls) external nonReentrant restricted {
+        uint256 callsCount = calls.length;
+        for (uint256 i; i < callsCount; ++i) {
+            calls[i].fuse.functionDelegateCall(calls[i].data);
+        }
+    }
+
     /// @notice Returns the total assets in the vault
     /// @dev value not take into account runtime accrued interest in the markets, and NOT take into account runtime accrued management fee
     /// @return total assets in the vault, represented in underlying token decimals
@@ -279,6 +288,10 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     /// @return total assets in the vault for the market, represented in underlying token decimals
     function totalAssetsInMarket(uint256 marketId) public view virtual returns (uint256) {
         return PlasmaVaultLib.getTotalAssetsInMarket(marketId);
+    }
+
+    function isConsumingScheduledOp() public view override returns (bytes4) {
+        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
     }
 
     /// @notice Returns the unrealized management fee in underlying token decimals
@@ -379,13 +392,15 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     /// @param markets Array of market ids touched by the fuses in the FuseActions
     function _updateMarketsBalances(uint256[] memory markets) internal {
         uint256 wadBalanceAmountInUSD;
+        DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-
+        uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
-        uint256 underlyingAssetPrice = IIporPriceOracle(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
+        uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
 
-        for (uint256 i; i < markets.length; ++i) {
+        dataToCheck.marketsToCheck = new MarketToCheck[](marketsLength);
+        for (uint256 i; i < marketsLength; ++i) {
             if (markets[i] == 0) {
                 break;
             }
@@ -396,21 +411,22 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
                 balanceFuse.functionDelegateCall(abi.encodeWithSignature("balanceOf(address)", address(this))),
                 (uint256)
             );
-
+            dataToCheck.marketsToCheck[i].marketId = markets[i];
+            dataToCheck.marketsToCheck[i].balanceInMarket = IporMath.convertWadToAssetDecimals(
+                IporMath.division(wadBalanceAmountInUSD * 10 ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
+                decimals()
+            );
             deltasInUnderlying =
                 deltasInUnderlying +
-                PlasmaVaultLib.updateTotalAssetsInMarket(
-                    markets[i],
-                    IporMath.convertWadToAssetDecimals(
-                        IporMath.division(wadBalanceAmountInUSD * 10 ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
-                        decimals()
-                    )
-                );
+                PlasmaVaultLib.updateTotalAssetsInMarket(markets[i], dataToCheck.marketsToCheck[i].balanceInMarket);
         }
 
         if (deltasInUnderlying != 0) {
             PlasmaVaultLib.addToTotalAssetsInAllMarkets(deltasInUnderlying);
         }
+
+        dataToCheck.totalBalanceInVault = _getGrossTotalAssets();
+        AssetDistributionProtectionLib.checkLimits(dataToCheck);
     }
 
     function _checkIfExistsMarket(uint256[] memory markets, uint256 marketId) internal pure returns (bool exists) {
@@ -436,7 +452,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
 
-    function _getUnrealizedManagementFee(uint256 totalAssets) internal view returns (uint256) {
+    function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
 
         uint256 blockTimestamp = block.timestamp;
@@ -450,7 +466,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         }
 
         return
-            (totalAssets * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
+            (totalAssets_ * (blockTimestamp - feeData.lastUpdateTimestamp) * feeData.feeInPercentage) / 1e4 / 365 days;
     }
 
     /**
@@ -467,7 +483,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
             this.withdraw.selector == sig ||
             this.redeem.selector == sig
         ) {
-            (immediate, delay) = PlasmaVaultAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
+            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller, address(this), sig);
         } else {
             (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller, address(this), sig);
         }

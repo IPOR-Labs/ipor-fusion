@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
@@ -6,7 +6,7 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 
-contract PlasmaVaultAccessManager is AccessManager {
+contract IporFusionAccessManager is AccessManager {
     error AccessManagedUnauthorized(address caller);
 
     bool private _customConsumingSchedule;

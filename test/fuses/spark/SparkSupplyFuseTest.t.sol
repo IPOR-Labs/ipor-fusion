@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {VaultSparkMock} from "./VaultSparkMock.sol";
-import {IporPriceOracle} from "../../../contracts/priceOracle/IporPriceOracle.sol";
+import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {SDaiPriceFeed} from "../../../contracts/priceOracle/priceFeed/SDaiPriceFeed.sol";
 
 import {SparkBalanceFuse} from "../../../contracts/fuses/spark/SparkBalanceFuse.sol";
@@ -18,17 +18,17 @@ contract SparkSupplyFuseTest is Test {
     address private constant SDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
     address public constant OWNER = 0xD92E9F039E4189c342b4067CC61f5d063960D248;
 
-    IporPriceOracle private iporPriceOracleProxy;
+    PriceOracleMiddleware private priceOracleMiddlewareProxy;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
-        IporPriceOracle implementation = new IporPriceOracle(
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             0x0000000000000000000000000000000000000348,
             8,
             0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
         );
 
-        iporPriceOracleProxy = IporPriceOracle(
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
 
@@ -39,14 +39,14 @@ contract SparkSupplyFuseTest is Test {
         sources[0] = address(priceFeed);
 
         vm.prank(OWNER);
-        iporPriceOracleProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
     }
 
     function testShouldBeAbleToSupplyDaiToSpark() external {
         // given
         // sDAI/DAI
 
-        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1, address(iporPriceOracleProxy));
+        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1, address(priceOracleMiddlewareProxy));
         SparkSupplyFuse fuse = new SparkSupplyFuse(1);
         VaultSparkMock vaultMock = new VaultSparkMock(address(fuse), address(balanceFuse));
 
@@ -78,7 +78,7 @@ contract SparkSupplyFuseTest is Test {
         // given
         // sDAI/DAI
 
-        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1, address(iporPriceOracleProxy));
+        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1, address(priceOracleMiddlewareProxy));
         SparkSupplyFuse fuse = new SparkSupplyFuse(1);
         VaultSparkMock vaultMock = new VaultSparkMock(address(fuse), address(balanceFuse));
 
