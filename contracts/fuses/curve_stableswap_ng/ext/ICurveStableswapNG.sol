@@ -8,6 +8,12 @@ pragma solidity 0.8.20;
 
 interface ICurveStableswapNG {
     /**
+     * @dev Return the number of coins in the pool
+     * @return Number of coins in the pool
+     */
+    function N_COINS() external view returns (uint256);
+
+    /**
      * @dev Return the coin address at index i
      * @param i Index of the coin
      * @return Address of the coin
