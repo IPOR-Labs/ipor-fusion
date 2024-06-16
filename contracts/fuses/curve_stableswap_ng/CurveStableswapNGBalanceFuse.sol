@@ -7,6 +7,7 @@ import {IMarketBalanceFuse} from "./../IMarketBalanceFuse.sol";
 import {IporMath} from "./../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
 import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
+import {IPriceOracleMiddleware} from "./../../priceOracle/IPriceOracleMiddleware.sol";
 
 contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
@@ -14,11 +15,11 @@ contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
     uint256 private constant PRICE_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
-    ICurveStableswapNG public immutable CURVE_STABLESWAP_NG;
+    IPriceOracleMiddleware public immutable PRICE_ORACLE;
 
-    constructor(uint256 marketIdInput, address curveStableswapNG) {
+    constructor(uint256 marketIdInput, address priceOracle) {
         MARKET_ID = marketIdInput;
-        CURVE_STABLESWAP_NG = ICurveStableswapNG(curveStableswapNG);
+        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle);
     }
 
     function balanceOf(address plasmaVault) external view override returns (uint256) {
@@ -36,7 +37,7 @@ contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
             asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             // TODO Currently vulnerable to donation-style attacks for rebasing tokens
             balance += IporMath.convertToWad(
-                ERC20(asset).balanceOf(plasmaVault) * CURVE_STABLESWAP_NG.get_virtual_price(),
+                ERC20(asset).balanceOf(plasmaVault) * PRICE_ORACLE.getAssetPrice(asset),
                 ERC20(asset).decimals() + PRICE_DECIMALS
             );
         }
