@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {CurveStableswapNGSupplyFuse, CurveStableswapNGSupplyFuseEnterData, CurveStableswapNGSupplyFuseExitData, CurveStableswapNGSupplyFuseExitOneCoinData} from "../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSupplyFuse.sol";
+import {CurveStableswapNGSupplyFuse, CurveStableswapNGSupplyFuseEnterData, CurveStableswapNGSupplyFuseExitData} from "../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 
 contract CurveStableswapNGSupplyFuseMock {
@@ -33,13 +33,6 @@ contract CurveStableswapNGSupplyFuseMock {
     function exit(
         //solhint-disable-next-line
         CurveStableswapNGSupplyFuseExitData memory data
-    ) external {
-        address(fuse).functionDelegateCall(msg.data);
-    }
-
-    function exitOneCoin(
-        //solhint-disable-next-line
-        CurveStableswapNGSupplyFuseExitOneCoinData memory data
     ) external {
         address(fuse).functionDelegateCall(msg.data);
     }
