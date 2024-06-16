@@ -21,17 +21,6 @@ struct CurveStableswapNGSupplyFuseEnterData {
 struct CurveStableswapNGSupplyFuseExitData {
     /// @notice Amount of LP tokens to burn
     uint256 burnAmount;
-    /// @notice Minimum amounts of coins to receive from the burn
-    uint256[] minAmounts;
-    /// @notice Address to receive the withdrawn coins (msg.sender)
-    address receiver;
-    /// @notice Flag to claim admin fees (True)
-    bool claimAdminFees;
-}
-
-struct CurveStableswapNGSupplyFuseExitOneCoinData {
-    /// @notice Amount of LP tokens to burn
-    uint256 burnAmount;
     /// @notice Index of the coin to receive
     int128 coinIndex;
     /// @notice Minimum amount of the coin to receive
@@ -74,9 +63,10 @@ contract CurveStableswapNGSupplyFuse is IFuse {
 
     bytes4 private constant EXIT_SELECTOR = bytes4(keccak256("exit(CurveStableswapNGSupplyFuseExitData)"));
     bytes4 private constant EXIT_ONE_COIN_SELECTOR =
-        bytes4(keccak256("exitOneCoin(CurveStableswapNGSupplyFuseExitOneCoinData)"));
+        bytes4(keccak256("exitOneCoin(CurveStableswapNGSupplyFuseExitData)"));
 
     error CurveStableswapNGSupplyFuseUnsupportedAsset(address asset, string errorCode);
+    error CurveStableswapNGSupplyFuseUnexpectedNumberOfTokens();
 
     constructor(uint256 marketIdInput, address curveStableswapNGInput) {
         VERSION = address(this);
@@ -93,49 +83,31 @@ contract CurveStableswapNGSupplyFuse is IFuse {
         _enter(data);
     }
 
-    function exit(bytes calldata data) external override {
-        if (data.length == 0) {
-            revert Errors.InvalidInput();
-        }
-
-        bytes4 selector;
-        assembly {
-            selector := calldataload(data.offset)
-        }
-
-        if (selector == EXIT_SELECTOR) {
-            _exit(abi.decode(data[4:], (CurveStableswapNGSupplyFuseExitData)));
-        } else if (selector == EXIT_ONE_COIN_SELECTOR) {
-            _exitOneCoin(abi.decode(data[4:], (CurveStableswapNGSupplyFuseExitOneCoinData)));
-        } else {
-            revert Errors.InvalidInput();
-        }
-    }
-
     function _enter(CurveStableswapNGSupplyFuseEnterData memory data) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(CURVE_STABLESWAP_NG))) {
             revert CurveStableswapNGSupplyFuseUnsupportedAsset(address(CURVE_STABLESWAP_NG), Errors.UNSUPPORTED_ASSET);
         }
-        uint256 len = data.amounts.length;
-        for (uint256 i; i < len; ++i) {
-            ERC20(CURVE_STABLESWAP_NG.coins(i)).forceApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
+        ERC20[] memory underlyingTokens = _getUnderlyingTokens(data.amounts.length);
+        for (uint256 i; i < data.amounts.length; ++i) {
+            underlyingTokens[i].forceApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
         }
         CURVE_STABLESWAP_NG.add_liquidity(data.amounts, data.minMintAmount, data.receiver);
         emit CurveSupplyStableswapNGSupplyEnterFuse(VERSION, data.amounts, data.minMintAmount, data.receiver);
     }
 
-    function _exit(CurveStableswapNGSupplyFuseExitData memory data) internal {
-        CURVE_STABLESWAP_NG.remove_liquidity(data.burnAmount, data.minAmounts, data.receiver, data.claimAdminFees);
-        emit CurveSupplyStableswapNGSupplyExitFuse(
-            VERSION,
-            data.burnAmount,
-            data.minAmounts,
-            data.receiver,
-            data.claimAdminFees
-        );
+    function exit(bytes calldata data) external override {
+        _exit(abi.decode(data, (CurveStableswapNGSupplyFuseExitData)));
     }
 
-    function _exitOneCoin(CurveStableswapNGSupplyFuseExitOneCoinData memory data) internal {
+    /// @dev technical method to generate ABI
+    function exit(CurveStableswapNGSupplyFuseExitData calldata data) external {
+        _exit(data);
+    }
+
+    function _exit(CurveStableswapNGSupplyFuseExitData memory data) internal {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(CURVE_STABLESWAP_NG))) {
+            revert CurveStableswapNGSupplyFuseUnsupportedAsset(address(CURVE_STABLESWAP_NG), Errors.UNSUPPORTED_ASSET);
+        }
         CURVE_STABLESWAP_NG.remove_liquidity_one_coin(data.burnAmount, data.coinIndex, data.minReceived, data.receiver);
         emit CurveSupplyStableswapNGSupplyExitOneCoinFuse(
             VERSION,
@@ -144,5 +116,19 @@ contract CurveStableswapNGSupplyFuse is IFuse {
             data.minReceived,
             data.receiver
         );
+    }
+
+    function _getUnderlyingTokens(uint256 expectedNumberTokens) internal view returns (ERC20[] memory) {
+        ERC20[] memory underlyingTokens = new ERC20[](expectedNumberTokens);
+        /// @dev we expect this to revert if expectedNumberTokens is greater than N_COINS
+        for (uint256 i; i < expectedNumberTokens; ++i) {
+            underlyingTokens[i] = ERC20(CURVE_STABLESWAP_NG.coins(i));
+        }
+        try CURVE_STABLESWAP_NG.coins(expectedNumberTokens) {
+            revert CurveStableswapNGSupplyFuseUnexpectedNumberOfTokens();
+        } catch {
+            /// @dev we expect this to revert, so do nothing
+        }
+        return underlyingTokens;
     }
 }
