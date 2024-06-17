@@ -70,6 +70,14 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
         PlasmaVaultLib.configureInstantWithdrawalFuses(fuses);
     }
 
+    function getInstantWithdrawalFuses() external view returns (address[] memory) {
+        return PlasmaVaultLib.getInstantWithdrawalFuses();
+    }
+
+    function getInstantWithdrawalFusesParams(address fuse, uint256 index) external view returns (bytes32[] memory) {
+        return PlasmaVaultLib.getInstantWithdrawalFusesParams(fuse, index);
+    }
+
     function addFuses(address[] calldata fuses) external restricted {
         for (uint256 i; i < fuses.length; ++i) {
             FusesLib.addFuse(fuses[i]);

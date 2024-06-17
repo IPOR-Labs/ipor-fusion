@@ -13,6 +13,6 @@ remappings = [
     'forge-std/=lib/forge-std/src/',
     'foundry-random=lib/foundry-random/src/'
 ]
-optimizer_runs = 10000
+optimizer_runs = 3000
 ignored_error_codes = [5667, 9302, 2462, 5574, 8760]
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
