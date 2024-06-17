@@ -38,7 +38,7 @@ library IporFusionRoles {
     uint64 public constant WHITELIST_ROLE = 800;
 
     /// @dev Managed by the Atomist
-    uint64 public constant CONFIG_INSTANT_WITHDRAWAl_FUSES_ROLE = 900;
+    uint64 public constant CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE = 900;
 
     uint64 public constant PUBLIC_ROLE = type(uint64).max;
 }

@@ -286,7 +286,6 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         } else {
             return grossTotalAssets - _getUnrealizedManagementFee(grossTotalAssets);
         }
-
     }
 
     /// @notice Returns the total assets in the vault for a specific market
@@ -319,6 +318,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         uint256 fee = Math.mulDiv(totalAssetsAfter - totalAssetsBefore, feeData.feeInPercentage, 1e4);
 
         _mint(feeData.feeManager, convertToShares(fee));
+
     }
 
     function _realizeManagementFee() internal {
@@ -473,9 +473,9 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
 
         return
             Math.mulDiv(
-                Math.mulDiv(totalAssets_, blockTimestamp - feeData.lastUpdateTimestamp, 1e4),
+                Math.mulDiv(totalAssets_, blockTimestamp - feeData.lastUpdateTimestamp, 365 days),
                 feeData.feeInPercentage,
-                365 days
+                1e4 /// @dev feeInPercentage is in percentage with 2 decimals, example 10000 is 100%
             );
     }
 

@@ -74,8 +74,8 @@ library PlasmaVaultLib {
     }
 
     /// @notice Configures the management fee data like the fee manager and the fee in percentage
-    /// @param feeManager The address of the fee manager reponsible for managing the management fee
-    /// @param feeInPercentage The fee in percentage, represented in 4 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
+    /// @param feeManager The address of the fee manager responsible for managing the management fee
+    /// @param feeInPercentage The fee in percentage, represented in 2 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
     function configureManagementFee(address feeManager, uint256 feeInPercentage) internal {
         if (feeManager == address(0)) {
             revert Errors.WrongAddress();
@@ -102,8 +102,8 @@ library PlasmaVaultLib {
     }
 
     /// @notice Configures the performance fee data like the fee manager and the fee in percentage
-    /// @param feeManager The address of the fee manager reponsible for managing the performance fee
-    /// @param feeInPercentage The fee in percentage, represented in 4 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
+    /// @param feeManager The address of the fee manager responsible for managing the performance fee
+    /// @param feeInPercentage The fee in percentage, represented in 2 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
     function configurePerformanceFee(address feeManager, uint256 feeInPercentage) internal {
         if (feeManager == address(0)) {
             revert Errors.WrongAddress();
