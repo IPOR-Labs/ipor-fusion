@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
-import {CurveStableswapNGSingleSideSupplyFuseMock} from "./CurveStableswapNGSinglesideSupplyFuseMock.t.sol";
+import {CurveStableswapNGSingleSideSupplyFuseMock} from "./CurveStableswapNGSingleSideSupplyFuseMock.t.sol";
 
 contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     struct SupportedToken {
