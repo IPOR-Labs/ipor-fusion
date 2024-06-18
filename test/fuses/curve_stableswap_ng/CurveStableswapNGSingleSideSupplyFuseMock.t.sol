@@ -2,16 +2,16 @@
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {CurveStableswapNGSupplyFuse, CurveStableswapNGSupplyFuseEnterData, CurveStableswapNGSupplyFuseExitData} from "../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSupplyFuse.sol";
+import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 
-contract CurveStableswapNGSupplyFuseMock {
+contract CurveStableswapNGSingleSideSupplyFuseMock {
     using Address for address;
 
-    CurveStableswapNGSupplyFuse public fuse;
+    CurveStableswapNGSingleSideSupplyFuse public fuse;
 
     constructor(address fuseInput) {
-        fuse = CurveStableswapNGSupplyFuse(fuseInput);
+        fuse = CurveStableswapNGSingleSideSupplyFuse(fuseInput);
     }
     //solhint-disable-next-line
     function enter(bytes calldata data) external {
@@ -20,7 +20,7 @@ contract CurveStableswapNGSupplyFuseMock {
 
     function enter(
         //solhint-disable-next-line
-        CurveStableswapNGSupplyFuseEnterData memory data
+        CurveStableswapNGSingleSideSupplyFuseEnterData memory data
     ) external returns (bytes memory executionStatus) {
         address(fuse).functionDelegateCall(msg.data);
     }
@@ -32,7 +32,7 @@ contract CurveStableswapNGSupplyFuseMock {
 
     function exit(
         //solhint-disable-next-line
-        CurveStableswapNGSupplyFuseExitData memory data
+        CurveStableswapNGSingleSideSupplyFuseExitData memory data
     ) external {
         address(fuse).functionDelegateCall(msg.data);
     }

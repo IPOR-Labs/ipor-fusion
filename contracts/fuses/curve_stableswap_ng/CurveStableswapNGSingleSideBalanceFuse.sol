@@ -3,13 +3,14 @@ pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IMarketBalanceFuse} from "./../IMarketBalanceFuse.sol";
 import {IporMath} from "./../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
 import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
 import {IPriceOracleMiddleware} from "./../../priceOracle/IPriceOracleMiddleware.sol";
 
-contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
+contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
     uint256 private constant PRICE_DECIMALS = 8;
@@ -31,14 +32,26 @@ contract CurveStableswapNGBalanceFuse is IMarketBalanceFuse {
         }
 
         uint256 balance;
-        address asset;
+        uint256 withdrawTokenAmount;
+        address lpTokenAddress; // Curve LP token
+        int128 indexCoin;
 
         for (uint256 i; i < len; ++i) {
-            asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
-            // TODO Currently vulnerable to donation-style attacks for rebasing tokens
+            lpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
+            for (uint256 j; j < ICurveStableswapNG(lpTokenAddress).N_COINS(); ++j) {
+                if (ICurveStableswapNG(lpTokenAddress).coins(j) == IERC4626(plasmaVault).asset()) {
+                    require(j < 2 ** 127, "Index exceeds int128 range");
+                    indexCoin = int128(int256(j));
+                    break;
+                }
+            }
+            withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
+                ERC20(lpTokenAddress).balanceOf(plasmaVault),
+                indexCoin
+            );
             balance += IporMath.convertToWad(
-                ERC20(asset).balanceOf(plasmaVault) * PRICE_ORACLE.getAssetPrice(asset),
-                ERC20(asset).decimals() + PRICE_DECIMALS
+                withdrawTokenAmount * PRICE_ORACLE.getAssetPrice(IERC4626(plasmaVault).asset()),
+                ERC20(IERC4626(plasmaVault).asset()).decimals() + PRICE_DECIMALS
             );
         }
         return balance;

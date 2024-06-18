@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {CurveStableswapNGBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGBalanceFuse.sol";
+import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
 import {PlasmaVaultStorageLib} from "./../../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 
-contract CurveStableswapNGBalanceFuseMock is CurveStableswapNGBalanceFuse {
+contract CurveStableswapNGSingleSideBalanceFuseMock is CurveStableswapNGSingleSideBalanceFuse {
     constructor(
         uint256 marketIdInput,
         address curveStableswapNGPriceOracle
-    ) CurveStableswapNGBalanceFuse(marketIdInput, curveStableswapNGPriceOracle) {}
+    ) CurveStableswapNGSingleSideBalanceFuse(marketIdInput, curveStableswapNGPriceOracle) {}
 
     function updateMarketConfiguration(address[] memory supportedAssets) public {
         PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = PlasmaVaultStorageLib
