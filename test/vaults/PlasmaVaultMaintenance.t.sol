@@ -17,6 +17,7 @@ import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorag
 import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
+import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -1824,5 +1825,374 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         assertTrue(isClosedBefore, "Market should be closed before");
         assertFalse(isClosedAfter, "Market should not be closed after");
+    }
+
+    function testShouldBeAbleToMakePlasmaVaultPublic() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.deposit.selector;
+        sig[1] = PlasmaVault.mint.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        bool canDepositBefore;
+        bool canMintBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositBefore = true;
+        } catch {
+            canDepositBefore = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintBefore = true;
+        } catch {
+            canMintBefore = false;
+        }
+        vm.stopPrank();
+
+        // when
+        vm.prank(usersToRoles.atomist);
+        accessManager.convertToPublicVault(address(plasmaVault));
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+        vm.stopPrank();
+
+        assertFalse(canDepositBefore, "User should not be able to deposit before");
+        assertFalse(canMintBefore, "User should not be able to mint before");
+        assertTrue(canDepositAfter, "User should be able to deposit after");
+        assertTrue(canMintAfter, "User should be able to mint after");
+    }
+
+    function testShouldNotBeAbleToMakePlasmaVaultPublicWhenNotAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.deposit.selector;
+        sig[1] = PlasmaVault.mint.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        bool canDepositBefore;
+        bool canMintBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositBefore = true;
+        } catch {
+            canDepositBefore = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintBefore = true;
+        } catch {
+            canMintBefore = false;
+        }
+        vm.stopPrank();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
+        // when
+        vm.prank(user);
+        vm.expectRevert(error);
+        accessManager.convertToPublicVault(address(plasmaVault));
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+        vm.stopPrank();
+
+        assertFalse(canDepositBefore, "User should not be able to deposit before");
+        assertFalse(canMintBefore, "User should not be able to mint before");
+        assertFalse(canDepositAfter, "User should not be able to deposit after");
+        assertFalse(canMintAfter, "User should not be able to mint after");
+    }
+
+    function testShouldBeAbleToEnableTransferShares() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.transfer.selector;
+        sig[1] = PlasmaVault.transferFrom.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        bool canTransferBefore;
+        bool canTransferFromBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        ERC20(address(plasmaVault)).approve(address(this), 100e18);
+        plasmaVault.deposit(50e18, user);
+
+        try plasmaVault.transfer(address(this), 10e18) {
+            canTransferBefore = true;
+        } catch {
+            canTransferBefore = false;
+        }
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canTransferFromBefore = true;
+        } catch {
+            canTransferFromBefore = false;
+        }
+
+        // when
+        vm.prank(usersToRoles.atomist);
+        accessManager.enableTransferShares(address(plasmaVault));
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.transfer(address(this), 10e18) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+
+        assertFalse(canTransferBefore, "User should not be able to deposit before");
+        assertFalse(canTransferFromBefore, "User should not be able to mint before");
+        assertTrue(canDepositAfter, "User should be able to deposit after");
+        assertTrue(canMintAfter, "User should be able to mint after");
+    }
+
+    function testShouldNotBeAbleToEnableTransferSharesWhenNotAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.transfer.selector;
+        sig[1] = PlasmaVault.transferFrom.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        bool canTransferBefore;
+        bool canTransferFromBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        ERC20(address(plasmaVault)).approve(address(this), 100e18);
+        plasmaVault.deposit(50e18, user);
+
+        try plasmaVault.transfer(address(this), 10e18) {
+            canTransferBefore = true;
+        } catch {
+            canTransferBefore = false;
+        }
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canTransferFromBefore = true;
+        } catch {
+            canTransferFromBefore = false;
+        }
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
+
+        // when
+        vm.prank(user);
+        vm.expectRevert(error);
+        accessManager.enableTransferShares(address(plasmaVault));
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.transfer(address(this), 10e18) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+
+        assertFalse(canTransferBefore, "User should not be able to deposit before");
+        assertFalse(canTransferFromBefore, "User should not be able to mint before");
+        assertFalse(canDepositAfter, "User should not be able to deposit after");
+        assertFalse(canMintAfter, "User should not be able to mint after");
     }
 }
