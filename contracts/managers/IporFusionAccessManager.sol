@@ -5,6 +5,7 @@ import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManage
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
+import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 
 contract IporFusionAccessManager is AccessManager {
     error AccessManagedUnauthorized(address caller);
@@ -29,6 +30,16 @@ contract IporFusionAccessManager is AccessManager {
 
     function updateTargetClosed(address target, bool closed) public restricted {
         _setTargetClosed(target, closed);
+    }
+
+    function makeVaultPublic(address vault) public restricted {
+        _setTargetFunctionRole(vault, PlasmaVault.mint.selector, PUBLIC_ROLE);
+        _setTargetFunctionRole(vault, PlasmaVault.deposit.selector, PUBLIC_ROLE);
+    }
+
+    function enableTransferShears(address vault) public restricted {
+        _setTargetFunctionRole(vault, PlasmaVault.transfer.selector, PUBLIC_ROLE);
+        _setTargetFunctionRole(vault, PlasmaVault.transferFrom.selector, PUBLIC_ROLE);
     }
 
     function setRedemptionDelay(uint256 delay_) external restricted {

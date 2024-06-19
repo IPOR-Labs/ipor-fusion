@@ -104,8 +104,10 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, atomistsSig, IporFusionRoles.ATOMIST_ROLE);
 
-        bytes4[] memory atomistsSig2 = new bytes4[](1);
+        bytes4[] memory atomistsSig2 = new bytes4[](3);
         atomistsSig2[0] = IporFusionAccessManager.setRedemptionDelay.selector;
+        atomistsSig2[1] = IporFusionAccessManager.enableTransferShears.selector;
+        atomistsSig2[2] = IporFusionAccessManager.makeVaultPublic.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(address(accessManager_), atomistsSig2, IporFusionRoles.ATOMIST_ROLE);
