@@ -27,12 +27,8 @@ contract IporFusionAccessManager is AccessManager {
         return super.canCall(caller, target, selector);
     }
 
-    function canCall(
-        address caller,
-        address target,
-        bytes4 selector
-    ) public view override returns (bool immediate, uint32 delay) {
-        return super.canCall(caller, target, selector);
+    function updateTargetClosed(address target, bool closed) public restricted {
+        _setTargetClosed(target, closed);
     }
 
     function setRedemptionDelay(uint256 delay_) external restricted {

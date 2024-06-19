@@ -1693,4 +1693,136 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertEq(limitBefore, 0, "Limit before should be equal to 0");
         assertEq(limitAfter, 1e17, "Limit after should be equal to 1e17");
     }
+
+    function testShouldNotBeAbleToCloseMarketWhenUserHasNoGuardianRole() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", alpha);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(alpha);
+        accessManager.updateTargetClosed(address(plasmaVault), true);
+    }
+
+    function testShouldBeAbleToCloseMarket() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bool isClosedBefore = accessManager.isTargetClosed(address(plasmaVault));
+
+        // when
+        vm.prank(atomist);
+        accessManager.updateTargetClosed(address(plasmaVault), true);
+
+        // then
+        bool isClosedAfter = accessManager.isTargetClosed(address(plasmaVault));
+
+        assertFalse(isClosedBefore, "Market should not be closed before");
+        assertTrue(isClosedAfter, "Market should be closed after");
+    }
+
+    function testShouldBeAbleToOpenMarket() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+        vm.prank(atomist);
+        accessManager.updateTargetClosed(address(plasmaVault), true);
+
+        bool isClosedBefore = accessManager.isTargetClosed(address(plasmaVault));
+
+        // when
+        vm.prank(atomist);
+        accessManager.updateTargetClosed(address(plasmaVault), false);
+
+        // then
+        bool isClosedAfter = accessManager.isTargetClosed(address(plasmaVault));
+
+        assertTrue(isClosedBefore, "Market should be closed before");
+        assertFalse(isClosedAfter, "Market should not be closed after");
+    }
 }

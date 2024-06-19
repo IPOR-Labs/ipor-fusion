@@ -318,7 +318,6 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
         uint256 fee = Math.mulDiv(totalAssetsAfter - totalAssetsBefore, feeData.feeInPercentage, 1e4);
 
         _mint(feeData.feeManager, convertToShares(fee));
-
     }
 
     function _realizeManagementFee() internal {

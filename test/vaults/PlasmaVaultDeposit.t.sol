@@ -13,7 +13,8 @@ import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePool
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
-import {RoleLib, UsersToRoles, WHITELIST_DEPOSIT_ROLE} from "../RoleLib.sol";
+import {RoleLib, UsersToRoles} from "../RoleLib.sol";
+import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -274,7 +275,7 @@ contract PlasmaVaultDepositTest is Test {
         IporFusionAccessManager(plasmaVault.getAccessManagerAddress()).setTargetFunctionRole(
             address(plasmaVault),
             sig,
-            WHITELIST_DEPOSIT_ROLE
+            IporFusionRoles.WHITELIST_ROLE
         );
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", userOne);
@@ -396,7 +397,7 @@ contract PlasmaVaultDepositTest is Test {
         IporFusionAccessManager(plasmaVault.getAccessManagerAddress()).setTargetFunctionRole(
             address(plasmaVault),
             sig,
-            WHITELIST_DEPOSIT_ROLE
+            IporFusionRoles.WHITELIST_ROLE
         );
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", userOne);
