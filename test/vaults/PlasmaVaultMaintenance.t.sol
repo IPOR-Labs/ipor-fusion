@@ -1890,7 +1890,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // when
         vm.prank(usersToRoles.atomist);
-        accessManager.makeVaultPublic(address(plasmaVault));
+        accessManager.convertToPublicVault(address(plasmaVault));
 
         // then
         bool canDepositAfter;
@@ -1981,7 +1981,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         vm.prank(user);
         vm.expectRevert(error);
-        accessManager.makeVaultPublic(address(plasmaVault));
+        accessManager.convertToPublicVault(address(plasmaVault));
 
         // then
         bool canDepositAfter;
@@ -2007,7 +2007,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertFalse(canMintAfter, "User should not be able to mint after");
     }
 
-    function testShouldBeAbleToEnableTransferShears() public {
+    function testShouldBeAbleToEnableTransferShares() public {
         // given
         address underlyingToken = USDC;
 
@@ -2073,7 +2073,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // when
         vm.prank(usersToRoles.atomist);
-        accessManager.enableTransferShears(address(plasmaVault));
+        accessManager.enableTransferShares(address(plasmaVault));
 
         // then
         bool canDepositAfter;
@@ -2100,7 +2100,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertTrue(canMintAfter, "User should be able to mint after");
     }
 
-    function testShouldNotBeAbleToEnableTransferShearsWhenNotAtomist() public {
+    function testShouldNotBeAbleToEnableTransferSharesWhenNotAtomist() public {
         // given
         address underlyingToken = USDC;
 
@@ -2169,7 +2169,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         vm.prank(user);
         vm.expectRevert(error);
-        accessManager.enableTransferShears(address(plasmaVault));
+        accessManager.enableTransferShares(address(plasmaVault));
 
         // then
         bool canDepositAfter;

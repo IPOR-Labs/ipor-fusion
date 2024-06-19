@@ -32,12 +32,12 @@ contract IporFusionAccessManager is AccessManager {
         _setTargetClosed(target, closed);
     }
 
-    function makeVaultPublic(address vault) public restricted {
+    function convertToPublicVault(address vault) public restricted {
         _setTargetFunctionRole(vault, PlasmaVault.mint.selector, PUBLIC_ROLE);
         _setTargetFunctionRole(vault, PlasmaVault.deposit.selector, PUBLIC_ROLE);
     }
 
-    function enableTransferShears(address vault) public restricted {
+    function enableTransferShares(address vault) public restricted {
         _setTargetFunctionRole(vault, PlasmaVault.transfer.selector, PUBLIC_ROLE);
         _setTargetFunctionRole(vault, PlasmaVault.transferFrom.selector, PUBLIC_ROLE);
     }
