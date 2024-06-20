@@ -2236,16 +2236,16 @@ contract PlasmaVaultMaintenanceTest is Test {
         timeLocks[0] = 100;
         timeLocks[1] = 200;
 
-        uint256 alphaTimeLockBefore = accessManager.getRoleExecutionTimelock(IporFusionRoles.ALPHA_ROLE);
-        uint256 atomistTimeLockBefore = accessManager.getRoleExecutionTimelock(IporFusionRoles.ATOMIST_ROLE);
+        uint256 alphaTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ALPHA_ROLE);
+        uint256 atomistTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ATOMIST_ROLE);
 
         // when
         vm.prank(owner);
-        accessManager.setRoleExecutionsTimelocks(roles, timeLocks);
+        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
         // then
-        uint256 alphaTimeLockAfter = accessManager.getRoleExecutionTimelock(IporFusionRoles.ALPHA_ROLE);
-        uint256 atomistTimeLockAfter = accessManager.getRoleExecutionTimelock(IporFusionRoles.ATOMIST_ROLE);
+        uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ALPHA_ROLE);
+        uint256 atomistTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ATOMIST_ROLE);
 
         assertEq(alphaTimeLockBefore, 0, "Alpha time lock before should be equal to 0");
         assertEq(atomistTimeLockBefore, 0, "Atomist time lock before should be equal to 0");
@@ -2293,18 +2293,18 @@ contract PlasmaVaultMaintenanceTest is Test {
         timeLocks[0] = 100;
         timeLocks[1] = 200;
 
-        uint256 alphaTimeLockBefore = accessManager.getRoleExecutionTimelock(IporFusionRoles.ALPHA_ROLE);
-        uint256 atomistTimeLockBefore = accessManager.getRoleExecutionTimelock(IporFusionRoles.ATOMIST_ROLE);
+        uint256 alphaTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ALPHA_ROLE);
+        uint256 atomistTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ATOMIST_ROLE);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
         // when
         vm.prank(user);
         vm.expectRevert(error);
-        accessManager.setRoleExecutionsTimelocks(roles, timeLocks);
+        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
         // then
-        uint256 alphaTimeLockAfter = accessManager.getRoleExecutionTimelock(IporFusionRoles.ALPHA_ROLE);
-        uint256 atomistTimeLockAfter = accessManager.getRoleExecutionTimelock(IporFusionRoles.ATOMIST_ROLE);
+        uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ALPHA_ROLE);
+        uint256 atomistTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ATOMIST_ROLE);
 
         assertEq(alphaTimeLockBefore, 0, "Alpha time lock before should be equal to 0");
         assertEq(atomistTimeLockBefore, 0, "Atomist time lock before should be equal to 0");
@@ -2350,7 +2350,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         timeLocks[1] = 200;
 
         vm.prank(usersToRoles.atomist);
-        accessManager.setRoleExecutionsTimelocks(roles, timeLocks);
+        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
         (bool isMemberBefore, uint32 executionDelayBefore) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
 
@@ -2367,7 +2367,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertEq(executionDelayAfter, 200, "Execution delay after should be equal to 200");
     }
 
-    function testShouldNotBeAbleToGrantRoleWhenExecutionDaleyToSmall() public {
+    function testShouldNotBeAbleToGrantRoleWhenExecutionDaleyTooSmall() public {
         // given
         address underlyingToken = USDC;
         address user = address(0x555);
@@ -2405,11 +2405,15 @@ contract PlasmaVaultMaintenanceTest is Test {
         timeLocks[1] = 200;
 
         vm.prank(usersToRoles.atomist);
-        accessManager.setRoleExecutionsTimelocks(roles, timeLocks);
+        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
         (bool isMemberBefore, ) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
 
-        bytes memory error = abi.encodeWithSignature("ExecutionDelayToShort(uint32)", uint32(99));
+        bytes memory error = abi.encodeWithSignature(
+            "TooShortExecutionDelayForRole(uint64,uint32)",
+            IporFusionRoles.ALPHA_ROLE,
+            uint32(99)
+        );
 
         // when
         vm.expectRevert(error);

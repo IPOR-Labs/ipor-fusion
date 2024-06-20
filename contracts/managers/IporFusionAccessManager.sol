@@ -10,7 +10,7 @@ import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
 
 contract IporFusionAccessManager is AccessManager {
     error AccessManagedUnauthorized(address caller);
-    error ExecutionDelayToShort(uint32 executionDelay);
+    error TooShortExecutionDelayForRole(uint64 roleId, uint32 executionDelay);
 
     bool private _customConsumingSchedule;
 
@@ -48,19 +48,22 @@ contract IporFusionAccessManager is AccessManager {
         RedemptionDelayLib.setRedemptionDelay(delay_);
     }
 
-    function setRoleExecutionsTimelocks(uint64[] calldata roles_, uint256[] calldata delays_) external restricted {
-        RoleExecutionTimelockLib.setRoleExecutionsTimelocks(roles_, delays_);
+    function setMinimalExecutionDelaysForRoles(
+        uint64[] calldata rolesId_,
+        uint256[] calldata delays_
+    ) external restricted {
+        RoleExecutionTimelockLib.setMinimalExecutionDelaysForRoles(rolesId_, delays_);
     }
 
     function grantRole(uint64 roleId_, address account_, uint32 executionDelay_) public override onlyAuthorized {
-        if (executionDelay_ < RoleExecutionTimelockLib.getRoleExecutionTimelock(roleId_)) {
-            revert ExecutionDelayToShort(executionDelay_);
+        if (executionDelay_ < RoleExecutionTimelockLib.getMinimalExecutionDelayForRole(roleId_)) {
+            revert TooShortExecutionDelayForRole(roleId_, executionDelay_);
         }
         _grantRole(roleId_, account_, getRoleGrantDelay(roleId_), executionDelay_);
     }
 
-    function getRoleExecutionTimelock(uint64 role_) external view returns (uint256) {
-        return RoleExecutionTimelockLib.getRoleExecutionTimelock(role_);
+    function getMinimalExecutionDelayForRole(uint64 roleId_) external view returns (uint256) {
+        return RoleExecutionTimelockLib.getMinimalExecutionDelayForRole(roleId_);
     }
 
     function getAccountLockTime(address account_) external view returns (uint256) {

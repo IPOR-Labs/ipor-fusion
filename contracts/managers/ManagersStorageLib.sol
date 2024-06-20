@@ -16,8 +16,8 @@ struct RedemptionLocks {
     mapping(address acount => uint256 depositTime) redemptionLock;
 }
 
-struct RoleMinimalExecutionTimelock {
-    mapping(uint64 role => uint256 delay) executionsTimelocks;
+struct MinimalExecutionDelayForRole {
+    mapping(uint64 roleId => uint256 delay) delays;
 }
 
 struct RedemptionDelay {
@@ -44,9 +44,9 @@ library ManagersStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVault")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT = 0x1469611b48a54264f469346102240688dc1bf1295d466f17eb541c87bd55d300;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.minimalRoleExecutionTimelock")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant MINIMAL_ROLE_EXECUTION_TIMELOCK =
-        0x09f9228c16ee9d08bafc2a1f6bf91e77ab9329a45bcb172b70f6e52505bbf900;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.minimalExecutionDelayForRole")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MINIMAL_EXECUTION_DELAY_FOR_ROLE =
+        0x97af39007ec695dbf3f648be640f71c99bfc72f6f0c1a011cea5df1b93824400;
 
     event VestingDataUpdated(
         uint128 transferredTokens,
@@ -131,13 +131,13 @@ library ManagersStorageLib {
         }
     }
 
-    function _getMinimalRoleExecutionTimelock()
+    function _getMinimalExecutionDelayForRole()
         internal
         pure
-        returns (RoleMinimalExecutionTimelock storage roleMinimalExecutionTimelock)
+        returns (MinimalExecutionDelayForRole storage roleMinimalExecutionTimelock)
     {
         assembly {
-            roleMinimalExecutionTimelock.slot := MINIMAL_ROLE_EXECUTION_TIMELOCK
+            roleMinimalExecutionTimelock.slot := MINIMAL_EXECUTION_DELAY_FOR_ROLE
         }
     }
 }

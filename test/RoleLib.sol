@@ -122,7 +122,7 @@ library RoleLib {
         accessManager_.setTargetFunctionRole(address(accessManager_), guardianSig, IporFusionRoles.GUARDIAN_ROLE);
 
         bytes4[] memory ownerSig = new bytes4[](1);
-        ownerSig[0] = IporFusionAccessManager.setRoleExecutionsTimelocks.selector;
+        ownerSig[0] = IporFusionAccessManager.setMinimalExecutionDelaysForRoles.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(address(accessManager_), ownerSig, IporFusionRoles.OWNER_ROLE);
