@@ -2195,4 +2195,120 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertFalse(canDepositAfter, "User should not be able to deposit after");
         assertFalse(canMintAfter, "User should not be able to mint after");
     }
+
+    function testShouldBeAbleToSetupMinimalExecutionTimelockOnRole() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        address owner = usersToRoles.atomist;
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint64[] memory roles = new uint64[](2);
+        roles[0] = IporFusionRoles.ALPHA_ROLE;
+        roles[1] = IporFusionRoles.ATOMIST_ROLE;
+
+        uint256[] memory timeLocks = new uint256[](2);
+        timeLocks[0] = 100;
+        timeLocks[1] = 200;
+
+        uint256 alphaTimeLockBefore = accessManager.getRoleExecutionTimelock(IporFusionRoles.ALPHA_ROLE);
+        uint256 atomistTimeLockBefore = accessManager.getRoleExecutionTimelock(IporFusionRoles.ATOMIST_ROLE);
+
+        // when
+        vm.prank(owner);
+        accessManager.setRoleExecutionsTimelocks(roles, timeLocks);
+
+        // then
+        uint256 alphaTimeLockAfter = accessManager.getRoleExecutionTimelock(IporFusionRoles.ALPHA_ROLE);
+        uint256 atomistTimeLockAfter = accessManager.getRoleExecutionTimelock(IporFusionRoles.ATOMIST_ROLE);
+
+        assertEq(alphaTimeLockBefore, 0, "Alpha time lock before should be equal to 0");
+        assertEq(atomistTimeLockBefore, 0, "Atomist time lock before should be equal to 0");
+        assertEq(alphaTimeLockAfter, 100, "Alpha time lock after should be equal to 100");
+        assertEq(atomistTimeLockAfter, 200, "Atomist time lock after should be equal to 200");
+    }
+
+    function testShouldNotBeAbleToSetupMinimalExecutionTimelockOnRoleWhenNotOwner() public {
+        // given
+        address underlyingToken = USDC;
+        address user = address(0x555);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint64[] memory roles = new uint64[](2);
+        roles[0] = IporFusionRoles.ALPHA_ROLE;
+        roles[1] = IporFusionRoles.ATOMIST_ROLE;
+
+        uint256[] memory timeLocks = new uint256[](2);
+        timeLocks[0] = 100;
+        timeLocks[1] = 200;
+
+        uint256 alphaTimeLockBefore = accessManager.getRoleExecutionTimelock(IporFusionRoles.ALPHA_ROLE);
+        uint256 atomistTimeLockBefore = accessManager.getRoleExecutionTimelock(IporFusionRoles.ATOMIST_ROLE);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
+        // when
+        vm.prank(user);
+        vm.expectRevert(error);
+        accessManager.setRoleExecutionsTimelocks(roles, timeLocks);
+
+        // then
+        uint256 alphaTimeLockAfter = accessManager.getRoleExecutionTimelock(IporFusionRoles.ALPHA_ROLE);
+        uint256 atomistTimeLockAfter = accessManager.getRoleExecutionTimelock(IporFusionRoles.ATOMIST_ROLE);
+
+        assertEq(alphaTimeLockBefore, 0, "Alpha time lock before should be equal to 0");
+        assertEq(atomistTimeLockBefore, 0, "Atomist time lock before should be equal to 0");
+        assertEq(alphaTimeLockAfter, 0, "Alpha time lock after should be equal to 0");
+        assertEq(atomistTimeLockAfter, 0, "Atomist time lock after should be equal to 0");
+    }
 }

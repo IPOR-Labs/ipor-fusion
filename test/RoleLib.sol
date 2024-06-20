@@ -34,6 +34,9 @@ library RoleLib {
         vm.prank(usersWithRoles.superAdmin);
         accessManager.grantRole(IporFusionRoles.GUARDIAN_ROLE, usersWithRoles.atomist, 0);
 
+        vm.prank(usersWithRoles.superAdmin);
+        accessManager.grantRole(IporFusionRoles.OWNER_ROLE, usersWithRoles.atomist, 0);
+
         for (uint256 i; i < usersWithRoles.alphas.length; i++) {
             vm.prank(usersWithRoles.atomist);
             accessManager.grantRole(IporFusionRoles.ALPHA_ROLE, usersWithRoles.alphas[i], 0);
@@ -117,6 +120,12 @@ library RoleLib {
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(address(accessManager_), guardianSig, IporFusionRoles.GUARDIAN_ROLE);
+
+        bytes4[] memory ownerSig = new bytes4[](1);
+        ownerSig[0] = IporFusionAccessManager.setRoleExecutionsTimelocks.selector;
+
+        vm_.prank(usersWithRoles_.superAdmin);
+        accessManager_.setTargetFunctionRole(address(accessManager_), ownerSig, IporFusionRoles.OWNER_ROLE);
 
         bytes4[] memory publicSig = new bytes4[](4);
         publicSig[0] = PlasmaVault.deposit.selector;

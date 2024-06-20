@@ -16,6 +16,10 @@ struct RedemptionLocks {
     mapping(address acount => uint256 depositTime) redemptionLock;
 }
 
+struct RoleMinimalExecutionTimelock {
+    mapping(uint64 role => uint256 delay) executionsTimelocks;
+}
+
 struct RedemptionDelay {
     uint256 redemptionDelay;
 }
@@ -39,6 +43,10 @@ library ManagersStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVault")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT = 0x1469611b48a54264f469346102240688dc1bf1295d466f17eb541c87bd55d300;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.minimalRoleExecutionTimelock")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MINIMAL_ROLE_EXECUTION_TIMELOCK =
+        0x1469611b48a54264f469346102240688dc1bf1295d466f17eb541c87bd55d312; // TODO: change this
 
     event VestingDataUpdated(
         uint128 transferredTokens,
@@ -120,6 +128,16 @@ library ManagersStorageLib {
     function _getRedemptionLocks() private pure returns (RedemptionLocks storage redemptionLocks) {
         assembly {
             redemptionLocks.slot := REDEMPTION_LOCKS
+        }
+    }
+
+    function _getMinimalRoleExecutionTimelock()
+        internal
+        pure
+        returns (RoleMinimalExecutionTimelock storage roleMinimalExecutionTimelock)
+    {
+        assembly {
+            roleMinimalExecutionTimelock.slot := MINIMAL_ROLE_EXECUTION_TIMELOCK
         }
     }
 }

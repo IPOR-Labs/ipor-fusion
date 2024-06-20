@@ -6,6 +6,7 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
+import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
 
 contract IporFusionAccessManager is AccessManager {
     error AccessManagedUnauthorized(address caller);
@@ -44,6 +45,14 @@ contract IporFusionAccessManager is AccessManager {
 
     function setRedemptionDelay(uint256 delay_) external restricted {
         RedemptionDelayLib.setRedemptionDelay(delay_);
+    }
+
+    function setRoleExecutionsTimelocks(uint64[] calldata roles_, uint256[] calldata delays_) external restricted {
+        RoleExecutionTimelockLib.setRoleExecutionsTimelocks(roles_, delays_);
+    }
+
+    function getRoleExecutionTimelock(uint64 role_) external view returns (uint256) {
+        return RoleExecutionTimelockLib.getRoleExecutionTimelock(role_);
     }
 
     function getAccountLockTime(address account_) external view returns (uint256) {
