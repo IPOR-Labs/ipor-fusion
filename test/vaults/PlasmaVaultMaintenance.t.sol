@@ -2311,4 +2311,115 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertEq(alphaTimeLockAfter, 0, "Alpha time lock after should be equal to 0");
         assertEq(atomistTimeLockAfter, 0, "Atomist time lock after should be equal to 0");
     }
+
+    function testShouldBeAbleToGrantRole() public {
+        // given
+        address underlyingToken = USDC;
+        address user = address(0x555);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint64[] memory roles = new uint64[](2);
+        roles[0] = IporFusionRoles.ALPHA_ROLE;
+        roles[1] = IporFusionRoles.ATOMIST_ROLE;
+
+        uint256[] memory timeLocks = new uint256[](2);
+        timeLocks[0] = 100;
+        timeLocks[1] = 200;
+
+        vm.prank(usersToRoles.atomist);
+        accessManager.setRoleExecutionsTimelocks(roles, timeLocks);
+
+        (bool isMemberBefore, uint32 executionDelayBefore) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
+
+        // when
+        vm.prank(usersToRoles.atomist);
+        accessManager.grantRole(IporFusionRoles.ALPHA_ROLE, user, uint32(timeLocks[1]));
+
+        // then
+        (bool isMemberAfter, uint32 executionDelayAfter) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
+
+        assertFalse(isMemberBefore, "User should not be a member before");
+        assertEq(executionDelayBefore, 0, "Execution delay before should be equal to 0");
+        assertTrue(isMemberAfter, "User should be a member after");
+        assertEq(executionDelayAfter, 200, "Execution delay after should be equal to 200");
+    }
+
+    function testShouldNotBeAbleToGrantRoleWhenExecutionDaleyToSmall() public {
+        // given
+        address underlyingToken = USDC;
+        address user = address(0x555);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint64[] memory roles = new uint64[](2);
+        roles[0] = IporFusionRoles.ALPHA_ROLE;
+        roles[1] = IporFusionRoles.ATOMIST_ROLE;
+
+        uint256[] memory timeLocks = new uint256[](2);
+        timeLocks[0] = 100;
+        timeLocks[1] = 200;
+
+        vm.prank(usersToRoles.atomist);
+        accessManager.setRoleExecutionsTimelocks(roles, timeLocks);
+
+        (bool isMemberBefore, ) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
+
+        bytes memory error = abi.encodeWithSignature("ExecutionDelayToShort(uint32)", uint32(99));
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(usersToRoles.atomist);
+        accessManager.grantRole(IporFusionRoles.ALPHA_ROLE, user, uint32(99));
+
+        // then
+        (bool isMemberAfter, ) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
+
+        assertFalse(isMemberBefore, "User should not be a member before");
+        assertFalse(isMemberAfter, "User should not be a member after");
+    }
 }

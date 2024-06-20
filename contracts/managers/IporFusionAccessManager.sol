@@ -10,6 +10,7 @@ import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
 
 contract IporFusionAccessManager is AccessManager {
     error AccessManagedUnauthorized(address caller);
+    error ExecutionDelayToShort(uint32 executionDelay);
 
     bool private _customConsumingSchedule;
 
@@ -49,6 +50,13 @@ contract IporFusionAccessManager is AccessManager {
 
     function setRoleExecutionsTimelocks(uint64[] calldata roles_, uint256[] calldata delays_) external restricted {
         RoleExecutionTimelockLib.setRoleExecutionsTimelocks(roles_, delays_);
+    }
+
+    function grantRole(uint64 roleId_, address account_, uint32 executionDelay_) public override onlyAuthorized {
+        if (executionDelay_ < RoleExecutionTimelockLib.getRoleExecutionTimelock(roleId_)) {
+            revert ExecutionDelayToShort(executionDelay_);
+        }
+        _grantRole(roleId_, account_, getRoleGrantDelay(roleId_), executionDelay_);
     }
 
     function getRoleExecutionTimelock(uint64 role_) external view returns (uint256) {
