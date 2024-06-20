@@ -10,7 +10,7 @@ import {IFuse} from "../IFuse.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 struct CurveStableswapNGSingleSideSupplyFuseEnterData {
-    /// @noticve asset to deposit
+    /// @notice asset to deposit
     address asset;
     /// @notice List of amounts of coins to deposit
     uint256[] amounts;
@@ -51,7 +51,18 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
     );
 
     error CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address asset, string errorCode);
+    error CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address asset, string errorCode);
     error CurveStableswapNGSingleSideSupplyFuseUnexpectedNumberOfTokens();
+    error CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts();
+    error CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
+    error CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinMintAmount(
+        uint256 expectedMintAmount,
+        uint256 minMintAmount
+    );
+    error CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinReceivedAmount(
+        uint256 expectedReceiveAmount,
+        uint256 minReceivedAmount
+    );
 
     constructor(uint256 marketIdInput, address curveStableswapNGInput) {
         VERSION = address(this);
@@ -78,10 +89,33 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
         if (data.amounts.length != CURVE_STABLESWAP_NG.N_COINS()) {
             revert CurveStableswapNGSingleSideSupplyFuseUnexpectedNumberOfTokens();
         }
+        bool supportedPoolAsset;
         for (uint256 i; i < CURVE_STABLESWAP_NG.N_COINS(); ++i) {
             if (CURVE_STABLESWAP_NG.coins(i) == data.asset) {
+                supportedPoolAsset = true;
                 ERC20(data.asset).forceApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
+                break;
             }
+        }
+        if (!supportedPoolAsset) {
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset, Errors.UNSUPPORTED_ASSET);
+        }
+        bool hasNonZeroAmount;
+        for (uint256 i; i < data.amounts.length; ++i) {
+            if (data.amounts[i] > 0) {
+                hasNonZeroAmount = true;
+                break;
+            }
+        }
+        if (!hasNonZeroAmount) {
+            revert CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts();
+        }
+        uint256 expectedMintAmount = CURVE_STABLESWAP_NG.calc_token_amount(data.amounts, true);
+        if (expectedMintAmount < data.minMintAmount) {
+            revert CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinMintAmount(
+                expectedMintAmount,
+                data.minMintAmount
+            );
         }
         CURVE_STABLESWAP_NG.add_liquidity(data.amounts, data.minMintAmount, msg.sender);
         emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(VERSION, data.asset, data.amounts, data.minMintAmount);
@@ -103,13 +137,28 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
                 Errors.UNSUPPORTED_ASSET
             );
         }
+        if (data.burnAmount == 0) {
+            revert CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
+        }
+        bool supportedPoolAsset;
         int128 index;
         for (uint256 i; i < CURVE_STABLESWAP_NG.N_COINS(); ++i) {
             if (CURVE_STABLESWAP_NG.coins(i) == data.asset) {
                 require(i < 2 ** 127, "Index exceeds int128 range");
                 index = int128(int256(i));
+                supportedPoolAsset = true;
                 break;
             }
+        }
+        if (!supportedPoolAsset) {
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset, Errors.UNSUPPORTED_ASSET);
+        }
+        uint256 expectedReceivedAmount = CURVE_STABLESWAP_NG.calc_withdraw_one_coin(data.burnAmount, index);
+        if (expectedReceivedAmount < data.minReceived) {
+            revert CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinReceivedAmount(
+                expectedReceivedAmount,
+                data.minReceived
+            );
         }
         CURVE_STABLESWAP_NG.remove_liquidity_one_coin(data.burnAmount, index, data.minReceived, msg.sender);
         emit CurveSupplyStableswapNGSingleSideSupplyExitFuse(VERSION, data.burnAmount, data.asset, data.minReceived);
