@@ -134,10 +134,10 @@ library ManagersStorageLib {
     function _getMinimalExecutionDelayForRole()
         internal
         pure
-        returns (MinimalExecutionDelayForRole storage roleMinimalExecutionTimelock)
+        returns (MinimalExecutionDelayForRole storage minimalExecutionDelayForRole)
     {
         assembly {
-            roleMinimalExecutionTimelock.slot := MINIMAL_EXECUTION_DELAY_FOR_ROLE
+            minimalExecutionDelayForRole.slot := MINIMAL_EXECUTION_DELAY_FOR_ROLE
         }
     }
 }
