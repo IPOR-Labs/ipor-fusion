@@ -46,7 +46,7 @@ library ManagersStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.minimalRoleExecutionTimelock")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant MINIMAL_ROLE_EXECUTION_TIMELOCK =
-        0x1469611b48a54264f469346102240688dc1bf1295d466f17eb541c87bd55d312; // TODO: change this
+        0x09f9228c16ee9d08bafc2a1f6bf91e77ab9329a45bcb172b70f6e52505bbf900;
 
     event VestingDataUpdated(
         uint128 transferredTokens,
