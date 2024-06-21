@@ -6,9 +6,11 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
+import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
 
 contract IporFusionAccessManager is AccessManager {
     error AccessManagedUnauthorized(address caller);
+    error TooShortExecutionDelayForRole(uint64 roleId, uint32 executionDelay);
 
     bool private _customConsumingSchedule;
 
@@ -44,6 +46,24 @@ contract IporFusionAccessManager is AccessManager {
 
     function setRedemptionDelay(uint256 delay_) external restricted {
         RedemptionDelayLib.setRedemptionDelay(delay_);
+    }
+
+    function setMinimalExecutionDelaysForRoles(
+        uint64[] calldata rolesId_,
+        uint256[] calldata delays_
+    ) external restricted {
+        RoleExecutionTimelockLib.setMinimalExecutionDelaysForRoles(rolesId_, delays_);
+    }
+
+    function grantRole(uint64 roleId_, address account_, uint32 executionDelay_) public override onlyAuthorized {
+        if (executionDelay_ < RoleExecutionTimelockLib.getMinimalExecutionDelayForRole(roleId_)) {
+            revert TooShortExecutionDelayForRole(roleId_, executionDelay_);
+        }
+        _grantRole(roleId_, account_, getRoleGrantDelay(roleId_), executionDelay_);
+    }
+
+    function getMinimalExecutionDelayForRole(uint64 roleId_) external view returns (uint256) {
+        return RoleExecutionTimelockLib.getMinimalExecutionDelayForRole(roleId_);
     }
 
     function getAccountLockTime(address account_) external view returns (uint256) {
