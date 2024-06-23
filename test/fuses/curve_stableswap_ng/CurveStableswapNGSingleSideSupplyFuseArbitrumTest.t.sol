@@ -591,7 +591,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         assertEq(lpTokenBalance, lpTokenBalanceAfterExitAttempt, "LP token balance should not be decreased");
     }
 
-    // TODO test when burn amount is set to zero
     function testShouldRevertWhenBurnAmountIsZero() external {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: USDM, name: "USDM"});
@@ -645,7 +644,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         assertEq(lpTokenBalance, lpTokenBalanceAfterExitAttempt, "LP token balance should not be decreased");
     }
 
-    // TODO Refactor common code into helper functions
+    // HELPERS
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
         if (asset == USDC) {
@@ -665,7 +664,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         address asset
     ) private {
         address[] memory assets = new address[](1);
-        assets[0] = CURVE_STABLESWAP_NG_POOL;
+        assets[0] = asset;
         fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
     }
 }
