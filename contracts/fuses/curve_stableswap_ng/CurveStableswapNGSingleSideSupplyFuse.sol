@@ -33,7 +33,6 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
-
     ICurveStableswapNG public immutable CURVE_STABLESWAP_NG;
 
     event CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
@@ -89,23 +88,19 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
         if (data.amounts.length != CURVE_STABLESWAP_NG.N_COINS()) {
             revert CurveStableswapNGSingleSideSupplyFuseUnexpectedNumberOfTokens();
         }
-        bool supportedPoolAsset;
+        bool supportedPoolAsset = false;
+        bool hasNonZeroAmount = false;
         for (uint256 i; i < CURVE_STABLESWAP_NG.N_COINS(); ++i) {
             if (CURVE_STABLESWAP_NG.coins(i) == data.asset) {
                 supportedPoolAsset = true;
                 ERC20(data.asset).forceApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
-                break;
+            }
+            if (data.amounts[i] > 0) {
+                hasNonZeroAmount = true;
             }
         }
         if (!supportedPoolAsset) {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset, Errors.UNSUPPORTED_ASSET);
-        }
-        bool hasNonZeroAmount;
-        for (uint256 i; i < data.amounts.length; ++i) {
-            if (data.amounts[i] > 0) {
-                hasNonZeroAmount = true;
-                break;
-            }
         }
         if (!hasNonZeroAmount) {
             revert CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts();
@@ -140,7 +135,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
         if (data.burnAmount == 0) {
             revert CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
         }
-        bool supportedPoolAsset;
+        bool supportedPoolAsset = false;
         int128 index;
         for (uint256 i; i < CURVE_STABLESWAP_NG.N_COINS(); ++i) {
             if (CURVE_STABLESWAP_NG.coins(i) == data.asset) {
