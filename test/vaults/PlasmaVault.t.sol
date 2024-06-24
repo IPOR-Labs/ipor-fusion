@@ -111,7 +111,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
 
@@ -194,7 +195,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
 
@@ -279,7 +281,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
 
@@ -374,7 +377,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -465,7 +469,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -580,7 +585,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
 
@@ -683,7 +689,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -783,7 +790,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -902,7 +910,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
 
@@ -993,7 +1002,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
 
@@ -1092,7 +1102,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
 

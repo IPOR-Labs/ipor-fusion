@@ -28,7 +28,8 @@ abstract contract TestVaultSetup is TestStorage {
                     fuses,
                     balanceFuses,
                     feeConfig,
-                    accessManager
+                    accessManager,
+                    "1"
                 )
             )
         );

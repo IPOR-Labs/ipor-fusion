@@ -191,7 +191,8 @@ contract PlasmaVaultDepositTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
 
@@ -244,7 +245,8 @@ contract PlasmaVaultDepositTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);

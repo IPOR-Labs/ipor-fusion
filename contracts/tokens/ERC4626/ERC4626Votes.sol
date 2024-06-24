@@ -7,7 +7,7 @@ pragma solidity ^0.8.20;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -49,7 +49,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
  * To learn more, check out our xref:ROOT:erc4626.adoc[ERC-4626 guide].
  * ====
  */
-abstract contract ERC4626Permit is ERC20Permit, IERC4626 {
+abstract contract ERC4626Votes is ERC20Votes, IERC4626 {
     using Math for uint256;
 
     IERC20 private immutable _ASSET;

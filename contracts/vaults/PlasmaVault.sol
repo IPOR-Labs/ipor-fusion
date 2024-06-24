@@ -3,11 +3,11 @@ pragma solidity 0.8.20;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ERC4626Votes} from "../tokens/ERC4626/ERC4626Votes.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
@@ -35,6 +35,7 @@ struct PlasmaVaultInitData {
     MarketBalanceFuseConfig[] balanceFuses;
     FeeConfig feeConfig;
     address accessManager;
+    string eip712version;
 }
 
 /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
@@ -76,7 +77,7 @@ struct FeeConfig {
 }
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
+contract PlasmaVault is ERC4626Votes, ReentrancyGuard, PlasmaVaultGovernance {
     using Address for address;
     using SafeCast for int256;
 
@@ -97,9 +98,9 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     constructor(
         PlasmaVaultInitData memory initData
     )
-        ERC4626Permit(IERC20(initData.underlyingToken))
-        ERC20Permit(initData.assetName)
         ERC20(initData.assetName, initData.assetSymbol)
+        EIP712(initData.assetName, initData.eip712version)
+        ERC4626Votes(IERC20(initData.underlyingToken))
         PlasmaVaultGovernance(initData.accessManager)
     {
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracle);

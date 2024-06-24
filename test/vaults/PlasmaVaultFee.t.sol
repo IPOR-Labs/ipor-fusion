@@ -132,7 +132,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -269,7 +270,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -404,7 +406,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -548,7 +551,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -687,7 +691,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -826,7 +831,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -961,7 +967,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1084,7 +1091,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1212,7 +1220,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1311,7 +1320,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1416,7 +1426,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1518,7 +1529,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1617,7 +1629,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                "1"
             )
         );
         setupRoles(plasmaVault, accessManager);
