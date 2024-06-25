@@ -96,8 +96,7 @@ contract ForkAmmGovernanceServiceTest is Test {
                     fuses,
                     balanceFuses,
                     FeeConfig(address(0x777), 0, address(0x555), 0),
-                    address(new IporFusionAccessManager(msg.sender)),
-                    "1"
+                    address(new IporFusionAccessManager(msg.sender))
                 )
             )
         );

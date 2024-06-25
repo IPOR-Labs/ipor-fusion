@@ -1,28 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {ERC4626Votes} from "../tokens/ERC4626/ERC4626Votes.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {FusesLib} from "../libraries/FusesLib.sol";
-import {IFuseCommon} from "../fuses/IFuseCommon.sol";
-import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
-import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
-import {IporMath} from "../libraries/math/IporMath.sol";
-import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
-import {Errors} from "../libraries/errors/Errors.sol";
-import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
-import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
-import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
-import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
-import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IFuseCommon} from "../fuses/IFuseCommon.sol";
+import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
+import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
+import {Errors} from "../libraries/errors/Errors.sol";
+import {IporMath} from "../libraries/math/IporMath.sol";
+import {ERC4626Votes} from "../tokens/ERC4626/ERC4626Votes.sol";
+import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
+import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
+import {FusesLib} from "../libraries/FusesLib.sol";
+import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
+import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
+import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
+import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
@@ -35,7 +34,6 @@ struct PlasmaVaultInitData {
     MarketBalanceFuseConfig[] balanceFuses;
     FeeConfig feeConfig;
     address accessManager;
-    string eip712version;
 }
 
 /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
@@ -98,9 +96,7 @@ contract PlasmaVault is ERC4626Votes, ReentrancyGuard, PlasmaVaultGovernance {
     constructor(
         PlasmaVaultInitData memory initData
     )
-        ERC20(initData.assetName, initData.assetSymbol)
-        EIP712(initData.assetName, initData.eip712version)
-        ERC4626Votes(IERC20(initData.underlyingToken))
+        ERC4626Votes(initData.assetName, initData.assetSymbol, initData.underlyingToken)
         PlasmaVaultGovernance(initData.accessManager)
     {
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracle);

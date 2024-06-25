@@ -4,13 +4,16 @@
 
 pragma solidity ^0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 
 /**
  * @dev Implementation of the ERC4626 "Tokenized Vault Standard" as defined in
@@ -49,11 +52,24 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
  * To learn more, check out our xref:ROOT:erc4626.adoc[ERC-4626 guide].
  * ====
  */
-abstract contract ERC4626Votes is ERC20Votes, IERC4626 {
+abstract contract ERC4626Votes is ERC20Votes, IERC4626, IERC20Permit {
     using Math for uint256;
 
-    IERC20 private immutable _ASSET;
+    IERC20Metadata private immutable _ASSET;
     uint8 private immutable _UNDERLYING_DECIMALS;
+
+    bytes32 private constant PERMIT_TYPEHASH =
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+
+    /**
+     * @dev Permit deadline has expired.
+     */
+    error ERC2612ExpiredSignature(uint256 deadline);
+
+    /**
+     * @dev Mismatched signature.
+     */
+    error ERC2612InvalidSigner(address signer, address owner);
 
     /**
      * @dev Attempted to deposit more assets than the max amount for `receiver`.
@@ -76,18 +92,68 @@ abstract contract ERC4626Votes is ERC20Votes, IERC4626 {
     error ERC4626ExceededMaxRedeem(address owner, uint256 shares, uint256 max);
 
     /**
-     * @dev Set the underlying asset contract. This must be an ERC20-compatible contract (ERC20 or ERC777).
+     *  @param assetName_ The name of the asset for ERC4626.
+     *  @param assetSymbol_ The symbol of the asset for ERC4626.
+     *  @param underlyingToken_ The underlying asset contract.
+     *  @dev Set the underlying asset contract. This must be an ERC20-compatible contract (ERC20 or ERC777).
      */
-    constructor(IERC20 asset_) {
-        (bool success, uint8 assetDecimals) = _tryGetAssetDecimals(asset_);
+    constructor(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_
+    ) ERC20(assetName_, assetSymbol_) EIP712(assetName_, "1") {
+        (bool success, uint8 assetDecimals) = _tryGetAssetDecimals(underlyingToken_);
         _UNDERLYING_DECIMALS = success ? assetDecimals : 18;
-        _ASSET = asset_;
+        _ASSET = IERC20Metadata(underlyingToken_);
+    }
+
+    /**
+     * @inheritdoc IERC20Permit
+     */
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public virtual {
+        if (block.timestamp > deadline) {
+            revert ERC2612ExpiredSignature(deadline);
+        }
+
+        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline));
+
+        bytes32 hash = _hashTypedDataV4(structHash);
+
+        address signer = ECDSA.recover(hash, v, r, s);
+        if (signer != owner) {
+            revert ERC2612InvalidSigner(signer, owner);
+        }
+
+        _approve(owner, spender, value);
+    }
+
+    /**
+     * @inheritdoc IERC20Permit
+     */
+    function nonces(address owner) public view virtual override(IERC20Permit, Nonces) returns (uint256) {
+        return super.nonces(owner);
+    }
+
+    /**
+     * @inheritdoc IERC20Permit
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function DOMAIN_SEPARATOR() external view virtual returns (bytes32) {
+        return _domainSeparatorV4();
     }
 
     /**
      * @dev Attempts to fetch the asset decimals. A return value of false indicates that the attempt failed in some way.
      */
-    function _tryGetAssetDecimals(IERC20 asset_) private view returns (bool, uint8) {
+    function _tryGetAssetDecimals(address asset_) private view returns (bool, uint8) {
         (bool success, bytes memory encodedDecimals) = address(asset_).staticcall(
             abi.encodeCall(IERC20Metadata.decimals, ())
         );
