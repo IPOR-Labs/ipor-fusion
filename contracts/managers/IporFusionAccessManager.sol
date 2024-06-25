@@ -7,6 +7,8 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
+import {InitializeAccessManagerLib, RoleToFunction, AdminRoles, AccountToRole, InitializeData} from "./InitializeAccessManagerLib.sol";
+import {IporFusionRoles} from "../libraries/IporFusionRoles.sol";
 
 contract IporFusionAccessManager is AccessManager {
     error AccessManagedUnauthorized(address caller);
@@ -20,6 +22,50 @@ contract IporFusionAccessManager is AccessManager {
     }
 
     constructor(address initialAdmin_) AccessManager(initialAdmin_) {}
+
+    function initialize(InitializeData calldata initialData_) external restricted {
+        InitializeAccessManagerLib.isInitialized();
+
+        uint256 roleToFunctionsLength = initialData_.roleToFunctions.length;
+        uint64[] memory roleIds;
+        uint256[] memory minimalDelays;
+
+        if (roleToFunctionsLength > 0) {
+            for (uint256 i; i < roleToFunctionsLength; ++i) {
+                _setTargetFunctionRole(
+                    initialData_.roleToFunctions[i].target,
+                    initialData_.roleToFunctions[i].functionSelector,
+                    initialData_.roleToFunctions[i].roleId
+                );
+                roleIds[i] = initialData_.roleToFunctions[i].roleId;
+                minimalDelays[i] = initialData_.roleToFunctions[i].minimalExecutionDelay;
+                _setRoleGuardian(initialData_.roleToFunctions[i].roleId, IporFusionRoles.GUARDIAN_ROLE);
+            }
+        }
+
+        RoleExecutionTimelockLib.setMinimalExecutionDelaysForRoles(roleIds, minimalDelays);
+
+        uint256 adminRolesLength = initialData_.adminRoles.length;
+        if (adminRolesLength > 0) {
+            for (uint256 i; i < adminRolesLength; ++i) {
+                _setRoleAdmin(initialData_.adminRoles[i].roleId, initialData_.adminRoles[i].adminRoleId);
+            }
+        }
+
+        uint256 accountToRolesLength = initialData_.accountToRoles.length;
+        if (accountToRolesLength > 0) {
+            for (uint256 i; i < accountToRolesLength; ++i) {
+                _grantRoleInternal(
+                    initialData_.accountToRoles[i].roleId,
+                    initialData_.accountToRoles[i].account,
+                    initialData_.accountToRoles[i].executionDelay
+                );
+            }
+        }
+        if (initialData_.redemptionDelay > 0) {
+            RedemptionDelayLib.setRedemptionDelay(initialData_.redemptionDelay);
+        }
+    }
 
     function canCallAndUpdate(
         address caller,
@@ -56,6 +102,10 @@ contract IporFusionAccessManager is AccessManager {
     }
 
     function grantRole(uint64 roleId_, address account_, uint32 executionDelay_) public override onlyAuthorized {
+        _grantRoleInternal(roleId_, account_, executionDelay_);
+    }
+
+    function _grantRoleInternal(uint64 roleId_, address account_, uint32 executionDelay_) internal {
         if (executionDelay_ < RoleExecutionTimelockLib.getMinimalExecutionDelayForRole(roleId_)) {
             revert TooShortExecutionDelayForRole(roleId_, executionDelay_);
         }
