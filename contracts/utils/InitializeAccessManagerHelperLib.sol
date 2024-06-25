@@ -32,16 +32,20 @@ struct DataForInitialization {
     PlasmaVaultAddress plasmaVaultAddress;
 }
 
-library InitializeAccessManagerLib {
-    function InitializeIporPlasmaVault(DataForInitialization calldata data) internal {
+library InitializeAccessManagerHelperLib {
+    function generateInitializeIporPlasmaVault(
+        DataForInitialization memory data
+    ) internal returns (InitializeData memory) {
         InitializeData memory initializeData;
         initializeData.roleToFunctions = _generateRoleToFunction(data.plasmaVaultAddress);
         initializeData.adminRoles = _generateAdminRoles();
         initializeData.accountToRoles = _generateAccountToRoles(data);
+        initializeData.redemptionDelay = 1009;
+        return initializeData;
     }
 
     function _generateAccountToRoles(
-        DataForInitialization calldata data
+        DataForInitialization memory data
     ) private returns (AccountToRole[] memory accountToRoles) {
         accountToRoles = new AccountToRole[](
             data.owners.length +
@@ -194,11 +198,11 @@ library InitializeAccessManagerLib {
     }
 
     function _generateRoleToFunction(
-        PlasmaVaultAddress calldata plasmaVaultAddress
+        PlasmaVaultAddress memory plasmaVaultAddress
     ) private returns (RoleToFunction[] memory rolesToFunction) {
         rolesToFunction = plasmaVaultAddress.rewardsClaimManager == address(0)
-            ? new RoleToFunction[](27)
-            : new RoleToFunction[](35);
+            ? new RoleToFunction[](26)
+            : new RoleToFunction[](34);
 
         rolesToFunction[0] = RoleToFunction({
             target: plasmaVaultAddress.plasmaVault,
@@ -330,10 +334,11 @@ library InitializeAccessManagerLib {
         });
         rolesToFunction[21] = RoleToFunction({
             target: plasmaVaultAddress.accessManager,
-            roleId: IporFusionRoles.OWNER_ROLE,
-            functionSelector: IporFusionAccessManager.setMinimalExecutionDelaysForRoles.selector,
+            roleId: IporFusionRoles.ATOMIST_ROLE,
+            functionSelector: IporFusionAccessManager.setRedemptionDelay.selector,
             minimalExecutionDelay: 0
         });
+
         rolesToFunction[22] = RoleToFunction({
             target: plasmaVaultAddress.accessManager,
             roleId: IporFusionRoles.GUARDIAN_ROLE,
@@ -359,17 +364,17 @@ library InitializeAccessManagerLib {
             functionSelector: IporFusionAccessManager.enableTransferShares.selector,
             minimalExecutionDelay: 0
         });
-        rolesToFunction[26] = RoleToFunction({
-            target: plasmaVaultAddress.accessManager,
-            roleId: IporFusionRoles.ATOMIST_ROLE,
-            functionSelector: IporFusionAccessManager.setRedemptionDelay.selector,
-            minimalExecutionDelay: 0
-        });
 
         // RewardsClaimManager
         if (plasmaVaultAddress.rewardsClaimManager == address(0)) {
             return rolesToFunction;
         }
+        rolesToFunction[26] = RoleToFunction({
+            target: plasmaVaultAddress.rewardsClaimManager,
+            roleId: IporFusionRoles.FUSE_MANAGER_ROLE,
+            functionSelector: RewardsClaimManager.addRewardFuses.selector,
+            minimalExecutionDelay: 0
+        });
         rolesToFunction[27] = RoleToFunction({
             target: plasmaVaultAddress.rewardsClaimManager,
             roleId: IporFusionRoles.FUSE_MANAGER_ROLE,
@@ -405,12 +410,6 @@ library InitializeAccessManagerLib {
             target: plasmaVaultAddress.rewardsClaimManager,
             roleId: IporFusionRoles.ATOMIST_ROLE,
             functionSelector: RewardsClaimManager.setupVestingTime.selector,
-            minimalExecutionDelay: 0
-        });
-        rolesToFunction[34] = RoleToFunction({
-            target: plasmaVaultAddress.rewardsClaimManager,
-            roleId: IporFusionRoles.FUSE_MANAGER_ROLE,
-            functionSelector: RewardsClaimManager.addRewardFuses.selector,
             minimalExecutionDelay: 0
         });
 

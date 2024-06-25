@@ -7,7 +7,7 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
-import {InitializeAccessManagerLib, RoleToFunction, AdminRoles, AccountToRole, InitializeData} from "./InitializeAccessManagerLib.sol";
+import {InitializeAccessManagerLib, InitializeData} from "./InitializeAccessManagerLib.sol";
 import {IporFusionRoles} from "../libraries/IporFusionRoles.sol";
 
 contract IporFusionAccessManager is AccessManager {
@@ -27,8 +27,8 @@ contract IporFusionAccessManager is AccessManager {
         InitializeAccessManagerLib.isInitialized();
 
         uint256 roleToFunctionsLength = initialData_.roleToFunctions.length;
-        uint64[] memory roleIds;
-        uint256[] memory minimalDelays;
+        uint64[] memory roleIds = new uint64[](roleToFunctionsLength);
+        uint256[] memory minimalDelays = new uint256[](roleToFunctionsLength);
 
         if (roleToFunctionsLength > 0) {
             for (uint256 i; i < roleToFunctionsLength; ++i) {
@@ -39,10 +39,15 @@ contract IporFusionAccessManager is AccessManager {
                 );
                 roleIds[i] = initialData_.roleToFunctions[i].roleId;
                 minimalDelays[i] = initialData_.roleToFunctions[i].minimalExecutionDelay;
-                _setRoleGuardian(initialData_.roleToFunctions[i].roleId, IporFusionRoles.GUARDIAN_ROLE);
+                if (
+                    initialData_.roleToFunctions[i].roleId != IporFusionRoles.ADMIN_ROLE &&
+                    initialData_.roleToFunctions[i].roleId != IporFusionRoles.GUARDIAN_ROLE &&
+                    initialData_.roleToFunctions[i].roleId != IporFusionRoles.PUBLIC_ROLE
+                ) {
+                    _setRoleGuardian(initialData_.roleToFunctions[i].roleId, IporFusionRoles.GUARDIAN_ROLE);
+                }
             }
         }
-
         RoleExecutionTimelockLib.setMinimalExecutionDelaysForRoles(roleIds, minimalDelays);
 
         uint256 adminRolesLength = initialData_.adminRoles.length;

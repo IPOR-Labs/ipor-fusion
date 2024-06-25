@@ -55,7 +55,7 @@ library ManagersStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.initializeAccessManager")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant INITIALIZE_ACCESS_MANAGER =
-        0x97af39007ec695dbf3f648be640f71c99bfc72f6f0c1a011cea5df1b93824123; // todo change
+        0xbe9386785e99777544cae08d8688b2ce0aed369d4b6cb68200fcd245c8f21e00;
 
     event VestingDataUpdated(
         uint128 transferredTokens,
