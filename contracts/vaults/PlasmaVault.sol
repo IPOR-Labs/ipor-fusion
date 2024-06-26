@@ -14,7 +14,7 @@ import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol"
 import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
-import {ERC4626Votes} from "../tokens/ERC4626/ERC4626Votes.sol";
+import {PlasmaVaultERC} from "./PlasmaVaultERC.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
@@ -75,7 +75,7 @@ struct FeeConfig {
 }
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-contract PlasmaVault is ERC4626Votes, ReentrancyGuard, PlasmaVaultGovernance {
+contract PlasmaVault is PlasmaVaultERC, ReentrancyGuard, PlasmaVaultGovernance {
     using Address for address;
     using SafeCast for int256;
 
@@ -96,7 +96,7 @@ contract PlasmaVault is ERC4626Votes, ReentrancyGuard, PlasmaVaultGovernance {
     constructor(
         PlasmaVaultInitData memory initData
     )
-        ERC4626Votes(initData.assetName, initData.assetSymbol, initData.underlyingToken)
+    PlasmaVaultERC(initData.assetName, initData.assetSymbol, initData.underlyingToken)
         PlasmaVaultGovernance(initData.accessManager)
     {
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracle);
