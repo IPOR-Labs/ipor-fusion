@@ -112,7 +112,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
                 data.minMintAmount
             );
         }
-        CURVE_STABLESWAP_NG.add_liquidity(data.amounts, data.minMintAmount, msg.sender);
+        CURVE_STABLESWAP_NG.add_liquidity(data.amounts, data.minMintAmount, address(this));
         emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(VERSION, data.asset, data.amounts, data.minMintAmount);
     }
 
@@ -155,7 +155,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
                 data.minReceived
             );
         }
-        CURVE_STABLESWAP_NG.remove_liquidity_one_coin(data.burnAmount, index, data.minReceived, msg.sender);
+        CURVE_STABLESWAP_NG.remove_liquidity_one_coin(data.burnAmount, index, data.minReceived, address(this));
         emit CurveSupplyStableswapNGSingleSideSupplyExitFuse(VERSION, data.burnAmount, data.asset, data.minReceived);
     }
 }
