@@ -9,4 +9,7 @@ library IporFusionMarketsArbitrum {
 
     /// @dev Compound V3 market
     uint256 public constant COMPOUND_V3 = 2;
+
+    /// @dev Gearbox V3 market
+    uint256 public constant GEARBOX_V3 = 3;
 }
