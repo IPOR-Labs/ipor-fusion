@@ -10,7 +10,7 @@ struct RoleToFunction {
     uint256 minimalExecutionDelay;
 }
 
-struct AdminRoles {
+struct AdminRole {
     uint64 roleId;
     uint64 adminRoleId;
 }
@@ -21,18 +21,18 @@ struct AccountToRole {
     uint32 executionDelay;
 }
 
-struct InitializeData {
+struct InitializationData {
     RoleToFunction[] roleToFunctions;
     AccountToRole[] accountToRoles;
-    AdminRoles[] adminRoles;
+    AdminRole[] adminRoles;
     uint256 redemptionDelay;
 }
 
-library InitializeAccessManagerLib {
+library IporFusionAccessManagerInitializationLib {
     /**
      * @dev Triggered when the contract has been initialized
      */
-    event Initialized();
+    event IporFusionAccessManagerInitialized();
 
     error AlreadyInitialized();
 
@@ -42,6 +42,6 @@ library InitializeAccessManagerLib {
             revert AlreadyInitialized();
         }
         initialize.initialized = 1;
-        emit Initialized();
+        emit IporFusionAccessManagerInitialized();
     }
 }

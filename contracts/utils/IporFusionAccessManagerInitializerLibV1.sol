@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
-import {RoleToFunction, AdminRoles, AccountToRole, InitializeData} from "../managers/InitializeAccessManagerLib.sol";
+import {RoleToFunction, AdminRole, AccountToRole, InitializationData} from "../managers/IporFusionAccessManagerInitializationLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../vaults/PlasmaVaultGovernance.sol";
 import {IporFusionRoles} from "../libraries/IporFusionRoles.sol";
@@ -32,11 +32,11 @@ struct DataForInitialization {
     PlasmaVaultAddress plasmaVaultAddress;
 }
 
-library InitializeAccessManagerHelperLib {
+library IporFusionAccessManagerInitializerLibV1 {
     function generateInitializeIporPlasmaVault(
         DataForInitialization memory data
-    ) internal returns (InitializeData memory) {
-        InitializeData memory initializeData;
+    ) internal returns (InitializationData memory) {
+        InitializationData memory initializeData;
         initializeData.roleToFunctions = _generateRoleToFunction(data.plasmaVaultAddress);
         initializeData.adminRoles = _generateAdminRoles();
         initializeData.accountToRoles = _generateAccountToRoles(data);
@@ -66,7 +66,7 @@ library InitializeAccessManagerHelperLib {
         for (uint256 i; i < data.admins.length; ++i) {
             accountToRoles[index] = AccountToRole({
                 roleId: IporFusionRoles.ADMIN_ROLE,
-                account: data.owners[i],
+                account: data.admins[i],
                 executionDelay: 0
             });
             ++index;
@@ -163,34 +163,34 @@ library InitializeAccessManagerHelperLib {
         return accountToRoles;
     }
 
-    function _generateAdminRoles() private returns (AdminRoles[] memory adminRoles) {
-        adminRoles = new AdminRoles[](11);
-        adminRoles[0] = AdminRoles({roleId: IporFusionRoles.OWNER_ROLE, adminRoleId: IporFusionRoles.ADMIN_ROLE});
-        adminRoles[1] = AdminRoles({roleId: IporFusionRoles.GUARDIAN_ROLE, adminRoleId: IporFusionRoles.OWNER_ROLE});
-        adminRoles[2] = AdminRoles({roleId: IporFusionRoles.ATOMIST_ROLE, adminRoleId: IporFusionRoles.OWNER_ROLE});
-        adminRoles[3] = AdminRoles({roleId: IporFusionRoles.ALPHA_ROLE, adminRoleId: IporFusionRoles.ATOMIST_ROLE});
-        adminRoles[4] = AdminRoles({roleId: IporFusionRoles.WHITELIST_ROLE, adminRoleId: IporFusionRoles.ATOMIST_ROLE});
-        adminRoles[5] = AdminRoles({
+    function _generateAdminRoles() private returns (AdminRole[] memory adminRoles) {
+        adminRoles = new AdminRole[](11);
+        adminRoles[0] = AdminRole({roleId: IporFusionRoles.OWNER_ROLE, adminRoleId: IporFusionRoles.ADMIN_ROLE});
+        adminRoles[1] = AdminRole({roleId: IporFusionRoles.GUARDIAN_ROLE, adminRoleId: IporFusionRoles.OWNER_ROLE});
+        adminRoles[2] = AdminRole({roleId: IporFusionRoles.ATOMIST_ROLE, adminRoleId: IporFusionRoles.OWNER_ROLE});
+        adminRoles[3] = AdminRole({roleId: IporFusionRoles.ALPHA_ROLE, adminRoleId: IporFusionRoles.ATOMIST_ROLE});
+        adminRoles[4] = AdminRole({roleId: IporFusionRoles.WHITELIST_ROLE, adminRoleId: IporFusionRoles.ATOMIST_ROLE});
+        adminRoles[5] = AdminRole({
             roleId: IporFusionRoles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE,
             adminRoleId: IporFusionRoles.ATOMIST_ROLE
         });
-        adminRoles[6] = AdminRoles({
+        adminRoles[6] = AdminRole({
             roleId: IporFusionRoles.TRANSFER_REWARDS_ROLE,
             adminRoleId: IporFusionRoles.ATOMIST_ROLE
         });
-        adminRoles[7] = AdminRoles({
+        adminRoles[7] = AdminRole({
             roleId: IporFusionRoles.CLAIM_REWARDS_ROLE,
             adminRoleId: IporFusionRoles.ATOMIST_ROLE
         });
-        adminRoles[8] = AdminRoles({
+        adminRoles[8] = AdminRole({
             roleId: IporFusionRoles.FUSE_MANAGER_ROLE,
             adminRoleId: IporFusionRoles.ATOMIST_ROLE
         });
-        adminRoles[9] = AdminRoles({
+        adminRoles[9] = AdminRole({
             roleId: IporFusionRoles.PERFORMANCE_FEE_MANAGER_ROLE,
             adminRoleId: IporFusionRoles.PERFORMANCE_FEE_MANAGER_ROLE
         });
-        adminRoles[10] = AdminRoles({
+        adminRoles[10] = AdminRole({
             roleId: IporFusionRoles.MANAGEMENT_FEE_MANAGER_ROLE,
             adminRoleId: IporFusionRoles.MANAGEMENT_FEE_MANAGER_ROLE
         });
@@ -222,6 +222,7 @@ library InitializeAccessManagerHelperLib {
             functionSelector: PlasmaVault.mint.selector,
             minimalExecutionDelay: 0
         });
+
         rolesToFunction[3] = RoleToFunction({
             target: plasmaVaultAddress.plasmaVault,
             roleId: IporFusionRoles.PUBLIC_ROLE,
@@ -234,12 +235,14 @@ library InitializeAccessManagerHelperLib {
             functionSelector: PlasmaVault.withdraw.selector,
             minimalExecutionDelay: 0
         });
+        // @dev The shares in this vault are transferable, hence we assign the PUBLIC_ROLE.
         rolesToFunction[5] = RoleToFunction({
             target: plasmaVaultAddress.plasmaVault,
             roleId: IporFusionRoles.PUBLIC_ROLE,
             functionSelector: PlasmaVault.transfer.selector,
             minimalExecutionDelay: 0
         });
+        // @dev The shares in this vault are transferable, hence we assign the PUBLIC_ROLE.
         rolesToFunction[6] = RoleToFunction({
             target: plasmaVaultAddress.plasmaVault,
             roleId: IporFusionRoles.PUBLIC_ROLE,
@@ -322,7 +325,7 @@ library InitializeAccessManagerHelperLib {
         // IporFuseAccessManager
         rolesToFunction[19] = RoleToFunction({
             target: plasmaVaultAddress.accessManager,
-            roleId: IporFusionRoles.ATOMIST_ROLE,
+            roleId: IporFusionRoles.OWNER_ROLE,
             functionSelector: IporFusionAccessManager.setMinimalExecutionDelaysForRoles.selector,
             minimalExecutionDelay: 0
         });

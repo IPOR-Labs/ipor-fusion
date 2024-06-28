@@ -7,7 +7,7 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
-import {InitializeAccessManagerLib, InitializeData} from "./InitializeAccessManagerLib.sol";
+import {IporFusionAccessManagerInitializationLib, InitializationData} from "./IporFusionAccessManagerInitializationLib.sol";
 import {IporFusionRoles} from "../libraries/IporFusionRoles.sol";
 
 contract IporFusionAccessManager is AccessManager {
@@ -23,8 +23,13 @@ contract IporFusionAccessManager is AccessManager {
 
     constructor(address initialAdmin_) AccessManager(initialAdmin_) {}
 
-    function initialize(InitializeData calldata initialData_) external restricted {
-        InitializeAccessManagerLib.isInitialized();
+    /// @notice Initializes the IporFusionAccessManager with the specified initial data.
+    /// @param initialData_ A struct containing the initial configuration data, including role-to-function mappings and execution delays.
+    /// @dev This method sets up the initial roles, functions, and minimal execution delays. It uses the IporFusionAccessManagerInitializationLib
+    /// to ensure that the contract is not already initialized. The function is restricted to authorized callers.
+    function initialize(InitializationData calldata initialData_) external restricted {
+        IporFusionAccessManagerInitializationLib.isInitialized();
+        _revokeRole(ADMIN_ROLE, msg.sender);
 
         uint256 roleToFunctionsLength = initialData_.roleToFunctions.length;
         uint64[] memory roleIds = new uint64[](roleToFunctionsLength);

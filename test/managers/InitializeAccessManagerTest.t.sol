@@ -8,8 +8,8 @@ import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMidd
 import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/RewardsClaimManager.sol";
 import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {InitializeAccessManagerHelperLib, DataForInitialization} from "../../contracts/utils/InitializeAccessManagerHelperLib.sol";
-import {InitializeData} from "../../contracts/managers/InitializeAccessManagerLib.sol";
+import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "../../contracts/utils/IporFusionAccessManagerInitializerLibV1.sol";
+import {InitializationData} from "../../contracts/managers/IporFusionAccessManagerInitializationLib.sol";
 import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
 
 contract InitializeAccessManagerTest is Test {
@@ -77,7 +77,9 @@ contract InitializeAccessManagerTest is Test {
         data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
         data.plasmaVaultAddress.accessManager = address(accessManager);
         data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
-        InitializeData memory initData = InitializeAccessManagerHelperLib.generateInitializeIporPlasmaVault(data);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
 
         // when
         vm.prank(admin);
@@ -123,7 +125,9 @@ contract InitializeAccessManagerTest is Test {
         DataForInitialization memory data = _generateDataForInitialization();
         data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
         data.plasmaVaultAddress.accessManager = address(accessManager);
-        InitializeData memory initData = InitializeAccessManagerHelperLib.generateInitializeIporPlasmaVault(data);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
 
         // when
         vm.prank(admin);
@@ -169,13 +173,35 @@ contract InitializeAccessManagerTest is Test {
         assertEq(accessManager.getRedemptionDelay(), 1009);
     }
 
+    function testShouldNotBeAbleToCallInitializeTwiceWhenRevokeAdminRole() external {
+        //given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", admin);
+        // when
+        vm.expectRevert(error);
+        vm.prank(admin);
+        accessManager.initialize(initData);
+    }
+
     function testShouldNotBeAbleToCallInitializeTwice() external {
         //given
         DataForInitialization memory data = _generateDataForInitialization();
         data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
         data.plasmaVaultAddress.accessManager = address(accessManager);
         data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
-        InitializeData memory initData = InitializeAccessManagerHelperLib.generateInitializeIporPlasmaVault(data);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
 
         vm.prank(admin);
         accessManager.initialize(initData);
@@ -183,7 +209,7 @@ contract InitializeAccessManagerTest is Test {
         bytes memory error = abi.encodeWithSignature("AlreadyInitialized()");
         // when
         vm.expectRevert(error);
-        vm.prank(admin);
+        vm.prank(data.admins[0]);
         accessManager.initialize(initData);
     }
 
