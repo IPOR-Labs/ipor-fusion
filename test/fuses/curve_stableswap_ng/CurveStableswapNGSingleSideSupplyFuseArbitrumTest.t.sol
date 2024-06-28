@@ -79,7 +79,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(address(fuse), activeToken.asset, amounts, 0);
 
         // when
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({asset: USDM, amounts: amounts, minMintAmount: 0})
         );
@@ -128,7 +127,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.expectRevert(error);
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({asset: USDM, amounts: amounts, minMintAmount: 0})
         );
@@ -174,7 +172,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.expectRevert(error);
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({asset: DAI, amounts: amounts, minMintAmount: 0})
         );
@@ -217,7 +214,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.expectRevert(error);
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({asset: USDM, amounts: amounts, minMintAmount: 0})
         );
@@ -267,7 +263,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.expectRevert(error);
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
                 asset: USDM,
@@ -313,7 +308,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.expectRevert(error);
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({asset: USDM, amounts: amounts, minMintAmount: 0})
         );
@@ -356,7 +350,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         vm.expectEmit(true, true, true, true);
         emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(address(fuse), activeToken.asset, amounts, 0);
 
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
                 asset: activeToken.asset,
@@ -380,7 +373,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         );
 
         // when
-        vm.prank(address(fuseMock));
         fuseMock.exit(
             CurveStableswapNGSingleSideSupplyFuseExitData({
                 asset: activeToken.asset,
@@ -433,7 +425,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         vm.expectEmit(true, true, true, true);
         emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(address(fuse), enterToken.asset, amounts, 0);
 
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
                 asset: enterToken.asset,
@@ -456,7 +447,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.expectRevert(error);
-        vm.prank(address(fuseMock));
         fuseMock.exit(
             CurveStableswapNGSingleSideSupplyFuseExitData({
                 asset: exitToken.asset,
@@ -496,7 +486,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         _grantAssetsToMarket(fuse, fuseMock, CURVE_STABLESWAP_NG_POOL);
 
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
                 asset: activeToken.asset,
@@ -512,7 +501,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 burnAmount = lpTokenBalance + 1;
 
         vm.expectRevert();
-        vm.prank(address(fuseMock));
         fuseMock.exit(
             CurveStableswapNGSingleSideSupplyFuseExitData({
                 burnAmount: burnAmount,
@@ -552,7 +540,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         _grantAssetsToMarket(fuse, fuseMock, CURVE_STABLESWAP_NG_POOL);
 
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
                 asset: activeToken.asset,
@@ -575,7 +562,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.expectRevert(error);
-        vm.prank(address(fuseMock));
         fuseMock.exit(
             CurveStableswapNGSingleSideSupplyFuseExitData({
                 burnAmount: lpTokenBalance,
@@ -615,7 +601,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         _grantAssetsToMarket(fuse, fuseMock, CURVE_STABLESWAP_NG_POOL);
 
-        vm.prank(address(fuseMock));
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
                 asset: activeToken.asset,
@@ -632,7 +617,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.expectRevert(error);
-        vm.prank(address(fuseMock));
         fuseMock.exit(
             CurveStableswapNGSingleSideSupplyFuseExitData({burnAmount: 0, asset: activeToken.asset, minReceived: 0})
         );
