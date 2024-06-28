@@ -8,7 +8,8 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 
-abstract contract PlasmaVaultERC is ERC20, ERC4626, ERC20Permit, ERC20Votes {
+/// @notice Abstract for PlasmaVault where is fusion of ERC20, ERC4626, ERC20Permit, ERC20Votes standards.
+abstract contract PlasmaVaultErc20Fusion is ERC20, ERC4626, ERC20Permit, ERC20Votes {
     constructor(
         string memory name,
         string memory symbol,

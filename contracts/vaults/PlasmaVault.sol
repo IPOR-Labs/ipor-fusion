@@ -14,7 +14,7 @@ import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol"
 import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
-import {PlasmaVaultERC} from "./PlasmaVaultERC.sol";
+import {PlasmaVaultErc20Fusion} from "./PlasmaVaultErc20Fusion.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
@@ -75,7 +75,7 @@ struct FeeConfig {
 }
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-contract PlasmaVault is PlasmaVaultERC, ReentrancyGuard, PlasmaVaultGovernance {
+contract PlasmaVault is PlasmaVaultErc20Fusion, ReentrancyGuard, PlasmaVaultGovernance {
     using Address for address;
     using SafeCast for int256;
 
