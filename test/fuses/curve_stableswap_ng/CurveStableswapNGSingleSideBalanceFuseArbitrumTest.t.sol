@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PlasmaVault, FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
-import {Errors} from "./../../../contracts/libraries/errors/Errors.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
@@ -24,7 +23,6 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
 
     struct PlasmaVaultState {
         uint256 vaultBalance;
-        uint256 marketBalance;
         uint256 vaultTotalAssets;
         uint256 vaultTotalAssetsInMarket;
         uint256 vaultLpTokensBalance;
@@ -113,44 +111,45 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             )
         );
 
-        _supplyTokensToMockVault(
-            activeToken.asset,
-            address(plasmaVault),
-            1_000 * 10 ** ERC20(activeToken.asset).decimals()
-        );
+        _supplyTokensToMockVault(activeToken.asset, address(alpha), 1_000 * 10 ** ERC20(activeToken.asset).decimals());
 
-        PlasmaVaultState memory beforeState = getPlasmaVaultState(plasmaVault, balanceFuse, fuse, activeToken);
+        vm.startPrank(alpha);
+        ERC20(activeToken.asset).approve(address(plasmaVault), 1_000 * 10 ** ERC20(activeToken.asset).decimals());
+        plasmaVault.deposit(1_000 * 10 ** ERC20(activeToken.asset).decimals(), address(alpha));
+
+        PlasmaVaultState memory beforeState = getPlasmaVaultState(plasmaVault, fuse, activeToken);
 
         // when
-        vm.prank(alpha);
         plasmaVault.execute(calls);
+        vm.stopPrank();
 
         // then
-        PlasmaVaultState memory afterState = getPlasmaVaultState(plasmaVault, balanceFuse, fuse, activeToken);
+        PlasmaVaultState memory afterState = getPlasmaVaultState(plasmaVault, fuse, activeToken);
 
         assertEq(beforeState.vaultBalance, 999999999999999999999, "Balance before should be 999999999999999999999");
-        assertEq(beforeState.marketBalance, 0, "Market balance before should be 0");
         assertEq(
             beforeState.vaultTotalAssets,
             999999999999999999999,
             "Total assets before should be 999999999999999999999"
         );
+        assertEq(
+            beforeState.vaultBalance,
+            beforeState.vaultTotalAssets,
+            "Balance before should be equal to total assets"
+        );
         assertEq(beforeState.vaultTotalAssetsInMarket, 0, "Total assets in market before should be 0");
         assertEq(beforeState.vaultLpTokensBalance, 0, "LP tokens balance before should be 0");
-
         assertGt(beforeState.vaultBalance, afterState.vaultBalance, "vaultBalance should decrease after supply");
         assertApproxEqAbs(
             afterState.vaultBalance + amounts[1],
             beforeState.vaultBalance,
             100,
-            "vaultBalance should be decreased by amount"
+            "vaultBalance should decrease by amount"
         );
-        // TODO - fix this
-        // assertGt(afterState.marketBalance, beforeState.marketBalance, "marketBalance should increase after supply");
-        assertGt(
-            beforeState.vaultTotalAssets,
+        assertApproxEqAbs(
             afterState.vaultTotalAssets,
-            "vaultTotalAssets should decrease after supply"
+            afterState.vaultBalance + afterState.vaultTotalAssetsInMarket,
+            100
         );
         assertGt(
             afterState.vaultTotalAssetsInMarket,
@@ -161,14 +160,126 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             afterState.vaultLpTokensBalance > beforeState.vaultLpTokensBalance,
             "vaultLpTokensBalance should increase after supply"
         );
+        assertApproxEqAbs(
+            CURVE_STABLESWAP_NG.calc_withdraw_one_coin(afterState.vaultLpTokensBalance, 1),
+            afterState.vaultTotalAssetsInMarket,
+            100
+        );
     }
 
-    function testShouldBeAbleToCalculateBalanceWhenSupplyAndExitSingleAsset() external {}
+    function testShouldBeAbleToCalculateBalanceWhenSupplyAndExitSingleAsset() external {
+        // given
+        priceOracleMock = new PriceOracleMock(USD, 8);
 
-    // TODO
-    // function testShouldBeAbleToCalculateBalanceWhenSupplyMultipleAssets() external {}
-    // function testShouldBeAbleToCalculateBalanceWhenZeroBalance() external {}
-    // function testShouldBeAbleToCalculateBalanceWhenMultipleLPTokens() external {}
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
+            1,
+            address(CURVE_STABLESWAP_NG)
+        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
+            1,
+            address(priceOracleMock)
+        );
+
+        MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
+        address[] memory fuses = createFuses(fuse);
+        address[] memory alphas = createAlphas();
+        MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 0;
+        amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "Plasma Vault",
+                "PLASMA",
+                activeToken.asset,
+                address(priceOracleMock),
+                alphas,
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(fuse),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(
+                    CurveStableswapNGSingleSideSupplyFuseEnterData({
+                        asset: activeToken.asset,
+                        amounts: amounts,
+                        minMintAmount: 0
+                    })
+                )
+            )
+        );
+
+        _supplyTokensToMockVault(activeToken.asset, address(alpha), 1_000 * 10 ** ERC20(activeToken.asset).decimals());
+
+        vm.startPrank(alpha);
+        ERC20(activeToken.asset).approve(address(plasmaVault), 1_000 * 10 ** ERC20(activeToken.asset).decimals());
+        plasmaVault.deposit(1_000 * 10 ** ERC20(activeToken.asset).decimals(), address(alpha));
+
+        plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        PlasmaVaultState memory beforeExitState = getPlasmaVaultState(plasmaVault, fuse, activeToken);
+
+        FuseAction[] memory callsSecond = new FuseAction[](1);
+        callsSecond[0] = FuseAction(
+            address(fuse),
+            abi.encodeWithSignature(
+                "exit(bytes)",
+                abi.encode(
+                    CurveStableswapNGSingleSideSupplyFuseExitData({
+                        burnAmount: beforeExitState.vaultLpTokensBalance,
+                        asset: activeToken.asset,
+                        minReceived: 0
+                    })
+                )
+            )
+        );
+        vm.warp(block.timestamp + 100 days);
+
+        // when
+        vm.prank(alpha);
+        plasmaVault.execute(callsSecond);
+
+        // then
+        PlasmaVaultState memory afterExitState = getPlasmaVaultState(plasmaVault, fuse, activeToken);
+        assertEq(beforeExitState.vaultBalance, 900000000000000000000, "Balance before should be 900000000000000000000");
+        assertApproxEqAbs(
+            beforeExitState.vaultTotalAssets,
+            beforeExitState.vaultBalance + beforeExitState.vaultTotalAssetsInMarket,
+            100,
+            "vaulBalance + vaultTotalAssetsInMarket should equal vaultTotalAssets"
+        );
+        assertGt(
+            beforeExitState.vaultTotalAssetsInMarket,
+            afterExitState.vaultTotalAssetsInMarket,
+            "vaultTotalAssetsInMarket should decrease after exit"
+        );
+        assertEq(afterExitState.vaultTotalAssetsInMarket, 0, "vaultTotalAssetsInMarket should be 0 after exit");
+        assertGt(
+            beforeExitState.vaultLpTokensBalance,
+            afterExitState.vaultLpTokensBalance,
+            "vaultLpTokensBalance should decrease after exit"
+        );
+        assertEq(afterExitState.vaultLpTokensBalance, 0, "vaultLpTokensBalance should be 0 after exit");
+        assertEq(
+            afterExitState.vaultBalance,
+            afterExitState.vaultTotalAssets,
+            "vaultBalance and vaultTotalAssets should be equal after exit"
+        );
+    }
 
     // HELPERS
 
@@ -201,9 +312,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(CURVE_STABLESWAP_NG_POOL);
-
         marketConfigs[0] = MarketSubstratesConfig({marketId: fuse.MARKET_ID(), substrates: substrates});
-
         return marketConfigs;
     }
 
@@ -230,14 +339,12 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
 
     function getPlasmaVaultState(
         PlasmaVault plasmaVault,
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse,
         CurveStableswapNGSingleSideSupplyFuse fuse,
         SupportedToken memory activeToken
     ) private view returns (PlasmaVaultState memory) {
         return
             PlasmaVaultState({
                 vaultBalance: ERC20(activeToken.asset).balanceOf(address(plasmaVault)),
-                marketBalance: balanceFuse.balanceOf(address(plasmaVault)),
                 vaultTotalAssets: plasmaVault.totalAssets(),
                 vaultTotalAssetsInMarket: plasmaVault.totalAssetsInMarket(fuse.MARKET_ID()),
                 vaultLpTokensBalance: ERC20(CURVE_STABLESWAP_NG_POOL).balanceOf(address(plasmaVault))
