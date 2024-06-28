@@ -96,7 +96,7 @@ contract PlasmaVault is PlasmaVaultERC, ReentrancyGuard, PlasmaVaultGovernance {
     constructor(
         PlasmaVaultInitData memory initData
     )
-    PlasmaVaultERC(initData.assetName, initData.assetSymbol, initData.underlyingToken)
+        PlasmaVaultERC(initData.assetName, initData.assetSymbol, initData.underlyingToken)
         PlasmaVaultGovernance(initData.accessManager)
     {
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracle);

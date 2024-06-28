@@ -12,19 +12,15 @@ abstract contract PlasmaVaultERC is ERC20, ERC4626, ERC20Permit, ERC20Votes {
     constructor(
         string memory name,
         string memory symbol,
-         address underlyingAsset
-    )
-        ERC20(name, symbol)
-        ERC20Permit(name)
-        ERC4626(IERC20Metadata(underlyingAsset))
-    {}
+        address underlyingAsset
+    ) ERC20(name, symbol) ERC20Permit(name) ERC4626(IERC20Metadata(underlyingAsset)) {}
 
     function decimals() public view override(ERC20, ERC4626) returns (uint8) {
         return super.decimals();
     }
 
     function _update(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
-        super._update(from, to, amount);
+        ERC20Votes._update(from, to, amount);
     }
 
     function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
