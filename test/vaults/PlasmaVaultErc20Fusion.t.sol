@@ -29,7 +29,7 @@ contract PlasmaVaultErc20FusionTest is Test {
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
-    IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
+        IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
     PlasmaVault private plasmaVault;
     address private owner;
