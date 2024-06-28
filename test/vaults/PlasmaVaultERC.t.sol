@@ -668,6 +668,7 @@ contract PlasmaVaultTest is Test {
     }
 
     function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
+        address atomist = address(this);
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
