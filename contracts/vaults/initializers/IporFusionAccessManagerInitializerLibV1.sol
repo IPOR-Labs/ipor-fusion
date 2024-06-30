@@ -2,12 +2,12 @@
 pragma solidity 0.8.20;
 
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
-import {RoleToFunction, AdminRole, AccountToRole, InitializationData} from "../managers/IporFusionAccessManagerInitializationLib.sol";
-import {PlasmaVault} from "../vaults/PlasmaVault.sol";
-import {PlasmaVaultGovernance} from "../vaults/PlasmaVaultGovernance.sol";
-import {IporFusionRoles} from "../libraries/IporFusionRoles.sol";
-import {RewardsClaimManager} from "../managers/RewardsClaimManager.sol";
-import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
+import {RoleToFunction, AdminRole, AccountToRole, InitializationData} from "../../managers/IporFusionAccessManagerInitializationLib.sol";
+import {PlasmaVault} from "../PlasmaVault.sol";
+import {PlasmaVaultGovernance} from "../PlasmaVaultGovernance.sol";
+import {IporFusionRoles} from "../../libraries/IporFusionRoles.sol";
+import {RewardsClaimManager} from "../../managers/RewardsClaimManager.sol";
+import {IporFusionAccessManager} from "../../managers/IporFusionAccessManager.sol";
 
 struct PlasmaVaultAddress {
     address plasmaVault;
@@ -26,10 +26,11 @@ struct DataForInitialization {
     address[] fuseManagers;
     address[] performanceFeeManagers;
     address[] managementFeeManagers;
-    address[] claimRewardsManagers;
+    address[] claimRewards;
     address[] transferRewardsManagers;
     address[] configInstantWithdrawalFusesManagers;
     PlasmaVaultAddress plasmaVaultAddress;
+    address claimRewardsManager;
 }
 
 library IporFusionAccessManagerInitializerLibV1 {
@@ -40,7 +41,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         initializeData.roleToFunctions = _generateRoleToFunction(data.plasmaVaultAddress);
         initializeData.adminRoles = _generateAdminRoles();
         initializeData.accountToRoles = _generateAccountToRoles(data);
-        initializeData.redemptionDelay = 1009;
+        initializeData.redemptionDelay = 0;
         return initializeData;
     }
 
@@ -57,11 +58,21 @@ library IporFusionAccessManagerInitializerLibV1 {
                 data.fuseManagers.length +
                 data.performanceFeeManagers.length +
                 data.managementFeeManagers.length +
-                data.claimRewardsManagers.length +
+                data.claimRewards.length +
                 data.transferRewardsManagers.length +
-                data.configInstantWithdrawalFusesManagers.length
+                data.configInstantWithdrawalFusesManagers.length +
+                (data.claimRewardsManager == address(0) ? 0 : 1)
         );
         uint256 index;
+
+        if (data.claimRewardsManager != address(0)) {
+            accountToRoles[index] = AccountToRole({
+                roleId: IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE,
+                account: data.claimRewardsManager,
+                executionDelay: 0
+            });
+            ++index;
+        }
 
         for (uint256 i; i < data.admins.length; ++i) {
             accountToRoles[index] = AccountToRole({
@@ -103,10 +114,10 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             ++index;
         }
-        for (uint256 i; i < data.claimRewardsManagers.length; ++i) {
+        for (uint256 i; i < data.claimRewards.length; ++i) {
             accountToRoles[index] = AccountToRole({
                 roleId: IporFusionRoles.CLAIM_REWARDS_ROLE,
-                account: data.claimRewardsManagers[i],
+                account: data.claimRewards[i],
                 executionDelay: 0
             });
             ++index;
@@ -164,7 +175,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     }
 
     function _generateAdminRoles() private returns (AdminRole[] memory adminRoles) {
-        adminRoles = new AdminRole[](11);
+        adminRoles = new AdminRole[](12);
         adminRoles[0] = AdminRole({roleId: IporFusionRoles.OWNER_ROLE, adminRoleId: IporFusionRoles.ADMIN_ROLE});
         adminRoles[1] = AdminRole({roleId: IporFusionRoles.GUARDIAN_ROLE, adminRoleId: IporFusionRoles.OWNER_ROLE});
         adminRoles[2] = AdminRole({roleId: IporFusionRoles.ATOMIST_ROLE, adminRoleId: IporFusionRoles.OWNER_ROLE});
@@ -193,6 +204,10 @@ library IporFusionAccessManagerInitializerLibV1 {
         adminRoles[10] = AdminRole({
             roleId: IporFusionRoles.MANAGEMENT_FEE_MANAGER_ROLE,
             adminRoleId: IporFusionRoles.MANAGEMENT_FEE_MANAGER_ROLE
+        });
+        adminRoles[11] = AdminRole({
+            roleId: IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE,
+            adminRoleId: IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE
         });
         return adminRoles;
     }
@@ -251,7 +266,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         });
         rolesToFunction[7] = RoleToFunction({
             target: plasmaVaultAddress.plasmaVault,
-            roleId: IporFusionRoles.CLAIM_REWARDS_ROLE,
+            roleId: IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE,
             functionSelector: PlasmaVault.claimRewards.selector,
             minimalExecutionDelay: 0
         });
