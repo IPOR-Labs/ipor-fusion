@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 library Errors {
     error WrongAddress();
-    error InvalidInput();
     error UnsupportedBaseCurrencyFromOracle(string errorCode);
     error UnsupportedPriceOracle(string errorCode);
 
