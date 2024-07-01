@@ -1,28 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.20;
 
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {ERC4626Permit} from "../tokens/ERC4626/ERC4626Permit.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {FusesLib} from "../libraries/FusesLib.sol";
-import {IFuseCommon} from "../fuses/IFuseCommon.sol";
-import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
-import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
-import {IporMath} from "../libraries/math/IporMath.sol";
-import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
-import {Errors} from "../libraries/errors/Errors.sol";
-import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
-import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
-import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
-import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
-import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IFuseCommon} from "../fuses/IFuseCommon.sol";
+import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
+import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
+import {Errors} from "../libraries/errors/Errors.sol";
+import {IporMath} from "../libraries/math/IporMath.sol";
+import {PlasmaVaultErc20Fusion} from "./PlasmaVaultErc20Fusion.sol";
+import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
+import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
+import {FusesLib} from "../libraries/FusesLib.sol";
+import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
+import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
+import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
+import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
@@ -76,7 +75,7 @@ struct FeeConfig {
 }
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
+contract PlasmaVault is PlasmaVaultErc20Fusion, ReentrancyGuard, PlasmaVaultGovernance {
     using Address for address;
     using SafeCast for int256;
 
@@ -97,9 +96,7 @@ contract PlasmaVault is ERC4626Permit, ReentrancyGuard, PlasmaVaultGovernance {
     constructor(
         PlasmaVaultInitData memory initData
     )
-        ERC4626Permit(IERC20(initData.underlyingToken))
-        ERC20Permit(initData.assetName)
-        ERC20(initData.assetName, initData.assetSymbol)
+        PlasmaVaultErc20Fusion(initData.assetName, initData.assetSymbol, initData.underlyingToken)
         PlasmaVaultGovernance(initData.accessManager)
     {
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData.priceOracle);

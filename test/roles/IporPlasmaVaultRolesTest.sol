@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
@@ -46,16 +47,16 @@ contract IporPlasmaVaultRolesTest is Test {
     }
 
     function _setupPriceOracleMiddleware() private {
-        vm.startPrank(_data_owners[0]);
+        vm.startPrank(_data.owners[0]);
 
         PriceOracleMiddleware implementation = new PriceOracleMiddleware(
             0x0000000000000000000000000000000000000348,
             8,
-            0x000
+            address(0)
         );
 
-        priceOracle = address(
-            new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", _data_owners[0]))
+        _priceOracle = address(
+            new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", _data.owners[0]))
         );
 
         address[] memory assets = new address[](1);
@@ -63,7 +64,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address[] memory sources = new address[](1);
         sources[0] = CHAINLINK_USDC;
 
-        PriceOracleMiddleware(priceOracle).setAssetSources(assets, sources);
+        PriceOracleMiddleware(_priceOracle).setAssetSources(assets, sources);
         vm.stopPrank();
     }
 }
