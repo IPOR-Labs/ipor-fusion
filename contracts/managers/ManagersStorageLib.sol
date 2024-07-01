@@ -28,6 +28,11 @@ struct PlasmaVaultAddress {
     address plasmaVault;
 }
 
+struct InitializeAccessManager {
+    // @dev if grate than 0 then initialized
+    uint256 initialized;
+}
+
 /// @title Storage
 library ManagersStorageLib {
     using SafeCast for uint256;
@@ -47,6 +52,10 @@ library ManagersStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.minimalExecutionDelayForRole")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant MINIMAL_EXECUTION_DELAY_FOR_ROLE =
         0x97af39007ec695dbf3f648be640f71c99bfc72f6f0c1a011cea5df1b93824400;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.initializeAccessManager")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant INITIALIZE_ACCESS_MANAGER =
+        0xbe9386785e99777544cae08d8688b2ce0aed369d4b6cb68200fcd245c8f21e00;
 
     event VestingDataUpdated(
         uint128 transferredTokens,
@@ -95,6 +104,12 @@ library ManagersStorageLib {
 
     function getRedemptionLocks() internal view returns (RedemptionLocks storage) {
         return _getRedemptionLocks();
+    }
+
+    function getInitializeAccessManager() internal view returns (InitializeAccessManager storage initialize) {
+        assembly {
+            initialize.slot := INITIALIZE_ACCESS_MANAGER
+        }
     }
 
     function setRedemptionDelay(uint256 redemptionDelay_) internal {

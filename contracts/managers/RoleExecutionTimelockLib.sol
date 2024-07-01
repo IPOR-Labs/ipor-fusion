@@ -10,7 +10,7 @@ library RoleExecutionTimelockLib {
         return ManagersStorageLib._getMinimalExecutionDelayForRole().delays[roleId_];
     }
 
-    function setMinimalExecutionDelaysForRoles(uint64[] calldata roleIds_, uint256[] calldata delays_) internal {
+    function setMinimalExecutionDelaysForRoles(uint64[] memory roleIds_, uint256[] memory delays_) internal {
         uint256 length = roleIds_.length;
         for (uint256 i; i < length; i++) {
             ManagersStorageLib._getMinimalExecutionDelayForRole().delays[roleIds_[i]] = delays_[i];
