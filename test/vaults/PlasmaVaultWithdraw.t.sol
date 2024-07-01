@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC4626Permit} from "../../contracts/tokens/ERC4626/ERC4626Permit.sol";
+import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
@@ -1029,7 +1029,7 @@ contract PlasmaVaultWithdrawTest is Test {
         //when
         vm.expectRevert(
             abi.encodeWithSelector(
-                ERC4626Permit.ERC4626ExceededMaxWithdraw.selector,
+                ERC4626.ERC4626ExceededMaxWithdraw.selector,
                 0x0000000000000000000000000000000000000888,
                 120000000,
                 111111110
