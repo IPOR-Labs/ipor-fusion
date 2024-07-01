@@ -26,7 +26,7 @@ contract IporFusionAccessManager is AccessManager {
     /// @notice Initializes the IporFusionAccessManager with the specified initial data.
     /// @param initialData_ A struct containing the initial configuration data, including role-to-function mappings and execution delays.
     /// @dev This method sets up the initial roles, functions, and minimal execution delays. It uses the IporFusionAccessManagerInitializationLib
-    /// to ensure that the contract is not already initialized. The function is restricted to authorized callers.
+    /// to ensure that the contract is not already initialized, it can be done only once. The function is restricted to authorized callers.
     function initialize(InitializationData calldata initialData_) external restricted {
         IporFusionAccessManagerInitializationLib.isInitialized();
         _revokeRole(ADMIN_ROLE, msg.sender);

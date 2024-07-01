@@ -8,7 +8,7 @@ import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMidd
 import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/RewardsClaimManager.sol";
 import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "../../contracts/utils/IporFusionAccessManagerInitializerLibV1.sol";
+import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../contracts/managers/IporFusionAccessManagerInitializationLib.sol";
 import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
 
@@ -117,7 +117,7 @@ contract InitializeAccessManagerTest is Test {
             }
         }
 
-        assertEq(accessManager.getRedemptionDelay(), 1009);
+        assertEq(accessManager.getRedemptionDelay(), 0);
     }
 
     function testShouldSetupAccessManagerWithoutRewardsClaimManager() public {
@@ -170,7 +170,7 @@ contract InitializeAccessManagerTest is Test {
             }
         }
 
-        assertEq(accessManager.getRedemptionDelay(), 1009);
+        assertEq(accessManager.getRedemptionDelay(), 0);
     }
 
     function testShouldNotBeAbleToCallInitializeTwiceWhenRevokeAdminRole() external {
@@ -224,7 +224,7 @@ contract InitializeAccessManagerTest is Test {
         data.fuseManagers = _generateAddresses(10_000_000, 10);
         data.performanceFeeManagers = _generateAddresses(100_000_000, 10);
         data.managementFeeManagers = _generateAddresses(1_000_000_000, 10);
-        data.claimRewardsManagers = _generateAddresses(10_000_000_000, 10);
+        data.claimRewards = _generateAddresses(10_000_000_000, 10);
         data.transferRewardsManagers = _generateAddresses(100_000_000_000, 10);
         data.configInstantWithdrawalFusesManagers = _generateAddresses(1_000_000_000_000, 10);
 
