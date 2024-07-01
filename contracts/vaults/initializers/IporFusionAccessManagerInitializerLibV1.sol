@@ -67,7 +67,7 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         if (data.claimRewardsManager != address(0)) {
             accountToRoles[index] = AccountToRole({
-                roleId: IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE,
+                roleId: IporFusionRoles.CLAIM_REWARDS_MANAGER_ROLE,
                 account: data.claimRewardsManager,
                 executionDelay: 0
             });
@@ -206,8 +206,8 @@ library IporFusionAccessManagerInitializerLibV1 {
             adminRoleId: IporFusionRoles.MANAGEMENT_FEE_MANAGER_ROLE
         });
         adminRoles[11] = AdminRole({
-            roleId: IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE,
-            adminRoleId: IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE
+            roleId: IporFusionRoles.CLAIM_REWARDS_MANAGER_ROLE,
+            adminRoleId: IporFusionRoles.CLAIM_REWARDS_MANAGER_ROLE
         });
         return adminRoles;
     }
@@ -266,7 +266,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         });
         rolesToFunction[7] = RoleToFunction({
             target: plasmaVaultAddress.plasmaVault,
-            roleId: IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE,
+            roleId: IporFusionRoles.CLAIM_REWARDS_MANAGER_ROLE,
             functionSelector: PlasmaVault.claimRewards.selector,
             minimalExecutionDelay: 0
         });

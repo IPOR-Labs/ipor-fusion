@@ -32,7 +32,7 @@ library IporFusionRoles {
     uint64 public constant CLAIM_REWARDS_ROLE = 600;
 
     /// @dev Could be assigned only on bootstrap, this value could not be change after initialization
-    uint64 public constant REWARDS_CLAIM_MANAGER_ROLE = 601;
+    uint64 public constant CLAIM_REWARDS_MANAGER_ROLE = 601;
 
     /// @dev Managed by the Atomist
     uint64 public constant TRANSFER_REWARDS_ROLE = 700;
