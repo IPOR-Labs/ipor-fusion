@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {console2} from "forge-std/Test.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IUSDM} from "./IUSDM.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
@@ -11,6 +9,7 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {CurveStableswapNGSingleSideBalanceFuse} from "../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
 import {USDMPriceFeed} from "./../../../contracts/priceOracle/priceFeed/USDMPriceFeed.sol";
 import {PriceOracleMock} from "../../fuses/curve_stableswap_ng/PriceOracleMock.sol";
+import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
 
 contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -93,8 +92,12 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes memory data) {
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 0;
+        amounts[1] = amount_;
+        uint256 burnAmount = ICurveStableswapNG(CURVE_STABLESWAP_NG_POOL).calc_token_amount(amounts, false);
         CurveStableswapNGSingleSideSupplyFuseExitData memory exitData = CurveStableswapNGSingleSideSupplyFuseExitData({
-            burnAmount: amount_,
+            burnAmount: burnAmount,
             asset: asset,
             minReceived: 0
         });
