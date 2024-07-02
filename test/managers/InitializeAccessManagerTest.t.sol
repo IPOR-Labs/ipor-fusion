@@ -11,6 +11,7 @@ import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig,
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../contracts/managers/IporFusionAccessManagerInitializationLib.sol";
 import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
+import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 
 contract InitializeAccessManagerTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -53,7 +54,7 @@ contract InitializeAccessManagerTest is Test {
 
         accessManager = new IporFusionAccessManager(admin);
 
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",

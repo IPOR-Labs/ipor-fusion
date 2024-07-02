@@ -6,7 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {Errors} from "../../contracts/libraries/errors/Errors.sol";
-import {SDaiPriceFeed} from "../../contracts/priceOracle/priceFeed/SDaiPriceFeed.sol";
+import {SDaiPriceFeedEthereum} from "../../contracts/priceOracle/priceFeed/SDaiPriceFeedEthereum.sol";
 
 contract PriceOracleMiddlewareMaintenanceTest is Test {
     address private constant CHAINLINK_FEED_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
@@ -85,14 +85,14 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
     function testShouldReturnSDaiPrice() external {
         // given
         address sDai = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
-        SDaiPriceFeed priceFeed = new SDaiPriceFeed();
+        SDaiPriceFeedEthereum priceFeed = new SDaiPriceFeedEthereum();
         address[] memory assets = new address[](1);
         address[] memory sources = new address[](1);
         assets[0] = sDai;
         sources[0] = address(priceFeed);
 
         vm.prank(OWNER);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
 
         // when
         uint256 result = priceOracleMiddlewareProxy.getAssetPrice(sDai);

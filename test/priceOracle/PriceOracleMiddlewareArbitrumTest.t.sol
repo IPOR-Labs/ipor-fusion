@@ -34,7 +34,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         sources[0] = CHAINLINK_USDC_USD;
 
         vm.prank(OWNER);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
     function testShouldReturnSDaiPrice() external {

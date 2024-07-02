@@ -12,6 +12,8 @@ bytes4 constant REDEEM_SELECTOR = PlasmaVault.redeem.selector;
 library RedemptionDelayLib {
     error AccountIsLocked(uint256 unlockTime);
 
+    /// @notice Check if account is locked for a specific function (correlation withdraw, redeem functions to deposit, mint functions)
+    /// @dev When deposit or mint functions are called, the account is locked for withdraw and redeem functions for a specific time defined by the redemption delay.
     function lockChecks(address account_, bytes4 sig_) internal {
         if (sig_ == WITHDRAW_SELECTOR || sig_ == REDEEM_SELECTOR) {
             uint256 unlockTime = ManagersStorageLib.getRedemptionLocks().redemptionLock[account_];

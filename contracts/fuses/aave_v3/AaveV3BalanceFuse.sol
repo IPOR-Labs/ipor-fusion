@@ -26,7 +26,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
         AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3;
     }
 
-    function balanceOf(address plasmaVault) external view override returns (uint256) {
+    function balanceOf(address plasmaVault_) external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
@@ -50,6 +50,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
             asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             decimals = ERC20(asset).decimals();
             price = IAavePriceOracle(AAVE_PRICE_ORACLE).getAssetPrice(asset);
+
             if (price == 0) {
                 revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_ASSET);
             }
@@ -59,13 +60,13 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
             ).getReserveTokensAddresses(asset);
 
             if (aTokenAddress != address(0)) {
-                balanceInLoop += int256(ERC20(aTokenAddress).balanceOf(plasmaVault));
+                balanceInLoop += int256(ERC20(aTokenAddress).balanceOf(plasmaVault_));
             }
             if (stableDebtTokenAddress != address(0)) {
-                balanceInLoop -= int256(ERC20(stableDebtTokenAddress).balanceOf(plasmaVault));
+                balanceInLoop -= int256(ERC20(stableDebtTokenAddress).balanceOf(plasmaVault_));
             }
             if (variableDebtTokenAddress != address(0)) {
-                balanceInLoop -= int256(ERC20(variableDebtTokenAddress).balanceOf(plasmaVault));
+                balanceInLoop -= int256(ERC20(variableDebtTokenAddress).balanceOf(plasmaVault_));
             }
 
             balanceTemp += IporMath.convertToWadInt(

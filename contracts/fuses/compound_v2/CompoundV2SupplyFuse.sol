@@ -36,60 +36,60 @@ contract CompoundV2SupplyFuse is IFuse {
 
     error CompoundV2SupplyFuseUnsupportedAsset(address asset, string errorCode);
 
-    constructor(uint256 marketIdInput) {
+    constructor(uint256 marketId_) {
         VERSION = address(this);
-        MARKET_ID = marketIdInput;
+        MARKET_ID = marketId_;
     }
 
-    function enter(bytes calldata data) external {
-        _enter(abi.decode(data, (CompoundV2SupplyFuseEnterData)));
+    function enter(bytes calldata data_) external {
+        _enter(abi.decode(data_, (CompoundV2SupplyFuseEnterData)));
     }
 
-    function enter(CompoundV2SupplyFuseEnterData memory data) external {
-        _enter(data);
+    function enter(CompoundV2SupplyFuseEnterData memory data_) external {
+        _enter(data_);
     }
 
-    function exit(bytes calldata data) external {
-        _exit(abi.decode(data, (CompoundV2SupplyFuseExitData)));
+    function exit(bytes calldata data_) external {
+        _exit(abi.decode(data_, (CompoundV2SupplyFuseExitData)));
     }
 
-    function exit(CompoundV2SupplyFuseExitData calldata data) external {
-        _exit(data);
+    function exit(CompoundV2SupplyFuseExitData calldata data_) external {
+        _exit(data_);
     }
 
-    function _enter(CompoundV2SupplyFuseEnterData memory data) internal {
-        CErc20 cToken = CErc20(_getCToken(MARKET_ID, data.asset));
+    function _enter(CompoundV2SupplyFuseEnterData memory data_) internal {
+        CErc20 cToken = CErc20(_getCToken(MARKET_ID, data_.asset));
 
-        ERC20(data.asset).forceApprove(address(cToken), data.amount);
+        ERC20(data_.asset).forceApprove(address(cToken), data_.amount);
 
-        cToken.mint(data.amount);
+        cToken.mint(data_.amount);
 
-        emit CompoundV2SupplyEnterFuse(VERSION, data.asset, address(cToken), data.amount);
+        emit CompoundV2SupplyEnterFuse(VERSION, data_.asset, address(cToken), data_.amount);
     }
 
-    function _exit(CompoundV2SupplyFuseExitData memory data) internal {
-        CErc20 cToken = CErc20(_getCToken(MARKET_ID, data.asset));
+    function _exit(CompoundV2SupplyFuseExitData memory data_) internal {
+        CErc20 cToken = CErc20(_getCToken(MARKET_ID, data_.asset));
 
         uint256 balance = cToken.balanceOfUnderlying(address(this));
-        uint256 amountToWithdraw = data.amount > balance ? balance : data.amount;
+        uint256 amountToWithdraw = data_.amount > balance ? balance : data_.amount;
 
         cToken.redeemUnderlying(amountToWithdraw);
 
-        emit CompoundV2SupplyExitFuse(VERSION, data.asset, address(cToken), amountToWithdraw);
+        emit CompoundV2SupplyExitFuse(VERSION, data_.asset, address(cToken), amountToWithdraw);
     }
 
-    function _getCToken(uint256 marketId, address asset) internal view returns (address) {
-        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(marketId);
+    function _getCToken(uint256 marketId_, address asset_) internal view returns (address) {
+        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(marketId_);
         uint256 len = assetsRaw.length;
         if (len == 0) {
-            revert CompoundV2SupplyFuseUnsupportedAsset(asset, Errors.UNSUPPORTED_ASSET);
+            revert CompoundV2SupplyFuseUnsupportedAsset(asset_, Errors.UNSUPPORTED_ASSET);
         }
         for (uint256 i; i < len; ++i) {
             address cToken = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
-            if (CErc20(cToken).underlying() == asset) {
+            if (CErc20(cToken).underlying() == asset_) {
                 return cToken;
             }
         }
-        revert CompoundV2SupplyFuseUnsupportedAsset(asset, Errors.UNSUPPORTED_ASSET);
+        revert CompoundV2SupplyFuseUnsupportedAsset(asset_, Errors.UNSUPPORTED_ASSET);
     }
 }

@@ -15,6 +15,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
+import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -180,7 +181,7 @@ contract PlasmaVaultDepositTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -233,7 +234,7 @@ contract PlasmaVaultDepositTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

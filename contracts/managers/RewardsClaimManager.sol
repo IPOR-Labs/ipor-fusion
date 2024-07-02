@@ -67,20 +67,6 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
         IERC20(asset_).safeTransfer(to_, amount_);
     }
 
-    function addRewardFuses(address[] calldata fuses_) external restricted {
-        uint256 len = fuses_.length;
-        for (uint256 i; i < len; ++i) {
-            FusesLib.addFuse(fuses_[i]);
-        }
-    }
-
-    function removeRewardFuses(address[] calldata fuses_) external restricted {
-        uint256 len = fuses_.length;
-        for (uint256 i; i < len; ++i) {
-            FusesLib.removeFuse(fuses_[i]);
-        }
-    }
-
     function claimRewards(FuseAction[] calldata calls_) external restricted {
         uint256 len = calls_.length;
         for (uint256 i; i < len; ++i) {
@@ -90,10 +76,6 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
         }
 
         PlasmaVault(PLASMA_VAULT).claimRewards(calls_);
-    }
-
-    function setupVestingTime(uint256 vestingTime_) external restricted {
-        ManagersStorageLib.setupVestingTime(vestingTime_);
     }
 
     function updateBalance() external restricted {
@@ -117,5 +99,23 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
         IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
         ManagersStorageLib.updateTransferredTokens(balance);
         emit AmountWithdrawn(balance);
+    }
+
+    function addRewardFuses(address[] calldata fuses_) external restricted {
+        uint256 len = fuses_.length;
+        for (uint256 i; i < len; ++i) {
+            FusesLib.addFuse(fuses_[i]);
+        }
+    }
+
+    function removeRewardFuses(address[] calldata fuses_) external restricted {
+        uint256 len = fuses_.length;
+        for (uint256 i; i < len; ++i) {
+            FusesLib.removeFuse(fuses_[i]);
+        }
+    }
+
+    function setupVestingTime(uint256 vestingTime_) external restricted {
+        ManagersStorageLib.setupVestingTime(vestingTime_);
     }
 }

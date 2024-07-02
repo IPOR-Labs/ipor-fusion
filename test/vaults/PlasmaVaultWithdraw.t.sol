@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
@@ -13,7 +14,7 @@ import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigL
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {AaveConstants} from "../../contracts/fuses/aave_v3/AaveConstants.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
@@ -303,7 +304,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -345,13 +346,12 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
@@ -415,7 +415,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -466,18 +466,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -534,7 +533,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -577,13 +576,12 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
@@ -641,7 +639,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -692,18 +690,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -771,7 +768,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -831,18 +828,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -934,7 +930,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -994,18 +990,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -1089,7 +1084,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1149,18 +1144,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -1235,7 +1229,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1278,13 +1272,12 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
@@ -1349,7 +1342,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1392,13 +1385,12 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
@@ -1479,7 +1471,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1538,18 +1530,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -1630,7 +1621,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1684,7 +1675,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

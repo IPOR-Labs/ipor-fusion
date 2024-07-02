@@ -60,7 +60,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetSourceWithEmptyArrays() external {
@@ -74,7 +74,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetAssetWithDifferentLengths() external {
@@ -90,10 +90,10 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
-    function testShouldNotBeAbleToSetAssetSourcesWhenSenderNotOwner() external {
+    function testShouldNotBeAbleTosetAssetsPricesSourcesWhenSenderNotOwner() external {
         // given
         bytes memory error = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(this));
 
@@ -104,7 +104,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
 
         // when
         vm.expectRevert(error);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetAssetAsZeroAddress() external {
@@ -122,7 +122,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
     function testShouldNotBeAbleToSetSourceAsZeroAddress() external {
@@ -140,7 +140,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(OWNER);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
     function testShouldBeAbleToSetupAssetAndSource() external {
@@ -152,9 +152,13 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
 
         // when
         vm.prank(OWNER);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
 
         // then
-        assertEq(priceOracleMiddlewareProxy.getSourceOfAsset(assets[0]), sources[0], "Source should be set correctly");
+        assertEq(
+            priceOracleMiddlewareProxy.getSourceOfAssetPrice(assets[0]),
+            sources[0],
+            "Source should be set correctly"
+        );
     }
 }

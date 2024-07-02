@@ -77,33 +77,40 @@ contract IporFusionAccessManager is AccessManager {
         }
     }
 
+    /// @dev canCall cannot be a view function because it updates the account lock time.
     function canCallAndUpdate(
-        address caller,
-        address target,
-        bytes4 selector
+        address caller_,
+        address target_,
+        bytes4 selector_
     ) external returns (bool immediate, uint32 delay) {
-        RedemptionDelayLib.lockChecks(caller, selector);
-        return super.canCall(caller, target, selector);
+        RedemptionDelayLib.lockChecks(caller_, selector_);
+        return super.canCall(caller_, target_, selector_);
     }
 
-    function updateTargetClosed(address target, bool closed) public restricted {
-        _setTargetClosed(target, closed);
+    /// @dev I most cases when Vault is bootstrapping the ADMIN_ROLE  is revoked so custom method is needed to grant roles for a GUARDIAN_ROLE.
+    function updateTargetClosed(address target_, bool closed_) public restricted {
+        _setTargetClosed(target_, closed_);
     }
 
-    function convertToPublicVault(address vault) public restricted {
-        _setTargetFunctionRole(vault, PlasmaVault.mint.selector, PUBLIC_ROLE);
-        _setTargetFunctionRole(vault, PlasmaVault.deposit.selector, PUBLIC_ROLE);
+    /// @notice Converts the specified vault to a public vault - mint and deposit functions are allowed for everyone.
+    /// @dev Notice! Can convert to public but cannot convert back to private.
+    function convertToPublicVault(address vault_) public restricted {
+        _setTargetFunctionRole(vault_, PlasmaVault.mint.selector, PUBLIC_ROLE);
+        _setTargetFunctionRole(vault_, PlasmaVault.deposit.selector, PUBLIC_ROLE);
     }
 
-    function enableTransferShares(address vault) public restricted {
-        _setTargetFunctionRole(vault, PlasmaVault.transfer.selector, PUBLIC_ROLE);
-        _setTargetFunctionRole(vault, PlasmaVault.transferFrom.selector, PUBLIC_ROLE);
+    /// @notice Enables transfer shares, transfer and transferFrom functions are allowed for everyone.
+    function enableTransferShares(address vault_) public restricted {
+        _setTargetFunctionRole(vault_, PlasmaVault.transfer.selector, PUBLIC_ROLE);
+        _setTargetFunctionRole(vault_, PlasmaVault.transferFrom.selector, PUBLIC_ROLE);
     }
 
+    /// @dev Sets the minimal delay required between deposit / mint and withdrawal / redeem operations.
     function setRedemptionDelay(uint256 delay_) external restricted {
         RedemptionDelayLib.setRedemptionDelay(delay_);
     }
 
+    /// @dev Sets the minimal execution delay required for the specified roles.
     function setMinimalExecutionDelaysForRoles(
         uint64[] calldata rolesId_,
         uint256[] calldata delays_
@@ -113,13 +120,6 @@ contract IporFusionAccessManager is AccessManager {
 
     function grantRole(uint64 roleId_, address account_, uint32 executionDelay_) public override onlyAuthorized {
         _grantRoleInternal(roleId_, account_, executionDelay_);
-    }
-
-    function _grantRoleInternal(uint64 roleId_, address account_, uint32 executionDelay_) internal {
-        if (executionDelay_ < RoleExecutionTimelockLib.getMinimalExecutionDelayForRole(roleId_)) {
-            revert TooShortExecutionDelayForRole(roleId_, executionDelay_);
-        }
-        _grantRole(roleId_, account_, getRoleGrantDelay(roleId_), executionDelay_);
     }
 
     function getMinimalExecutionDelayForRole(uint64 roleId_) external view returns (uint256) {
@@ -138,15 +138,22 @@ contract IporFusionAccessManager is AccessManager {
         return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
     }
 
-    function _checkCanCall(address caller, bytes calldata data) internal virtual {
-        (bool immediate, uint32 delay) = canCall(caller, address(this), bytes4(data[0:4]));
+    function _grantRoleInternal(uint64 roleId_, address account_, uint32 executionDelay_) internal {
+        if (executionDelay_ < RoleExecutionTimelockLib.getMinimalExecutionDelayForRole(roleId_)) {
+            revert TooShortExecutionDelayForRole(roleId_, executionDelay_);
+        }
+        _grantRole(roleId_, account_, getRoleGrantDelay(roleId_), executionDelay_);
+    }
+
+    function _checkCanCall(address caller_, bytes calldata data_) internal virtual {
+        (bool immediate, uint32 delay) = canCall(caller_, address(this), bytes4(data_[0:4]));
         if (!immediate) {
             if (delay > 0) {
                 _customConsumingSchedule = true;
-                IAccessManager(address(this)).consumeScheduledOp(caller, data);
+                IAccessManager(address(this)).consumeScheduledOp(caller_, data_);
                 _customConsumingSchedule = false;
             } else {
-                revert AccessManagedUnauthorized(caller);
+                revert AccessManagedUnauthorized(caller_);
             }
         }
     }

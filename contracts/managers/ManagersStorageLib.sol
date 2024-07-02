@@ -33,28 +33,28 @@ struct InitializeAccessManager {
     uint256 initialized;
 }
 
-/// @title Storage
+/// @title Storage library for Managers contracts
 library ManagersStorageLib {
     using SafeCast for uint256;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.VestingData")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant VESTING_DATA = 0x0d045b5703684afaa183a07037de996bd8cd6d6b3ff96656a7ee811227ddf700;
+    bytes32 private constant REWARDS_CLAIM_MANAGER_VESTING_DATA =
+        0x0d045b5703684afaa183a07037de996bd8cd6d6b3ff96656a7ee811227ddf700;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.RedemptionDelay")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant REDEMPTION_DELAY = 0xcd3f64412f7e3e03fd4a055a0b9215638f10bd88b6e2999623a4fbce73568b00;
+    bytes32 private constant ACCESS_MANAGER_REDEMPTION_DELAY =
+        0xcd3f64412f7e3e03fd4a055a0b9215638f10bd88b6e2999623a4fbce73568b00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.RedemptionLocks")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant REDEMPTION_LOCKS = 0x1df8c3be97c2c624569b6b4d642cde88d3084fa39c37b3ca0e61dbd22d5c4200;
-
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVault")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant PLASMA_VAULT = 0x1469611b48a54264f469346102240688dc1bf1295d466f17eb541c87bd55d300;
+    bytes32 private constant ACCESS_MANAGER_REDEMPTION_LOCKS =
+        0x1df8c3be97c2c624569b6b4d642cde88d3084fa39c37b3ca0e61dbd22d5c4200;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.minimalExecutionDelayForRole")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant MINIMAL_EXECUTION_DELAY_FOR_ROLE =
+    bytes32 private constant ACCESS_MANAGER_MINIMAL_EXECUTION_DELAY_FOR_ROLE =
         0x97af39007ec695dbf3f648be640f71c99bfc72f6f0c1a011cea5df1b93824400;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.initializeAccessManager")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant INITIALIZE_ACCESS_MANAGER =
+    bytes32 private constant ACCESS_MANAGER_INITIALIZE =
         0xbe9386785e99777544cae08d8688b2ce0aed369d4b6cb68200fcd245c8f21e00;
 
     event VestingDataUpdated(
@@ -108,7 +108,7 @@ library ManagersStorageLib {
 
     function getInitializeAccessManager() internal view returns (InitializeAccessManager storage initialize) {
         assembly {
-            initialize.slot := INITIALIZE_ACCESS_MANAGER
+            initialize.slot := ACCESS_MANAGER_INITIALIZE
         }
     }
 
@@ -130,19 +130,19 @@ library ManagersStorageLib {
 
     function _getVestingData() private pure returns (VestingData storage foundsReleaseData) {
         assembly {
-            foundsReleaseData.slot := VESTING_DATA
+            foundsReleaseData.slot := REWARDS_CLAIM_MANAGER_VESTING_DATA
         }
     }
 
     function _getRedemptionDelay() private pure returns (RedemptionDelay storage redemptionDelay) {
         assembly {
-            redemptionDelay.slot := REDEMPTION_DELAY
+            redemptionDelay.slot := ACCESS_MANAGER_REDEMPTION_DELAY
         }
     }
 
     function _getRedemptionLocks() private pure returns (RedemptionLocks storage redemptionLocks) {
         assembly {
-            redemptionLocks.slot := REDEMPTION_LOCKS
+            redemptionLocks.slot := ACCESS_MANAGER_REDEMPTION_LOCKS
         }
     }
 
@@ -152,7 +152,7 @@ library ManagersStorageLib {
         returns (MinimalExecutionDelayForRole storage minimalExecutionDelayForRole)
     {
         assembly {
-            minimalExecutionDelayForRole.slot := MINIMAL_EXECUTION_DELAY_FOR_ROLE
+            minimalExecutionDelayForRole.slot := ACCESS_MANAGER_MINIMAL_EXECUTION_DELAY_FOR_ROLE
         }
     }
 }

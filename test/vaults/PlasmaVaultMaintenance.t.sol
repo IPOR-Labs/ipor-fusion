@@ -12,12 +12,12 @@ import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contrac
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddlewareMock} from "../priceOracle/PriceOracleMiddlewareMock.sol";
-import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
 import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
+import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -69,7 +69,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -104,7 +104,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.managementFeeManagers = managementFeeManagers;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -141,7 +141,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -186,7 +186,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -229,7 +229,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -271,7 +271,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -315,7 +315,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -357,7 +357,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -414,7 +414,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         // when
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -457,7 +457,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -501,7 +501,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         // when
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -543,7 +543,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -599,7 +599,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -704,7 +704,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -765,7 +765,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -844,7 +844,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -923,7 +923,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -973,7 +973,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1034,7 +1034,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1091,7 +1091,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1157,7 +1157,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1210,7 +1210,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1258,7 +1258,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1278,7 +1278,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 6, address(0)));
         address priceOracleBefore = plasmaVault.getPriceOracle();
 
-        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle(string)", Errors.PRICE_ORACLE_ERROR);
+        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle()");
 
         // when
         vm.expectRevert(error);
@@ -1313,7 +1313,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1333,7 +1333,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address newPriceOracle = address(new PriceOracleMiddlewareMock(address(0x777), 8, address(0)));
         address priceOracleBefore = plasmaVault.getPriceOracle();
 
-        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle(string)", Errors.PRICE_ORACLE_ERROR);
+        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle()");
 
         // when
         vm.expectRevert(error);
@@ -1368,7 +1368,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1443,7 +1443,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1483,7 +1483,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1528,7 +1528,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1576,7 +1576,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1619,7 +1619,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1662,7 +1662,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1710,7 +1710,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1750,7 +1750,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1795,7 +1795,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1842,7 +1842,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1931,7 +1931,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2022,7 +2022,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2115,7 +2115,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2211,7 +2211,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address owner = usersToRoles.atomist;
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2268,7 +2268,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2324,7 +2324,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2379,7 +2379,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

@@ -15,23 +15,22 @@ library FusesLib {
     error BalanceFuseAlreadyExists(uint256 marketId, address fuse);
     error BalanceFuseDoesNotExist(uint256 marketId, address fuse);
 
-    function isFuseSupported(address fuse) internal view returns (bool) {
-        return PlasmaVaultStorageLib.getFuses().value[fuse] != 0;
+    function isFuseSupported(address fuse_) internal view returns (bool) {
+        return PlasmaVaultStorageLib.getFuses().value[fuse_] != 0;
     }
 
     function getFusesArray() internal view returns (address[] memory) {
         return PlasmaVaultStorageLib.getFusesArray().value;
     }
 
-    function getFuseArrayIndex(address fuse) internal view returns (uint256) {
-        return PlasmaVaultStorageLib.getFuses().value[fuse];
+    function getFuseArrayIndex(address fuse_) internal view returns (uint256) {
+        return PlasmaVaultStorageLib.getFuses().value[fuse_];
     }
 
-    // TODO: add tests for addFuse and removeFuse
-    function addFuse(address fuse) internal {
+    function addFuse(address fuse_) internal {
         PlasmaVaultStorageLib.Fuses storage fuses = PlasmaVaultStorageLib.getFuses();
 
-        uint256 keyIndexValue = fuses.value[fuse];
+        uint256 keyIndexValue = fuses.value[fuse_];
 
         if (keyIndexValue != 0) {
             revert FuseAlreadyExists();
@@ -40,17 +39,17 @@ library FusesLib {
         uint256 newLastFuseId = PlasmaVaultStorageLib.getFusesArray().value.length + 1;
 
         /// @dev for balance fuses, value is a index + 1 in the fusesArray
-        fuses.value[fuse] = newLastFuseId;
+        fuses.value[fuse_] = newLastFuseId;
 
-        PlasmaVaultStorageLib.getFusesArray().value.push(fuse);
+        PlasmaVaultStorageLib.getFusesArray().value.push(fuse_);
 
-        emit FuseAdded(fuse);
+        emit FuseAdded(fuse_);
     }
 
-    function removeFuse(address fuse) internal {
+    function removeFuse(address fuse_) internal {
         PlasmaVaultStorageLib.Fuses storage fuses = PlasmaVaultStorageLib.getFuses();
 
-        uint256 indexToRemove = fuses.value[fuse];
+        uint256 indexToRemove = fuses.value[fuse_];
 
         if (indexToRemove == 0) {
             revert FuseDoesNotExist();
@@ -62,46 +61,45 @@ library FusesLib {
 
         fuses.value[lastKeyInArray] = indexToRemove;
 
-        fuses.value[fuse] = 0;
+        fuses.value[fuse_] = 0;
 
         /// @dev balanceFuses mapping contains values as index + 1
         PlasmaVaultStorageLib.getFusesArray().value[indexToRemove - 1] = lastKeyInArray;
 
         PlasmaVaultStorageLib.getFusesArray().value.pop();
 
-        emit FuseRemoved(fuse);
+        emit FuseRemoved(fuse_);
     }
 
-    function isBalanceFuseSupported(uint256 marketId, address fuse) internal view returns (bool) {
-        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId] == fuse;
+    function isBalanceFuseSupported(uint256 marketId_, address fuse_) internal view returns (bool) {
+        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] == fuse_;
     }
 
-    function getBalanceFuse(uint256 marketId) internal view returns (address) {
-        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId];
+    function getBalanceFuse(uint256 marketId_) internal view returns (address) {
+        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
     }
 
-    function addBalanceFuse(uint256 marketId, address fuse) internal {
-        address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId];
+    function addBalanceFuse(uint256 marketId_, address fuse_) internal {
+        address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
 
-        if (currentFuse == fuse) {
-            revert BalanceFuseAlreadyExists(marketId, fuse);
+        if (currentFuse == fuse_) {
+            revert BalanceFuseAlreadyExists(marketId_, fuse_);
         }
 
-        PlasmaVaultStorageLib.getBalanceFuses().value[marketId] = fuse;
+        PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] = fuse_;
 
-        emit BalanceFuseAdded(marketId, fuse);
+        emit BalanceFuseAdded(marketId_, fuse_);
     }
 
-    //TODO: add balance fuse array and add tests for that
-    function removeBalanceFuse(uint256 marketId, address fuse) internal {
-        address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId];
+    function removeBalanceFuse(uint256 marketId_, address fuse_) internal {
+        address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
 
-        if (currentFuse != fuse) {
-            revert BalanceFuseDoesNotExist(marketId, fuse);
+        if (currentFuse != fuse_) {
+            revert BalanceFuseDoesNotExist(marketId_, fuse_);
         }
 
-        PlasmaVaultStorageLib.getBalanceFuses().value[marketId] = address(0);
+        PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] = address(0);
 
-        emit BalanceFuseRemoved(marketId, fuse);
+        emit BalanceFuseRemoved(marketId_, fuse_);
     }
 }

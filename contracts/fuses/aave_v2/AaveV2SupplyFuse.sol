@@ -38,48 +38,48 @@ contract AaveV2SupplyFuse is IFuse {
 
     error AaveV2SupplyFuseUnsupportedAsset(address asset, string errorCode);
 
-    constructor(uint256 marketIdInput, address aavePoolInput) {
+    constructor(uint256 marketId_, address aavePool_) {
         VERSION = address(this);
-        MARKET_ID = marketIdInput;
-        AAVE_POOL = AaveLendingPoolV2(aavePoolInput);
+        MARKET_ID = marketId_;
+        AAVE_POOL = AaveLendingPoolV2(aavePool_);
     }
 
-    function enter(bytes calldata data) external {
-        _enter(abi.decode(data, (AaveV2SupplyFuseEnterData)));
+    function enter(bytes calldata data_) external {
+        _enter(abi.decode(data_, (AaveV2SupplyFuseEnterData)));
     }
 
-    function enter(AaveV2SupplyFuseEnterData memory data) external {
-        _enter(data);
+    function enter(AaveV2SupplyFuseEnterData memory data_) external {
+        _enter(data_);
     }
 
-    function exit(bytes calldata data) external {
-        _exit(abi.decode(data, (AaveV2SupplyFuseExitData)));
+    function exit(bytes calldata data_) external {
+        _exit(abi.decode(data_, (AaveV2SupplyFuseExitData)));
     }
 
-    function exit(AaveV2SupplyFuseExitData calldata data) external {
-        _exit(data);
+    function exit(AaveV2SupplyFuseExitData calldata data_) external {
+        _exit(data_);
     }
 
-    function _enter(AaveV2SupplyFuseEnterData memory data) internal {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
-            revert AaveV2SupplyFuseUnsupportedAsset(data.asset, Errors.UNSUPPORTED_ASSET);
+    function _enter(AaveV2SupplyFuseEnterData memory data_) internal {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
+            revert AaveV2SupplyFuseUnsupportedAsset(data_.asset, Errors.UNSUPPORTED_ASSET);
         }
 
-        ERC20(data.asset).forceApprove(address(AAVE_POOL), data.amount);
+        ERC20(data_.asset).forceApprove(address(AAVE_POOL), data_.amount);
 
-        AAVE_POOL.deposit(data.asset, data.amount, address(this), 0);
+        AAVE_POOL.deposit(data_.asset, data_.amount, address(this), 0);
 
-        emit AaveV2SupplyEnterFuse(VERSION, data.asset, data.amount);
+        emit AaveV2SupplyEnterFuse(VERSION, data_.asset, data_.amount);
     }
 
-    function _exit(AaveV2SupplyFuseExitData memory data) internal {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
-            revert AaveV2SupplyFuseUnsupportedAsset(data.asset, Errors.UNSUPPORTED_ASSET);
+    function _exit(AaveV2SupplyFuseExitData memory data_) internal {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
+            revert AaveV2SupplyFuseUnsupportedAsset(data_.asset, Errors.UNSUPPORTED_ASSET);
         }
-        uint256 amountToWithdraw = data.amount;
+        uint256 amountToWithdraw = data_.amount;
 
         ReserveData memory reserveData = AaveLendingPoolV2(AaveConstants.AAVE_LENDING_POOL_V2).getReserveData(
-            data.asset
+            data_.asset
         );
         uint256 aTokenBalance = ERC20(reserveData.aTokenAddress).balanceOf(address(this));
 
@@ -87,6 +87,10 @@ contract AaveV2SupplyFuse is IFuse {
             amountToWithdraw = aTokenBalance;
         }
 
-        emit AaveV2SupplyExitFuse(VERSION, data.asset, AAVE_POOL.withdraw(data.asset, amountToWithdraw, address(this)));
+        emit AaveV2SupplyExitFuse(
+            VERSION,
+            data_.asset,
+            AAVE_POOL.withdraw(data_.asset, amountToWithdraw, address(this))
+        );
     }
 }
