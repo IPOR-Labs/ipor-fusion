@@ -6,22 +6,31 @@ import {IPriceOracleMiddleware} from "./../../../contracts/priceOracle/PriceOrac
 contract PriceOracleMock is IPriceOracleMiddleware {
     address public immutable baseCurrency;
     uint256 public immutable baseCurrencyDecimals;
+    mapping(address => uint256) public prices;
 
     constructor(address _baseCurrency, uint256 _baseCurrencyDecimals) {
         baseCurrency = _baseCurrency;
         baseCurrencyDecimals = _baseCurrencyDecimals;
     }
 
-    function getAssetPrice(address asset) external pure override returns (uint256) {
-        return 1e8; // Return 1 USD in 8 decimal places
+    function setPrice(address asset, uint256 price) external {
+        prices[asset] = price;
     }
 
-    function getAssetsPrices(address[] calldata assets) external pure override returns (uint256[] memory) {
-        uint256[] memory prices = new uint256[](assets.length);
+    function getAssetPrice(address asset) external view override returns (uint256) {
+        uint256 price = prices[asset];
+        require(price > 0, "Price not set for asset");
+        return price;
+    }
+
+    function getAssetsPrices(address[] calldata assets) external view override returns (uint256[] memory) {
+        uint256[] memory assetPrices = new uint256[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
-            prices[i] = 1e8; // Return 1 USD for each asset in 8 decimal places
+            uint256 price = prices[assets[i]];
+            require(price > 0, "Price not set for asset");
+            assetPrices[i] = price;
         }
-        return prices;
+        return assetPrices;
     }
 
     function getSourceOfAsset(address asset) external view override returns (address) {

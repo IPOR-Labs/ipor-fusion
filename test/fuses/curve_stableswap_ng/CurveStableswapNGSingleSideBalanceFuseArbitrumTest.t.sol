@@ -59,6 +59,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     function testShouldBeAbleToCalculateBalanceWhenSupplySingleAsset() external {
         // given
         priceOracleMock = new PriceOracleMock(USD, 8);
+        priceOracleMock.setPrice(USDM, 1e18);
 
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
             1,
@@ -170,6 +171,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     function testShouldBeAbleToCalculateBalanceWhenSupplyAndExitSingleAsset() external {
         // given
         priceOracleMock = new PriceOracleMock(USD, 8);
+        priceOracleMock.setPrice(USDM, 1e18);
 
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
             1,
