@@ -19,15 +19,6 @@ library PlasmaVaultStorageLib {
     bytes32 private constant CFG_PLASMA_VAULT_MARKET_SUBSTRATES =
         0x78e40624004925a4ef6749756748b1deddc674477302d5b7fe18e5335cde3900;
 
-    /// @notice List of fuses ass
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultFuses")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CFG_PLASMA_VAULT_FUSES =
-        0xb51560274e32ee3aa5950cd99ede1261a60520ae70eca2e5b2e0df1ab5340000;
-
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultFusesArray")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CFG_PLASMA_VAULT_FUSES_ARRAY =
-        0x7e27ab4f0ce7a13bf94cb7667cbc77f39749d1cc36801f4d0f5d3bda3450e900;
-
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultBalanceFuses")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_PLASMA_VAULT_BALANCE_FUSES =
         0x150144dd6af711bac4392499881ec6649090601bd196a5ece5174c1400b1f700;
@@ -97,18 +88,6 @@ library PlasmaVaultStorageLib {
         mapping(uint256 => MarketSubstratesStruct) value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.cfgPlasmaVaultFuses
-    struct Fuses {
-        /// @dev fuse address => 1 - is granted, otherwise - not granted
-        mapping(address => uint256) value;
-    }
-
-    /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultFusesArray
-    struct FusesArray {
-        /// @dev value is a fuse address
-        address[] value;
-    }
-
     /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultBalanceFuses
     struct BalanceFuses {
         /// @dev marketId => balance fuse address
@@ -146,9 +125,9 @@ library PlasmaVaultStorageLib {
         address value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.matrketLimits
     /// @dev limit is percentage of total assets in the market in 18 decimals, 1e18 is 100%
     /// @deb if limit for zero marketId is greater than 0, then limits are activated
+    /// @custom:storage-location erc7201:io.ipor.matrketLimits
     struct MarketLimits {
         mapping(uint256 marketId => uint256 limit) limitInPercentage;
     }
@@ -169,18 +148,6 @@ library PlasmaVaultStorageLib {
     function getMarketSubstrates() internal pure returns (MarketSubstrates storage marketSubstrates) {
         assembly {
             marketSubstrates.slot := CFG_PLASMA_VAULT_MARKET_SUBSTRATES
-        }
-    }
-
-    function getFuses() internal pure returns (Fuses storage fuses) {
-        assembly {
-            fuses.slot := CFG_PLASMA_VAULT_FUSES
-        }
-    }
-
-    function getFusesArray() internal pure returns (FusesArray storage fusesArray) {
-        assembly {
-            fusesArray.slot := CFG_PLASMA_VAULT_FUSES_ARRAY
         }
     }
 

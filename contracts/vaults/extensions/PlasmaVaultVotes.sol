@@ -5,7 +5,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import {PlasmaVault, PlasmaVaultInitData} from "../PlasmaVault.sol";
 
-/// @notice Abstract for PlasmaVault where is fusion of ERC20, ERC4626, ERC20Permit, ERC20Votes standards.
+/// @title PlasmaVault combined with ERC20Votes
 abstract contract PlasmaVaultVotes is PlasmaVault, ERC20Votes {
     constructor(PlasmaVaultInitData memory initData_) PlasmaVault(initData_) {}
 

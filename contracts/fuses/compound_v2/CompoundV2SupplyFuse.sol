@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import {Errors} from "../../libraries/errors/Errors.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IFuse} from "../IFuse.sol";
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {CErc20} from "./ext/CErc20.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 struct CompoundV2SupplyFuseEnterData {
     /// @notis asset address to supply
@@ -34,7 +32,7 @@ contract CompoundV2SupplyFuse is IFuse {
     event CompoundV2SupplyEnterFuse(address version, address asset, address market, uint256 amount);
     event CompoundV2SupplyExitFuse(address version, address asset, address market, uint256 amount);
 
-    error CompoundV2SupplyFuseUnsupportedAsset(address asset, string errorCode);
+    error CompoundV2SupplyFuseUnsupportedAsset(address asset);
 
     constructor(uint256 marketId_) {
         VERSION = address(this);
@@ -82,7 +80,7 @@ contract CompoundV2SupplyFuse is IFuse {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(marketId_);
         uint256 len = assetsRaw.length;
         if (len == 0) {
-            revert CompoundV2SupplyFuseUnsupportedAsset(asset_, Errors.UNSUPPORTED_ASSET);
+            revert CompoundV2SupplyFuseUnsupportedAsset(asset_);
         }
         for (uint256 i; i < len; ++i) {
             address cToken = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
@@ -90,6 +88,6 @@ contract CompoundV2SupplyFuse is IFuse {
                 return cToken;
             }
         }
-        revert CompoundV2SupplyFuseUnsupportedAsset(asset_, Errors.UNSUPPORTED_ASSET);
+        revert CompoundV2SupplyFuseUnsupportedAsset(asset_);
     }
 }

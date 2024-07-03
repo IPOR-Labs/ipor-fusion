@@ -2,14 +2,13 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuse} from "../IFuse.sol";
+import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IComet} from "./ext/IComet.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
-import {IporMath} from "../../libraries/math/IporMath.sol";
 
 struct CompoundV3SupplyFuseEnterData {
     /// @notice asset address to supply
@@ -37,7 +36,7 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     event CompoundV3SupplyEnterFuse(address version, address asset, address market, uint256 amount);
     event CompoundV3SupplyExitFuse(address version, address asset, address market, uint256 amount);
 
-    error CompoundV3SupplyFuseUnsupportedAsset(string action, address asset, string errorCode);
+    error CompoundV3SupplyFuseUnsupportedAsset(string action, address asset);
 
     constructor(uint256 marketId_, address cometAddress_) {
         VERSION = address(this);
@@ -74,7 +73,7 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
 
     function _enter(CompoundV3SupplyFuseEnterData memory data_) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
-            revert CompoundV3SupplyFuseUnsupportedAsset("enter", data_.asset, Errors.UNSUPPORTED_ASSET);
+            revert CompoundV3SupplyFuseUnsupportedAsset("enter", data_.asset);
         }
 
         ERC20(data_.asset).forceApprove(address(COMET), data_.amount);
@@ -86,7 +85,7 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
 
     function _exit(CompoundV3SupplyFuseExitData memory data_) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
-            revert CompoundV3SupplyFuseUnsupportedAsset("exit", data_.asset, Errors.UNSUPPORTED_ASSET);
+            revert CompoundV3SupplyFuseUnsupportedAsset("exit", data_.asset);
         }
 
         COMET.withdraw(data_.asset, IporMath.min(data_.amount, _getBalance(data_.asset)));

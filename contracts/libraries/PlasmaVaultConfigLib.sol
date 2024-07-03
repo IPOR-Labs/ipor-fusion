@@ -6,18 +6,21 @@ import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 library PlasmaVaultConfigLib {
     event MarketSubstratesGranted(uint256 marketId, bytes32[] substrates);
 
-    function getMarketSubstrates(uint256 marketId_) internal view returns (bytes32[] memory) {
-        return _getMarketSubstrates(marketId_).substrates;
-    }
+    /// @notice Checks if the substrate treated as an asset is granted for the market
 
     function isSubstrateAsAssetGranted(uint256 marketId_, address substrateAsAsset) internal view returns (bool) {
         PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId_);
         return marketSubstrates.substrateAllowances[addressToBytes32(substrateAsAsset)] == 1;
     }
 
+    /// @notice Checks if the substrate is granted for the market
     function isMarketSubstrateGranted(uint256 marketId_, bytes32 substrate_) internal view returns (bool) {
         PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId_);
         return marketSubstrates.substrateAllowances[substrate_] == 1;
+    }
+
+    function getMarketSubstrates(uint256 marketId_) internal view returns (bytes32[] memory) {
+        return _getMarketSubstrates(marketId_).substrates;
     }
 
     function grandMarketSubstrates(uint256 marketId_, bytes32[] memory substrates_) internal {

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
+import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 
 library FusesLib {
-    event FuseAdded(address indexed fuse);
-    event FuseRemoved(address indexed fuse);
-    event BalanceFuseAdded(uint256 indexed marketId, address indexed fuse);
-    event BalanceFuseRemoved(uint256 indexed marketId, address indexed fuse);
+    event FuseAdded(address fuse);
+    event FuseRemoved(address fuse);
+    event BalanceFuseAdded(uint256 marketId, address fuse);
+    event BalanceFuseRemoved(uint256 marketId, address fuse);
 
     error FuseAlreadyExists();
     error FuseDoesNotExist();
@@ -15,20 +16,34 @@ library FusesLib {
     error BalanceFuseAlreadyExists(uint256 marketId, address fuse);
     error BalanceFuseDoesNotExist(uint256 marketId, address fuse);
 
+    /// @notice Checks if the fuse is supported
     function isFuseSupported(address fuse_) internal view returns (bool) {
-        return PlasmaVaultStorageLib.getFuses().value[fuse_] != 0;
+        return FuseStorageLib.getFuses().value[fuse_] != 0;
     }
 
+    /// @notice Checks if the balance fuse is supported
+    function isBalanceFuseSupported(uint256 marketId_, address fuse_) internal view returns (bool) {
+        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] == fuse_;
+    }
+
+    /// @notice Gets the balance fuse for the market
+    function getBalanceFuse(uint256 marketId_) internal view returns (address) {
+        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
+    }
+
+    /// @notice Gets the array of fuses
     function getFusesArray() internal view returns (address[] memory) {
-        return PlasmaVaultStorageLib.getFusesArray().value;
+        return FuseStorageLib.getFusesArray().value;
     }
 
+    /// @notice Gets the index of the fuse in the fuses array
     function getFuseArrayIndex(address fuse_) internal view returns (uint256) {
-        return PlasmaVaultStorageLib.getFuses().value[fuse_];
+        return FuseStorageLib.getFuses().value[fuse_];
     }
 
+    /// @notice Adds a fuse to supported fuses
     function addFuse(address fuse_) internal {
-        PlasmaVaultStorageLib.Fuses storage fuses = PlasmaVaultStorageLib.getFuses();
+        FuseStorageLib.Fuses storage fuses = FuseStorageLib.getFuses();
 
         uint256 keyIndexValue = fuses.value[fuse_];
 
@@ -36,18 +51,19 @@ library FusesLib {
             revert FuseAlreadyExists();
         }
 
-        uint256 newLastFuseId = PlasmaVaultStorageLib.getFusesArray().value.length + 1;
+        uint256 newLastFuseId = FuseStorageLib.getFusesArray().value.length + 1;
 
         /// @dev for balance fuses, value is a index + 1 in the fusesArray
         fuses.value[fuse_] = newLastFuseId;
 
-        PlasmaVaultStorageLib.getFusesArray().value.push(fuse_);
+        FuseStorageLib.getFusesArray().value.push(fuse_);
 
         emit FuseAdded(fuse_);
     }
 
+    /// @notice Removes a fuse from supported fuses
     function removeFuse(address fuse_) internal {
-        PlasmaVaultStorageLib.Fuses storage fuses = PlasmaVaultStorageLib.getFuses();
+        FuseStorageLib.Fuses storage fuses = FuseStorageLib.getFuses();
 
         uint256 indexToRemove = fuses.value[fuse_];
 
@@ -55,30 +71,22 @@ library FusesLib {
             revert FuseDoesNotExist();
         }
 
-        address lastKeyInArray = PlasmaVaultStorageLib.getFusesArray().value[
-            PlasmaVaultStorageLib.getFusesArray().value.length - 1
-        ];
+        address lastKeyInArray = FuseStorageLib.getFusesArray().value[FuseStorageLib.getFusesArray().value.length - 1];
 
         fuses.value[lastKeyInArray] = indexToRemove;
 
         fuses.value[fuse_] = 0;
 
         /// @dev balanceFuses mapping contains values as index + 1
-        PlasmaVaultStorageLib.getFusesArray().value[indexToRemove - 1] = lastKeyInArray;
+        FuseStorageLib.getFusesArray().value[indexToRemove - 1] = lastKeyInArray;
 
-        PlasmaVaultStorageLib.getFusesArray().value.pop();
+        FuseStorageLib.getFusesArray().value.pop();
 
         emit FuseRemoved(fuse_);
     }
 
-    function isBalanceFuseSupported(uint256 marketId_, address fuse_) internal view returns (bool) {
-        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] == fuse_;
-    }
 
-    function getBalanceFuse(uint256 marketId_) internal view returns (address) {
-        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
-    }
-
+    /// @notice Adds a balance fuse to the market
     function addBalanceFuse(uint256 marketId_, address fuse_) internal {
         address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
 
@@ -91,6 +99,7 @@ library FusesLib {
         emit BalanceFuseAdded(marketId_, fuse_);
     }
 
+    /// @notice Removes a balance fuse from the market
     function removeBalanceFuse(uint256 marketId_, address fuse_) internal {
         address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
 

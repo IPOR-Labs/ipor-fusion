@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {TestStorage} from "./TestStorage.sol";
 import {MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
-import {IporFusionAccessManager} from "../../../contracts/managers/IporFusionAccessManager.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {IporPlasmaVault} from "../../../contracts/vaults/IporPlasmaVault.sol";
 

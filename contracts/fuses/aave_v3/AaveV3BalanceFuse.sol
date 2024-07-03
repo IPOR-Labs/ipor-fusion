@@ -52,7 +52,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
             price = IAavePriceOracle(AAVE_PRICE_ORACLE).getAssetPrice(asset);
 
             if (price == 0) {
-                revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_ASSET);
+                revert Errors.UnsupportedBaseCurrencyFromOracle();
             }
 
             (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(

@@ -3,9 +3,7 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 import {SDaiPriceFeedEthereum} from "../../contracts/priceOracle/priceFeed/SDaiPriceFeedEthereum.sol";
 
 contract PriceOracleMiddlewareMaintenanceTest is Test {
@@ -31,7 +29,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
 
     function testShouldRevertWhenPassNotSupportedAsset() external {
         // given
-        bytes memory error = abi.encodeWithSignature("UnsupportedAsset(string)", Errors.UNSUPPORTED_ASSET);
+        bytes memory error = abi.encodeWithSignature("UnsupportedAsset()");
 
         // when
         vm.expectRevert(error);

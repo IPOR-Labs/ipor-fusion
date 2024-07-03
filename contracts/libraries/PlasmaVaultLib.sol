@@ -19,15 +19,15 @@ library PlasmaVaultLib {
 
     error InvalidPerformanceFee(uint256 feeInPercentage);
 
-    event TotalAssetsInAllMarketsAdded(int256 amount);
-    event TotalAssetsInMarketAdded(uint256 marketId, int256 amount);
     event InstantWithdrawalFusesConfigured(InstantWithdrawalFusesParamsStruct[] fuses);
     event PriceOracleChanged(address newPriceOracle);
     event PerformanceFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
+    event RewardsClaimManagerAddressChanged(address newRewardsClaimManagerAddress);
 
     /// @notice Gets the total assets in the vault for all markets
     /// @return The total assets in the vault for all markets, represented in decimals of the underlying asset
+    //solhint-disable-next-line
     function getTotalAssetsInAllMarkets() internal view returns (uint256) {
         return PlasmaVaultStorageLib.getTotalAssets().value;
     }
@@ -35,6 +35,7 @@ library PlasmaVaultLib {
     /// @notice Gets the total assets in the vault for a specific market
     /// @param marketId_ The market id
     /// @return The total assets in the vault for the market, represented in decimals of the underlying asset
+    //solhint-disable-next-line
     function getTotalAssetsInMarket(uint256 marketId_) internal view returns (uint256) {
         return PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_];
     }
@@ -47,8 +48,6 @@ library PlasmaVaultLib {
         } else {
             PlasmaVaultStorageLib.getTotalAssets().value += amount_.toUint256();
         }
-
-        emit TotalAssetsInAllMarketsAdded(amount_);
     }
 
     /// @notice Updates the total assets in the Plasma Vault for a specific market
@@ -61,13 +60,13 @@ library PlasmaVaultLib {
         uint256 oldTotalAssetsInUnderlying = PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_];
         PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_] = newTotalAssetsInUnderlying_;
         deltaInUnderlying = newTotalAssetsInUnderlying_.toInt256() - oldTotalAssetsInUnderlying.toInt256();
-
-        emit TotalAssetsInMarketAdded(marketId_, deltaInUnderlying);
     }
 
+    /// @notice Gets the management fee data
+    //solhint-disable-next-line
     function getManagementFeeData()
         internal
-        pure
+        view
         returns (PlasmaVaultStorageLib.ManagementFeeData memory managementFeeData)
     {
         return PlasmaVaultStorageLib.getManagementFeeData();
@@ -93,6 +92,8 @@ library PlasmaVaultLib {
         emit ManagementFeeDataConfigured(feeManager_, feeInPercentage_);
     }
 
+    /// @notice Gets the performance fee data
+    //solhint-disable-next-line
     function getPerformanceFeeData()
         internal
         view
@@ -128,10 +129,14 @@ library PlasmaVaultLib {
         feeData.lastUpdateTimestamp = block.timestamp.toUint32();
     }
 
+    /// @notice Gets instant withdrawal fuses
     function getInstantWithdrawalFuses() internal view returns (address[] memory) {
         return PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
     }
 
+    /// @notice Gets the instant withdrawal fuses parameters for a specific fuse
+    /// @param fuse_ The fuse address
+    /// @param index_ The index of the param in the fuse
     function getInstantWithdrawalFusesParams(address fuse_, uint256 index_) internal view returns (bytes32[] memory) {
         return
             PlasmaVaultStorageLib.getInstantWithdrawalFusesParams().value[keccak256(abi.encodePacked(fuse_, index_))];
@@ -178,11 +183,15 @@ library PlasmaVaultLib {
         emit PriceOracleChanged(priceOracle_);
     }
 
+    /// @notice Gets the rewards claim manager address
     function getRewardsClaimManagerAddress() internal view returns (address) {
         return PlasmaVaultStorageLib.getRewardsClaimManagerAddress().value;
     }
 
+    /// @notice Sets the rewards claim manager address
+    /// @param rewardsClaimManagerAddress_ The rewards claim manager address
     function setRewardsClaimManagerAddress(address rewardsClaimManagerAddress_) internal {
         PlasmaVaultStorageLib.getRewardsClaimManagerAddress().value = rewardsClaimManagerAddress_;
+        emit RewardsClaimManagerAddressChanged(rewardsClaimManagerAddress_);
     }
 }

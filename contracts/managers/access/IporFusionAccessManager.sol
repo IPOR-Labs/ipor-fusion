@@ -3,14 +3,15 @@ pragma solidity 0.8.20;
 
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {IIporFusionAccessManager} from "../../interfaces/IIporFusionAccessManager.sol";
 
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
-import {PlasmaVault} from "../vaults/PlasmaVault.sol";
+import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
 import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
 import {IporFusionAccessManagerInitializationLib, InitializationData} from "./IporFusionAccessManagerInitializationLib.sol";
-import {IporFusionRoles} from "../libraries/IporFusionRoles.sol";
+import {Roles} from "../../libraries/Roles.sol";
 
-contract IporFusionAccessManager is AccessManager {
+contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
     error AccessManagedUnauthorized(address caller);
     error TooShortExecutionDelayForRole(uint64 roleId, uint32 executionDelay);
 
@@ -45,11 +46,11 @@ contract IporFusionAccessManager is AccessManager {
                 roleIds[i] = initialData_.roleToFunctions[i].roleId;
                 minimalDelays[i] = initialData_.roleToFunctions[i].minimalExecutionDelay;
                 if (
-                    initialData_.roleToFunctions[i].roleId != IporFusionRoles.ADMIN_ROLE &&
-                    initialData_.roleToFunctions[i].roleId != IporFusionRoles.GUARDIAN_ROLE &&
-                    initialData_.roleToFunctions[i].roleId != IporFusionRoles.PUBLIC_ROLE
+                    initialData_.roleToFunctions[i].roleId != Roles.ADMIN_ROLE &&
+                    initialData_.roleToFunctions[i].roleId != Roles.GUARDIAN_ROLE &&
+                    initialData_.roleToFunctions[i].roleId != Roles.PUBLIC_ROLE
                 ) {
-                    _setRoleGuardian(initialData_.roleToFunctions[i].roleId, IporFusionRoles.GUARDIAN_ROLE);
+                    _setRoleGuardian(initialData_.roleToFunctions[i].roleId, Roles.GUARDIAN_ROLE);
                 }
             }
         }
@@ -77,64 +78,61 @@ contract IporFusionAccessManager is AccessManager {
         }
     }
 
-    /// @dev canCall cannot be a view function because it updates the account lock time.
     function canCallAndUpdate(
         address caller_,
         address target_,
         bytes4 selector_
-    ) external returns (bool immediate, uint32 delay) {
+    ) external override returns (bool immediate, uint32 delay) {
         RedemptionDelayLib.lockChecks(caller_, selector_);
         return super.canCall(caller_, target_, selector_);
     }
 
-    /// @dev I most cases when Vault is bootstrapping the ADMIN_ROLE  is revoked so custom method is needed to grant roles for a GUARDIAN_ROLE.
-    function updateTargetClosed(address target_, bool closed_) public restricted {
+    function updateTargetClosed(address target_, bool closed_) external override restricted {
         _setTargetClosed(target_, closed_);
     }
 
-    /// @notice Converts the specified vault to a public vault - mint and deposit functions are allowed for everyone.
-    /// @dev Notice! Can convert to public but cannot convert back to private.
-    function convertToPublicVault(address vault_) public restricted {
+    function convertToPublicVault(address vault_) external override restricted {
         _setTargetFunctionRole(vault_, PlasmaVault.mint.selector, PUBLIC_ROLE);
         _setTargetFunctionRole(vault_, PlasmaVault.deposit.selector, PUBLIC_ROLE);
     }
 
-    /// @notice Enables transfer shares, transfer and transferFrom functions are allowed for everyone.
-    function enableTransferShares(address vault_) public restricted {
+    function enableTransferShares(address vault_) external override restricted {
         _setTargetFunctionRole(vault_, PlasmaVault.transfer.selector, PUBLIC_ROLE);
         _setTargetFunctionRole(vault_, PlasmaVault.transferFrom.selector, PUBLIC_ROLE);
     }
 
-    /// @dev Sets the minimal delay required between deposit / mint and withdrawal / redeem operations.
-    function setRedemptionDelay(uint256 delay_) external restricted {
+    function setRedemptionDelay(uint256 delay_) external override restricted {
         RedemptionDelayLib.setRedemptionDelay(delay_);
     }
 
-    /// @dev Sets the minimal execution delay required for the specified roles.
     function setMinimalExecutionDelaysForRoles(
-        uint64[] calldata rolesId_,
+        uint64[] calldata rolesIds_,
         uint256[] calldata delays_
-    ) external restricted {
-        RoleExecutionTimelockLib.setMinimalExecutionDelaysForRoles(rolesId_, delays_);
+    ) external override restricted {
+        RoleExecutionTimelockLib.setMinimalExecutionDelaysForRoles(rolesIds_, delays_);
     }
 
-    function grantRole(uint64 roleId_, address account_, uint32 executionDelay_) public override onlyAuthorized {
+    function grantRole(
+        uint64 roleId_,
+        address account_,
+        uint32 executionDelay_
+    ) public override(IAccessManager, AccessManager) onlyAuthorized {
         _grantRoleInternal(roleId_, account_, executionDelay_);
     }
 
-    function getMinimalExecutionDelayForRole(uint64 roleId_) external view returns (uint256) {
+    function getMinimalExecutionDelayForRole(uint64 roleId_) external view override returns (uint256) {
         return RoleExecutionTimelockLib.getMinimalExecutionDelayForRole(roleId_);
     }
 
-    function getAccountLockTime(address account_) external view returns (uint256) {
+    function getAccountLockTime(address account_) external view override returns (uint256) {
         return RedemptionDelayLib.getAccountLockTime(account_);
     }
 
-    function getRedemptionDelay() external view returns (uint256) {
+    function getRedemptionDelay() external view override returns (uint256) {
         return RedemptionDelayLib.getRedemptionDelay();
     }
 
-    function isConsumingScheduledOp() public view returns (bytes4) {
+    function isConsumingScheduledOp() external view override returns (bytes4) {
         return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
     }
 

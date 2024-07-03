@@ -4,9 +4,8 @@ pragma solidity 0.8.20;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
 import {AaveLendingPoolV2, ReserveData} from "./ext/AaveLendingPoolV2.sol";
-import {AaveConstants} from "./AaveConstants.sol";
+import {AaveConstantsEthereum} from "./AaveConstantsEthereum.sol";
 import {IFuse} from "../IFuse.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
@@ -36,7 +35,7 @@ contract AaveV2SupplyFuse is IFuse {
     event AaveV2SupplyEnterFuse(address version, address asset, uint256 amount);
     event AaveV2SupplyExitFuse(address version, address asset, uint256 amount);
 
-    error AaveV2SupplyFuseUnsupportedAsset(address asset, string errorCode);
+    error AaveV2SupplyFuseUnsupportedAsset(address asset);
 
     constructor(uint256 marketId_, address aavePool_) {
         VERSION = address(this);
@@ -62,7 +61,7 @@ contract AaveV2SupplyFuse is IFuse {
 
     function _enter(AaveV2SupplyFuseEnterData memory data_) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
-            revert AaveV2SupplyFuseUnsupportedAsset(data_.asset, Errors.UNSUPPORTED_ASSET);
+            revert AaveV2SupplyFuseUnsupportedAsset(data_.asset);
         }
 
         ERC20(data_.asset).forceApprove(address(AAVE_POOL), data_.amount);
@@ -74,11 +73,11 @@ contract AaveV2SupplyFuse is IFuse {
 
     function _exit(AaveV2SupplyFuseExitData memory data_) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
-            revert AaveV2SupplyFuseUnsupportedAsset(data_.asset, Errors.UNSUPPORTED_ASSET);
+            revert AaveV2SupplyFuseUnsupportedAsset(data_.asset);
         }
         uint256 amountToWithdraw = data_.amount;
 
-        ReserveData memory reserveData = AaveLendingPoolV2(AaveConstants.AAVE_LENDING_POOL_V2).getReserveData(
+        ReserveData memory reserveData = AaveLendingPoolV2(AaveConstantsEthereum.AAVE_LENDING_POOL_V2).getReserveData(
             data_.asset
         );
         uint256 aTokenBalance = ERC20(reserveData.aTokenAddress).balanceOf(address(this));

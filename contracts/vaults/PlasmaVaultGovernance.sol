@@ -8,7 +8,7 @@ import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol"
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
-import {AccessManaged} from "../managers/AccessManaged.sol";
+import {AccessManaged} from "../managers/access/AccessManaged.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 abstract contract PlasmaVaultGovernance is AccessManaged {

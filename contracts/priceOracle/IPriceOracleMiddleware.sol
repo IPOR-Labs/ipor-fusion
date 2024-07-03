@@ -3,11 +3,11 @@ pragma solidity 0.8.20;
 
 /// @title Interface to an aggregator of price feeds for assets
 interface IPriceOracleMiddleware {
-    error EmptyArrayNotSupported(string errorCode);
-    error ArrayLengthMismatch(string errorCode);
+    error EmptyArrayNotSupported();
+    error ArrayLengthMismatch();
     error UnexpectedPriceResult();
-    error UnsupportedAsset(string errorCode);
-    error ZeroAddress(string errorCode, string variableName);
+    error UnsupportedAsset();
+    error ZeroAddress(string variableName);
     error WrongDecimals();
 
     /// @notice Returns the price of the given asset in 8 decimals

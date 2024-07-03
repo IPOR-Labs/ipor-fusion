@@ -13,10 +13,10 @@ import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMidd
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddlewareMock} from "../priceOracle/PriceOracleMiddlewareMock.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
-import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
-import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
+import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
@@ -24,7 +24,7 @@ contract PlasmaVaultMaintenanceTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USD = 0x0000000000000000000000000000000000000348;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
-    address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
@@ -401,7 +401,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
 
@@ -447,7 +447,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
 
@@ -587,7 +587,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
@@ -756,7 +756,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory initialSupplyFuses = new address[](0);
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
@@ -835,7 +835,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory initialSupplyFuses = new address[](0);
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
@@ -1864,7 +1864,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         sig[1] = PlasmaVault.mint.selector;
 
         vm.prank(usersToRoles.superAdmin);
-        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.WHITELIST_ROLE);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
 
         address user = address(0x555);
 
@@ -1953,7 +1953,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         sig[1] = PlasmaVault.mint.selector;
 
         vm.prank(usersToRoles.superAdmin);
-        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.WHITELIST_ROLE);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
 
         address user = address(0x555);
 
@@ -2044,7 +2044,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         sig[1] = PlasmaVault.transferFrom.selector;
 
         vm.prank(usersToRoles.superAdmin);
-        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.WHITELIST_ROLE);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
 
         address user = address(0x555);
 
@@ -2137,7 +2137,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         sig[1] = PlasmaVault.transferFrom.selector;
 
         vm.prank(usersToRoles.superAdmin);
-        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.WHITELIST_ROLE);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
 
         address user = address(0x555);
 
@@ -2229,23 +2229,23 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         uint64[] memory roles = new uint64[](2);
-        roles[0] = IporFusionRoles.ALPHA_ROLE;
-        roles[1] = IporFusionRoles.ATOMIST_ROLE;
+        roles[0] = Roles.ALPHA_ROLE;
+        roles[1] = Roles.ATOMIST_ROLE;
 
         uint256[] memory timeLocks = new uint256[](2);
         timeLocks[0] = 100;
         timeLocks[1] = 200;
 
-        uint256 alphaTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ALPHA_ROLE);
-        uint256 atomistTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ATOMIST_ROLE);
+        uint256 alphaTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
 
         // when
         vm.prank(owner);
         accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
         // then
-        uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ALPHA_ROLE);
-        uint256 atomistTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ATOMIST_ROLE);
+        uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
 
         assertEq(alphaTimeLockBefore, 0, "Alpha time lock before should be equal to 0");
         assertEq(atomistTimeLockBefore, 0, "Atomist time lock before should be equal to 0");
@@ -2286,15 +2286,15 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         uint64[] memory roles = new uint64[](2);
-        roles[0] = IporFusionRoles.ALPHA_ROLE;
-        roles[1] = IporFusionRoles.ATOMIST_ROLE;
+        roles[0] = Roles.ALPHA_ROLE;
+        roles[1] = Roles.ATOMIST_ROLE;
 
         uint256[] memory timeLocks = new uint256[](2);
         timeLocks[0] = 100;
         timeLocks[1] = 200;
 
-        uint256 alphaTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ALPHA_ROLE);
-        uint256 atomistTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ATOMIST_ROLE);
+        uint256 alphaTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
         // when
@@ -2303,8 +2303,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
         // then
-        uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ALPHA_ROLE);
-        uint256 atomistTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(IporFusionRoles.ATOMIST_ROLE);
+        uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
 
         assertEq(alphaTimeLockBefore, 0, "Alpha time lock before should be equal to 0");
         assertEq(atomistTimeLockBefore, 0, "Atomist time lock before should be equal to 0");
@@ -2342,8 +2342,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         uint64[] memory roles = new uint64[](2);
-        roles[0] = IporFusionRoles.ALPHA_ROLE;
-        roles[1] = IporFusionRoles.ATOMIST_ROLE;
+        roles[0] = Roles.ALPHA_ROLE;
+        roles[1] = Roles.ATOMIST_ROLE;
 
         uint256[] memory timeLocks = new uint256[](2);
         timeLocks[0] = 100;
@@ -2352,14 +2352,14 @@ contract PlasmaVaultMaintenanceTest is Test {
         vm.prank(usersToRoles.atomist);
         accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
-        (bool isMemberBefore, uint32 executionDelayBefore) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
+        (bool isMemberBefore, uint32 executionDelayBefore) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
 
         // when
         vm.prank(usersToRoles.atomist);
-        accessManager.grantRole(IporFusionRoles.ALPHA_ROLE, user, uint32(timeLocks[1]));
+        accessManager.grantRole(Roles.ALPHA_ROLE, user, uint32(timeLocks[1]));
 
         // then
-        (bool isMemberAfter, uint32 executionDelayAfter) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
+        (bool isMemberAfter, uint32 executionDelayAfter) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
 
         assertFalse(isMemberBefore, "User should not be a member before");
         assertEq(executionDelayBefore, 0, "Execution delay before should be equal to 0");
@@ -2397,8 +2397,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         uint64[] memory roles = new uint64[](2);
-        roles[0] = IporFusionRoles.ALPHA_ROLE;
-        roles[1] = IporFusionRoles.ATOMIST_ROLE;
+        roles[0] = Roles.ALPHA_ROLE;
+        roles[1] = Roles.ATOMIST_ROLE;
 
         uint256[] memory timeLocks = new uint256[](2);
         timeLocks[0] = 100;
@@ -2407,21 +2407,21 @@ contract PlasmaVaultMaintenanceTest is Test {
         vm.prank(usersToRoles.atomist);
         accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
-        (bool isMemberBefore, ) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
+        (bool isMemberBefore, ) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
 
         bytes memory error = abi.encodeWithSignature(
             "TooShortExecutionDelayForRole(uint64,uint32)",
-            IporFusionRoles.ALPHA_ROLE,
+            Roles.ALPHA_ROLE,
             uint32(99)
         );
 
         // when
         vm.expectRevert(error);
         vm.prank(usersToRoles.atomist);
-        accessManager.grantRole(IporFusionRoles.ALPHA_ROLE, user, uint32(99));
+        accessManager.grantRole(Roles.ALPHA_ROLE, user, uint32(99));
 
         // then
-        (bool isMemberAfter, ) = accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, user);
+        (bool isMemberAfter, ) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
 
         assertFalse(isMemberBefore, "User should not be a member before");
         assertFalse(isMemberAfter, "User should not be a member after");

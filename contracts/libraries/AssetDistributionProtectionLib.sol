@@ -42,6 +42,7 @@ library AssetDistributionProtectionLib {
         emit MarketsLimitsDeactivated();
     }
 
+    /// @notice Sets up the limits for each market separately.
     function setupMarketsLimits(MarketLimit[] calldata marketsLimits_) internal {
         uint256 len = marketsLimits_.length;
         for (uint256 i; i < len; ++i) {
@@ -54,6 +55,7 @@ library AssetDistributionProtectionLib {
         }
     }
 
+    /// @notice Checks if the limits are exceeded for the markets.
     function checkLimits(DataToCheck memory data_) internal view {
         if (!isMarketsLimitsActivated()) {
             return;
@@ -75,6 +77,7 @@ library AssetDistributionProtectionLib {
         }
     }
 
+    /// @notice Checks if the markets limits protection is activated.
     function isMarketsLimitsActivated() internal view returns (bool) {
         return PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[0] != 0;
     }

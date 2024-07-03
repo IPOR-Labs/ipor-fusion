@@ -9,7 +9,6 @@ import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/Fe
 import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
 import {IPriceFeed} from "./IPriceFeed.sol";
 import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
-import {Errors} from "../libraries/errors/Errors.sol";
 
 contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeable, UUPSUpgradeable {
     using SafeCast for int256;
@@ -23,7 +22,7 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
 
     constructor(address baseCurrency_, uint256 baseCurrencyDecimals_, address chainlinkFeedRegistry_) {
         if (baseCurrency_ == address(0)) {
-            revert IPriceOracleMiddleware.ZeroAddress(Errors.UNSUPPORTED_ZERO_ADDRESS, "baseCurrency");
+            revert IPriceOracleMiddleware.ZeroAddress("baseCurrency");
         }
 
         if (baseCurrencyDecimals_ == 0) {
@@ -47,7 +46,7 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
     function getAssetsPrices(address[] calldata assets_) external view returns (uint256[] memory) {
         uint256 assetsLength = assets_.length;
         if (assetsLength == 0) {
-            revert IPriceOracleMiddleware.EmptyArrayNotSupported(Errors.UNSUPPORTED_EMPTY_ARRAY);
+            revert IPriceOracleMiddleware.EmptyArrayNotSupported();
         }
         uint256[] memory prices = new uint256[](assetsLength);
         for (uint256 i; i < assetsLength; ++i) {
@@ -64,10 +63,10 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         uint256 assetsLength = assets_.length;
         uint256 sourcesLength = sources_.length;
         if (assetsLength == 0 || sourcesLength == 0) {
-            revert IPriceOracleMiddleware.EmptyArrayNotSupported(Errors.UNSUPPORTED_EMPTY_ARRAY);
+            revert IPriceOracleMiddleware.EmptyArrayNotSupported();
         }
         if (assetsLength != sourcesLength) {
-            revert IPriceOracleMiddleware.ArrayLengthMismatch(Errors.ARRAY_LENGTH_MISMATCH);
+            revert IPriceOracleMiddleware.ArrayLengthMismatch();
         }
         for (uint256 i; i < assetsLength; ++i) {
             PriceOracleMiddlewareStorageLib.setAssetPriceSource(assets_[i], sources_[i]);
@@ -86,7 +85,7 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
             (roundId, price, startedAt, time, answeredInRound) = IPriceFeed(source).latestRoundData();
         } else {
             if (CHAINLINK_FEED_REGISTRY == address(0)) {
-                revert IPriceOracleMiddleware.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);
+                revert IPriceOracleMiddleware.UnsupportedAsset();
             }
             try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset_, BASE_CURRENCY) returns (
                 uint80 roundIdChainlink,
@@ -97,7 +96,7 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
             ) {
                 price = priceChainlink;
             } catch {
-                revert IPriceOracleMiddleware.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);
+                revert IPriceOracleMiddleware.UnsupportedAsset();
             }
         }
         if (price <= 0) {

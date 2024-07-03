@@ -4,7 +4,6 @@ pragma solidity 0.8.20;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuse} from "../IFuse.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
@@ -43,7 +42,7 @@ contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
     event MorphoBlueSupplyEnterFuse(address version, address asset, bytes32 market, uint256 amount);
     event MorphoBlueSupplyExitFuse(address version, address asset, bytes32 market, uint256 amount);
 
-    error MorphoBlueSupplyFuseUnsupportedMarket(string action, bytes32 morphoBlueMarketId, string errorCode);
+    error MorphoBlueSupplyFuseUnsupportedMarket(string action, bytes32 morphoBlueMarketId);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -81,7 +80,7 @@ contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
 
     function _enter(MorphoBlueSupplyFuseEnterData memory data_) internal {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoBlueMarketId)) {
-            revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data_.morphoBlueMarketId, Errors.UNSUPPORTED_MARKET);
+            revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data_.morphoBlueMarketId);
         }
 
         MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoBlueMarketId));
@@ -95,7 +94,7 @@ contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
 
     function _exit(MorphoBlueSupplyFuseExitData memory data_) internal {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoBlueMarketId)) {
-            revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data_.morphoBlueMarketId, Errors.UNSUPPORTED_MARKET);
+            revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data_.morphoBlueMarketId);
         }
 
         MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoBlueMarketId));

@@ -1,22 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {Errors} from "../libraries/errors/Errors.sol";
-
 /// @title Storage library for PriceOracleMiddleware
 library PriceOracleMiddlewareStorageLib {
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.assetsPricesSources")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant ASSETS_PRICES_SOURCES = 0x8e0a28dd9d78e65e0eaab36f0d8ddba5c9c6478807c995fdcbb3e9d89078da00;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracle.AssetsPricesSources")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant ASSETS_PRICES_SOURCES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd00;
 
-    /// @custom:storage-location erc7201:io.ipor.assetsSources
+    /// @custom:storage-location erc7201:io.ipor.priceOracle.AssetsPricesSources
     struct AssetsPricesSources {
         mapping(address asset => address priceFeed) value;
     }
 
-    event AssetPriceSourceUpdated(address indexed asset, address indexed source);
+    event AssetPriceSourceUpdated(address asset, address source);
 
-    error SourceAddressCanNotBeZero(string errorCode);
-    error AssetsAddressCanNotBeZero(string errorCode);
+    error SourceAddressCanNotBeZero();
+    error AssetsAddressCanNotBeZero();
 
     function getSourceOfAssetPrice(address asset_) internal view returns (address source) {
         return _getAssetsPricesSources().value[asset_];
@@ -24,11 +22,11 @@ library PriceOracleMiddlewareStorageLib {
 
     function setAssetPriceSource(address asset_, address source_) internal {
         if (asset_ == address(0)) {
-            revert AssetsAddressCanNotBeZero(Errors.UNSUPPORTED_ZERO_ADDRESS);
+            revert AssetsAddressCanNotBeZero();
         }
 
         if (source_ == address(0)) {
-            revert SourceAddressCanNotBeZero(Errors.UNSUPPORTED_ZERO_ADDRESS);
+            revert SourceAddressCanNotBeZero();
         }
 
         _getAssetsPricesSources().value[asset_] = source_;

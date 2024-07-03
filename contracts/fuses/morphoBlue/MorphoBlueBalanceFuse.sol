@@ -8,7 +8,6 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IPriceOracleMiddleware} from "../../priceOracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
 
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
@@ -21,7 +20,7 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
     using MorphoBalancesLib for IMorpho;
     using SharesMathLib for uint256;
 
-    error UnsupportedBaseCurrencyFromOracle(string errorCode);
+    error UnsupportedBaseCurrencyFromOracle();
 
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
     address private constant USD = address(0x0000000000000000000000000000000000000348);
@@ -33,7 +32,7 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
         PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
         if (PRICE_ORACLE.BASE_CURRENCY() != USD) {
-            revert UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
+            revert UnsupportedBaseCurrencyFromOracle();
         }
     }
 

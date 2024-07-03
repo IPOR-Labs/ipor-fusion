@@ -2,15 +2,14 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
-import {IPool} from "../../vaults/interfaces/IPool.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuse} from "../IFuse.sol";
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {IPool} from "./ext/IPool.sol";
 import {IAavePoolDataProvider} from "./ext/IAavePoolDataProvider.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
-import {IporMath} from "../../libraries/math/IporMath.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 struct AaveV3SupplyFuseEnterData {
     /// @notice asset address to supply
@@ -42,7 +41,7 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     event AaveV3SupplyExitFuse(address version, address asset, uint256 amount);
     event AaveV3SupplyExitFailed(address version, address asset, uint256 amount);
 
-    error AaveV3SupplyFuseUnsupportedAsset(string action, address asset, string errorCode);
+    error AaveV3SupplyFuseUnsupportedAsset(string action, address asset);
 
     constructor(uint256 marketId_, address aavePool_, address aavePoolDataProviderV3_) {
         VERSION = address(this);
@@ -79,7 +78,7 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
 
     function _enter(AaveV3SupplyFuseEnterData memory data_) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
-            revert AaveV3SupplyFuseUnsupportedAsset("enter", data_.asset, Errors.UNSUPPORTED_ASSET);
+            revert AaveV3SupplyFuseUnsupportedAsset("enter", data_.asset);
         }
 
         ERC20(data_.asset).forceApprove(address(AAVE_POOL), data_.amount);
@@ -95,7 +94,7 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
 
     function _exit(AaveV3SupplyFuseExitData memory data) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
-            revert AaveV3SupplyFuseUnsupportedAsset("exit", data.asset, Errors.UNSUPPORTED_ASSET);
+            revert AaveV3SupplyFuseUnsupportedAsset("exit", data.asset);
         }
 
         (address aTokenAddress, , ) = IAavePoolDataProvider(AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(

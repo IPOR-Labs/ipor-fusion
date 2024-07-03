@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IAavePriceOracle} from "./ext/IAavePriceOracle.sol";
-import {AaveConstants} from "./AaveConstants.sol";
+import {AaveConstantsEthereum} from "./AaveConstantsEthereum.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {AaveLendingPoolV2, ReserveData} from "./ext/AaveLendingPoolV2.sol";
@@ -43,9 +43,9 @@ contract AaveV2BalanceFuse is IMarketBalanceFuse {
             balanceInLoop = 0;
             asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             decimals = ERC20(asset).decimals();
-            price = IAavePriceOracle(AaveConstants.ETHEREUM_AAVE_PRICE_ORACLE_MAINNET).getAssetPrice(asset);
+            price = IAavePriceOracle(AaveConstantsEthereum.AAVE_PRICE_ORACLE_MAINNET).getAssetPrice(asset);
 
-            reserveData = AaveLendingPoolV2(AaveConstants.AAVE_LENDING_POOL_V2).getReserveData(asset);
+            reserveData = AaveLendingPoolV2(AaveConstantsEthereum.AAVE_LENDING_POOL_V2).getReserveData(asset);
 
             if (reserveData.aTokenAddress != address(0)) {
                 balanceInLoop += int256(ERC20(reserveData.aTokenAddress).balanceOf(plasmaVault_));

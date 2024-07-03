@@ -13,14 +13,14 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
-import {IRewardsClaimManager} from "../managers/IRewardsClaimManager.sol";
+import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
-import {IporFusionAccessManager} from "../managers/IporFusionAccessManager.sol";
+import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManager.sol";
 import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 
@@ -90,6 +90,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
     error UnsupportedFuse();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
+    event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
     bool private _customConsumingSchedule;
@@ -104,7 +105,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData_.priceOracle);
 
         if (priceOracle.BASE_CURRENCY() != USD) {
-            revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
+            revert Errors.UnsupportedBaseCurrencyFromOracle();
         }
 
         BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
@@ -435,6 +436,8 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
 
         dataToCheck.totalBalanceInVault = _getGrossTotalAssets();
         AssetDistributionProtectionLib.checkLimits(dataToCheck);
+
+        emit MarketBalancesUpdated(markets_, deltasInUnderlying);
     }
 
     function _checkIfExistsMarket(uint256[] memory markets_, uint256 marketId_) internal pure returns (bool exists) {

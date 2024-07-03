@@ -3,8 +3,12 @@ pragma solidity 0.8.20;
 
 import {IFuseCommon} from "./IFuseCommon.sol";
 
+/// @title Interface for Fuses
 interface IFuse is IFuseCommon {
+
+    /// @notice Enters to the Market
     function enter(bytes calldata data) external;
 
+    /// @notice Exits from the Market
     function exit(bytes calldata data) external;
 }
