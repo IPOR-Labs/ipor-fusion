@@ -85,7 +85,6 @@ library FusesLib {
         emit FuseRemoved(fuse_);
     }
 
-
     /// @notice Adds a balance fuse to the market
     function addBalanceFuse(uint256 marketId_, address fuse_) internal {
         address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];

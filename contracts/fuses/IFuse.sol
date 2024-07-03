@@ -5,7 +5,6 @@ import {IFuseCommon} from "./IFuseCommon.sol";
 
 /// @title Interface for Fuses
 interface IFuse is IFuseCommon {
-
     /// @notice Enters to the Market
     function enter(bytes calldata data) external;
 

@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 /// @title Fuses storage library
 library FuseStorageLib {
-
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgFuses")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_FUSES = 0x48932b860eb451ad240d4fe2b46522e5a0ac079d201fe50d4e0be078c75b5400;
 

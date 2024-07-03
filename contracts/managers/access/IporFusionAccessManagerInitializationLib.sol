@@ -29,7 +29,6 @@ struct InitializationData {
 }
 
 library IporFusionAccessManagerInitializationLib {
-
     event IporFusionAccessManagerInitialized();
     error AlreadyInitialized();
 

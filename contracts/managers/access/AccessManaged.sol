@@ -17,7 +17,6 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
  * functions, and ideally only used in `external` functions. See {restricted}.
  */
 abstract contract AccessManaged is Context, IAccessManaged {
-
     address private _authority;
     bool private _consumingSchedule;
 
