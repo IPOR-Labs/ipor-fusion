@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.20;
 
 /// @title Interface to an aggregator of price feeds for assets
 interface IPriceOracleMiddleware {

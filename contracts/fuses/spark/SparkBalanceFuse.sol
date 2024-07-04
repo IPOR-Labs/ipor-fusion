@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.20;
 
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {ISavingsDai} from "./ext/ISavingsDai.sol";
