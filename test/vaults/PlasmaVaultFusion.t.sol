@@ -11,16 +11,18 @@ import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePool
 
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultFusion} from "../../contracts/vaults/extensions/PlasmaVaultFusion.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
-import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
+import {Roles} from "../../contracts/libraries/Roles.sol";
+import {PlasmaVaultFusionMock} from "../mocks/PlasmaVaultFusionMock.sol";
 
 contract PlasmaVaultErc20FusionTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
-    address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
 
@@ -31,7 +33,7 @@ contract PlasmaVaultErc20FusionTest is Test {
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
-    PlasmaVault private plasmaVault;
+    PlasmaVaultFusion private plasmaVault;
     address private owner;
     uint256 private ownerPrivKey;
     address private spender;
@@ -86,7 +88,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -103,7 +105,7 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         accessManager = createAccessManager(usersToRoles);
 
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVaultFusionMock(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -223,7 +225,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         sig[1] = PlasmaVault.transferFrom.selector;
 
         vm.prank(usersToRoles.superAdmin);
-        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.PUBLIC_ROLE);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
 
         //when
         vm.prank(spender);
@@ -322,7 +324,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         sig[0] = PlasmaVault.transfer.selector;
 
         vm.prank(usersToRoles.superAdmin);
-        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.PUBLIC_ROLE);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
 
         //when
         vm.prank(owner);
@@ -400,7 +402,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         sig[0] = PlasmaVault.transfer.selector;
 
         vm.prank(usersToRoles.superAdmin);
-        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.PUBLIC_ROLE);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
 
         //when
         vm.prank(owner);
@@ -485,7 +487,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         sig[0] = PlasmaVault.transfer.selector;
 
         vm.prank(usersToRoles.superAdmin);
-        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.PUBLIC_ROLE);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
 
         vm.prank(owner);
         plasmaVault.deposit(100 * 1e6, owner);
@@ -637,7 +639,7 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         /// @dev temporary setup tranferFrom role to a public role
         vm.prank(usersToRoles.superAdmin);
-        accessManager.setTargetFunctionRole(address(plasmaVault), sig, IporFusionRoles.PUBLIC_ROLE);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
 
         //when
         vm.prank(delegatee);

@@ -1,42 +1,42 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {Errors} from "../libraries/errors/Errors.sol";
-
-/// @title Storage
+/// @title Storage library for PriceOracleMiddleware
 library PriceOracleMiddlewareStorageLib {
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.assetsSources")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant ASSETS_SOURCES = 0xd12d38cc8fce64bbd07b3f1346bd7dd01071b1a6feaf308124f3fc4f8df3c000;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracle.AssetsPricesSources")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant ASSETS_PRICES_SOURCES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd00;
 
-    /// @custom:storage-location erc7201:io.ipor.assetsSources
-    struct AssetsSources {
-        /// @dev asset => priceFead
-        mapping(address => address) value;
+    /// @custom:storage-location erc7201:io.ipor.priceOracle.AssetsPricesSources
+    struct AssetsPricesSources {
+        mapping(address asset => address priceFeed) value;
     }
 
-    event AssetSourceUpdated(address indexed asset, address indexed source);
+    event AssetPriceSourceUpdated(address asset, address source);
 
-    error SourceAddressCanNotBeZero(string errorCode);
-    error AssetsAddressCanNotBeZero(string errorCode);
+    error SourceAddressCanNotBeZero();
+    error AssetsAddressCanNotBeZero();
 
-    function _getAssetsSources() private pure returns (AssetsSources storage grantedAssets) {
+    function getSourceOfAssetPrice(address asset_) internal view returns (address source) {
+        return _getAssetsPricesSources().value[asset_];
+    }
+
+    function setAssetPriceSource(address asset_, address source_) internal {
+        if (asset_ == address(0)) {
+            revert AssetsAddressCanNotBeZero();
+        }
+
+        if (source_ == address(0)) {
+            revert SourceAddressCanNotBeZero();
+        }
+
+        _getAssetsPricesSources().value[asset_] = source_;
+
+        emit AssetPriceSourceUpdated(asset_, source_);
+    }
+
+    function _getAssetsPricesSources() private pure returns (AssetsPricesSources storage assetsPricesSources) {
         assembly {
-            grantedAssets.slot := ASSETS_SOURCES
+            assetsPricesSources.slot := ASSETS_PRICES_SOURCES
         }
-    }
-
-    function getSourceOfAsset(address asset) internal view returns (address source) {
-        return _getAssetsSources().value[asset];
-    }
-
-    function setAssetSource(address asset, address source) internal {
-        if (source == address(0)) {
-            revert SourceAddressCanNotBeZero(Errors.UNSUPPORTED_ZERO_ADDRESS);
-        }
-        if (asset == address(0)) {
-            revert AssetsAddressCanNotBeZero(Errors.UNSUPPORTED_ZERO_ADDRESS);
-        }
-        _getAssetsSources().value[asset] = source;
-        emit AssetSourceUpdated(asset, source);
     }
 }

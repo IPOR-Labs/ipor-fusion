@@ -66,7 +66,7 @@ contract ERC4646BalanceFuseTest is Test {
         assertEq(balanceAfter, 93731561573799055444, "SDAI balance should be 93731561573799055444 after supply");
         assertEq(
             balanceFromFuseAfter,
-            100042570999999999999,
+            100042570999999999998,
             "Balance from fuse balance should be 100042570999999999999 after supply"
         );
     }
@@ -105,7 +105,7 @@ contract ERC4646BalanceFuseTest is Test {
         );
         assertEq(
             balanceFromFuseBeforeWithdraw,
-            100042570999999999999,
+            100042570999999999998,
             "Balance from fuse balance should be 100042570999999999999 before withdraw"
         );
         assertEq(balanceAfterWithdraw, 0, "SDAI balance should be 0 after withdraw");

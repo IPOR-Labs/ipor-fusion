@@ -3,8 +3,8 @@ pragma solidity 0.8.20;
 
 /// @title Predefined roles used in the IPOR Fusion protocol
 /// @notice For documentation purposes: When new roles are added by authorized property of PlasmaVault during runtime, they should be added and described here as well.
-library IporFusionRoles {
-    /// @dev Managed by the Admin
+library Roles {
+    /// @dev Managed by the Admin, the highest role from AccessManager
     uint64 public constant ADMIN_ROLE = 0;
 
     /// @dev Managed by the Owner, if applicable managed by the Admin

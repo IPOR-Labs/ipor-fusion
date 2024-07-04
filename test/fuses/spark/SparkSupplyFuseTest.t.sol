@@ -7,7 +7,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 import {VaultSparkMock} from "./VaultSparkMock.sol";
 import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {SDaiPriceFeed} from "../../../contracts/priceOracle/priceFeed/SDaiPriceFeed.sol";
+import {SDaiPriceFeedEthereum} from "../../../contracts/priceOracle/priceFeed/SDaiPriceFeedEthereum.sol";
 
 import {SparkBalanceFuse} from "../../../contracts/fuses/spark/SparkBalanceFuse.sol";
 import {SparkSupplyFuse, SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../../contracts/fuses/spark/SparkSupplyFuse.sol";
@@ -32,14 +32,14 @@ contract SparkSupplyFuseTest is Test {
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
 
-        SDaiPriceFeed priceFeed = new SDaiPriceFeed();
+        SDaiPriceFeedEthereum priceFeed = new SDaiPriceFeedEthereum();
         address[] memory assets = new address[](1);
         address[] memory sources = new address[](1);
         assets[0] = SDAI;
         sources[0] = address(priceFeed);
 
         vm.prank(OWNER);
-        priceOracleMiddlewareProxy.setAssetSources(assets, sources);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
     function testShouldBeAbleToSupplyDaiToSpark() external {

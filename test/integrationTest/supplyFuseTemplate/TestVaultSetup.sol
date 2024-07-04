@@ -2,9 +2,10 @@
 pragma solidity 0.8.20;
 
 import {TestStorage} from "./TestStorage.sol";
-import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
-import {IporFusionAccessManager} from "../../../contracts/managers/IporFusionAccessManager.sol";
+import {MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
+import {IporPlasmaVault} from "../../../contracts/vaults/IporPlasmaVault.sol";
 
 abstract contract TestVaultSetup is TestStorage {
     function initPlasmaVault() public {
@@ -17,7 +18,7 @@ abstract contract TestVaultSetup is TestStorage {
 
         createAccessManager();
         plasmaVault = address(
-            new PlasmaVault(
+            new IporPlasmaVault(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "TPLASMA",

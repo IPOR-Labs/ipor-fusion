@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
@@ -13,9 +14,9 @@ import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigL
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {AaveConstants} from "../../contracts/fuses/aave_v3/AaveConstants.sol";
-import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {AaveConstantsEthereum} from "../../contracts/fuses/aave_v3/AaveConstantsEthereum.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 
 interface AavePool {
@@ -27,7 +28,7 @@ contract PlasmaVaultWithdrawTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
-    address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
 
@@ -286,7 +287,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -303,7 +304,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -345,13 +346,12 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
@@ -391,7 +391,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -415,7 +415,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -466,18 +466,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -517,7 +516,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -534,7 +533,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -577,13 +576,12 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
@@ -617,7 +615,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -641,7 +639,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -692,18 +690,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -747,7 +744,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -771,7 +768,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -831,18 +828,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -854,7 +850,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
+        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(USDC);
 
         address userThree = address(0x999);
@@ -910,7 +906,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -934,7 +930,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -994,18 +990,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -1017,7 +1012,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
+        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(USDC);
 
         address userThree = address(0x999);
@@ -1065,7 +1060,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -1089,7 +1084,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1149,18 +1144,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -1172,7 +1166,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.redeem(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
+        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(USDC);
 
         address userThree = address(0x999);
@@ -1218,7 +1212,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -1235,7 +1229,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1278,13 +1272,12 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
@@ -1293,7 +1286,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
+        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(USDC);
 
         /// @dev artificially transfer aTokens to a Plasma Vault to increase shares values
@@ -1332,7 +1325,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -1349,7 +1342,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1392,13 +1385,12 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](1);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
@@ -1407,7 +1399,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
+        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(USDC);
 
         /// @dev artificially transfer aTokens to a Plasma Vault to increase shares values
@@ -1455,7 +1447,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -1479,7 +1471,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1538,18 +1530,17 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.execute(calls);
 
         /// @dev prepare instant withdraw config
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory instantWithdrawFuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](2);
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
         bytes32[] memory instantWithdrawParams = new bytes32[](2);
         instantWithdrawParams[0] = 0;
         instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        instantWithdrawFuses[0] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseAaveV3),
             params: instantWithdrawParams
         });
 
-        instantWithdrawFuses[1] = PlasmaVaultLib.InstantWithdrawalFusesParamsStruct({
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
             fuse: address(supplyFuseCompoundV3),
             params: instantWithdrawParams
         });
@@ -1561,7 +1552,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.redeem(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstants.ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
+        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
             .getReserveTokensAddresses(USDC);
 
         address userThree = address(0x999);
@@ -1606,7 +1597,7 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -1630,7 +1621,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1666,7 +1657,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
 
@@ -1684,7 +1675,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {ManagersStorageLib, InitializeAccessManager} from "./ManagersStorageLib.sol";
+import {IporFusionAccessManagersStorageLib, InitializationFlag} from "./IporFusionAccessManagersStorageLib.sol";
 
 struct RoleToFunction {
     address target;
@@ -29,19 +29,15 @@ struct InitializationData {
 }
 
 library IporFusionAccessManagerInitializationLib {
-    /**
-     * @dev Triggered when the contract has been initialized
-     */
     event IporFusionAccessManagerInitialized();
-
     error AlreadyInitialized();
 
     function isInitialized() internal {
-        InitializeAccessManager storage initialize = ManagersStorageLib.getInitializeAccessManager();
-        if (initialize.initialized > 0) {
+        InitializationFlag storage initializationFlag = IporFusionAccessManagersStorageLib.getInitializationFlag();
+        if (initializationFlag.initialized > 0) {
             revert AlreadyInitialized();
         }
-        initialize.initialized = 1;
+        initializationFlag.initialized = 1;
         emit IporFusionAccessManagerInitialized();
     }
 }

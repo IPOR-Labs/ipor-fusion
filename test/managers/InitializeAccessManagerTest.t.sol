@@ -5,19 +5,20 @@ import {Test} from "forge-std/Test.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
-import {RewardsClaimManager} from "../../contracts/managers/RewardsClaimManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {InitializationData} from "../../contracts/managers/IporFusionAccessManagerInitializationLib.sol";
-import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
+import {InitializationData} from "../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
+import {Roles} from "../../contracts/libraries/Roles.sol";
+import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 
 contract InitializeAccessManagerTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USD = 0x0000000000000000000000000000000000000348;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
-    address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
@@ -53,7 +54,7 @@ contract InitializeAccessManagerTest is Test {
 
         accessManager = new IporFusionAccessManager(admin);
 
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -108,12 +109,12 @@ contract InitializeAccessManagerTest is Test {
         for (uint256 i; i < initData.adminRoles.length; i++) {
             assertEq(accessManager.getRoleAdmin(initData.adminRoles[i].roleId), initData.adminRoles[i].adminRoleId);
             if (
-                initData.adminRoles[i].roleId != IporFusionRoles.ADMIN_ROLE &&
-                initData.adminRoles[i].roleId != IporFusionRoles.GUARDIAN_ROLE &&
-                initData.adminRoles[i].roleId != IporFusionRoles.PUBLIC_ROLE &&
-                initData.adminRoles[i].roleId != IporFusionRoles.OWNER_ROLE
+                initData.adminRoles[i].roleId != Roles.ADMIN_ROLE &&
+                initData.adminRoles[i].roleId != Roles.GUARDIAN_ROLE &&
+                initData.adminRoles[i].roleId != Roles.PUBLIC_ROLE &&
+                initData.adminRoles[i].roleId != Roles.OWNER_ROLE
             ) {
-                assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), IporFusionRoles.GUARDIAN_ROLE);
+                assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }
         }
 
@@ -159,14 +160,14 @@ contract InitializeAccessManagerTest is Test {
         for (uint256 i; i < initData.adminRoles.length; i++) {
             assertEq(accessManager.getRoleAdmin(initData.adminRoles[i].roleId), initData.adminRoles[i].adminRoleId);
             if (
-                initData.adminRoles[i].roleId != IporFusionRoles.ADMIN_ROLE &&
-                initData.adminRoles[i].roleId != IporFusionRoles.GUARDIAN_ROLE &&
-                initData.adminRoles[i].roleId != IporFusionRoles.PUBLIC_ROLE &&
-                initData.adminRoles[i].roleId != IporFusionRoles.CLAIM_REWARDS_ROLE &&
-                initData.adminRoles[i].roleId != IporFusionRoles.TRANSFER_REWARDS_ROLE &&
-                initData.adminRoles[i].roleId != IporFusionRoles.OWNER_ROLE
+                initData.adminRoles[i].roleId != Roles.ADMIN_ROLE &&
+                initData.adminRoles[i].roleId != Roles.GUARDIAN_ROLE &&
+                initData.adminRoles[i].roleId != Roles.PUBLIC_ROLE &&
+                initData.adminRoles[i].roleId != Roles.CLAIM_REWARDS_ROLE &&
+                initData.adminRoles[i].roleId != Roles.TRANSFER_REWARDS_ROLE &&
+                initData.adminRoles[i].roleId != Roles.OWNER_ROLE
             ) {
-                assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), IporFusionRoles.GUARDIAN_ROLE);
+                assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }
         }
 

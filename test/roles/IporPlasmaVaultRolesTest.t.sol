@@ -8,14 +8,15 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {IporFusionMarketsArbitrum} from "../../contracts/libraries/IporFusionMarketsArbitrum.sol";
-import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
-import {RewardsClaimManager} from "../../contracts/managers/RewardsClaimManager.sol";
-import {IporFusionRoles} from "../../contracts/libraries/IporFusionRoles.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {Roles} from "../../contracts/libraries/Roles.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManagerInitializerLibV1} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {PlasmaVaultLib, InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {PlasmaVaultFusionMock} from "../mocks/PlasmaVaultFusionMock.sol";
 
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -42,13 +43,13 @@ contract IporPlasmaVaultRolesTest is Test {
 
     function testDeployerShouldNotBeAdminAfterInitialization() external {
         // then
-        (bool isMember, ) = _accessManager.hasRole(IporFusionRoles.ADMIN_ROLE, _deployer);
+        (bool isMember, ) = _accessManager.hasRole(Roles.ADMIN_ROLE, _deployer);
         assertFalse(isMember, "Deployer should not be an admin");
     }
 
     function testDeployerShouldNotBeAlphaAfterInitialization() external {
         // then
-        (bool isMember, ) = _accessManager.hasRole(IporFusionRoles.ALPHA_ROLE, _deployer);
+        (bool isMember, ) = _accessManager.hasRole(Roles.ALPHA_ROLE, _deployer);
         assertFalse(isMember, "Deployer should not be an alpha");
     }
 
@@ -57,85 +58,85 @@ contract IporPlasmaVaultRolesTest is Test {
         bytes memory error = abi.encodeWithSignature(
             "AccessManagerUnauthorizedAccount(address,uint64)",
             _deployer,
-            IporFusionRoles.ADMIN_ROLE
+            Roles.ADMIN_ROLE
         );
 
         // when
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.ADMIN_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.ADMIN_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.OWNER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.OWNER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.GUARDIAN_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.GUARDIAN_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.ATOMIST_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.ATOMIST_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.ALPHA_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.ALPHA_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.FUSE_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.FUSE_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.PERFORMANCE_FEE_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.PERFORMANCE_FEE_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.MANAGEMENT_FEE_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.MANAGEMENT_FEE_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.CLAIM_REWARDS_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.CLAIM_REWARDS_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.TRANSFER_REWARDS_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TRANSFER_REWARDS_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.WHITELIST_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.WHITELIST_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(IporFusionRoles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, uint64(11111));
     }
 
     function testShouldNotBeAbleToSetRoleGuardianByDeployer() external {
         bytes memory error = abi.encodeWithSignature(
             "AccessManagerUnauthorizedAccount(address,uint64)",
             _deployer,
-            IporFusionRoles.ADMIN_ROLE
+            Roles.ADMIN_ROLE
         );
 
         //when
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleGuardian(IporFusionRoles.ADMIN_ROLE, IporFusionRoles.GUARDIAN_ROLE);
+        _accessManager.setRoleGuardian(Roles.ADMIN_ROLE, Roles.GUARDIAN_ROLE);
     }
 
     function testShouldNotBeAbleToSetTargetAdminDelayByDeployer() external {
         bytes memory error = abi.encodeWithSignature(
             "AccessManagerUnauthorizedAccount(address,uint64)",
             _deployer,
-            IporFusionRoles.ADMIN_ROLE
+            Roles.ADMIN_ROLE
         );
 
         //when
@@ -173,7 +174,7 @@ contract IporPlasmaVaultRolesTest is Test {
         bytes memory error = abi.encodeWithSignature(
             "AccessManagerUnauthorizedAccount(address,uint64)",
             _deployer,
-            IporFusionRoles.ADMIN_ROLE
+            Roles.ADMIN_ROLE
         );
 
         address authorityBefore = _plasmaVault.authority();
@@ -195,7 +196,7 @@ contract IporPlasmaVaultRolesTest is Test {
         bytes memory error = abi.encodeWithSignature(
             "AccessManagerUnauthorizedAccount(address,uint64)",
             _deployer,
-            IporFusionRoles.ADMIN_ROLE
+            Roles.ADMIN_ROLE
         );
 
         bytes4[] memory selectors = new bytes4[](1);
@@ -211,7 +212,7 @@ contract IporPlasmaVaultRolesTest is Test {
         bytes memory error = abi.encodeWithSignature(
             "AccessManagerUnauthorizedAccount(address,uint64)",
             _deployer,
-            IporFusionRoles.ADMIN_ROLE
+            Roles.ADMIN_ROLE
         );
 
         bytes4[] memory selectors = new bytes4[](1);
@@ -227,7 +228,7 @@ contract IporPlasmaVaultRolesTest is Test {
         bytes memory error = abi.encodeWithSignature(
             "AccessManagerUnauthorizedAccount(address,uint64)",
             _deployer,
-            IporFusionRoles.ADMIN_ROLE
+            Roles.ADMIN_ROLE
         );
 
         bytes4[] memory selectors = new bytes4[](1);
@@ -236,7 +237,7 @@ contract IporPlasmaVaultRolesTest is Test {
         //when
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.labelRole(IporFusionRoles.ADMIN_ROLE, "ADMIN_ROLE");
+        _accessManager.labelRole(Roles.ADMIN_ROLE, "ADMIN_ROLE");
     }
 
     function testShouldBeAbleToCancelScheduledOpByGuardianForManagementFeeManagerRole() external {
@@ -244,7 +245,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address user = vm.rememberKey(1234);
 
         vm.prank(_data.managementFeeManagers[0]);
-        _accessManager.grantRole(IporFusionRoles.MANAGEMENT_FEE_MANAGER_ROLE, user, 10000);
+        _accessManager.grantRole(Roles.MANAGEMENT_FEE_MANAGER_ROLE, user, 10000);
 
         address target = address(_plasmaVault);
         bytes memory data = abi.encodeWithSignature("configureManagementFee(address,uint256)", address(0x555), 55);
@@ -265,7 +266,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address user = vm.rememberKey(1234);
 
         vm.prank(_data.performanceFeeManagers[0]);
-        _accessManager.grantRole(IporFusionRoles.PERFORMANCE_FEE_MANAGER_ROLE, user, 10000);
+        _accessManager.grantRole(Roles.PERFORMANCE_FEE_MANAGER_ROLE, user, 10000);
 
         address target = address(_plasmaVault);
         bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x555), 55);
@@ -286,7 +287,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address user = vm.rememberKey(1234);
 
         vm.prank(_data.owners[0]);
-        _accessManager.grantRole(IporFusionRoles.ATOMIST_ROLE, user, 10000);
+        _accessManager.grantRole(Roles.ATOMIST_ROLE, user, 10000);
 
         address target = address(_plasmaVault);
         bytes memory data = abi.encodeWithSignature("setPriceOracle(address)", 21, address(this));
@@ -307,7 +308,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address user = vm.rememberKey(1234);
 
         vm.prank(_data.atomists[0]);
-        _accessManager.grantRole(IporFusionRoles.ALPHA_ROLE, user, 10000);
+        _accessManager.grantRole(Roles.ALPHA_ROLE, user, 10000);
         FuseAction[] memory calls = new FuseAction[](0);
 
         address target = address(_plasmaVault);
@@ -329,7 +330,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address user = vm.rememberKey(1234);
 
         vm.prank(_data.atomists[0]);
-        _accessManager.grantRole(IporFusionRoles.FUSE_MANAGER_ROLE, user, 10000);
+        _accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, user, 10000);
 
         address target = address(_plasmaVault);
         bytes memory data = abi.encodeWithSignature("addBalanceFuse(uint256,address)", 12, address(this));
@@ -350,7 +351,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address user = vm.rememberKey(1234);
 
         vm.prank(_data.atomists[0]);
-        _accessManager.grantRole(IporFusionRoles.CLAIM_REWARDS_ROLE, user, 10000);
+        _accessManager.grantRole(Roles.CLAIM_REWARDS_ROLE, user, 10000);
         FuseAction[] memory calls = new FuseAction[](0);
 
         address target = address(_rewardsClaimManager);
@@ -372,7 +373,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address user = vm.rememberKey(1234);
 
         vm.prank(_data.atomists[0]);
-        _accessManager.grantRole(IporFusionRoles.TRANSFER_REWARDS_ROLE, user, 10000);
+        _accessManager.grantRole(Roles.TRANSFER_REWARDS_ROLE, user, 10000);
 
         address target = address(_rewardsClaimManager);
         bytes memory data = abi.encodeWithSignature(
@@ -398,7 +399,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address user = vm.rememberKey(1234);
 
         vm.prank(_data.atomists[0]);
-        _accessManager.grantRole(IporFusionRoles.WHITELIST_ROLE, user, 10000);
+        _accessManager.grantRole(Roles.WHITELIST_ROLE, user, 10000);
 
         address target = address(_plasmaVault);
         bytes memory data = abi.encodeWithSignature("deposit(uint256,address)", 1e18, address(this));
@@ -419,10 +420,10 @@ contract IporPlasmaVaultRolesTest is Test {
         address user = vm.rememberKey(1234);
 
         vm.prank(_data.atomists[0]);
-        _accessManager.grantRole(IporFusionRoles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, user, 10000);
+        _accessManager.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, user, 10000);
 
-        PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[]
-            memory fuses = new PlasmaVaultLib.InstantWithdrawalFusesParamsStruct[](0);
+        InstantWithdrawalFusesParamsStruct[]
+            memory fuses = new InstantWithdrawalFusesParamsStruct[](0);
 
         address target = address(_plasmaVault);
         bytes memory data = abi.encodeWithSignature("configureInstantWithdrawalFuses((address,bytes32[])[])", fuses);
@@ -445,13 +446,13 @@ contract IporPlasmaVaultRolesTest is Test {
             PlasmaVaultGovernance.setRewardsClaimManagerAddress.selector
         );
         (bool isMember, uint32 executionDelay) = _accessManager.hasRole(
-            IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE,
+            Roles.REWARDS_CLAIM_MANAGER_ROLE,
             address(_rewardsClaimManager)
         );
 
         assertEq(
             roleId,
-            IporFusionRoles.REWARDS_CLAIM_MANAGER_ROLE,
+            Roles.REWARDS_CLAIM_MANAGER_ROLE,
             "Role id should be equal to rewards claim manager role"
         );
         assertTrue(isMember, "Rewards claim manager should be a member of rewards claim manager role");
@@ -508,7 +509,7 @@ contract IporPlasmaVaultRolesTest is Test {
         address[] memory sources = new address[](1);
         sources[0] = CHAINLINK_USDC;
 
-        PriceOracleMiddleware(_priceOracleMiddlewareProxy).setAssetSources(assets, sources);
+        PriceOracleMiddleware(_priceOracleMiddlewareProxy).setAssetsPricesSources(assets, sources);
         vm.stopPrank();
     }
 
@@ -542,7 +543,7 @@ contract IporPlasmaVaultRolesTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarketsArbitrum.AAVE_V3, address(balanceFuse));
         _accessManager = new IporFusionAccessManager(_deployer);
 
-        _plasmaVault = new PlasmaVault(
+        _plasmaVault = new PlasmaVaultFusionMock(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

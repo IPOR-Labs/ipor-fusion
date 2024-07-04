@@ -18,7 +18,6 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
  */
 abstract contract AccessManaged is Context, IAccessManaged {
     address private _authority;
-
     bool private _consumingSchedule;
 
     /**
