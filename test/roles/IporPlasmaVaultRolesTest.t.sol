@@ -422,8 +422,7 @@ contract IporPlasmaVaultRolesTest is Test {
         vm.prank(_data.atomists[0]);
         _accessManager.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, user, 10000);
 
-        InstantWithdrawalFusesParamsStruct[]
-            memory fuses = new InstantWithdrawalFusesParamsStruct[](0);
+        InstantWithdrawalFusesParamsStruct[] memory fuses = new InstantWithdrawalFusesParamsStruct[](0);
 
         address target = address(_plasmaVault);
         bytes memory data = abi.encodeWithSignature("configureInstantWithdrawalFuses((address,bytes32[])[])", fuses);
@@ -450,11 +449,7 @@ contract IporPlasmaVaultRolesTest is Test {
             address(_rewardsClaimManager)
         );
 
-        assertEq(
-            roleId,
-            Roles.REWARDS_CLAIM_MANAGER_ROLE,
-            "Role id should be equal to rewards claim manager role"
-        );
+        assertEq(roleId, Roles.REWARDS_CLAIM_MANAGER_ROLE, "Role id should be equal to rewards claim manager role");
         assertTrue(isMember, "Rewards claim manager should be a member of rewards claim manager role");
         assertEq(executionDelay, 0, "Execution delay should be 0");
     }
