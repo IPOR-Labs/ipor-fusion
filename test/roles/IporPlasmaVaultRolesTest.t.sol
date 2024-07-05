@@ -15,7 +15,7 @@ import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManagerInitializerLibV1} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {PlasmaVaultLib, InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultFusionMock} from "../mocks/PlasmaVaultFusionMock.sol";
 
 contract IporPlasmaVaultRolesTest is Test {

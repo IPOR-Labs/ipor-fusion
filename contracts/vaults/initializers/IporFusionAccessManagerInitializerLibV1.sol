@@ -196,10 +196,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             roleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE,
             adminRoleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE
         });
-        adminRoles_[11] = AdminRole({
-            roleId: Roles.REWARDS_CLAIM_MANAGER_ROLE,
-            adminRoleId: Roles.ADMIN_ROLE
-        });
+        adminRoles_[11] = AdminRole({roleId: Roles.REWARDS_CLAIM_MANAGER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         return adminRoles_;
     }
 
