@@ -30,7 +30,6 @@ struct DataForInitialization {
     address[] transferRewardsManagers;
     address[] configInstantWithdrawalFusesManagers;
     PlasmaVaultAddress plasmaVaultAddress;
-    address claimRewardsManager;
 }
 
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM.
@@ -62,14 +61,14 @@ library IporFusionAccessManagerInitializerLibV1 {
                 data_.claimRewards.length +
                 data_.transferRewardsManagers.length +
                 data_.configInstantWithdrawalFusesManagers.length +
-                (data_.claimRewardsManager == address(0) ? 0 : 1)
+                (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1)
         );
         uint256 index;
 
-        if (data_.claimRewardsManager != address(0)) {
+        if (data_.plasmaVaultAddress.rewardsClaimManager != address(0)) {
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.REWARDS_CLAIM_MANAGER_ROLE,
-                account: data_.claimRewardsManager,
+                account: data_.plasmaVaultAddress.rewardsClaimManager,
                 executionDelay: 0
             });
             ++index;

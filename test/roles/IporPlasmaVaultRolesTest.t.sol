@@ -567,7 +567,6 @@ contract IporPlasmaVaultRolesTest is Test {
     }
 
     function _initializeAccessManager() private {
-        _data.claimRewardsManager = address(_rewardsClaimManager);
         _data.plasmaVaultAddress.plasmaVault = address(_plasmaVault);
         _data.plasmaVaultAddress.accessManager = address(_accessManager);
         _data.plasmaVaultAddress.rewardsClaimManager = address(_rewardsClaimManager);
