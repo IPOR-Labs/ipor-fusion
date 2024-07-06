@@ -8,8 +8,8 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contract
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
 import {USDMPriceFeed} from "./../../../contracts/priceOracle/priceFeed/USDMPriceFeed.sol";
-import {PriceOracleMock} from "../../fuses/curve_stableswap_ng/PriceOracleMock.sol";
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
+import {IChronicle, IToll} from "./../../../contracts/priceOracle/IChronicle.sol";
 
 contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -18,14 +18,18 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
     uint256 public constant MARKET_ID = 1;
     address public constant USDM_MINT_ROLE = 0x48AEB395FB0E4ff8433e9f2fa6E0579838d33B62;
     address public constant USD = 0x0000000000000000000000000000000000000348;
+    address public constant WUSDM = 0x57F5E098CaD7A3D1Eed53991D4d66C45C9AF7812;
+    address public constant CHRONICLE_ADMIN = 0x39aBD7819E5632Fa06D2ECBba45Dca5c90687EE3;
+    address public constant WUSDM_USD_ORACLE_FEED = 0xdC6720c996Fad27256c7fd6E0a271e2A4687eF18;
+    IChronicle public constant CHRONICLE = IChronicle(WUSDM_USD_ORACLE_FEED);
     USDMPriceFeed public priceFeed;
-    PriceOracleMock public priceOracleMock;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 227567789);
         priceFeed = new USDMPriceFeed();
-        priceOracleMock = new PriceOracleMock(USD, 8);
-        priceOracleMock.setPrice(USDM, 1e18);
+        // price feed admin needs to whitelist the caller address for reading the price
+        vm.prank(CHRONICLE_ADMIN);
+        IToll(address(CHRONICLE)).kiss(address(priceFeed));
         init();
     }
 
@@ -42,7 +46,7 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
         assets = new address[](1);
         sources = new address[](1);
         assets[0] = USDM;
-        sources[0] = address(priceFeed); // USDM Price Feed hardcoded to 1
+        sources[0] = address(priceFeed);
     }
 
     function setupMarketConfigs() public override returns (MarketSubstratesConfig[] memory marketConfigs) {
@@ -64,7 +68,7 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         CurveStableswapNGSingleSideBalanceFuse curveStableswapNGSingleSideBalanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
                 MARKET_ID,
-                address(priceOracleMock)
+                address(priceOracle)
             );
         balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(MARKET_ID, address(curveStableswapNGSingleSideBalanceFuse));
