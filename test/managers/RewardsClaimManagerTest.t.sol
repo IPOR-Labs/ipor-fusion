@@ -3,12 +3,12 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
-import {RewardsManager} from "../../contracts/managers/RewardsManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {MockPlasmaVault} from "./MockPlasmaVault.sol";
 import {MockToken} from "./MockToken.sol";
 
-contract RewardsManagerTest is Test {
+contract RewardsClaimManagerTest is Test {
     uint64 private constant _REWARD_MANAGER_ROLE = 1001;
 
     address private _atomist;
@@ -18,7 +18,7 @@ contract RewardsManagerTest is Test {
     IporFusionAccessManager private _accessManager;
     address private _underlyingToken;
     address private _rewardsToken;
-    RewardsManager private _rewardsManager;
+    RewardsClaimManager private _rewardsClaimManager;
 
     function setUp() public {
         _atomist = address(0x1111);
@@ -29,7 +29,7 @@ contract RewardsManagerTest is Test {
         _accessManager = new IporFusionAccessManager(_atomist);
         _plasmaVault = new MockPlasmaVault(address(_underlyingToken));
 
-        _rewardsManager = new RewardsManager(address(_accessManager), address(_plasmaVault));
+        _rewardsClaimManager = new RewardsClaimManager(address(_accessManager), address(_plasmaVault));
 
         deal(_underlyingToken, _userOne, 1_000_000e18);
         deal(_underlyingToken, _userTwo, 1_000_000e18);
@@ -40,31 +40,31 @@ contract RewardsManagerTest is Test {
         _accessManager.grantRole(_REWARD_MANAGER_ROLE, _userOne, 0);
 
         bytes4[] memory sig = new bytes4[](7);
-        sig[0] = RewardsManager.transfer.selector;
-        sig[1] = RewardsManager.addRewardFuses.selector;
-        sig[2] = RewardsManager.removeRewardFuses.selector;
-        sig[3] = RewardsManager.claimRewards.selector;
-        sig[4] = RewardsManager.setupVestingTime.selector;
-        sig[5] = RewardsManager.transferVestedTokensToVault.selector;
-        sig[6] = RewardsManager.updateBalance.selector;
+        sig[0] = RewardsClaimManager.transfer.selector;
+        sig[1] = RewardsClaimManager.addRewardFuses.selector;
+        sig[2] = RewardsClaimManager.removeRewardFuses.selector;
+        sig[3] = RewardsClaimManager.claimRewards.selector;
+        sig[4] = RewardsClaimManager.setupVestingTime.selector;
+        sig[5] = RewardsClaimManager.transferVestedTokensToVault.selector;
+        sig[6] = RewardsClaimManager.updateBalance.selector;
 
         vm.prank(_atomist);
-        _accessManager.setTargetFunctionRole(address(_rewardsManager), sig, _REWARD_MANAGER_ROLE);
+        _accessManager.setTargetFunctionRole(address(_rewardsClaimManager), sig, _REWARD_MANAGER_ROLE);
     }
 
     function testShouldGetInitialBalanceZero() public {
-        assertEq(_rewardsManager.balanceOf(), 0, "Initial balance should be zero");
+        assertEq(_rewardsClaimManager.balanceOf(), 0, "Initial balance should be zero");
     }
 
-    function testShouldBalanceZeroWhenTransferUnderlineTokenToRewardsManager() public {
+    function testShouldBalanceZeroWhenTransferUnderlineTokenToRewardsClaimManager() public {
         // given
         vm.prank(_userOne);
-        ERC20(_underlyingToken).transfer(address(_rewardsManager), 1_000e18);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
-        uint256 rewardElectionBalanceBefore = ERC20(_underlyingToken).balanceOf(address(_rewardsManager));
+        uint256 rewardElectionBalanceBefore = ERC20(_underlyingToken).balanceOf(address(_rewardsClaimManager));
 
         // when
-        uint256 vestedBalance = _rewardsManager.balanceOf();
+        uint256 vestedBalance = _rewardsClaimManager.balanceOf();
 
         // then
 
@@ -76,20 +76,20 @@ contract RewardsManagerTest is Test {
         // given
         vm.warp(1000 days);
         vm.prank(_userOne);
-        _rewardsManager.setupVestingTime(1 days);
+        _rewardsClaimManager.setupVestingTime(1 days);
 
         vm.prank(_userOne);
-        ERC20(_underlyingToken).transfer(address(_rewardsManager), 1_000e18);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
-        uint256 vestedBalanceBefore = _rewardsManager.balanceOf();
+        uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
 
         // when
         vm.prank(_userOne);
-        _rewardsManager.updateBalance();
+        _rewardsClaimManager.updateBalance();
         vm.warp(block.number + 12 hours);
 
         // then
-        uint256 vestedBalanceAfter = _rewardsManager.balanceOf();
+        uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
 
         assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
         assertGt(
@@ -103,25 +103,25 @@ contract RewardsManagerTest is Test {
         // given
         vm.warp(1000 days);
         vm.prank(_userOne);
-        _rewardsManager.setupVestingTime(1 days);
+        _rewardsClaimManager.setupVestingTime(1 days);
 
         vm.prank(_userOne);
-        ERC20(_underlyingToken).transfer(address(_rewardsManager), 1_000e18);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
-        uint256 vestedBalanceBefore = _rewardsManager.balanceOf();
+        uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
 
         vm.prank(_userOne);
-        _rewardsManager.updateBalance();
+        _rewardsClaimManager.updateBalance();
 
         vm.warp(block.number + 12 hours);
         uint256 plasmaVaultBalanceBefore = ERC20(_underlyingToken).balanceOf(address(_plasmaVault));
 
         // when
         vm.prank(_userOne);
-        _rewardsManager.updateBalance();
+        _rewardsClaimManager.updateBalance();
 
         // then
-        uint256 vestedBalanceAfter = _rewardsManager.balanceOf();
+        uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
         uint256 plasmaVaultBalanceAfter = ERC20(_underlyingToken).balanceOf(address(_plasmaVault));
 
         assertGt(
@@ -141,20 +141,20 @@ contract RewardsManagerTest is Test {
         // given
         vm.warp(1000 days);
         vm.prank(_userOne);
-        _rewardsManager.setupVestingTime(1 days);
+        _rewardsClaimManager.setupVestingTime(1 days);
 
         vm.prank(_userOne);
-        ERC20(_underlyingToken).transfer(address(_rewardsManager), 1_000e18);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
-        uint256 vestedBalanceBefore = _rewardsManager.balanceOf();
+        uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
 
         // when
         vm.prank(_userOne);
-        _rewardsManager.updateBalance();
+        _rewardsClaimManager.updateBalance();
         vm.warp(block.number + 2 days);
 
         // then
-        uint256 vestedBalanceAfter = _rewardsManager.balanceOf();
+        uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
 
         assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
         assertEq(vestedBalanceAfter, 1_000e18, "Vested balance after should be 1_000e18");
@@ -163,25 +163,25 @@ contract RewardsManagerTest is Test {
     function testShouldRevertWhenUserDontHaveRoleToCallUpdateBalance() public {
         // given
         vm.prank(_userTwo);
-        ERC20(_underlyingToken).transfer(address(_rewardsManager), 1_000e18);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _userTwo);
         // when
         vm.prank(_userTwo);
         vm.expectRevert(error);
-        _rewardsManager.updateBalance();
+        _rewardsClaimManager.updateBalance();
     }
 
     function testShouldBeAbleTransferRewardsToken() external {
         //given
         vm.prank(_atomist);
-        ERC20(_rewardsToken).transfer(address(_rewardsManager), 1_000e18);
+        ERC20(_rewardsToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
         uint256 userTwoBalanceBefore = ERC20(_rewardsToken).balanceOf(_userTwo);
 
         //when
         vm.prank(_userOne);
-        _rewardsManager.transfer(_rewardsToken, _userTwo, 1_000e18);
+        _rewardsClaimManager.transfer(_rewardsToken, _userTwo, 1_000e18);
 
         //then
         uint256 userTwoBalanceAfter = ERC20(_rewardsToken).balanceOf(_userTwo);
@@ -193,7 +193,7 @@ contract RewardsManagerTest is Test {
     function testShouldRevertTransferRewardsTokenWhenDontHaveRole() external {
         //given
         vm.prank(_atomist);
-        ERC20(_rewardsToken).transfer(address(_rewardsManager), 1_000e18);
+        ERC20(_rewardsToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
         uint256 userTwoBalanceBefore = ERC20(_rewardsToken).balanceOf(_userTwo);
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _userTwo);
@@ -201,7 +201,7 @@ contract RewardsManagerTest is Test {
         //when
         vm.prank(_userTwo);
         vm.expectRevert(error);
-        _rewardsManager.transfer(_rewardsToken, _userTwo, 1_000e18);
+        _rewardsClaimManager.transfer(_rewardsToken, _userTwo, 1_000e18);
 
         //then
         uint256 userTwoBalanceAfter = ERC20(_rewardsToken).balanceOf(_userTwo);
@@ -215,14 +215,14 @@ contract RewardsManagerTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
 
-        bool isSupportedBefore = _rewardsManager.isRewardFuseSupported(address(0x4444));
+        bool isSupportedBefore = _rewardsClaimManager.isRewardFuseSupported(address(0x4444));
 
         //when
         vm.prank(_userOne);
-        _rewardsManager.addRewardFuses(fuses);
+        _rewardsClaimManager.addRewardFuses(fuses);
 
         //then
-        bool isSupportedAfter = _rewardsManager.isRewardFuseSupported(address(0x4444));
+        bool isSupportedAfter = _rewardsClaimManager.isRewardFuseSupported(address(0x4444));
 
         assertEq(isSupportedBefore, false, "Fuse should not be supported before");
         assertEq(isSupportedAfter, true, "Fuse should be supported after");
@@ -233,16 +233,16 @@ contract RewardsManagerTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(0x4444);
 
-        bool isSupportedBefore = _rewardsManager.isRewardFuseSupported(address(0x4444));
+        bool isSupportedBefore = _rewardsClaimManager.isRewardFuseSupported(address(0x4444));
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _userTwo);
 
         //when
         vm.prank(_userTwo);
         vm.expectRevert(error);
-        _rewardsManager.addRewardFuses(fuses);
+        _rewardsClaimManager.addRewardFuses(fuses);
 
         //then
-        bool isSupportedAfter = _rewardsManager.isRewardFuseSupported(address(0x4444));
+        bool isSupportedAfter = _rewardsClaimManager.isRewardFuseSupported(address(0x4444));
 
         assertEq(isSupportedBefore, false, "Fuse should not be supported before");
         assertEq(isSupportedAfter, false, "Fuse should not be supported after");
@@ -254,16 +254,16 @@ contract RewardsManagerTest is Test {
         fuses[0] = address(0x4444);
 
         vm.prank(_userOne);
-        _rewardsManager.addRewardFuses(fuses);
+        _rewardsClaimManager.addRewardFuses(fuses);
 
-        bool isSupportedBefore = _rewardsManager.isRewardFuseSupported(address(0x4444));
+        bool isSupportedBefore = _rewardsClaimManager.isRewardFuseSupported(address(0x4444));
 
         //when
         vm.prank(_userOne);
-        _rewardsManager.removeRewardFuses(fuses);
+        _rewardsClaimManager.removeRewardFuses(fuses);
 
         //then
-        bool isSupportedAfter = _rewardsManager.isRewardFuseSupported(address(0x4444));
+        bool isSupportedAfter = _rewardsClaimManager.isRewardFuseSupported(address(0x4444));
 
         assertEq(isSupportedBefore, true, "Fuse should be supported before");
         assertEq(isSupportedAfter, false, "Fuse should not be supported after");
@@ -275,18 +275,18 @@ contract RewardsManagerTest is Test {
         fuses[0] = address(0x4444);
 
         vm.prank(_userOne);
-        _rewardsManager.addRewardFuses(fuses);
+        _rewardsClaimManager.addRewardFuses(fuses);
 
-        bool isSupportedBefore = _rewardsManager.isRewardFuseSupported(address(0x4444));
+        bool isSupportedBefore = _rewardsClaimManager.isRewardFuseSupported(address(0x4444));
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _userTwo);
 
         //when
         vm.prank(_userTwo);
         vm.expectRevert(error);
-        _rewardsManager.removeRewardFuses(fuses);
+        _rewardsClaimManager.removeRewardFuses(fuses);
 
         //then
-        bool isSupportedAfter = _rewardsManager.isRewardFuseSupported(address(0x4444));
+        bool isSupportedAfter = _rewardsClaimManager.isRewardFuseSupported(address(0x4444));
 
         assertEq(isSupportedBefore, true, "Fuse should be supported before");
         assertEq(isSupportedAfter, true, "Fuse should be supported after");
@@ -299,30 +299,30 @@ contract RewardsManagerTest is Test {
         //when
         vm.prank(_userTwo);
         vm.expectRevert(error);
-        _rewardsManager.setupVestingTime(1 days);
+        _rewardsClaimManager.setupVestingTime(1 days);
     }
 
     function testShouldTransferVestedTokens() external {
         //given
         vm.warp(1000 days);
         vm.prank(_userOne);
-        _rewardsManager.setupVestingTime(1 days);
+        _rewardsClaimManager.setupVestingTime(1 days);
 
         vm.prank(_userOne);
-        ERC20(_underlyingToken).transfer(address(_rewardsManager), 1_000e18);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
         vm.prank(_userOne);
-        _rewardsManager.updateBalance();
+        _rewardsClaimManager.updateBalance();
         vm.warp(block.number + 2 days);
 
-        uint256 vestedBalanceBefore = _rewardsManager.balanceOf();
+        uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
 
         //when
         vm.prank(_userOne);
-        _rewardsManager.transferVestedTokensToVault();
+        _rewardsClaimManager.transferVestedTokensToVault();
 
         //then
-        uint256 vestedBalanceAfter = _rewardsManager.balanceOf();
+        uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
 
         assertEq(vestedBalanceBefore, 1_000e18, "Vested balance before should be 1_000e18");
         assertEq(vestedBalanceAfter, 0, "Vested balance after should be zero");
@@ -332,25 +332,25 @@ contract RewardsManagerTest is Test {
         //given
         vm.warp(1000 days);
         vm.prank(_userOne);
-        _rewardsManager.setupVestingTime(1 days);
+        _rewardsClaimManager.setupVestingTime(1 days);
 
         vm.prank(_userOne);
-        ERC20(_underlyingToken).transfer(address(_rewardsManager), 1_000e18);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
         vm.prank(_userOne);
-        _rewardsManager.updateBalance();
+        _rewardsClaimManager.updateBalance();
         vm.warp(block.number + 2 days);
 
-        uint256 vestedBalanceBefore = _rewardsManager.balanceOf();
+        uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _userTwo);
 
         //when
         vm.prank(_userTwo);
         vm.expectRevert(error);
-        _rewardsManager.transferVestedTokensToVault();
+        _rewardsClaimManager.transferVestedTokensToVault();
 
         //then
-        uint256 vestedBalanceAfter = _rewardsManager.balanceOf();
+        uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
 
         assertEq(vestedBalanceBefore, 1_000e18, "Vested balance before should be 1_000e18");
         assertEq(vestedBalanceAfter, 1_000e18, "Vested balance after should be 1_000e18");

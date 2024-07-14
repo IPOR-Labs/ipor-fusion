@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {SDaiPriceFeed} from "../../../contracts/priceOracle/priceFeed/SDaiPriceFeed.sol";
+import {SDaiPriceFeedEthereum} from "../../../contracts/priceOracle/priceFeed/SDaiPriceFeedEthereum.sol";
 
 contract SDaiPriceFeedTest is Test {
     function setUp() public {
@@ -11,7 +11,7 @@ contract SDaiPriceFeedTest is Test {
 
     function testShouldReturnPrice() external {
         // given
-        SDaiPriceFeed priceFeed = new SDaiPriceFeed();
+        SDaiPriceFeedEthereum priceFeed = new SDaiPriceFeedEthereum();
 
         // when
         (, int256 price, , , ) = priceFeed.latestRoundData();

@@ -1,3 +1,9 @@
+# IPOR Fusion
+
+IPOR Fusion is a yield optimization framework for automated execution of smart asset management on-chain, saving users time and effort. It is an unopinionated and customizable infrastructure fund managers can use to deploy assets on-chain while implementing custom algorithms off-chain.
+
+More information can be found here:  https://blog.ipor.io/what-is-ipor-fusion-a-technical-overview-114ccd67dfcf
+
 ## Pre-commit hooks
 
 ### requirements
@@ -13,70 +19,3 @@ use instruction from https://pre-commit.com/
 
 -   `pip install pre-commit`
 -   `pre-commit install`
-
-## Foundry
-
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```

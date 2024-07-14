@@ -9,80 +9,85 @@ import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/Fe
 import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
 import {IPriceFeed} from "./IPriceFeed.sol";
 import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
-import {Errors} from "../libraries/errors/Errors.sol";
 
 contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeable, UUPSUpgradeable {
     using SafeCast for int256;
 
-    // usd - 0x0000000000000000000000000000000000000348
+    /// @dev USD - 0x0000000000000000000000000000000000000348
     address public immutable BASE_CURRENCY;
-    // usd - 8
+    /// @dev USD - 8
     uint256 public immutable BASE_CURRENCY_DECIMALS;
+    /// @dev Chainlink Feed Registry currently supported only on Ethereum Mainnet
     address public immutable CHAINLINK_FEED_REGISTRY;
 
-    constructor(address baseCurrency, uint256 baseCurrencyDecimals, address chainlinkFeedRegistry) {
-        if (baseCurrency == address(0)) {
-            revert IPriceOracleMiddleware.ZeroAddress(Errors.UNSUPPORTED_ZERO_ADDRESS, "baseCurrency");
+    constructor(address baseCurrency_, uint256 baseCurrencyDecimals_, address chainlinkFeedRegistry_) {
+        if (baseCurrency_ == address(0)) {
+            revert IPriceOracleMiddleware.ZeroAddress("baseCurrency");
         }
 
-        BASE_CURRENCY = baseCurrency;
-        BASE_CURRENCY_DECIMALS = baseCurrencyDecimals;
-        CHAINLINK_FEED_REGISTRY = chainlinkFeedRegistry;
+        if (baseCurrencyDecimals_ == 0) {
+            revert IPriceOracleMiddleware.WrongDecimals();
+        }
+
+        BASE_CURRENCY = baseCurrency_;
+        BASE_CURRENCY_DECIMALS = baseCurrencyDecimals_;
+        CHAINLINK_FEED_REGISTRY = chainlinkFeedRegistry_;
     }
 
-    function initialize(address initialOwner) external initializer {
-        __Ownable_init(initialOwner);
-        // todo check what is needed
+    function initialize(address initialOwner_) external initializer {
+        __Ownable_init(initialOwner_);
+        __UUPSUpgradeable_init();
     }
 
-    function getAssetPrice(address asset) external view returns (uint256) {
-        return _getAssetPrice(asset);
+    function getAssetPrice(address asset_) external view returns (uint256) {
+        return _getAssetPrice(asset_);
     }
 
-    function getAssetsPrices(address[] calldata assets) external view returns (uint256[] memory) {
-        uint256 assetsLength = assets.length;
+    function getAssetsPrices(address[] calldata assets_) external view returns (uint256[] memory) {
+        uint256 assetsLength = assets_.length;
         if (assetsLength == 0) {
-            revert IPriceOracleMiddleware.EmptyArrayNotSupported(Errors.UNSUPPORTED_EMPTY_ARRAY);
+            revert IPriceOracleMiddleware.EmptyArrayNotSupported();
         }
         uint256[] memory prices = new uint256[](assetsLength);
         for (uint256 i; i < assetsLength; ++i) {
-            prices[i] = _getAssetPrice(assets[i]);
+            prices[i] = _getAssetPrice(assets_[i]);
         }
         return prices;
     }
 
-    function getSourceOfAsset(address asset) external view returns (address) {
-        return PriceOracleMiddlewareStorageLib.getSourceOfAsset(asset);
+    function getSourceOfAssetPrice(address asset_) external view returns (address) {
+        return PriceOracleMiddlewareStorageLib.getSourceOfAssetPrice(asset_);
     }
 
-    function setAssetSources(address[] calldata assets, address[] calldata sources) external onlyOwner {
-        uint256 assetsLength = assets.length;
-        uint256 sourcesLength = sources.length;
+    function setAssetsPricesSources(address[] calldata assets_, address[] calldata sources_) external onlyOwner {
+        uint256 assetsLength = assets_.length;
+        uint256 sourcesLength = sources_.length;
         if (assetsLength == 0 || sourcesLength == 0) {
-            revert IPriceOracleMiddleware.EmptyArrayNotSupported(Errors.UNSUPPORTED_EMPTY_ARRAY);
+            revert IPriceOracleMiddleware.EmptyArrayNotSupported();
         }
         if (assetsLength != sourcesLength) {
-            revert IPriceOracleMiddleware.ArrayLengthMismatch(Errors.ARRAY_LENGTH_MISMATCH);
+            revert IPriceOracleMiddleware.ArrayLengthMismatch();
         }
         for (uint256 i; i < assetsLength; ++i) {
-            PriceOracleMiddlewareStorageLib.setAssetSource(assets[i], sources[i]);
+            PriceOracleMiddlewareStorageLib.setAssetPriceSource(assets_[i], sources_[i]);
         }
     }
 
-    function _getAssetPrice(address asset) private view returns (uint256) {
-        address source = PriceOracleMiddlewareStorageLib.getSourceOfAsset(asset);
+    function _getAssetPrice(address asset_) private view returns (uint256) {
+        address source = PriceOracleMiddlewareStorageLib.getSourceOfAssetPrice(asset_);
         uint80 roundId;
         int256 price;
         uint256 startedAt;
         uint256 time;
         uint80 answeredInRound;
+
         if (source != address(0)) {
             (roundId, price, startedAt, time, answeredInRound) = IPriceFeed(source).latestRoundData();
         } else {
             if (CHAINLINK_FEED_REGISTRY == address(0)) {
-                revert IPriceOracleMiddleware.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);
+                revert IPriceOracleMiddleware.UnsupportedAsset();
             }
-            try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset, BASE_CURRENCY) returns (
+            try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset_, BASE_CURRENCY) returns (
                 uint80 roundIdChainlink,
                 int256 priceChainlink,
                 uint256 startedAtChainlink,
@@ -91,11 +96,11 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
             ) {
                 price = priceChainlink;
             } catch {
-                revert IPriceOracleMiddleware.UnsupportedAsset(Errors.UNSUPPORTED_ASSET);
+                revert IPriceOracleMiddleware.UnsupportedAsset();
             }
         }
         if (price <= 0) {
-            revert IPriceOracleMiddleware.UnexpectedPriceResult(Errors.CHAINLINK_PRICE_ERROR);
+            revert IPriceOracleMiddleware.UnexpectedPriceResult();
         }
         return price.toUint256();
     }

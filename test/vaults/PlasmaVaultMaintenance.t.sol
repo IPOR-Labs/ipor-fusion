@@ -12,18 +12,19 @@ import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contrac
 import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddlewareMock} from "../priceOracle/PriceOracleMiddlewareMock.sol";
-import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
-import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
+import {Roles} from "../../contracts/libraries/Roles.sol";
+import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USD = 0x0000000000000000000000000000000000000348;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
-    address public constant ETHEREUM_AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
@@ -68,7 +69,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -103,7 +104,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.managementFeeManagers = managementFeeManagers;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -140,7 +141,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -185,7 +186,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -228,7 +229,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -270,7 +271,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -314,7 +315,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -356,7 +357,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -400,7 +401,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
 
@@ -413,7 +414,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         // when
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -446,7 +447,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
 
@@ -456,7 +457,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -500,7 +501,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         // when
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -542,7 +543,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -586,7 +587,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
@@ -598,7 +599,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -703,7 +704,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -755,7 +756,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory initialSupplyFuses = new address[](0);
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
@@ -764,7 +765,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -834,7 +835,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory initialSupplyFuses = new address[](0);
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_PRICE_ORACLE_MAINNET,
+            AAVE_PRICE_ORACLE_MAINNET,
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
@@ -843,7 +844,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -922,7 +923,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -972,7 +973,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1033,7 +1034,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1090,7 +1091,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1156,7 +1157,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1209,7 +1210,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1257,7 +1258,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1277,7 +1278,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 6, address(0)));
         address priceOracleBefore = plasmaVault.getPriceOracle();
 
-        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle(string)", Errors.PRICE_ORACLE_ERROR);
+        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle()");
 
         // when
         vm.expectRevert(error);
@@ -1312,7 +1313,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1332,7 +1333,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address newPriceOracle = address(new PriceOracleMiddlewareMock(address(0x777), 8, address(0)));
         address priceOracleBefore = plasmaVault.getPriceOracle();
 
-        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle(string)", Errors.PRICE_ORACLE_ERROR);
+        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle()");
 
         // when
         vm.expectRevert(error);
@@ -1367,7 +1368,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1442,7 +1443,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1482,7 +1483,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1527,7 +1528,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1575,7 +1576,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1618,7 +1619,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1661,7 +1662,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1692,5 +1693,737 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         assertEq(limitBefore, 0, "Limit before should be equal to 0");
         assertEq(limitAfter, 1e17, "Limit after should be equal to 1e17");
+    }
+
+    function testShouldNotBeAbleToCloseMarketWhenUserHasNoGuardianRole() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", alpha);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(alpha);
+        accessManager.updateTargetClosed(address(plasmaVault), true);
+    }
+
+    function testShouldBeAbleToCloseMarket() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bool isClosedBefore = accessManager.isTargetClosed(address(plasmaVault));
+
+        // when
+        vm.prank(atomist);
+        accessManager.updateTargetClosed(address(plasmaVault), true);
+
+        // then
+        bool isClosedAfter = accessManager.isTargetClosed(address(plasmaVault));
+
+        assertFalse(isClosedBefore, "Market should not be closed before");
+        assertTrue(isClosedAfter, "Market should be closed after");
+    }
+
+    function testShouldBeAbleToOpenMarket() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+        vm.prank(atomist);
+        accessManager.updateTargetClosed(address(plasmaVault), true);
+
+        bool isClosedBefore = accessManager.isTargetClosed(address(plasmaVault));
+
+        // when
+        vm.prank(atomist);
+        accessManager.updateTargetClosed(address(plasmaVault), false);
+
+        // then
+        bool isClosedAfter = accessManager.isTargetClosed(address(plasmaVault));
+
+        assertTrue(isClosedBefore, "Market should be closed before");
+        assertFalse(isClosedAfter, "Market should not be closed after");
+    }
+
+    function testShouldBeAbleToMakePlasmaVaultPublic() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.deposit.selector;
+        sig[1] = PlasmaVault.mint.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        bool canDepositBefore;
+        bool canMintBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositBefore = true;
+        } catch {
+            canDepositBefore = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintBefore = true;
+        } catch {
+            canMintBefore = false;
+        }
+        vm.stopPrank();
+
+        // when
+        vm.prank(usersToRoles.atomist);
+        accessManager.convertToPublicVault(address(plasmaVault));
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+        vm.stopPrank();
+
+        assertFalse(canDepositBefore, "User should not be able to deposit before");
+        assertFalse(canMintBefore, "User should not be able to mint before");
+        assertTrue(canDepositAfter, "User should be able to deposit after");
+        assertTrue(canMintAfter, "User should be able to mint after");
+    }
+
+    function testShouldNotBeAbleToMakePlasmaVaultPublicWhenNotAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.deposit.selector;
+        sig[1] = PlasmaVault.mint.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        bool canDepositBefore;
+        bool canMintBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositBefore = true;
+        } catch {
+            canDepositBefore = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintBefore = true;
+        } catch {
+            canMintBefore = false;
+        }
+        vm.stopPrank();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
+        // when
+        vm.prank(user);
+        vm.expectRevert(error);
+        accessManager.convertToPublicVault(address(plasmaVault));
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+        vm.stopPrank();
+
+        assertFalse(canDepositBefore, "User should not be able to deposit before");
+        assertFalse(canMintBefore, "User should not be able to mint before");
+        assertFalse(canDepositAfter, "User should not be able to deposit after");
+        assertFalse(canMintAfter, "User should not be able to mint after");
+    }
+
+    function testShouldBeAbleToEnableTransferShares() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.transfer.selector;
+        sig[1] = PlasmaVault.transferFrom.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        bool canTransferBefore;
+        bool canTransferFromBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        ERC20(address(plasmaVault)).approve(address(this), 100e18);
+        plasmaVault.deposit(50e18, user);
+
+        try plasmaVault.transfer(address(this), 10e18) {
+            canTransferBefore = true;
+        } catch {
+            canTransferBefore = false;
+        }
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canTransferFromBefore = true;
+        } catch {
+            canTransferFromBefore = false;
+        }
+
+        // when
+        vm.prank(usersToRoles.atomist);
+        accessManager.enableTransferShares(address(plasmaVault));
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.transfer(address(this), 10e18) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+
+        assertFalse(canTransferBefore, "User should not be able to deposit before");
+        assertFalse(canTransferFromBefore, "User should not be able to mint before");
+        assertTrue(canDepositAfter, "User should be able to deposit after");
+        assertTrue(canMintAfter, "User should be able to mint after");
+    }
+
+    function testShouldNotBeAbleToEnableTransferSharesWhenNotAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.transfer.selector;
+        sig[1] = PlasmaVault.transferFrom.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        bool canTransferBefore;
+        bool canTransferFromBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        ERC20(address(plasmaVault)).approve(address(this), 100e18);
+        plasmaVault.deposit(50e18, user);
+
+        try plasmaVault.transfer(address(this), 10e18) {
+            canTransferBefore = true;
+        } catch {
+            canTransferBefore = false;
+        }
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canTransferFromBefore = true;
+        } catch {
+            canTransferFromBefore = false;
+        }
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
+
+        // when
+        vm.prank(user);
+        vm.expectRevert(error);
+        accessManager.enableTransferShares(address(plasmaVault));
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.transfer(address(this), 10e18) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+
+        assertFalse(canTransferBefore, "User should not be able to deposit before");
+        assertFalse(canTransferFromBefore, "User should not be able to mint before");
+        assertFalse(canDepositAfter, "User should not be able to deposit after");
+        assertFalse(canMintAfter, "User should not be able to mint after");
+    }
+
+    function testShouldBeAbleToSetupMinimalExecutionTimelockOnRole() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        address owner = usersToRoles.atomist;
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint64[] memory roles = new uint64[](2);
+        roles[0] = Roles.ALPHA_ROLE;
+        roles[1] = Roles.ATOMIST_ROLE;
+
+        uint256[] memory timeLocks = new uint256[](2);
+        timeLocks[0] = 100;
+        timeLocks[1] = 200;
+
+        uint256 alphaTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
+
+        // when
+        vm.prank(owner);
+        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
+
+        // then
+        uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
+
+        assertEq(alphaTimeLockBefore, 0, "Alpha time lock before should be equal to 0");
+        assertEq(atomistTimeLockBefore, 0, "Atomist time lock before should be equal to 0");
+        assertEq(alphaTimeLockAfter, 100, "Alpha time lock after should be equal to 100");
+        assertEq(atomistTimeLockAfter, 200, "Atomist time lock after should be equal to 200");
+    }
+
+    function testShouldNotBeAbleToSetupMinimalExecutionTimelockOnRoleWhenNotOwner() public {
+        // given
+        address underlyingToken = USDC;
+        address user = address(0x555);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint64[] memory roles = new uint64[](2);
+        roles[0] = Roles.ALPHA_ROLE;
+        roles[1] = Roles.ATOMIST_ROLE;
+
+        uint256[] memory timeLocks = new uint256[](2);
+        timeLocks[0] = 100;
+        timeLocks[1] = 200;
+
+        uint256 alphaTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
+        // when
+        vm.prank(user);
+        vm.expectRevert(error);
+        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
+
+        // then
+        uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
+
+        assertEq(alphaTimeLockBefore, 0, "Alpha time lock before should be equal to 0");
+        assertEq(atomistTimeLockBefore, 0, "Atomist time lock before should be equal to 0");
+        assertEq(alphaTimeLockAfter, 0, "Alpha time lock after should be equal to 0");
+        assertEq(atomistTimeLockAfter, 0, "Atomist time lock after should be equal to 0");
+    }
+
+    function testShouldBeAbleToGrantRole() public {
+        // given
+        address underlyingToken = USDC;
+        address user = address(0x555);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint64[] memory roles = new uint64[](2);
+        roles[0] = Roles.ALPHA_ROLE;
+        roles[1] = Roles.ATOMIST_ROLE;
+
+        uint256[] memory timeLocks = new uint256[](2);
+        timeLocks[0] = 100;
+        timeLocks[1] = 200;
+
+        vm.prank(usersToRoles.atomist);
+        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
+
+        (bool isMemberBefore, uint32 executionDelayBefore) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
+
+        // when
+        vm.prank(usersToRoles.atomist);
+        accessManager.grantRole(Roles.ALPHA_ROLE, user, uint32(timeLocks[1]));
+
+        // then
+        (bool isMemberAfter, uint32 executionDelayAfter) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
+
+        assertFalse(isMemberBefore, "User should not be a member before");
+        assertEq(executionDelayBefore, 0, "Execution delay before should be equal to 0");
+        assertTrue(isMemberAfter, "User should be a member after");
+        assertEq(executionDelayAfter, 200, "Execution delay after should be equal to 200");
+    }
+
+    function testShouldNotBeAbleToGrantRoleWhenExecutionDaleyTooSmall() public {
+        // given
+        address underlyingToken = USDC;
+        address user = address(0x555);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint64[] memory roles = new uint64[](2);
+        roles[0] = Roles.ALPHA_ROLE;
+        roles[1] = Roles.ATOMIST_ROLE;
+
+        uint256[] memory timeLocks = new uint256[](2);
+        timeLocks[0] = 100;
+        timeLocks[1] = 200;
+
+        vm.prank(usersToRoles.atomist);
+        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
+
+        (bool isMemberBefore, ) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
+
+        bytes memory error = abi.encodeWithSignature(
+            "TooShortExecutionDelayForRole(uint64,uint32)",
+            Roles.ALPHA_ROLE,
+            uint32(99)
+        );
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(usersToRoles.atomist);
+        accessManager.grantRole(Roles.ALPHA_ROLE, user, uint32(99));
+
+        // then
+        (bool isMemberAfter, ) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
+
+        assertFalse(isMemberBefore, "User should not be a member before");
+        assertFalse(isMemberAfter, "User should not be a member after");
     }
 }

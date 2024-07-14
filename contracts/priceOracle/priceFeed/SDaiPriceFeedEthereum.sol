@@ -8,10 +8,11 @@ import {AggregatorV3Interface} from "../AggregatorV3Interface.sol";
 import {IPriceFeed} from "../IPriceFeed.sol";
 import {ISavingsDai} from "./ISavingsDai.sol";
 
-contract SDaiPriceFeed is IPriceFeed {
+contract SDaiPriceFeedEthereum is IPriceFeed {
     using SafeCast for int256;
     using SafeCast for uint256;
-    // dai/usd
+
+    /// @dev  Price Oracle for pair DAI USD on Ethereum Mainnet
     address public constant DAI_CHAINLINK_FEED = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
     address public constant SDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
 

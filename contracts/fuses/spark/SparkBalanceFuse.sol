@@ -19,7 +19,7 @@ contract SparkBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketIdInput;
         PRICE_ORACLE = IPriceOracleMiddleware(priceOracle);
         if (PRICE_ORACLE.BASE_CURRENCY() != USD) {
-            revert Errors.UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
+            revert Errors.UnsupportedBaseCurrencyFromOracle();
         }
     }
 

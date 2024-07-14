@@ -20,12 +20,12 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
     uint256 public immutable MARKET_ID;
     IPriceOracleMiddleware public immutable PRICE_ORACLE;
 
-    constructor(uint256 marketIdInput, address priceOracle) {
-        MARKET_ID = marketIdInput;
-        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle);
+    constructor(uint256 marketId_, address priceOracle_) {
+        MARKET_ID = marketId_;
+        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
     }
 
-    function balanceOf(address plasmaVault) external override returns (uint256) {
+    function balanceOf(address plasmaVault_) external override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
@@ -51,9 +51,9 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
             decimals = ERC20(underlying).decimals();
             price = _getPrice(underlying);
 
-            rawBalance = cToken.balanceOfUnderlying(plasmaVault);
+            rawBalance = cToken.balanceOfUnderlying(plasmaVault_);
             balanceTemp += IporMath.convertToWadInt(rawBalance.toInt256() * int256(price), decimals + PRICE_DECIMALS);
-            rawBorrowBalance = cToken.borrowBalanceCurrent(plasmaVault);
+            rawBorrowBalance = cToken.borrowBalanceCurrent(plasmaVault_);
             borrowBalance = IporMath.convertToWadInt((rawBorrowBalance * price).toInt256(), decimals + PRICE_DECIMALS);
 
             balanceTemp -= borrowBalance;
@@ -62,7 +62,7 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
         return balanceTemp.toUint256();
     }
 
-    function _getPrice(address asset) internal view returns (uint256) {
-        return PRICE_ORACLE.getAssetPrice(asset);
+    function _getPrice(address asset_) internal view returns (uint256) {
+        return PRICE_ORACLE.getAssetPrice(asset_);
     }
 }

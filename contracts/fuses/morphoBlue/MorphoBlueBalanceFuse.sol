@@ -8,7 +8,6 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IPriceOracleMiddleware} from "../../priceOracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
 
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
@@ -21,7 +20,7 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
     using MorphoBalancesLib for IMorpho;
     using SharesMathLib for uint256;
 
-    error UnsupportedBaseCurrencyFromOracle(string errorCode);
+    error UnsupportedBaseCurrencyFromOracle();
 
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
     address private constant USD = address(0x0000000000000000000000000000000000000348);
@@ -29,15 +28,15 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
     uint256 public immutable MARKET_ID;
     IPriceOracleMiddleware public immutable PRICE_ORACLE;
 
-    constructor(uint256 marketIdInput, address priceOracle) {
-        MARKET_ID = marketIdInput;
-        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle);
+    constructor(uint256 marketId_, address priceOracle_) {
+        MARKET_ID = marketId_;
+        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
         if (PRICE_ORACLE.BASE_CURRENCY() != USD) {
-            revert UnsupportedBaseCurrencyFromOracle(Errors.UNSUPPORTED_BASE_CURRENCY);
+            revert UnsupportedBaseCurrencyFromOracle();
         }
     }
 
-    function balanceOf(address plasmaVault) external view override returns (uint256) {
+    function balanceOf(address plasmaVault_) external view override returns (uint256) {
         bytes32[] memory morphoMarkets = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = morphoMarkets.length;
@@ -56,13 +55,13 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             marketParams = MORPHO.idToMarketParams(Id.wrap(morphoMarkets[i]));
-            totalSupplyAssets = MORPHO.expectedSupplyAssets(marketParams, plasmaVault);
+            totalSupplyAssets = MORPHO.expectedSupplyAssets(marketParams, plasmaVault_);
 
-            slots[0] = MorphoStorageLib.positionBorrowSharesAndCollateralSlot(Id.wrap(morphoMarkets[i]), plasmaVault);
+            slots[0] = MorphoStorageLib.positionBorrowSharesAndCollateralSlot(Id.wrap(morphoMarkets[i]), plasmaVault_);
             values = MORPHO.extSloads(slots);
             totalCollateralAssets = uint256(values[0] >> 128);
 
-            totalBorrowAssets = MORPHO.expectedBorrowAssets(marketParams, plasmaVault);
+            totalBorrowAssets = MORPHO.expectedBorrowAssets(marketParams, plasmaVault_);
 
             balance += _convertToUsd(marketParams.collateralToken, totalCollateralAssets).toInt256(); //totalCollateralAssets - totalBorrowAssets;
             if (totalSupplyAssets > totalBorrowAssets) {
@@ -75,8 +74,8 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
         return balance.toUint256();
     }
 
-    function _convertToUsd(address asset, uint256 amount) internal view returns (uint256) {
-        if (amount == 0) return 0;
-        return IporMath.convertToWad(amount * PRICE_ORACLE.getAssetPrice(asset), ERC20(asset).decimals() + 8);
+    function _convertToUsd(address asset_, uint256 amount_) internal view returns (uint256) {
+        if (amount_ == 0) return 0;
+        return IporMath.convertToWad(amount_ * PRICE_ORACLE.getAssetPrice(asset_), ERC20(asset_).decimals() + 8);
     }
 }
