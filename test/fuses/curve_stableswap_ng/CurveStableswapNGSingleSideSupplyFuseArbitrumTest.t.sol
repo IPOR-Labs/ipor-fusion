@@ -118,9 +118,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         );
 
         bytes memory error = abi.encodeWithSignature(
-            "CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address,string)",
-            address(CURVE_STABLESWAP_NG),
-            Errors.UNSUPPORTED_ASSET
+            "CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address)",
+            address(CURVE_STABLESWAP_NG)
         );
 
         uint256 balanceBeforeEnter = ERC20(activeToken.asset).balanceOf(address(fuseMock));
@@ -163,9 +162,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         _grantAssetsToMarket(fuse, fuseMock, CURVE_STABLESWAP_NG_POOL);
 
         bytes memory error = abi.encodeWithSignature(
-            "CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address,string)",
-            address(activeToken.asset),
-            Errors.UNSUPPORTED_ASSET
+            "CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address)",
+            address(activeToken.asset)
         );
 
         uint256 balanceBeforeEnter = ERC20(activeToken.asset).balanceOf(address(fuseMock));
@@ -440,9 +438,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 minReceived = CURVE_STABLESWAP_NG.calc_withdraw_one_coin(lpTokenBalanceBeforeExit, 1);
 
         bytes memory error = abi.encodeWithSignature(
-            "CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address,string)",
-            address(exitToken.asset),
-            Errors.UNSUPPORTED_ASSET
+            "CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address)",
+            address(exitToken.asset)
         );
 
         // when

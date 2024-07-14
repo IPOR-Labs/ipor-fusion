@@ -33,11 +33,11 @@ contract PriceOracleMock is IPriceOracleMiddleware {
         return assetPrices;
     }
 
-    function getSourceOfAsset(address asset) external view override returns (address) {
+    function getSourceOfAssetPrice(address asset) external view override returns (address) {
         return address(0); // Return address(0) for simplicity in the mock
     }
 
-    function setAssetSources(address[] calldata assets, address[] calldata sources) external pure override {
+    function setAssetsPricesSources(address[] calldata assets, address[] calldata sources) external pure override {
         // Do nothing in the mock
     }
 

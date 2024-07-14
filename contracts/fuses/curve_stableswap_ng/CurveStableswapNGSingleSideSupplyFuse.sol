@@ -49,8 +49,8 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
         uint256 minReceived
     );
 
-    error CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address asset, string errorCode);
-    error CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address asset, string errorCode);
+    error CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address asset);
+    error CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address asset);
     error CurveStableswapNGSingleSideSupplyFuseUnexpectedNumberOfTokens();
     error CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts();
     error CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
@@ -80,10 +80,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
 
     function _enter(CurveStableswapNGSingleSideSupplyFuseEnterData memory data) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(CURVE_STABLESWAP_NG))) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(
-                address(CURVE_STABLESWAP_NG),
-                Errors.UNSUPPORTED_ASSET
-            );
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address(CURVE_STABLESWAP_NG));
         }
         if (data.amounts.length != CURVE_STABLESWAP_NG.N_COINS()) {
             revert CurveStableswapNGSingleSideSupplyFuseUnexpectedNumberOfTokens();
@@ -100,7 +97,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
             }
         }
         if (!supportedPoolAsset) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset, Errors.UNSUPPORTED_ASSET);
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset);
         }
         if (!hasNonZeroAmount) {
             revert CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts();
@@ -127,10 +124,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
 
     function _exit(CurveStableswapNGSingleSideSupplyFuseExitData memory data) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(CURVE_STABLESWAP_NG))) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(
-                address(CURVE_STABLESWAP_NG),
-                Errors.UNSUPPORTED_ASSET
-            );
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address(CURVE_STABLESWAP_NG));
         }
         if (data.burnAmount == 0) {
             revert CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
@@ -146,7 +140,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
             }
         }
         if (!supportedPoolAsset) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset, Errors.UNSUPPORTED_ASSET);
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset);
         }
         uint256 expectedReceivedAmount = CURVE_STABLESWAP_NG.calc_withdraw_one_coin(data.burnAmount, index);
         if (expectedReceivedAmount < data.minReceived) {

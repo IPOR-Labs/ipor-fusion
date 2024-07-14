@@ -4,12 +4,13 @@ pragma solidity 0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {PlasmaVault, FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {IporPlasmaVault} from "./../../../contracts/vaults/IporPlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
-import {IporFusionAccessManager} from "./../../../contracts/managers/IporFusionAccessManager.sol";
+import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
 import {PriceOracleMock} from "./PriceOracleMock.sol";
 
@@ -45,7 +46,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
 
     PriceOracleMock public priceOracleMock;
 
-    PlasmaVault public plasmaVault;
+    IporPlasmaVault public plasmaVault;
 
     address public atomist = address(this);
     address public alpha = address(0x1);
@@ -80,7 +81,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        IporPlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -192,7 +193,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        IporPlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -340,7 +341,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     }
 
     function getPlasmaVaultState(
-        PlasmaVault plasmaVault,
+        IporPlasmaVault plasmaVault,
         CurveStableswapNGSingleSideSupplyFuse fuse,
         SupportedToken memory activeToken
     ) private view returns (PlasmaVaultState memory) {
@@ -353,7 +354,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             });
     }
 
-    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
+    function setupRoles(IporPlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
