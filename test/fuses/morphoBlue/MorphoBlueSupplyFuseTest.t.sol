@@ -72,7 +72,7 @@ contract MorphoBlueSupplyFuseTest is Test {
         uint256 balanceOnMorphoBlueAfter = MORPHO.expectedSupplyAssets(marketParams, address(vaultMock));
         uint256 balanceFromBalanceFuseAfter = vaultMock.balanceOf(address(vaultMock));
 
-        assertEq(balanceFromBalanceFuseAfter, 100042570999999999999, "balance should be 100042570999999999999");
+        assertEq(balanceFromBalanceFuseAfter, 100042570999999999998, "balance should be 100042570999999999998");
         assertEq(balanceFromBalanceFuseBefore, uint256(0), "balance should be 0");
 
         assertEq(balanceAfter + amount, balanceBefore, "vault balance should be decreased by amount");

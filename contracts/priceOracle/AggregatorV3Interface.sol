@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+/// @title An interface for Chainlink's AggregatorV3Interface on Ethereum Mainnet
 interface AggregatorV3Interface {
     function decimals() external view returns (uint8);
 
@@ -9,7 +10,7 @@ interface AggregatorV3Interface {
     function version() external view returns (uint256);
 
     function getRoundData(
-        uint80 _roundId
+        uint80 roundId_
     )
         external
         view

@@ -24,7 +24,7 @@ abstract contract TestPriceOracleSetup is TestStorage {
         if (assets.length == 0) {
             return;
         }
-        PriceOracleMiddleware(priceOracle).setAssetSources(assets, sources);
+        PriceOracleMiddleware(priceOracle).setAssetsPricesSources(assets, sources);
         vm.stopPrank();
     }
 

@@ -30,7 +30,7 @@ contract SparkSupplyFuse is IFuse {
     event SparkSupplyEnterFuse(address version, uint256 amount);
     event SparkSupplyExitFuse(address version, uint256 amount);
 
-    error SpSupplyFuseUnsupportedVault(string action, address asset, string errorCode);
+    error SpSupplyFuseUnsupportedVault(string action, address asset);
 
     constructor(uint256 marketIdInput) {
         VERSION = address(this);

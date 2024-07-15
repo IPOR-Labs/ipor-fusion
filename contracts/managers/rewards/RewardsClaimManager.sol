@@ -7,11 +7,11 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {FusesLib} from "../libraries/FusesLib.sol";
-import {FuseAction} from "../vaults/PlasmaVault.sol";
-import {ManagersStorageLib, VestingData} from "./ManagersStorageLib.sol";
-import {PlasmaVault} from "../vaults/PlasmaVault.sol";
-import {IRewardsClaimManager} from "./IRewardsClaimManager.sol";
+import {FusesLib} from "../../libraries/FusesLib.sol";
+import {FuseAction} from "../../vaults/PlasmaVault.sol";
+import {RewardsClaimManagersStorageLib, VestingData} from "./RewardsClaimManagersStorageLib.sol";
+import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
+import {IRewardsClaimManager} from "../../interfaces/IRewardsClaimManager.sol";
 
 contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
     using SafeERC20 for IERC20;
@@ -30,7 +30,7 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
     }
 
     function balanceOf() public view returns (uint256) {
-        VestingData memory data = ManagersStorageLib.getVestingData();
+        VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
 
         if (data.updateBalanceTimestamp == 0 || data.vestingTime == 0) {
             return 0;
@@ -57,7 +57,7 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
     }
 
     function getVestingData() external view returns (VestingData memory) {
-        return ManagersStorageLib.getVestingData();
+        return RewardsClaimManagersStorageLib.getVestingData();
     }
 
     function transfer(address asset_, address to_, uint256 amount_) external restricted {
@@ -65,6 +65,40 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
             revert UnableToTransferUnderlineToken();
         }
         IERC20(asset_).safeTransfer(to_, amount_);
+    }
+
+    function claimRewards(FuseAction[] calldata calls_) external restricted {
+        uint256 len = calls_.length;
+        for (uint256 i; i < len; ++i) {
+            if (!FusesLib.isFuseSupported(calls_[i].fuse)) {
+                revert FusesLib.FuseUnsupported(calls_[i].fuse);
+            }
+        }
+
+        PlasmaVault(PLASMA_VAULT).claimRewards(calls_);
+    }
+
+    function updateBalance() external restricted {
+        uint256 balance = balanceOf();
+        if (balance > 0) {
+            IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
+        }
+        VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
+        data.updateBalanceTimestamp = block.timestamp.toUint32();
+        data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN).balanceOf(address(this)).toUint128();
+        data.transferredTokens = 0;
+
+        RewardsClaimManagersStorageLib.setVestingData(data);
+    }
+
+    function transferVestedTokensToVault() external restricted {
+        uint256 balance = balanceOf();
+        if (balance == 0) {
+            return;
+        }
+        IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
+        RewardsClaimManagersStorageLib.updateTransferredTokens(balance);
+        emit AmountWithdrawn(balance);
     }
 
     function addRewardFuses(address[] calldata fuses_) external restricted {
@@ -81,41 +115,7 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
         }
     }
 
-    function claimRewards(FuseAction[] calldata calls_) external restricted {
-        uint256 len = calls_.length;
-        for (uint256 i; i < len; ++i) {
-            if (!FusesLib.isFuseSupported(calls_[i].fuse)) {
-                revert FusesLib.FuseUnsupported(calls_[i].fuse);
-            }
-        }
-
-        PlasmaVault(PLASMA_VAULT).claimRewards(calls_);
-    }
-
     function setupVestingTime(uint256 vestingTime_) external restricted {
-        ManagersStorageLib.setupVestingTime(vestingTime_);
-    }
-
-    function updateBalance() external restricted {
-        uint256 balance = balanceOf();
-        if (balance > 0) {
-            IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
-        }
-        VestingData memory data = ManagersStorageLib.getVestingData();
-        data.updateBalanceTimestamp = block.timestamp.toUint32();
-        data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN).balanceOf(address(this)).toUint128();
-        data.transferredTokens = 0;
-
-        ManagersStorageLib.setVestingData(data);
-    }
-
-    function transferVestedTokensToVault() external restricted {
-        uint256 balance = balanceOf();
-        if (balance == 0) {
-            return;
-        }
-        IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
-        ManagersStorageLib.updateTransferredTokens(balance);
-        emit AmountWithdrawn(balance);
+        RewardsClaimManagersStorageLib.setupVestingTime(vestingTime_);
     }
 }

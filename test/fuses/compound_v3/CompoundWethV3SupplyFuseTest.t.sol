@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {CompoundConstants} from "../../../contracts/fuses/compound_v3/CompoundConstants.sol";
+import {CompoundConstantsEthereum} from "../../../contracts/fuses/compound_v3/CompoundConstantsEthereum.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {IComet} from "../../../contracts/fuses/compound_v3/ext/IComet.sol";
 
@@ -17,7 +17,7 @@ contract CompoundWethV3SupplyFuseTest is Test {
     }
 
     SupportedToken private activeTokens;
-    IComet private constant COMET = IComet(CompoundConstants.COMET_V3_WETH);
+    IComet private constant COMET = IComet(CompoundConstantsEthereum.COMET_V3_WETH);
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
@@ -25,7 +25,7 @@ contract CompoundWethV3SupplyFuseTest is Test {
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_WETH);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstantsEthereum.COMET_V3_WETH);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -53,7 +53,7 @@ contract CompoundWethV3SupplyFuseTest is Test {
 
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstants.COMET_V3_WETH);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstantsEthereum.COMET_V3_WETH);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();

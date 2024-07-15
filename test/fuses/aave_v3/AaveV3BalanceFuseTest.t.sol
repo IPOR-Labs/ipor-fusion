@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IPool} from "../../../contracts/vaults/interfaces/IPool.sol";
+import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {AaveV3BalanceFuseMock} from "./AaveV3BalanceFuseMock.sol";
@@ -65,7 +65,7 @@ contract AaveV3BalanceFuseTest is Test {
 
     function testShouldDecreaseBalanceWhenBorrowVariable() external iterateSupportedTokens {
         // given
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19508857);
         AaveV3BalanceFuseMock aaveV3Balances = new AaveV3BalanceFuseMock(
             1,
             address(AAVE_PRICE_ORACLE),

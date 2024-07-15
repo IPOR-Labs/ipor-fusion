@@ -3,8 +3,8 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IporFusionAccessManager} from "../../contracts/managers/IporFusionAccessManager.sol";
-import {RewardsClaimManager} from "../../contracts/managers/RewardsClaimManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {MockPlasmaVault} from "./MockPlasmaVault.sol";
 import {MockToken} from "./MockToken.sol";
 

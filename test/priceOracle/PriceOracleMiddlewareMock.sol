@@ -25,10 +25,10 @@ contract PriceOracleMiddlewareMock is IPriceOracleMiddleware {
         return new uint256[](0);
     }
     //solhint-disable-next-line
-    function getSourceOfAsset(address asset) external view returns (address) {
+    function getSourceOfAssetPrice(address asset) external view returns (address) {
         return address(0);
     }
 
     //solhint-disable-next-line
-    function setAssetSources(address[] calldata assets, address[] calldata sources) external {}
+    function setAssetsPricesSources(address[] calldata assets, address[] calldata sources) external {}
 }

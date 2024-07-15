@@ -20,15 +20,15 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
     uint256 public immutable COMPOUND_BASE_TOKEN_DECIMALS;
     address public immutable BASE_TOKEN_PRICE_FEED;
 
-    constructor(uint256 marketIdInput, address cometAddressInput) {
-        MARKET_ID = marketIdInput;
-        COMET = IComet(cometAddressInput);
+    constructor(uint256 marketId_, address cometAddress_) {
+        MARKET_ID = marketId_;
+        COMET = IComet(cometAddress_);
         COMPOUND_BASE_TOKEN = COMET.baseToken();
         BASE_TOKEN_PRICE_FEED = COMET.baseTokenPriceFeed();
         COMPOUND_BASE_TOKEN_DECIMALS = ERC20(COMPOUND_BASE_TOKEN).decimals();
     }
 
-    function balanceOf(address plasmaVault) external view override returns (uint256) {
+    function balanceOf(address plasmaVault_) external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
@@ -50,13 +50,13 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
             price = _getPrice(asset);
 
             balanceTemp += IporMath.convertToWadInt(
-                _getBalance(plasmaVault, asset).toInt256() * int256(price),
+                _getBalance(plasmaVault_, asset).toInt256() * int256(price),
                 decimals + PRICE_DECIMALS
             );
         }
 
         int256 borrowBalance = IporMath.convertToWadInt(
-            (COMET.borrowBalanceOf(plasmaVault) * COMET.getPrice(BASE_TOKEN_PRICE_FEED)).toInt256(),
+            (COMET.borrowBalanceOf(plasmaVault_) * COMET.getPrice(BASE_TOKEN_PRICE_FEED)).toInt256(),
             COMPOUND_BASE_TOKEN_DECIMALS + PRICE_DECIMALS
         );
 
@@ -65,19 +65,19 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
         return balanceTemp.toUint256();
     }
 
-    function _getPrice(address asset) internal view returns (uint256) {
-        if (asset == COMPOUND_BASE_TOKEN) {
+    function _getPrice(address asset_) internal view returns (uint256) {
+        if (asset_ == COMPOUND_BASE_TOKEN) {
             return COMET.getPrice(BASE_TOKEN_PRICE_FEED);
         }
-        address priceFeed = COMET.getAssetInfoByAddress(asset).priceFeed;
+        address priceFeed = COMET.getAssetInfoByAddress(asset_).priceFeed;
         return COMET.getPrice(priceFeed);
     }
 
-    function _getBalance(address plasmaVault, address asset) private view returns (uint256) {
-        if (asset == COMPOUND_BASE_TOKEN) {
-            return COMET.balanceOf(plasmaVault);
+    function _getBalance(address plasmaVault_, address asset_) private view returns (uint256) {
+        if (asset_ == COMPOUND_BASE_TOKEN) {
+            return COMET.balanceOf(plasmaVault_);
         } else {
-            return COMET.collateralBalanceOf(plasmaVault, asset);
+            return COMET.collateralBalanceOf(plasmaVault_, asset_);
         }
     }
 }
