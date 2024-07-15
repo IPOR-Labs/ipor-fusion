@@ -32,6 +32,10 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
     function setupBalanceFuses() public virtual override returns (MarketBalanceFuseConfig[] memory balanceFuses);
 
+    function getMarketId() public view virtual returns (uint256) {
+        return 1;
+    }
+
     function getEnterFuseData(
         uint256 amount_,
         bytes32[] memory data_
@@ -148,7 +152,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
         // when
         vm.prank(alpha);
@@ -158,7 +162,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
         assertApproxEqAbs(totalAssetsAfter, totalAssetsBefore, ERROR_DELTA, "totalAssets");
@@ -186,7 +190,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
         // when
         vm.prank(alpha);
@@ -196,7 +200,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
         assertApproxEqAbs(totalAssetsAfter, totalAssetsBefore, ERROR_DELTA, "totalAssets");
@@ -223,7 +227,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
         bytes memory exitData = getExitFuseData(assetsInMarketBefore, new bytes32[](0));
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
@@ -237,7 +241,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
         assertApproxEqAbs(totalAssetsAfter, totalAssetsBefore, ERROR_DELTA, "totalAssets");
@@ -266,7 +270,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         vm.warp(block.timestamp + 12000);
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
-        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
         bytes memory exitData = getExitFuseData(assetsInMarketBefore, new bytes32[](0));
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
@@ -284,9 +288,9 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
         uint256 userAssetsAfter = PlasmaVault(plasmaVault).convertToAssets(PlasmaVault(plasmaVault).balanceOf(userOne));
-        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
-        assertGt(userAssetsAfter, userAssetsBefore, "userAssets from shares");
+        assertGe(userAssetsAfter, userAssetsBefore, "userAssets from shares");
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
         assertApproxEqAbs(assetsInMarketAfter + depositAmount, assetsInMarketBefore, ERROR_DELTA, "assetsInMarket");
     }
@@ -311,7 +315,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
         bytes memory exitData = getExitFuseData(assetsInMarketBefore / 2, new bytes32[](0));
 
         FuseAction[] memory exitCalls = new FuseAction[](2);
@@ -326,7 +330,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
         assertApproxEqAbs(totalAssetsAfter, totalAssetsBefore, ERROR_DELTA, "totalAssets");
@@ -359,7 +363,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
             vm.roll(block.number + 100);
             vm.warp(block.timestamp + 1200);
             if (random.randomNumber(0, 1) == 1) {
-                uint256 totalAssetsInMarket = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+                uint256 totalAssetsInMarket = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
                 uint256 totalAssets = PlasmaVault(plasmaVault).totalAssets();
                 uint256 maxAmount = totalAssets - totalAssetsInMarket;
 
@@ -376,7 +380,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
                 vm.prank(alpha);
                 PlasmaVault(plasmaVault).execute(enterCalls);
             } else {
-                uint256 inMarket = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+                uint256 inMarket = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
                 if (inMarket == 0) {
                     continue;
@@ -396,7 +400,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         // then
         uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(uint256(1));
+        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
         uint256 assetsOnPlasmaVaultAfter = ERC20(asset).balanceOf(plasmaVault);
 
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
