@@ -20,7 +20,7 @@ struct Erc4626SupplyFuseEnterData {
 struct Erc4626SupplyFuseExitData {
     /// @dev vault address
     address vault;
-    /// @dev max z to withdraw
+    /// @dev max amount to withdraw
     uint256 amount;
 }
 
