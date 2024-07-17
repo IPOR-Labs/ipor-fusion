@@ -8,11 +8,14 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {GearboxV3FarmdSupplyFuseExitData, GearboxV3FarmdSupplyFuseEnterData, GearboxV3FarmSupplyFuse} from "../../../contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol";
+import {GearboxV3FarmBalanceFuse} from "../../../contracts/fuses/gearbox_v3/GearboxV3FarmBalanceFuse.sol";
 
-contract GearboxV3USDCArbitrum is SupplyTest {
+contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant CHAINLINK_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
-    address public constant GEARBOX_V3_POOL = 0x890A69EF363C9c7BdD5E36eb95Ceb569F63ACbF6;
+    address public constant D_USDC = 0x890A69EF363C9c7BdD5E36eb95Ceb569F63ACbF6;
+    address public constant FARM_D_USDC = 0xD0181a36B0566a8645B7eECFf2148adE7Ecf2BE9;
     address public constant PRICE_ORACLE_MIDDLEWARE_USD = 0x85a3Ee1688eE8D320eDF4024fB67734Fa8492cF4;
 
     function setUp() public {
@@ -41,16 +44,24 @@ contract GearboxV3USDCArbitrum is SupplyTest {
     }
 
     function setupMarketConfigs() public override returns (MarketSubstratesConfig[] memory marketConfigs) {
-        marketConfigs = new MarketSubstratesConfig[](1);
-        bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(GEARBOX_V3_POOL);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.GEARBOX_POOL_V3, assets);
+        marketConfigs = new MarketSubstratesConfig[](2);
+        bytes32[] memory assetsDUsdc = new bytes32[](1);
+        assetsDUsdc[0] = PlasmaVaultConfigLib.addressToBytes32(D_USDC);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.GEARBOX_POOL_V3, assetsDUsdc);
+
+        bytes32[] memory assetsFarmDUsdc = new bytes32[](1);
+        assetsFarmDUsdc[0] = PlasmaVaultConfigLib.addressToBytes32(FARM_D_USDC);
+        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3, assetsFarmDUsdc);
     }
 
     function setupFuses() public override {
         Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
-        fuses = new address[](1);
+        GearboxV3FarmSupplyFuse gearboxV3FarmSupplyFuse = new GearboxV3FarmSupplyFuse(
+            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
+        );
+        fuses = new address[](2);
         fuses[0] = address(fuse);
+        fuses[1] = address(gearboxV3FarmSupplyFuse);
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
@@ -59,10 +70,19 @@ contract GearboxV3USDCArbitrum is SupplyTest {
             priceOracle
         );
 
-        balanceFuses = new MarketBalanceFuseConfig[](1);
+        GearboxV3FarmBalanceFuse gearboxV3FarmdBalances = new GearboxV3FarmBalanceFuse(
+            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
+        );
+
+        balanceFuses = new MarketBalanceFuseConfig[](2);
         balanceFuses[0] = MarketBalanceFuseConfig(
             IporFusionMarketsArbitrum.GEARBOX_POOL_V3,
             address(gearboxV3Balances)
+        );
+
+        balanceFuses[1] = MarketBalanceFuseConfig(
+            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3,
+            address(gearboxV3FarmdBalances)
         );
     }
 
@@ -71,12 +91,14 @@ contract GearboxV3USDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: GEARBOX_V3_POOL,
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: D_USDC, amount: amount_});
+        GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
+            farmdToken: FARM_D_USDC,
             amount: amount_
         });
-        data = new bytes[](1);
+        data = new bytes[](2);
         data[0] = abi.encode(enterData);
+        data[1] = abi.encode(enterDataFarm);
     }
 
     function getExitFuseData(
@@ -84,11 +106,15 @@ contract GearboxV3USDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
-            vault: GEARBOX_V3_POOL,
+        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: D_USDC, amount: amount_});
+        // TODO: should removed when the task https://ipor-labs.atlassian.net/browse/IL-4596 will be done.
+        GearboxV3FarmdSupplyFuseExitData memory exitDataFarm = GearboxV3FarmdSupplyFuseExitData({
+            farmdToken: FARM_D_USDC,
             amount: amount_
         });
-        data = new bytes[](1);
+        data = new bytes[](2);
         data[0] = abi.encode(exitData);
+        // TODO: should removed when the task https://ipor-labs.atlassian.net/browse/IL-4596 will be done.
+        data[1] = abi.encode(exitDataFarm);
     }
 }

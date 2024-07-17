@@ -39,12 +39,12 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function getEnterFuseData(
         uint256 amount_,
         bytes32[] memory data_
-    ) public view virtual override returns (bytes memory data);
+    ) public view virtual override returns (bytes[] memory data);
 
     function getExitFuseData(
         uint256 amount_,
         bytes32[] memory data_
-    ) public view virtual override returns (bytes memory data);
+    ) public view virtual override returns (bytes[] memory data);
 
     function testShouldDepositRandomAmount() external {
         // given
@@ -145,18 +145,13 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         vm.prank(userOne);
         PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
 
-        bytes memory enterData = getEnterFuseData(depositAmount, new bytes32[](0));
-
-        FuseAction[] memory calls = new FuseAction[](1);
-        calls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
-
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
         uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
         // when
         vm.prank(alpha);
-        PlasmaVault(plasmaVault).execute(calls);
+        PlasmaVault(plasmaVault).execute(generateEnterCallsData(depositAmount, new bytes32[](0)));
 
         // then
 
@@ -182,11 +177,19 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         uint256 enterAmount = random.randomNumber(1 * 10 ** (ERC20(asset).decimals()), depositAmount / 2);
 
-        bytes memory enterData = getEnterFuseData(enterAmount, new bytes32[](0));
+        FuseAction[] memory callsOriginal = generateEnterCallsData(enterAmount, new bytes32[](0));
 
-        FuseAction[] memory calls = new FuseAction[](2);
-        calls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
-        calls[1] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
+        uint256 len = callsOriginal.length;
+        FuseAction[] memory calls = new FuseAction[](2 * len);
+        uint256 index;
+        for (uint256 i; i < len; ++i) {
+            calls[index] = callsOriginal[i];
+            ++index;
+        }
+        for (uint256 i; i < len; ++i) {
+            calls[index] = callsOriginal[i];
+            ++index;
+        }
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
@@ -218,24 +221,16 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         vm.prank(userOne);
         PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
 
-        bytes memory enterData = getEnterFuseData(depositAmount, new bytes32[](0));
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
-
         vm.prank(alpha);
-        PlasmaVault(plasmaVault).execute(enterCalls);
+        PlasmaVault(plasmaVault).execute(generateEnterCallsData(depositAmount, new bytes32[](0)));
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
         uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
-        bytes memory exitData = getExitFuseData(assetsInMarketBefore, new bytes32[](0));
-
-        FuseAction[] memory exitCalls = new FuseAction[](1);
-        exitCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("exit(bytes)", exitData));
 
         // when
         vm.prank(alpha);
-        PlasmaVault(plasmaVault).execute(exitCalls);
+        PlasmaVault(plasmaVault).execute(generateExitCallsData(assetsInMarketBefore, new bytes32[](0)));
 
         // then
 
@@ -259,22 +254,14 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         vm.prank(userOne);
         PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
 
-        bytes memory enterData = getEnterFuseData(depositAmount, new bytes32[](0));
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
-
         vm.prank(alpha);
-        PlasmaVault(plasmaVault).execute(enterCalls);
+        PlasmaVault(plasmaVault).execute(generateEnterCallsData(depositAmount, new bytes32[](0)));
 
         vm.roll(block.number + 1000);
         vm.warp(block.timestamp + 12000);
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
-        bytes memory exitData = getExitFuseData(assetsInMarketBefore, new bytes32[](0));
-
-        FuseAction[] memory exitCalls = new FuseAction[](1);
-        exitCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("exit(bytes)", exitData));
 
         uint256 userAssetsBefore = PlasmaVault(plasmaVault).convertToAssets(
             PlasmaVault(plasmaVault).balanceOf(userOne)
@@ -282,7 +269,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         // when
         vm.prank(alpha);
-        PlasmaVault(plasmaVault).execute(exitCalls);
+        PlasmaVault(plasmaVault).execute(generateExitCallsData(assetsInMarketBefore, new bytes32[](0)));
 
         // then
 
@@ -306,21 +293,26 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         vm.prank(userOne);
         PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
 
-        bytes memory enterData = getEnterFuseData(depositAmount, new bytes32[](0));
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
-
         vm.prank(alpha);
-        PlasmaVault(plasmaVault).execute(enterCalls);
+        PlasmaVault(plasmaVault).execute(generateEnterCallsData(depositAmount, new bytes32[](0)));
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
         uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
-        bytes memory exitData = getExitFuseData(assetsInMarketBefore / 2, new bytes32[](0));
 
-        FuseAction[] memory exitCalls = new FuseAction[](2);
-        exitCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("exit(bytes)", exitData));
-        exitCalls[1] = FuseAction(fuses[0], abi.encodeWithSignature("exit(bytes)", exitData));
+        FuseAction[] memory callsOriginal = generateExitCallsData(assetsInMarketBefore / 2, new bytes32[](0));
+
+        uint256 len = callsOriginal.length;
+        FuseAction[] memory exitCalls = new FuseAction[](2 * len);
+        uint256 index;
+        for (uint256 i; i < len; ++i) {
+            exitCalls[index] = callsOriginal[i];
+            ++index;
+        }
+        for (uint256 i; i < len; ++i) {
+            exitCalls[index] = callsOriginal[i];
+            ++index;
+        }
 
         // when
         vm.prank(alpha);
@@ -348,12 +340,8 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         vm.prank(userOne);
         PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
 
-        bytes memory enterData = getEnterFuseData(depositAmount, new bytes32[](0));
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
-
         vm.prank(alpha);
-        PlasmaVault(plasmaVault).execute(enterCalls);
+        PlasmaVault(plasmaVault).execute(generateEnterCallsData(depositAmount, new bytes32[](0)));
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
@@ -372,13 +360,9 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
                 }
 
                 uint256 enterAmount = random.randomNumber(1, maxAmount);
-                bytes memory enterData = getEnterFuseData(enterAmount, new bytes32[](0));
-
-                FuseAction[] memory enterCalls = new FuseAction[](1);
-                enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", enterData));
 
                 vm.prank(alpha);
-                PlasmaVault(plasmaVault).execute(enterCalls);
+                PlasmaVault(plasmaVault).execute(generateEnterCallsData(enterAmount, new bytes32[](0)));
             } else {
                 uint256 inMarket = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
@@ -387,13 +371,9 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
                 }
 
                 uint256 exitAmount = random.randomNumber(1, inMarket);
-                bytes memory exitData = getExitFuseData(exitAmount, new bytes32[](0));
-
-                FuseAction[] memory exitCalls = new FuseAction[](1);
-                exitCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("exit(bytes)", exitData));
 
                 vm.prank(alpha);
-                PlasmaVault(plasmaVault).execute(exitCalls);
+                PlasmaVault(plasmaVault).execute(generateExitCallsData(exitAmount, new bytes32[](0)));
             }
         }
 
@@ -411,5 +391,31 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
             ERROR_DELTA,
             "totalAssetsAfter"
         );
+    }
+
+    function generateEnterCallsData(
+        uint256 amount_,
+        bytes32[] memory data_
+    ) private returns (FuseAction[] memory enterCalls) {
+        bytes[] memory enterData = getEnterFuseData(amount_, data_);
+        uint256 len = enterData.length;
+        enterCalls = new FuseAction[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            enterCalls[i] = FuseAction(fuses[i], abi.encodeWithSignature("enter(bytes)", enterData[i]));
+        }
+        return enterCalls;
+    }
+
+    function generateExitCallsData(
+        uint256 amount_,
+        bytes32[] memory data_
+    ) private returns (FuseAction[] memory enterCalls) {
+        bytes[] memory enterData = getExitFuseData(amount_, data_);
+        uint256 len = enterData.length;
+        enterCalls = new FuseAction[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            enterCalls[i] = FuseAction(fuses[i], abi.encodeWithSignature("exit(bytes)", enterData[i]));
+        }
+        return enterCalls;
     }
 }

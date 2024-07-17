@@ -70,7 +70,10 @@ abstract contract TestVaultSetup is TestStorage {
 
     function setupBalanceFuses() public virtual returns (MarketBalanceFuseConfig[] memory balanceFuses);
 
-    function getEnterFuseData(uint256 amount_, bytes32[] memory data_) public view virtual returns (bytes memory data);
+    function getEnterFuseData(
+        uint256 amount_,
+        bytes32[] memory data_
+    ) public view virtual returns (bytes[] memory data);
 
-    function getExitFuseData(uint256 amount_, bytes32[] memory data_) public view virtual returns (bytes memory data);
+    function getExitFuseData(uint256 amount_, bytes32[] memory data_) public view virtual returns (bytes[] memory data);
 }
