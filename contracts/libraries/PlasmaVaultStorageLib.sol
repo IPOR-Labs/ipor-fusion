@@ -56,7 +56,7 @@ library PlasmaVaultStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.DependencyBalanceGraf")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant DEPENDENCY_BALANCE_GRAPH =
-        0xc2733c187287f795e2e6e84d35552a190e774125367241c3e99e955f4babf111; // TODO update
+        0xcda99dd9732c5748cd1d66b2036a7c046a18d3a53938c076c04ab0d811123900;
 
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
     struct RewardsClaimManagerAddress {
