@@ -2426,4 +2426,111 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertFalse(isMemberBefore, "User should not be a member before");
         assertFalse(isMemberAfter, "User should not be a member after");
     }
+
+    function testShouldBeAbleToSetupDependencyBalanceGraph() public {
+        // given
+        address underlyingToken = USDC;
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint256[] memory marketIdsBefore = plasmaVault.getDependencyBalanceGraf(1);
+
+        uint256[] memory marketIdsToUpdate = new uint256[](2);
+        marketIdsToUpdate[0] = 1;
+        marketIdsToUpdate[1] = 2;
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = 1;
+        uint256[][] memory marketDependence = new uint256[][](1);
+
+        marketDependence[0] = marketIdsToUpdate;
+
+        // when
+        vm.prank(usersToRoles.atomist);
+        plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependence);
+
+        // then
+        uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraf(1);
+
+        assertEq(marketIdsBefore.length, 0, "Market ids before should be empty");
+        assertEq(marketIdsAfter.length, 2, "Market ids after should have length 2");
+        assertEq(marketIdsAfter[0], 1, "Market id 1 should be first");
+        assertEq(marketIdsAfter[1], 2, "Market id 2 should be second");
+    }
+
+    function testShouldNotBeAbleToSetupDependencyBalanceGraphWhenNotAtomist() public {
+        // given
+        address underlyingToken = USDC;
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new IporPlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint256[] memory marketIdsBefore = plasmaVault.getDependencyBalanceGraf(1);
+
+        uint256[] memory marketIdsToUpdate = new uint256[](2);
+        marketIdsToUpdate[0] = 1;
+        marketIdsToUpdate[1] = 2;
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = 1;
+        uint256[][] memory marketDependence = new uint256[][](1);
+
+        marketDependence[0] = marketIdsToUpdate;
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", usersToRoles.alphas[0]);
+
+        // when
+        vm.prank(usersToRoles.alphas[0]);
+        vm.expectRevert(error);
+        plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependence);
+
+        // then
+        uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraf(1);
+
+        assertEq(marketIdsBefore.length, 0, "Market ids before should be empty");
+        assertEq(marketIdsAfter.length, 0, "Market ids after should be empty");
+    }
 }

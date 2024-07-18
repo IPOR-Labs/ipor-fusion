@@ -404,30 +404,31 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-        uint256 marketsLength = markets_.length;
+        uint256[] memory markets = _checkBalanceDependentsFuses(new uint[](0), markets_, markets_.length);
+        uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
         uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
 
         dataToCheck.marketsToCheck = new MarketToCheck[](marketsLength);
         for (uint256 i; i < marketsLength; ++i) {
-            if (markets_[i] == 0) {
+            if (markets[i] == 0) {
                 break;
             }
 
-            balanceFuse = FusesLib.getBalanceFuse(markets_[i]);
+            balanceFuse = FusesLib.getBalanceFuse(markets[i]);
 
             wadBalanceAmountInUSD = abi.decode(
                 balanceFuse.functionDelegateCall(abi.encodeWithSignature("balanceOf(address)", address(this))),
                 (uint256)
             );
-            dataToCheck.marketsToCheck[i].marketId = markets_[i];
+            dataToCheck.marketsToCheck[i].marketId = markets[i];
             dataToCheck.marketsToCheck[i].balanceInMarket = IporMath.convertWadToAssetDecimals(
                 IporMath.division(wadBalanceAmountInUSD * 10 ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
                 decimals()
             );
             deltasInUnderlying =
                 deltasInUnderlying +
-                PlasmaVaultLib.updateTotalAssetsInMarket(markets_[i], dataToCheck.marketsToCheck[i].balanceInMarket);
+                PlasmaVaultLib.updateTotalAssetsInMarket(markets[i], dataToCheck.marketsToCheck[i].balanceInMarket);
         }
 
         if (deltasInUnderlying != 0) {
@@ -437,7 +438,82 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         dataToCheck.totalBalanceInVault = _getGrossTotalAssets();
         AssetDistributionProtectionLib.checkLimits(dataToCheck);
 
-        emit MarketBalancesUpdated(markets_, deltasInUnderlying);
+        emit MarketBalancesUpdated(markets, deltasInUnderlying);
+    }
+
+    function _checkBalanceDependentsFuses(
+        uint256[] memory markets_,
+        uint256[] memory marketsToCheck_,
+        uint256 marketsToCheckLength
+    ) internal view returns (uint256[] memory updatedMarkets) {
+        if (marketsToCheckLength == 0) {
+            return markets_;
+        }
+        uint256[] memory tempMarkets = new uint256[](marketsToCheckLength * 2);
+        uint256 tempMarketsIndex;
+
+        for (uint256 i; i < marketsToCheckLength; ++i) {
+            if (
+                _checkIfExistsMarket(markets_, marketsToCheck_[i]) ||
+                _checkIfExistsMarket(tempMarkets, marketsToCheck_[i]) ||
+                marketsToCheck_[i] == 0
+            ) {
+                continue;
+            }
+
+            if (tempMarkets.length == tempMarketsIndex + 1) {
+                tempMarkets = _increaseArray(tempMarkets, tempMarkets.length + 10);
+            }
+            tempMarkets[tempMarketsIndex] = marketsToCheck_[i];
+            ++tempMarketsIndex;
+
+            uint256 dependentMarketsLength = PlasmaVaultLib.getDependencyBalanceGraf(marketsToCheck_[i]).length;
+
+            if (dependentMarketsLength == 0) {
+                continue;
+            }
+
+            uint256[] memory dependentMarkets = PlasmaVaultLib.getDependencyBalanceGraf(marketsToCheck_[i]);
+            for (uint256 j; j < dependentMarketsLength; ++j) {
+                if (tempMarkets.length == tempMarketsIndex + 1) {
+                    tempMarkets = _increaseArray(tempMarkets, tempMarkets.length + 10);
+                }
+                tempMarkets[tempMarketsIndex] = dependentMarkets[j];
+                ++tempMarketsIndex;
+            }
+        }
+        updatedMarkets = _concatArrays(markets_, marketsToCheck_, markets_.length + marketsToCheckLength);
+
+        if (tempMarketsIndex > 0) {
+            return _checkBalanceDependentsFuses(updatedMarkets, tempMarkets, tempMarketsIndex);
+        }
+        return updatedMarkets;
+    }
+
+    function _increaseArray(uint256[] memory arr_, uint256 newSize_) internal pure returns (uint256[] memory) {
+        uint256[] memory result = new uint256[](newSize_);
+        for (uint256 i; i < arr_.length; ++i) {
+            result[i] = arr_[i];
+        }
+        return result;
+    }
+
+    function _concatArrays(
+        uint256[] memory arr1_,
+        uint256[] memory arr2_,
+        uint256 lengthOfNewArray_
+    ) internal pure returns (uint256[] memory) {
+        uint256[] memory result = new uint256[](lengthOfNewArray_);
+        uint256 i;
+        uint256 lengthOfArr1 = arr1_.length;
+        for (i; i < lengthOfArr1; ++i) {
+            result[i] = arr1_[i];
+        }
+        for (uint256 j; i < lengthOfNewArray_; ++j) {
+            result[i] = arr2_[j];
+            ++i;
+        }
+        return result;
     }
 
     function _checkIfExistsMarket(uint256[] memory markets_, uint256 marketId_) internal pure returns (bool exists) {

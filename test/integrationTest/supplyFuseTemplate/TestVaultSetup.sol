@@ -75,5 +75,8 @@ abstract contract TestVaultSetup is TestStorage {
         bytes32[] memory data_
     ) public view virtual returns (bytes[] memory data);
 
-    function getExitFuseData(uint256 amount_, bytes32[] memory data_) public view virtual returns (bytes[] memory data);
+    function getExitFuseData(
+        uint256 amount_,
+        bytes32[] memory data_
+    ) public view virtual returns (address[] memory fusesSetup, bytes[] memory data);
 }

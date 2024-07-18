@@ -18,6 +18,9 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
     address public constant FARM_D_USDC = 0xD0181a36B0566a8645B7eECFf2148adE7Ecf2BE9;
     address public constant PRICE_ORACLE_MIDDLEWARE_USD = 0x85a3Ee1688eE8D320eDF4024fB67734Fa8492cF4;
 
+    GearboxV3FarmSupplyFuse public gearboxV3FarmSupplyFuse;
+    Erc4626SupplyFuse public gearboxV3DTokenFuse;
+
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 226213814);
         init();
@@ -55,12 +58,10 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
     }
 
     function setupFuses() public override {
-        Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
-        GearboxV3FarmSupplyFuse gearboxV3FarmSupplyFuse = new GearboxV3FarmSupplyFuse(
-            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
-        );
+        gearboxV3DTokenFuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
+        gearboxV3FarmSupplyFuse = new GearboxV3FarmSupplyFuse(IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3);
         fuses = new address[](2);
-        fuses[0] = address(fuse);
+        fuses[0] = address(gearboxV3DTokenFuse);
         fuses[1] = address(gearboxV3FarmSupplyFuse);
     }
 
@@ -105,16 +106,18 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         uint256 amount_,
         //solhint-disable-next-line
         bytes32[] memory data_
-    ) public view virtual override returns (bytes[] memory data) {
+    ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: D_USDC, amount: amount_});
-        // TODO: should removed when the task https://ipor-labs.atlassian.net/browse/IL-4596 will be done.
         GearboxV3FarmdSupplyFuseExitData memory exitDataFarm = GearboxV3FarmdSupplyFuseExitData({
             farmdToken: FARM_D_USDC,
             amount: amount_
         });
         data = new bytes[](2);
-        data[0] = abi.encode(exitData);
-        // TODO: should removed when the task https://ipor-labs.atlassian.net/browse/IL-4596 will be done.
-        data[1] = abi.encode(exitDataFarm);
+        data[1] = abi.encode(exitData);
+        data[0] = abi.encode(exitDataFarm);
+
+        fusesSetup = new address[](2);
+        fusesSetup[0] = address(gearboxV3FarmSupplyFuse);
+        fusesSetup[1] = address(gearboxV3DTokenFuse);
     }
 }
