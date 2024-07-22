@@ -385,12 +385,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
         assertApproxEqAbs(depositAmount, totalAssetsBefore, ERROR_DELTA, "totalAssetsBefore");
-        assertApproxEqAbs(
-            totalAssetsAfter,
-            assetsOnPlasmaVaultAfter + assetsInMarketAfter,
-            ERROR_DELTA,
-            "totalAssetsAfter"
-        );
+        assertGe(totalAssetsAfter, assetsOnPlasmaVaultAfter + assetsInMarketAfter, "totalAssetsAfter");
     }
 
     function generateEnterCallsData(

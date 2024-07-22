@@ -27,7 +27,7 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
     }
 
     function getMarketId() public view override returns (uint256) {
-        return IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        return IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3;
     }
 
     function setupAsset() public override {
