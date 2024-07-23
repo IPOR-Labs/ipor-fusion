@@ -2463,13 +2463,13 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = 1;
-        uint256[][] memory marketDependence = new uint256[][](1);
+        uint256[][] memory marketDependency = new uint256[][](1);
 
-        marketDependence[0] = marketIdsToUpdate;
+        marketDependency[0] = marketIdsToUpdate;
 
         // when
         vm.prank(usersToRoles.atomist);
-        plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependence);
+        plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependency);
 
         // then
         uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraf(1);
@@ -2516,16 +2516,16 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = 1;
-        uint256[][] memory marketDependence = new uint256[][](1);
+        uint256[][] memory marketDependency = new uint256[][](1);
 
-        marketDependence[0] = marketIdsToUpdate;
+        marketDependency[0] = marketIdsToUpdate;
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", usersToRoles.alphas[0]);
 
         // when
         vm.prank(usersToRoles.alphas[0]);
         vm.expectRevert(error);
-        plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependence);
+        plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependency);
 
         // then
         uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraf(1);

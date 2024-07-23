@@ -404,7 +404,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-        uint256[] memory markets = _checkBalanceDependentsFuses(new uint[](0), markets_, markets_.length);
+        uint256[] memory markets = _checkBalanceFusesDependencies(new uint[](0), markets_, markets_.length);
         uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
         uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
@@ -441,18 +441,18 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         emit MarketBalancesUpdated(markets, deltasInUnderlying);
     }
 
-    function _checkBalanceDependentsFuses(
+    function _checkBalanceFusesDependencies(
         uint256[] memory markets_,
         uint256[] memory marketsToCheck_,
-        uint256 marketsToCheckLength
+        uint256 marketsToCheckLength_
     ) internal view returns (uint256[] memory updatedMarkets) {
-        if (marketsToCheckLength == 0) {
+        if (marketsToCheckLength_ == 0) {
             return markets_;
         }
-        uint256[] memory tempMarkets = new uint256[](marketsToCheckLength * 2);
+        uint256[] memory tempMarkets = new uint256[](marketsToCheckLength_ * 2);
         uint256 tempMarketsIndex;
 
-        for (uint256 i; i < marketsToCheckLength; ++i) {
+        for (uint256 i; i < marketsToCheckLength_; ++i) {
             if (
                 _checkIfExistsMarket(markets_, marketsToCheck_[i]) ||
                 _checkIfExistsMarket(tempMarkets, marketsToCheck_[i]) ||
@@ -467,13 +467,13 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
             tempMarkets[tempMarketsIndex] = marketsToCheck_[i];
             ++tempMarketsIndex;
 
-            uint256 dependentMarketsLength = PlasmaVaultLib.getDependencyBalanceGraf(marketsToCheck_[i]).length;
+            uint256 dependentMarketsLength = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck_[i]).length;
 
             if (dependentMarketsLength == 0) {
                 continue;
             }
 
-            uint256[] memory dependentMarkets = PlasmaVaultLib.getDependencyBalanceGraf(marketsToCheck_[i]);
+            uint256[] memory dependentMarkets = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck_[i]);
             for (uint256 j; j < dependentMarketsLength; ++j) {
                 if (tempMarkets.length == tempMarketsIndex + 1) {
                     tempMarkets = _increaseArray(tempMarkets, tempMarkets.length + 10);
@@ -482,10 +482,10 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
                 ++tempMarketsIndex;
             }
         }
-        updatedMarkets = _concatArrays(markets_, marketsToCheck_, markets_.length + marketsToCheckLength);
+        updatedMarkets = _concatArrays(markets_, marketsToCheck_, markets_.length + marketsToCheckLength_);
 
         if (tempMarketsIndex > 0) {
-            return _checkBalanceDependentsFuses(updatedMarkets, tempMarkets, tempMarketsIndex);
+            return _checkBalanceFusesDependencies(updatedMarkets, tempMarkets, tempMarketsIndex);
         }
         return updatedMarkets;
     }

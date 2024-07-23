@@ -54,9 +54,9 @@ library PlasmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.MarketLimits")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant MARKET_LIMITS = 0xc2733c187287f795e2e6e84d35552a190e774125367241c3e99e955f4babf000;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.DependencyBalanceGraf")) - 1)) & ~bytes32(uint256(0xff));
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.DependencyBalanceGraph")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant DEPENDENCY_BALANCE_GRAPH =
-        0xcda99dd9732c5748cd1d66b2036a7c046a18d3a53938c076c04ab0d811123900;
+        0x82411e549329f2815579116a6c5e60bff72686c93ab5dba4d06242cfaf968900;
 
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
     struct RewardsClaimManagerAddress {
@@ -101,7 +101,7 @@ library PlasmaVaultStorageLib {
     /// @custom:storage-location erc7201:io.ipor.BalanceDependenceGraf
     struct DependencyBalanceGraph {
         /// @dev marketId => marketIds
-        mapping(uint256 marketId => uint256[] dependences) dependenceGraph;
+        mapping(uint256 marketId => uint256[] marketIds) dependenceGraph;
     }
 
     /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultInstantWithdrawalFusesArray

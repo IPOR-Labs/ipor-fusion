@@ -24,7 +24,7 @@ library PlasmaVaultLib {
     event PerformanceFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event RewardsClaimManagerAddressChanged(address newRewardsClaimManagerAddress);
-    event DependencyBalanceGrafChanged(uint256 marketId, uint256[] newDependenceGraf);
+    event DependencyBalanceGraphChanged(uint256 marketId, uint256[] newDependenceGraph);
 
     /// @notice Gets the total assets in the vault for all markets
     /// @return The total assets in the vault for all markets, represented in decimals of the underlying asset
@@ -41,13 +41,13 @@ library PlasmaVaultLib {
         return PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_];
     }
 
-    function getDependencyBalanceGraf(uint256 marketId_) internal view returns (uint256[] memory) {
+    function getDependencyBalanceGraph(uint256 marketId_) internal view returns (uint256[] memory) {
         return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependenceGraph[marketId_];
     }
 
-    function updateDependencyBalanceGraf(uint256 marketId_, uint256[] memory newDependenceGraf_) internal {
-        PlasmaVaultStorageLib.getDependencyBalanceGraph().dependenceGraph[marketId_] = newDependenceGraf_;
-        emit DependencyBalanceGrafChanged(marketId_, newDependenceGraf_);
+    function updateDependencyBalanceGraph(uint256 marketId_, uint256[] memory newDependenceGraph_) internal {
+        PlasmaVaultStorageLib.getDependencyBalanceGraph().dependenceGraph[marketId_] = newDependenceGraph_;
+        emit DependencyBalanceGraphChanged(marketId_, newDependenceGraph_);
     }
 
     /// @notice Adds an amount to the total assets in the vault for all markets
