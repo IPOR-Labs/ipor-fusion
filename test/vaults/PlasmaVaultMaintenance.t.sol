@@ -2455,7 +2455,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        uint256[] memory marketIdsBefore = plasmaVault.getDependencyBalanceGraf(1);
+        uint256[] memory marketIdsBefore = plasmaVault.getDependencyBalanceGraph(1);
 
         uint256[] memory marketIdsToUpdate = new uint256[](2);
         marketIdsToUpdate[0] = 1;
@@ -2472,7 +2472,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependency);
 
         // then
-        uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraf(1);
+        uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraph(1);
 
         assertEq(marketIdsBefore.length, 0, "Market ids before should be empty");
         assertEq(marketIdsAfter.length, 2, "Market ids after should have length 2");
@@ -2508,7 +2508,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        uint256[] memory marketIdsBefore = plasmaVault.getDependencyBalanceGraf(1);
+        uint256[] memory marketIdsBefore = plasmaVault.getDependencyBalanceGraph(1);
 
         uint256[] memory marketIdsToUpdate = new uint256[](2);
         marketIdsToUpdate[0] = 1;
@@ -2528,7 +2528,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependency);
 
         // then
-        uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraf(1);
+        uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraph(1);
 
         assertEq(marketIdsBefore.length, 0, "Market ids before should be empty");
         assertEq(marketIdsAfter.length, 0, "Market ids after should be empty");

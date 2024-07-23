@@ -66,8 +66,8 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
         return PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[marketId_];
     }
 
-    function getDependencyBalanceGraf(uint256 marketId_) public view returns (uint256[] memory) {
-        return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependenceGraph[marketId_];
+    function getDependencyBalanceGraph(uint256 marketId_) public view returns (uint256[] memory) {
+        return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_];
     }
 
     function addBalanceFuse(uint256 marketId_, address fuse_) external restricted {
@@ -91,7 +91,7 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
             revert Errors.WrongArrayLength();
         }
         for (uint256 i; i < marketIdsLength; ++i) {
-            PlasmaVaultStorageLib.getDependencyBalanceGraph().dependenceGraph[marketIds_[i]] = dependencies_[i];
+            PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketIds_[i]] = dependencies_[i];
         }
     }
 
