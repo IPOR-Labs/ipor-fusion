@@ -11,6 +11,7 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
@@ -187,6 +188,10 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
     }
 
     function deposit(uint256 assets_, address receiver_) public override nonReentrant restricted returns (uint256) {
+        return _deposit(assets_, receiver_);
+    }
+
+    function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {
         if (assets_ == 0) {
             revert NoAssetsToDeposit();
         }
@@ -197,6 +202,19 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         _realizeManagementFee();
 
         return super.deposit(assets_, receiver_);
+    }
+
+    function depositWithPermit(
+        uint256 assets_,
+        address owner_,
+        address receiver_,
+        uint256 deadline_,
+        uint8 v_,
+        bytes32 r_,
+        bytes32 s_
+    ) external nonReentrant restricted returns (uint256) {
+        IERC20Permit(asset()).permit(owner_, address(this), assets_, deadline_, v_, r_, s_);
+        return _deposit(assets_, receiver_);
     }
 
     function mint(uint256 shares_, address receiver_) public override nonReentrant restricted returns (uint256) {
@@ -404,7 +422,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-        uint256[] memory markets = _checkBalanceFusesDependencies(new uint[](0), markets_, markets_.length);
+        uint256[] memory markets = _checkBalanceFusesDependencies(new uint256[](0), markets_, markets_.length);
         uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
         uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
@@ -572,7 +590,8 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
             this.deposit.selector == sig ||
             this.mint.selector == sig ||
             this.withdraw.selector == sig ||
-            this.redeem.selector == sig
+            this.redeem.selector == sig ||
+            this.depositWithPermit.selector == sig
         ) {
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
         } else {
