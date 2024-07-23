@@ -199,7 +199,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         adminRoles_[11] = AdminRole({roleId: Roles.REWARDS_CLAIM_MANAGER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         return adminRoles_;
     }
-
+    //todo: Add depositWithPermit
     function _generateRoleToFunction(
         PlasmaVaultAddress memory plasmaVaultAddress_
     ) private returns (RoleToFunction[] memory rolesToFunction) {

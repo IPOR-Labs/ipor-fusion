@@ -5,6 +5,7 @@ import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
 import {IporFusionAccessManagersStorageLib} from "./IporFusionAccessManagersStorageLib.sol";
 
 bytes4 constant DEPOSIT_SELECTOR = PlasmaVault.deposit.selector;
+bytes4 constant DEPOSIT_WITH_PERMIT_SELECTOR = PlasmaVault.depositWithPermit.selector;
 bytes4 constant MINT_SELECTOR = PlasmaVault.mint.selector;
 bytes4 constant WITHDRAW_SELECTOR = PlasmaVault.withdraw.selector;
 bytes4 constant REDEEM_SELECTOR = PlasmaVault.redeem.selector;
@@ -39,7 +40,7 @@ library RedemptionDelayLib {
             if (unlockTime > block.timestamp) {
                 revert AccountIsLocked(unlockTime);
             }
-        } else if (sig_ == DEPOSIT_SELECTOR || sig_ == MINT_SELECTOR) {
+        } else if (sig_ == DEPOSIT_SELECTOR || sig_ == MINT_SELECTOR || sig_ == DEPOSIT_WITH_PERMIT_SELECTOR) {
             IporFusionAccessManagersStorageLib.setRedemptionLocks(account_);
         }
     }
