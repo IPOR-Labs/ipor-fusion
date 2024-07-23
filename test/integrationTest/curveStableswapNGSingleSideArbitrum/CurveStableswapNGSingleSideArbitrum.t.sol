@@ -73,7 +73,6 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
 
     function getEnterFuseData(
         uint256 amount_,
-        //solhint-disable-next-line var
         bytes32[] memory data_
     ) public view virtual override returns (bytes memory data) {
         CurveStableswapNGSingleSideSupplyFuseEnterData
@@ -88,7 +87,6 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
 
     function getExitFuseData(
         uint256 amount_, // LP token amount to burn
-        //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes memory data) {
         uint256[] memory amounts = new uint256[](2);
