@@ -24,6 +24,7 @@ library PlasmaVaultLib {
     event PerformanceFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event RewardsClaimManagerAddressChanged(address newRewardsClaimManagerAddress);
+    event DependencyBalanceGraphChanged(uint256 marketId, uint256[] newDependenceGraph);
 
     /// @notice Gets the total assets in the vault for all markets
     /// @return The total assets in the vault for all markets, represented in decimals of the underlying asset
@@ -38,6 +39,15 @@ library PlasmaVaultLib {
     //solhint-disable-next-line
     function getTotalAssetsInMarket(uint256 marketId_) internal view returns (uint256) {
         return PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_];
+    }
+
+    function getDependencyBalanceGraph(uint256 marketId_) internal view returns (uint256[] memory) {
+        return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_];
+    }
+
+    function updateDependencyBalanceGraph(uint256 marketId_, uint256[] memory newDependenceGraph_) internal {
+        PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_] = newDependenceGraph_;
+        emit DependencyBalanceGraphChanged(marketId_, newDependenceGraph_);
     }
 
     /// @notice Adds an amount to the total assets in the vault for all markets

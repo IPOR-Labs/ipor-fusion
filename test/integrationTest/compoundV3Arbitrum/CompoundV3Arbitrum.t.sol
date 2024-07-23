@@ -69,9 +69,10 @@ contract CompoundV3Arbitrum is SupplyTest {
         uint256 amount_,
         //solhint-disable-next-line
         bytes32[] memory data_
-    ) public view virtual override returns (bytes[] memory data) {
+    ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         CompoundV3SupplyFuseExitData memory exitData = CompoundV3SupplyFuseExitData({asset: asset, amount: amount_});
         data = new bytes[](1);
         data[0] = abi.encode(exitData);
+        fusesSetup = fuses;
     }
 }

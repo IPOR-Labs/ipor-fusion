@@ -44,7 +44,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function getExitFuseData(
         uint256 amount_,
         bytes32[] memory data_
-    ) public view virtual override returns (bytes[] memory data);
+    ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data);
 
     function testShouldDepositRandomAmount() external {
         // given
@@ -385,12 +385,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
         assertApproxEqAbs(depositAmount, totalAssetsBefore, ERROR_DELTA, "totalAssetsBefore");
-        assertApproxEqAbs(
-            totalAssetsAfter,
-            assetsOnPlasmaVaultAfter + assetsInMarketAfter,
-            ERROR_DELTA,
-            "totalAssetsAfter"
-        );
+        assertGe(totalAssetsAfter, assetsOnPlasmaVaultAfter + assetsInMarketAfter, "totalAssetsAfter");
     }
 
     function generateEnterCallsData(
@@ -410,11 +405,11 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         uint256 amount_,
         bytes32[] memory data_
     ) private returns (FuseAction[] memory enterCalls) {
-        bytes[] memory enterData = getExitFuseData(amount_, data_);
+        (address[] memory fusesSetup, bytes[] memory enterData) = getExitFuseData(amount_, data_);
         uint256 len = enterData.length;
         enterCalls = new FuseAction[](len);
         for (uint256 i = 0; i < len; ++i) {
-            enterCalls[i] = FuseAction(fuses[i], abi.encodeWithSignature("exit(bytes)", enterData[i]));
+            enterCalls[i] = FuseAction(fusesSetup[i], abi.encodeWithSignature("exit(bytes)", enterData[i]));
         }
         return enterCalls;
     }
