@@ -41,7 +41,10 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
 
     /// @notice Enters to the Market
     function enter(bytes calldata data_) external {
-        FluidInstadappStakingSupplyFuseEnterData memory data = abi.decode(data_, (FluidInstadappStakingSupplyFuseEnterData));
+        FluidInstadappStakingSupplyFuseEnterData memory data = abi.decode(
+            data_,
+            (FluidInstadappStakingSupplyFuseEnterData)
+        );
         enter(data);
     }
 
@@ -61,7 +64,10 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
 
     /// @notice Exits from the Market
     function exit(bytes calldata data_) external {
-        FluidInstadappStakingSupplyFuseExitData memory data = abi.decode(data_, (FluidInstadappStakingSupplyFuseExitData));
+        FluidInstadappStakingSupplyFuseExitData memory data = abi.decode(
+            data_,
+            (FluidInstadappStakingSupplyFuseExitData)
+        );
         exit(data);
     }
     /// @notice Exits from the Market
@@ -80,6 +86,11 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
+
+        if (amount == 0) {
+            return;
+        }
+
         address stakingPool = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
         exit(

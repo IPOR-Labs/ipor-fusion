@@ -11,8 +11,6 @@ import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusion
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
 import {FluidInstadappStakingSupplyFuse, FluidInstadappStakingSupplyFuseEnterData, FluidInstadappStakingSupplyFuseExitData} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol";
 
-import "forge-std/console2.sol";
-
 contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant CHAINLINK_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
@@ -107,7 +105,7 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
 
     function getExitFuseData(
         uint256 amount_,
-    //solhint-disable-next-line
+        //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: F_TOKEN, amount: amount_});

@@ -54,7 +54,7 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse FluidInstadappBalances = new ERC4626BalanceFuse(
+        ERC4626BalanceFuse fluidInstadappBalances = new ERC4626BalanceFuse(
             IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
             priceOracle
         );
@@ -62,7 +62,7 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(
             IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
-            address(FluidInstadappBalances)
+            address(fluidInstadappBalances)
         );
     }
 
@@ -71,23 +71,17 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: F_TOKEN,
-            amount: amount_
-        });
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, amount: amount_});
         data = new bytes[](1);
         data[0] = abi.encode(enterData);
     }
 
     function getExitFuseData(
         uint256 amount_,
-    //solhint-disable-next-line
+        //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
-        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
-            vault: F_TOKEN,
-            amount: amount_
-        });
+        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: F_TOKEN, amount: amount_});
         data = new bytes[](1);
         data[0] = abi.encode(exitData);
         fusesSetup = fuses;

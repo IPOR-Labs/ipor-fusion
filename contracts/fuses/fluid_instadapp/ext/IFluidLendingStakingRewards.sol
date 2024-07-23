@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 interface IFluidLendingStakingRewards {
-
     function nextPeriodFinish() external view returns (uint256);
 
     function nextRewardRate() external view returns (uint256);
@@ -35,7 +34,7 @@ interface IFluidLendingStakingRewards {
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function stakeWithPermit(uint256 amount, uint deadline, uint8 v, bytes32 r, bytes32 s) external;
+    function stakeWithPermit(uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external;
 
     function stake(uint256 amount) external;
 
@@ -48,5 +47,4 @@ interface IFluidLendingStakingRewards {
     /// @notice updates rewards until current block.timestamp or `periodFinish`. Transitions to next rewards
     /// if previous rewards ended and next ones were queued.
     function updateRewards() external;
-
 }
