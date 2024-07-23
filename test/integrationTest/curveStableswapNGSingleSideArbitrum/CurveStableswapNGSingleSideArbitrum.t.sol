@@ -74,7 +74,7 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
     function getEnterFuseData(
         uint256 amount_,
         bytes32[] memory data_
-    ) public view virtual override returns (bytes memory data) {
+    ) public view virtual override returns (bytes[] memory data) {
         CurveStableswapNGSingleSideSupplyFuseEnterData
             memory enterData = CurveStableswapNGSingleSideSupplyFuseEnterData({
                 curveStableswapNG: ICurveStableswapNG(CURVE_STABLESWAP_NG_POOL),
@@ -88,7 +88,7 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
     function getExitFuseData(
         uint256 amount_, // LP token amount to burn
         bytes32[] memory data_
-    ) public view virtual override returns (bytes memory data) {
+    ) public view virtual override returns (bytes[] memory data) {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 0;
         amounts[1] = amount_;
