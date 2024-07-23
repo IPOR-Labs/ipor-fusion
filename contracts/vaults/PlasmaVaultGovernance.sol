@@ -66,6 +66,10 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
         return PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[marketId_];
     }
 
+    function getDependencyBalanceGraph(uint256 marketId_) public view returns (uint256[] memory) {
+        return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_];
+    }
+
     function addBalanceFuse(uint256 marketId_, address fuse_) external restricted {
         _addBalanceFuse(marketId_, fuse_);
     }
@@ -76,6 +80,19 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
 
     function grandMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external restricted {
         PlasmaVaultConfigLib.grandMarketSubstrates(marketId_, substrates_);
+    }
+
+    function updateDependencyBalanceGraphs(
+        uint256[] memory marketIds_,
+        uint256[][] memory dependencies_
+    ) external restricted {
+        uint256 marketIdsLength = marketIds_.length;
+        if (marketIdsLength != dependencies_.length) {
+            revert Errors.WrongArrayLength();
+        }
+        for (uint256 i; i < marketIdsLength; ++i) {
+            PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketIds_[i]] = dependencies_[i];
+        }
     }
 
     /// @notice Configures the instant withdrawal fuses. Order of the fuse is important, as it will be used in the same order during the instant withdrawal process
