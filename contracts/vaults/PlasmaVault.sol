@@ -454,9 +454,9 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
 
         for (uint256 i; i < marketsToCheckLength_; ++i) {
             if (
+                marketsToCheck_[i] == 0 ||
                 _checkIfExistsMarket(markets_, marketsToCheck_[i]) ||
-                _checkIfExistsMarket(tempMarkets, marketsToCheck_[i]) ||
-                marketsToCheck_[i] == 0
+                _checkIfExistsMarket(tempMarkets, marketsToCheck_[i])
             ) {
                 continue;
             }
