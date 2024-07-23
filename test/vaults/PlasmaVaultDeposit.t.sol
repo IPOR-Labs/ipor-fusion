@@ -34,7 +34,7 @@ contract PlasmaVaultDepositTest is Test {
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
-    bytes32 constant PERMIT_TYPEHASH =
+    bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     address public atomist = address(this);
@@ -532,9 +532,6 @@ contract PlasmaVaultDepositTest is Test {
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount);
-
-        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         //when
         vm.prank(userOne);
