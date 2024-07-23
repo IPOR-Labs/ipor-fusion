@@ -98,10 +98,9 @@ library PlasmaVaultStorageLib {
         mapping(uint256 => address) value;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.BalanceDependenceGraf
+    /// @custom:storage-location erc7201:io.ipor.BalanceDependenceGraph
     struct DependencyBalanceGraph {
-        /// @dev marketId => marketIds
-        mapping(uint256 marketId => uint256[] marketIds) dependenceGraph;
+        mapping(uint256 marketId => uint256[] marketIds) dependencyGraph;
     }
 
     /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultInstantWithdrawalFusesArray
@@ -148,9 +147,9 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getDependencyBalanceGraph() internal pure returns (DependencyBalanceGraph storage dependenceGraph) {
+    function getDependencyBalanceGraph() internal pure returns (DependencyBalanceGraph storage dependencyGraph) {
         assembly {
-            dependenceGraph.slot := DEPENDENCY_BALANCE_GRAPH
+            dependencyGraph.slot := DEPENDENCY_BALANCE_GRAPH
         }
     }
 

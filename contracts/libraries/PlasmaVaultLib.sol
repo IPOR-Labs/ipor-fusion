@@ -42,11 +42,11 @@ library PlasmaVaultLib {
     }
 
     function getDependencyBalanceGraph(uint256 marketId_) internal view returns (uint256[] memory) {
-        return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependenceGraph[marketId_];
+        return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_];
     }
 
     function updateDependencyBalanceGraph(uint256 marketId_, uint256[] memory newDependenceGraph_) internal {
-        PlasmaVaultStorageLib.getDependencyBalanceGraph().dependenceGraph[marketId_] = newDependenceGraph_;
+        PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_] = newDependenceGraph_;
         emit DependencyBalanceGraphChanged(marketId_, newDependenceGraph_);
     }
 

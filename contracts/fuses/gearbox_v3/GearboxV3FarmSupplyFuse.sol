@@ -54,6 +54,10 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
         address dToken = IFarmingPool(data_.farmdToken).stakingToken();
         uint256 dTokenDepositAmount = IporMath.min(data_.dTokenAmount, IERC20(dToken).balanceOf(address(this)));
 
+        if (dTokenDepositAmount == 0) {
+            return;
+        }
+
         IERC20(dToken).forceApprove(data_.farmdToken, dTokenDepositAmount);
         IFarmingPool(data_.farmdToken).deposit(dTokenDepositAmount);
 

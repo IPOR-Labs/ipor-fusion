@@ -404,7 +404,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-        uint256[] memory markets = _checkBalanceFusesDependencies(new uint256[](0), markets_, markets_.length);
+        uint256[] memory markets = _checkBalanceFusesDependencies(new uint[](0), markets_, markets_.length);
         uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
         uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
@@ -454,9 +454,9 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
 
         for (uint256 i; i < marketsToCheckLength_; ++i) {
             if (
+                marketsToCheck_[i] == 0 ||
                 _checkIfExistsMarket(markets_, marketsToCheck_[i]) ||
-                _checkIfExistsMarket(tempMarkets, marketsToCheck_[i]) ||
-                marketsToCheck_[i] == 0
+                _checkIfExistsMarket(tempMarkets, marketsToCheck_[i])
             ) {
                 continue;
             }

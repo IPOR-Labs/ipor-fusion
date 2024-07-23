@@ -327,12 +327,12 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3;
 
-        uint256[] memory dependence = new uint256[](2);
-        dependence[0] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
-        dependence[1] = IporFusionMarketsArbitrum.AAVE_V3;
+        uint256[] memory dependencies = new uint256[](2);
+        dependencies[0] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        dependencies[1] = IporFusionMarketsArbitrum.AAVE_V3;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
-        dependenceMarkets[0] = dependence;
+        dependenceMarkets[0] = dependencies;
 
         vm.prank(accounts[0]);
         PlasmaVaultGovernance(plasmaVault).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
