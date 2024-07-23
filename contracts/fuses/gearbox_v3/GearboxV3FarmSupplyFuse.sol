@@ -12,14 +12,15 @@ import {IFarmingPool} from "./ext/IFarmingPool.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
 struct GearboxV3FarmdSupplyFuseEnterData {
-    /// @dev max amount to deposit
-    uint256 amount;
+    /// @dev max dTokenAmount to deposit, in dToken decimals
+    uint256 dTokenAmount;
     address farmdToken;
 }
 
 struct GearboxV3FarmdSupplyFuseExitData {
-    /// @dev amount to withdraw
-    uint256 amount;
+    /// @dev amount to withdraw, in dToken decimals
+    uint256 dTokenAmount;
+    /// @dev farmd token address where dToken is staked and farmed token (ARB for dUSDC)
     address farmdToken;
 }
 
@@ -31,8 +32,8 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
 
     error GearboxV3FarmdSupplyFuseUnsupportedFarmdToken(string action, address farmdToken);
 
-    uint256 public immutable MARKET_ID;
     address public immutable VERSION;
+    uint256 public immutable MARKET_ID;
 
     constructor(uint256 marketId_) {
         VERSION = address(this);
@@ -51,12 +52,12 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
         }
 
         address dToken = IFarmingPool(data_.farmdToken).stakingToken();
-        uint256 deposit = IporMath.min(data_.amount, IFarmingPool(dToken).balanceOf(address(this)));
+        uint256 dTokenDepositAmount = IporMath.min(data_.dTokenAmount, IFarmingPool(dToken).balanceOf(address(this)));
 
-        IERC20(dToken).forceApprove(data_.farmdToken, deposit);
-        IFarmingPool(data_.farmdToken).deposit(deposit);
+        IERC20(dToken).forceApprove(data_.farmdToken, dTokenDepositAmount);
+        IFarmingPool(data_.farmdToken).deposit(dTokenDepositAmount);
 
-        emit GearboxV3FarmdEnterFuse(VERSION, data_.farmdToken, dToken, deposit);
+        emit GearboxV3FarmdEnterFuse(VERSION, data_.farmdToken, dToken, dTokenDepositAmount);
     }
 
     /// @notice Exits from the Market
@@ -70,7 +71,14 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
             revert GearboxV3FarmdSupplyFuseUnsupportedFarmdToken("enter", data_.farmdToken);
         }
 
-        uint256 withdrawAmount = IporMath.min(data_.amount, IFarmingPool(data_.farmdToken).balanceOf(address(this)));
+        uint256 withdrawAmount = IporMath.min(
+            data_.dTokenAmount,
+            IFarmingPool(data_.farmdToken).balanceOf(address(this))
+        );
+
+        if (withdrawAmount == 0) {
+            return;
+        }
 
         IFarmingPool(data_.farmdToken).withdraw(withdrawAmount);
         emit GearboxV3FarmdExitFuse(VERSION, data_.farmdToken, withdrawAmount);
@@ -79,12 +87,17 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
+
+        if (amount == 0) {
+            return;
+        }
+
         address farmdToken = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
         exit(
             GearboxV3FarmdSupplyFuseExitData({
                 farmdToken: farmdToken,
-                amount: IERC4626(IFarmingPool(farmdToken).stakingToken()).convertToShares(amount)
+                dTokenAmount: IERC4626(IFarmingPool(farmdToken).stakingToken()).convertToShares(amount)
             })
         );
     }

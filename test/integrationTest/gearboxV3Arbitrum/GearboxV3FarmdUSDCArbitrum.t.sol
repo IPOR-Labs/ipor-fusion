@@ -95,7 +95,7 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: D_USDC, amount: amount_});
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
-            amount: amount_
+            dTokenAmount: amount_
         });
         data = new bytes[](2);
         data[0] = abi.encode(enterData);
@@ -110,7 +110,7 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: D_USDC, amount: amount_});
         GearboxV3FarmdSupplyFuseExitData memory exitDataFarm = GearboxV3FarmdSupplyFuseExitData({
             farmdToken: FARM_D_USDC,
-            amount: amount_
+            dTokenAmount: amount_
         });
         data = new bytes[](2);
         data[1] = abi.encode(exitData);

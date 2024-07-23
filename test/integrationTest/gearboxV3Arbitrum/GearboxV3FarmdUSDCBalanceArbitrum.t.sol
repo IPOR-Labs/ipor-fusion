@@ -106,7 +106,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: D_USDC, amount: amount_});
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
-            amount: amount_
+            dTokenAmount: amount_
         });
         data = new bytes[](2);
         data[0] = abi.encode(enterData);
@@ -120,7 +120,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         GearboxV3FarmdSupplyFuseExitData memory exitDataFarm = GearboxV3FarmdSupplyFuseExitData({
             farmdToken: FARM_D_USDC,
-            amount: amount_
+            dTokenAmount: amount_
         });
         data = new bytes[](1);
         data[0] = abi.encode(exitDataFarm);
@@ -146,7 +146,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
-            amount: depositAmount
+            dTokenAmount: depositAmount
         });
         bytes[] memory data = new bytes[](2);
         data[0] = abi.encode(enterData);
@@ -208,7 +208,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
-            amount: depositAmount
+            dTokenAmount: depositAmount
         });
         bytes[] memory data = new bytes[](2);
         data[0] = abi.encode(enterData);
