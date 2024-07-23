@@ -54,6 +54,10 @@ library PlasmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.MarketLimits")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant MARKET_LIMITS = 0xc2733c187287f795e2e6e84d35552a190e774125367241c3e99e955f4babf000;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.DependencyBalanceGraph")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant DEPENDENCY_BALANCE_GRAPH =
+        0x82411e549329f2815579116a6c5e60bff72686c93ab5dba4d06242cfaf968900;
+
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
     struct RewardsClaimManagerAddress {
         /// @dev total assets in the Plasma Vault
@@ -92,6 +96,11 @@ library PlasmaVaultStorageLib {
     struct BalanceFuses {
         /// @dev marketId => balance fuse address
         mapping(uint256 => address) value;
+    }
+
+    /// @custom:storage-location erc7201:io.ipor.BalanceDependenceGraph
+    struct DependencyBalanceGraph {
+        mapping(uint256 marketId => uint256[] marketIds) dependencyGraph;
     }
 
     /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultInstantWithdrawalFusesArray
@@ -135,6 +144,12 @@ library PlasmaVaultStorageLib {
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
         assembly {
             totalAssets.slot := PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS
+        }
+    }
+
+    function getDependencyBalanceGraph() internal pure returns (DependencyBalanceGraph storage dependencyGraph) {
+        assembly {
+            dependencyGraph.slot := DEPENDENCY_BALANCE_GRAPH
         }
     }
 
