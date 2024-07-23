@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
@@ -62,7 +63,7 @@ contract PlasmaVaultDepositTest is Test {
         );
     }
 
-    function testShouldDepositToPlazamVaultWithDAIAsUnderlyingToken() public {
+    function testShouldDepositToPlasmaVaultWithDAIAsUnderlyingToken() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
@@ -102,7 +103,7 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
-    function testShouldDepositToPlazamVaultWithUSDCAsUnderlyingToken() public {
+    function testShouldDepositToPlasmaVaultWithUSDCAsUnderlyingToken() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultUsdc();
 
@@ -256,7 +257,7 @@ contract PlasmaVaultDepositTest is Test {
         return plasmaVault;
     }
 
-    function testShouldNotDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
+    function testShouldNotDepositToPlasmaVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
@@ -298,7 +299,7 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(userVaultBalanceBefore, userVaultBalanceAfter);
     }
 
-    function testShouldDepositToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
+    function testShouldDepositToPlasmaVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
         //given
         address userOne = address(0x777);
 
@@ -420,7 +421,7 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(userVaultBalanceBefore, userVaultBalanceAfter);
     }
 
-    function testShouldMintToPlazamVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
+    function testShouldMintToPlasmaVaultWithDAIAsUnderlyingTokenWhenAddToOnAccessList() public {
         //given
         address userOne = address(0x777);
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
@@ -459,7 +460,7 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
-    function testShouldDepositWithPermitToPlazamVault() public {
+    function testShouldDepositWithPermitToPlasmaVault() public {
         //given
         uint256 privateKey = 0xBEEF;
         address userOne = vm.addr(privateKey);
@@ -473,7 +474,7 @@ contract PlasmaVaultDepositTest is Test {
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    token.DOMAIN_SEPARATOR(),
+                    IERC20Permit(USDC).DOMAIN_SEPARATOR(),
                     keccak256(abi.encode(PERMIT_TYPEHASH, userOne, address(plasmaVault), amount, 0, block.timestamp))
                 )
             )
@@ -487,7 +488,7 @@ contract PlasmaVaultDepositTest is Test {
 
         //when
         vm.prank(userOne);
-        plasmaVault.depositWithPermit(amount, userOne, userOne, 0, block.timestamp, v, r, s);
+        plasmaVault.depositWithPermit(amount, userOne, userOne, block.timestamp, v, r, s);
 
         //then
         uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
@@ -507,6 +508,38 @@ contract PlasmaVaultDepositTest is Test {
 
         /// @dev no transfer to the market when depositing
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+    }
+
+    function testShouldRevertDepositWithPermitToPlasmaVaultWhenInvalidSignature() public {
+        //given
+        uint256 privateKey = 0xBEEF;
+        address userOne = vm.addr(privateKey);
+
+        uint256 amount = 100 * 1e6;
+
+        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc();
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    IERC20Permit(USDC).DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, userOne, address(plasmaVault), amount, 0, block.timestamp))
+                )
+            )
+        );
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount);
+
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when
+        vm.prank(userOne);
+        vm.expectRevert(bytes("EIP2612: invalid signature"));
+        plasmaVault.depositWithPermit(amount + 1, userOne, userOne, block.timestamp, v, r, s);
     }
 
     function createAccessManager(UsersToRoles memory usersToRoles) public returns (IporFusionAccessManager) {

@@ -2426,4 +2426,6 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertFalse(isMemberBefore, "User should not be a member before");
         assertFalse(isMemberAfter, "User should not be a member after");
     }
+
+    function testShouldNotBeAbleToDepositWhenNotOnWhiteList() public {}
 }

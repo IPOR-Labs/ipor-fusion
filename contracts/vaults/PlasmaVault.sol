@@ -188,6 +188,10 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
     }
 
     function deposit(uint256 assets_, address receiver_) public override nonReentrant restricted returns (uint256) {
+        return _deposit(assets_, receiver_);
+    }
+
+    function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {
         if (assets_ == 0) {
             revert NoAssetsToDeposit();
         }
@@ -210,7 +214,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         bytes32 s_
     ) external nonReentrant restricted returns (uint256) {
         IERC20Permit(asset()).permit(owner_, address(this), assets_, deadline_, v_, r_, s_);
-        return deposit(assets_, receiver_);
+        return _deposit(assets_, receiver_);
     }
 
     function mint(uint256 shares_, address receiver_) public override nonReentrant restricted returns (uint256) {
