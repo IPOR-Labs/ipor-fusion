@@ -61,21 +61,24 @@ contract AaveV3USDCArbitrum is SupplyTest {
         uint256 amount_,
         //solhint-disable-next-line
         bytes32[] memory data_
-    ) public view virtual override returns (bytes memory data) {
+    ) public view virtual override returns (bytes[] memory data) {
         AaveV3SupplyFuseEnterData memory enterData = AaveV3SupplyFuseEnterData({
             asset: asset,
             amount: amount_,
             userEModeCategoryId: 300
         });
-        data = abi.encode(enterData);
+        data = new bytes[](1);
+        data[0] = abi.encode(enterData);
     }
 
     function getExitFuseData(
         uint256 amount_,
         //solhint-disable-next-line
         bytes32[] memory data_
-    ) public view virtual override returns (bytes memory data) {
-        AaveV3SupplyFuseExitData memory enterData = AaveV3SupplyFuseExitData({asset: asset, amount: amount_});
-        data = abi.encode(enterData);
+    ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
+        AaveV3SupplyFuseExitData memory exitData = AaveV3SupplyFuseExitData({asset: asset, amount: amount_});
+        data = new bytes[](1);
+        data[0] = abi.encode(exitData);
+        fusesSetup = fuses;
     }
 }

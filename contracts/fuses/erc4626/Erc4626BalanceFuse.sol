@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPriceOracleMiddleware} from "../../priceOracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
@@ -33,13 +34,15 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
         uint256 balance;
         uint256 vaultAssets;
         IERC4626 vault;
+        address asset;
 
         for (uint256 i; i < len; ++i) {
             vault = IERC4626(PlasmaVaultConfigLib.bytes32ToAddress(vaults[i]));
             vaultAssets = vault.convertToAssets(vault.balanceOf(plasmaVault_));
+            asset = vault.asset();
             balance += IporMath.convertToWad(
-                vaultAssets * PRICE_ORACLE.getAssetPrice(vault.asset()),
-                vault.decimals() + PRICE_DECIMALS
+                vaultAssets * PRICE_ORACLE.getAssetPrice(asset),
+                IERC20Metadata(asset).decimals() + PRICE_DECIMALS
             );
         }
 

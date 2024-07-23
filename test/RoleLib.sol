@@ -87,7 +87,7 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, alphaSig, Roles.ALPHA_ROLE);
 
-        bytes4[] memory atomistsSig = new bytes4[](7);
+        bytes4[] memory atomistsSig = new bytes4[](8);
         atomistsSig[0] = PlasmaVaultGovernance.addBalanceFuse.selector;
         atomistsSig[1] = PlasmaVaultGovernance.addFuses.selector;
         atomistsSig[2] = PlasmaVaultGovernance.removeFuses.selector;
@@ -95,6 +95,7 @@ library RoleLib {
         atomistsSig[4] = PlasmaVaultGovernance.setupMarketsLimits.selector;
         atomistsSig[5] = PlasmaVaultGovernance.activateMarketsLimits.selector;
         atomistsSig[6] = PlasmaVaultGovernance.deactivateMarketsLimits.selector;
+        atomistsSig[7] = PlasmaVaultGovernance.updateDependencyBalanceGraphs.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, atomistsSig, Roles.ATOMIST_ROLE);
@@ -119,11 +120,12 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(address(accessManager_), ownerSig, Roles.OWNER_ROLE);
 
-        bytes4[] memory publicSig = new bytes4[](4);
+        bytes4[] memory publicSig = new bytes4[](5);
         publicSig[0] = PlasmaVault.deposit.selector;
         publicSig[1] = PlasmaVault.mint.selector;
         publicSig[2] = PlasmaVault.withdraw.selector;
         publicSig[3] = PlasmaVault.redeem.selector;
+        publicSig[4] = PlasmaVault.depositWithPermit.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, publicSig, Roles.PUBLIC_ROLE);
