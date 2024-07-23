@@ -82,13 +82,14 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
                 amount: amount_,
                 minMintAmount: 0
             });
-        data = abi.encode(enterData);
+        data = new bytes[](1);
+        data[0] = abi.encode(enterData);
     }
 
     function getExitFuseData(
         uint256 amount_, // LP token amount to burn
         bytes32[] memory data_
-    ) public view virtual override returns (bytes[] memory data) {
+    ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 0;
         amounts[1] = amount_;
@@ -99,6 +100,8 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
             asset: asset,
             minReceived: 0
         });
-        data = abi.encode(exitData);
+        data = new bytes[](1);
+        data[0] = abi.encode(exitData);
+        fusesSetup = fuses;
     }
 }
