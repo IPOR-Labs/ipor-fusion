@@ -6,6 +6,7 @@ pragma solidity 0.8.20;
  * @dev https://vscode.blockscan.com/arbitrum-one/0xf6841C27fe35ED7069189aFD5b81513578AFD7FF
  */
 
+/* solhint-disable */
 interface ICurveStableswapNG {
     /**
      * @dev Return the number of coins in the pool

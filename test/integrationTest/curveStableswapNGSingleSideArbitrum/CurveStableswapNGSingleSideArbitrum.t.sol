@@ -57,10 +57,7 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
     }
 
     function setupFuses() public override {
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            MARKET_ID,
-            CURVE_STABLESWAP_NG_POOL
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(MARKET_ID);
         fuses = new address[](1);
         fuses[0] = address(fuse);
     }
@@ -79,13 +76,11 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
         //solhint-disable-next-line var
         bytes32[] memory data_
     ) public view virtual override returns (bytes memory data) {
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = amount_;
         CurveStableswapNGSingleSideSupplyFuseEnterData
             memory enterData = CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: ICurveStableswapNG(CURVE_STABLESWAP_NG_POOL),
                 asset: asset,
-                amounts: amounts,
+                amount: amount_,
                 minMintAmount: 0
             });
         data = abi.encode(enterData);
@@ -101,6 +96,7 @@ contract CurveStableswapNGSingleSideArbitrum is SupplyTest {
         amounts[1] = amount_;
         uint256 burnAmount = ICurveStableswapNG(CURVE_STABLESWAP_NG_POOL).calc_token_amount(amounts, false);
         CurveStableswapNGSingleSideSupplyFuseExitData memory exitData = CurveStableswapNGSingleSideSupplyFuseExitData({
+            curveStableswapNG: ICurveStableswapNG(CURVE_STABLESWAP_NG_POOL),
             burnAmount: burnAmount,
             asset: asset,
             minReceived: 0

@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IChronicle} from "./../IChronicle.sol";
 import {IPriceFeed} from "./../IPriceFeed.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -26,6 +25,7 @@ contract USDMPriceFeed is IPriceFeed {
     {
         uint256 wUSDMPriceUSD = chronicle.read();
         uint256 wUSDMUSDMExchangeRate = (IERC4626(WUSDM).totalAssets() * 1e18) / IERC4626(WUSDM).totalSupply();
+        /* solhint-disable-next-line */
         uint256 USDMPriceUSD = (wUSDMPriceUSD * wUSDMUSDMExchangeRate) / 1e18;
         // To int
         return (uint80(0), USDMPriceUSD.toInt256(), 0, 0, 0);

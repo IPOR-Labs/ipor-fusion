@@ -62,10 +62,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         priceOracleMock = new PriceOracleMock(USD, 8);
         priceOracleMock.setPrice(USDM, 1e18);
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
             1,
             address(priceOracleMock)
@@ -77,9 +74,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
+        uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
         IporPlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
@@ -105,8 +100,9 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 "enter(bytes)",
                 abi.encode(
                     CurveStableswapNGSingleSideSupplyFuseEnterData({
+                        curveStableswapNG: CURVE_STABLESWAP_NG,
                         asset: activeToken.asset,
-                        amounts: amounts,
+                        amount: amount,
                         minMintAmount: 0
                     })
                 )
@@ -143,7 +139,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         assertEq(beforeState.vaultLpTokensBalance, 0, "LP tokens balance before should be 0");
         assertGt(beforeState.vaultBalance, afterState.vaultBalance, "vaultBalance should decrease after supply");
         assertApproxEqAbs(
-            afterState.vaultBalance + amounts[1],
+            afterState.vaultBalance + amount,
             beforeState.vaultBalance,
             100,
             "vaultBalance should decrease by amount"
@@ -174,10 +170,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         priceOracleMock = new PriceOracleMock(USD, 8);
         priceOracleMock.setPrice(USDM, 1e18);
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
             1,
             address(priceOracleMock)
@@ -189,9 +182,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
+        uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
         IporPlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
@@ -217,8 +208,9 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 "enter(bytes)",
                 abi.encode(
                     CurveStableswapNGSingleSideSupplyFuseEnterData({
+                        curveStableswapNG: CURVE_STABLESWAP_NG,
                         asset: activeToken.asset,
-                        amounts: amounts,
+                        amount: amount,
                         minMintAmount: 0
                     })
                 )
@@ -243,6 +235,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 "exit(bytes)",
                 abi.encode(
                     CurveStableswapNGSingleSideSupplyFuseExitData({
+                        curveStableswapNG: CURVE_STABLESWAP_NG,
                         burnAmount: beforeExitState.vaultLpTokensBalance,
                         asset: activeToken.asset,
                         minReceived: 0

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {CurveStableswapNGSingleSideSupplyFuseMock} from "./CurveStableswapNGSingleSideSupplyFuseMock.t.sol";
-import {Errors} from "./../../../contracts/libraries/errors/Errors.sol";
 
 contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     struct SupportedToken {
@@ -28,14 +27,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     ICurveStableswapNG public constant CURVE_STABLESWAP_NG = ICurveStableswapNG(CURVE_STABLESWAP_NG_POOL);
 
     event CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
-        address indexed version,
-        address indexed asset,
-        uint256[] amounts,
+        address version,
+        address curvePool,
+        address asset,
+        uint256 amount,
         uint256 minMintAmount
     );
 
     event CurveSupplyStableswapNGSingleSideSupplyExitFuse(
-        address indexed version,
+        address version,
+        address curvePool,
         uint256 burnAmount,
         address asset,
         uint256 minReceived
@@ -51,10 +52,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: USDM, name: "USDM"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
@@ -76,11 +74,22 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 expectedLpTokenAmount = CURVE_STABLESWAP_NG.calc_token_amount(amounts, true);
 
         vm.expectEmit(true, true, true, true);
-        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(address(fuse), activeToken.asset, amounts, 0);
+        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+            address(fuse),
+            address(CURVE_STABLESWAP_NG),
+            activeToken.asset,
+            amounts[1],
+            0
+        );
 
         // when
         fuseMock.enter(
-            CurveStableswapNGSingleSideSupplyFuseEnterData({asset: USDM, amounts: amounts, minMintAmount: 0})
+            CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
+                asset: USDM,
+                amount: amounts[1],
+                minMintAmount: 0
+            })
         );
 
         // then
@@ -99,17 +108,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: DAI, name: "DAI"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
 
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
+        uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
         _supplyTokensToMockVault(
             activeToken.asset,
@@ -118,7 +122,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         );
 
         bytes memory error = abi.encodeWithSignature(
-            "CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address)",
+            "CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address)",
             address(CURVE_STABLESWAP_NG)
         );
 
@@ -127,7 +131,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // when
         vm.expectRevert(error);
         fuseMock.enter(
-            CurveStableswapNGSingleSideSupplyFuseEnterData({asset: USDM, amounts: amounts, minMintAmount: 0})
+            CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
+                asset: USDM,
+                amount: amount,
+                minMintAmount: 0
+            })
         );
 
         // then
@@ -141,17 +150,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: DAI, name: "DAI"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
 
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 100 * 10 ** ERC20(DAI).decimals();
+        uint256 amount = 100 * 10 ** ERC20(DAI).decimals();
 
         _supplyTokensToMockVault(
             activeToken.asset,
@@ -171,49 +175,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // when
         vm.expectRevert(error);
         fuseMock.enter(
-            CurveStableswapNGSingleSideSupplyFuseEnterData({asset: DAI, amounts: amounts, minMintAmount: 0})
-        );
-
-        // then
-        uint256 balanceAfterEnter = ERC20(activeToken.asset).balanceOf(address(fuseMock));
-        uint256 lpTokenBalance = ERC20(CURVE_STABLESWAP_NG_POOL).balanceOf(address(fuseMock));
-        assertEq(balanceAfterEnter, balanceBeforeEnter, "vault balance should not be decreased");
-        assertEq(lpTokenBalance, 0);
-    }
-
-    function testShouldRevertWhenUnexpectedNumberOfTokens() external {
-        // given
-        SupportedToken memory activeToken = SupportedToken({asset: USDM, name: "USDM"});
-
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
-        CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
-            address(fuse)
-        );
-
-        uint256[] memory amounts = new uint256[](3);
-        amounts[0] = 0;
-        amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
-        amounts[2] = 0;
-
-        _supplyTokensToMockVault(
-            activeToken.asset,
-            address(fuseMock),
-            1_000 * 10 ** ERC20(activeToken.asset).decimals()
-        );
-
-        _grantAssetsToMarket(fuse, fuseMock, CURVE_STABLESWAP_NG_POOL);
-
-        bytes memory error = abi.encodeWithSignature("CurveStableswapNGSingleSideSupplyFuseUnexpectedNumberOfTokens()");
-
-        uint256 balanceBeforeEnter = ERC20(activeToken.asset).balanceOf(address(fuseMock));
-
-        // when
-        vm.expectRevert(error);
-        fuseMock.enter(
-            CurveStableswapNGSingleSideSupplyFuseEnterData({asset: USDM, amounts: amounts, minMintAmount: 0})
+            CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
+                asset: DAI,
+                amount: amount,
+                minMintAmount: 0
+            })
         );
 
         // then
@@ -227,10 +194,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: USDM, name: "USDM"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
@@ -253,18 +217,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 minMintAmount = expectedLpTokenAmount + 1;
 
-        bytes memory error = abi.encodeWithSignature(
-            "CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinMintAmount(uint256,uint256)",
-            expectedLpTokenAmount,
-            minMintAmount
-        );
-
         // when
-        vm.expectRevert(error);
+        vm.expectRevert("Slippage screwed you"); // revert message from CurveStableswapNG
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 asset: USDM,
-                amounts: amounts,
+                amount: amounts[1],
                 minMintAmount: minMintAmount
             })
         );
@@ -280,17 +239,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: USDM, name: "USDM"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
 
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 0;
+        uint256 amount = 0;
 
         _supplyTokensToMockVault(
             activeToken.asset,
@@ -302,12 +256,17 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 balanceBeforeEnter = ERC20(activeToken.asset).balanceOf(address(fuseMock));
 
-        bytes memory error = abi.encodeWithSignature("CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts()");
+        bytes memory error = abi.encodeWithSignature("CurveStableswapNGSingleSideSupplyFuseZeroAmount()");
 
         // when
         vm.expectRevert(error);
         fuseMock.enter(
-            CurveStableswapNGSingleSideSupplyFuseEnterData({asset: USDM, amounts: amounts, minMintAmount: 0})
+            CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
+                asset: USDM,
+                amount: amount,
+                minMintAmount: 0
+            })
         );
 
         // then
@@ -323,17 +282,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: USDM, name: "USDM"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
 
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
+        uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
         _supplyTokensToMockVault(
             activeToken.asset,
@@ -346,12 +300,19 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 balanceBeforeEnter = ERC20(activeToken.asset).balanceOf(address(fuseMock));
 
         vm.expectEmit(true, true, true, true);
-        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(address(fuse), activeToken.asset, amounts, 0);
+        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+            address(fuse),
+            address(CURVE_STABLESWAP_NG),
+            activeToken.asset,
+            amount,
+            0
+        );
 
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 asset: activeToken.asset,
-                amounts: amounts,
+                amount: amount,
                 minMintAmount: 0
             })
         );
@@ -365,6 +326,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         vm.expectEmit(true, true, true, true);
         emit CurveSupplyStableswapNGSingleSideSupplyExitFuse(
             address(fuse),
+            address(CURVE_STABLESWAP_NG),
             lpTokenBalanceBeforeExit,
             activeToken.asset,
             minReceived
@@ -373,6 +335,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // when
         fuseMock.exit(
             CurveStableswapNGSingleSideSupplyFuseExitData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 asset: activeToken.asset,
                 burnAmount: lpTokenBalanceBeforeExit,
                 minReceived: minReceived
@@ -383,14 +346,14 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 balanceAfterExit = ERC20(activeToken.asset).balanceOf(address(fuseMock));
         uint256 lpTokenBalanceAfterExit = ERC20(CURVE_STABLESWAP_NG_POOL).balanceOf(address(fuseMock));
         assertApproxEqAbs(
-            balanceAfterExit + amounts[1] - minReceived,
+            balanceAfterExit + amount - minReceived,
             balanceBeforeEnter,
             100,
             "vault balance should be increased by amount"
         );
         assertApproxEqAbs(
             balanceBeforeExit,
-            balanceBeforeEnter - amounts[1],
+            balanceBeforeEnter - amount,
             100,
             "Balance before exit should be decreased by deposit amount"
         );
@@ -402,10 +365,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         SupportedToken memory enterToken = SupportedToken({asset: USDM, name: "USDM"});
         SupportedToken memory exitToken = SupportedToken({asset: DAI, name: "DAI"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
@@ -421,12 +381,19 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 expectedLpTokenAmount = CURVE_STABLESWAP_NG.calc_token_amount(amounts, true);
 
         vm.expectEmit(true, true, true, true);
-        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(address(fuse), enterToken.asset, amounts, 0);
+        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+            address(fuse),
+            address(CURVE_STABLESWAP_NG),
+            enterToken.asset,
+            amounts[1],
+            0
+        );
 
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 asset: enterToken.asset,
-                amounts: amounts,
+                amount: amounts[1],
                 minMintAmount: 0
             })
         );
@@ -446,6 +413,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         vm.expectRevert(error);
         fuseMock.exit(
             CurveStableswapNGSingleSideSupplyFuseExitData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 asset: exitToken.asset,
                 burnAmount: expectedLpTokenAmount,
                 minReceived: minReceived
@@ -463,17 +431,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: USDM, name: "USDM"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
 
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
+        uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
         _supplyTokensToMockVault(
             activeToken.asset,
@@ -485,8 +448,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 asset: activeToken.asset,
-                amounts: amounts,
+                amount: amount,
                 minMintAmount: 0
             })
         );
@@ -500,6 +464,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         vm.expectRevert();
         fuseMock.exit(
             CurveStableswapNGSingleSideSupplyFuseExitData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 burnAmount: burnAmount,
                 asset: activeToken.asset,
                 minReceived: 0
@@ -517,17 +482,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: USDM, name: "USDM"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
 
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
+        uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
         _supplyTokensToMockVault(
             activeToken.asset,
@@ -539,8 +499,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 asset: activeToken.asset,
-                amounts: amounts,
+                amount: amount,
                 minMintAmount: 0
             })
         );
@@ -551,16 +512,11 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 minReceived = CURVE_STABLESWAP_NG.calc_withdraw_one_coin(lpTokenBalance, 1) + 1;
 
-        bytes memory error = abi.encodeWithSignature(
-            "CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinReceivedAmount(uint256,uint256)",
-            CURVE_STABLESWAP_NG.calc_withdraw_one_coin(lpTokenBalance, 1),
-            minReceived
-        );
-
         // when
-        vm.expectRevert(error);
+        vm.expectRevert("Not enough coins removed");
         fuseMock.exit(
             CurveStableswapNGSingleSideSupplyFuseExitData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 burnAmount: lpTokenBalance,
                 asset: activeToken.asset,
                 minReceived: minReceived
@@ -578,17 +534,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // given
         SupportedToken memory activeToken = SupportedToken({asset: USDM, name: "USDM"});
 
-        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(
-            1,
-            address(CURVE_STABLESWAP_NG)
-        );
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideSupplyFuseMock fuseMock = new CurveStableswapNGSingleSideSupplyFuseMock(
             address(fuse)
         );
 
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
+        uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
         _supplyTokensToMockVault(
             activeToken.asset,
@@ -600,8 +551,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         fuseMock.enter(
             CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
                 asset: activeToken.asset,
-                amounts: amounts,
+                amount: amount,
                 minMintAmount: 0
             })
         );
@@ -615,7 +567,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // when
         vm.expectRevert(error);
         fuseMock.exit(
-            CurveStableswapNGSingleSideSupplyFuseExitData({burnAmount: 0, asset: activeToken.asset, minReceived: 0})
+            CurveStableswapNGSingleSideSupplyFuseExitData({
+                curveStableswapNG: CURVE_STABLESWAP_NG,
+                burnAmount: 0,
+                asset: activeToken.asset,
+                minReceived: 0
+            })
         );
 
         // then

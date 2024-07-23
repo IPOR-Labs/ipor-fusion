@@ -4,21 +4,24 @@ pragma solidity 0.8.20;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
 import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
 import {IFuse} from "../IFuse.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 struct CurveStableswapNGSingleSideSupplyFuseEnterData {
+    /// @notice Curve pool contract to enter
+    ICurveStableswapNG curveStableswapNG;
     /// @notice asset to deposit
     address asset;
-    /// @notice List of amounts of coins to deposit
-    uint256[] amounts;
+    /// @notice Amount of the asset to deposit
+    uint256 amount;
     /// @notice Minimum amount of LP tokens to mint from the deposit
     uint256 minMintAmount;
 }
 
 struct CurveStableswapNGSingleSideSupplyFuseExitData {
+    /// @notice Curve pool contract to exit
+    ICurveStableswapNG curveStableswapNG;
     /// @notice Amount of LP tokens to burn
     uint256 burnAmount;
     /// @notice Address of the asset to withdraw
@@ -33,40 +36,32 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
-    ICurveStableswapNG public immutable CURVE_STABLESWAP_NG;
 
     event CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
-        address indexed version,
-        address indexed asset,
-        uint256[] amounts,
+        address version,
+        address curvePool,
+        address asset,
+        uint256 amount,
         uint256 minMintAmount
     );
 
     event CurveSupplyStableswapNGSingleSideSupplyExitFuse(
-        address indexed version,
+        address version,
+        address curvePool,
         uint256 burnAmount,
         address asset,
         uint256 minReceived
     );
 
-    error CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address asset);
+    error CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address asset);
     error CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address asset);
-    error CurveStableswapNGSingleSideSupplyFuseUnexpectedNumberOfTokens();
     error CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts();
+    error CurveStableswapNGSingleSideSupplyFuseZeroAmount();
     error CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
-    error CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinMintAmount(
-        uint256 expectedMintAmount,
-        uint256 minMintAmount
-    );
-    error CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinReceivedAmount(
-        uint256 expectedReceiveAmount,
-        uint256 minReceivedAmount
-    );
 
-    constructor(uint256 marketIdInput, address curveStableswapNGInput) {
+    constructor(uint256 marketIdInput) {
         VERSION = address(this);
         MARKET_ID = marketIdInput;
-        CURVE_STABLESWAP_NG = ICurveStableswapNG(curveStableswapNGInput);
     }
 
     function enter(bytes calldata data) external override {
@@ -79,38 +74,35 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
     }
 
     function _enter(CurveStableswapNGSingleSideSupplyFuseEnterData memory data) internal {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(CURVE_STABLESWAP_NG))) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address(CURVE_STABLESWAP_NG));
+        ICurveStableswapNG curvePool = ICurveStableswapNG(data.curveStableswapNG);
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(curvePool))) {
+            /// @notice substrateAsAsset here refers to the Curve pool LP token, not the underlying asset of the Plasma Vault
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address(curvePool));
         }
-        if (data.amounts.length != CURVE_STABLESWAP_NG.N_COINS()) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnexpectedNumberOfTokens();
-        }
+        uint256 nCoins = curvePool.N_COINS();
+        uint256[] memory amounts = new uint256[](nCoins);
         bool supportedPoolAsset = false;
-        bool hasNonZeroAmount = false;
-        for (uint256 i; i < CURVE_STABLESWAP_NG.N_COINS(); ++i) {
-            if (CURVE_STABLESWAP_NG.coins(i) == data.asset) {
+        for (uint256 i; i < nCoins; ++i) {
+            if (curvePool.coins(i) == data.asset) {
                 supportedPoolAsset = true;
-                ERC20(data.asset).forceApprove(address(CURVE_STABLESWAP_NG), data.amounts[i]);
-            }
-            if (data.amounts[i] > 0) {
-                hasNonZeroAmount = true;
+                amounts[i] = data.amount;
+                ERC20(data.asset).forceApprove(address(curvePool), data.amount);
             }
         }
         if (!supportedPoolAsset) {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset);
         }
-        if (!hasNonZeroAmount) {
-            revert CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts();
+        if (data.amount == 0) {
+            revert CurveStableswapNGSingleSideSupplyFuseZeroAmount();
         }
-        uint256 expectedMintAmount = CURVE_STABLESWAP_NG.calc_token_amount(data.amounts, true);
-        if (expectedMintAmount < data.minMintAmount) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinMintAmount(
-                expectedMintAmount,
-                data.minMintAmount
-            );
-        }
-        CURVE_STABLESWAP_NG.add_liquidity(data.amounts, data.minMintAmount, address(this));
-        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(VERSION, data.asset, data.amounts, data.minMintAmount);
+        curvePool.add_liquidity(amounts, data.minMintAmount, address(this));
+        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+            VERSION,
+            address(curvePool),
+            data.asset,
+            data.amount,
+            data.minMintAmount
+        );
     }
 
     function exit(bytes calldata data) external override {
@@ -123,17 +115,19 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
     }
 
     function _exit(CurveStableswapNGSingleSideSupplyFuseExitData memory data) internal {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(CURVE_STABLESWAP_NG))) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedAsset(address(CURVE_STABLESWAP_NG));
+        ICurveStableswapNG curvePool = ICurveStableswapNG(data.curveStableswapNG);
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(curvePool))) {
+            /// @notice substrateAsAsset here refers to the Curve pool LP token, not the underlying asset of the Plasma Vault
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address(curvePool));
         }
         if (data.burnAmount == 0) {
             revert CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
         }
+        uint256 nCoins = curvePool.N_COINS();
         bool supportedPoolAsset = false;
         int128 index;
-        for (uint256 i; i < CURVE_STABLESWAP_NG.N_COINS(); ++i) {
-            if (CURVE_STABLESWAP_NG.coins(i) == data.asset) {
-                require(i < 2 ** 127, "Index exceeds int128 range");
+        for (uint256 i; i < nCoins; ++i) {
+            if (curvePool.coins(i) == data.asset) {
                 index = int128(int256(i));
                 supportedPoolAsset = true;
                 break;
@@ -142,14 +136,13 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
         if (!supportedPoolAsset) {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset);
         }
-        uint256 expectedReceivedAmount = CURVE_STABLESWAP_NG.calc_withdraw_one_coin(data.burnAmount, index);
-        if (expectedReceivedAmount < data.minReceived) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnableToMeetMinReceivedAmount(
-                expectedReceivedAmount,
-                data.minReceived
-            );
-        }
-        CURVE_STABLESWAP_NG.remove_liquidity_one_coin(data.burnAmount, index, data.minReceived, address(this));
-        emit CurveSupplyStableswapNGSingleSideSupplyExitFuse(VERSION, data.burnAmount, data.asset, data.minReceived);
+        curvePool.remove_liquidity_one_coin(data.burnAmount, index, data.minReceived, address(this));
+        emit CurveSupplyStableswapNGSingleSideSupplyExitFuse(
+            VERSION,
+            address(curvePool),
+            data.burnAmount,
+            data.asset,
+            data.minReceived
+        );
     }
 }
