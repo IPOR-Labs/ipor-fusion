@@ -90,5 +90,6 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         });
         data = new bytes[](1);
         data[0] = abi.encode(exitData);
+        fusesSetup = fuses;
     }
 }
