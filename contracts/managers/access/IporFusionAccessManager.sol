@@ -94,6 +94,7 @@ contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
     function convertToPublicVault(address vault_) external override restricted {
         _setTargetFunctionRole(vault_, PlasmaVault.mint.selector, PUBLIC_ROLE);
         _setTargetFunctionRole(vault_, PlasmaVault.deposit.selector, PUBLIC_ROLE);
+        _setTargetFunctionRole(vault_, PlasmaVault.depositWithPermit.selector, PUBLIC_ROLE);
     }
 
     function enableTransferShares(address vault_) external override restricted {
