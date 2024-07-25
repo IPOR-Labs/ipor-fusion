@@ -47,6 +47,10 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function enter(GearboxV3FarmdSupplyFuseEnterData memory data_) public {
+        if (data_.dTokenAmount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.farmdToken)) {
             revert GearboxV3FarmdSupplyFuseUnsupportedFarmdToken("enter", data_.farmdToken);
         }
@@ -71,6 +75,10 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
     }
     /// @notice Exits from the Market
     function exit(GearboxV3FarmdSupplyFuseExitData memory data_) public {
+        if (data_.dTokenAmount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.farmdToken)) {
             revert GearboxV3FarmdSupplyFuseUnsupportedFarmdToken("enter", data_.farmdToken);
         }
@@ -88,19 +96,16 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
         emit GearboxV3FarmdExitFuse(VERSION, data_.farmdToken, withdrawAmount);
     }
 
-    /// @dev params[0] - amount in underlying asset, params[1] - vault address
+    /// @dev params[0] - amount in underlying asset of Plasma Vault, params[1] - Farm dToken address
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
-
-        if (amount == 0) {
-            return;
-        }
 
         address farmdToken = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
         exit(
             GearboxV3FarmdSupplyFuseExitData({
                 farmdToken: farmdToken,
+                /// @dev dToken 1:1 Farm dToken
                 dTokenAmount: IERC4626(IFarmingPool(farmdToken).stakingToken()).convertToShares(amount)
             })
         );

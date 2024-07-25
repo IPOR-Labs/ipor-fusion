@@ -80,7 +80,7 @@ struct FeeConfig {
 abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGovernance {
     using Address for address;
     using SafeCast for int256;
-
+    uint256 private constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
@@ -248,7 +248,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
 
         uint256 totalAssetsBefore = totalAssets();
 
-        _withdrawFromMarkets(assets_, IERC20(asset()).balanceOf(address(this)));
+        _withdrawFromMarkets(assets_ + WITHDRAW_FROM_MARKETS_OFFSET, IERC20(asset()).balanceOf(address(this)));
 
         _addPerformanceFee(totalAssetsBefore);
 

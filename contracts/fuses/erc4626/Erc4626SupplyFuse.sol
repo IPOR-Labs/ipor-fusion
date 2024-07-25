@@ -65,12 +65,17 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
+
         address vault = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
         _exit(Erc4626SupplyFuseExitData(vault, amount));
     }
 
     function _enter(Erc4626SupplyFuseEnterData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.vault)) {
             revert Erc4626SupplyFuseUnsupportedVault("enter", data_.vault);
         }
@@ -84,6 +89,10 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _exit(Erc4626SupplyFuseExitData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.vault)) {
             revert Erc4626SupplyFuseUnsupportedVault("exit", data_.vault);
         }
