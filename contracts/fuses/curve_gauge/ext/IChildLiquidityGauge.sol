@@ -6,6 +6,7 @@ pragma solidity 0.8.20;
  * @dev https://vscode.blockscan.com/arbitrum-one/0xbdbb71914ddb650f96449b54d2ca15132be56aca
  */
 
+/* solhint-disable */
 interface IChildLiquidityGauge {
     /**
      * @notice Deposit `_value` LP tokens
@@ -34,4 +35,12 @@ interface IChildLiquidityGauge {
      * @notice LP token being staked (deposited into the gauge)
      */
     function lp_token() external returns (address);
+
+    /**
+     * @notice Get the number of claimable reward tokens for a user
+     * @param _user Account to get reward amount for
+     * @param _reward_token Token to get reward amount for
+     * @return uint256 Claimable reward token amount
+     */
+    function claimable_reward(address _user, address _reward_token) external view returns (uint256);
 }
