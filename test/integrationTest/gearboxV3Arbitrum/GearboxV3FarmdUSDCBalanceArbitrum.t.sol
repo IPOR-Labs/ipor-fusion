@@ -20,8 +20,12 @@ import {TestAccountSetup} from "../supplyFuseTemplate/TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "../supplyFuseTemplate/TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "../supplyFuseTemplate/TestVaultSetup.sol";
 
+import {Vm} from "forge-std/Test.sol";
+
 contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {
     using SafeERC20 for ERC20;
+
+    event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant CHAINLINK_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
@@ -200,9 +204,14 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
             IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
         );
 
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3;
+
         // when
+        vm.recordLogs();
         vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(generateExitCallsData(assetsInFarmDUsdcBefore, new bytes32[](0)));
+        Vm.Log[] memory entries = vm.getRecordedLogs();
 
         // then
 
@@ -214,6 +223,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
             IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
         );
 
+        assertEq(_extractMarketIdsFromEvent(entries), marketIds, "marketIds should be equal to marketIds[4]");
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
         assertGt(assetsInFarmDUsdcBefore, 0, "assetsInFarmDUsdcBefore should be greater than 0");
         assertGt(totalAssetsBefore, 0, "totalAssetsBefore should be greater than 0");
@@ -274,12 +284,19 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
             IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
         );
 
+        uint256[] memory expectedMarketIds = new uint256[](2);
+        expectedMarketIds[0] = IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3;
+        expectedMarketIds[1] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+
         // when
         vm.prank(alpha);
+        vm.recordLogs();
         PlasmaVault(plasmaVault).execute(generateExitCallsData(assetsInFarmDUsdcBefore, new bytes32[](0)));
+        Vm.Log[] memory entries = vm.getRecordedLogs();
 
         // then
 
+        uint256[] memory marketIdsFromEvent = _extractMarketIdsFromEvent(entries);
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
         uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
             IporFusionMarketsArbitrum.GEARBOX_POOL_V3
@@ -288,6 +305,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
             IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
         );
 
+        assertEq(marketIdsFromEvent, expectedMarketIds, "marketIds should be equal to marketIds[4,3]");
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
         assertGt(assetsInFarmDUsdcBefore, 0, "assetsInFarmDUsdcBefore should be greater than 0");
         assertEq(totalAssetsBefore, totalAssetsAfter, "totalAssetsBefore should be equal to totalAssetsAfter");
@@ -361,11 +379,20 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
             IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
         );
 
+        uint256[] memory expectedMarketIds = new uint256[](3);
+        expectedMarketIds[0] = IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3;
+        expectedMarketIds[1] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        expectedMarketIds[2] = IporFusionMarketsArbitrum.AAVE_V3;
+
         // when
         vm.prank(alpha);
+        vm.recordLogs();
         PlasmaVault(plasmaVault).execute(generateExitCallsData(assetsInFarmDUsdcBefore, new bytes32[](0)));
+        Vm.Log[] memory entries = vm.getRecordedLogs();
 
         // then
+
+        uint256[] memory marketIdsFromEvent = _extractMarketIdsFromEvent(entries);
 
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
         uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
@@ -376,6 +403,121 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         );
         uint256 assetInAaveV3After = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarketsArbitrum.AAVE_V3);
 
+        assertEq(marketIdsFromEvent, expectedMarketIds, "marketIds should be equal to marketIds[4,3,1]");
+        assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
+        assertGt(assetsInFarmDUsdcBefore, 0, "assetsInFarmDUsdcBefore should be greater than 0");
+        assertEq(
+            totalAssetsBefore + amountDepositedToAave,
+            totalAssetsAfter,
+            "totalAssetsBefore should be equal to totalAssetsAfter"
+        );
+        assertGt(assetsInDUsdcAfter, 0, "assetsInDUsdcAfter should be greater than 0");
+        assertEq(assetsInFarmDUsdcAfter, 0, "assetsInFarmDUsdcAfter should be 0");
+        assertGt(totalAssetsAfter, 0, "totalAssetsAfter should be greater than 0");
+        assertEq(assetInAaveV3Before, 0, "assetInAaveV3Before should be 0");
+        assertEq(
+            assetInAaveV3After,
+            amountDepositedToAave,
+            "assetInAaveV3After should be equal to amountDepositedToAave"
+        );
+    }
+
+    function testShouldCalculateBalanceWhenDependencyBalanceGraphIsSetupAndHaveCyclicDependencies() external {
+        // given
+
+        address userOne = accounts[1];
+        uint256 depositAmount = random.randomNumber(
+            1 * 10 ** (ERC20(asset).decimals()),
+            10_000 * 10 ** (ERC20(asset).decimals())
+        );
+        vm.prank(userOne);
+        PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
+
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
+            vault: D_USDC,
+            amount: depositAmount
+        });
+        GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
+            farmdToken: FARM_D_USDC,
+            dTokenAmount: depositAmount
+        });
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encode(enterData);
+        data[1] = abi.encode(enterDataFarm);
+        uint256 len = data.length;
+        FuseAction[] memory enterCalls = new FuseAction[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            enterCalls[i] = FuseAction(fuses[i], abi.encodeWithSignature("enter(bytes)", data[i]));
+        }
+
+        uint256[] memory marketIds = new uint256[](2);
+        marketIds[0] = IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3;
+        marketIds[1] = IporFusionMarketsArbitrum.AAVE_V3;
+
+        uint256[] memory dependencies = new uint256[](2);
+        dependencies[0] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        dependencies[1] = IporFusionMarketsArbitrum.AAVE_V3;
+
+        uint256[] memory dependenciesAave = new uint256[](2);
+        dependenciesAave[0] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        dependenciesAave[1] = IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3;
+
+        uint256[][] memory dependenceMarkets = new uint256[][](2);
+        dependenceMarkets[0] = dependencies;
+        dependenceMarkets[1] = dependenciesAave;
+
+        vm.prank(accounts[0]);
+        PlasmaVaultGovernance(plasmaVault).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
+
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+
+        vm.startPrank(userOne);
+        ERC20(USDC).forceApprove(address(plasmaVault), 100e6);
+        PlasmaVault(plasmaVault).deposit(100 * 10 ** ERC20(asset).decimals(), userOne);
+        vm.stopPrank();
+
+        uint256 amountDepositedToAave = 50 * 10 ** ERC20(asset).decimals();
+
+        vm.startPrank(plasmaVault);
+        ERC20(USDC).forceApprove(address(AAVE_POOL), 100e6);
+        IPool(AAVE_POOL).supply(USDC, amountDepositedToAave, address(plasmaVault), 0);
+        vm.stopPrank();
+
+        uint256 assetInAaveV3Before = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarketsArbitrum.AAVE_V3);
+        uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
+        uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
+            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
+        );
+        uint256 assetsInFarmDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
+            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
+        );
+
+        uint256[] memory expectedMarketIds = new uint256[](3);
+        expectedMarketIds[0] = IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3;
+        expectedMarketIds[1] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        expectedMarketIds[2] = IporFusionMarketsArbitrum.AAVE_V3;
+
+        // when
+        vm.prank(alpha);
+        vm.recordLogs();
+        PlasmaVault(plasmaVault).execute(generateExitCallsData(assetsInFarmDUsdcBefore, new bytes32[](0)));
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        // then
+
+        uint256[] memory marketIdsFromEvent = _extractMarketIdsFromEvent(entries);
+
+        uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
+        uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
+            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
+        );
+        uint256 assetsInFarmDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
+            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
+        );
+        uint256 assetInAaveV3After = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarketsArbitrum.AAVE_V3);
+
+        assertEq(marketIdsFromEvent, expectedMarketIds, "marketIds should be equal to marketIds[4,3,1]");
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
         assertGt(assetsInFarmDUsdcBefore, 0, "assetsInFarmDUsdcBefore should be greater than 0");
         assertEq(
@@ -405,5 +547,15 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
             enterCalls[i] = FuseAction(fusesSetup[i], abi.encodeWithSignature("exit(bytes)", enterData[i]));
         }
         return enterCalls;
+    }
+
+    function _extractMarketIdsFromEvent(Vm.Log[] memory entries) private view returns (uint256[] memory) {
+        for (uint256 i = 0; i < entries.length; i++) {
+            if (entries[i].topics[0] == keccak256("MarketBalancesUpdated(uint256[],int256)")) {
+                (uint256[] memory marketIds, ) = abi.decode(entries[i].data, (uint256[], int256));
+                return marketIds;
+            }
+        }
+        return new uint256[](0);
     }
 }
