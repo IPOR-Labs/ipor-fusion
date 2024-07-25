@@ -73,12 +73,17 @@ contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
     /// @dev params[0] - amount in underlying asset, params[1] - Morpho market id
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
+
         bytes32 morphoMarketId = params_[1];
 
         _exit(MorphoBlueSupplyFuseExitData(morphoMarketId, amount));
     }
 
     function _enter(MorphoBlueSupplyFuseEnterData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoBlueMarketId)) {
             revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data_.morphoBlueMarketId);
         }
@@ -93,6 +98,10 @@ contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _exit(MorphoBlueSupplyFuseExitData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoBlueMarketId)) {
             revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data_.morphoBlueMarketId);
         }
