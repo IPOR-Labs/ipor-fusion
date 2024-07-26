@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
+
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {IFarmingPool} from "../../fuses/gearbox_v3/ext/IFarmingPool.sol";
 
 contract GearboxV3FarmDTokenClaimFuse {
     event GearboxV3FarmDTokenClaimFuseRewardsClaimed(
@@ -25,7 +30,7 @@ contract GearboxV3FarmDTokenClaimFuse {
         uint256 len = substrates.length;
 
         if (len == 0) {
-            return 0;
+            return;
         }
 
         address farmDToken;
@@ -42,7 +47,7 @@ contract GearboxV3FarmDTokenClaimFuse {
             rewardsTokenBalance = IFarmingPool(farmDToken).farmed(address(this));
 
             if (rewardsTokenBalance == 0) {
-                revert;
+                return;
             }
 
             IFarmingPool(farmDToken).claim();
