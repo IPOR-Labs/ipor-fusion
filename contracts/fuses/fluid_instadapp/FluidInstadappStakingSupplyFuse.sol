@@ -12,14 +12,16 @@ import {IFluidLendingStakingRewards} from "./ext/IFluidLendingStakingRewards.sol
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
 struct FluidInstadappStakingSupplyFuseEnterData {
-    /// @dev max amount to deposit
-    uint256 amount;
+    /// @dev max fluidTokenAmount to deposit, in fluidTokenAmount decimals
+    uint256 fluidTokenAmount;
+    /// @dev stakingPool address where fluidToken is staked and farmed token ARB
     address stakingPool;
 }
 
 struct FluidInstadappStakingSupplyFuseExitData {
-    /// @dev amount to withdraw
-    uint256 amount;
+    /// @dev fluidTokenAmount to deposit, in fluidTokenAmount decimals
+    uint256 fluidTokenAmount;
+    /// @dev stakingPool address where fluidToken is staked and farmed token ARB
     address stakingPool;
 }
 
@@ -54,7 +56,11 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
         }
 
         address stakingToken = IFluidLendingStakingRewards(data_.stakingPool).stakingToken();
-        uint256 deposit = IporMath.min(data_.amount, IERC20(stakingToken).balanceOf(address(this)));
+        uint256 deposit = IporMath.min(data_.fluidTokenAmount, IERC20(stakingToken).balanceOf(address(this)));
+
+        if (deposit == 0) {
+            return;
+        }
 
         IERC20(stakingToken).forceApprove(data_.stakingPool, deposit);
         IFluidLendingStakingRewards(data_.stakingPool).stake(deposit);
@@ -77,7 +83,11 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
         }
 
         uint256 balanceOf = IFluidLendingStakingRewards(data_.stakingPool).balanceOf(address(this));
-        uint256 withdrawAmount = IporMath.min(data_.amount, balanceOf);
+        uint256 withdrawAmount = IporMath.min(data_.fluidTokenAmount, balanceOf);
+
+        if (withdrawAmount == 0) {
+            return;
+        }
 
         IFluidLendingStakingRewards(data_.stakingPool).withdraw(withdrawAmount);
         emit FluidInstadappStakingExitFuse(VERSION, data_.stakingPool, withdrawAmount);
@@ -96,7 +106,9 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
         exit(
             FluidInstadappStakingSupplyFuseExitData({
                 stakingPool: stakingPool,
-                amount: IERC4626(IFluidLendingStakingRewards(stakingPool).stakingToken()).convertToShares(amount)
+                fluidTokenAmount: IERC4626(IFluidLendingStakingRewards(stakingPool).stakingToken()).convertToShares(
+                    amount
+                )
             })
         );
     }

@@ -96,7 +96,7 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, amount: amount_});
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            amount: amount_
+            fluidTokenAmount: amount_
         });
         data = new bytes[](2);
         data[0] = abi.encode(enterData);
@@ -111,7 +111,7 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: F_TOKEN, amount: amount_});
         FluidInstadappStakingSupplyFuseExitData memory exitDataStaking = FluidInstadappStakingSupplyFuseExitData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            amount: amount_
+            fluidTokenAmount: amount_
         });
 
         data = new bytes[](2);

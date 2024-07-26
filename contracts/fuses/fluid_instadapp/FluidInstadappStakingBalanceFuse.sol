@@ -38,6 +38,10 @@ contract FluidInstadappStakingBalanceFuse is IMarketBalanceFuse {
             IFluidLendingStakingRewards(stakingPool).balanceOf(plasmaVault_)
         );
 
+        if (balanceOfUnderlyingAssets == 0) {
+            return 0;
+        }
+
         uint256 price = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset);
 
         return
