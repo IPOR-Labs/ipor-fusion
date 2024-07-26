@@ -66,12 +66,17 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
+
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
         _exit(CompoundV3SupplyFuseExitData(asset, amount));
     }
 
     function _enter(CompoundV3SupplyFuseEnterData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
             revert CompoundV3SupplyFuseUnsupportedAsset("enter", data_.asset);
         }
@@ -84,6 +89,10 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _exit(CompoundV3SupplyFuseExitData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
             revert CompoundV3SupplyFuseUnsupportedAsset("exit", data_.asset);
         }

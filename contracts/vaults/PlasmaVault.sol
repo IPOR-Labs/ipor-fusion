@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
@@ -11,6 +11,7 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
@@ -79,7 +80,7 @@ struct FeeConfig {
 abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGovernance {
     using Address for address;
     using SafeCast for int256;
-
+    uint256 private constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
@@ -187,6 +188,10 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
     }
 
     function deposit(uint256 assets_, address receiver_) public override nonReentrant restricted returns (uint256) {
+        return _deposit(assets_, receiver_);
+    }
+
+    function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {
         if (assets_ == 0) {
             revert NoAssetsToDeposit();
         }
@@ -197,6 +202,19 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         _realizeManagementFee();
 
         return super.deposit(assets_, receiver_);
+    }
+
+    function depositWithPermit(
+        uint256 assets_,
+        address owner_,
+        address receiver_,
+        uint256 deadline_,
+        uint8 v_,
+        bytes32 r_,
+        bytes32 s_
+    ) external nonReentrant restricted returns (uint256) {
+        IERC20Permit(asset()).permit(owner_, address(this), assets_, deadline_, v_, r_, s_);
+        return _deposit(assets_, receiver_);
     }
 
     function mint(uint256 shares_, address receiver_) public override nonReentrant restricted returns (uint256) {
@@ -230,7 +248,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
 
         uint256 totalAssetsBefore = totalAssets();
 
-        _withdrawFromMarkets(assets_, IERC20(asset()).balanceOf(address(this)));
+        _withdrawFromMarkets(assets_ + WITHDRAW_FROM_MARKETS_OFFSET, IERC20(asset()).balanceOf(address(this)));
 
         _addPerformanceFee(totalAssetsBefore);
 
@@ -404,7 +422,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-        uint256[] memory markets = _checkBalanceFusesDependencies(new uint256[](0), markets_, markets_.length);
+        uint256[] memory markets = _checkBalanceFusesDependencies(markets_);
         uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
         uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
@@ -441,53 +459,72 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         emit MarketBalancesUpdated(markets, deltasInUnderlying);
     }
 
-    function _checkBalanceFusesDependencies(
-        uint256[] memory markets_,
-        uint256[] memory marketsToCheck_,
-        uint256 marketsToCheckLength_
-    ) internal view returns (uint256[] memory updatedMarkets) {
-        if (marketsToCheckLength_ == 0) {
+    function _checkBalanceFusesDependencies(uint256[] memory markets_) internal view returns (uint256[] memory) {
+        uint256 marketsLength = markets_.length;
+        if (marketsLength == 0) {
             return markets_;
         }
-        uint256[] memory tempMarkets = new uint256[](marketsToCheckLength_ * 2);
-        uint256 tempMarketsIndex;
+        uint256[] memory marketsChecked = new uint256[](marketsLength * 2);
+        uint256[] memory marketsToCheck = markets_;
+        uint256 index;
+        uint256[] memory tempMarketsToCheck;
 
-        for (uint256 i; i < marketsToCheckLength_; ++i) {
-            if (
-                marketsToCheck_[i] == 0 ||
-                _checkIfExistsMarket(markets_, marketsToCheck_[i]) ||
-                _checkIfExistsMarket(tempMarkets, marketsToCheck_[i])
-            ) {
-                continue;
-            }
-
-            if (tempMarkets.length == tempMarketsIndex + 1) {
-                tempMarkets = _increaseArray(tempMarkets, tempMarkets.length + 10);
-            }
-            tempMarkets[tempMarketsIndex] = marketsToCheck_[i];
-            ++tempMarketsIndex;
-
-            uint256 dependentMarketsLength = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck_[i]).length;
-
-            if (dependentMarketsLength == 0) {
-                continue;
-            }
-
-            uint256[] memory dependentMarkets = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck_[i]);
-            for (uint256 j; j < dependentMarketsLength; ++j) {
-                if (tempMarkets.length == tempMarketsIndex + 1) {
-                    tempMarkets = _increaseArray(tempMarkets, tempMarkets.length + 10);
+        while (marketsToCheck.length > 0) {
+            tempMarketsToCheck = new uint256[](marketsLength * 2);
+            uint256 tempIndex;
+            for (uint256 i; i < marketsToCheck.length; ++i) {
+                if (!_checkIfExistsMarket(marketsChecked, marketsToCheck[i])) {
+                    if (marketsChecked.length == index) {
+                        marketsChecked = _increaseArray(marketsChecked, marketsChecked.length * 2);
+                    }
+                    marketsChecked[index] = marketsToCheck[i];
+                    ++index;
+                    uint256 dependentMarketsLength = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck[i]).length;
+                    if (dependentMarketsLength > 0) {
+                        for (uint256 j; j < dependentMarketsLength; ++j) {
+                            if (tempMarketsToCheck.length == tempIndex) {
+                                tempMarketsToCheck = _increaseArray(tempMarketsToCheck, tempMarketsToCheck.length * 2);
+                            }
+                            tempMarketsToCheck[tempIndex] = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck[i])[
+                                j
+                            ];
+                            ++tempIndex;
+                        }
+                    }
                 }
-                tempMarkets[tempMarketsIndex] = dependentMarkets[j];
-                ++tempMarketsIndex;
+            }
+            marketsToCheck = getUniqueElements(tempMarketsToCheck);
+        }
+
+        return getUniqueElements(marketsChecked);
+    }
+
+    function getUniqueElements(uint256[] memory inputArray) public pure returns (uint256[] memory) {
+        uint256[] memory tempArray = new uint256[](inputArray.length);
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < inputArray.length; i++) {
+            if (inputArray[i] != 0 && !contains(tempArray, inputArray[i], count)) {
+                tempArray[count] = inputArray[i];
+                count++;
             }
         }
-        updatedMarkets = _concatArrays(markets_, marketsToCheck_, markets_.length + marketsToCheckLength_);
 
-        if (tempMarketsIndex > 0) {
-            return _checkBalanceFusesDependencies(updatedMarkets, tempMarkets, tempMarketsIndex);
+        uint256[] memory uniqueArray = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            uniqueArray[i] = tempArray[i];
         }
-        return updatedMarkets;
+
+        return uniqueArray;
+    }
+
+    function contains(uint256[] memory array, uint256 element, uint256 count) private pure returns (bool) {
+        for (uint256 i = 0; i < count; i++) {
+            if (array[i] == element) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function _increaseArray(uint256[] memory arr_, uint256 newSize_) internal pure returns (uint256[] memory) {
@@ -572,7 +609,8 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
             this.deposit.selector == sig ||
             this.mint.selector == sig ||
             this.withdraw.selector == sig ||
-            this.redeem.selector == sig
+            this.redeem.selector == sig ||
+            this.depositWithPermit.selector == sig
         ) {
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
         } else {

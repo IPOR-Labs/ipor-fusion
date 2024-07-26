@@ -624,8 +624,8 @@ contract PlasmaVaultFeeTest is Test {
             plasmaVault.balanceOf(performanceFeeManager)
         );
 
-        assertEq(userOneBalanceOfAssets, 24999998, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
-        assertEq(userTwoBalanceOfAssets, 99999999, "userTwoBalanceOfAssets on plasma vault stayed 100 usd");
+        assertEq(userOneBalanceOfAssets, 24999999, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
+        assertEq(userTwoBalanceOfAssets, 100000000, "userTwoBalanceOfAssets on plasma vault stayed 100 usd");
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }

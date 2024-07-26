@@ -24,6 +24,7 @@ interface AavePool {
 }
 
 contract PlasmaVaultWithdrawTest is Test {
+    uint256 public constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
@@ -590,7 +591,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         //then
         vm.expectEmit(true, true, true, true);
-        emit AaveV3SupplyExitFuse(address(supplyFuseAaveV3), USDC, 99 * 1e6);
+        emit AaveV3SupplyExitFuse(address(supplyFuseAaveV3), USDC, 99 * 1e6 + WITHDRAW_FROM_MARKETS_OFFSET);
         //when
         vm.prank(userOne);
         plasmaVault.withdraw(199 * 1e6, userOne, userOne);
@@ -711,8 +712,12 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.expectEmit(true, true, true, true);
         emit AaveV3SupplyExitFuse(address(supplyFuseAaveV3), USDC, 50 * 1e6);
         vm.expectEmit(true, true, true, true);
-        emit CompoundV3SupplyExitFuse(address(supplyFuseCompoundV3), USDC, COMET_V3_USDC, 25 * 1e6);
-
+        emit CompoundV3SupplyExitFuse(
+            address(supplyFuseCompoundV3),
+            USDC,
+            COMET_V3_USDC,
+            25 * 1e6 + WITHDRAW_FROM_MARKETS_OFFSET
+        );
         //when
         vm.prank(userOne);
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);

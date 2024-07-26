@@ -204,7 +204,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         PlasmaVaultAddress memory plasmaVaultAddress_
     ) private returns (RoleToFunction[] memory rolesToFunction) {
         rolesToFunction = plasmaVaultAddress_.rewardsClaimManager == address(0)
-            ? new RoleToFunction[](28)
+            ? new RoleToFunction[](29)
             : new RoleToFunction[](37);
 
         rolesToFunction[0] = RoleToFunction({
@@ -339,14 +339,14 @@ library IporFusionAccessManagerInitializerLibV1 {
             minimalExecutionDelay: 0
         });
 
-        // IporFuseAccessManager
         rolesToFunction[21] = RoleToFunction({
-            target: plasmaVaultAddress_.accessManager,
-            roleId: Roles.ATOMIST_ROLE,
-            functionSelector: IporFusionAccessManager.setRedemptionDelay.selector,
+            target: plasmaVaultAddress_.plasmaVault,
+            roleId: Roles.WHITELIST_ROLE,
+            functionSelector: PlasmaVault.depositWithPermit.selector,
             minimalExecutionDelay: 0
         });
 
+        // IporFuseAccessManager
         rolesToFunction[22] = RoleToFunction({
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.GUARDIAN_ROLE,
@@ -384,22 +384,28 @@ library IporFusionAccessManagerInitializerLibV1 {
             functionSelector: AccessManager.cancel.selector,
             minimalExecutionDelay: 0
         });
+        rolesToFunction[28] = RoleToFunction({
+            target: plasmaVaultAddress_.accessManager,
+            roleId: Roles.ATOMIST_ROLE,
+            functionSelector: IporFusionAccessManager.setRedemptionDelay.selector,
+            minimalExecutionDelay: 0
+        });
 
         // RewardsClaimManager
         if (plasmaVaultAddress_.rewardsClaimManager == address(0)) {
             return rolesToFunction;
         }
-        rolesToFunction[28] = RoleToFunction({
-            target: plasmaVaultAddress_.rewardsClaimManager,
-            roleId: Roles.CLAIM_REWARDS_ROLE,
-            functionSelector: RewardsClaimManager.claimRewards.selector,
-            minimalExecutionDelay: 0
-        });
 
         rolesToFunction[29] = RoleToFunction({
             target: plasmaVaultAddress_.rewardsClaimManager,
             roleId: Roles.PUBLIC_ROLE,
             functionSelector: RewardsClaimManager.transferVestedTokensToVault.selector,
+            minimalExecutionDelay: 0
+        });
+        rolesToFunction[30] = RoleToFunction({
+            target: plasmaVaultAddress_.rewardsClaimManager,
+            roleId: Roles.CLAIM_REWARDS_ROLE,
+            functionSelector: RewardsClaimManager.claimRewards.selector,
             minimalExecutionDelay: 0
         });
         rolesToFunction[31] = RoleToFunction({
