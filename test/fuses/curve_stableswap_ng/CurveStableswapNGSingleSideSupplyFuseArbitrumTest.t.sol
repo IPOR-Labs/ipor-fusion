@@ -5,7 +5,6 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {CurveStableswapNGSingleSideSupplyFuseMock} from "./CurveStableswapNGSingleSideSupplyFuseMock.t.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
 import {FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
@@ -49,6 +48,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
     address public atomist = address(this);
     address public alpha = address(0x1);
+    address public depositor = address(0x2);
 
     address public constant OWNER = 0xD92E9F039E4189c342b4067CC61f5d063960D248;
 
@@ -129,7 +129,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        _supplyTokens(USDM, address(alpha), 1_000 * 10 ** ERC20(USDM).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(
@@ -147,9 +147,10 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
-        vm.startPrank(alpha);
+        vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(alpha));
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
         PlasmaVaultState memory beforeState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
@@ -164,6 +165,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             0
         );
         // when
+        vm.startPrank(alpha);
         plasmaVault.execute(calls);
         vm.stopPrank();
 
@@ -214,7 +216,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        _supplyTokens(USDM, address(alpha), 1_000 * 10 ** ERC20(USDM).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
         bytes memory error = abi.encodeWithSignature(
             "CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address)",
@@ -237,13 +239,15 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
-        vm.startPrank(alpha);
+        vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(alpha));
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
         PlasmaVaultState memory beforeState = getPlasmaVaultState(plasmaVault, fuse, DAI);
 
         // when
+        vm.startPrank(alpha);
         vm.expectRevert(error);
         plasmaVault.execute(calls);
         vm.stopPrank();
@@ -359,7 +363,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        _supplyTokens(USDM, address(alpha), 1_000 * 10 ** ERC20(USDM).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(
@@ -377,13 +381,15 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
-        vm.startPrank(alpha);
+        vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(alpha));
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
         PlasmaVaultState memory beforeState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
         // when
+        vm.startPrank(alpha);
         vm.expectRevert("Slippage screwed you"); // revert message from CurveStableswapNG
         plasmaVault.execute(calls);
         vm.stopPrank();
@@ -427,7 +433,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        _supplyTokens(USDM, address(alpha), 1_000 * 10 ** ERC20(USDM).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(
@@ -447,13 +453,15 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         bytes memory error = abi.encodeWithSignature("CurveStableswapNGSingleSideSupplyFuseZeroAmount()");
 
-        vm.startPrank(alpha);
+        vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(alpha));
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
         PlasmaVaultState memory beforeState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
         // when
+        vm.startPrank(alpha);
         vm.expectRevert(error);
         plasmaVault.execute(calls);
         vm.stopPrank();
@@ -501,7 +509,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        _supplyTokens(USDM, address(alpha), 1_000 * 10 ** ERC20(USDM).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
         FuseAction[] memory callsEnter = new FuseAction[](1);
         callsEnter[0] = FuseAction(
@@ -519,12 +527,14 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
-        vm.startPrank(alpha);
+        vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(alpha));
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
         PlasmaVaultState memory beforeEnterState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
+        vm.startPrank(alpha);
         vm.expectEmit(true, true, true, true);
         emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
             address(fuse),
@@ -534,6 +544,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             0
         );
         plasmaVault.execute(callsEnter);
+        vm.stopPrank();
 
         PlasmaVaultState memory beforeExitState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
@@ -563,6 +574,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         );
 
         // when
+        vm.startPrank(alpha);
         plasmaVault.execute(callsExit);
         vm.stopPrank();
 
@@ -610,7 +622,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        _supplyTokens(USDM, address(alpha), 1_000 * 10 ** ERC20(USDM).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
         FuseAction[] memory callsEnter = new FuseAction[](1);
         callsEnter[0] = FuseAction(
@@ -628,10 +640,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
-        vm.startPrank(alpha);
+        vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(alpha));
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
+        vm.startPrank(alpha);
         vm.expectEmit(true, true, true, true);
         emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
             address(fuse),
@@ -640,7 +654,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             amount,
             0
         );
-
         plasmaVault.execute(callsEnter);
         vm.stopPrank();
 
@@ -716,7 +729,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        _supplyTokens(USDM, address(alpha), 1_000 * 10 ** ERC20(USDM).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
         FuseAction[] memory callsEnter = new FuseAction[](1);
         callsEnter[0] = FuseAction(
@@ -734,10 +747,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
-        vm.startPrank(alpha);
+        vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(alpha));
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
+        vm.startPrank(alpha);
         plasmaVault.execute(callsEnter);
         vm.stopPrank();
 
@@ -808,7 +823,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        _supplyTokens(USDM, address(alpha), 1_000 * 10 ** ERC20(USDM).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(
@@ -826,10 +841,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
-        vm.startPrank(alpha);
+        vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(alpha));
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
+        vm.startPrank(alpha);
         plasmaVault.execute(calls);
         vm.stopPrank();
 
@@ -903,7 +920,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        _supplyTokens(USDM, address(alpha), 1_000 * 10 ** ERC20(USDM).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(
@@ -921,10 +938,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
-        vm.startPrank(alpha);
+        vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(alpha));
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
+        vm.startPrank(alpha);
         plasmaVault.execute(calls);
         vm.stopPrank();
 
