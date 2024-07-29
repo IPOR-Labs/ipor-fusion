@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
 import {IporPlasmaVault} from "./../../../contracts/vaults/IporPlasmaVault.sol";
@@ -10,9 +11,11 @@ import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultCo
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
+import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
-import {PriceOracleMock} from "./PriceOracleMock.sol";
+import {USDMPriceFeedArbitrum} from "./../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
+import {IChronicle, IToll} from "./../../../contracts/priceOracle/IChronicle.sol";
 
 contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -37,35 +40,59 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
 
     address public constant CURVE_STABLESWAP_NG_POOL = 0x4bD135524897333bec344e50ddD85126554E58B4;
 
+    address public constant BASE_CURRENCY = 0x0000000000000000000000000000000000000348;
+    uint256 public constant BASE_CURRENCY_DECIMALS = 8;
     address public constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address public constant USDM = 0x59D9356E565Ab3A36dD77763Fc0d87fEaf85508C;
     address public constant DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
     address public constant USD = 0x0000000000000000000000000000000000000348;
+    address public constant CHRONICLE_ADMIN = 0x39aBD7819E5632Fa06D2ECBba45Dca5c90687EE3;
+    address public constant WUSDM_USD_ORACLE_FEED = 0xdC6720c996Fad27256c7fd6E0a271e2A4687eF18;
+
+    IChronicle public constant CHRONICLE = IChronicle(WUSDM_USD_ORACLE_FEED);
 
     ICurveStableswapNG public constant CURVE_STABLESWAP_NG = ICurveStableswapNG(CURVE_STABLESWAP_NG_POOL);
 
-    PriceOracleMock public priceOracleMock;
+    USDMPriceFeedArbitrum public priceFeed;
 
     IporPlasmaVault public plasmaVault;
 
     address public atomist = address(this);
     address public alpha = address(0x1);
+    address public depositor = address(0x2);
 
-    SupportedToken public activeToken = SupportedToken({asset: USDM, name: "USDM"});
+    address public constant OWNER = 0xD92E9F039E4189c342b4067CC61f5d063960D248;
+
+    PriceOracleMiddleware private priceOracleMiddlewareProxy;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
+        priceFeed = new USDMPriceFeedArbitrum();
+        // price feed admin needs to whitelist the caller address for reading the price
+        vm.prank(CHRONICLE_ADMIN);
+        IToll(address(CHRONICLE)).kiss(address(priceFeed));
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
+            BASE_CURRENCY,
+            BASE_CURRENCY_DECIMALS,
+            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
+        );
+        priceOracleMiddlewareProxy = PriceOracleMiddleware(
+            address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
+        );
+        address[] memory assets = new address[](1);
+        address[] memory sources = new address[](1);
+        assets[0] = USDM;
+        sources[0] = address(priceFeed);
+        vm.prank(OWNER);
+        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
     function testShouldBeAbleToCalculateBalanceWhenSupplySingleAsset() external {
         // given
-        priceOracleMock = new PriceOracleMock(USD, 8);
-        priceOracleMock.setPrice(USDM, 1e18);
-
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
             1,
-            address(priceOracleMock)
+            address(priceOracleMiddlewareProxy)
         );
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
@@ -80,8 +107,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
-                activeToken.asset,
-                address(priceOracleMock),
+                USDM,
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -101,7 +128,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 abi.encode(
                     CurveStableswapNGSingleSideSupplyFuseEnterData({
                         curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: activeToken.asset,
+                        asset: USDM,
                         amount: amount,
                         minMintAmount: 0
                     })
@@ -109,26 +136,34 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             )
         );
 
-        _supplyTokensToMockVault(activeToken.asset, address(alpha), 1_000 * 10 ** ERC20(activeToken.asset).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
-        vm.startPrank(alpha);
-        ERC20(activeToken.asset).approve(address(plasmaVault), 1_000 * 10 ** ERC20(activeToken.asset).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(activeToken.asset).decimals(), address(alpha));
+        vm.startPrank(depositor);
+        ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
-        PlasmaVaultState memory beforeState = getPlasmaVaultState(plasmaVault, fuse, activeToken);
+        PlasmaVaultState memory beforeState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
         // when
+        vm.startPrank(alpha);
         plasmaVault.execute(calls);
         vm.stopPrank();
 
         // then
-        PlasmaVaultState memory afterState = getPlasmaVaultState(plasmaVault, fuse, activeToken);
+        PlasmaVaultState memory afterState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
-        assertEq(beforeState.vaultBalance, 999999999999999999999, "Balance before should be 999999999999999999999");
-        assertEq(
+        assertApproxEqAbs(
+            beforeState.vaultBalance,
+            1_000 * 10 ** ERC20(USDM).decimals(),
+            100,
+            "Balance before should be 1_000 * 10 ** ERC20(USDM).decimals()"
+        );
+        assertApproxEqAbs(
             beforeState.vaultTotalAssets,
-            999999999999999999999,
-            "Total assets before should be 999999999999999999999"
+            1_000 * 10 ** ERC20(USDM).decimals(),
+            100,
+            "Total assets before should be 1_000 * 10 ** ERC20(USDM).decimals()"
         );
         assertEq(
             beforeState.vaultBalance,
@@ -167,13 +202,10 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
 
     function testShouldBeAbleToCalculateBalanceWhenSupplyAndExitSingleAsset() external {
         // given
-        priceOracleMock = new PriceOracleMock(USD, 8);
-        priceOracleMock.setPrice(USDM, 1e18);
-
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
             1,
-            address(priceOracleMock)
+            address(priceOracleMiddlewareProxy)
         );
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
@@ -188,8 +220,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
-                activeToken.asset,
-                address(priceOracleMock),
+                USDM,
+                address(priceOracleMiddlewareProxy),
                 alphas,
                 marketConfigs,
                 fuses,
@@ -209,7 +241,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 abi.encode(
                     CurveStableswapNGSingleSideSupplyFuseEnterData({
                         curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: activeToken.asset,
+                        asset: USDM,
                         amount: amount,
                         minMintAmount: 0
                     })
@@ -217,16 +249,18 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             )
         );
 
-        _supplyTokensToMockVault(activeToken.asset, address(alpha), 1_000 * 10 ** ERC20(activeToken.asset).decimals());
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
+
+        vm.startPrank(depositor);
+        ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
 
         vm.startPrank(alpha);
-        ERC20(activeToken.asset).approve(address(plasmaVault), 1_000 * 10 ** ERC20(activeToken.asset).decimals());
-        plasmaVault.deposit(1_000 * 10 ** ERC20(activeToken.asset).decimals(), address(alpha));
-
         plasmaVault.execute(calls);
         vm.stopPrank();
 
-        PlasmaVaultState memory beforeExitState = getPlasmaVaultState(plasmaVault, fuse, activeToken);
+        PlasmaVaultState memory beforeExitState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
         FuseAction[] memory callsSecond = new FuseAction[](1);
         callsSecond[0] = FuseAction(
@@ -237,7 +271,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                     CurveStableswapNGSingleSideSupplyFuseExitData({
                         curveStableswapNG: CURVE_STABLESWAP_NG,
                         burnAmount: beforeExitState.vaultLpTokensBalance,
-                        asset: activeToken.asset,
+                        asset: USDM,
                         minReceived: 0
                     })
                 )
@@ -250,8 +284,13 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         plasmaVault.execute(callsSecond);
 
         // then
-        PlasmaVaultState memory afterExitState = getPlasmaVaultState(plasmaVault, fuse, activeToken);
-        assertEq(beforeExitState.vaultBalance, 900000000000000000000, "Balance before should be 900000000000000000000");
+        PlasmaVaultState memory afterExitState = getPlasmaVaultState(plasmaVault, fuse, USDM);
+        assertApproxEqAbs(
+            beforeExitState.vaultBalance,
+            1_000 * 10 ** ERC20(USDM).decimals() - amount,
+            100,
+            "Balance before should be 900"
+        );
         assertApproxEqAbs(
             beforeExitState.vaultTotalAssets,
             beforeExitState.vaultBalance + beforeExitState.vaultTotalAssetsInMarket,
@@ -279,11 +318,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
 
     // HELPERS
 
-    function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
-        if (asset == USDC) {
-            vm.prank(0x05e3a758FdD29d28435019ac453297eA37b61b62); // holder
-            ERC20(asset).transfer(to, amount);
-        } else if (asset == USDM) {
+    function _supplyTokens(address asset, address to, uint256 amount) private {
+        if (asset == USDM) {
             vm.prank(0x426c4966fC76Bf782A663203c023578B744e4C5E); // holder
             ERC20(asset).transfer(to, amount);
         } else {
@@ -336,11 +372,11 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     function getPlasmaVaultState(
         IporPlasmaVault plasmaVault,
         CurveStableswapNGSingleSideSupplyFuse fuse,
-        SupportedToken memory activeToken
+        address asset
     ) private view returns (PlasmaVaultState memory) {
         return
             PlasmaVaultState({
-                vaultBalance: ERC20(activeToken.asset).balanceOf(address(plasmaVault)),
+                vaultBalance: ERC20(asset).balanceOf(address(plasmaVault)),
                 vaultTotalAssets: plasmaVault.totalAssets(),
                 vaultTotalAssetsInMarket: plasmaVault.totalAssetsInMarket(fuse.MARKET_ID()),
                 vaultLpTokensBalance: ERC20(CURVE_STABLESWAP_NG_POOL).balanceOf(address(plasmaVault))

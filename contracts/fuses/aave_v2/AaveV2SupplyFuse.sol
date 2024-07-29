@@ -60,6 +60,10 @@ contract AaveV2SupplyFuse is IFuse {
     }
 
     function _enter(AaveV2SupplyFuseEnterData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
             revert AaveV2SupplyFuseUnsupportedAsset(data_.asset);
         }
@@ -72,6 +76,10 @@ contract AaveV2SupplyFuse is IFuse {
     }
 
     function _exit(AaveV2SupplyFuseExitData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
             revert AaveV2SupplyFuseUnsupportedAsset(data_.asset);
         }

@@ -23,12 +23,12 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
 
     error AssetNotFoundInCurvePool(address curvePool, address asset);
 
-    constructor(uint256 marketIdInput, address priceOracle) {
-        MARKET_ID = marketIdInput;
-        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle);
+    constructor(uint256 marketId_, address priceOracle_) {
+        MARKET_ID = marketId_;
+        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
     }
 
-    function balanceOf(address plasmaVault) external view override returns (uint256) {
+    function balanceOf(address plasmaVault_) external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
@@ -39,31 +39,31 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
         uint256 balance;
         uint256 withdrawTokenAmount;
         address lpTokenAddress; // Curve LP token
-        address underlyingAsset = IERC4626(plasmaVault).asset(); // Plasma Vault asset
+        address underlyingAsset = IERC4626(plasmaVault_).asset(); // Plasma Vault asset
         int128 indexCoin;
 
         for (uint256 i; i < len; ++i) {
             lpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), underlyingAsset);
             withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
-                ERC20(lpTokenAddress).balanceOf(plasmaVault),
+                ERC20(lpTokenAddress).balanceOf(plasmaVault_),
                 indexCoin
             );
             balance += IporMath.convertToWad(
                 withdrawTokenAmount * PRICE_ORACLE.getAssetPrice(underlyingAsset),
-                ERC20(IERC4626(plasmaVault).asset()).decimals() + PRICE_DECIMALS
+                ERC20(IERC4626(plasmaVault_).asset()).decimals() + PRICE_DECIMALS
             );
         }
         return balance;
     }
 
-    function _getCoinIndex(ICurveStableswapNG curvePool, address asset) internal view returns (int128) {
-        uint256 len = curvePool.N_COINS();
+    function _getCoinIndex(ICurveStableswapNG curvePool_, address asset_) internal view returns (int128) {
+        uint256 len = curvePool_.N_COINS();
         for (uint256 j; j < len; ++j) {
-            if (curvePool.coins(j) == asset) {
+            if (curvePool_.coins(j) == asset_) {
                 return SafeCast.toInt128(int256(j));
             }
         }
-        revert AssetNotFoundInCurvePool(address(curvePool), asset);
+        revert AssetNotFoundInCurvePool(address(curvePool_), asset_);
     }
 }

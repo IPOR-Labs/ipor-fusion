@@ -53,28 +53,28 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
         uint256 minReceived
     );
 
-    error CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address asset);
+    error CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address poolAddress);
     error CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address asset);
     error CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts();
     error CurveStableswapNGSingleSideSupplyFuseZeroAmount();
     error CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
 
-    constructor(uint256 marketIdInput) {
+    constructor(uint256 marketId_) {
         VERSION = address(this);
-        MARKET_ID = marketIdInput;
+        MARKET_ID = marketId_;
     }
 
-    function enter(bytes calldata data) external override {
-        _enter(abi.decode(data, (CurveStableswapNGSingleSideSupplyFuseEnterData)));
+    function enter(bytes calldata data_) external override {
+        _enter(abi.decode(data_, (CurveStableswapNGSingleSideSupplyFuseEnterData)));
     }
 
     /// @dev technical method to generate ABI
-    function enter(CurveStableswapNGSingleSideSupplyFuseEnterData memory data) external {
-        _enter(data);
+    function enter(CurveStableswapNGSingleSideSupplyFuseEnterData memory data_) external {
+        _enter(data_);
     }
 
-    function _enter(CurveStableswapNGSingleSideSupplyFuseEnterData memory data) internal {
-        ICurveStableswapNG curvePool = ICurveStableswapNG(data.curveStableswapNG);
+    function _enter(CurveStableswapNGSingleSideSupplyFuseEnterData memory data_) internal {
+        ICurveStableswapNG curvePool = ICurveStableswapNG(data_.curveStableswapNG);
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(curvePool))) {
             /// @notice substrateAsAsset here refers to the Curve pool LP token, not the underlying asset of the Plasma Vault
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address(curvePool));
@@ -82,67 +82,67 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
         uint256 nCoins = curvePool.N_COINS();
         uint256[] memory amounts = new uint256[](nCoins);
         bool supportedPoolAsset = false;
+        if (data_.amount == 0) {
+            revert CurveStableswapNGSingleSideSupplyFuseZeroAmount();
+        }
         for (uint256 i; i < nCoins; ++i) {
-            if (curvePool.coins(i) == data.asset) {
+            if (curvePool.coins(i) == data_.asset) {
                 supportedPoolAsset = true;
-                amounts[i] = data.amount;
-                ERC20(data.asset).forceApprove(address(curvePool), data.amount);
+                amounts[i] = data_.amount;
+                ERC20(data_.asset).forceApprove(address(curvePool), data_.amount);
             }
         }
         if (!supportedPoolAsset) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset);
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data_.asset);
         }
-        if (data.amount == 0) {
-            revert CurveStableswapNGSingleSideSupplyFuseZeroAmount();
-        }
-        curvePool.add_liquidity(amounts, data.minMintAmount, address(this));
+        curvePool.add_liquidity(amounts, data_.minMintAmount, address(this));
         emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
             VERSION,
             address(curvePool),
-            data.asset,
-            data.amount,
-            data.minMintAmount
+            data_.asset,
+            data_.amount,
+            data_.minMintAmount
         );
     }
 
-    function exit(bytes calldata data) external override {
-        _exit(abi.decode(data, (CurveStableswapNGSingleSideSupplyFuseExitData)));
+    function exit(bytes calldata data_) external override {
+        _exit(abi.decode(data_, (CurveStableswapNGSingleSideSupplyFuseExitData)));
     }
 
     /// @dev technical method to generate ABI
-    function exit(CurveStableswapNGSingleSideSupplyFuseExitData calldata data) external {
-        _exit(data);
+    function exit(CurveStableswapNGSingleSideSupplyFuseExitData calldata data_) external {
+        _exit(data_);
     }
 
-    function _exit(CurveStableswapNGSingleSideSupplyFuseExitData memory data) internal {
-        ICurveStableswapNG curvePool = ICurveStableswapNG(data.curveStableswapNG);
+    function _exit(CurveStableswapNGSingleSideSupplyFuseExitData memory data_) internal {
+        ICurveStableswapNG curvePool = ICurveStableswapNG(data_.curveStableswapNG);
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(curvePool))) {
             /// @notice substrateAsAsset here refers to the Curve pool LP token, not the underlying asset of the Plasma Vault
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address(curvePool));
         }
-        if (data.burnAmount == 0) {
+        if (data_.burnAmount == 0) {
             revert CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
         }
         uint256 nCoins = curvePool.N_COINS();
         bool supportedPoolAsset = false;
         int128 index;
         for (uint256 i; i < nCoins; ++i) {
-            if (curvePool.coins(i) == data.asset) {
+            if (curvePool.coins(i) == data_.asset) {
                 index = int128(int256(i));
                 supportedPoolAsset = true;
                 break;
             }
         }
         if (!supportedPoolAsset) {
-            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data.asset);
+            revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data_.asset);
         }
-        curvePool.remove_liquidity_one_coin(data.burnAmount, index, data.minReceived, address(this));
+        curvePool.remove_liquidity_one_coin(data_.burnAmount, index, data_.minReceived, address(this));
         emit CurveSupplyStableswapNGSingleSideSupplyExitFuse(
             VERSION,
             address(curvePool),
-            data.burnAmount,
-            data.asset,
-            data.minReceived
+            data_.burnAmount,
+            data_.asset,
+            data_.minReceived
         );
     }
 }
