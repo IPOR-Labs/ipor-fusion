@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
@@ -9,6 +10,8 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFarmingPool} from "../../fuses/gearbox_v3/ext/IFarmingPool.sol";
 
 contract GearboxV3FarmDTokenClaimFuse {
+    using SafeERC20 for IERC20;
+
     event GearboxV3FarmDTokenClaimFuseRewardsClaimed(
         address version,
         address rewardsToken,
@@ -39,7 +42,7 @@ contract GearboxV3FarmDTokenClaimFuse {
         address rewardsClaimManager;
 
         for (uint256 i; i < len; ++i) {
-            farmDToken = PlasmaVaultConfigLib.bytes32ToAddress(substrates[0]);
+            farmDToken = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
             if (farmDToken == address(0)) {
                 continue;
             }
@@ -47,7 +50,7 @@ contract GearboxV3FarmDTokenClaimFuse {
             rewardsTokenBalance = IFarmingPool(farmDToken).farmed(address(this));
 
             if (rewardsTokenBalance == 0) {
-                return;
+                continue;
             }
 
             IFarmingPool(farmDToken).claim();
@@ -58,7 +61,7 @@ contract GearboxV3FarmDTokenClaimFuse {
                 revert GearboxV3FarmDTokenClaimFuseRewardsClaimManagerZeroAddress(VERSION);
             }
 
-            IERC20(rewardsToken).transfer(rewardsClaimManager, rewardsTokenBalance);
+            IERC20(rewardsToken).safeTransfer(rewardsClaimManager, rewardsTokenBalance);
 
             emit GearboxV3FarmDTokenClaimFuseRewardsClaimed(
                 VERSION,
