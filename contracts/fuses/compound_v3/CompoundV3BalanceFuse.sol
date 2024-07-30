@@ -1,4 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
+/**
+ * @title CompoundV3BalanceFuse
+ * This contract is used for calculate balance of the Plasma Vault in Compound version 3.
+ * All actions performed by the code from this fuse are executed in the context of the Plasma Vault and are invoked using delegateCall.
+ * Before using this fuse, should contain the CompoundV3SupplyFuse and it should be configurate in the Plasma Vault.
+ *
+ * Deploy:
+ * To deploy a new implementation, the following parameters must be provided:
+ * - marketId_ - This should be selected from the IporFusionMarkets*.sol file the same value as in AaveV3SupplyFuse.
+ * - cometAddress_ - The address of the CToken.
+
+ *
+ *
+ * Uses in Plasma Vault:
+ * - Add fuse to Plasma Vault
+ *      To add a balance fuse to the Plasma Vault, call the method addBalanceFuse(uint256 marketId_, address fuse_),
+ *      where marketId_ is the market provided during deployment, and fuse_ is the address of the fuse.
+ *
+ */
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";

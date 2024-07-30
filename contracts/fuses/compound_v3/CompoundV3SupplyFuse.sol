@@ -1,4 +1,42 @@
 // SPDX-License-Identifier: BUSL-1.1
+/**
+ * @title AaveV3SupplyFuseEnterData
+ * This contract is used for integrating the Plasma Vault with Compound version 3.
+ * All actions performed by the code from this fuse are executed in the context of the Plasma Vault and are invoked using delegateCall.
+ *
+ * Deploy:
+ * To deploy a new implementation, the following parameters must be provided:
+ * - marketId_ - This should be selected from the IporFusionMarkets*.sol file; if the appropriate value is missing, it should be added.
+ * - cometAddress_ - The address of the CToken.
+ *
+ *
+ * Uses in Plasma Vault:
+ * - Add fuse to Plasma Vault
+ *      To use this fuse in the Plasma Vault, it should be added using one of two methods:
+ *      - addFuses(address[] calldata fuses_) from PlasmaVaultGovernance, where only the fuse address is provided.
+ *      - pass the address in the constructor inside PlasmaVaultInitData.fuses.
+ * - Configurate Plasma Vault to use this fuse
+ *      To configure the fuse on the Plasma Vault, the following steps should be performed:
+ *      - Call the method grantMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) where marketId_
+ *        is the value provided in the fuse constructor, and substrates_ contains the address of the token/asset that
+ *        will be managed by the fuse. The address should be converted using the method PlasmaVaultConfigLib.addressToBytes32(address asset).
+ *      - Adding a BalanceFuse using the method addBalanceFuse(uint256 marketId_, address fuse_) — details can be found
+ *        inside the CompoundV3BalanceFuse.sol file.
+ *      - [Optional] Set a percentage limit on how much funds can be transferred to the market using the method
+ *        setupMarketsLimits(MarketLimit[] calldata marketsLimits_). For detailed information, please refer to the method's documentation.
+ *      - [Optional] If the Plasma Vault allows withdrawals without a queue, you should add it to instant withdrawal
+ *         using the method configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses_).
+ *      - [Optional] If invoking this fuse affects other markets whose balances are changing and you need to update the
+ *        balances for other markets, call the method function updateDependencyBalanceGraphs(uint256[] memory marketIds_, uint256[][] memory dependencies_).
+ * - Using the fuse by Alpha
+ *   To use the fuse after configuration within the Plasma Vault, you need to call the method function execute(FuseAction[] calldata calls_), where:
+ *      - When executing the enter method, the parameters that need to be provided within CompoundV3SupplyFuseEnterData must be as follows:
+ *        - asset - the address of the asset/token to be transferred, which must have been added during the fuse configuration.
+ *        - amount - the value to be transferred, which must be specified in the asset/token's decimals.
+ *      - When executing the exit method, the parameters that need to be provided within CompoundV3SupplyFuseExitData must be as follows:
+ *        - asset - the address of the asset/token to be transferred, which must have been added during the fuse configuration.
+ *        - amount - the value to be transferred, which must be specified in the asset/token's decimals.
+ */
 pragma solidity 0.8.20;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";

@@ -24,7 +24,6 @@ struct Erc4626SupplyFuseExitData {
     uint256 amount;
 }
 
-// https://github.com/morpho-org/metamorpho
 contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
