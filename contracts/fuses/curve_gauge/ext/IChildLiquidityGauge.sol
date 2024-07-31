@@ -34,7 +34,7 @@ interface IChildLiquidityGauge {
     /**
      * @notice LP token being staked (deposited into the gauge)
      */
-    function lp_token() external returns (address);
+    function lp_token() external view returns (address);
 
     /**
      * @notice Get the number of claimable reward tokens for a user
@@ -43,4 +43,16 @@ interface IChildLiquidityGauge {
      * @return uint256 Claimable reward token amount
      */
     function claimable_reward(address _user, address _reward_token) external view returns (uint256);
+
+    /**
+     * @notice Get the number of claimable reward tokens
+     */
+    function reward_count() external view returns (uint256);
+
+    /**
+     * @notice Get the reward token at index `_index`
+     * @param _index Index of the reward token
+     * @return address Address of the reward token
+     */
+    function reward_tokens(uint256 _index) external view returns (address);
 }

@@ -4,26 +4,28 @@ pragma solidity 0.8.20;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IChildLiquidityGauge} from "./ext/IChildLiquidityGauge.sol";
+import {IFuse} from "../IFuse.sol";
+import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
 
 struct CurveChildLiquidityGaugeSupplyFuseEnterData {
     /// Curve gauge
     IChildLiquidityGauge childLiquidityGauge;
-    /// @notice LP Token to deposit
+    /// @notice LP Token to deposit (stake)
     address lpToken;
-    /// @notice Amount of the LP Token to deposit
+    /// @notice Amount of the LP Token to deposit (stake)
     uint256 amount;
 }
 
 struct CurveChildLiquidityGaugeSupplyFuseExitData {
     /// Curve gauge
     IChildLiquidityGauge childLiquidityGauge;
-    /// @notice LP Token to withdraw
+    /// @notice LP Token to withdraw (unstake)
     address lpToken;
-    /// @notice Amount of the LP Token to withdraw
+    /// @notice Amount of the LP Token to withdraw (unstake)
     uint256 amount;
 }
 
-contract CurveChildLiquidityGaugeSupplyFuse {
+contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
     using SafeERC20 for IERC20;
 
     event CurveChildLiquidityGaugeSupplyFuseEnter(address version, address lpToken, uint256 amount);
