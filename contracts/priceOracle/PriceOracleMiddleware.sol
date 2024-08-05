@@ -80,7 +80,6 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         uint256 startedAt;
         uint256 time;
         uint80 answeredInRound;
-
         if (source != address(0)) {
             (roundId, price, startedAt, time, answeredInRound) = IPriceFeed(source).latestRoundData();
         } else {

@@ -204,4 +204,16 @@ library PlasmaVaultLib {
         PlasmaVaultStorageLib.getRewardsClaimManagerAddress().value = rewardsClaimManagerAddress_;
         emit RewardsClaimManagerAddressChanged(rewardsClaimManagerAddress_);
     }
+
+    function executeStarted() internal {
+        PlasmaVaultStorageLib.getExecutionState().value = 1;
+    }
+
+    function executeFinished() internal {
+        PlasmaVaultStorageLib.getExecutionState().value = 0;
+    }
+
+    function isExecutionStarted() internal view returns (bool) {
+        return PlasmaVaultStorageLib.getExecutionState().value == 1;
+    }
 }
