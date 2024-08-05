@@ -62,7 +62,7 @@ library PlasmaVaultStorageLib {
     bytes32 private constant EXECUTE_RUNNING = 0x054644eb87255c1c6a2d10801735f52fa3b9d6e4477dbed74914d03844ab6600;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.callbackHandler")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant CALLBACK_UNZIP = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e00;
+    bytes32 private constant CALLBACK_HANDLER = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e00;
 
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
     struct RewardsClaimManagerAddress {
@@ -111,7 +111,7 @@ library PlasmaVaultStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.callbackHandler
     struct CallbackHandler {
-        mapping(bytes32 key => address unziper) callbackHandler;
+        mapping(bytes32 key => address handler) callbackHandler;
     }
 
     /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultInstantWithdrawalFusesArray
@@ -171,7 +171,7 @@ library PlasmaVaultStorageLib {
 
     function getCallbackUnzip() internal pure returns (CallbackHandler storage unzip) {
         assembly {
-            unzip.slot := CALLBACK_UNZIP
+            unzip.slot := CALLBACK_HANDLER
         }
     }
 
