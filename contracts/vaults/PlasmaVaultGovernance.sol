@@ -156,7 +156,7 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
     }
 
     function updateCallbackZip(address handler_, address sender_, bytes4 sig_) external restricted {
-        CallbackHandlerLib.updateCallbackZip(handler_, sender_, sig_);
+        CallbackHandlerLib.updateCallbackHandler(handler_, sender_, sig_);
     }
 
     function _addFuse(address fuse_) internal {

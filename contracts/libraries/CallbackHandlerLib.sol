@@ -13,7 +13,7 @@ library CallbackHandlerLib {
     error HandlerNotFound();
 
     function handleCallback() internal {
-        address handler = PlasmaVaultStorageLib.getCallbackUnzip().callbackUnzip[
+        address handler = PlasmaVaultStorageLib.getCallbackUnzip().callbackHandler[
             keccak256(abi.encodePacked(msg.sender, msg.sig))
         ];
 
@@ -29,8 +29,8 @@ library CallbackHandlerLib {
         PlasmaVault(address(this)).executeInternal(calls);
     }
 
-    function updateCallbackZip(address handler_, address sender_, bytes4 sig_) internal {
-        PlasmaVaultStorageLib.getCallbackUnzip().callbackUnzip[keccak256(abi.encodePacked(sender_, sig_))] = handler_;
+    function updateCallbackHandler(address handler_, address sender_, bytes4 sig_) internal {
+        PlasmaVaultStorageLib.getCallbackUnzip().callbackHandler[keccak256(abi.encodePacked(sender_, sig_))] = handler_;
         emit CallbackHandlerUpdated(handler_, sender_, sig_);
     }
 }
