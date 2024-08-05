@@ -32,6 +32,7 @@ library CallbackHandlerLib {
 
     function updateCallbackHandler(address handler_, address sender_, bytes4 sig_) internal {
         PlasmaVaultStorageLib.getCallbackHandler().callbackHandler[
+            /// @dev msg.sender - is the address of a contract which execute callback, msg.sig - is the signature of the function
             keccak256(abi.encodePacked(sender_, sig_))
         ] = handler_;
         emit CallbackHandlerUpdated(handler_, sender_, sig_);
