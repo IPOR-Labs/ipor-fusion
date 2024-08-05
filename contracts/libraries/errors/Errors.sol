@@ -6,4 +6,5 @@ library Errors {
     error UnsupportedBaseCurrencyFromOracle();
     error UnsupportedPriceOracle();
     error WrongArrayLength();
+    error WrongCaller(address caller);
 }

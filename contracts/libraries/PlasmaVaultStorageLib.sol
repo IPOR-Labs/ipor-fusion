@@ -58,6 +58,12 @@ library PlasmaVaultStorageLib {
     bytes32 private constant DEPENDENCY_BALANCE_GRAPH =
         0x82411e549329f2815579116a6c5e60bff72686c93ab5dba4d06242cfaf968900;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.executeRunning")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant EXECUTE_RUNNING = 0x054644eb87255c1c6a2d10801735f52fa3b9d6e4477dbed74914d03844ab6600;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.callbackHandler")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant CALLBACK_HANDLER = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e00;
+
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
     struct RewardsClaimManagerAddress {
         /// @dev total assets in the Plasma Vault
@@ -103,6 +109,12 @@ library PlasmaVaultStorageLib {
         mapping(uint256 marketId => uint256[] marketIds) dependencyGraph;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.callbackHandler
+    struct CallbackHandler {
+        /// @dev key: keccak256(abi.encodePacked(sender, sig)), value: handler address
+        mapping(bytes32 key => address handler) callbackHandler;
+    }
+
     /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultInstantWithdrawalFusesArray
     struct InstantWithdrawalFuses {
         /// @dev value is a Fuse address used for instant withdrawal
@@ -134,6 +146,11 @@ library PlasmaVaultStorageLib {
         address value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.executeRunning
+    struct ExecuteState {
+        uint256 value;
+    }
+
     /// @dev limit is percentage of total assets in the market in 18 decimals, 1e18 is 100%
     /// @deb if limit for zero marketId is greater than 0, then limits are activated
     /// @custom:storage-location erc7201:io.ipor.matrketLimits
@@ -144,6 +161,18 @@ library PlasmaVaultStorageLib {
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
         assembly {
             totalAssets.slot := PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS
+        }
+    }
+
+    function getExecutionState() internal pure returns (ExecuteState storage executeRunning) {
+        assembly {
+            executeRunning.slot := EXECUTE_RUNNING
+        }
+    }
+
+    function getCallbackHandler() internal pure returns (CallbackHandler storage handler) {
+        assembly {
+            handler.slot := CALLBACK_HANDLER
         }
     }
 

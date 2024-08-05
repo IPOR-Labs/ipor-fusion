@@ -24,6 +24,7 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManager.sol";
 import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
+import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
@@ -140,10 +141,47 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         PlasmaVaultLib.updateManagementFeeData();
     }
 
-    fallback() external {}
+    fallback() external {
+        if (PlasmaVaultLib.isExecutionStarted()) {
+            CallbackHandlerLib.handleCallback();
+        }
+    }
 
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls_) external nonReentrant restricted {
+        uint256 callsCount = calls_.length;
+        uint256[] memory markets = new uint256[](callsCount);
+        uint256 marketIndex;
+        uint256 fuseMarketId;
+
+        uint256 totalAssetsBefore = totalAssets();
+
+        PlasmaVaultLib.executeStarted();
+        for (uint256 i; i < callsCount; ++i) {
+            if (!FusesLib.isFuseSupported(calls_[i].fuse)) {
+                revert UnsupportedFuse();
+            }
+
+            fuseMarketId = IFuseCommon(calls_[i].fuse).MARKET_ID();
+
+            if (_checkIfExistsMarket(markets, fuseMarketId) == false) {
+                markets[marketIndex] = fuseMarketId;
+                marketIndex++;
+            }
+
+            calls_[i].fuse.functionDelegateCall(calls_[i].data);
+        }
+        PlasmaVaultLib.executeFinished();
+
+        _updateMarketsBalances(markets);
+
+        _addPerformanceFee(totalAssetsBefore);
+    }
+
+    function executeInternal(FuseAction[] calldata calls_) external {
+        if (address(this) != msg.sender) {
+            revert Errors.WrongCaller(msg.sender);
+        }
         uint256 callsCount = calls_.length;
         uint256[] memory markets = new uint256[](callsCount);
         uint256 marketIndex;
@@ -165,7 +203,6 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
 
             calls_[i].fuse.functionDelegateCall(calls_[i].data);
         }
-
         _updateMarketsBalances(markets);
 
         _addPerformanceFee(totalAssetsBefore);
