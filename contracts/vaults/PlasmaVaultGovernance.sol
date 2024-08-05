@@ -2,13 +2,14 @@
 pragma solidity 0.8.20;
 
 import {FusesLib} from "../libraries/FusesLib.sol";
-import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol"; // TODO External??
 import {PlasmaVaultLib, InstantWithdrawalFusesParamsStruct} from "../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
-import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
+import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol"; // TODO External??
 import {AccessManaged} from "../managers/access/AccessManaged.sol";
+import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 abstract contract PlasmaVaultGovernance is AccessManaged {
@@ -152,6 +153,10 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
     /// @notice Deactivates the markets limits protection.
     function deactivateMarketsLimits() public restricted {
         AssetDistributionProtectionLib.deactivateMarketsLimits();
+    }
+
+    function updateCallbackZip(address handler_, address sender_, bytes4 sig_) external restricted {
+        CallbackHandlerLib.updateCallbackZip(handler_, sender_, sig_);
     }
 
     function _addFuse(address fuse_) internal {

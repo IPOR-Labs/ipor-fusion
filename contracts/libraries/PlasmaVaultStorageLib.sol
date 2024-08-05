@@ -58,6 +58,12 @@ library PlasmaVaultStorageLib {
     bytes32 private constant DEPENDENCY_BALANCE_GRAPH =
         0x82411e549329f2815579116a6c5e60bff72686c93ab5dba4d06242cfaf968900;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.executeRunning")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant EXECUTE_RUNNING = 0x82411e549329f2815579116a6c5e60bff72686c93ab5dba4d06242cfaf968911; //TODO update this
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.callbackUnzip")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant CALLBACK_UNZIP = 0x82411e549329f2815579116a6c5e60bff72686c93ab5dba4d06242cfaf968922; //TODO update this
+
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
     struct RewardsClaimManagerAddress {
         /// @dev total assets in the Plasma Vault
@@ -103,6 +109,11 @@ library PlasmaVaultStorageLib {
         mapping(uint256 marketId => uint256[] marketIds) dependencyGraph;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.callbackUnzip
+    struct CallbackUnzip {
+        mapping(bytes32 key => address unziper) callbackUnzip;
+    }
+
     /// @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultInstantWithdrawalFusesArray
     struct InstantWithdrawalFuses {
         /// @dev value is a Fuse address used for instant withdrawal
@@ -134,6 +145,11 @@ library PlasmaVaultStorageLib {
         address value;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.executeRunning
+    struct ExecuteState {
+        uint256 value;
+    }
+
     /// @dev limit is percentage of total assets in the market in 18 decimals, 1e18 is 100%
     /// @deb if limit for zero marketId is greater than 0, then limits are activated
     /// @custom:storage-location erc7201:io.ipor.matrketLimits
@@ -144,6 +160,18 @@ library PlasmaVaultStorageLib {
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
         assembly {
             totalAssets.slot := PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS
+        }
+    }
+
+    function getExecutionState() internal pure returns (ExecuteState storage executeRunning) {
+        assembly {
+            executeRunning.slot := EXECUTE_RUNNING
+        }
+    }
+
+    function getCallbackUnzip() internal pure returns (CallbackUnzip storage unzip) {
+        assembly {
+            unzip.slot := CALLBACK_UNZIP
         }
     }
 
