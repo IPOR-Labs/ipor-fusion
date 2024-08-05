@@ -155,7 +155,7 @@ abstract contract PlasmaVaultGovernance is AccessManaged {
         AssetDistributionProtectionLib.deactivateMarketsLimits();
     }
 
-    function updateCallbackZip(address handler_, address sender_, bytes4 sig_) external restricted {
+    function updateCallbackHandler(address handler_, address sender_, bytes4 sig_) external restricted {
         CallbackHandlerLib.updateCallbackHandler(handler_, sender_, sig_);
     }
 

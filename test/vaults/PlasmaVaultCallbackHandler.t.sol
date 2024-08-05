@@ -96,7 +96,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
     function _setuCallbackCals() private {
         CallbackHandlerMorpho callbackHandlerMorpho = new CallbackHandlerMorpho();
-        PlasmaVault(_plasmaVault).updateCallbackZip(
+        PlasmaVault(_plasmaVault).updateCallbackHandler(
             address(callbackHandlerMorpho),
             address(_MORPHO),
             CallbackHandlerMorpho.onMorphoSupply.selector

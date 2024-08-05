@@ -349,7 +349,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         rolesToFunction[22] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.ATOMIST_ROLE,
-            functionSelector: PlasmaVaultGovernance.updateCallbackZip.selector,
+            functionSelector: PlasmaVaultGovernance.updateCallbackHandler.selector,
             minimalExecutionDelay: 0
         });
 

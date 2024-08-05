@@ -111,6 +111,7 @@ library PlasmaVaultStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.callbackHandler
     struct CallbackHandler {
+        /// @dev key: keccak256(abi.encodePacked(sender, sig)), value: handler address
         mapping(bytes32 key => address handler) callbackHandler;
     }
 
@@ -169,9 +170,9 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getCallbackUnzip() internal pure returns (CallbackHandler storage unzip) {
+    function getCallbackHandler() internal pure returns (CallbackHandler storage handler) {
         assembly {
-            unzip.slot := CALLBACK_HANDLER
+            handler.slot := CALLBACK_HANDLER
         }
     }
 
