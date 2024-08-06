@@ -32,7 +32,7 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
 
     event CurveChildLiquidityGaugeSupplyFuseExit(address version, address lpToken, uint256 amount);
 
-    error CurveChildLiquidityGaugeSupplyFuseUnsupportedLPToken(string msg, address lpToken);
+    error CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address lpToken);
     error CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount();
     error CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount();
 
@@ -44,46 +44,47 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
         MARKET_ID = marketIdInput;
     }
 
-    function enter(bytes calldata data) external override {
-        _enter(abi.decode(data, (CurveChildLiquidityGaugeSupplyFuseEnterData)));
+    function enter(bytes calldata data_) external override {
+        _enter(abi.decode(data_, (CurveChildLiquidityGaugeSupplyFuseEnterData)));
     }
 
     /// @dev technical method to generate ABI
-    function enter(CurveChildLiquidityGaugeSupplyFuseEnterData memory data) external {
-        _enter(data);
+    function enter(CurveChildLiquidityGaugeSupplyFuseEnterData memory data_) external {
+        _enter(data_);
     }
 
-    function _enter(CurveChildLiquidityGaugeSupplyFuseEnterData memory data) internal {
-        IChildLiquidityGauge childLiquidityGauge = data.childLiquidityGauge;
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.lpToken)) {
-            revert CurveChildLiquidityGaugeSupplyFuseUnsupportedLPToken("enter", data.lpToken);
+    function _enter(CurveChildLiquidityGaugeSupplyFuseEnterData memory data_) internal {
+        IChildLiquidityGauge childLiquidityGauge = data_.childLiquidityGauge;
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.childLiquidityGauge))) {
+            /// @notice substrate here refers to the staked Curve LP token (Gauge address)
+            revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address(data_.childLiquidityGauge));
         }
-        if (data.amount == 0) {
+        if (data_.amount == 0) {
             revert CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount();
         }
-        IERC20(data.lpToken).forceApprove(address(childLiquidityGauge), data.amount);
-        childLiquidityGauge.deposit(data.amount, address(this), false);
-        emit CurveChildLiquidityGaugeSupplyFuseEnter(VERSION, data.lpToken, data.amount);
+        IERC20(data_.lpToken).forceApprove(address(childLiquidityGauge), data_.amount);
+        childLiquidityGauge.deposit(data_.amount, address(this), false);
+        emit CurveChildLiquidityGaugeSupplyFuseEnter(VERSION, data_.lpToken, data_.amount);
     }
 
-    function exit(bytes calldata data) external override {
-        _exit(abi.decode(data, (CurveChildLiquidityGaugeSupplyFuseExitData)));
+    function exit(bytes calldata data_) external override {
+        _exit(abi.decode(data_, (CurveChildLiquidityGaugeSupplyFuseExitData)));
     }
 
     /// @dev technical method to generate ABI
-    function exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data) external {
-        _exit(data);
+    function exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_) external {
+        _exit(data_);
     }
 
-    function _exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data) internal {
-        IChildLiquidityGauge childLiquidityGauge = data.childLiquidityGauge;
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.lpToken)) {
-            revert CurveChildLiquidityGaugeSupplyFuseUnsupportedLPToken("exit", data.lpToken);
+    function _exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_) internal {
+        IChildLiquidityGauge childLiquidityGauge = data_.childLiquidityGauge;
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.childLiquidityGauge))) {
+            revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address(data_.childLiquidityGauge));
         }
-        if (data.amount == 0) {
+        if (data_.amount == 0) {
             revert CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount();
         }
-        childLiquidityGauge.withdraw(data.amount, address(this), false);
-        emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data.lpToken, data.amount);
+        childLiquidityGauge.withdraw(data_.amount, address(this), false);
+        emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data_.lpToken, data_.amount);
     }
 }

@@ -13,4 +13,8 @@ library IporFusionMarketsArbitrum {
     /// @dev Gearbox V3 market
     uint256 public constant GEARBOX_POOL_V3 = 3;
     uint256 public constant GEARBOX_FARM_DTOKEN_V3 = 4;
+
+    /// @dev Curve USDM/USDC/LP market
+    uint256 public constant CURVE_USDM_USDC_LP = 5;
+    uint256 public constant CURVE_USDM_USDC_LP_GAUGE = 6;
 }

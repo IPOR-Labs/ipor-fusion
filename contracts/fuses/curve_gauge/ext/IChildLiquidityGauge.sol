@@ -37,6 +37,21 @@ interface IChildLiquidityGauge {
     function lp_token() external view returns (address);
 
     /**
+     * @notice Get the number of claimable tokens per user
+     * @dev This function should be manually changed to "view" in the ABI
+     * @return uint256 number of claimable tokens per user
+     */
+    function claimable_tokens(address addr) external returns (uint256);
+
+    /**
+     * @notice Get the number of already-claimed reward tokens for a user
+     * @param _addr Account to get reward amount for
+     * @param _token Token to get reward amount for
+     * @return uint256 Total amount of `_token` already claimed by `_addr`
+     */
+    function claimed_reward(address _addr, address _token) external view returns (uint256);
+
+    /**
      * @notice Get the number of claimable reward tokens for a user
      * @param _user Account to get reward amount for
      * @param _reward_token Token to get reward amount for
