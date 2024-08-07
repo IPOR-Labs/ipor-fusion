@@ -46,6 +46,9 @@ contract SparkSupplyFuse is IFuse {
     }
 
     function _enter(SparkSupplyFuseEnterData memory data) internal {
+        if (data.amount == 0) {
+            return;
+        }
         ERC20(DAI).forceApprove(SDAI, data.amount);
         ISavingsDai(SDAI).deposit(data.amount, address(this));
 
@@ -61,6 +64,9 @@ contract SparkSupplyFuse is IFuse {
     }
 
     function _exit(SparkSupplyFuseExitData memory data) internal {
+        if (data.amount == 0) {
+            return;
+        }
         ISavingsDai(SDAI).withdraw(data.amount, address(this), address(this));
         emit SparkSupplyExitFuse(VERSION, data.amount);
     }

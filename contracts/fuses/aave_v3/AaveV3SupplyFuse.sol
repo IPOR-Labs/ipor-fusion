@@ -71,12 +71,17 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
+
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
         _exit(AaveV3SupplyFuseExitData(asset, amount));
     }
 
     function _enter(AaveV3SupplyFuseEnterData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
             revert AaveV3SupplyFuseUnsupportedAsset("enter", data_.asset);
         }
@@ -93,6 +98,10 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _exit(AaveV3SupplyFuseExitData memory data) internal {
+        if (data.amount == 0) {
+            return;
+        }
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.asset)) {
             revert AaveV3SupplyFuseUnsupportedAsset("exit", data.asset);
         }

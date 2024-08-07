@@ -20,6 +20,8 @@ struct MorphoBlueSupplyFuseEnterData {
     bytes32 morphoBlueMarketId;
     // max amount to supply
     uint256 amount;
+    // Data to be passed to the callback and execute inside the execute function
+    bytes callbackData;
 }
 
 struct MorphoBlueSupplyFuseExitData {
@@ -29,7 +31,8 @@ struct MorphoBlueSupplyFuseExitData {
     uint256 amount;
 }
 
-contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
+// TODO Not production ready yet
+contract MorphoBlueSupplyWithCallBackDataFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
     using MorphoBalancesLib for IMorpho;
@@ -92,7 +95,7 @@ contract MorphoBlueSupplyFuse is IFuse, IFuseInstantWithdraw {
 
         ERC20(marketParams.loanToken).forceApprove(address(MORPHO), data_.amount);
 
-        (uint256 assetsSupplied, ) = MORPHO.supply(marketParams, data_.amount, 0, address(this), bytes(""));
+        (uint256 assetsSupplied, ) = MORPHO.supply(marketParams, data_.amount, 0, address(this), data_.callbackData);
 
         emit MorphoBlueSupplyEnterFuse(VERSION, marketParams.loanToken, data_.morphoBlueMarketId, assetsSupplied);
     }

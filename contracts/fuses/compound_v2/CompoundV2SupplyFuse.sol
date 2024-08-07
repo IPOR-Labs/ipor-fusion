@@ -56,6 +56,10 @@ contract CompoundV2SupplyFuse is IFuse {
     }
 
     function _enter(CompoundV2SupplyFuseEnterData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         CErc20 cToken = CErc20(_getCToken(MARKET_ID, data_.asset));
 
         ERC20(data_.asset).forceApprove(address(cToken), data_.amount);
@@ -66,6 +70,10 @@ contract CompoundV2SupplyFuse is IFuse {
     }
 
     function _exit(CompoundV2SupplyFuseExitData memory data_) internal {
+        if (data_.amount == 0) {
+            return;
+        }
+
         CErc20 cToken = CErc20(_getCToken(MARKET_ID, data_.asset));
 
         uint256 balance = cToken.balanceOfUnderlying(address(this));
