@@ -42,26 +42,28 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
         }
 
         uint256 balance;
+        uint256 stakedLPTokenBalance;
         uint256 withdrawTokenAmount; // underlying asset of the vault amount to withdraw from LP
         address vaultUnderlyingAsset = IERC4626(plasmaVault_).asset(); // Plasma Vault asset
-        IChildLiquidityGauge childLiquidityGauge;
         address stakedLpTokenAddress;
         address lpTokenAddress; // Curve LP token
         int128 indexCoin; // index of the underlying asset in the Curve pool
 
         for (uint256 i; i < len; ++i) {
             stakedLpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
-            childLiquidityGauge = IChildLiquidityGauge(stakedLpTokenAddress);
-            lpTokenAddress = childLiquidityGauge.lp_token();
+            lpTokenAddress = IChildLiquidityGauge(stakedLpTokenAddress).lp_token();
             indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), vaultUnderlyingAsset);
-            withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
-                ERC20(lpTokenAddress).balanceOf(address(childLiquidityGauge)),
-                indexCoin
-            );
-            balance += IporMath.convertToWad(
-                withdrawTokenAmount * PRICE_ORACLE.getAssetPrice(vaultUnderlyingAsset),
-                ERC20(IERC4626(plasmaVault_).asset()).decimals() + PRICE_DECIMALS
-            );
+            stakedLPTokenBalance = ERC20(stakedLpTokenAddress).balanceOf(plasmaVault_);
+            if (stakedLPTokenBalance > 0) {
+                withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
+                    stakedLPTokenBalance,
+                    indexCoin
+                );
+                balance += IporMath.convertToWad(
+                    withdrawTokenAmount * PRICE_ORACLE.getAssetPrice(vaultUnderlyingAsset),
+                    ERC20(IERC4626(plasmaVault_).asset()).decimals() + PRICE_DECIMALS
+                );
+            }
         }
         return balance;
     }

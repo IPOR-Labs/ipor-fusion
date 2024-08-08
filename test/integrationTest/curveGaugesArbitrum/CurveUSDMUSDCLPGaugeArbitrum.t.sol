@@ -403,9 +403,276 @@ contract CurveUSDMUSDCLPGaugeArbitrum is Test {
         uint256 amount = 1_000 * 10 ** ERC20(asset).decimals();
         _depositIntoVaultAndProvideLiquidityToCurvePool(amount);
         PlasmaVaultState memory vaultStateAfterEnterCurvePool = getPlasmaVaultState();
+        _executeCurveChildLiquidityGaugeSupplyFuseEnter(
+            curveChildLiquidityGaugeSupplyFuse,
+            CURVE_LIQUIDITY_GAUGE,
+            CURVE_STABLESWAP_NG_POOL,
+            vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
+            true
+        );
+        PlasmaVaultState memory vaultStateBeforeExitCurveGauge = getPlasmaVaultState();
+
+        // when
+        _executeCurveChildLiquidityGaugeSupplyFuseExit(
+            curveChildLiquidityGaugeSupplyFuse,
+            CURVE_LIQUIDITY_GAUGE,
+            CURVE_STABLESWAP_NG_POOL,
+            vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
+            true
+        );
+
+        PlasmaVaultState memory vaultStateAfterExitCurveGauge = getPlasmaVaultState();
+
+        // then
+        assertEq(vaultStateBeforeExitCurveGauge.vaultBalance, 0, "Vault Balance should be 0 before exit curve gauge");
+        assertEq(vaultStateAfterExitCurveGauge.vaultBalance, 0, "Vault Balance should be 0 after exit curve gauge");
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultBalance,
+            vaultStateAfterExitCurveGauge.vaultBalance,
+            "Vault balance should be the same before and after exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            999894124676249419596,
+            "Vault total assets in curve pool should be 999894124676249419596 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
+            999894124676249419596,
+            "Vault total assets in curve pool should be 999894124676249419596 after exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
+            "Vault total assets in curve pool should be the same before and after exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInGauge,
+            999894124676249419596,
+            "Vault total assets in gauge should be 999894124676249419596 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInGauge,
+            0,
+            "Vault total assets in gauge should be 0 after exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultLpTokensBalance,
+            0,
+            "Vault LP tokens balance should be 0 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultLpTokensBalance,
+            996561228119407211058,
+            "Vault LP tokens balance should be 996561228119407211058 after exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
+            996561228119407211058,
+            "Vault staked LP tokens balance should be 996561228119407211058 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultStakedLpTokensBalance,
+            0,
+            "Vault staked LP tokens balance should be 0 after exit curve gauge"
+        );
     }
-    /// testShouldNotBeAbleToExitCurveChildLiquidityGaugeSupplyFuseWithUnsupportedLPToken
-    /// testShouldNotBeAbleToExitCurveChildLiquidityGaugeSupplyFuseWithZeroWithdrawAmount
+
+    function testShouldNotBeAbleToExitCurveChildLiquidityGaugeSupplyFuseWithUnsupportedGauge() public {
+        // given
+        uint256 amount = 1_000 * 10 ** ERC20(asset).decimals();
+        _depositIntoVaultAndProvideLiquidityToCurvePool(amount);
+        PlasmaVaultState memory vaultStateAfterEnterCurvePool = getPlasmaVaultState();
+        _executeCurveChildLiquidityGaugeSupplyFuseEnter(
+            curveChildLiquidityGaugeSupplyFuse,
+            CURVE_LIQUIDITY_GAUGE,
+            CURVE_STABLESWAP_NG_POOL,
+            vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
+            true
+        );
+        PlasmaVaultState memory vaultStateBeforeExitCurveGauge = getPlasmaVaultState();
+
+        // when
+        address unsupportedLPToken = 0xB08FEf57bFcc5f7bF0EF69C0c090849d497C8F8A;
+        bytes memory error = abi.encodeWithSignature(
+            "CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address)",
+            unsupportedLPToken
+        );
+        vm.expectRevert(error);
+        _executeCurveChildLiquidityGaugeSupplyFuseExit(
+            curveChildLiquidityGaugeSupplyFuse,
+            IChildLiquidityGauge(unsupportedLPToken),
+            CURVE_STABLESWAP_NG_POOL,
+            vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
+            false
+        );
+        PlasmaVaultState memory vaultStateAfterExitCurveGauge = getPlasmaVaultState();
+
+        // then
+        assertEq(vaultStateBeforeExitCurveGauge.vaultBalance, 0, "Vault Balance should be 0 before exit curve gauge");
+        assertEq(vaultStateAfterExitCurveGauge.vaultBalance, 0, "Vault Balance should be 0 after exit curve gauge");
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultBalance,
+            vaultStateAfterExitCurveGauge.vaultBalance,
+            "Vault balance should be the same before and after exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            999894124676249419596,
+            "Vault total assets in curve pool should be 999894124676249419596 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
+            999894124676249419596,
+            "Vault total assets in curve pool should be 999894124676249419596 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
+            "Vault total assets in curve pool should be the same before and after failt to exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInGauge,
+            999894124676249419596,
+            "Vault total assets in gauge should be 999894124676249419596 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInGauge,
+            999894124676249419596,
+            "Vault total assets in gauge should be 999894124676249419596 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInGauge,
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInGauge,
+            "Vault total assets in gauge should be the same before and after fail to exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultLpTokensBalance,
+            0,
+            "Vault LP tokens balance should be 0 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultLpTokensBalance,
+            0,
+            "Vault LP tokens balance should be 0 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
+            996561228119407211058,
+            "Vault staked LP tokens balance should be 996561228119407211058 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultStakedLpTokensBalance,
+            996561228119407211058,
+            "Vault staked LP tokens balance should be 996561228119407211058 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
+            vaultStateAfterExitCurveGauge.vaultStakedLpTokensBalance,
+            "Vault staked LP tokens balance should be the same before and after fail to exit Curve gauge"
+        );
+    }
+
+    function testShouldNotBeAbleToExitCurveChildLiquidityGaugeSupplyFuseWithZeroWithdrawAmount() public {
+        // given
+        uint256 amount = 1_000 * 10 ** ERC20(asset).decimals();
+        _depositIntoVaultAndProvideLiquidityToCurvePool(amount);
+        PlasmaVaultState memory vaultStateAfterEnterCurvePool = getPlasmaVaultState();
+        _executeCurveChildLiquidityGaugeSupplyFuseEnter(
+            curveChildLiquidityGaugeSupplyFuse,
+            CURVE_LIQUIDITY_GAUGE,
+            CURVE_STABLESWAP_NG_POOL,
+            vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
+            true
+        );
+        PlasmaVaultState memory vaultStateBeforeExitCurveGauge = getPlasmaVaultState();
+
+        // when
+        bytes memory error = abi.encodeWithSignature("CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount()");
+        vm.expectRevert(error);
+        _executeCurveChildLiquidityGaugeSupplyFuseExit(
+            curveChildLiquidityGaugeSupplyFuse,
+            CURVE_LIQUIDITY_GAUGE,
+            CURVE_STABLESWAP_NG_POOL,
+            0,
+            false
+        );
+
+        PlasmaVaultState memory vaultStateAfterExitCurveGauge = getPlasmaVaultState();
+
+        // then
+        assertEq(vaultStateBeforeExitCurveGauge.vaultBalance, 0, "Vault Balance should be 0 before exit curve gauge");
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultBalance,
+            0,
+            "Vault Balance should be 0 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultBalance,
+            vaultStateAfterExitCurveGauge.vaultBalance,
+            "Vault balance should be the same before and after exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            999894124676249419596,
+            "Vault total assets in curve pool should be 999894124676249419596 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
+            999894124676249419596,
+            "Vault total assets in curve pool should be 999894124676249419596 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
+            "Vault total assets in curve pool should be the same before and after failt to exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInGauge,
+            999894124676249419596,
+            "Vault total assets in gauge should be 999894124676249419596 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInGauge,
+            999894124676249419596,
+            "Vault total assets in gauge should be 999894124676249419596 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInGauge,
+            vaultStateAfterExitCurveGauge.vaultTotalAssetsInGauge,
+            "Vault total assets in gauge should be the same before and after fail to exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultLpTokensBalance,
+            0,
+            "Vault LP tokens balance should be 0 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultLpTokensBalance,
+            0,
+            "Vault LP tokens balance should be 0 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultLpTokensBalance,
+            vaultStateAfterExitCurveGauge.vaultLpTokensBalance,
+            "Vault staked LP tokens balance should be the same before and after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
+            996561228119407211058,
+            "Vault staked LP tokens balance should be 996561228119407211058 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultStakedLpTokensBalance,
+            996561228119407211058,
+            "Vault staked LP tokens balance should be 996561228119407211058 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
+            vaultStateAfterExitCurveGauge.vaultStakedLpTokensBalance,
+            "Vault staked LP tokens balance should be the same before and after fail to exit Curve gauge"
+        );
+    }
 
     /// SETUP HELPERS
 
@@ -666,7 +933,37 @@ contract CurveUSDMUSDCLPGaugeArbitrum is Test {
             emit CurveChildLiquidityGaugeSupplyFuseEnter(address(fuseInstance), lpToken, amount);
         }
 
-        // Perform the operation
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+    }
+
+    function _executeCurveChildLiquidityGaugeSupplyFuseExit(
+        CurveChildLiquidityGaugeSupplyFuse fuseInstance,
+        IChildLiquidityGauge curveGauge,
+        address lpToken,
+        uint256 amount,
+        bool success
+    ) internal {
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(fuseInstance),
+            abi.encodeWithSignature(
+                "exit(bytes)",
+                abi.encode(
+                    CurveChildLiquidityGaugeSupplyFuseExitData({
+                        childLiquidityGauge: curveGauge,
+                        lpToken: lpToken,
+                        amount: amount
+                    })
+                )
+            )
+        );
+
+        if (success) {
+            vm.expectEmit(true, true, true, true);
+            emit CurveChildLiquidityGaugeSupplyFuseExit(address(fuseInstance), lpToken, amount);
+        }
+
         vm.prank(alpha);
         plasmaVault.execute(calls);
     }
