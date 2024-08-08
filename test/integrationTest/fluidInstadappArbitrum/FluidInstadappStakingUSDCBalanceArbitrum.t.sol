@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -12,6 +13,7 @@ import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626Balanc
 import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
 import {FluidInstadappStakingSupplyFuseExitData, FluidInstadappStakingSupplyFuseEnterData, FluidInstadappStakingSupplyFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol";
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 import {AaveV3SupplyFuse} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
@@ -132,9 +134,35 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         balanceFuses[2] = MarketBalanceFuseConfig(IporFusionMarketsArbitrum.AAVE_V3, address(aaveFuseBalance));
     }
 
+    function setupInstantWithdrawFusesOrder() internal {
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
+
+        bytes32[] memory instantWithdrawParamsFluidStakingFUsdc = new bytes32[](2);
+        instantWithdrawParamsFluidStakingFUsdc[0] = 0;
+        instantWithdrawParamsFluidStakingFUsdc[1] = PlasmaVaultConfigLib.addressToBytes32(FLUID_LENDING_STAKING_REWARDS);
+
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
+            fuse: fuses[1],
+            params: instantWithdrawParamsFluidStakingFUsdc
+        });
+
+        bytes32[] memory instantWithdrawParamsFluidFUsdc = new bytes32[](2);
+        instantWithdrawParamsFluidFUsdc[0] = 0;
+        instantWithdrawParamsFluidFUsdc[1] = PlasmaVaultConfigLib.addressToBytes32(F_TOKEN);
+
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
+            fuse: fuses[0],
+            params: instantWithdrawParamsFluidFUsdc
+        });
+
+
+        vm.prank(getOwner());
+        PlasmaVault(plasmaVault).configureInstantWithdrawalFuses(instantWithdrawFuses);
+    }
+
     function getEnterFuseData(
         uint256 amount_,
-        //solhint-disable-next-line
+    //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, amount: amount_});
@@ -149,7 +177,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
     function getExitFuseData(
         uint256 amount_,
-        //solhint-disable-next-line
+    //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         FluidInstadappStakingSupplyFuseExitData memory exitDataStaking = FluidInstadappStakingSupplyFuseExitData({
@@ -386,6 +414,71 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
             amountDepositedToAave,
             "assetInAaveV3After should be equal to amountDepositedToAave"
         );
+    }
+
+    function testShouldInstantWithdrawFluid() public {
+        // given
+        address userOne = address(0x123);
+
+        uint256 depositAmount = 5_000 * 10 ** (ERC20(USDC).decimals());
+
+        vm.prank(0x47c031236e19d024b42f8AE6780E44A573170703);
+        ERC20(USDC).transfer(address(userOne), 2 * depositAmount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), depositAmount);
+
+        vm.prank(userOne);
+        PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        calls[0] = FuseAction(
+            address(fuses[0]),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(Erc4626SupplyFuseEnterData({vault: F_TOKEN, amount: depositAmount}))
+            )
+        );
+
+        calls[1] = FuseAction(
+            address(fuses[1]),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(FluidInstadappStakingSupplyFuseEnterData({
+                    stakingPool: FLUID_LENDING_STAKING_REWARDS,
+                    fluidTokenAmount: depositAmount
+                }))
+            )
+        );
+
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(calls);
+
+        uint256 userOneMaxWithdraw = PlasmaVault(plasmaVault).maxWithdraw(userOne);
+
+        uint256 vaultStakingFTokenBalanceBefore = ERC20(FLUID_LENDING_STAKING_REWARDS).balanceOf(plasmaVault);
+        uint256 vaultFTokenBalanceBefore = ERC20(F_TOKEN).balanceOf(plasmaVault);
+
+        setupInstantWithdrawFusesOrder();
+
+        // when
+        vm.startPrank(userOne);
+        PlasmaVault(plasmaVault).withdraw(userOneMaxWithdraw, userOne, userOne);
+        vm.stopPrank();
+
+        // then
+        uint256 userBalanceAfter = ERC20(USDC).balanceOf(userOne);
+        uint256 vaultStakingFTokenBalanceAfter = ERC20(FLUID_LENDING_STAKING_REWARDS).balanceOf(plasmaVault);
+        uint256 vaultFTokenBalanceAfter = ERC20(F_TOKEN).balanceOf(plasmaVault);
+
+        ///@dev user lost maintenance fee
+        assertEq(userBalanceAfter, 9999999999);
+        assertEq(vaultStakingFTokenBalanceBefore, 4994839265, "vaultStakingFTokenBalanceBefore");
+        assertEq(vaultStakingFTokenBalanceAfter, 0, "vaultStakingFTokenBalanceAfter");
+        assertEq(vaultFTokenBalanceBefore, 0, "vaultFTokenBalanceBefore");
+        assertEq(vaultFTokenBalanceAfter, 0, "vaultFTokenBalanceAfter");
+
     }
 
     function generateExitCallsData(
