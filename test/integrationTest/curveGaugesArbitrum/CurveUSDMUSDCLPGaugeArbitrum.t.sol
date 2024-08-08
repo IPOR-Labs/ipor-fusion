@@ -691,7 +691,7 @@ contract CurveUSDMUSDCLPGaugeArbitrum is Test {
     }
 
     function getMarketId() public view returns (uint256) {
-        return IporFusionMarketsArbitrum.CURVE_USDM_USDC_LP_GAUGE;
+        return IporFusionMarketsArbitrum.CURVE_LP_GAUGE;
     }
 
     function _setupAsset() public {
@@ -786,23 +786,20 @@ contract CurveUSDMUSDCLPGaugeArbitrum is Test {
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
         bytes32[] memory substratesCurvePool = new bytes32[](1);
         substratesCurvePool[0] = PlasmaVaultConfigLib.addressToBytes32(CURVE_STABLESWAP_NG_POOL);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.CURVE_USDM_USDC_LP, substratesCurvePool);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.CURVE_POOL, substratesCurvePool);
 
         bytes32[] memory substratesCurveGauge = new bytes32[](1);
         substratesCurveGauge[0] = PlasmaVaultConfigLib.addressToBytes32(CHILD_LIQUIDITY_GAUGE);
-        marketConfigs[1] = MarketSubstratesConfig(
-            IporFusionMarketsArbitrum.CURVE_USDM_USDC_LP_GAUGE,
-            substratesCurveGauge
-        );
+        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarketsArbitrum.CURVE_LP_GAUGE, substratesCurveGauge);
         return marketConfigs;
     }
 
     function _setupFuses() private {
         curveStableswapNGSingleSideSupplyFuse = new CurveStableswapNGSingleSideSupplyFuse(
-            IporFusionMarketsArbitrum.CURVE_USDM_USDC_LP
+            IporFusionMarketsArbitrum.CURVE_POOL
         );
         curveChildLiquidityGaugeSupplyFuse = new CurveChildLiquidityGaugeSupplyFuse(
-            IporFusionMarketsArbitrum.CURVE_USDM_USDC_LP_GAUGE
+            IporFusionMarketsArbitrum.CURVE_LP_GAUGE
         );
         fuses = new address[](2);
         fuses[0] = address(curveStableswapNGSingleSideSupplyFuse);
@@ -811,22 +808,22 @@ contract CurveUSDMUSDCLPGaugeArbitrum is Test {
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         CurveStableswapNGSingleSideBalanceFuse curveStableswapNGBalanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-                IporFusionMarketsArbitrum.CURVE_USDM_USDC_LP,
+                IporFusionMarketsArbitrum.CURVE_POOL,
                 address(priceOracleMiddlewareProxy)
             );
 
         CurveChildLiquidityGaugeBalanceFuse curveChildLiquidityGaugeBalanceFuse = new CurveChildLiquidityGaugeBalanceFuse(
-                IporFusionMarketsArbitrum.CURVE_USDM_USDC_LP_GAUGE,
+                IporFusionMarketsArbitrum.CURVE_LP_GAUGE,
                 address(priceOracleMiddlewareProxy)
             );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);
         balanceFuses[0] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.CURVE_USDM_USDC_LP,
+            IporFusionMarketsArbitrum.CURVE_POOL,
             address(curveStableswapNGBalanceFuse)
         );
         balanceFuses[1] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.CURVE_USDM_USDC_LP_GAUGE,
+            IporFusionMarketsArbitrum.CURVE_LP_GAUGE,
             address(curveChildLiquidityGaugeBalanceFuse)
         );
     }

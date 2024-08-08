@@ -14,7 +14,11 @@ library IporFusionMarketsArbitrum {
     uint256 public constant GEARBOX_POOL_V3 = 3;
     uint256 public constant GEARBOX_FARM_DTOKEN_V3 = 4;
 
+    /// @dev Fluid Instadapp market
+    uint256 public constant FLUID_INSTADAPP_POOL = 5;
+    uint256 public constant FLUID_INSTADAPP_STAKING = 6;
+
     /// @dev Curve USDM/USDC/LP market
-    uint256 public constant CURVE_USDM_USDC_LP = 5;
-    uint256 public constant CURVE_USDM_USDC_LP_GAUGE = 6;
+    uint256 public constant CURVE_POOL = 7;
+    uint256 public constant CURVE_LP_GAUGE = 8;
 }
