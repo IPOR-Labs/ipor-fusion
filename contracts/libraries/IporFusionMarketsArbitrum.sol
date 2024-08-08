@@ -13,4 +13,8 @@ library IporFusionMarketsArbitrum {
     /// @dev Gearbox V3 market
     uint256 public constant GEARBOX_POOL_V3 = 3;
     uint256 public constant GEARBOX_FARM_DTOKEN_V3 = 4;
+
+    /// @dev Fluid Instadapp market
+    uint256 public constant FLUID_INSTADAPP_POOL = 5;
+    uint256 public constant FLUID_INSTADAPP_STAKING = 6;
 }
