@@ -11,17 +11,17 @@ import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 struct Erc4626SupplyFuseEnterData {
-    /// @dev vault address
+    /// @dev ERC4626 vault address
     address vault;
-    /// @dev max amount to supply
-    uint256 amount;
+    /// @dev amount to supply, this is amount of underlying asset in the given ERC4626 vault
+    uint256 vaultAssetAmount;
 }
 
 struct Erc4626SupplyFuseExitData {
-    /// @dev vault address
+    /// @dev ERC4626 vault address
     address vault;
-    /// @dev max amount to withdraw
-    uint256 amount;
+    /// @dev amount to withdraw, this is amount of underlying asset in the given ERC4626 vault
+    uint256 vaultAssetAmount;
 }
 
 // https://github.com/morpho-org/metamorpho
@@ -72,7 +72,7 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     }
 
     function _enter(Erc4626SupplyFuseEnterData memory data_) internal {
-        if (data_.amount == 0) {
+        if (data_.vaultAssetAmount == 0) {
             return;
         }
 
@@ -81,15 +81,25 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
         }
 
         address underlineAsset = IERC4626(data_.vault).asset();
-        ERC20(underlineAsset).forceApprove(data_.vault, data_.amount);
 
-        IERC4626(data_.vault).deposit(data_.amount, address(this));
+        uint256 finalVaultAssetAmount = IporMath.min(
+            data_.vaultAssetAmount,
+            IERC4626(underlineAsset).balanceOf(address(this))
+        );
 
-        emit Erc4626SupplyEnterFuse(VERSION, underlineAsset, data_.vault, data_.amount);
+        if (finalVaultAssetAmount == 0) {
+            return;
+        }
+
+        ERC20(underlineAsset).forceApprove(data_.vault, finalVaultAssetAmount);
+
+        IERC4626(data_.vault).deposit(finalVaultAssetAmount, address(this));
+
+        emit Erc4626SupplyEnterFuse(VERSION, underlineAsset, data_.vault, finalVaultAssetAmount);
     }
 
     function _exit(Erc4626SupplyFuseExitData memory data_) internal {
-        if (data_.amount == 0) {
+        if (data_.vaultAssetAmount == 0) {
             return;
         }
 
@@ -97,15 +107,16 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
             revert Erc4626SupplyFuseUnsupportedVault("exit", data_.vault);
         }
 
-        uint256 vaultBalanceAssets = IERC4626(data_.vault).convertToAssets(
-            IERC4626(data_.vault).balanceOf(address(this))
+        uint256 finalVaultAssetAmount = IporMath.min(
+            data_.vaultAssetAmount,
+            IERC4626(data_.vault).convertToAssets(IERC4626(data_.vault).balanceOf(address(this)))
         );
 
-        uint256 shares = IERC4626(data_.vault).withdraw(
-            IporMath.min(data_.amount, vaultBalanceAssets),
-            address(this),
-            address(this)
-        );
+        if (finalVaultAssetAmount == 0) {
+            return;
+        }
+
+        uint256 shares = IERC4626(data_.vault).withdraw(finalVaultAssetAmount, address(this), address(this));
 
         emit Erc4626SupplyExitFuse(VERSION, IERC4626(data_.vault).asset(), data_.vault, shares);
     }

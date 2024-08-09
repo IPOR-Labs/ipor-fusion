@@ -165,7 +165,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
     //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, amount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: amount_});
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
             fluidTokenAmount: amount_
@@ -201,7 +201,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            amount: depositAmount
+            vaultAssetAmount: depositAmount
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
@@ -260,7 +260,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            amount: depositAmount
+            vaultAssetAmount: depositAmount
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaked = FluidInstadappStakingSupplyFuseEnterData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
@@ -331,7 +331,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            amount: depositAmount
+            vaultAssetAmount: depositAmount
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
@@ -437,7 +437,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
             address(fuses[0]),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(Erc4626SupplyFuseEnterData({vault: F_TOKEN, amount: depositAmount}))
+                abi.encode(Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: depositAmount}))
             )
         );
 
