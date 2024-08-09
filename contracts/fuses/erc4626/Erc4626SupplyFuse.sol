@@ -29,8 +29,8 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
-    event Erc4626SupplyEnterFuse(address version, address asset, address market, uint256 amount);
-    event Erc4626SupplyExitFuse(address version, address asset, address market, uint256 amount);
+    event Erc4626SupplyEnterFuse(address version, address asset, address vault, uint256 vaultAssetAmount);
+    event Erc4626SupplyExitFuse(address version, address asset, address vault, uint256 vaultAssetAmount, uint256 shares);
 
     error Erc4626SupplyFuseUnsupportedVault(string action, address asset);
 
@@ -118,6 +118,6 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
 
         uint256 shares = IERC4626(data_.vault).withdraw(finalVaultAssetAmount, address(this), address(this));
 
-        emit Erc4626SupplyExitFuse(VERSION, IERC4626(data_.vault).asset(), data_.vault, shares);
+        emit Erc4626SupplyExitFuse(VERSION, IERC4626(data_.vault).asset(), data_.vault, finalVaultAssetAmount, shares);
     }
 }
