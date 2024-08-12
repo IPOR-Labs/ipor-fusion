@@ -703,57 +703,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         ERC20(asset_).transfer(account_, amount_);
     }
 
-    function getEnterFuseData(
-        uint256 amount_, // amount of tokens (USDM) to supply
-        //solhint-disable-next-line
-        bytes32[] memory data_
-    ) public view virtual returns (bytes[] memory data) {
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0; // USDC
-        amounts[1] = amount_; // USDM
-        CurveStableswapNGSingleSideSupplyFuseEnterData
-            memory enterData = CurveStableswapNGSingleSideSupplyFuseEnterData({
-                curveStableswapNG: CURVE_STABLESWAP_NG,
-                asset: USDM,
-                amount: amounts[1],
-                minMintAmount: 0
-            });
-        CurveChildLiquidityGaugeSupplyFuseEnterData
-            memory enterDataGauge = CurveChildLiquidityGaugeSupplyFuseEnterData({
-                childLiquidityGauge: CURVE_LIQUIDITY_GAUGE,
-                lpToken: CURVE_STABLESWAP_NG_POOL,
-                amount: CURVE_STABLESWAP_NG.calc_token_amount(amounts, true) // LP tokens to stake
-            });
-        data = new bytes[](2);
-        data[0] = abi.encode(enterData);
-        data[1] = abi.encode(enterDataGauge);
-    }
-
-    function getExitFuseData(
-        uint256 amount_, // amount of LP tokens to burn
-        //solhint-disable-next-line
-        bytes32[] memory data_
-    ) public view virtual returns (address[] memory fusesSetup, bytes[] memory data) {
-        CurveStableswapNGSingleSideSupplyFuseExitData memory exitData = CurveStableswapNGSingleSideSupplyFuseExitData({
-            curveStableswapNG: CURVE_STABLESWAP_NG,
-            burnAmount: amount_,
-            asset: USDM,
-            minReceived: 0
-        });
-        CurveChildLiquidityGaugeSupplyFuseExitData memory exitDataGauge = CurveChildLiquidityGaugeSupplyFuseExitData({
-            childLiquidityGauge: CURVE_LIQUIDITY_GAUGE,
-            lpToken: CURVE_STABLESWAP_NG_POOL,
-            amount: amount_
-        });
-        data = new bytes[](2);
-        data[1] = abi.encode(exitData);
-        data[0] = abi.encode(exitDataGauge);
-
-        fusesSetup = new address[](2);
-        fusesSetup[0] = address(curveStableswapNGSingleSideSupplyFuse);
-        fusesSetup[1] = address(curveChildLiquidityGaugeSupplyFuse);
-    }
-
     /// SETUP INIT FUNCTIONS
 
     function _createAccessManager() private {
