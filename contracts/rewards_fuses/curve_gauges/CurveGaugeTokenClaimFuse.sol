@@ -13,13 +13,12 @@ contract CurveGaugeTokenClaimFuse {
     event CurveGaugeTokenClaimFuseRewardsClaimed(
         address version,
         address gauge,
-        address rewardsToken,
-        uint256 rewardsTokenBalance,
+        address[] rewardsTokens,
+        uint256[] rewardsTokenBalances,
         address rewardsClaimManager
     );
 
     error CurveGaugeTokenClaimFuseRewardsClaimManagerZeroAddress(address version);
-    error CurveGaugeInvalidGauge(address gauge);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -28,6 +27,7 @@ contract CurveGaugeTokenClaimFuse {
         VERSION = address(this);
         MARKET_ID = marketId_;
     }
+
     function claim() external {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 len = substrates.length;
@@ -36,30 +36,46 @@ contract CurveGaugeTokenClaimFuse {
             return;
         }
 
+        address rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
         address curveGauge;
         uint256 rewardCount;
-        uint256 rewardsToken;
-        uint256 rewardsTokenBalance;
-        address rewardsClaimManager;
+        uint256 totalClaimable;
+        address[] memory rewardsTokens;
+        uint256[] memory rewardsTokenBalances;
+
+        if (rewardsClaimManager == address(0)) {
+            revert CurveGaugeTokenClaimFuseRewardsClaimManagerZeroAddress(VERSION);
+        }
 
         for (uint256 i; i < len; ++i) {
             curveGauge = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
             rewardCount = IChildLiquidityGauge(curveGauge).reward_count();
+            if (rewardCount == 0) {
+                continue;
+            }
+            rewardsTokens = new address[](rewardCount);
+            rewardsTokenBalances = new uint256[](rewardCount);
             for (uint256 j; j < rewardCount; ++j) {
-                rewardsToken = IChildLiquidityGauge(curveGauge).reward_tokens(j);
-                rewardsTokenBalance = IChildLiquidityGauge(curveGauge).claimable_reward(address(this), rewardsToken);
+                rewardsTokens[j] = IChildLiquidityGauge(curveGauge).reward_tokens(j);
+                rewardsTokenBalances[j] = IChildLiquidityGauge(curveGauge).claimable_reward(
+                    address(this),
+                    rewardsTokens[j]
+                );
+                totalClaimable += rewardsTokenBalances[j];
+            }
+            if (totalClaimable > 0) {
                 IChildLiquidityGauge(curveGauge).claim_rewards(address(this), address(this));
-                rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
-                if (rewardsClaimManager == address(0)) {
-                    revert CurveGaugeTokenClaimFuseRewardsClaimManagerZeroAddress(VERSION);
+            }
+            for (uint256 j; j < rewardCount; ++j) {
+                if (rewardsTokenBalances[j] > 0) {
+                    IERC20(rewardsTokens[j]).safeTransfer(rewardsClaimManager, rewardsTokenBalances[j]);
                 }
-                IERC20(rewardsToken).safeTransfer(rewardsClaimManager, rewardsTokenBalance);
             }
             emit CurveGaugeTokenClaimFuseRewardsClaimed(
                 VERSION,
                 curveGauge,
-                rewardsToken,
-                rewardsTokenBalance,
+                rewardsTokens,
+                rewardsTokenBalances,
                 rewardsClaimManager
             );
         }
