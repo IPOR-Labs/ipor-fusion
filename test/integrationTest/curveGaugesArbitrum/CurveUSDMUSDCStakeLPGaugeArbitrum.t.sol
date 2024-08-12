@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
@@ -20,7 +20,7 @@ import {USDMPriceFeedArbitrum} from "../../../contracts/priceOracle/priceFeed/US
 import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
 import {IChronicle, IToll} from "../../../contracts/priceOracle/IChronicle.sol";
 
-contract CurveUSDMUSDCLPGaugeArbitrum is Test {
+contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
         uint256 vaultBalance;
         uint256 vaultTotalAssets;

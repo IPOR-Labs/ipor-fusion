@@ -215,7 +215,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     }
 
     function _getEnterFuseData(uint256 amount_) private view returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: D_USDC, amount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: D_USDC, vaultAssetAmount: amount_});
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_
@@ -234,7 +234,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            amount: depositAmount
+            vaultAssetAmount: depositAmount
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
