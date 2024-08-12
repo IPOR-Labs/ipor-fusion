@@ -73,7 +73,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: GEARBOX_V3_POOL,
-            amount: amount_
+            vaultAssetAmount: amount_
         });
         data = new bytes[](1);
         data[0] = abi.encode(enterData);
@@ -86,7 +86,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: GEARBOX_V3_POOL,
-            amount: amount_
+            vaultAssetAmount: amount_
         });
         data = new bytes[](1);
         data[0] = abi.encode(exitData);

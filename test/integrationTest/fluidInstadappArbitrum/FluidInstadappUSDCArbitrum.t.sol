@@ -71,7 +71,7 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, amount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: amount_});
         data = new bytes[](1);
         data[0] = abi.encode(enterData);
     }
@@ -81,7 +81,7 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
-        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: F_TOKEN, amount: amount_});
+        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: F_TOKEN, vaultAssetAmount: amount_});
         data = new bytes[](1);
         data[0] = abi.encode(exitData);
         fusesSetup = fuses;
