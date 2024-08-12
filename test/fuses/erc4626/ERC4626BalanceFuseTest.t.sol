@@ -53,7 +53,7 @@ contract ERC4646BalanceFuseTest is Test {
         uint256 balanceFromFuseBefore = vault.balanceOf(address(vault));
 
         // when
-        vault.enter(Erc4626SupplyFuseEnterData({vault: SDAI, amount: amount}));
+        vault.enter(Erc4626SupplyFuseEnterData({vault: SDAI, vaultAssetAmount: amount}));
 
         //then
         uint256 balanceAfter = IERC4626(SDAI).balanceOf(address(vault));
@@ -84,14 +84,14 @@ contract ERC4646BalanceFuseTest is Test {
 
         deal(DAI, address(vault), 1_000e18);
 
-        vault.enter(Erc4626SupplyFuseEnterData({vault: SDAI, amount: amount}));
+        vault.enter(Erc4626SupplyFuseEnterData({vault: SDAI, vaultAssetAmount: amount}));
 
         uint256 balanceBeforeWithdraw = IERC4626(SDAI).balanceOf(address(vault));
         uint256 balanceFromFuseBeforeWithdraw = vault.balanceOf(address(vault));
 
         // when
         vault.exit(
-            Erc4626SupplyFuseExitData({vault: SDAI, amount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw)})
+            Erc4626SupplyFuseExitData({vault: SDAI, vaultAssetAmount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw)})
         );
 
         // then
