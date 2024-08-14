@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import "forge-std/console2.sol";
-
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {BorrowTest} from "../supplyFuseTemplate/BorrowTests.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
@@ -13,9 +11,8 @@ import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceF
 import {IPriceOracleMiddleware} from "../../../contracts/priceOracle/IPriceOracleMiddleware.sol";
 
 contract AaveV3WstEthBorrowArbitrum is BorrowTest {
-
-    address private constant wETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address private constant wstETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+    address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address private constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address private constant CHAINLINK_ETH = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     address public constant AAVE_POOL_DATA_PROVIDER = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
@@ -31,11 +28,11 @@ contract AaveV3WstEthBorrowArbitrum is BorrowTest {
     }
 
     function setupAsset() public override {
-        asset = wETH;
+        asset = W_ETH;
     }
 
     function setupBorrowAsset() public override {
-        borrowAsset = wstETH;
+        borrowAsset = WST_ETH;
     }
 
     function dealAssets(address account_, uint256 amount_) public override {
@@ -46,16 +43,15 @@ contract AaveV3WstEthBorrowArbitrum is BorrowTest {
     function setupPriceOracle() public override returns (address[] memory assets, address[] memory sources) {
         assets = new address[](1);
         sources = new address[](1);
-        assets[0] = wETH;
+        assets[0] = W_ETH;
         sources[0] = CHAINLINK_ETH;
-
     }
 
     function setupMarketConfigs() public override returns (MarketSubstratesConfig[] memory marketConfigs) {
         marketConfigs = new MarketSubstratesConfig[](1);
         bytes32[] memory assets = new bytes32[](2);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(wETH);
-        assets[1] = PlasmaVaultConfigLib.addressToBytes32(wstETH);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(W_ETH);
+        assets[1] = PlasmaVaultConfigLib.addressToBytes32(WST_ETH);
         marketConfigs[0] = MarketSubstratesConfig(getMarketId(), assets);
     }
 
@@ -65,11 +61,14 @@ contract AaveV3WstEthBorrowArbitrum is BorrowTest {
         fuses = new address[](2);
         fuses[0] = address(fuseSupplyLoc);
         fuses[1] = address(fuseBorrowLoc);
-
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(getMarketId(), AAVE_PRICE_ORACLE, AAVE_POOL_DATA_PROVIDER);
+        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
+            getMarketId(),
+            AAVE_PRICE_ORACLE,
+            AAVE_POOL_DATA_PROVIDER
+        );
 
         balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(getMarketId(), address(aaveV3Balances));
@@ -77,7 +76,7 @@ contract AaveV3WstEthBorrowArbitrum is BorrowTest {
 
     function getEnterFuseData(
         uint256 amount_,
-    //solhint-disable-next-line
+        //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
         AaveV3SupplyFuseEnterData memory enterSupplyData = AaveV3SupplyFuseEnterData({
@@ -99,12 +98,15 @@ contract AaveV3WstEthBorrowArbitrum is BorrowTest {
 
     function getExitFuseData(
         uint256 amount_,
-    //solhint-disable-next-line
+        //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         AaveV3SupplyFuseExitData memory exitSupplyData = AaveV3SupplyFuseExitData({asset: asset, amount: amount_});
 
-        AaveV3BorrowFuseExitData memory exitBorrowData = AaveV3BorrowFuseExitData({asset: borrowAsset, amount: amount_});
+        AaveV3BorrowFuseExitData memory exitBorrowData = AaveV3BorrowFuseExitData({
+            asset: borrowAsset,
+            amount: amount_
+        });
 
         data = new bytes[](2);
 
@@ -125,31 +127,20 @@ contract AaveV3WstEthBorrowArbitrum is BorrowTest {
         address supplyFuse = fuses[0];
         address borrowFuse = fuses[1];
 
-        calls[0] = FuseAction(
-            supplyFuse,
-            abi.encodeWithSignature(
-                "enter(bytes)",
-                enterSupplyFuseData
-            )
-        );
+        calls[0] = FuseAction(supplyFuse, abi.encodeWithSignature("enter(bytes)", enterSupplyFuseData));
 
         bytes memory enterBorrowFuseData = getEnterFuseData(borrowAmount, new bytes32[](0))[1];
-        calls[1] = FuseAction(
-            borrowFuse,
-            abi.encodeWithSignature(
-                "enter(bytes)",
-                enterBorrowFuseData
-            )
-        );
+        calls[1] = FuseAction(borrowFuse, abi.encodeWithSignature("enter(bytes)", enterBorrowFuseData));
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
-        uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
 
         uint256 priceBorrowAsset = IPriceOracleMiddleware(AAVE_PRICE_ORACLE).getAssetPrice(borrowAsset) * 10 ** 18;
         uint256 priceDepositAsset = IPriceOracleMiddleware(priceOracle).getAssetPrice(asset) * 10 ** 18;
 
-        uint256 vaultBalanceInUnderlying = (depositAmount * priceDepositAsset / 10 ** 18 - borrowAmount * priceBorrowAsset / 10 ** 18) * 10 ** 18 / priceDepositAsset;
+        uint256 vaultBalanceInUnderlying = (((depositAmount * priceDepositAsset) /
+            10 ** 18 -
+            (borrowAmount * priceBorrowAsset) /
+            10 ** 18) * 10 ** 18) / priceDepositAsset;
 
         //when
         vm.prank(alpha);
@@ -180,36 +171,28 @@ contract AaveV3WstEthBorrowArbitrum is BorrowTest {
 
         calls[0] = FuseAction(
             fuses[0], /// @dev supply fuse
-            abi.encodeWithSignature(
-                "enter(bytes)",
-                enterSupplyFuseData
-            )
+            abi.encodeWithSignature("enter(bytes)", enterSupplyFuseData)
         );
 
         bytes memory enterBorrowFuseData = getEnterFuseData(borrowAmount, new bytes32[](0))[1];
 
         calls[1] = FuseAction(
             fuses[1], /// @dev borrow fuse
-            abi.encodeWithSignature(
-                "enter(bytes)",
-                enterBorrowFuseData
-            )
+            abi.encodeWithSignature("enter(bytes)", enterBorrowFuseData)
         );
 
         vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(calls);
 
-
         FuseAction[] memory exitCalls = new FuseAction[](1);
 
-        (address[] memory fusesSetup, bytes[] memory exitBorrowFuseData) = getExitFuseData(borrowAmount, new bytes32[](0));
+        bytes[] memory exitBorrowFuseData;
+
+        (, exitBorrowFuseData) = getExitFuseData(borrowAmount, new bytes32[](0));
 
         exitCalls[0] = FuseAction(
             fuses[1], /// @dev borrow fuse
-            abi.encodeWithSignature(
-                "exit(bytes)",
-                exitBorrowFuseData[1]
-            )
+            abi.encodeWithSignature("exit(bytes)", exitBorrowFuseData[1])
         );
 
         //when
@@ -226,6 +209,5 @@ contract AaveV3WstEthBorrowArbitrum is BorrowTest {
 
         assertEq(assetsInMarketAfter, depositAmount, "assetsInMarketBefore");
         assertEq(assetsInMarketBefore, 0, "assetsInMarketAfter");
-
     }
 }

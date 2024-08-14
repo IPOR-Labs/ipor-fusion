@@ -4,11 +4,8 @@ pragma solidity 0.8.20;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuse} from "../IFuse.sol";
 import {IPool} from "./ext/IPool.sol";
-import {IAavePoolDataProvider} from "./ext/IAavePoolDataProvider.sol";
-import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 struct AaveV3BorrowFuseEnterData {

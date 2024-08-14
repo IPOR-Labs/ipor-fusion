@@ -91,7 +91,10 @@ contract ERC4646BalanceFuseTest is Test {
 
         // when
         vault.exit(
-            Erc4626SupplyFuseExitData({vault: SDAI, vaultAssetAmount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw)})
+            Erc4626SupplyFuseExitData({
+                vault: SDAI,
+                vaultAssetAmount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw)
+            })
         );
 
         // then

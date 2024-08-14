@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
 import {TestAccountSetup} from "./TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "./TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "./TestVaultSetup.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
-
+import {MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 
 abstract contract BorrowTest is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {
     uint256 public constant ERROR_DELTA = 100;
