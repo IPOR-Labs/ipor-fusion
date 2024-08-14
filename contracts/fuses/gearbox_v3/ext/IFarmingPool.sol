@@ -15,4 +15,6 @@ interface IFarmingPool is IERC20 {
     function exit() external;
 
     function stakingToken() external view returns (address);
+
+    function rewardsToken() external view returns (address);
 }
