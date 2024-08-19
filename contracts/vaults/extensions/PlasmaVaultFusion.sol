@@ -42,15 +42,19 @@ abstract contract PlasmaVaultFusion is PlasmaVault, ERC20Permit {
     function _fallback() internal override returns (bytes memory) {
         console2.log("PlasmaVaultFusion._fallback, msg.sender=", msg.sender);
         console2.logBytes4(msg.sig);
-        return PlasmaVaultLib.getPlasmaVaultBaseAddress().functionDelegateCall(msg.data);
+        return PLASMA_VAULT_BASE.functionDelegateCall(msg.data);
     }
 
     function _update(address from_, address to_, uint256 value_) internal virtual override(ERC20) {
         super._update(from_, to_, value_);
         console2.log("PlasmaVaultFusion._update, to_=", to_);
         console2.log("PlasmaVaultFusion._update, value_=", value_);
+        console2.log("PlasmaVaultFusion._update, PLASMA_VAULT_BASE=", PLASMA_VAULT_BASE);
+        console2.log("PlasmaVaultFusion._update, address(this)=", address(this));
+        console2.log("PlasmaVaultFusion._update, totalSupply=", ERC20(address(this)).totalSupply());
+        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSignature("updateInternal(address,address,uint256)", from_, to_, value_));
 
-        PlasmaVaultLib.getPlasmaVaultBaseAddress().functionDelegateCall(abi.encodeWithSignature("updateInternal(address,address,uint256)", from_, to_, value_));
+
     }
 
 //

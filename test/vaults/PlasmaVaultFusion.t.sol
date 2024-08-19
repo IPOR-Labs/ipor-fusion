@@ -250,20 +250,20 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         vm.prank(owner);
         plasmaVault.deposit(amount, owner);
-//
-//        console2.log("test owner=", owner);
-//        console2.logBytes4(IVotes(address(plasmaVault)).delegate.selector);
-//        /// @dev Activate checkpoint
-//        vm.prank(owner);
-//        IVotes(address(plasmaVault)).delegate(owner);
-//        //        plasmaVault.delegate(owner);
-//
-//        //when
-//        //        uint256 votes = plasmaVault.getVotes(owner);
-//        uint256 votes = IVotes(address(plasmaVault)).getVotes(owner);
-//
-//        //then
-//        assertEq(votes, amount);
+
+        console2.log("test owner=", owner);
+        console2.logBytes4(IVotes(address(plasmaVault)).delegate.selector);
+        /// @dev Activate checkpoint
+        vm.prank(owner);
+        IVotes(address(plasmaVault)).delegate(owner);
+        //        plasmaVault.delegate(owner);
+
+        //when
+        //        uint256 votes = plasmaVault.getVotes(owner);
+        uint256 votes = IVotes(address(plasmaVault)).getVotes(owner);
+
+        //then
+        assertEq(votes, amount);
     }
     //
     //    function testERC20VotesShouldNOTShowVotes() public {

@@ -13,6 +13,7 @@ import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUt
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {AccessManaged} from "../managers/access/AccessManaged.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
@@ -25,8 +26,9 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManager.sol";
 import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
+import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 
-struct PlasmaVaultInitData {
+    struct PlasmaVaultInitData {
     string assetName;
     string assetSymbol;
     address underlyingToken;
@@ -79,7 +81,7 @@ struct FeeConfig {
 }
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, AccessManaged {
+abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGovernance {
     using Address for address;
     using SafeCast for int256;
     uint256 private constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
@@ -96,6 +98,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, AccessManaged 
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
+    address public immutable PLASMA_VAULT_BASE;
     bool private _customConsumingSchedule;
 
     constructor(
@@ -105,6 +108,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, AccessManaged 
         ERC4626(IERC20Metadata(initData_.underlyingToken))
         PlasmaVaultGovernance(initData_.accessManager)
     {
+
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData_.priceOracle);
 
         if (priceOracle.BASE_CURRENCY() != USD) {
@@ -141,10 +145,9 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, AccessManaged 
 
         PlasmaVaultLib.updateManagementFeeData();
 
-        PlasmaVaultStorageLib.getPlasmaVaultBaseAddress().value = initData_.plasmaVaultBase;
+        PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
+        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSignature("init()"));
 
-        /// TODO check init slot in ERC20Votes.
-        initData_.plasmaVaultBase.functionDelegateCall(abi.encodeWithSignature("init()"));
     }
 
     fallback(bytes calldata input) external returns (bytes memory) {
@@ -617,6 +620,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, AccessManaged 
 
     function _getGrossTotalAssets() internal view returns (uint256) {
         address rewardsClaimManagerAddress = getRewardsClaimManagerAddress();
+
         if (rewardsClaimManagerAddress != address(0)) {
             return
                 IERC20(asset()).balanceOf(address(this)) +
