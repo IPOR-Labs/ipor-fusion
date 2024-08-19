@@ -3,10 +3,6 @@ pragma solidity 0.8.20;
 
 /// @title Storage
 library PlasmaVaultStorageLib {
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultBaseAddress")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant PLASMA_VAULT_BASE_ADDRESS =
-        0x24e02552e88772b8e8fd15f3e6699ba530635ffc6b52322da922b0b497a77300;
-
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
         0x24e02552e88772b8e8fd15f3e6699ba530635ffc6b52322da922b0b497a77300;
@@ -63,12 +59,6 @@ library PlasmaVaultStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.callbackHandler")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CALLBACK_HANDLER = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e00;
-
-    /// @custom:storage-location erc7201:io.ipor.PlasmaVaultExtensionVotes
-    struct PlasmaVaultBaseAddress {
-        /// @dev total assets in the Plasma Vault
-        address value;
-    }
 
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
     struct RewardsClaimManagerAddress {
@@ -258,16 +248,6 @@ library PlasmaVaultStorageLib {
     function getMarketsLimits() internal pure returns (MarketLimits storage marketLimits) {
         assembly {
             marketLimits.slot := MARKET_LIMITS
-        }
-    }
-
-    function getPlasmaVaultBaseAddress()
-        internal
-        pure
-        returns (PlasmaVaultBaseAddress storage plasmaVaultBaseAddress_)
-    {
-        assembly {
-            plasmaVaultBaseAddress_.slot := PLASMA_VAULT_BASE_ADDRESS
         }
     }
 }

@@ -216,8 +216,4 @@ library PlasmaVaultLib {
     function isExecutionStarted() internal view returns (bool) {
         return PlasmaVaultStorageLib.getExecutionState().value == 1;
     }
-
-    function getPlasmaVaultBaseAddress() internal view returns (address) {
-        return PlasmaVaultStorageLib.getPlasmaVaultBaseAddress().value;
-    }
 }
