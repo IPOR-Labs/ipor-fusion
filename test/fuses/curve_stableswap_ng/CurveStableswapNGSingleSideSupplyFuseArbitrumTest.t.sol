@@ -15,6 +15,7 @@ import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {USDMPriceFeedArbitrum} from "./../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
 import {IChronicle, IToll} from "./../../../contracts/priceOracle/IChronicle.sol";
+import {PlasmaVaultBase} from "./../../../contracts/vaults/extensions/PlasmaVaultBase.sol";
 
 contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     struct PlasmaVaultState {
@@ -123,7 +124,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -210,7 +212,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -285,7 +288,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -357,7 +361,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -427,7 +432,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -503,7 +509,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -616,7 +623,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -723,7 +731,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -817,7 +826,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -914,7 +924,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 

@@ -21,6 +21,7 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVa
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {GearboxV3FarmDTokenClaimFuse} from "../../../contracts/rewards_fuses/gearbox_v3/GearboxV3FarmDTokenClaimFuse.sol";
 import {IFarmingPool} from "../../../contracts/fuses/gearbox_v3/ext/IFarmingPool.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/extensions/PlasmaVaultBase.sol";
 
 contract GearboxV3FarmdUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -72,7 +73,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                     fuses: _setupFuses(),
                     balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
-                    accessManager: _accessManager
+                    accessManager: _accessManager,
+                    plasmaVaultBase: address(new PlasmaVaultBase())
                 })
             )
         );
@@ -215,7 +217,10 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     }
 
     function _getEnterFuseData(uint256 amount_) private view returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: D_USDC, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
+            vault: D_USDC,
+            vaultAssetAmount: amount_
+        });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_

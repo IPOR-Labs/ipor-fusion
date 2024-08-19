@@ -17,6 +17,7 @@ import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigL
 import {IporFusionAccessManagerInitializerLibV1} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultFusionMock} from "../mocks/PlasmaVaultFusionMock.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/extensions/PlasmaVaultBase.sol";
 
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -549,7 +550,8 @@ contract IporPlasmaVaultRolesTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(_data.performanceFeeManagers[0], 0, _data.managementFeeManagers[0], 0),
-                address(_accessManager)
+                address(_accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         vm.stopPrank();

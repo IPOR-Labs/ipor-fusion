@@ -17,6 +17,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/extensions/PlasmaVaultBase.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -196,7 +197,8 @@ contract PlasmaVaultDepositTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -249,7 +251,8 @@ contract PlasmaVaultDepositTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);

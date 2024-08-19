@@ -37,6 +37,7 @@ struct PlasmaVaultInitData {
     MarketBalanceFuseConfig[] balanceFuses;
     FeeConfig feeConfig;
     address accessManager;
+    address plasmaVaultBase;
 }
 
 /// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
@@ -139,13 +140,21 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         );
 
         PlasmaVaultLib.updateManagementFeeData();
+
+        PlasmaVaultStorageLib.getPlasmaVaultBaseAddress().value = initData_.plasmaVaultBase;
     }
 
-    fallback() external {
+    fallback(bytes calldata input) external returns (bytes memory) {
         if (PlasmaVaultLib.isExecutionStarted()) {
             CallbackHandlerLib.handleCallback();
+            //@return
+            return "";
+        } else {
+            return _fallback();
         }
     }
+
+    function _fallback() internal virtual returns (bytes memory);
 
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls_) external nonReentrant restricted {

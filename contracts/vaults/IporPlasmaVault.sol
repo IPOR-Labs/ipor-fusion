@@ -5,4 +5,8 @@ import {PlasmaVault, PlasmaVaultInitData} from "./PlasmaVault.sol";
 
 contract IporPlasmaVault is PlasmaVault {
     constructor(PlasmaVaultInitData memory initData_) PlasmaVault(initData_) {}
+
+    function _fallback() internal override returns (bytes memory) {
+        return "";
+    }
 }

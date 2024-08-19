@@ -6,6 +6,7 @@ import {MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultI
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {IporPlasmaVault} from "../../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/extensions/PlasmaVaultBase.sol";
 
 abstract contract TestVaultSetup is TestStorage {
     function initPlasmaVault() public {
@@ -29,7 +30,8 @@ abstract contract TestVaultSetup is TestStorage {
                     fuses,
                     balanceFuses,
                     feeConfig,
-                    accessManager
+                    accessManager,
+                    address(new PlasmaVaultBase())
                 )
             )
         );

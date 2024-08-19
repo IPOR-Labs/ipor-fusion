@@ -30,7 +30,13 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeERC20 for ERC20;
 
     event Erc4626SupplyEnterFuse(address version, address asset, address vault, uint256 vaultAssetAmount);
-    event Erc4626SupplyExitFuse(address version, address asset, address vault, uint256 vaultAssetAmount, uint256 shares);
+    event Erc4626SupplyExitFuse(
+        address version,
+        address asset,
+        address vault,
+        uint256 vaultAssetAmount,
+        uint256 shares
+    );
 
     error Erc4626SupplyFuseUnsupportedVault(string action, address asset);
 

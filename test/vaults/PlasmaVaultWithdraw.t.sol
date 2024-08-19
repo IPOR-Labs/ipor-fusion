@@ -18,6 +18,7 @@ import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/Plas
 import {AaveConstantsEthereum} from "../../contracts/fuses/aave_v3/AaveConstantsEthereum.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/extensions/PlasmaVaultBase.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -316,7 +317,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -427,7 +429,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -545,7 +548,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -651,7 +655,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -784,7 +789,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -946,7 +952,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1100,7 +1107,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1245,7 +1253,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1358,7 +1367,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1476,6 +1486,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
+        PlasmaVaultBase plasmaVaultBase = new PlasmaVaultBase();
+
         PlasmaVault plasmaVault = new IporPlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1487,7 +1499,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(plasmaVaultBase)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1637,7 +1650,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1691,7 +1705,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 

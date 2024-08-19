@@ -16,6 +16,7 @@ import {IporFusionAccessManager} from "./../../../contracts/managers/access/Ipor
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
 import {USDMPriceFeedArbitrum} from "./../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
 import {IChronicle, IToll} from "./../../../contracts/priceOracle/IChronicle.sol";
+import {PlasmaVaultBase} from "./../../../contracts/vaults/extensions/PlasmaVaultBase.sol";
 
 contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -114,7 +115,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -227,7 +229,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
