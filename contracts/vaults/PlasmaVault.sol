@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
+import "forge-std/console2.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -23,7 +24,6 @@ import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManager.sol";
 import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
-import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 
 struct PlasmaVaultInitData {
@@ -79,7 +79,7 @@ struct FeeConfig {
 }
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGovernance {
+abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, AccessManaged {
     using Address for address;
     using SafeCast for int256;
     uint256 private constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
@@ -142,6 +142,9 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         PlasmaVaultLib.updateManagementFeeData();
 
         PlasmaVaultStorageLib.getPlasmaVaultBaseAddress().value = initData_.plasmaVaultBase;
+
+        /// TODO check init slot in ERC20Votes.
+        initData_.plasmaVaultBase.functionDelegateCall(abi.encodeWithSignature("init()"));
     }
 
     fallback(bytes calldata input) external returns (bytes memory) {
@@ -234,6 +237,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
     }
 
     function deposit(uint256 assets_, address receiver_) public override nonReentrant restricted returns (uint256) {
+        console2.log("deposit, assets_=", assets_, ", receiver_=", receiver_);
         return _deposit(assets_, receiver_);
     }
 

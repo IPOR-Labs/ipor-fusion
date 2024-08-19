@@ -9,7 +9,7 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import {PlasmaVault, PlasmaVaultInitData} from "../PlasmaVault.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
-
+import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 /// @title PlasmaVault combined with ERC20Permit and ERC20Votes
 abstract contract PlasmaVaultFusion is PlasmaVault, ERC20Permit {
     using Address for address;
@@ -24,6 +24,8 @@ abstract contract PlasmaVaultFusion is PlasmaVault, ERC20Permit {
         address to_,
         uint256 value_
     ) public virtual override(ERC20, PlasmaVault) restricted returns (bool) {
+        console2.log("PlasmaVaultFusion.transfer, to_=", to_);
+        console2.log("PlasmaVaultFusion.transfer, value_=", value_);
         return PlasmaVault.transfer(to_, value_);
     }
 
@@ -32,12 +34,27 @@ abstract contract PlasmaVaultFusion is PlasmaVault, ERC20Permit {
         address to_,
         uint256 value_
     ) public virtual override(ERC20, PlasmaVault) restricted returns (bool) {
+        console2.log("PlasmaVaultFusion.transferFrom, to_=", to_);
+        console2.log("PlasmaVaultFusion.transferFrom, value_=", value_);
         return PlasmaVault.transferFrom(from_, to_, value_);
     }
 
     function _fallback() internal override returns (bytes memory) {
-        console2.log("PlasmaVaultFusion._fallback");
-        //        calls_[i].fuse.functionDelegateCall(calls_[i].data);
+        console2.log("PlasmaVaultFusion._fallback, msg.sender=", msg.sender);
+        console2.logBytes4(msg.sig);
         return PlasmaVaultLib.getPlasmaVaultBaseAddress().functionDelegateCall(msg.data);
     }
+
+    function _update(address from_, address to_, uint256 value_) internal virtual override(ERC20) {
+        super._update(from_, to_, value_);
+        console2.log("PlasmaVaultFusion._update, to_=", to_);
+        console2.log("PlasmaVaultFusion._update, value_=", value_);
+
+        PlasmaVaultLib.getPlasmaVaultBaseAddress().functionDelegateCall(abi.encodeWithSignature("updateInternal(address,address,uint256)", from_, to_, value_));
+    }
+
+//
+//    function nonces(address owner_) public view override(ERC20Permit, Nonces) returns (uint256) {
+//        return super.nonces(owner_);
+//    }
 }
