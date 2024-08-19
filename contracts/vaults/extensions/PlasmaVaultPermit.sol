@@ -41,4 +41,12 @@ abstract contract PlasmaVaultPermit is PlasmaVault, ERC20PermitUpgradeable {
     function _msgData() internal view virtual override(PlasmaVault, ContextUpgradeable) returns (bytes calldata) {
         return super._msgData();
     }
+
+    function _update(
+        address from_,
+        address to_,
+        uint256 amount_
+    ) internal virtual override(PlasmaVault,ERC20Upgradeable) {
+        PlasmaVault._update(from_, to_, amount_);
+    }
 }

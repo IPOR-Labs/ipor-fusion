@@ -686,6 +686,12 @@ abstract contract PlasmaVault is
         }
     }
 
+    function _update(address from_, address to_, uint256 value_) internal virtual override {
+        PLASMA_VAULT_BASE.functionDelegateCall(
+            abi.encodeWithSignature("updateInternal(address,address,uint256)", from_, to_, value_)
+        );
+    }
+
     function _contextSuffixLength() internal view virtual override(ContextUpgradeable, Context) returns (uint256) {
         return super._contextSuffixLength();
     }

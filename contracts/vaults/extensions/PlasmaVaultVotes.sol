@@ -39,7 +39,7 @@ abstract contract PlasmaVaultVotes is PlasmaVault, ERC20VotesUpgradeable {
         address from_,
         address to_,
         uint256 amount_
-    ) internal override(ERC20Upgradeable, ERC20VotesUpgradeable) {
+    ) internal virtual override(PlasmaVault, ERC20VotesUpgradeable) {
         ERC20VotesUpgradeable._update(from_, to_, amount_);
     }
 
