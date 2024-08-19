@@ -5,9 +5,5 @@ import {PlasmaVault, PlasmaVaultInitData} from "./PlasmaVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract IporPlasmaVault is PlasmaVault {
-    constructor(PlasmaVaultInitData memory initData_) PlasmaVault(initData_) initializer {}
-
-    function _fallback() internal override returns (bytes memory) {
-        return "";
-    }
+    constructor(PlasmaVaultInitData memory initData_) PlasmaVault(initData_) {}
 }
