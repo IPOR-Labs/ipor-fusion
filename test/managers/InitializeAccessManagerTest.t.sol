@@ -12,7 +12,7 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "..
 import {InitializationData} from "../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
-import {PlasmaVaultBase} from "../../contracts/vaults/extensions/PlasmaVaultBase.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 
 contract InitializeAccessManagerTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;

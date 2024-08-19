@@ -16,7 +16,7 @@ import {IporFusionAccessManager} from "./../../../contracts/managers/access/Ipor
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
 import {USDMPriceFeedArbitrum} from "./../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
 import {IChronicle, IToll} from "./../../../contracts/priceOracle/IChronicle.sol";
-import {PlasmaVaultBase} from "./../../../contracts/vaults/extensions/PlasmaVaultBase.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 
 contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     using SafeERC20 for ERC20;

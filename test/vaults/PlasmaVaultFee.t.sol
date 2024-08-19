@@ -16,7 +16,7 @@ import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/Plas
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
-import {PlasmaVaultBase} from "../../contracts/vaults/extensions/PlasmaVaultBase.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;

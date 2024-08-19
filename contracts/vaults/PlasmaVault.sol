@@ -1,21 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import "forge-std/console2.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import {AccessManaged} from "../managers/access/AccessManaged.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
@@ -113,9 +108,12 @@ abstract contract PlasmaVault is
 
     constructor(
         PlasmaVaultInitData memory initData_
-    ) ERC20Upgradeable() ERC4626Upgradeable() PlasmaVaultGovernance(initData_.accessManager) {
+    ) ERC20Upgradeable() ERC4626Upgradeable() PlasmaVaultGovernance(initData_.accessManager) initializer {
+        super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
+        super.__ERC4626_init(IERC20(initData_.underlyingToken));
+
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
-        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSignature("init()"));
+        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSignature("init(string)", initData_.assetName));
 
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData_.priceOracle);
 
@@ -154,19 +152,18 @@ abstract contract PlasmaVault is
         PlasmaVaultLib.updateManagementFeeData();
     }
 
-    fallback(bytes calldata input) external returns (bytes memory) {
-        console2.log("PlasmaVault.fallback, input=");
-        console2.logBytes(input);
+    fallback(bytes calldata) external returns (bytes memory) {
         if (PlasmaVaultLib.isExecutionStarted()) {
             CallbackHandlerLib.handleCallback();
-            //@return
             return "";
         } else {
             return _fallback();
         }
     }
 
-    function _fallback() internal virtual returns (bytes memory);
+    function _fallback() internal virtual returns (bytes memory) {
+        return PLASMA_VAULT_BASE.functionDelegateCall(msg.data);
+    }
 
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
     function execute(FuseAction[] calldata calls_) external nonReentrant restricted {
@@ -249,7 +246,6 @@ abstract contract PlasmaVault is
     }
 
     function deposit(uint256 assets_, address receiver_) public override nonReentrant restricted returns (uint256) {
-        console2.log("deposit, assets_=", assets_, ", receiver_=", receiver_);
         return _deposit(assets_, receiver_);
     }
 
