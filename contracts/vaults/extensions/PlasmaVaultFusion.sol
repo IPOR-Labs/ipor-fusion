@@ -12,7 +12,6 @@ abstract contract PlasmaVaultFusion is PlasmaVault {
     constructor(PlasmaVaultInitData memory initData_) PlasmaVault(initData_) {}
 
     function _update(address from_, address to_, uint256 value_) internal virtual override(ERC20Upgradeable) {
-        super._update(from_, to_, value_);
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSignature("updateInternal(address,address,uint256)", from_, to_, value_)
         );

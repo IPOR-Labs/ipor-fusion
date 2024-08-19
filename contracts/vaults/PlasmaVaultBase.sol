@@ -14,17 +14,9 @@ contract PlasmaVaultBase is ERC20PermitUpgradeable, ERC20VotesUpgradeable {
         super.__ERC20Permit_init(assetName);
     }
 
-    /// @dev Support Votes, can be executed only by Vault
+    /// @dev Can be executed only by Plasma Vault in delegatecall.
     function updateInternal(address from_, address to_, uint256 value_) external {
-        /// @dev Assume that _update on Vault was executed.
-        if (from_ == address(0)) {
-            uint256 supply = ERC20(address(this)).totalSupply();
-            uint256 cap = _maxSupply();
-            if (supply > cap) {
-                revert ERC20ExceededSafeSupply(supply, cap);
-            }
-        }
-        _transferVotingUnits(from_, to_, value_);
+        _update(from_, to_, value_);
     }
 
     function nonces(address owner_) public view override(ERC20PermitUpgradeable, NoncesUpgradeable) returns (uint256) {
@@ -36,6 +28,6 @@ contract PlasmaVaultBase is ERC20PermitUpgradeable, ERC20VotesUpgradeable {
         address to_,
         uint256 value_
     ) internal virtual override(ERC20Upgradeable, ERC20VotesUpgradeable) {
-        super._update(from_, to_, value_);
+        ERC20VotesUpgradeable._update(from_, to_, value_);
     }
 }
