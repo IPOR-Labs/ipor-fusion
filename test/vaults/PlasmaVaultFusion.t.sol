@@ -126,118 +126,118 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         setupRoles(plasmaVault, accessManager);
     }
-    //
-    //    function testERC20PermitShouldHaveAllowanceWhenPermit() public {
-    //        //given
-    //        uint256 value = 100 * 1e6;
-    //        uint256 amount = 200 * 1e6;
-    //
-    //        uint256 deadline = block.timestamp + 1 days;
-    //
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(amount, owner);
-    //
-    //        bytes32 domainSeparator = keccak256(
-    //            abi.encode(
-    //                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-    //                keccak256(bytes(assetName)),
-    //                keccak256(bytes("1")),
-    //                block.chainid,
-    //                address(plasmaVault)
-    //            )
-    //        );
-    //
-    //        uint256 nonce = plasmaVault.nonces(owner);
-    //
-    //        bytes32 structHash = keccak256(
-    //            abi.encode(
-    //                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
-    //                owner,
-    //                spender,
-    //                value,
-    //                nonce,
-    //                deadline
-    //            )
-    //        );
-    //
-    //        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    //
-    //        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivKey, digest);
-    //
-    //        //when
-    //        vm.prank(owner);
-    //        plasmaVault.permit(owner, spender, value, deadline, v, r, s);
-    //
-    //        //then
-    //        assertEq(plasmaVault.allowance(owner, spender), value);
-    //    }
-    //
-    //    function testErc20PermitShouldTransferWhenPermit() public {
-    //        //given
-    //        uint256 value = 100 * 1e6;
-    //        uint256 amount = 200 * 1e6;
-    //
-    //        uint256 deadline = block.timestamp + 1 days;
-    //
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(amount, owner);
-    //
-    //        bytes32 domainSeparator = keccak256(
-    //            abi.encode(
-    //                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-    //                keccak256(bytes(assetName)),
-    //                keccak256(bytes("1")),
-    //                block.chainid,
-    //                address(plasmaVault)
-    //            )
-    //        );
-    //
-    //        uint256 nonce = plasmaVault.nonces(owner);
-    //
-    //        bytes32 structHash = keccak256(
-    //            abi.encode(
-    //                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
-    //                owner,
-    //                spender,
-    //                value,
-    //                nonce,
-    //                deadline
-    //            )
-    //        );
-    //
-    //        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    //
-    //        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivKey, digest);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.permit(owner, spender, value, deadline, v, r, s);
-    //
-    //        bytes4[] memory sig = new bytes4[](2);
-    //        sig[0] = PlasmaVault.transfer.selector;
-    //        sig[1] = PlasmaVault.transferFrom.selector;
-    //
-    //        vm.prank(usersToRoles.superAdmin);
-    //        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
-    //
-    //        //when
-    //        vm.prank(spender);
-    //        plasmaVault.transferFrom(owner, spender, value);
-    //
-    //        //then
-    //        assertEq(plasmaVault.balanceOf(spender), value);
-    //    }
+
+    function testERC20PermitShouldHaveAllowanceWhenPermit() public {
+        //given
+        uint256 value = 100 * 1e6;
+        uint256 amount = 200 * 1e6;
+
+        uint256 deadline = block.timestamp + 1 days;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(assetName)),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(plasmaVault)
+            )
+        );
+
+        uint256 nonce = plasmaVault.nonces(owner);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                owner,
+                spender,
+                value,
+                nonce,
+                deadline
+            )
+        );
+
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivKey, digest);
+
+        //when
+        vm.prank(owner);
+        plasmaVault.permit(owner, spender, value, deadline, v, r, s);
+
+        //then
+        assertEq(plasmaVault.allowance(owner, spender), value);
+    }
+
+    function testErc20PermitShouldTransferWhenPermit() public {
+        //given
+        uint256 value = 100 * 1e6;
+        uint256 amount = 200 * 1e6;
+
+        uint256 deadline = block.timestamp + 1 days;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(assetName)),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(plasmaVault)
+            )
+        );
+
+        uint256 nonce = plasmaVault.nonces(owner);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                owner,
+                spender,
+                value,
+                nonce,
+                deadline
+            )
+        );
+
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivKey, digest);
+
+        vm.prank(owner);
+        plasmaVault.permit(owner, spender, value, deadline, v, r, s);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.transfer.selector;
+        sig[1] = PlasmaVault.transferFrom.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
+
+        //when
+        vm.prank(spender);
+        plasmaVault.transferFrom(owner, spender, value);
+
+        //then
+        assertEq(plasmaVault.balanceOf(spender), value);
+    }
 
     function testERC20VotesShouldShowVotes() public {
         //given
@@ -251,6 +251,9 @@ contract PlasmaVaultErc20FusionTest is Test {
         vm.prank(owner);
         plasmaVault.deposit(amount, owner);
 
+        console2.log(
+            "-------------------------------------------------------------DELEGATE------------------------------------------------"
+        );
         console2.log("test owner=", owner);
         console2.logBytes4(IVotes(address(plasmaVault)).delegate.selector);
         /// @dev Activate checkpoint
@@ -259,460 +262,463 @@ contract PlasmaVaultErc20FusionTest is Test {
         //        plasmaVault.delegate(owner);
 
         //when
+        console2.log(
+            "-------------------------------------------------------------GET VOTES------------------------------------------------"
+        );
         //        uint256 votes = plasmaVault.getVotes(owner);
         uint256 votes = IVotes(address(plasmaVault)).getVotes(owner);
 
         //then
         assertEq(votes, amount);
     }
-    //
-    //    function testERC20VotesShouldNOTShowVotes() public {
-    //        //given
-    //        uint256 amount = 200 * 1e6;
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(amount, owner);
-    //
-    //        //when
-    //        //        uint256 votes = plasmaVault.getVotes(owner);
-    //        uint256 votes = IVotes(address(plasmaVault)).getVotes(owner);
-    //
-    //        //then
-    //        assertEq(votes, 0);
-    //    }
-    //
-    //    function testERC20VotestShouldShowVotesInDelegatee() public {
-    //        //given
-    //        uint256 amount = 200 * 1e6;
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(amount, owner);
-    //
-    //        vm.prank(owner);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        //when
-    //        //        uint256 votes = plasmaVault.getVotes(delegatee);
-    //        uint256 votes = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        //then
-    //        assertEq(votes, amount);
-    //    }
-    //
-    //    function testERC20VotesShouldDelegateAndTransferAndNotChangeVotingPower() public {
-    //        //given
-    //        uint256 amount = 200 * 1e6;
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(amount, owner);
-    //
-    //        vm.prank(owner);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        // @dev Activate checkpoint
-    //        vm.prank(delegatee);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        //        uint256 votesBefore = plasmaVault.getVotes(delegatee);
-    //        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        bytes4[] memory sig = new bytes4[](1);
-    //        sig[0] = PlasmaVault.transfer.selector;
-    //
-    //        vm.prank(usersToRoles.superAdmin);
-    //        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
-    //
-    //        //when
-    //        vm.prank(owner);
-    //        plasmaVault.transfer(delegatee, amount);
-    //
-    //        //then
-    //        //        uint256 votesAfter = plasmaVault.getVotes(delegatee);
-    //        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        assertEq(votesBefore, votesAfter);
-    //    }
-    //
-    //    function testErc20VotesShouldDelegateFromOneDelegateeToAnotherOneNoTransferredAmount() public {
-    //        //given
-    //        uint256 amount = 200 * 1e6;
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(amount, owner);
-    //
-    //        vm.prank(owner);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        // @dev Activate checkpoint
-    //        vm.prank(delegatee);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        //        uint256 votesBefore = plasmaVault.getVotes(delegatee);
-    //        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        //when
-    //        vm.prank(delegatee);
-    //        //        plasmaVault.delegate(spender);
-    //        IVotes(address(plasmaVault)).delegate(spender);
-    //
-    //        //then
-    //        //        uint256 votesAfter = plasmaVault.getVotes(spender);
-    //        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(spender);
-    //
-    //        uint256 delegateeBalanceOf = plasmaVault.balanceOf(delegatee);
-    //
-    //        assertNotEq(
-    //            votesBefore,
-    //            votesAfter,
-    //            "New delegatee should have voting power equal to transferred amount to a delegatee"
-    //        );
-    //        assertEq(
-    //            votesAfter,
-    //            delegateeBalanceOf,
-    //            "New delegatee should have voting power equal to transferred amount to a delegatee - balanceOf"
-    //        );
-    //    }
-    //
-    //    function testErc20VotesShouldDelegateFromOneDelegateeToAnotherOneTransferredAmount() public {
-    //        //given
-    //        uint256 amount = 200 * 1e6;
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(amount, owner);
-    //
-    //        vm.prank(owner);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        // @dev Activate checkpoint
-    //        vm.prank(delegatee);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        //        uint256 votesBefore = plasmaVault.getVotes(delegatee);
-    //        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        bytes4[] memory sig = new bytes4[](1);
-    //        sig[0] = PlasmaVault.transfer.selector;
-    //
-    //        vm.prank(usersToRoles.superAdmin);
-    //        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
-    //
-    //        //when
-    //        vm.prank(owner);
-    //        plasmaVault.transfer(delegatee, 50 * 1e6);
-    //
-    //        //when
-    //        vm.prank(delegatee);
-    //        //        plasmaVault.delegate(spender);
-    //        IVotes(address(plasmaVault)).delegate(spender);
-    //
-    //        //then
-    //        //        uint256 votesAfter = plasmaVault.getVotes(spender);
-    //        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(spender);
-    //
-    //        uint256 delegateeBalanceOf = plasmaVault.balanceOf(delegatee);
-    //
-    //        assertNotEq(
-    //            votesBefore,
-    //            votesAfter,
-    //            "New delegatee should have voting power equal to transferred amount to a delegatee"
-    //        );
-    //        assertEq(
-    //            votesAfter,
-    //            delegateeBalanceOf,
-    //            "New delegatee should have voting power equal to transferred amount to a delegatee - balanceOf"
-    //        );
-    //
-    //        assertEq(
-    //            votesAfter,
-    //            50 * 1e6,
-    //            "New delegatee should have voting power equal to transferred amount to a delegatee"
-    //        );
-    //    }
-    //
-    //    function testErc20VotesShouldDecreaseVotingPowerWhenBurn() public {
-    //        //given
-    //        uint256 amount = 200 * 1e6;
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(amount, owner);
-    //
-    //        /// @dev Activate checkpoint
-    //        vm.prank(owner);
-    //        //        plasmaVault.delegate(owner);
-    //        IVotes(address(plasmaVault)).delegate(owner);
-    //
-    //        //        uint256 votesBefore = plasmaVault.getVotes(owner);
-    //        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(owner);
-    //
-    //        //when
-    //        vm.prank(owner);
-    //        plasmaVault.withdraw(50 * 1e6, owner, owner);
-    //
-    //        //then
-    //        //        uint256 votesAfter = plasmaVault.getVotes(owner);
-    //        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(owner);
-    //
-    //        assertEq(votesBefore, amount, "Voting power should be equal to deposited amount");
-    //        assertEq(votesAfter, 150 * 1e6, "Voting power should be equal to 0 after burn");
-    //    }
-    //
-    //    function testErc20VotesShouldIncreaseVotes() public {
-    //        //given
-    //        uint256 amount = 200 * 1e6;
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(100 * 1e6, owner);
-    //
-    //        vm.prank(delegatee);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        vm.prank(owner);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        //        uint256 delegateeVotesBefore = plasmaVault.getVotes(delegatee);
-    //        uint256 delegateeVotesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        bytes4[] memory sig = new bytes4[](1);
-    //        sig[0] = PlasmaVault.transfer.selector;
-    //
-    //        vm.prank(usersToRoles.superAdmin);
-    //        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(100 * 1e6, owner);
-    //
-    //        //when
-    //        vm.prank(owner);
-    //        plasmaVault.transfer(delegatee, 200 * 1e6);
-    //
-    //        //then
-    //        //        uint256 delegateeVotesAfter = plasmaVault.getVotes(delegatee);
-    //        uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        assertEq(delegateeVotesBefore, 100 * 1e6, "Delegatee should have voting power equal to 100 * 1e6");
-    //        assertEq(delegateeVotesAfter, 200 * 1e6, "Delegatee should have voting power equal to 200 * 1e6");
-    //    }
-    //
-    //    function testErc20VotesDelegateBySig() public {
-    //        //given
-    //        uint256 amount = 200 * 1e6;
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(100 * 1e6, owner);
-    //
-    //        /// @dev Activate checkpoint
-    //        vm.prank(owner);
-    //        //        plasmaVault.delegate(owner);
-    //        IVotes(address(plasmaVault)).delegate(owner);
-    //
-    //        //        uint256 delegateeVotesBefore = plasmaVault.getVotes(delegatee);
-    //        uint256 delegateeVotesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        bytes32 domainSeparator = keccak256(
-    //            abi.encode(
-    //                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-    //                keccak256(bytes(assetName)),
-    //                keccak256(bytes("1")),
-    //                block.chainid,
-    //                address(plasmaVault)
-    //            )
-    //        );
-    //
-    //        uint256 nonce = plasmaVault.nonces(owner);
-    //
-    //        bytes32 structHash = keccak256(
-    //            abi.encode(
-    //                keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)"),
-    //                delegatee,
-    //                nonce,
-    //                block.timestamp + 1 days
-    //            )
-    //        );
-    //
-    //        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    //
-    //        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivKey, digest);
-    //
-    //        //when
-    //        vm.prank(owner);
-    //        //        plasmaVault.delegateBySig(delegatee, nonce, block.timestamp + 1 days, v, r, s);
-    //        IVotes(address(plasmaVault)).delegateBySig(delegatee, nonce, block.timestamp + 1 days, v, r, s);
-    //
-    //        //then
-    //        //        uint256 delegateeVotesAfter = plasmaVault.getVotes(delegatee);
-    //        uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        //        assertEq(plasmaVault.delegates(owner), delegatee, "Owner's delegatee should be set correctly");
-    //        assertEq(IVotes(address(plasmaVault)).delegates(owner), delegatee, "Owner's delegatee should be set correctly");
-    //
-    //        //        assertEq(
-    //        //            plasmaVault.getVotes(delegatee),
-    //        //            100 * 1e6,
-    //        //            "Delegatee's voting power should be equal to the owner's balance"
-    //        //        );
-    //        assertEq(
-    //            IVotes(address(plasmaVault)).getVotes(delegatee),
-    //            100 * 1e6,
-    //            "Delegatee's voting power should be equal to the owner's balance"
-    //        );
-    //
-    //        assertEq(delegateeVotesBefore, 0, "Delegatee should have voting power equal to 0");
-    //        assertEq(delegateeVotesAfter, 100 * 1e6, "Delegatee should have voting power equal to 100 * 1e6");
-    //    }
-    //
-    //    function testErc20VotesErc20PermitShouldPermitToDelegateeAndTransferToDelegateeNoChangesInVotesPower() public {
-    //        //given
-    //        amount = 200 * 1e6;
-    //        deadline = block.timestamp + 1 days;
-    //
-    //        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-    //        ERC20(USDC).transfer(address(owner), amount);
-    //
-    //        vm.prank(owner);
-    //        ERC20(USDC).approve(address(plasmaVault), amount);
-    //
-    //        /// @dev Owner deposits and have voting power
-    //        vm.prank(owner);
-    //        plasmaVault.deposit(amount, owner);
-    //
-    //        /// @dev Initialize delegatee
-    //        vm.prank(delegatee);
-    //        //        plasmaVault.delegate(delegatee);
-    //        IVotes(address(plasmaVault)).delegate(delegatee);
-    //
-    //        bytes32 domainSeparator = keccak256(
-    //            abi.encode(
-    //                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-    //                keccak256(bytes(assetName)),
-    //                keccak256(bytes("1")),
-    //                block.chainid,
-    //                address(plasmaVault)
-    //            )
-    //        );
-    //
-    //        bytes32 permitStructHash = keccak256(
-    //            abi.encode(
-    //                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
-    //                owner,
-    //                delegatee,
-    //                amount,
-    //                plasmaVault.nonces(owner),
-    //                deadline
-    //            )
-    //        );
-    //
-    //        bytes32 permitDigest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, permitStructHash));
-    //
-    //        (uint8 permitV, bytes32 permitR, bytes32 permitS) = vm.sign(ownerPrivKey, permitDigest);
-    //
-    //        /// @dev Owner permits transfer to delegatee
-    //        vm.prank(owner);
-    //        plasmaVault.permit(owner, delegatee, amount, deadline, permitV, permitR, permitS);
-    //
-    //        uint256 nonce = plasmaVault.nonces(owner);
-    //
-    //        bytes32 delegationStructHash = keccak256(
-    //            abi.encode(
-    //                keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)"),
-    //                delegatee,
-    //                /// @dev Notice! Nonce changes after permit, so we need to update nonce
-    //                nonce,
-    //                block.timestamp + 1 days
-    //            )
-    //        );
-    //
-    //        bytes32 delegationDigest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, delegationStructHash));
-    //
-    //        (uint8 delegationV, bytes32 delegationR, bytes32 delegationS) = vm.sign(ownerPrivKey, delegationDigest);
-    //
-    //        /// @dev owner delegates to delegatee
-    //        vm.prank(owner);
-    //        //        plasmaVault.delegateBySig(delegatee, nonce, block.timestamp + 1 days, delegationV, delegationR, delegationS);
-    //        IVotes(address(plasmaVault)).delegateBySig(
-    //            delegatee,
-    //            nonce,
-    //            block.timestamp + 1 days,
-    //            delegationV,
-    //            delegationR,
-    //            delegationS
-    //        );
-    //
-    //        //        uint256 delegateeVotesBefore = plasmaVault.getVotes(delegatee);
-    //        uint256 delegateeVotesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        bytes4[] memory sig = new bytes4[](1);
-    //        sig[0] = PlasmaVault.transferFrom.selector;
-    //
-    //        /// @dev temporary setup tranferFrom role to a public role
-    //        vm.prank(usersToRoles.superAdmin);
-    //        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
-    //
-    //        //when
-    //        vm.prank(delegatee);
-    //        plasmaVault.transferFrom(owner, delegatee, amount);
-    //
-    //        //then
-    //
-    //        //        uint256 delegateeVotesAfter = plasmaVault.getVotes(delegatee);
-    //        uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
-    //
-    //        uint256 delegateeBalanceOf = plasmaVault.balanceOf(delegatee);
-    //
-    //        assertEq(delegateeVotesBefore, delegateeVotesAfter, "Delegatee's voting power should not change");
-    //
-    //        assertEq(delegateeVotesAfter, delegateeBalanceOf, "Delegatee's voting power should be equal to the balance");
-    //
-    //        assertEq(delegateeVotesAfter, amount, "Delegatee's voting power should be equal to the transferred amount");
-    //    }
+
+    function testERC20VotesShouldNOTShowVotes() public {
+        //given
+        uint256 amount = 200 * 1e6;
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        //when
+        //        uint256 votes = plasmaVault.getVotes(owner);
+        uint256 votes = IVotes(address(plasmaVault)).getVotes(owner);
+
+        //then
+        assertEq(votes, 0);
+    }
+
+    function testERC20VotestShouldShowVotesInDelegatee() public {
+        //given
+        uint256 amount = 200 * 1e6;
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        vm.prank(owner);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        //when
+        //        uint256 votes = plasmaVault.getVotes(delegatee);
+        uint256 votes = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        //then
+        assertEq(votes, amount);
+    }
+
+    function testERC20VotesShouldDelegateAndTransferAndNotChangeVotingPower() public {
+        //given
+        uint256 amount = 200 * 1e6;
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        vm.prank(owner);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        // @dev Activate checkpoint
+        vm.prank(delegatee);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        //        uint256 votesBefore = plasmaVault.getVotes(delegatee);
+        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        bytes4[] memory sig = new bytes4[](1);
+        sig[0] = PlasmaVault.transfer.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
+
+        //when
+        vm.prank(owner);
+        plasmaVault.transfer(delegatee, amount);
+
+        //then
+        //        uint256 votesAfter = plasmaVault.getVotes(delegatee);
+        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        assertEq(votesBefore, votesAfter);
+    }
+
+    function testErc20VotesShouldDelegateFromOneDelegateeToAnotherOneNoTransferredAmount() public {
+        //given
+        uint256 amount = 200 * 1e6;
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        vm.prank(owner);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        // @dev Activate checkpoint
+        vm.prank(delegatee);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        //        uint256 votesBefore = plasmaVault.getVotes(delegatee);
+        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        //when
+        vm.prank(delegatee);
+        //        plasmaVault.delegate(spender);
+        IVotes(address(plasmaVault)).delegate(spender);
+
+        //then
+        //        uint256 votesAfter = plasmaVault.getVotes(spender);
+        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(spender);
+
+        uint256 delegateeBalanceOf = plasmaVault.balanceOf(delegatee);
+
+        assertNotEq(
+            votesBefore,
+            votesAfter,
+            "New delegatee should have voting power equal to transferred amount to a delegatee"
+        );
+        assertEq(
+            votesAfter,
+            delegateeBalanceOf,
+            "New delegatee should have voting power equal to transferred amount to a delegatee - balanceOf"
+        );
+    }
+
+    function testErc20VotesShouldDelegateFromOneDelegateeToAnotherOneTransferredAmount() public {
+        //given
+        uint256 amount = 200 * 1e6;
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        vm.prank(owner);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        // @dev Activate checkpoint
+        vm.prank(delegatee);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        //        uint256 votesBefore = plasmaVault.getVotes(delegatee);
+        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        bytes4[] memory sig = new bytes4[](1);
+        sig[0] = PlasmaVault.transfer.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
+
+        //when
+        vm.prank(owner);
+        plasmaVault.transfer(delegatee, 50 * 1e6);
+
+        //when
+        vm.prank(delegatee);
+        //        plasmaVault.delegate(spender);
+        IVotes(address(plasmaVault)).delegate(spender);
+
+        //then
+        //        uint256 votesAfter = plasmaVault.getVotes(spender);
+        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(spender);
+
+        uint256 delegateeBalanceOf = plasmaVault.balanceOf(delegatee);
+
+        assertNotEq(
+            votesBefore,
+            votesAfter,
+            "New delegatee should have voting power equal to transferred amount to a delegatee"
+        );
+        assertEq(
+            votesAfter,
+            delegateeBalanceOf,
+            "New delegatee should have voting power equal to transferred amount to a delegatee - balanceOf"
+        );
+
+        assertEq(
+            votesAfter,
+            50 * 1e6,
+            "New delegatee should have voting power equal to transferred amount to a delegatee"
+        );
+    }
+
+    function testErc20VotesShouldDecreaseVotingPowerWhenBurn() public {
+        //given
+        uint256 amount = 200 * 1e6;
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        /// @dev Activate checkpoint
+        vm.prank(owner);
+        //        plasmaVault.delegate(owner);
+        IVotes(address(plasmaVault)).delegate(owner);
+
+        //        uint256 votesBefore = plasmaVault.getVotes(owner);
+        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(owner);
+
+        //when
+        vm.prank(owner);
+        plasmaVault.withdraw(50 * 1e6, owner, owner);
+
+        //then
+        //        uint256 votesAfter = plasmaVault.getVotes(owner);
+        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(owner);
+
+        assertEq(votesBefore, amount, "Voting power should be equal to deposited amount");
+        assertEq(votesAfter, 150 * 1e6, "Voting power should be equal to 0 after burn");
+    }
+
+    function testErc20VotesShouldIncreaseVotes() public {
+        //given
+        uint256 amount = 200 * 1e6;
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(100 * 1e6, owner);
+
+        vm.prank(delegatee);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        vm.prank(owner);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        //        uint256 delegateeVotesBefore = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        bytes4[] memory sig = new bytes4[](1);
+        sig[0] = PlasmaVault.transfer.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
+
+        vm.prank(owner);
+        plasmaVault.deposit(100 * 1e6, owner);
+
+        //when
+        vm.prank(owner);
+        plasmaVault.transfer(delegatee, 200 * 1e6);
+
+        //then
+        //        uint256 delegateeVotesAfter = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        assertEq(delegateeVotesBefore, 100 * 1e6, "Delegatee should have voting power equal to 100 * 1e6");
+        assertEq(delegateeVotesAfter, 200 * 1e6, "Delegatee should have voting power equal to 200 * 1e6");
+    }
+
+    function testErc20VotesDelegateBySig() public {
+        //given
+        uint256 amount = 200 * 1e6;
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(100 * 1e6, owner);
+
+        /// @dev Activate checkpoint
+        vm.prank(owner);
+        //        plasmaVault.delegate(owner);
+        IVotes(address(plasmaVault)).delegate(owner);
+
+        //        uint256 delegateeVotesBefore = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(assetName)),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(plasmaVault)
+            )
+        );
+
+        uint256 nonce = plasmaVault.nonces(owner);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)"),
+                delegatee,
+                nonce,
+                block.timestamp + 1 days
+            )
+        );
+
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivKey, digest);
+
+        //when
+        vm.prank(owner);
+        //        plasmaVault.delegateBySig(delegatee, nonce, block.timestamp + 1 days, v, r, s);
+        IVotes(address(plasmaVault)).delegateBySig(delegatee, nonce, block.timestamp + 1 days, v, r, s);
+
+        //then
+        //        uint256 delegateeVotesAfter = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        //        assertEq(plasmaVault.delegates(owner), delegatee, "Owner's delegatee should be set correctly");
+        assertEq(IVotes(address(plasmaVault)).delegates(owner), delegatee, "Owner's delegatee should be set correctly");
+
+        //        assertEq(
+        //            plasmaVault.getVotes(delegatee),
+        //            100 * 1e6,
+        //            "Delegatee's voting power should be equal to the owner's balance"
+        //        );
+        assertEq(
+            IVotes(address(plasmaVault)).getVotes(delegatee),
+            100 * 1e6,
+            "Delegatee's voting power should be equal to the owner's balance"
+        );
+
+        assertEq(delegateeVotesBefore, 0, "Delegatee should have voting power equal to 0");
+        assertEq(delegateeVotesAfter, 100 * 1e6, "Delegatee should have voting power equal to 100 * 1e6");
+    }
+
+    function testErc20VotesErc20PermitShouldPermitToDelegateeAndTransferToDelegateeNoChangesInVotesPower() public {
+        //given
+        amount = 200 * 1e6;
+        deadline = block.timestamp + 1 days;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        /// @dev Owner deposits and have voting power
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        /// @dev Initialize delegatee
+        vm.prank(delegatee);
+        //        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
+
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(assetName)),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(plasmaVault)
+            )
+        );
+
+        bytes32 permitStructHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                owner,
+                delegatee,
+                amount,
+                plasmaVault.nonces(owner),
+                deadline
+            )
+        );
+
+        bytes32 permitDigest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, permitStructHash));
+
+        (uint8 permitV, bytes32 permitR, bytes32 permitS) = vm.sign(ownerPrivKey, permitDigest);
+
+        /// @dev Owner permits transfer to delegatee
+        vm.prank(owner);
+        plasmaVault.permit(owner, delegatee, amount, deadline, permitV, permitR, permitS);
+
+        uint256 nonce = plasmaVault.nonces(owner);
+
+        bytes32 delegationStructHash = keccak256(
+            abi.encode(
+                keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)"),
+                delegatee,
+                /// @dev Notice! Nonce changes after permit, so we need to update nonce
+                nonce,
+                block.timestamp + 1 days
+            )
+        );
+
+        bytes32 delegationDigest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, delegationStructHash));
+
+        (uint8 delegationV, bytes32 delegationR, bytes32 delegationS) = vm.sign(ownerPrivKey, delegationDigest);
+
+        /// @dev owner delegates to delegatee
+        vm.prank(owner);
+        //        plasmaVault.delegateBySig(delegatee, nonce, block.timestamp + 1 days, delegationV, delegationR, delegationS);
+        IVotes(address(plasmaVault)).delegateBySig(
+            delegatee,
+            nonce,
+            block.timestamp + 1 days,
+            delegationV,
+            delegationR,
+            delegationS
+        );
+
+        //        uint256 delegateeVotesBefore = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        bytes4[] memory sig = new bytes4[](1);
+        sig[0] = PlasmaVault.transferFrom.selector;
+
+        /// @dev temporary setup tranferFrom role to a public role
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.PUBLIC_ROLE);
+
+        //when
+        vm.prank(delegatee);
+        plasmaVault.transferFrom(owner, delegatee, amount);
+
+        //then
+
+        //        uint256 delegateeVotesAfter = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
+
+        uint256 delegateeBalanceOf = plasmaVault.balanceOf(delegatee);
+
+        assertEq(delegateeVotesBefore, delegateeVotesAfter, "Delegatee's voting power should not change");
+
+        assertEq(delegateeVotesAfter, delegateeBalanceOf, "Delegatee's voting power should be equal to the balance");
+
+        assertEq(delegateeVotesAfter, amount, "Delegatee's voting power should be equal to the transferred amount");
+    }
 
     function createAccessManager(UsersToRoles memory usersToRoles) public returns (IporFusionAccessManager) {
         address atomist = address(this);

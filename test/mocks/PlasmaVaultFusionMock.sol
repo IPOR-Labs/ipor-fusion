@@ -5,5 +5,5 @@ import {PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultFusion} from "../../contracts/vaults/extensions/PlasmaVaultFusion.sol";
 
 contract PlasmaVaultFusionMock is PlasmaVaultFusion {
-    constructor(PlasmaVaultInitData memory initData_) PlasmaVaultFusion(initData_) {}
+    constructor(PlasmaVaultInitData memory initData_) PlasmaVaultFusion(initData_) initializer {}
 }

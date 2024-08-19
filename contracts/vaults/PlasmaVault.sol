@@ -5,13 +5,15 @@ import "forge-std/console2.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {AccessManaged} from "../managers/access/AccessManaged.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
@@ -27,8 +29,11 @@ import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManage
 import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
-    struct PlasmaVaultInitData {
+struct PlasmaVaultInitData {
     string assetName;
     string assetSymbol;
     address underlyingToken;
@@ -81,7 +86,12 @@ struct FeeConfig {
 }
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGovernance {
+abstract contract PlasmaVault is
+    ERC20Upgradeable,
+    ERC4626Upgradeable,
+    ReentrancyGuardUpgradeable,
+    PlasmaVaultGovernance
+{
     using Address for address;
     using SafeCast for int256;
     uint256 private constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
@@ -103,11 +113,9 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
 
     constructor(
         PlasmaVaultInitData memory initData_
-    )
-        ERC20(initData_.assetName, initData_.assetSymbol)
-        ERC4626(IERC20Metadata(initData_.underlyingToken))
-        PlasmaVaultGovernance(initData_.accessManager)
-    {
+    ) ERC20Upgradeable() ERC4626Upgradeable() PlasmaVaultGovernance(initData_.accessManager) {
+        PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
+        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSignature("init()"));
 
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData_.priceOracle);
 
@@ -144,13 +152,11 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         );
 
         PlasmaVaultLib.updateManagementFeeData();
-
-        PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
-        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSignature("init()"));
-
     }
 
     fallback(bytes calldata input) external returns (bytes memory) {
+        console2.log("PlasmaVault.fallback, input=");
+        console2.logBytes(input);
         if (PlasmaVaultLib.isExecutionStarted()) {
             CallbackHandlerLib.handleCallback();
             //@return
@@ -223,11 +229,14 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         _addPerformanceFee(totalAssetsBefore);
     }
 
-    function decimals() public view virtual override(ERC20, ERC4626) returns (uint8) {
+    function decimals() public view virtual override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
         return super.decimals();
     }
 
-    function transfer(address to_, uint256 value_) public virtual override(IERC20, ERC20) restricted returns (bool) {
+    function transfer(
+        address to_,
+        uint256 value_
+    ) public virtual override(IERC20, ERC20Upgradeable) restricted returns (bool) {
         return super.transfer(to_, value_);
     }
 
@@ -235,7 +244,7 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
         address from_,
         address to_,
         uint256 value_
-    ) public virtual override(IERC20, ERC20) restricted returns (bool) {
+    ) public virtual override(IERC20, ERC20Upgradeable) restricted returns (bool) {
         return super.transferFrom(from_, to_, value_);
     }
 
@@ -679,5 +688,15 @@ abstract contract PlasmaVault is ERC20, ERC4626, ReentrancyGuard, PlasmaVaultGov
                 revert AccessManagedUnauthorized(caller_);
             }
         }
+    }
+
+    function _contextSuffixLength() internal view virtual override(ContextUpgradeable, Context) returns (uint256) {
+        return super._contextSuffixLength();
+    }
+    function _msgSender() internal view virtual override(ContextUpgradeable, Context) returns (address) {
+        return super._msgSender();
+    }
+    function _msgData() internal view virtual override(ContextUpgradeable, Context) returns (bytes calldata) {
+        return super._msgData();
     }
 }

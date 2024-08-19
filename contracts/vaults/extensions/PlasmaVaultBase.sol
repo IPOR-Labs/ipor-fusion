@@ -8,11 +8,9 @@ import {PlasmaVault, PlasmaVaultInitData} from "../PlasmaVault.sol";
 
 /// @title STATELESS extension of PlasmaVault with ERC20Votes
 contract PlasmaVaultBase is ERC20VotesUpgradeable {
-
     function init() external initializer {
         __ERC20Votes_init();
     }
-
 
     /// @dev Support Votes, can be executed only by Vault
     function updateInternal(address from_, address to_, uint256 value_) external {
