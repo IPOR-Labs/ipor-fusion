@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -21,6 +20,7 @@ import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {TestAccountSetup} from "../supplyFuseTemplate/TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "../supplyFuseTemplate/TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "../supplyFuseTemplate/TestVaultSetup.sol";
+import {IPlasmaVaultGovernance} from "../../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {
     using SafeERC20 for ERC20;
@@ -139,7 +139,9 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         bytes32[] memory instantWithdrawParamsFluidStakingFUsdc = new bytes32[](2);
         instantWithdrawParamsFluidStakingFUsdc[0] = 0;
-        instantWithdrawParamsFluidStakingFUsdc[1] = PlasmaVaultConfigLib.addressToBytes32(FLUID_LENDING_STAKING_REWARDS);
+        instantWithdrawParamsFluidStakingFUsdc[1] = PlasmaVaultConfigLib.addressToBytes32(
+            FLUID_LENDING_STAKING_REWARDS
+        );
 
         instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: fuses[1],
@@ -155,17 +157,19 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
             params: instantWithdrawParamsFluidFUsdc
         });
 
-
         vm.prank(getOwner());
-        PlasmaVault(plasmaVault).configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(plasmaVault).configureInstantWithdrawalFuses(instantWithdrawFuses);
     }
 
     function getEnterFuseData(
         uint256 amount_,
-    //solhint-disable-next-line
+        //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
+            vault: F_TOKEN,
+            vaultAssetAmount: amount_
+        });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
             fluidTokenAmount: amount_
@@ -177,7 +181,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
     function getExitFuseData(
         uint256 amount_,
-    //solhint-disable-next-line
+        //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         FluidInstadappStakingSupplyFuseExitData memory exitDataStaking = FluidInstadappStakingSupplyFuseExitData({
@@ -445,10 +449,12 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
             address(fuses[1]),
             abi.encodeWithSignature(
                 "enter(bytes)",
-                abi.encode(FluidInstadappStakingSupplyFuseEnterData({
-                    stakingPool: FLUID_LENDING_STAKING_REWARDS,
-                    fluidTokenAmount: depositAmount
-                }))
+                abi.encode(
+                    FluidInstadappStakingSupplyFuseEnterData({
+                        stakingPool: FLUID_LENDING_STAKING_REWARDS,
+                        fluidTokenAmount: depositAmount
+                    })
+                )
             )
         );
 
@@ -478,7 +484,6 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         assertEq(vaultStakingFTokenBalanceAfter, 0, "vaultStakingFTokenBalanceAfter");
         assertEq(vaultFTokenBalanceBefore, 0, "vaultFTokenBalanceBefore");
         assertEq(vaultFTokenBalanceAfter, 0, "vaultFTokenBalanceAfter");
-
     }
 
     function generateExitCallsData(

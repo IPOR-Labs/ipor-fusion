@@ -11,7 +11,7 @@ import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig,
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
-import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 
 contract InitializeAccessManagerTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -54,7 +54,8 @@ contract InitializeAccessManagerTest is Test {
 
         accessManager = new IporFusionAccessManager(admin);
 
-        plasmaVault = new IporPlasmaVault(
+        vm.startPrank(admin);
+        plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -65,9 +66,11 @@ contract InitializeAccessManagerTest is Test {
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(performanceFeeManager, 0, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
+        vm.stopPrank();
 
         rewardsClaimManager = new RewardsClaimManager(address(accessManager), address(plasmaVault));
     }

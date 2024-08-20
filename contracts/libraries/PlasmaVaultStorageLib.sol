@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
 /// @title Storage
 library PlasmaVaultStorageLib {
-    using SafeCast for uint256;
-
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
         0x24e02552e88772b8e8fd15f3e6699ba530635ffc6b52322da922b0b497a77300;

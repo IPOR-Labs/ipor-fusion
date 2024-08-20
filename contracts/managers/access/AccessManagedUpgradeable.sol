@@ -2,11 +2,11 @@
 // OpenZeppelin Contracts (last updated v5.0.0) (access/manager/AccessManaged.sol)
 
 pragma solidity ^0.8.20;
-
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @dev This contract module makes available a {restricted} modifier. Functions decorated with this modifier will be
@@ -16,14 +16,33 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
  * IMPORTANT: The `restricted` modifier should never be used on `internal` functions, judiciously used in `public`
  * functions, and ideally only used in `external` functions. See {restricted}.
  */
-abstract contract AccessManaged is Context, IAccessManaged {
-    address private _authority;
-    bool private _consumingSchedule;
+abstract contract AccessManagedUpgradeable is Initializable, ContextUpgradeable, IAccessManaged {
+    /// @custom:storage-location erc7201:openzeppelin.storage.AccessManaged
+    struct AccessManagedStorage {
+        address _authority;
+        bool _consumingSchedule;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.AccessManaged")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ACCESS_MANAGED_STORAGE_LOCATION =
+        0xf3177357ab46d8af007ab3fdb9af81da189e1068fefdc0073dca88a2cab40a00;
+
+    function _getAccessManagedStorage() internal pure returns (AccessManagedStorage storage $) {
+        assembly {
+            $.slot := ACCESS_MANAGED_STORAGE_LOCATION
+        }
+    }
 
     /**
      * @dev Initializes the contract connected to an initial authority.
      */
-    constructor(address initialAuthority) {
+    function __AccessManaged_init(address initialAuthority) internal onlyInitializing {
+        // solhint-disable-previous-line func-name-mixedcase
+        __AccessManaged_init_unchained(initialAuthority);
+    }
+
+    function __AccessManaged_init_unchained(address initialAuthority) internal onlyInitializing {
+        // solhint-disable-previous-line func-name-mixedcase
         _setAuthority(initialAuthority);
     }
 
@@ -58,7 +77,8 @@ abstract contract AccessManaged is Context, IAccessManaged {
 
     /// @inheritdoc IAccessManaged
     function authority() public view virtual returns (address) {
-        return _authority;
+        AccessManagedStorage storage $ = _getAccessManagedStorage();
+        return $._authority;
     }
 
     /// @inheritdoc IAccessManaged
@@ -75,7 +95,8 @@ abstract contract AccessManaged is Context, IAccessManaged {
 
     /// @inheritdoc IAccessManaged
     function isConsumingScheduledOp() public view virtual returns (bytes4) {
-        return _consumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
+        AccessManagedStorage storage $ = _getAccessManagedStorage();
+        return $._consumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
     }
 
     /**
@@ -83,7 +104,8 @@ abstract contract AccessManaged is Context, IAccessManaged {
      * permissions set by the current authority.
      */
     function _setAuthority(address newAuthority) internal virtual {
-        _authority = newAuthority;
+        AccessManagedStorage storage $ = _getAccessManagedStorage();
+        $._authority = newAuthority;
         emit AuthorityUpdated(newAuthority);
     }
 
@@ -92,6 +114,7 @@ abstract contract AccessManaged is Context, IAccessManaged {
      * is less than 4 bytes long.
      */
     function _checkCanCall(address caller, bytes calldata data) internal virtual {
+        AccessManagedStorage storage $ = _getAccessManagedStorage();
         (bool immediate, uint32 delay) = AuthorityUtils.canCallWithDelay(
             authority(),
             caller,
@@ -100,9 +123,9 @@ abstract contract AccessManaged is Context, IAccessManaged {
         );
         if (!immediate) {
             if (delay > 0) {
-                _consumingSchedule = true;
+                $._consumingSchedule = true;
                 IAccessManager(authority()).consumeScheduledOp(caller, data);
-                _consumingSchedule = false;
+                $._consumingSchedule = false;
             } else {
                 revert AccessManagedUnauthorized(caller);
             }

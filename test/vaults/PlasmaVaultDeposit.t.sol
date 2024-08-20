@@ -16,7 +16,8 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
-import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -185,7 +186,7 @@ contract PlasmaVaultDepositTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -196,7 +197,8 @@ contract PlasmaVaultDepositTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -238,7 +240,7 @@ contract PlasmaVaultDepositTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -249,7 +251,8 @@ contract PlasmaVaultDepositTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -277,11 +280,8 @@ contract PlasmaVaultDepositTest is Test {
         sig[0] = PlasmaVault.deposit.selector;
 
         vm.prank(atomist);
-        IporFusionAccessManager(plasmaVault.getAccessManagerAddress()).setTargetFunctionRole(
-            address(plasmaVault),
-            sig,
-            Roles.WHITELIST_ROLE
-        );
+        IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress())
+            .setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", userOne);
 
@@ -399,11 +399,8 @@ contract PlasmaVaultDepositTest is Test {
         sig[0] = PlasmaVault.mint.selector;
 
         vm.prank(atomist);
-        IporFusionAccessManager(plasmaVault.getAccessManagerAddress()).setTargetFunctionRole(
-            address(plasmaVault),
-            sig,
-            Roles.WHITELIST_ROLE
-        );
+        IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress())
+            .setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", userOne);
 
