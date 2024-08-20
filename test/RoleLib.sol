@@ -18,6 +18,50 @@ struct UsersToRoles {
 
 /// @title Storage
 library RoleLib {
+    function createAccessManagerTmp(IporFusionAccessManager accessManager, UsersToRoles memory usersWithRoles, Vm vm) public returns (IporFusionAccessManager) {
+
+
+        vm.prank(usersWithRoles.superAdmin);
+        accessManager.setRoleAdmin(Roles.ALPHA_ROLE, Roles.ATOMIST_ROLE);
+        vm.prank(usersWithRoles.superAdmin);
+        accessManager.setRoleAdmin(Roles.PERFORMANCE_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
+        vm.prank(usersWithRoles.superAdmin);
+        accessManager.setRoleAdmin(Roles.MANAGEMENT_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
+
+        vm.prank(usersWithRoles.superAdmin);
+        accessManager.grantRole(Roles.ATOMIST_ROLE, usersWithRoles.atomist, 0);
+
+        vm.prank(usersWithRoles.superAdmin);
+        accessManager.grantRole(Roles.GUARDIAN_ROLE, usersWithRoles.atomist, 0);
+
+        vm.prank(usersWithRoles.superAdmin);
+        accessManager.grantRole(Roles.OWNER_ROLE, usersWithRoles.atomist, 0);
+
+        for (uint256 i; i < usersWithRoles.alphas.length; i++) {
+            vm.prank(usersWithRoles.atomist);
+            accessManager.grantRole(Roles.ALPHA_ROLE, usersWithRoles.alphas[i], 0);
+        }
+
+        for (uint256 i; i < usersWithRoles.performanceFeeManagers.length; i++) {
+            vm.prank(usersWithRoles.atomist);
+            accessManager.grantRole(
+                Roles.PERFORMANCE_FEE_MANAGER_ROLE,
+                usersWithRoles.performanceFeeManagers[i],
+                usersWithRoles.feeTimelock
+            );
+        }
+
+        for (uint256 i; i < usersWithRoles.managementFeeManagers.length; i++) {
+            vm.prank(usersWithRoles.atomist);
+            accessManager.grantRole(
+                Roles.MANAGEMENT_FEE_MANAGER_ROLE,
+                usersWithRoles.managementFeeManagers[i],
+                usersWithRoles.feeTimelock
+            );
+        }
+
+        return accessManager;
+    }
     function createAccessManager(UsersToRoles memory usersWithRoles, Vm vm) public returns (IporFusionAccessManager) {
         IporFusionAccessManager accessManager = new IporFusionAccessManager(usersWithRoles.superAdmin);
 

@@ -6,16 +6,19 @@ import {ERC20VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/token/E
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
+import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
 
 /// @title STATELESS extension of PlasmaVault with ERC20 Votes, ERC20 Permit. Used by PlasmaVault only by delegatecall.
-contract PlasmaVaultBase is ERC20PermitUpgradeable, ERC20VotesUpgradeable {
-    function init(string memory assetName) external initializer {
+contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20VotesUpgradeable, PlasmaVaultGovernance {
+    function init(string memory assetName_, address accessManager_) external override initializer {
         super.__ERC20Votes_init();
-        super.__ERC20Permit_init(assetName);
+        super.__ERC20Permit_init(assetName_);
+        super.__AccessManaged_init(accessManager_);
     }
 
-    /// @dev Can be executed only by Plasma Vault in delegatecall.
-    function updateInternal(address from_, address to_, uint256 value_) external {
+    /// @dev Can be executed only by Plasma Vault in delegatecall. PlasmaVault execute this function only using delegatecall, to get PlasmaVault context and storage.
+    function updateInternal(address from_, address to_, uint256 value_) external override {
         _update(from_, to_, value_);
     }
 

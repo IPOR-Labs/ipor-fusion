@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
+import "forge-std/console2.sol";
 import {TestStorage} from "./TestStorage.sol";
-import {MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
-import {IporPlasmaVault} from "../../../contracts/vaults/IporPlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 
 abstract contract TestVaultSetup is TestStorage {
@@ -18,8 +18,10 @@ abstract contract TestVaultSetup is TestStorage {
         FeeConfig memory feeConfig = setupFeeConfig();
 
         createAccessManager();
+
+        vm.startPrank(accounts[0]);
         plasmaVault = address(
-            new IporPlasmaVault(
+            new PlasmaVault(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "TPLASMA",
@@ -35,6 +37,7 @@ abstract contract TestVaultSetup is TestStorage {
                 )
             )
         );
+        vm.stopPrank();
 
         setupRoles();
     }

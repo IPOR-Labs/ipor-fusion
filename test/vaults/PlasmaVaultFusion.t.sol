@@ -18,10 +18,8 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultFusion} from "../../contracts/vaults/extensions/PlasmaVaultFusion.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
-import {PlasmaVaultFusionMock} from "../mocks/PlasmaVaultFusionMock.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 
 contract PlasmaVaultErc20FusionTest is Test {
@@ -38,7 +36,7 @@ contract PlasmaVaultErc20FusionTest is Test {
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
-    PlasmaVaultFusion private plasmaVault;
+    PlasmaVault private plasmaVault;
     address private owner;
     uint256 private ownerPrivKey;
     address private spender;
@@ -110,7 +108,7 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         accessManager = createAccessManager(usersToRoles);
 
-        plasmaVault = new PlasmaVaultFusionMock(
+        plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

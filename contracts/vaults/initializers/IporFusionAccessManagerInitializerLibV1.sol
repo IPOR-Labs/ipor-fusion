@@ -47,7 +47,7 @@ library IporFusionAccessManagerInitializerLibV1 {
 
     function _generateAccountToRoles(
         DataForInitialization memory data_
-    ) private returns (AccountToRole[] memory accountToRoles) {
+    ) private pure returns (AccountToRole[] memory accountToRoles) {
         accountToRoles = new AccountToRole[](
             data_.owners.length +
                 data_.admins.length +
@@ -174,7 +174,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         return accountToRoles;
     }
 
-    function _generateAdminRoles() private returns (AdminRole[] memory adminRoles_) {
+    function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
         adminRoles_ = new AdminRole[](12);
         adminRoles_[0] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         adminRoles_[1] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});

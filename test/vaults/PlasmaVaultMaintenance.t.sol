@@ -17,8 +17,8 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
-import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -70,7 +70,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -90,10 +90,10 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // when
         vm.prank(address(0x777));
-        plasmaVault.configurePerformanceFee(address(0x555), 55);
+        IPlasmaVaultGovernance(address(plasmaVault)).configurePerformanceFee(address(0x555), 55);
 
         // then
-        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = plasmaVault.getPerformanceFeeData();
+        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData();
         assertEq(feeData.feeManager, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
@@ -106,7 +106,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.managementFeeManagers = managementFeeManagers;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -126,10 +126,10 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // when
         vm.prank(address(0x555));
-        plasmaVault.configureManagementFee(address(0x555), 55);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureManagementFee(address(0x555), 55);
 
         // then
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = plasmaVault.getManagementFeeData();
+        PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData();
         assertEq(feeData.feeManager, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
@@ -144,7 +144,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -175,7 +175,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         accessManager.execute(target, data);
 
         // then
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = plasmaVault.getManagementFeeData();
+        PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData();
         assertEq(feeData.feeManager, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
@@ -190,7 +190,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -221,7 +221,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(address(0x555));
-        plasmaVault.configureManagementFee(address(0x555), 55);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureManagementFee(address(0x555), 55);
     }
 
     function testShouldRevertWhenConfigureManagementFeeCallWithoutShouldExecute() public {
@@ -234,7 +234,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -277,7 +277,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -308,7 +308,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         accessManager.execute(target, data);
 
         // then
-        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = plasmaVault.getPerformanceFeeData();
+        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData();
         assertEq(feeData.feeManager, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
@@ -322,7 +322,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -353,7 +353,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        plasmaVault.configurePerformanceFee(address(0x777), 55);
+        IPlasmaVaultGovernance(address(plasmaVault)).configurePerformanceFee(address(0x777), 55);
     }
 
     function testShouldRevertWhenConfigurePerformanceFeeCallWithoutShouldExecute() public {
@@ -365,7 +365,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         usersToRoles.feeTimelock = 1 days;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -423,7 +423,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         // when
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -441,7 +441,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // then
         assertTrue(
-            plasmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
             "Balance fuse should be supported"
         );
     }
@@ -467,7 +467,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -484,11 +484,11 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
 
         //when
-        plasmaVault.addBalanceFuse(AAVE_V3_MARKET_ID, address(balanceFuse));
+        IPlasmaVaultGovernance(address(plasmaVault)).addBalanceFuse(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         //then
         assertTrue(
-            plasmaVault.isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
             "Balance fuse should be supported"
         );
     }
@@ -512,7 +512,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         // when
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -529,7 +529,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
 
         // then
-        assertTrue(plasmaVault.isFuseSupported(address(fuse)), "Fuse should be supported");
+        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(fuse)), "Fuse should be supported");
     }
 
     function testShouldAddFusesByAtomist() public {
@@ -555,7 +555,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -578,11 +578,11 @@ contract PlasmaVaultMaintenanceTest is Test {
         newSupplyFuses[1] = address(supplyFuseCompoundV3);
 
         //when
-        plasmaVault.addFuses(newSupplyFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(newSupplyFuses);
 
         //then
-        assertTrue(plasmaVault.isFuseSupported(address(supplyFuseAaveV3)), "Fuse AaveV3 should be supported");
-        assertTrue(plasmaVault.isFuseSupported(address(supplyFuseCompoundV3)), "Fuse CompoundV3 should be supported");
+        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)), "Fuse AaveV3 should be supported");
+        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)), "Fuse CompoundV3 should be supported");
     }
 
     function testShouldAddFusesByOwnerAndExecuteAction() public {
@@ -612,7 +612,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -669,7 +669,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         newSupplyFuses[1] = address(supplyFuseCompoundV3);
 
         // when
-        plasmaVault.addFuses(newSupplyFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(newSupplyFuses);
         vm.prank(alpha);
         plasmaVault.execute(calls);
 
@@ -678,9 +678,9 @@ contract PlasmaVaultMaintenanceTest is Test {
         uint256 vaultTotalAssetsInMarketAaveV3 = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
         uint256 vaultTotalAssetsInMarketCompoundV3 = plasmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
 
-        assertTrue(plasmaVault.isFuseSupported(address(supplyFuseAaveV3)), "Aave V3 supply fuse should be supported");
+        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)), "Aave V3 supply fuse should be supported");
         assertTrue(
-            plasmaVault.isFuseSupported(address(supplyFuseCompoundV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Compound V3 supply fuse should be supported"
         );
         assertGt(vaultTotalAssets, 99e6, "Vault total assets should be greater than 99e6");
@@ -718,7 +718,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -745,15 +745,15 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        plasmaVault.addFuses(newSupplyFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(newSupplyFuses);
 
         // then
         assertFalse(
-            plasmaVault.isFuseSupported(address(supplyFuseAaveV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)),
             "Fuse AaveV3 should not be supported when not owner"
         );
         assertFalse(
-            plasmaVault.isFuseSupported(address(supplyFuseCompoundV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Fuse CompoundV3 should not be supported when not owner"
         );
     }
@@ -780,7 +780,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -833,7 +833,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         uint256 vaultTotalAssets = plasmaVault.totalAssets();
         uint256 vaultTotalAssetsInMarket = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
 
-        assertFalse(plasmaVault.isFuseSupported(address(supplyFuse)), "Fuse should not execute when not added");
+        assertFalse(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuse)), "Fuse should not execute when not added");
         assertEq(vaultTotalAssets, amount, "Vault total assets should be equal to amount");
         assertEq(vaultTotalAssetsInMarket, 0, "Vault total assets in market should be equal to 0");
     }
@@ -860,7 +860,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -907,8 +907,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
         // when
-        plasmaVault.addFuses(fuses);
-        plasmaVault.removeFuses(fuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).removeFuses(fuses);
         vm.expectRevert(error);
         vm.prank(alpha);
         plasmaVault.execute(calls);
@@ -917,7 +917,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         uint256 vaultTotalAssets = plasmaVault.totalAssets();
         uint256 vaultTotalAssetsInMarket = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
 
-        assertFalse(plasmaVault.isFuseSupported(address(supplyFuse)), "Fuse should not execute when removed");
+        assertFalse(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuse)), "Fuse should not execute when removed");
         assertEq(vaultTotalAssets, amount, "Vault total assets should be equal to amount");
         assertEq(vaultTotalAssetsInMarket, 0, "Vault total assets in market should be equal to 0");
     }
@@ -940,7 +940,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -959,10 +959,10 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         //when
-        plasmaVault.removeFuses(fuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).removeFuses(fuses);
 
         //then
-        assertFalse(plasmaVault.isFuseSupported(address(fuse)), "Fuse should not be supported");
+        assertFalse(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(fuse)), "Fuse should not be supported");
     }
 
     function testShouldRemoveFusesByOwner() public {
@@ -991,7 +991,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1014,15 +1014,15 @@ contract PlasmaVaultMaintenanceTest is Test {
         newSupplyFuses[1] = address(supplyFuseCompoundV3);
 
         //when
-        plasmaVault.removeFuses(newSupplyFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).removeFuses(newSupplyFuses);
 
         //then
         assertFalse(
-            plasmaVault.isFuseSupported(address(supplyFuseAaveV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)),
             "Aave V3 supply fuse should not be supported"
         );
         assertFalse(
-            plasmaVault.isFuseSupported(address(supplyFuseCompoundV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Compound V3 supply fuse should not be supported"
         );
     }
@@ -1053,7 +1053,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1076,12 +1076,12 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        plasmaVault.removeFuses(supplyFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).removeFuses(supplyFuses);
 
         // then
-        assertTrue(plasmaVault.isFuseSupported(address(supplyFuseAaveV3)), "Aave V3 supply fuse should be supported");
+        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)), "Aave V3 supply fuse should be supported");
         assertTrue(
-            plasmaVault.isFuseSupported(address(supplyFuseCompoundV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Compound V3 supply fuse should be supported"
         );
     }
@@ -1111,7 +1111,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1132,11 +1132,11 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuseCompoundV3);
         //when
-        plasmaVault.addFuses(fuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
 
         //then
         assertTrue(
-            plasmaVault.isFuseSupported(address(supplyFuseCompoundV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Compound V3 supply fuse should be supported"
         );
 
@@ -1144,11 +1144,11 @@ contract PlasmaVaultMaintenanceTest is Test {
         fuses2[0] = address(supplyFuseAaveV3);
 
         //when
-        plasmaVault.removeFuses(fuses2);
+        IPlasmaVaultGovernance(address(plasmaVault)).removeFuses(fuses2);
 
         //then
         assertFalse(
-            plasmaVault.isFuseSupported(address(supplyFuseAaveV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)),
             "Aave V3 supply fuse should not be supported"
         );
     }
@@ -1178,7 +1178,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1200,20 +1200,20 @@ contract PlasmaVaultMaintenanceTest is Test {
         newSupplyFuses[0] = address(supplyFuseCompoundV3);
 
         //when
-        plasmaVault.addFuses(newSupplyFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(newSupplyFuses);
 
         //then
         assertTrue(
-            plasmaVault.isFuseSupported(address(supplyFuseCompoundV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Compound V3 supply fuse should be supported"
         );
 
         //when
-        plasmaVault.removeFuses(newSupplyFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).removeFuses(newSupplyFuses);
 
         //then
         assertFalse(
-            plasmaVault.isFuseSupported(address(supplyFuseCompoundV3)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Compound V3 supply fuse should not be supported"
         );
     }
@@ -1232,7 +1232,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1251,13 +1251,13 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 8, address(0)));
-        address priceOracleBefore = plasmaVault.getPriceOracle();
+        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
 
         // when
-        plasmaVault.setPriceOracle(newPriceOracle);
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracle(newPriceOracle);
 
         // then
-        address priceOracleAfter = plasmaVault.getPriceOracle();
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
 
         assertEq(
             priceOracleBefore,
@@ -1281,7 +1281,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1300,16 +1300,16 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 6, address(0)));
-        address priceOracleBefore = plasmaVault.getPriceOracle();
+        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
 
         bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle()");
 
         // when
         vm.expectRevert(error);
-        plasmaVault.setPriceOracle(newPriceOracle);
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracle(newPriceOracle);
 
         // when
-        address priceOracleAfter = plasmaVault.getPriceOracle();
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
 
         assertEq(
             priceOracleBefore,
@@ -1337,7 +1337,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1356,16 +1356,16 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(address(0x777), 8, address(0)));
-        address priceOracleBefore = plasmaVault.getPriceOracle();
+        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
 
         bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle()");
 
         // when
         vm.expectRevert(error);
-        plasmaVault.setPriceOracle(newPriceOracle);
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracle(newPriceOracle);
 
         // when
-        address priceOracleAfter = plasmaVault.getPriceOracle();
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
 
         assertEq(
             priceOracleBefore,
@@ -1393,7 +1393,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1412,17 +1412,17 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 8, address(0)));
-        address priceOracleBefore = plasmaVault.getPriceOracle();
+        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
 
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        plasmaVault.setPriceOracle(newPriceOracle);
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracle(newPriceOracle);
 
         // then
-        address priceOracleAfter = plasmaVault.getPriceOracle();
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
 
         assertEq(
             priceOracleBefore,
@@ -1469,7 +1469,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1492,7 +1492,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        plasmaVault.activateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).activateMarketsLimits();
     }
 
     function testShouldActivateMarketsLimitWhenAtomist() public {
@@ -1510,7 +1510,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1528,14 +1528,14 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        bool isMarketsLimitsActivatedBefore = plasmaVault.isMarketsLimitsActivated();
+        bool isMarketsLimitsActivatedBefore = IPlasmaVaultGovernance(address(plasmaVault)).isMarketsLimitsActivated();
 
         // when
         vm.prank(atomist);
-        plasmaVault.activateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).activateMarketsLimits();
 
         // then
-        bool isMarketsLimitsActivatedAfter = plasmaVault.isMarketsLimitsActivated();
+        bool isMarketsLimitsActivatedAfter = IPlasmaVaultGovernance(address(plasmaVault)).isMarketsLimitsActivated();
 
         assertFalse(isMarketsLimitsActivatedBefore, "Markets limits should not be activated before");
         assertTrue(isMarketsLimitsActivatedAfter, "Markets limits should be activated after");
@@ -1556,7 +1556,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1575,16 +1575,16 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         vm.prank(atomist);
-        plasmaVault.activateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).activateMarketsLimits();
 
-        bool isMarketsLimitsActivatedBefore = plasmaVault.isMarketsLimitsActivated();
+        bool isMarketsLimitsActivatedBefore = IPlasmaVaultGovernance(address(plasmaVault)).isMarketsLimitsActivated();
 
         // when
         vm.prank(atomist);
-        plasmaVault.deactivateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).deactivateMarketsLimits();
 
         // then
-        bool isMarketsLimitsActivatedAfter = plasmaVault.isMarketsLimitsActivated();
+        bool isMarketsLimitsActivatedAfter = IPlasmaVaultGovernance(address(plasmaVault)).isMarketsLimitsActivated();
 
         assertTrue(isMarketsLimitsActivatedBefore, "Markets limits should be activated before");
         assertFalse(isMarketsLimitsActivatedAfter, "Markets limits should not be activated after");
@@ -1605,7 +1605,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1626,12 +1626,12 @@ contract PlasmaVaultMaintenanceTest is Test {
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
 
         vm.prank(atomist);
-        plasmaVault.activateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).activateMarketsLimits();
 
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        plasmaVault.deactivateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).deactivateMarketsLimits();
     }
 
     function testShouldNotBeAbleToSetupLimitForMarketWhenNotAtomist() public {
@@ -1649,7 +1649,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1670,12 +1670,12 @@ contract PlasmaVaultMaintenanceTest is Test {
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
 
         vm.prank(atomist);
-        plasmaVault.activateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).activateMarketsLimits();
 
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        plasmaVault.deactivateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).deactivateMarketsLimits();
     }
 
     function testShouldBeAbleToSetupLimitForMarketWhenAtomist() public {
@@ -1693,7 +1693,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1711,17 +1711,17 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        uint256 limitBefore = plasmaVault.getMarketLimit(AAVE_V3_MARKET_ID);
+        uint256 limitBefore = IPlasmaVaultGovernance(address(plasmaVault)).getMarketLimit(AAVE_V3_MARKET_ID);
 
         MarketLimit[] memory marketsLimits = new MarketLimit[](1);
         marketsLimits[0] = MarketLimit(AAVE_V3_MARKET_ID, 1e17);
 
         // when
         vm.prank(atomist);
-        plasmaVault.setupMarketsLimits(marketsLimits);
+        IPlasmaVaultGovernance(address(plasmaVault)).setupMarketsLimits(marketsLimits);
 
         //then
-        uint256 limitAfter = plasmaVault.getMarketLimit(AAVE_V3_MARKET_ID);
+        uint256 limitAfter = IPlasmaVaultGovernance(address(plasmaVault)).getMarketLimit(AAVE_V3_MARKET_ID);
 
         assertEq(limitBefore, 0, "Limit before should be equal to 0");
         assertEq(limitAfter, 1e17, "Limit after should be equal to 1e17");
@@ -1742,7 +1742,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1783,7 +1783,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1829,7 +1829,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1877,7 +1877,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1967,7 +1967,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2059,7 +2059,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2153,7 +2153,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2250,7 +2250,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address owner = usersToRoles.atomist;
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2308,7 +2308,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2365,7 +2365,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2421,7 +2421,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2481,7 +2481,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2499,7 +2499,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        uint256[] memory marketIdsBefore = plasmaVault.getDependencyBalanceGraph(1);
+        uint256[] memory marketIdsBefore = IPlasmaVaultGovernance(address(plasmaVault)).getDependencyBalanceGraph(1);
 
         uint256[] memory marketIdsToUpdate = new uint256[](2);
         marketIdsToUpdate[0] = 1;
@@ -2513,10 +2513,10 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // when
         vm.prank(usersToRoles.atomist);
-        plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependency);
+        IPlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, marketDependency);
 
         // then
-        uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraph(1);
+        uint256[] memory marketIdsAfter = IPlasmaVaultGovernance(address(plasmaVault)).getDependencyBalanceGraph(1);
 
         assertEq(marketIdsBefore.length, 0, "Market ids before should be empty");
         assertEq(marketIdsAfter.length, 2, "Market ids after should have length 2");
@@ -2535,7 +2535,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -2553,7 +2553,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        uint256[] memory marketIdsBefore = plasmaVault.getDependencyBalanceGraph(1);
+        uint256[] memory marketIdsBefore = IPlasmaVaultGovernance(address(plasmaVault)).getDependencyBalanceGraph(1);
 
         uint256[] memory marketIdsToUpdate = new uint256[](2);
         marketIdsToUpdate[0] = 1;
@@ -2570,10 +2570,10 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         vm.prank(usersToRoles.alphas[0]);
         vm.expectRevert(error);
-        plasmaVault.updateDependencyBalanceGraphs(marketIds, marketDependency);
+        IPlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, marketDependency);
 
         // then
-        uint256[] memory marketIdsAfter = plasmaVault.getDependencyBalanceGraph(1);
+        uint256[] memory marketIdsAfter = IPlasmaVaultGovernance(address(plasmaVault)).getDependencyBalanceGraph(1);
 
         assertEq(marketIdsBefore.length, 0, "Market ids before should be empty");
         assertEq(marketIdsAfter.length, 0, "Market ids after should be empty");

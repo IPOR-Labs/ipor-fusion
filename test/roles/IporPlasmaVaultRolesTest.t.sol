@@ -16,8 +16,8 @@ import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.s
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManagerInitializerLibV1} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {PlasmaVaultFusionMock} from "../mocks/PlasmaVaultFusionMock.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -42,13 +42,13 @@ contract IporPlasmaVaultRolesTest is Test {
         _initializeAccessManager();
     }
 
-    function testDeployerShouldNotBeAdminAfterInitialization() external {
+    function testDeployerShouldNotBeAdminAfterInitialization() view external {
         // then
         (bool isMember, ) = _accessManager.hasRole(Roles.ADMIN_ROLE, _deployer);
         assertFalse(isMember, "Deployer should not be an admin");
     }
 
-    function testDeployerShouldNotBeAlphaAfterInitialization() external {
+    function testDeployerShouldNotBeAlphaAfterInitialization() view external {
         // then
         (bool isMember, ) = _accessManager.hasRole(Roles.ALPHA_ROLE, _deployer);
         assertFalse(isMember, "Deployer should not be an alpha");
@@ -439,7 +439,7 @@ contract IporPlasmaVaultRolesTest is Test {
         assertEq(nonceSchedule, nonceCancel, "Nonce should be equal");
     }
 
-    function testSetRewardsClaimManagerAddressCannotBeUsedAfterBootstraping() external {
+    function testSetRewardsClaimManagerAddressCannotBeUsedAfterBootstraping() view external {
         // then
         uint64 roleId = _accessManager.getTargetFunctionRole(
             address(_plasmaVault),
@@ -455,7 +455,7 @@ contract IporPlasmaVaultRolesTest is Test {
         assertEq(executionDelay, 0, "Execution delay should be 0");
     }
 
-    function testShouldReturnAccessManagerAsAuthority() external {
+    function testShouldReturnAccessManagerAsAuthority() view external {
         // then
         assertEq(_plasmaVault.authority(), address(_accessManager), "Access manager should be an authority");
         assertEq(_rewardsClaimManager.authority(), address(_accessManager), "Access manager should be an authority");
@@ -539,7 +539,7 @@ contract IporPlasmaVaultRolesTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarketsArbitrum.AAVE_V3, address(balanceFuse));
         _accessManager = new IporFusionAccessManager(_deployer);
 
-        _plasmaVault = new PlasmaVaultFusionMock(
+        _plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -560,7 +560,7 @@ contract IporPlasmaVaultRolesTest is Test {
     function _generateRewardsClaimManager() private {
         _rewardsClaimManager = new RewardsClaimManager(address(_accessManager), address(_plasmaVault));
         vm.prank(_deployer);
-        _plasmaVault.setRewardsClaimManagerAddress(address(_rewardsClaimManager));
+        IPlasmaVaultGovernance(address(_plasmaVault)).setRewardsClaimManagerAddress(address(_rewardsClaimManager));
     }
 
     function _initializeAccessManager() private {

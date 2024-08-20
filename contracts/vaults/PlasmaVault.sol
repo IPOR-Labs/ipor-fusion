@@ -27,6 +27,9 @@ import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradeable.sol";
+import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
@@ -81,11 +84,11 @@ struct FeeConfig {
 }
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
-abstract contract PlasmaVault is
+contract PlasmaVault is
     ERC20Upgradeable,
     ERC4626Upgradeable,
     ReentrancyGuardUpgradeable,
-    PlasmaVaultGovernance
+    AccessManagedUpgradeable
 {
     using Address for address;
     using SafeCast for int256;
@@ -98,22 +101,22 @@ abstract contract PlasmaVault is
     error NoAssetsToWithdraw();
     error NoAssetsToDeposit();
     error UnsupportedFuse();
+    error UnsupportedMethod();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
     uint256 public immutable BASE_CURRENCY_DECIMALS;
     address public immutable PLASMA_VAULT_BASE;
-    bool private _customConsumingSchedule;
 
     constructor(
         PlasmaVaultInitData memory initData_
-    ) ERC20Upgradeable() ERC4626Upgradeable() PlasmaVaultGovernance(initData_.accessManager) initializer {
+    ) ERC20Upgradeable() ERC4626Upgradeable() initializer {
         super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
         super.__ERC4626_init(IERC20(initData_.underlyingToken));
 
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
-        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSignature("init(string)", initData_.assetName));
+        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSelector(IPlasmaVaultBase.init.selector, initData_.assetName, initData_.accessManager));
 
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData_.priceOracle);
 
@@ -125,12 +128,17 @@ abstract contract PlasmaVault is
 
         PlasmaVaultLib.setPriceOracle(initData_.priceOracle);
 
-        for (uint256 i; i < initData_.fuses.length; ++i) {
-            _addFuse(initData_.fuses[i]);
-        }
+        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSelector(PlasmaVaultGovernance.addFuses.selector, initData_.fuses));
 
         for (uint256 i; i < initData_.balanceFuses.length; ++i) {
-            _addBalanceFuse(initData_.balanceFuses[i].marketId, initData_.balanceFuses[i].fuse);
+            // @dev in the moment of construction deployer has rights to add balance fuses
+            PLASMA_VAULT_BASE.functionDelegateCall(
+                abi.encodeWithSelector(
+                    IPlasmaVaultGovernance.addBalanceFuse.selector,
+                    initData_.balanceFuses[i].marketId,
+                    initData_.balanceFuses[i].fuse
+                )
+            );
         }
 
         for (uint256 i; i < initData_.marketSubstratesConfigs.length; ++i) {
@@ -157,12 +165,13 @@ abstract contract PlasmaVault is
             CallbackHandlerLib.handleCallback();
             return "";
         } else {
-            return _fallback();
+            return PLASMA_VAULT_BASE.functionDelegateCall(msg.data);
         }
     }
 
-    function _fallback() internal virtual returns (bytes memory) {
-        return PLASMA_VAULT_BASE.functionDelegateCall(msg.data);
+    /// @dev Mustn't use updateInternal, because is reserved for PlasmaVaultBase to call it as delegatecall in context of PlasmaVault
+    function updateInternal(address, address, uint256) external {
+        revert UnsupportedMethod();
     }
 
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
@@ -373,10 +382,6 @@ abstract contract PlasmaVault is
     /// @return total assets in the vault for the market, represented in underlying token decimals
     function totalAssetsInMarket(uint256 marketId_) public view virtual returns (uint256) {
         return PlasmaVaultLib.getTotalAssetsInMarket(marketId_);
-    }
-
-    function isConsumingScheduledOp() public view override returns (bytes4) {
-        return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
     }
 
     /// @notice Returns the unrealized management fee in underlying token decimals
@@ -624,7 +629,7 @@ abstract contract PlasmaVault is
     }
 
     function _getGrossTotalAssets() internal view returns (uint256) {
-        address rewardsClaimManagerAddress = getRewardsClaimManagerAddress();
+        address rewardsClaimManagerAddress = PlasmaVaultLib.getRewardsClaimManagerAddress();
 
         if (rewardsClaimManagerAddress != address(0)) {
             return
@@ -677,9 +682,10 @@ abstract contract PlasmaVault is
         }
         if (!immediate) {
             if (delay > 0) {
-                _customConsumingSchedule = true;
+                AccessManagedStorage storage $ = _getAccessManagedStorage();
+                $._consumingSchedule = true;
                 IAccessManager(authority()).consumeScheduledOp(caller_, data_);
-                _customConsumingSchedule = false;
+                $._consumingSchedule = false;
             } else {
                 revert AccessManagedUnauthorized(caller_);
             }
@@ -688,17 +694,7 @@ abstract contract PlasmaVault is
 
     function _update(address from_, address to_, uint256 value_) internal virtual override {
         PLASMA_VAULT_BASE.functionDelegateCall(
-            abi.encodeWithSignature("updateInternal(address,address,uint256)", from_, to_, value_)
+            abi.encodeWithSelector(IPlasmaVaultBase.updateInternal.selector, from_, to_, value_)
         );
-    }
-
-    function _contextSuffixLength() internal view virtual override(ContextUpgradeable, Context) returns (uint256) {
-        return super._contextSuffixLength();
-    }
-    function _msgSender() internal view virtual override(ContextUpgradeable, Context) returns (address) {
-        return super._msgSender();
-    }
-    function _msgData() internal view virtual override(ContextUpgradeable, Context) returns (bytes calldata) {
-        return super._msgData();
     }
 }

@@ -20,6 +20,7 @@ import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {TestAccountSetup} from "../supplyFuseTemplate/TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "../supplyFuseTemplate/TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "../supplyFuseTemplate/TestVaultSetup.sol";
+import {IPlasmaVaultGovernance} from "../../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {
     using SafeERC20 for ERC20;
@@ -157,7 +158,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         });
 
         vm.prank(getOwner());
-        PlasmaVault(plasmaVault).configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(plasmaVault).configureInstantWithdrawalFuses(instantWithdrawFuses);
     }
 
     function getEnterFuseData(
