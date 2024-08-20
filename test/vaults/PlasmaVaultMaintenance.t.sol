@@ -93,7 +93,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configurePerformanceFee(address(0x555), 55);
 
         // then
-        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData();
+        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
+            .getPerformanceFeeData();
         assertEq(feeData.feeManager, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
@@ -129,7 +130,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureManagementFee(address(0x555), 55);
 
         // then
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData();
+        PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
+            .getManagementFeeData();
         assertEq(feeData.feeManager, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
@@ -175,7 +177,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         accessManager.execute(target, data);
 
         // then
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData();
+        PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
+            .getManagementFeeData();
         assertEq(feeData.feeManager, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
@@ -308,7 +311,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         accessManager.execute(target, data);
 
         // then
-        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData();
+        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
+            .getPerformanceFeeData();
         assertEq(feeData.feeManager, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
@@ -441,7 +445,10 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // then
         assertTrue(
-            IPlasmaVaultGovernance(address(plasmaVault)).isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isBalanceFuseSupported(
+                AAVE_V3_MARKET_ID,
+                address(balanceFuse)
+            ),
             "Balance fuse should be supported"
         );
     }
@@ -488,7 +495,10 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         //then
         assertTrue(
-            IPlasmaVaultGovernance(address(plasmaVault)).isBalanceFuseSupported(AAVE_V3_MARKET_ID, address(balanceFuse)),
+            IPlasmaVaultGovernance(address(plasmaVault)).isBalanceFuseSupported(
+                AAVE_V3_MARKET_ID,
+                address(balanceFuse)
+            ),
             "Balance fuse should be supported"
         );
     }
@@ -529,7 +539,10 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
 
         // then
-        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(fuse)), "Fuse should be supported");
+        assertTrue(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(fuse)),
+            "Fuse should be supported"
+        );
     }
 
     function testShouldAddFusesByAtomist() public {
@@ -581,8 +594,14 @@ contract PlasmaVaultMaintenanceTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).addFuses(newSupplyFuses);
 
         //then
-        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)), "Fuse AaveV3 should be supported");
-        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)), "Fuse CompoundV3 should be supported");
+        assertTrue(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)),
+            "Fuse AaveV3 should be supported"
+        );
+        assertTrue(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
+            "Fuse CompoundV3 should be supported"
+        );
     }
 
     function testShouldAddFusesByOwnerAndExecuteAction() public {
@@ -678,7 +697,10 @@ contract PlasmaVaultMaintenanceTest is Test {
         uint256 vaultTotalAssetsInMarketAaveV3 = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
         uint256 vaultTotalAssetsInMarketCompoundV3 = plasmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
 
-        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)), "Aave V3 supply fuse should be supported");
+        assertTrue(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)),
+            "Aave V3 supply fuse should be supported"
+        );
         assertTrue(
             IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Compound V3 supply fuse should be supported"
@@ -833,7 +855,10 @@ contract PlasmaVaultMaintenanceTest is Test {
         uint256 vaultTotalAssets = plasmaVault.totalAssets();
         uint256 vaultTotalAssetsInMarket = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
 
-        assertFalse(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuse)), "Fuse should not execute when not added");
+        assertFalse(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuse)),
+            "Fuse should not execute when not added"
+        );
         assertEq(vaultTotalAssets, amount, "Vault total assets should be equal to amount");
         assertEq(vaultTotalAssetsInMarket, 0, "Vault total assets in market should be equal to 0");
     }
@@ -917,7 +942,10 @@ contract PlasmaVaultMaintenanceTest is Test {
         uint256 vaultTotalAssets = plasmaVault.totalAssets();
         uint256 vaultTotalAssetsInMarket = plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID);
 
-        assertFalse(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuse)), "Fuse should not execute when removed");
+        assertFalse(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuse)),
+            "Fuse should not execute when removed"
+        );
         assertEq(vaultTotalAssets, amount, "Vault total assets should be equal to amount");
         assertEq(vaultTotalAssetsInMarket, 0, "Vault total assets in market should be equal to 0");
     }
@@ -962,7 +990,10 @@ contract PlasmaVaultMaintenanceTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).removeFuses(fuses);
 
         //then
-        assertFalse(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(fuse)), "Fuse should not be supported");
+        assertFalse(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(fuse)),
+            "Fuse should not be supported"
+        );
     }
 
     function testShouldRemoveFusesByOwner() public {
@@ -1079,7 +1110,10 @@ contract PlasmaVaultMaintenanceTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).removeFuses(supplyFuses);
 
         // then
-        assertTrue(IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)), "Aave V3 supply fuse should be supported");
+        assertTrue(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)),
+            "Aave V3 supply fuse should be supported"
+        );
         assertTrue(
             IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Compound V3 supply fuse should be supported"

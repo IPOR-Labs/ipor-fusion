@@ -16,6 +16,7 @@ import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol"
 import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
+import {IPlasmaVault, FuseAction} from "../interfaces/IPlasmaVault.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
@@ -25,11 +26,10 @@ import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../lib
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradeable.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
+import {IPlasmaVault} from "../interfaces/IPlasmaVault.sol";
 
 struct PlasmaVaultInitData {
     string assetName;
@@ -43,14 +43,6 @@ struct PlasmaVaultInitData {
     FeeConfig feeConfig;
     address accessManager;
     address plasmaVaultBase;
-}
-
-/// @notice FuseAction is a struct that represents a single action that can be executed by a Alpha
-struct FuseAction {
-    /// @notice fuse is a address of the Fuse contract
-    address fuse;
-    /// @notice data is a bytes data that is passed to the Fuse contract
-    bytes data;
 }
 
 /// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
@@ -88,7 +80,8 @@ contract PlasmaVault is
     ERC20Upgradeable,
     ERC4626Upgradeable,
     ReentrancyGuardUpgradeable,
-    AccessManagedUpgradeable
+    AccessManagedUpgradeable,
+    IPlasmaVault
 {
     using Address for address;
     using SafeCast for int256;
@@ -109,14 +102,14 @@ contract PlasmaVault is
     uint256 public immutable BASE_CURRENCY_DECIMALS;
     address public immutable PLASMA_VAULT_BASE;
 
-    constructor(
-        PlasmaVaultInitData memory initData_
-    ) ERC20Upgradeable() ERC4626Upgradeable() initializer {
+    constructor(PlasmaVaultInitData memory initData_) ERC20Upgradeable() ERC4626Upgradeable() initializer {
         super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
         super.__ERC4626_init(IERC20(initData_.underlyingToken));
 
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
-        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSelector(IPlasmaVaultBase.init.selector, initData_.assetName, initData_.accessManager));
+        PLASMA_VAULT_BASE.functionDelegateCall(
+            abi.encodeWithSelector(IPlasmaVaultBase.init.selector, initData_.assetName, initData_.accessManager)
+        );
 
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData_.priceOracle);
 
@@ -128,7 +121,9 @@ contract PlasmaVault is
 
         PlasmaVaultLib.setPriceOracle(initData_.priceOracle);
 
-        PLASMA_VAULT_BASE.functionDelegateCall(abi.encodeWithSelector(PlasmaVaultGovernance.addFuses.selector, initData_.fuses));
+        PLASMA_VAULT_BASE.functionDelegateCall(
+            abi.encodeWithSelector(PlasmaVaultGovernance.addFuses.selector, initData_.fuses)
+        );
 
         for (uint256 i; i < initData_.balanceFuses.length; ++i) {
             // @dev in the moment of construction deployer has rights to add balance fuses
@@ -169,13 +164,8 @@ contract PlasmaVault is
         }
     }
 
-    /// @dev Mustn't use updateInternal, because is reserved for PlasmaVaultBase to call it as delegatecall in context of PlasmaVault
-    function updateInternal(address, address, uint256) external {
-        revert UnsupportedMethod();
-    }
-
     /// @notice Execute multiple FuseActions by a granted Alphas. Any FuseAction is moving funds between markets and vault. Fuse Action not consider deposit and withdraw from Vault.
-    function execute(FuseAction[] calldata calls_) external nonReentrant restricted {
+    function execute(FuseAction[] calldata calls_) external override nonReentrant restricted {
         uint256 callsCount = calls_.length;
         uint256[] memory markets = new uint256[](callsCount);
         uint256 marketIndex;
@@ -205,36 +195,6 @@ contract PlasmaVault is
         _addPerformanceFee(totalAssetsBefore);
     }
 
-    function executeInternal(FuseAction[] calldata calls_) external {
-        if (address(this) != msg.sender) {
-            revert Errors.WrongCaller(msg.sender);
-        }
-        uint256 callsCount = calls_.length;
-        uint256[] memory markets = new uint256[](callsCount);
-        uint256 marketIndex;
-        uint256 fuseMarketId;
-
-        uint256 totalAssetsBefore = totalAssets();
-
-        for (uint256 i; i < callsCount; ++i) {
-            if (!FusesLib.isFuseSupported(calls_[i].fuse)) {
-                revert UnsupportedFuse();
-            }
-
-            fuseMarketId = IFuseCommon(calls_[i].fuse).MARKET_ID();
-
-            if (_checkIfExistsMarket(markets, fuseMarketId) == false) {
-                markets[marketIndex] = fuseMarketId;
-                marketIndex++;
-            }
-
-            calls_[i].fuse.functionDelegateCall(calls_[i].data);
-        }
-        _updateMarketsBalances(markets);
-
-        _addPerformanceFee(totalAssetsBefore);
-    }
-
     function decimals() public view virtual override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
         return super.decimals();
     }
@@ -258,19 +218,6 @@ contract PlasmaVault is
         return _deposit(assets_, receiver_);
     }
 
-    function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {
-        if (assets_ == 0) {
-            revert NoAssetsToDeposit();
-        }
-        if (receiver_ == address(0)) {
-            revert Errors.WrongAddress();
-        }
-
-        _realizeManagementFee();
-
-        return super.deposit(assets_, receiver_);
-    }
-
     function depositWithPermit(
         uint256 assets_,
         address owner_,
@@ -279,7 +226,7 @@ contract PlasmaVault is
         uint8 v_,
         bytes32 r_,
         bytes32 s_
-    ) external nonReentrant restricted returns (uint256) {
+    ) external override nonReentrant restricted returns (uint256) {
         IERC20Permit(asset()).permit(owner_, address(this), assets_, deadline_, v_, r_, s_);
         return _deposit(assets_, receiver_);
     }
@@ -357,7 +304,7 @@ contract PlasmaVault is
         return super.redeem(shares_, receiver_, owner_);
     }
 
-    function claimRewards(FuseAction[] calldata calls_) external nonReentrant restricted {
+    function claimRewards(FuseAction[] calldata calls_) external override nonReentrant restricted {
         uint256 callsCount = calls_.length;
         for (uint256 i; i < callsCount; ++i) {
             calls_[i].fuse.functionDelegateCall(calls_[i].data);
@@ -389,6 +336,82 @@ contract PlasmaVault is
     /// @return unrealized management fee, represented in underlying token decimals
     function getUnrealizedManagementFee() public view returns (uint256) {
         return _getUnrealizedManagementFee(_getGrossTotalAssets());
+    }
+
+    /// @dev Mustn't use updateInternal, because is reserved for PlasmaVaultBase to call it as delegatecall in context of PlasmaVault
+    function updateInternal(address, address, uint256) public {
+        revert UnsupportedMethod();
+    }
+
+    function executeInternal(FuseAction[] calldata calls_) external {
+        if (address(this) != msg.sender) {
+            revert Errors.WrongCaller(msg.sender);
+        }
+        uint256 callsCount = calls_.length;
+        uint256[] memory markets = new uint256[](callsCount);
+        uint256 marketIndex;
+        uint256 fuseMarketId;
+
+        uint256 totalAssetsBefore = totalAssets();
+
+        for (uint256 i; i < callsCount; ++i) {
+            if (!FusesLib.isFuseSupported(calls_[i].fuse)) {
+                revert UnsupportedFuse();
+            }
+
+            fuseMarketId = IFuseCommon(calls_[i].fuse).MARKET_ID();
+
+            if (_checkIfExistsMarket(markets, fuseMarketId) == false) {
+                markets[marketIndex] = fuseMarketId;
+                marketIndex++;
+            }
+
+            calls_[i].fuse.functionDelegateCall(calls_[i].data);
+        }
+        _updateMarketsBalances(markets);
+
+        _addPerformanceFee(totalAssetsBefore);
+    }
+
+    function getUniqueElements(uint256[] memory inputArray) private pure returns (uint256[] memory) {
+        uint256[] memory tempArray = new uint256[](inputArray.length);
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < inputArray.length; i++) {
+            if (inputArray[i] != 0 && !contains(tempArray, inputArray[i], count)) {
+                tempArray[count] = inputArray[i];
+                count++;
+            }
+        }
+
+        uint256[] memory uniqueArray = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            uniqueArray[i] = tempArray[i];
+        }
+
+        return uniqueArray;
+    }
+
+    function contains(uint256[] memory array, uint256 element, uint256 count) private pure returns (bool) {
+        for (uint256 i = 0; i < count; i++) {
+            if (array[i] == element) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {
+        if (assets_ == 0) {
+            revert NoAssetsToDeposit();
+        }
+        if (receiver_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
+        _realizeManagementFee();
+
+        return super.deposit(assets_, receiver_);
     }
 
     function _addPerformanceFee(uint256 totalAssetsBefore_) internal {
@@ -560,34 +583,6 @@ contract PlasmaVault is
         }
 
         return getUniqueElements(marketsChecked);
-    }
-
-    function getUniqueElements(uint256[] memory inputArray) public pure returns (uint256[] memory) {
-        uint256[] memory tempArray = new uint256[](inputArray.length);
-        uint256 count = 0;
-
-        for (uint256 i = 0; i < inputArray.length; i++) {
-            if (inputArray[i] != 0 && !contains(tempArray, inputArray[i], count)) {
-                tempArray[count] = inputArray[i];
-                count++;
-            }
-        }
-
-        uint256[] memory uniqueArray = new uint256[](count);
-        for (uint256 i = 0; i < count; i++) {
-            uniqueArray[i] = tempArray[i];
-        }
-
-        return uniqueArray;
-    }
-
-    function contains(uint256[] memory array, uint256 element, uint256 count) private pure returns (bool) {
-        for (uint256 i = 0; i < count; i++) {
-            if (array[i] == element) {
-                return true;
-            }
-        }
-        return false;
     }
 
     function _increaseArray(uint256[] memory arr_, uint256 newSize_) internal pure returns (uint256[] memory) {

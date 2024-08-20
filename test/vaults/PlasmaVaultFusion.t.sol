@@ -127,6 +127,20 @@ contract PlasmaVaultErc20FusionTest is Test {
         setupRoles(plasmaVault, accessManager);
     }
 
+    function testShouldNotCallFunctionUpdateInternal() public {
+        //given
+        address spender = address(0x1);
+        bytes memory error = abi.encodeWithSignature("UnsupportedMethod()");
+
+        //then
+        vm.expectRevert(error);
+        //when
+        // solhint-disable-next-line  avoid-low-level-calls
+        address(plasmaVault).call(
+            abi.encodeWithSignature("updateInternal(address,address,uint256)", owner, spender, 100)
+        );
+    }
+
     function testERC20PermitShouldHaveAllowanceWhenPermit() public {
         //given
         uint256 value = 100 * 1e6;

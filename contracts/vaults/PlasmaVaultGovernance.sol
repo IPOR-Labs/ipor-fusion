@@ -14,7 +14,6 @@ import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 
 /// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
 abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManagedUpgradeable {
-
     function isMarketSubstrateGranted(uint256 marketId_, bytes32 substrate_) external view override returns (bool) {
         return PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId_, substrate_);
     }
@@ -31,27 +30,37 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return AssetDistributionProtectionLib.isMarketsLimitsActivated();
     }
 
-    function getFuses() external view  override returns (address[] memory) {
+    function getFuses() external view override returns (address[] memory) {
         return FusesLib.getFusesArray();
     }
 
-    function getPriceOracle() external override  view returns (address) {
+    function getPriceOracle() external view override returns (address) {
         return PlasmaVaultLib.getPriceOracle();
     }
 
-    function getPerformanceFeeData() external override  view returns (PlasmaVaultStorageLib.PerformanceFeeData memory feeData) {
+    function getPerformanceFeeData()
+        external
+        view
+        override
+        returns (PlasmaVaultStorageLib.PerformanceFeeData memory feeData)
+    {
         feeData = PlasmaVaultLib.getPerformanceFeeData();
     }
 
-    function getManagementFeeData() external override  view returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData) {
+    function getManagementFeeData()
+        external
+        view
+        override
+        returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData)
+    {
         feeData = PlasmaVaultLib.getManagementFeeData();
     }
 
-    function getAccessManagerAddress() external override  view returns (address) {
+    function getAccessManagerAddress() external view override returns (address) {
         return authority();
     }
 
-    function getRewardsClaimManagerAddress() external view override  returns (address) {
+    function getRewardsClaimManagerAddress() external view override returns (address) {
         return PlasmaVaultLib.getRewardsClaimManagerAddress();
     }
 
@@ -59,7 +68,10 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return PlasmaVaultLib.getInstantWithdrawalFuses();
     }
 
-    function getInstantWithdrawalFusesParams(address fuse_, uint256 index_) external override  view returns (bytes32[] memory) {
+    function getInstantWithdrawalFusesParams(
+        address fuse_,
+        uint256 index_
+    ) external view override returns (bytes32[] memory) {
         return PlasmaVaultLib.getInstantWithdrawalFusesParams(fuse_, index_);
     }
 
@@ -67,19 +79,19 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[marketId_];
     }
 
-    function getDependencyBalanceGraph(uint256 marketId_) external override  view returns (uint256[] memory) {
+    function getDependencyBalanceGraph(uint256 marketId_) external view override returns (uint256[] memory) {
         return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_];
     }
 
-    function addBalanceFuse(uint256 marketId_, address fuse_) external override  restricted {
+    function addBalanceFuse(uint256 marketId_, address fuse_) external override restricted {
         _addBalanceFuse(marketId_, fuse_);
     }
 
-    function removeBalanceFuse(uint256 marketId_, address fuse_) external override  restricted {
+    function removeBalanceFuse(uint256 marketId_, address fuse_) external override restricted {
         FusesLib.removeBalanceFuse(marketId_, fuse_);
     }
 
-    function grandMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external override  restricted {
+    function grandMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external override restricted {
         PlasmaVaultConfigLib.grandMarketSubstrates(marketId_, substrates_);
     }
 
@@ -98,11 +110,13 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
 
     /// @notice Configures the instant withdrawal fuses. Order of the fuse is important, as it will be used in the same order during the instant withdrawal process
     /// @dev Order of the fuses is important, the same fuse can be used multiple times with different parameters (for example different assets, markets or any other substrate specific for the fuse)
-    function configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses_) external override  restricted {
+    function configureInstantWithdrawalFuses(
+        InstantWithdrawalFusesParamsStruct[] calldata fuses_
+    ) external override restricted {
         PlasmaVaultLib.configureInstantWithdrawalFuses(fuses_);
     }
 
-    function addFuses(address[] calldata fuses_) external override  restricted {
+    function addFuses(address[] calldata fuses_) external override restricted {
         for (uint256 i; i < fuses_.length; ++i) {
             FusesLib.addFuse(fuses_[i]);
         }
@@ -114,7 +128,7 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         }
     }
 
-    function setPriceOracle(address priceOracle_) external override  restricted {
+    function setPriceOracle(address priceOracle_) external override restricted {
         IPriceOracleMiddleware oldPriceOracle = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle());
         IPriceOracleMiddleware newPriceOracle = IPriceOracleMiddleware(priceOracle_);
 
@@ -128,19 +142,19 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         PlasmaVaultLib.setPriceOracle(priceOracle_);
     }
 
-    function configurePerformanceFee(address feeManager_, uint256 feeInPercentage_) external override  restricted {
+    function configurePerformanceFee(address feeManager_, uint256 feeInPercentage_) external override restricted {
         PlasmaVaultLib.configurePerformanceFee(feeManager_, feeInPercentage_);
     }
 
-    function configureManagementFee(address feeManager_, uint256 feeInPercentage_) external override  restricted {
+    function configureManagementFee(address feeManager_, uint256 feeInPercentage_) external override restricted {
         PlasmaVaultLib.configureManagementFee(feeManager_, feeInPercentage_);
     }
 
-    function setRewardsClaimManagerAddress(address rewardsClaimManagerAddress_) public override  restricted {
+    function setRewardsClaimManagerAddress(address rewardsClaimManagerAddress_) public override restricted {
         PlasmaVaultLib.setRewardsClaimManagerAddress(rewardsClaimManagerAddress_);
     }
 
-    function setupMarketsLimits(MarketLimit[] calldata marketsLimits_) external override  restricted {
+    function setupMarketsLimits(MarketLimit[] calldata marketsLimits_) external override restricted {
         AssetDistributionProtectionLib.setupMarketsLimits(marketsLimits_);
     }
 

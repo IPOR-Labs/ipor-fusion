@@ -125,7 +125,9 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        IporFusionAccessManager accessManager = IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress());
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
 
         vm.prank(atomist);
         accessManager.setRedemptionDelay(10 minutes);
@@ -164,7 +166,9 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        IporFusionAccessManager accessManager = IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress());
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
 
         vm.prank(atomist);
         accessManager.setRedemptionDelay(10 minutes);
@@ -203,7 +207,9 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        IporFusionAccessManager accessManager = IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress());
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
 
         vm.prank(atomist);
         accessManager.setRedemptionDelay(10 minutes);
@@ -233,7 +239,9 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        IporFusionAccessManager accessManager = IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress());
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
 
         vm.prank(atomist);
         accessManager.setRedemptionDelay(10 minutes);

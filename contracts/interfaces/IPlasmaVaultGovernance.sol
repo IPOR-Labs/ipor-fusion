@@ -6,7 +6,6 @@ import {InstantWithdrawalFusesParamsStruct} from "../libraries/PlasmaVaultLib.so
 import {MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
 
 interface IPlasmaVaultGovernance {
-
     function isMarketSubstrateGranted(uint256 marketId_, bytes32 substrate_) external view returns (bool);
     function isFuseSupported(address fuse_) external view returns (bool);
     function isBalanceFuseSupported(uint256 marketId_, address fuse_) external view returns (bool);
@@ -24,10 +23,7 @@ interface IPlasmaVaultGovernance {
     function addBalanceFuse(uint256 marketId_, address fuse_) external;
     function removeBalanceFuse(uint256 marketId_, address fuse_) external;
     function grandMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external;
-    function updateDependencyBalanceGraphs(
-        uint256[] memory marketIds_,
-        uint256[][] memory dependencies_
-    ) external;
+    function updateDependencyBalanceGraphs(uint256[] memory marketIds_, uint256[][] memory dependencies_) external;
 
     /// @notice Configures the instant withdrawal fuses. Order of the fuse is important, as it will be used in the same order during the instant withdrawal process
     /// @dev Order of the fuses is important, the same fuse can be used multiple times with different parameters (for example different assets, markets or any other substrate specific for the fuse)
@@ -52,5 +48,4 @@ interface IPlasmaVaultGovernance {
     function deactivateMarketsLimits() external;
 
     function updateCallbackHandler(address handler_, address sender_, bytes4 sig_) external;
-
 }

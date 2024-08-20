@@ -280,11 +280,8 @@ contract PlasmaVaultDepositTest is Test {
         sig[0] = PlasmaVault.deposit.selector;
 
         vm.prank(atomist);
-        IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()).setTargetFunctionRole(
-            address(plasmaVault),
-            sig,
-            Roles.WHITELIST_ROLE
-        );
+        IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress())
+            .setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", userOne);
 
@@ -402,11 +399,8 @@ contract PlasmaVaultDepositTest is Test {
         sig[0] = PlasmaVault.mint.selector;
 
         vm.prank(atomist);
-        IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()).setTargetFunctionRole(
-            address(plasmaVault),
-            sig,
-            Roles.WHITELIST_ROLE
-        );
+        IporFusionAccessManager(IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress())
+            .setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", userOne);
 

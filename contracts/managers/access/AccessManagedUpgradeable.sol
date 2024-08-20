@@ -2,8 +2,6 @@
 // OpenZeppelin Contracts (last updated v5.0.0) (access/manager/AccessManaged.sol)
 
 pragma solidity ^0.8.20;
-import "forge-std/console2.sol";
-import {IAuthority} from "@openzeppelin/contracts/access/manager/IAuthority.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
@@ -22,16 +20,16 @@ abstract contract AccessManagedUpgradeable is Initializable, ContextUpgradeable,
     /// @custom:storage-location erc7201:openzeppelin.storage.AccessManaged
     struct AccessManagedStorage {
         address _authority;
-
         bool _consumingSchedule;
     }
 
     // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.AccessManaged")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant AccessManagedStorageLocation = 0xf3177357ab46d8af007ab3fdb9af81da189e1068fefdc0073dca88a2cab40a00;
+    bytes32 private constant ACCESS_MANAGED_STORAGE_LOCATION =
+        0xf3177357ab46d8af007ab3fdb9af81da189e1068fefdc0073dca88a2cab40a00;
 
     function _getAccessManagedStorage() internal pure returns (AccessManagedStorage storage $) {
         assembly {
-            $.slot := AccessManagedStorageLocation
+            $.slot := ACCESS_MANAGED_STORAGE_LOCATION
         }
     }
 
@@ -39,10 +37,12 @@ abstract contract AccessManagedUpgradeable is Initializable, ContextUpgradeable,
      * @dev Initializes the contract connected to an initial authority.
      */
     function __AccessManaged_init(address initialAuthority) internal onlyInitializing {
+        // solhint-disable-previous-line func-name-mixedcase
         __AccessManaged_init_unchained(initialAuthority);
     }
 
     function __AccessManaged_init_unchained(address initialAuthority) internal onlyInitializing {
+        // solhint-disable-previous-line func-name-mixedcase
         _setAuthority(initialAuthority);
     }
 

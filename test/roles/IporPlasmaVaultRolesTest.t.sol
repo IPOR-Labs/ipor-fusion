@@ -42,13 +42,13 @@ contract IporPlasmaVaultRolesTest is Test {
         _initializeAccessManager();
     }
 
-    function testDeployerShouldNotBeAdminAfterInitialization() view external {
+    function testDeployerShouldNotBeAdminAfterInitialization() external view {
         // then
         (bool isMember, ) = _accessManager.hasRole(Roles.ADMIN_ROLE, _deployer);
         assertFalse(isMember, "Deployer should not be an admin");
     }
 
-    function testDeployerShouldNotBeAlphaAfterInitialization() view external {
+    function testDeployerShouldNotBeAlphaAfterInitialization() external view {
         // then
         (bool isMember, ) = _accessManager.hasRole(Roles.ALPHA_ROLE, _deployer);
         assertFalse(isMember, "Deployer should not be an alpha");
@@ -439,7 +439,7 @@ contract IporPlasmaVaultRolesTest is Test {
         assertEq(nonceSchedule, nonceCancel, "Nonce should be equal");
     }
 
-    function testSetRewardsClaimManagerAddressCannotBeUsedAfterBootstraping() view external {
+    function testSetRewardsClaimManagerAddressCannotBeUsedAfterBootstraping() external view {
         // then
         uint64 roleId = _accessManager.getTargetFunctionRole(
             address(_plasmaVault),
@@ -455,7 +455,7 @@ contract IporPlasmaVaultRolesTest is Test {
         assertEq(executionDelay, 0, "Execution delay should be 0");
     }
 
-    function testShouldReturnAccessManagerAsAuthority() view external {
+    function testShouldReturnAccessManagerAsAuthority() external view {
         // then
         assertEq(_plasmaVault.authority(), address(_accessManager), "Access manager should be an authority");
         assertEq(_rewardsClaimManager.authority(), address(_accessManager), "Access manager should be an authority");

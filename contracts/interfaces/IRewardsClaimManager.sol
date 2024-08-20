@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
-import {FuseAction} from "../vaults/PlasmaVault.sol";
+import {FuseAction} from "../interfaces/IPlasmaVault.sol";
 
 /// @custom:storage-location erc7201:io.ipor.managers.rewards.VestingData
 struct VestingData {

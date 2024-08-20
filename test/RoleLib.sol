@@ -18,9 +18,11 @@ struct UsersToRoles {
 
 /// @title Storage
 library RoleLib {
-    function createAccessManagerTmp(IporFusionAccessManager accessManager, UsersToRoles memory usersWithRoles, Vm vm) public returns (IporFusionAccessManager) {
-
-
+    function createAccessManagerTmp(
+        IporFusionAccessManager accessManager,
+        UsersToRoles memory usersWithRoles,
+        Vm vm
+    ) public returns (IporFusionAccessManager) {
         vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(Roles.ALPHA_ROLE, Roles.ATOMIST_ROLE);
         vm.prank(usersWithRoles.superAdmin);
