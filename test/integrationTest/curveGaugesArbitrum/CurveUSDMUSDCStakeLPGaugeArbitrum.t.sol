@@ -10,8 +10,8 @@ import {CurveChildLiquidityGaugeSupplyFuse, CurveChildLiquidityGaugeSupplyFuseEn
 import {CurveChildLiquidityGaugeBalanceFuse} from "../../../contracts/fuses/curve_gauge/CurveChildLiquidityGaugeBalanceFuse.sol";
 import {IChildLiquidityGauge} from "../../../contracts/fuses/curve_gauge/ext/IChildLiquidityGauge.sol";
 import {ICurveStableswapNG} from "../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
-import {IporPlasmaVault} from "./../../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVault, FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
@@ -56,7 +56,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     USDMPriceFeedArbitrum public USDMPriceFeed;
 
     /// Vaults
-    IporPlasmaVault public plasmaVault;
+    PlasmaVault public plasmaVault;
 
     /// Fuses
     address[] public fuses;
@@ -803,7 +803,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     }
 
     function _createPlasmaVault() private {
-        plasmaVault = new IporPlasmaVault(
+        plasmaVault = new PlasmaVault(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",
@@ -814,7 +814,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 fuses: fuses,
                 balanceFuses: _setupBalanceFuses(),
                 feeConfig: _setupFeeConfig(),
-                accessManager: address(accessManager)
+                accessManager: address(accessManager),
+                plasmaVaultBase: address(new PlasmaVaultBase())
             })
         );
     }
