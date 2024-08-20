@@ -24,6 +24,8 @@ interface IChildLiquidityGauge {
      */
     function withdraw(uint256 _value, address _user, bool _claim_rewards) external;
 
+    function user_checkpoint(address _addr) external returns (bool);
+
     /**
      * @notice Claim available reward tokens for `_addr`
      * @param _addr Address to claim for
@@ -38,6 +40,7 @@ interface IChildLiquidityGauge {
 
     /**
      * @notice Get the number of claimable tokens per user
+     * @dev User's accumulated CRV but not yet claimed
      * @dev This function should be manually changed to "view" in the ABI
      * @return uint256 number of claimable tokens per user
      */
@@ -70,4 +73,20 @@ interface IChildLiquidityGauge {
      * @return address Address of the reward token
      */
     function reward_tokens(uint256 _index) external view returns (address);
+
+    /**
+     * @notice Get the reward data for a token
+     * @param token Address of the reward token
+     * @return distributor Address of the distributor
+     * @return period_finish Timestamp of the period finish
+     * @return rate Reward rate
+     * @return last_update Last update timestamp
+     * @return integral Integral
+     */
+    function reward_data(
+        address token
+    )
+        external
+        view
+        returns (address distributor, uint256 period_finish, uint256 rate, uint256 last_update, uint256 integral);
 }
