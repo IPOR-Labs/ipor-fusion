@@ -10,12 +10,17 @@ import {CurveChildLiquidityGaugeSupplyFuse, CurveChildLiquidityGaugeSupplyFuseEn
 import {CurveChildLiquidityGaugeBalanceFuse} from "../../../contracts/fuses/curve_gauge/CurveChildLiquidityGaugeBalanceFuse.sol";
 import {IChildLiquidityGauge} from "../../../contracts/fuses/curve_gauge/ext/IChildLiquidityGauge.sol";
 import {ICurveStableswapNG} from "../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
-import {IporPlasmaVault} from "./../../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVault, FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {USDMPriceFeedArbitrum} from "../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
 import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
 import {IChronicle, IToll} from "../../../contracts/priceOracle/IChronicle.sol";
@@ -56,7 +61,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     USDMPriceFeedArbitrum public USDMPriceFeed;
 
     /// Vaults
-    IporPlasmaVault public plasmaVault;
+    PlasmaVault public plasmaVault;
 
     /// Fuses
     address[] public fuses;
@@ -69,6 +74,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     address public depositor = address(0x2);
     address public atomist = address(0x3);
     address public constant OWNER = 0xD92E9F039E4189c342b4067CC61f5d063960D248;
+    RewardsClaimManager public rewardsClaimManager;
     IporFusionAccessManager public accessManager;
     address[] public alphas;
 
@@ -687,7 +693,9 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _createAlphas();
         _createAccessManager();
         _createPlasmaVault();
-        _setupRoles();
+        _createClaimRewardsManager();
+        _setupPlasmaVault();
+        _initAccessManager();
     }
 
     function getMarketId() public view returns (uint256) {
@@ -707,13 +715,16 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
 
     function _createAccessManager() private {
         if (usersToRoles.superAdmin == address(0)) {
-            usersToRoles.superAdmin = atomist;
+            usersToRoles.superAdmin = admin;
             usersToRoles.atomist = atomist;
-            address[] memory alphas = new address[](1);
-            alphas[0] = alpha;
             usersToRoles.alphas = alphas;
         }
         accessManager = IporFusionAccessManager(RoleLib.createAccessManager(usersToRoles, vm));
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+    }
+
+    function _createClaimRewardsManager() private {
+        rewardsClaimManager = new RewardsClaimManager(address(accessManager), address(plasmaVault));
     }
 
     function _createAlphas() private {
@@ -786,6 +797,11 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         });
     }
 
+    function _setupPlasmaVault() private {
+        vm.prank(admin);
+        PlasmaVaultGovernance(address(plasmaVault)).setRewardsClaimManagerAddress(address(rewardsClaimManager));
+    }
+
     function _setupPriceOracle() private {
         address[] memory assets;
         address[] memory sources;
@@ -803,7 +819,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     }
 
     function _createPlasmaVault() private {
-        plasmaVault = new IporPlasmaVault(
+        plasmaVault = new PlasmaVault(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",
@@ -814,23 +830,47 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 fuses: fuses,
                 balanceFuses: _setupBalanceFuses(),
                 feeConfig: _setupFeeConfig(),
-                accessManager: address(accessManager)
+                accessManager: address(accessManager),
+                plasmaVaultBase: address(new PlasmaVaultBase())
             })
         );
     }
 
-    function _setupRoles() private {
-        usersToRoles.superAdmin = atomist;
-        usersToRoles.atomist = atomist;
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+    function _initAccessManager() private {
+        address[] memory initAddress = new address[](1);
+        initAddress[0] = admin;
+
+        DataForInitialization memory data = DataForInitialization({
+            admins: initAddress,
+            owners: initAddress,
+            atomists: initAddress,
+            alphas: initAddress,
+            whitelist: initAddress,
+            guardians: initAddress,
+            fuseManagers: initAddress,
+            performanceFeeManagers: initAddress,
+            managementFeeManagers: initAddress,
+            claimRewards: initAddress,
+            transferRewardsManagers: initAddress,
+            configInstantWithdrawalFusesManagers: initAddress,
+            plasmaVaultAddress: PlasmaVaultAddress({
+                plasmaVault: address(plasmaVault),
+                accessManager: address(accessManager),
+                rewardsClaimManager: address(rewardsClaimManager),
+                feeManager: address(this)
+            })
+        });
+        InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
+            .generateInitializeIporPlasmaVault(data);
+        accessManager.initialize(initializationData);
     }
 
     /// HELPERS
     function _depositIntoVaultAndProvideLiquidityToCurvePool(uint256 amount) private {
-        dealAssets(asset, depositor, amount);
-        vm.startPrank(depositor);
+        dealAssets(asset, admin, amount);
+        vm.startPrank(admin);
         ERC20(asset).approve(address(plasmaVault), amount);
-        plasmaVault.deposit(amount, address(depositor));
+        plasmaVault.deposit(amount, address(admin));
         vm.stopPrank();
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(

@@ -22,7 +22,8 @@ import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CallbackHandlerMorpho} from "../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
 
-import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract PlasmaVaultCallbackHandler is Test {
     address private constant _AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
@@ -74,7 +75,7 @@ contract PlasmaVaultCallbackHandler is Test {
         _createAccessManager();
 
         _plasmaVault = address(
-            new IporPlasmaVault(
+            new PlasmaVault(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "TPLASMA",
@@ -85,7 +86,8 @@ contract PlasmaVaultCallbackHandler is Test {
                     _setupFuses(),
                     balanceFuses,
                     feeConfig,
-                    _accessManager
+                    _accessManager,
+                    address(new PlasmaVaultBase())
                 )
             )
         );
@@ -96,7 +98,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
     function _setuCallbackCals() private {
         CallbackHandlerMorpho callbackHandlerMorpho = new CallbackHandlerMorpho();
-        PlasmaVault(_plasmaVault).updateCallbackHandler(
+        IPlasmaVaultGovernance(address(_plasmaVault)).updateCallbackHandler(
             address(callbackHandlerMorpho),
             address(_MORPHO),
             CallbackHandlerMorpho.onMorphoSupply.selector
@@ -114,7 +116,7 @@ contract PlasmaVaultCallbackHandler is Test {
         fuses[2] = address(_supplyFuseCompoundV3);
     }
 
-    function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
+    function _setupMarketConfigs() private pure returns (MarketSubstratesConfig[] memory marketConfigs) {
         marketConfigs = new MarketSubstratesConfig[](3);
         bytes32[] memory morphoBlue = new bytes32[](1);
         morphoBlue[0] = _MARKET_ID_BYTES32;
