@@ -273,13 +273,146 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         }
     }
 
-    // function testShouldNotBeAbleToReceiveTokensWhenNoRewardsAvailable() public { }
+    /// @dev no rewards available (nothing accrued)
+    function testShouldNotBeAbleToReceiveTokensWhenNoRewardsAvailable() public {
+        // given
+        uint256 amount = 1_000 * 10 ** ERC20(asset).decimals();
+
+        _depositIntoVaultAndProvideLiquidityToCurvePool(amount);
+        PlasmaVaultState memory vaultStateAfterEnterCurvePool = getPlasmaVaultState();
+
+        _executeCurveChildLiquidityGaugeSupplyFuseEnter(
+            curveChildLiquidityGaugeSupplyFuse,
+            CURVE_LIQUIDITY_GAUGE,
+            CURVE_STABLESWAP_NG_POOL,
+            vaultStateAfterEnterCurvePool.vaultLpTokensBalance
+        );
+        PlasmaVaultState memory vaultStateAfterEnterCurveGauge = getPlasmaVaultState();
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarketsArbitrum.CURVE_LP_GAUGE;
+
+        uint256[] memory dependencies = new uint256[](1);
+        dependencies[0] = IporFusionMarketsArbitrum.CURVE_POOL;
+
+        uint256[][] memory dependencyMarkets = new uint256[][](1);
+        dependencyMarkets[0] = dependencies;
+
+        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
+
+        // when
+        FuseAction[] memory rewardsClaimCalls = new FuseAction[](1);
+        rewardsClaimCalls[0] = FuseAction(address(curveGaugeTokenClaimFuse), abi.encodeWithSignature("claim()"));
+        rewardsClaimManager.claimRewards(rewardsClaimCalls);
+
+        PlasmaVaultState memory vaultStateAfterClaiming = getPlasmaVaultState();
+
+        // then
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultBalance,
+            vaultStateAfterClaiming.vaultBalance,
+            "Vault balance should not change after claiming rewards"
+        );
+        assertEq(vaultStateAfterEnterCurveGauge.vaultBalance, 0, "Vault balance should be 0 after enter curve gauge");
+        assertEq(vaultStateAfterClaiming.vaultBalance, 0, "Vault balance should be 0 after claiming rewards");
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultTotalAssets,
+            vaultStateAfterClaiming.vaultTotalAssets,
+            "Vault total assets should not change after claiming rewards"
+        );
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultTotalAssetsInCurvePool,
+            vaultStateAfterClaiming.vaultTotalAssetsInCurvePool,
+            "Vault total assets in curve pool should not change after claiming rewards"
+        );
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultTotalAssetsInGauge,
+            vaultStateAfterClaiming.vaultTotalAssetsInGauge,
+            "Vault total assets in gauge should not change after claiming rewards"
+        );
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultLpTokensBalance,
+            vaultStateAfterClaiming.vaultLpTokensBalance,
+            "Vault LP tokens balance should not change after claiming rewards"
+        );
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultLpTokensBalance,
+            0,
+            "Vault LP tokens balance should be zero before claiming rewards"
+        );
+        assertEq(
+            vaultStateAfterClaiming.vaultLpTokensBalance,
+            0,
+            "Vault LP tokens balance should be zero after claiming rewards"
+        );
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultStakedLpTokensBalance,
+            vaultStateAfterClaiming.vaultStakedLpTokensBalance,
+            "Vault staked LP tokens balance should not change after claiming rewards"
+        );
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultNumberRewardTokens,
+            vaultStateAfterClaiming.vaultNumberRewardTokens,
+            "Vault number reward tokens should not change after claiming rewards"
+        );
+        assertEq(vaultStateAfterEnterCurveGauge.vaultNumberRewardTokens, 2, "Number of reward tokens should be 2");
+        for (uint256 i = 0; i < vaultStateAfterClaiming.vaultNumberRewardTokens; ++i) {
+            assertEq(
+                vaultStateAfterEnterCurveGauge.vaultRewardTokens[i],
+                vaultStateAfterClaiming.vaultRewardTokens[i],
+                "Vault reward tokens should not change after claiming rewards"
+            );
+            assertEq(
+                vaultStateAfterEnterCurveGauge.vaultClaimedRewardTokens[i],
+                vaultStateAfterClaiming.vaultClaimedRewardTokens[i],
+                "Vault claimed reward tokens should not change after claiming rewards"
+            );
+            assertEq(
+                vaultStateAfterEnterCurveGauge.vaultClaimedRewardTokens[i],
+                0,
+                "Vault claimed reward tokens should be 0 before claiming rewards"
+            );
+            assertEq(
+                vaultStateAfterClaiming.vaultClaimedRewardTokens[i],
+                0,
+                "Vault claimed reward tokens should be 0 after claiming rewards"
+            );
+            assertEq(
+                vaultStateAfterEnterCurveGauge.vaultClaimableRewardTokens[i],
+                vaultStateAfterClaiming.vaultClaimableRewardTokens[i],
+                "Vault claimable reward tokens should not change after claiming rewards"
+            );
+            assertEq(
+                vaultStateAfterEnterCurveGauge.vaultClaimableRewardTokens[i],
+                0,
+                "Vault claimable reward tokens should be 0 before claiming rewards"
+            );
+            assertEq(
+                vaultStateAfterClaiming.vaultClaimableRewardTokens[i],
+                0,
+                "Vault claimable reward tokens should be 0 after claiming rewards"
+            );
+            assertEq(
+                vaultStateAfterEnterCurveGauge.rewardsClaimManagerBalanceRewardTokens[i],
+                vaultStateAfterClaiming.rewardsClaimManagerBalanceRewardTokens[i],
+                "Rewards claim manager balance reward tokens should not change after claiming rewards"
+            );
+            assertEq(
+                vaultStateAfterEnterCurveGauge.rewardsClaimManagerBalanceRewardTokens[i],
+                0,
+                "Rewards claim manager balance reward tokens should be 0 before claiming rewards"
+            );
+            assertEq(
+                vaultStateAfterClaiming.rewardsClaimManagerBalanceRewardTokens[i],
+                0,
+                "Rewards claim manager balance reward tokens should be 0 after claiming rewards"
+            );
+        }
+    }
 
     /// SETUP HELPERS
 
     function _setupFork() private {
-        // vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 225684700);
-        // vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"));
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 244084803);
     }
 
