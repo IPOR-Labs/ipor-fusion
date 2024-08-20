@@ -8,13 +8,14 @@ import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
 import {FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
-import {IporPlasmaVault} from "./../../../contracts/vaults/IporPlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
 import {USDMPriceFeedArbitrum} from "./../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
 import {IChronicle, IToll} from "./../../../contracts/priceOracle/IChronicle.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 
 contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     struct PlasmaVaultState {
@@ -44,7 +45,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     IChronicle public constant CHRONICLE = IChronicle(WUSDM_USD_ORACLE_FEED);
     USDMPriceFeedArbitrum public priceFeed;
 
-    IporPlasmaVault public plasmaVault;
+    PlasmaVault public plasmaVault;
 
     address public atomist = address(this);
     address public alpha = address(0x1);
@@ -112,7 +113,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -123,7 +124,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -199,7 +201,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -210,7 +212,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -274,7 +277,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(DAI).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -285,7 +288,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -346,7 +350,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -357,7 +361,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -416,7 +421,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 0;
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -427,7 +432,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -492,7 +498,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -503,7 +509,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -605,7 +612,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -616,7 +623,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -712,7 +720,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -723,7 +731,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -806,7 +815,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -817,7 +826,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -903,7 +913,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -914,7 +924,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1037,7 +1048,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     }
 
     function getPlasmaVaultState(
-        IporPlasmaVault plasmaVault,
+        PlasmaVault plasmaVault,
         CurveStableswapNGSingleSideSupplyFuse fuse,
         address activeToken
     ) private view returns (PlasmaVaultState memory) {
@@ -1050,7 +1061,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             });
     }
 
-    function setupRoles(IporPlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
+    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);

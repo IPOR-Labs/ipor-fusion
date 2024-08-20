@@ -9,7 +9,7 @@ contract CallbackHandlerMorpho {
     /// @param assets The amount of supplied assets.
     /// @param data Arbitrary data passed to the `supply` function.
     //solhint-disable-next-line
-    function onMorphoSupply(uint256 assets, bytes calldata data) external returns (FuseAction[] memory) {
+    function onMorphoSupply(uint256 assets, bytes calldata data) external pure returns (FuseAction[] memory) {
         return abi.decode(data, (FuseAction[]));
     }
 }

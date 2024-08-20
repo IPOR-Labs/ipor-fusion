@@ -16,9 +16,11 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
-import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 
-contract PlasmaVaultTest is Test {
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+
+contract PlasmaVaultBasicTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
@@ -101,7 +103,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -112,7 +114,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -184,7 +187,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -195,7 +198,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -269,7 +273,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -280,7 +284,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -364,7 +369,7 @@ contract PlasmaVaultTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -375,7 +380,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -455,7 +461,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -466,7 +472,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -570,7 +577,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -581,7 +588,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -673,7 +681,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -684,7 +692,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -773,7 +782,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -784,7 +793,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -892,7 +902,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -903,7 +913,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -933,10 +944,10 @@ contract PlasmaVaultTest is Test {
         marketsLimits[0] = MarketLimit(AAVE_V3_MARKET_ID, 6e17); // 60%
 
         vm.prank(atomist);
-        plasmaVault.activateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).activateMarketsLimits();
 
         vm.prank(atomist);
-        plasmaVault.setupMarketsLimits(marketsLimits);
+        IPlasmaVaultGovernance(address(plasmaVault)).setupMarketsLimits(marketsLimits);
 
         //when
         vm.prank(alpha);
@@ -983,7 +994,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -994,7 +1005,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1024,10 +1036,10 @@ contract PlasmaVaultTest is Test {
         marketsLimits[0] = MarketLimit(AAVE_V3_MARKET_ID, 3e17); // 30%
 
         vm.prank(atomist);
-        plasmaVault.activateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).activateMarketsLimits();
 
         vm.prank(atomist);
-        plasmaVault.setupMarketsLimits(marketsLimits);
+        IPlasmaVaultGovernance(address(plasmaVault)).setupMarketsLimits(marketsLimits);
 
         bytes memory error = abi.encodeWithSignature(
             "MarketLimitExceeded(uint256,uint256,uint256)",
@@ -1082,7 +1094,7 @@ contract PlasmaVaultTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1093,7 +1105,8 @@ contract PlasmaVaultTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1123,10 +1136,10 @@ contract PlasmaVaultTest is Test {
         marketsLimits[0] = MarketLimit(AAVE_V3_MARKET_ID, 8e17); // 80%
 
         vm.prank(atomist);
-        plasmaVault.activateMarketsLimits();
+        IPlasmaVaultGovernance(address(plasmaVault)).activateMarketsLimits();
 
         vm.prank(atomist);
-        plasmaVault.setupMarketsLimits(marketsLimits);
+        IPlasmaVaultGovernance(address(plasmaVault)).setupMarketsLimits(marketsLimits);
 
         bytes memory error = abi.encodeWithSignature(
             "MarketLimitExceeded(uint256,uint256,uint256)",

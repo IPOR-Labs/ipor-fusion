@@ -92,7 +92,10 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: D_USDC, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
+            vault: D_USDC,
+            vaultAssetAmount: amount_
+        });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_
@@ -107,7 +110,10 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
-        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: D_USDC, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
+            vault: D_USDC,
+            vaultAssetAmount: amount_
+        });
         GearboxV3FarmdSupplyFuseExitData memory exitDataFarm = GearboxV3FarmdSupplyFuseExitData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_

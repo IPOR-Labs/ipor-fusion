@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -21,6 +20,7 @@ import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {TestAccountSetup} from "../supplyFuseTemplate/TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "../supplyFuseTemplate/TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "../supplyFuseTemplate/TestVaultSetup.sol";
+import {IPlasmaVaultGovernance} from "../../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {
     using SafeERC20 for ERC20;
@@ -158,7 +158,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         });
 
         vm.prank(getOwner());
-        PlasmaVault(plasmaVault).configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(plasmaVault).configureInstantWithdrawalFuses(instantWithdrawFuses);
     }
 
     function getEnterFuseData(
@@ -166,7 +166,10 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
+            vault: F_TOKEN,
+            vaultAssetAmount: amount_
+        });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
             fluidTokenAmount: amount_

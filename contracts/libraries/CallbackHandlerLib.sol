@@ -2,8 +2,9 @@
 pragma solidity 0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {FuseAction} from "../interfaces/IPlasmaVault.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
-import {FuseAction, PlasmaVault} from "../vaults/PlasmaVault.sol";
+import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 
 library CallbackHandlerLib {
     using Address for address;

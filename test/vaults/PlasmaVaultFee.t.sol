@@ -15,7 +15,8 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
-import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -122,7 +123,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -133,7 +134,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -259,7 +261,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -270,7 +272,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -330,8 +333,6 @@ contract PlasmaVaultFeeTest is Test {
                 abi.encode(CompoundV3SupplyFuseExitData({asset: USDC, amount: amount}))
             )
         );
-
-        //        vm.warp(block.timestamp + 365 days);
 
         //when
         vm.prank(alpha);
@@ -394,7 +395,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -405,7 +406,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -467,7 +469,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -537,7 +539,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -548,7 +550,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -610,7 +613,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -675,7 +678,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -686,7 +689,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -748,7 +752,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -813,7 +817,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -824,7 +828,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -886,7 +891,7 @@ contract PlasmaVaultFeeTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -947,7 +952,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -958,7 +963,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1008,7 +1014,7 @@ contract PlasmaVaultFeeTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -1069,7 +1075,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1080,7 +1086,8 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1130,7 +1137,7 @@ contract PlasmaVaultFeeTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -1191,7 +1198,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1207,7 +1214,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1290,7 +1298,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1306,7 +1314,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1395,7 +1404,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1411,7 +1420,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1497,7 +1507,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1513,7 +1523,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1596,7 +1607,7 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1612,7 +1623,8 @@ contract PlasmaVaultFeeTest is Test {
                     managementFeeManager,
                     managementFeeInPercentage
                 ),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1664,7 +1676,7 @@ contract PlasmaVaultFeeTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
