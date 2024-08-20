@@ -17,6 +17,7 @@ contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20Votes
     }
 
     /// @dev Notice! Can be executed only by Plasma Vault in delegatecall. PlasmaVault execute this function only using delegatecall, to get PlasmaVault context and storage.
+    /// @dev Internal method `PlasmaVault._update(address from_, address to_, uint256 value_)` is overridden and inside it calls - as a delegatecall - this function `updateInternal`.
     function updateInternal(address from_, address to_, uint256 value_) external override {
         _update(from_, to_, value_);
     }
