@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.22;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuse} from "../IFuse.sol";
 import {IPool} from "./ext/IPool.sol";
@@ -44,6 +45,16 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     error AaveV3SupplyFuseUnsupportedAsset(string action, address asset);
 
     constructor(uint256 marketId_, address aavePool_, address aavePoolDataProviderV3_) {
+        if (marketId_ == 0) {
+            revert Errors.WrongValue();
+        }
+        if (aavePool_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        if (aavePoolDataProviderV3_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
         VERSION = address(this);
         MARKET_ID = marketId_;
         AAVE_POOL = IPool(aavePool_);

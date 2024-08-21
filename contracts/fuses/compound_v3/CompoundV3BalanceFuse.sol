@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.22;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -36,7 +36,7 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        int256 balanceTemp = 0;
+        int256 balanceTemp;
         int256 balanceInLoop;
         uint256 decimals;
         // @dev this value has 8 decimals

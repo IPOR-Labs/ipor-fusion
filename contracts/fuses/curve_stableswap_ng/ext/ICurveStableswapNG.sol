@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.22;
 
 /**
  * @dev address on Arbitrum Mainnet 0xf6841C27fe35ED7069189aFD5b81513578AFD7FF

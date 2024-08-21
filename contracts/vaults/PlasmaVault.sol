@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.22;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -84,6 +84,9 @@ contract PlasmaVault is
     using Address for address;
     using SafeCast for int256;
     uint256 private constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
+    /// @dev 10 attempts to withdraw from markets in case of rounding issues
+    uint256 private constant REDEEM_ATTEMPTS = 10;
+
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
@@ -288,7 +291,7 @@ contract PlasmaVault is
 
         uint256 totalAssetsBefore = totalAssets();
 
-        for (uint256 i; i < 10; ++i) {
+        for (uint256 i; i < REDEEM_ATTEMPTS; ++i) {
             assets = convertToAssets(shares_);
             vaultCurrentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
             if (vaultCurrentBalanceUnderlying >= assets) {
@@ -512,6 +515,7 @@ contract PlasmaVault is
         uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
 
         dataToCheck.marketsToCheck = new MarketToCheck[](marketsLength);
+
         for (uint256 i; i < marketsLength; ++i) {
             if (markets[i] == 0) {
                 break;
@@ -525,7 +529,7 @@ contract PlasmaVault is
             );
             dataToCheck.marketsToCheck[i].marketId = markets[i];
             dataToCheck.marketsToCheck[i].balanceInMarket = IporMath.convertWadToAssetDecimals(
-                IporMath.division(wadBalanceAmountInUSD * 10 ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
+                IporMath.division(wadBalanceAmountInUSD * IporMath.BASIS_OF_POWER ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
                 decimals()
             );
             deltasInUnderlying =

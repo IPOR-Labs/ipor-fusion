@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.22;
 
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
-
 import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
 import {IPriceFeed} from "./IPriceFeed.sol";
 import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
@@ -15,7 +14,7 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
 
     /// @dev USD - 0x0000000000000000000000000000000000000348
     address public immutable BASE_CURRENCY;
-    /// @dev USD - 8
+    /// @dev USD - 8 decimals
     uint256 public immutable BASE_CURRENCY_DECIMALS;
     /// @dev Chainlink Feed Registry currently supported only on Ethereum Mainnet
     address public immutable CHAINLINK_FEED_REGISTRY;

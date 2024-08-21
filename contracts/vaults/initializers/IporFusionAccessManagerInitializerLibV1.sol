@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.22;
 
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {RoleToFunction, AdminRole, AccountToRole, InitializationData} from "../../managers/access/IporFusionAccessManagerInitializationLib.sol";
@@ -34,6 +34,10 @@ struct DataForInitialization {
 
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM.
 library IporFusionAccessManagerInitializerLibV1 {
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 12;
+    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER = 30;
+    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_REWARDS_CLAIM_MANAGER = 38;
+
     function generateInitializeIporPlasmaVault(
         DataForInitialization memory data_
     ) internal returns (InitializationData memory) {
@@ -175,7 +179,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     }
 
     function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
-        adminRoles_ = new AdminRole[](12);
+        adminRoles_ = new AdminRole[](ADMIN_ROLES_ARRAY_LENGTH);
         adminRoles_[0] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         adminRoles_[1] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[2] = AdminRole({roleId: Roles.ATOMIST_ROLE, adminRoleId: Roles.OWNER_ROLE});
@@ -204,8 +208,8 @@ library IporFusionAccessManagerInitializerLibV1 {
         PlasmaVaultAddress memory plasmaVaultAddress_
     ) private returns (RoleToFunction[] memory rolesToFunction) {
         rolesToFunction = plasmaVaultAddress_.rewardsClaimManager == address(0)
-            ? new RoleToFunction[](30)
-            : new RoleToFunction[](38);
+            ? new RoleToFunction[](ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER)
+            : new RoleToFunction[](ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_REWARDS_CLAIM_MANAGER);
 
         rolesToFunction[0] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,

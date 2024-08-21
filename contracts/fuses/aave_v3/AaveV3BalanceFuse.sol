@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.22;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IAavePriceOracle} from "./ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "./ext/IAavePoolDataProvider.sol";
@@ -20,10 +21,20 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
     address public immutable AAVE_PRICE_ORACLE;
     address public immutable AAVE_POOL_DATA_PROVIDER_V3;
 
-    constructor(uint256 marketIdInput, address aavePriceOracle, address aavePoolDataProviderV3) {
-        MARKET_ID = marketIdInput;
-        AAVE_PRICE_ORACLE = aavePriceOracle;
-        AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3;
+    constructor(uint256 marketId_, address aavePriceOracle_, address aavePoolDataProviderV3_) {
+        if (marketId_ == 0) {
+            revert Errors.WrongValue();
+        }
+        if (aavePriceOracle_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        if (aavePoolDataProviderV3_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
+        MARKET_ID = marketId_;
+        AAVE_PRICE_ORACLE = aavePriceOracle_;
+        AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3_;
     }
 
     function balanceOf(address plasmaVault_) external view override returns (uint256) {
@@ -35,7 +46,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        int256 balanceTemp = 0;
+        int256 balanceTemp;
         int256 balanceInLoop;
         uint256 decimals;
         // @dev this value has 8 decimals

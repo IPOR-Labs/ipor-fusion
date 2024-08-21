@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.22;
 
 interface IMarketBalanceFuse {
     /// @notice Get the balance of the user in the market in USD
