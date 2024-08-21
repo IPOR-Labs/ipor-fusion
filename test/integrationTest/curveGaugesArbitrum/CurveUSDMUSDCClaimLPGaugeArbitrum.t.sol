@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
@@ -11,9 +11,9 @@ import {CurveChildLiquidityGaugeBalanceFuse} from "../../../contracts/fuses/curv
 import {CurveGaugeTokenClaimFuse} from "../../../contracts/rewards_fuses/curve_gauges/CurveGaugeTokenClaimFuse.sol";
 import {IChildLiquidityGauge} from "../../../contracts/fuses/curve_gauge/ext/IChildLiquidityGauge.sol";
 import {ICurveStableswapNG} from "../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {FeeConfig, FuseAction, PlasmaVault, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, FeeConfig, FuseAction, PlasmaVault, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {IporPlasmaVault} from "./../../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -68,7 +68,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     USDMPriceFeedArbitrum public USDMPriceFeed;
 
     /// Vaults
-    IporPlasmaVault public plasmaVault;
+    PlasmaVault public plasmaVault;
 
     /// Fuses
     address[] public fuses;
@@ -504,7 +504,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _createPlasmaVault() private {
-        plasmaVault = new IporPlasmaVault(
+        plasmaVault = new PlasmaVault(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",
@@ -515,7 +515,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 fuses: fuses,
                 balanceFuses: _setupBalanceFuses(),
                 feeConfig: _setupFeeConfig(),
-                accessManager: address(accessManager)
+                accessManager: address(accessManager),
+                plasmaVaultBase: address(new PlasmaVaultBase())
             })
         );
     }
