@@ -75,10 +75,17 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         uint256 time;
         uint80 answeredInRound;
         if (source != address(0)) {
+            if (QUOTE_CURRENCY_DECIMALS != IPriceFeed(source).decimals()) {
+                revert IPriceOracleMiddleware.WrongDecimalsInPriceFeed();
+            }
             (roundId, price, startedAt, time, answeredInRound) = IPriceFeed(source).latestRoundData();
         } else {
             if (CHAINLINK_FEED_REGISTRY == address(0)) {
                 revert IPriceOracleMiddleware.UnsupportedAsset();
+            }
+
+            if (QUOTE_CURRENCY_DECIMALS != FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).decimals(asset_, QUOTE_CURRENCY)) {
+                revert IPriceOracleMiddleware.WrongDecimalsInPriceFeed();
             }
 
             try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset_, QUOTE_CURRENCY) returns (

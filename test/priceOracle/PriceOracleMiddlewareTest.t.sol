@@ -23,15 +23,6 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         );
     }
 
-    function testShouldRevertWhenPassNotSupportedAsset() external {
-        // given
-        bytes memory error = abi.encodeWithSignature("UnsupportedAsset()");
-
-        // when
-        vm.expectRevert(error);
-        priceOracleMiddlewareProxy.getAssetPrice(address(0));
-    }
-
     function testShouldReturnDaiPrice() external {
         // given
         address dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;

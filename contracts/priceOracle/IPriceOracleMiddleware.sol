@@ -9,6 +9,7 @@ interface IPriceOracleMiddleware {
     error UnsupportedAsset();
     error ZeroAddress(string variableName);
     error WrongDecimals();
+    error WrongDecimalsInPriceFeed();
 
     /// @notice Returns the price of the given asset in 8 decimals
     /// @return price of the asset represented in 8 decimals

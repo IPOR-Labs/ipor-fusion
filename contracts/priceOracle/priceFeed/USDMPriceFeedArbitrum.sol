@@ -17,19 +17,24 @@ contract USDMPriceFeedArbitrum is IPriceFeed {
 
     uint256 private constant WAD_UNIT = 1e18;
 
+    uint256 private constant CHRONICLE_DECIMALS = 18;
+
     /// @dev wUSDM/USD Chronicle Oracle (Arbitrum)
     address public constant WUSDM_USD_ORACLE_FEED = 0xdC6720c996Fad27256c7fd6E0a271e2A4687eF18;
     address public constant WUSDM = 0x57F5E098CaD7A3D1Eed53991D4d66C45C9AF7812;
 
     IChronicle public immutable CHRONICLE;
+    uint256 private immutable PRICE_DENOMINATOR;
 
     constructor() {
         CHRONICLE = IChronicle(WUSDM_USD_ORACLE_FEED);
 
         /// @def Notice! It is enough to check during construction not during runtime because WUSDM_USD_ORACLE_FEED is immutable not upgradeable contract and decimals are not expected to change.
-        if (_decimals() != CHRONICLE.decimals()) {
+        if (CHRONICLE_DECIMALS != CHRONICLE.decimals()) {
             revert Errors.WrongDecimals();
         }
+
+        PRICE_DENOMINATOR = 10 ** (CHRONICLE_DECIMALS - _decimals());
     }
 
     function decimals() external view override returns (uint8) {
@@ -52,7 +57,7 @@ contract USDMPriceFeedArbitrum is IPriceFeed {
 
         /* solhint-disable-next-line */
         uint256 USDMPriceUSD = (wUSDMPriceUSD * wUSDMUSDMExchangeRate) / WAD_UNIT;
-        USDMPriceUSD = USDMPriceUSD / 1e10;
+        USDMPriceUSD = USDMPriceUSD / PRICE_DENOMINATOR;
 
         return (uint80(0), USDMPriceUSD.toInt256(), 0, 0, 0);
     }
