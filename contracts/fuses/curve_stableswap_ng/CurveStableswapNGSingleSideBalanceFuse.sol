@@ -16,16 +16,19 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
-    uint256 private constant PRICE_DECIMALS = 8;
+    uint256 private constant PRICE_ORACLE_MIDDLEWARE_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
-    IPriceOracleMiddleware public immutable PRICE_ORACLE;
+    IPriceOracleMiddleware public immutable PRICE_ORACLE_MIDDLEWARE;
 
     error AssetNotFoundInCurvePool(address curvePool, address asset);
 
     constructor(uint256 marketId_, address priceOracle_) {
         MARKET_ID = marketId_;
-        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
+        PRICE_ORACLE_MIDDLEWARE = IPriceOracleMiddleware(priceOracle_);
+        if (PRICE_ORACLE_MIDDLEWARE.QUOTE_CURRENCY_DECIMALS() != PRICE_ORACLE_MIDDLEWARE_DECIMALS) {
+            revert IPriceOracleMiddleware.WrongDecimals();
+        }
     }
 
     function balanceOf(address plasmaVault_) external view override returns (uint256) {
@@ -50,8 +53,8 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
                 indexCoin
             );
             balance += IporMath.convertToWad(
-                withdrawTokenAmount * PRICE_ORACLE.getAssetPrice(underlyingAsset),
-                ERC20(IERC4626(plasmaVault_).asset()).decimals() + PRICE_DECIMALS
+                withdrawTokenAmount * PRICE_ORACLE_MIDDLEWARE.getAssetPrice(underlyingAsset),
+                ERC20(IERC4626(plasmaVault_).asset()).decimals() + PRICE_ORACLE_MIDDLEWARE_DECIMALS
             );
         }
         return balance;

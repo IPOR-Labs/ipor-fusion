@@ -5,16 +5,16 @@ import {IPriceOracleMiddleware} from "../../contracts/priceOracle/IPriceOracleMi
 
 contract PriceOracleMiddlewareMock is IPriceOracleMiddleware {
     //solhint-disable-next-line
-    address public BASE_CURRENCY;
+    address public QUOTE_CURRENCY;
     // usd - 8
     //solhint-disable-next-line
-    uint256 public BASE_CURRENCY_DECIMALS;
+    uint256 public QUOTE_CURRENCY_DECIMALS;
     address public immutable CHAINLINK_FEED_REGISTRY;
 
-    constructor(address baseCurrency, uint256 baseCurrencyDecimals, address chainlinkFeedRegistry) {
-        BASE_CURRENCY = baseCurrency;
-        BASE_CURRENCY_DECIMALS = baseCurrencyDecimals;
-        CHAINLINK_FEED_REGISTRY = chainlinkFeedRegistry;
+    constructor(address quoteCurrency_, uint256 quoteCurrencyDecimals_, address chainlinkFeedRegistry_) {
+        QUOTE_CURRENCY = quoteCurrency_;
+        QUOTE_CURRENCY_DECIMALS = quoteCurrencyDecimals_;
+        CHAINLINK_FEED_REGISTRY = chainlinkFeedRegistry_;
     }
     //solhint-disable-next-line
     function getAssetPrice(address asset) external view returns (uint256) {

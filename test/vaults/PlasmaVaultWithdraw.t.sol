@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.22;
-
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
@@ -66,11 +65,7 @@ contract PlasmaVaultWithdrawTest is Test {
         userOne = address(0x777);
         userTwo = address(0x888);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
@@ -188,8 +183,8 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
         uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
-        assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
-        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+        assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter, "vaultTotalAssetsBefore - amount");
+        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter, "userVaultBalanceBefore - amount");
 
         assertEq(vaultTotalAssetsAfter, 0);
     }
@@ -1204,8 +1199,8 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
         uint256 userTwoBalanceAfter = ERC20(USDC).balanceOf(userTwo);
 
-        assertEq(userOneBalanceAfter, 174999999);
-        assertEq(userTwoBalanceAfter, 16666666);
+        assertEq(userOneBalanceAfter, 174999999, "userOneBalanceAfter");
+        assertEq(userTwoBalanceAfter, 16666666, "userTwoBalanceAfter");
 
         /// CompoundV3 balance
         uint256 vaultTotalAssetInCompoundV3After = plasmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);

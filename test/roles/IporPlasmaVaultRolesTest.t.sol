@@ -490,11 +490,7 @@ contract IporPlasmaVaultRolesTest is Test {
     function _setupPriceOracleMiddleware() private {
         vm.startPrank(_data.owners[0]);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            address(0)
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(address(0));
 
         _priceOracleMiddlewareProxy = address(
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", _data.owners[0]))

@@ -16,11 +16,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19574589);
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            BASE_CURRENCY,
-            BASE_CURRENCY_DECIMALS,
-            CHAINLINK_FEED_REGISTRY
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(CHAINLINK_FEED_REGISTRY);
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))

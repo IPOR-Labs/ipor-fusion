@@ -13,7 +13,7 @@ import {AaveLendingPoolV2, ReserveData} from "./ext/AaveLendingPoolV2.sol";
 contract AaveV2BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
 
-    /// @dev Aave Price Oracle base currency decimals
+    /// @dev Aave Price Oracle base currency decimals (USD)
     uint256 private constant AAVE_ORACLE_BASE_CURRENCY_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
@@ -31,7 +31,7 @@ contract AaveV2BalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        int256 balanceTemp = 0;
+        int256 balanceTemp;
         int256 balanceInLoop;
         uint256 decimals;
         // @dev this value has 8 decimals

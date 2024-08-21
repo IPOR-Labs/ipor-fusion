@@ -12,14 +12,17 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 contract ERC4626BalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
-    uint256 private constant PRICE_DECIMALS = 8;
-    uint256 public immutable MARKET_ID;
+    uint256 private constant PRICE_ORACLE_MIDDLEWARE_DECIMALS = 8;
 
-    IPriceOracleMiddleware public immutable PRICE_ORACLE;
+    uint256 public immutable MARKET_ID;
+    IPriceOracleMiddleware public immutable PRICE_ORACLE_MIDDLEWARE;
 
     constructor(uint256 marketId_, address priceOracle_) {
         MARKET_ID = marketId_;
-        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
+        PRICE_ORACLE_MIDDLEWARE = IPriceOracleMiddleware(priceOracle_);
+        if (PRICE_ORACLE_MIDDLEWARE.QUOTE_CURRENCY_DECIMALS() != PRICE_ORACLE_MIDDLEWARE_DECIMALS) {
+            revert IPriceOracleMiddleware.WrongDecimals();
+        }
     }
 
     function balanceOf(address plasmaVault_) external view override returns (uint256) {
@@ -41,8 +44,8 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
             vaultAssets = vault.convertToAssets(vault.balanceOf(plasmaVault_));
             asset = vault.asset();
             balance += IporMath.convertToWad(
-                vaultAssets * PRICE_ORACLE.getAssetPrice(asset),
-                IERC20Metadata(asset).decimals() + PRICE_DECIMALS
+                vaultAssets * PRICE_ORACLE_MIDDLEWARE.getAssetPrice(asset),
+                IERC20Metadata(asset).decimals() + PRICE_ORACLE_MIDDLEWARE_DECIMALS
             );
         }
 

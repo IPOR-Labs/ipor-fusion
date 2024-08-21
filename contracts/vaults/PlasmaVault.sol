@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
-
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -86,8 +85,8 @@ contract PlasmaVault is
     uint256 private constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
     /// @dev 10 attempts to withdraw from markets in case of rounding issues
     uint256 private constant REDEEM_ATTEMPTS = 10;
-
     address private constant USD = address(0x0000000000000000000000000000000000000348);
+
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
     error NoSharesToRedeem();
@@ -100,7 +99,7 @@ contract PlasmaVault is
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
-    uint256 public immutable BASE_CURRENCY_DECIMALS;
+    uint256 public immutable QUOTE_CURRENCY_DECIMALS;
     address public immutable PLASMA_VAULT_BASE;
 
     constructor(PlasmaVaultInitData memory initData_) ERC20Upgradeable() ERC4626Upgradeable() initializer {
@@ -114,11 +113,11 @@ contract PlasmaVault is
 
         IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData_.priceOracle);
 
-        if (priceOracle.BASE_CURRENCY() != USD) {
+        if (priceOracle.QUOTE_CURRENCY() != USD) {
             revert Errors.UnsupportedBaseCurrencyFromOracle();
         }
 
-        BASE_CURRENCY_DECIMALS = priceOracle.BASE_CURRENCY_DECIMALS();
+        QUOTE_CURRENCY_DECIMALS = priceOracle.QUOTE_CURRENCY_DECIMALS();
 
         PlasmaVaultLib.setPriceOracle(initData_.priceOracle);
 
@@ -528,8 +527,12 @@ contract PlasmaVault is
                 (uint256)
             );
             dataToCheck.marketsToCheck[i].marketId = markets[i];
+
             dataToCheck.marketsToCheck[i].balanceInMarket = IporMath.convertWadToAssetDecimals(
-                IporMath.division(wadBalanceAmountInUSD * IporMath.BASIS_OF_POWER ** BASE_CURRENCY_DECIMALS, underlyingAssetPrice),
+                IporMath.division(
+                    wadBalanceAmountInUSD * IporMath.BASIS_OF_POWER ** QUOTE_CURRENCY_DECIMALS,
+                    underlyingAssetPrice
+                ),
                 decimals()
             );
             deltasInUnderlying =

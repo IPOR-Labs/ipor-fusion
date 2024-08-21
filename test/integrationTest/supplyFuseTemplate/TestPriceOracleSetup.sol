@@ -10,11 +10,7 @@ abstract contract TestPriceOracleSetup is TestStorage {
         address owner = getOwner();
         vm.startPrank(owner);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
         priceOracle = address(
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", owner))

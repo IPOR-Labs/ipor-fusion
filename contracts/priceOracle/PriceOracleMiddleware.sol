@@ -12,24 +12,15 @@ import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib
 contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeable, UUPSUpgradeable {
     using SafeCast for int256;
 
-    /// @dev USD - 0x0000000000000000000000000000000000000348
-    address public immutable BASE_CURRENCY;
+    /// @dev USD
+    address public constant QUOTE_CURRENCY = address(0x0000000000000000000000000000000000000348);
     /// @dev USD - 8 decimals
-    uint256 public immutable BASE_CURRENCY_DECIMALS;
+    uint256 public constant QUOTE_CURRENCY_DECIMALS = 8;
+
     /// @dev Chainlink Feed Registry currently supported only on Ethereum Mainnet
     address public immutable CHAINLINK_FEED_REGISTRY;
 
-    constructor(address baseCurrency_, uint256 baseCurrencyDecimals_, address chainlinkFeedRegistry_) {
-        if (baseCurrency_ == address(0)) {
-            revert IPriceOracleMiddleware.ZeroAddress("baseCurrency");
-        }
-
-        if (baseCurrencyDecimals_ == 0) {
-            revert IPriceOracleMiddleware.WrongDecimals();
-        }
-
-        BASE_CURRENCY = baseCurrency_;
-        BASE_CURRENCY_DECIMALS = baseCurrencyDecimals_;
+    constructor(address chainlinkFeedRegistry_) {
         CHAINLINK_FEED_REGISTRY = chainlinkFeedRegistry_;
     }
 
@@ -61,17 +52,21 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
     function setAssetsPricesSources(address[] calldata assets_, address[] calldata sources_) external onlyOwner {
         uint256 assetsLength = assets_.length;
         uint256 sourcesLength = sources_.length;
+
         if (assetsLength == 0 || sourcesLength == 0) {
             revert IPriceOracleMiddleware.EmptyArrayNotSupported();
         }
         if (assetsLength != sourcesLength) {
             revert IPriceOracleMiddleware.ArrayLengthMismatch();
         }
+
         for (uint256 i; i < assetsLength; ++i) {
             PriceOracleMiddlewareStorageLib.setAssetPriceSource(assets_[i], sources_[i]);
         }
     }
 
+    /// @notice Returns the price in 8 decimals of the base currency for a given asset
+    /// @return asset price in 8 decimals in quote currency (default USD)
     function _getAssetPrice(address asset_) private view returns (uint256) {
         address source = PriceOracleMiddlewareStorageLib.getSourceOfAssetPrice(asset_);
         uint80 roundId;
@@ -85,7 +80,8 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
             if (CHAINLINK_FEED_REGISTRY == address(0)) {
                 revert IPriceOracleMiddleware.UnsupportedAsset();
             }
-            try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset_, BASE_CURRENCY) returns (
+
+            try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset_, QUOTE_CURRENCY) returns (
                 uint80 roundIdChainlink,
                 int256 priceChainlink,
                 uint256 startedAtChainlink,

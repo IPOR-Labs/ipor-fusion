@@ -117,7 +117,8 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         );
 
         GearboxV3FarmBalanceFuse gearboxV3FarmdBalance = new GearboxV3FarmBalanceFuse(
-            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
+            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3,
+            priceOracle
         );
 
         aaveFuseBalance = new AaveV3BalanceFuse(

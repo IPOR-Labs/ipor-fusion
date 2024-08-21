@@ -7,18 +7,23 @@ import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPriceOracleMiddleware} from "../../priceOracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFluidLendingStakingRewards} from "./ext/IFluidLendingStakingRewards.sol";
 
 contract FluidInstadappStakingBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
-    uint256 private constant PRICE_DECIMALS = 8;
-    uint256 public immutable MARKET_ID;
+    uint256 private constant PRICE_ORACLE_MIDDLEWARE_DECIMALS = 8;
 
-    constructor(uint256 marketId_) {
+    uint256 public immutable MARKET_ID;
+    IPriceOracleMiddleware public immutable PRICE_ORACLE_MIDDLEWARE;
+
+    constructor(uint256 marketId_, address priceOracle_) {
         MARKET_ID = marketId_;
+        PRICE_ORACLE_MIDDLEWARE = IPriceOracleMiddleware(priceOracle_);
+        if (PRICE_ORACLE_MIDDLEWARE.QUOTE_CURRENCY_DECIMALS() != PRICE_ORACLE_MIDDLEWARE_DECIMALS) {
+            revert IPriceOracleMiddleware.WrongDecimals();
+        }
     }
 
     function balanceOf(address plasmaVault_) external view override returns (uint256) {
@@ -42,9 +47,12 @@ contract FluidInstadappStakingBalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        uint256 price = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset);
+        uint256 price = PRICE_ORACLE_MIDDLEWARE.getAssetPrice(asset);
 
         return
-            IporMath.convertToWad(balanceOfUnderlyingAssets * price, IERC20Metadata(asset).decimals() + PRICE_DECIMALS);
+            IporMath.convertToWad(
+                balanceOfUnderlyingAssets * price,
+                IERC20Metadata(asset).decimals() + PRICE_ORACLE_MIDDLEWARE_DECIMALS
+            );
     }
 }

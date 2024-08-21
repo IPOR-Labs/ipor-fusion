@@ -48,11 +48,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
         alphas = new address[](1);
         alphas[0] = alpha;
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(

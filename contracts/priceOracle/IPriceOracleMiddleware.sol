@@ -11,11 +11,11 @@ interface IPriceOracleMiddleware {
     error WrongDecimals();
 
     /// @notice Returns the price of the given asset in 8 decimals
-    /// @return price of the asset in 8 decimals
+    /// @return price of the asset represented in 8 decimals
     function getAssetPrice(address asset) external view returns (uint256);
 
     /// @notice Returns the prices of the given assets in 8 decimals
-    /// @return prices of the assets in 8 decimals
+    /// @return prices of the assets represented in 8 decimals
     function getAssetsPrices(address[] calldata assets) external view returns (uint256[] memory);
 
     /// @notice Returns address of source of the asset price - it could be IPOR Price Feed or Chainlink Aggregator or any other source of price for a given asset
@@ -27,11 +27,11 @@ interface IPriceOracleMiddleware {
     /// @param assets array of addresses of the assets
     function setAssetsPricesSources(address[] calldata assets, address[] calldata sources) external;
 
-    /// @notice Returns the address of the base currency to which all the prices are relative, in IPOR Fusion is the USD
+    /// @notice Returns the address of the quote currency to which all the prices are relative, in IPOR Fusion is the USD
     //solhint-disable-next-line
-    function BASE_CURRENCY() external view returns (address);
+    function QUOTE_CURRENCY() external view returns (address);
 
-    /// @notice Returns the number of decimals of the base currency
+    /// @notice Returns the number of decimals of the quote currency
     //solhint-disable-next-line
-    function BASE_CURRENCY_DECIMALS() external view returns (uint256);
+    function QUOTE_CURRENCY_DECIMALS() external view returns (uint256);
 }

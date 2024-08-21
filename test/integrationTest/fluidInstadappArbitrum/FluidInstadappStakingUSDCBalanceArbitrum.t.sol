@@ -111,7 +111,8 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         );
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalance = new FluidInstadappStakingBalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING,
+            priceOracle
         );
 
         aaveFuseBalance = new AaveV3BalanceFuse(

@@ -8,7 +8,6 @@ library IporMath {
     /// @dev The index of the most significant bit in a 256-bit signed integer
     uint256 private constant MSB = 255;
 
-
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }

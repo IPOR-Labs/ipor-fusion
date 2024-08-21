@@ -2,17 +2,17 @@
 pragma solidity 0.8.22;
 
 import {FusesLib} from "../libraries/FusesLib.sol";
-import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol"; // TODO External??
+import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib, InstantWithdrawalFusesParamsStruct} from "../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
-import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol"; // TODO External??
+import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
 import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradeable.sol";
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 
-/// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
+/// @title Plasma Vault Governance part of the Plasma Vault including Access Manager. Allows to manage the vault configuration like fuses, price oracle, fees, etc.
 abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManagedUpgradeable {
     function isMarketSubstrateGranted(uint256 marketId_, bytes32 substrate_) external view override returns (bool) {
         return PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId_, substrate_);
@@ -133,8 +133,8 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         IPriceOracleMiddleware newPriceOracle = IPriceOracleMiddleware(priceOracle_);
 
         if (
-            oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
-            oldPriceOracle.BASE_CURRENCY_DECIMALS() != newPriceOracle.BASE_CURRENCY_DECIMALS()
+            oldPriceOracle.QUOTE_CURRENCY() != newPriceOracle.QUOTE_CURRENCY() ||
+            oldPriceOracle.QUOTE_CURRENCY_DECIMALS() != newPriceOracle.QUOTE_CURRENCY_DECIMALS()
         ) {
             revert Errors.UnsupportedPriceOracle();
         }

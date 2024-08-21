@@ -77,11 +77,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // price feed admin needs to whitelist the caller address for reading the price
         vm.prank(CHRONICLE_ADMIN);
         IToll(address(CHRONICLE)).kiss(address(priceFeed));
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            BASE_CURRENCY,
-            BASE_CURRENCY_DECIMALS,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );

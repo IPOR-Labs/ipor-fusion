@@ -24,15 +24,19 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
 
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
     address private constant USD = address(0x0000000000000000000000000000000000000348);
+    uint256 private constant PRICE_ORACLE_MIDDLEWARE_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
-    IPriceOracleMiddleware public immutable PRICE_ORACLE;
+    IPriceOracleMiddleware public immutable PRICE_ORACLE_MIDDLEWARE;
 
     constructor(uint256 marketId_, address priceOracle_) {
         MARKET_ID = marketId_;
-        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
-        if (PRICE_ORACLE.BASE_CURRENCY() != USD) {
+        PRICE_ORACLE_MIDDLEWARE = IPriceOracleMiddleware(priceOracle_);
+        if (PRICE_ORACLE_MIDDLEWARE.QUOTE_CURRENCY() != USD) {
             revert UnsupportedBaseCurrencyFromOracle();
+        }
+        if (PRICE_ORACLE_MIDDLEWARE.QUOTE_CURRENCY_DECIMALS() != PRICE_ORACLE_MIDDLEWARE_DECIMALS) {
+            revert IPriceOracleMiddleware.WrongDecimals();
         }
     }
 
@@ -63,7 +67,7 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
 
             totalBorrowAssets = MORPHO.expectedBorrowAssets(marketParams, plasmaVault_);
 
-            balance += _convertToUsd(marketParams.collateralToken, totalCollateralAssets).toInt256(); //totalCollateralAssets - totalBorrowAssets;
+            balance += _convertToUsd(marketParams.collateralToken, totalCollateralAssets).toInt256();
             if (totalSupplyAssets > totalBorrowAssets) {
                 balance += _convertToUsd(marketParams.loanToken, totalSupplyAssets - totalBorrowAssets).toInt256();
             } else {
@@ -76,6 +80,10 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
 
     function _convertToUsd(address asset_, uint256 amount_) internal view returns (uint256) {
         if (amount_ == 0) return 0;
-        return IporMath.convertToWad(amount_ * PRICE_ORACLE.getAssetPrice(asset_), ERC20(asset_).decimals() + 8);
+        return
+            IporMath.convertToWad(
+                amount_ * PRICE_ORACLE_MIDDLEWARE.getAssetPrice(asset_),
+                ERC20(asset_).decimals() + PRICE_ORACLE_MIDDLEWARE_DECIMALS
+            );
     }
 }

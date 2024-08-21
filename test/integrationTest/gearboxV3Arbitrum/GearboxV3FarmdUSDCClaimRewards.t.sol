@@ -146,11 +146,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
 
         vm.startPrank(admin);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            address(0)
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(address(0));
 
         _priceOracleMiddlewareProxy = address(
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", admin))
@@ -200,7 +196,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         );
 
         GearboxV3FarmBalanceFuse gearboxV3FarmdBalance = new GearboxV3FarmBalanceFuse(
-            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
+            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3,
+            _priceOracleMiddlewareProxy
         );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);

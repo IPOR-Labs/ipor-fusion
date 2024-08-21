@@ -72,7 +72,8 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         );
 
         GearboxV3FarmBalanceFuse gearboxV3FarmdBalances = new GearboxV3FarmBalanceFuse(
-            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
+            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3,
+            priceOracle
         );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);

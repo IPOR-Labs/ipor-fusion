@@ -73,7 +73,8 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
         );
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalances = new FluidInstadappStakingBalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING,
+            priceOracle
         );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);
