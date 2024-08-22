@@ -18,12 +18,12 @@ import {IporFusionAccessManager} from "./../../../contracts/managers/access/Ipor
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
-import {USDMPriceFeedArbitrum} from "../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
+import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/USDMPriceFeedArbitrum.sol";
 import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
-import {IChronicle, IToll} from "../../../contracts/priceOracle/IChronicle.sol";
+import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 
 contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -864,11 +864,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         address[] memory assets;
         address[] memory sources;
         (assets, sources) = _setupPriceOracleSources();
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            BASE_CURRENCY,
-            BASE_CURRENCY_DECIMALS,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
@@ -882,7 +878,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",
                 underlyingToken: USDM,
-                priceOracle: address(priceOracleMiddlewareProxy),
+                priceOracleMiddleware: address(priceOracleMiddlewareProxy),
                 alphas: alphas,
                 marketSubstratesConfigs: _setupMarketConfigs(),
                 fuses: fuses,

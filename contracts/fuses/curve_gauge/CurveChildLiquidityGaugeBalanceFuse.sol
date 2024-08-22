@@ -10,13 +10,11 @@ import {IporMath} from "./../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
 import {IChildLiquidityGauge} from "./ext/IChildLiquidityGauge.sol";
 import {ICurveStableswapNG} from "./../curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {IPriceOracleMiddleware} from "./../../priceOracle/IPriceOracleMiddleware.sol";
+import {IPriceOracleMiddleware} from "./../../price_oracle/IPriceOracleMiddleware.sol";
 
 contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
-
-    uint256 private constant PRICE_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
     IPriceOracleMiddleware public immutable PRICE_ORACLE;
@@ -44,6 +42,8 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
         uint256 balance;
         uint256 stakedLPTokenBalance;
         uint256 withdrawTokenAmount; // underlying asset of the vault amount to withdraw from LP
+        uint256 assetPrice;
+        uint256 assetDecimals;
         address vaultUnderlyingAsset = IERC4626(plasmaVault_).asset(); // Plasma Vault asset
         address stakedLpTokenAddress;
         address lpTokenAddress; // Curve LP token
@@ -59,9 +59,10 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
                     stakedLPTokenBalance,
                     indexCoin
                 );
+                (assetPrice, assetDecimals) = PRICE_ORACLE.getAssetPrice(vaultUnderlyingAsset);
                 balance += IporMath.convertToWad(
-                    withdrawTokenAmount * PRICE_ORACLE.getAssetPrice(vaultUnderlyingAsset),
-                    ERC20(IERC4626(plasmaVault_).asset()).decimals() + PRICE_DECIMALS
+                    withdrawTokenAmount * assetPrice,
+                    ERC20(IERC4626(plasmaVault_).asset()).decimals() + assetDecimals
                 );
             }
         }
