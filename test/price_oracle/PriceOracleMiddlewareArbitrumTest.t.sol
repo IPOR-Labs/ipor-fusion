@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 
 contract PriceOracleMiddlewareMaintenanceTest is Test {
     address public constant BASE_CURRENCY = 0x0000000000000000000000000000000000000348;
@@ -16,11 +16,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            BASE_CURRENCY,
-            BASE_CURRENCY_DECIMALS,
-            address(0)
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(address(0));
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
@@ -39,7 +35,8 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         // given
 
         // when
-        uint256 result = priceOracleMiddlewareProxy.getAssetPrice(USDC);
+        // solhint-disable-next-line no-unused-vars
+        (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(USDC);
 
         // then
         assertEq(result, uint256(100000000), "Price should be calculated correctly");

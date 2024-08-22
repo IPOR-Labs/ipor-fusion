@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {FuseAction} from "../vaults/PlasmaVault.sol";
 
+/// @title Callback handler for the Morpho protocol
 contract CallbackHandlerMorpho {
     /// @notice Callback called when a supply occurs.
     /// @dev The callback is called only if data is not empty.

@@ -8,7 +8,7 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
 
-/// @title STATELESS extension of PlasmaVault with ERC20 Votes, ERC20 Permit. Used by PlasmaVault only by delegatecall.
+/// @title Stateless extension of PlasmaVault with ERC20 Votes, ERC20 Permit. Used in the context of Plasma Vault (only by delegatecall).
 contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20VotesUpgradeable, PlasmaVaultGovernance {
     function init(string memory assetName_, address accessManager_) external override initializer {
         super.__ERC20Votes_init();
