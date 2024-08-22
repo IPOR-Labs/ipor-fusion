@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 /// @title Interface for custom calculating the latest price of an asset, expressed in USD, standard like Chainlink's AggregatorV3Interface
+/// @dev If from some reason price feed is not supported on blockchain, it is possible to implement custom price feed here
 interface IPriceFeed {
     /// @notice Returns the number of decimals of the price
     /// @return The number of decimals of the price

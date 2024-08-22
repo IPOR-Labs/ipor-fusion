@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {VaultCompoundV2Mock} from "./VaultCompoundV2Mock.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {CompoundV2BalanceFuse} from "../../../contracts/fuses/compound_v2/CompoundV2BalanceFuse.sol";
 import {CompoundV2SupplyFuse, CompoundV2SupplyFuseExitData, CompoundV2SupplyFuseEnterData} from "../../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
 
@@ -30,9 +30,10 @@ contract SparkSupplyFuseTest is Test {
         // given
         // sDAI/DAI
 
-        CompoundV2BalanceFuse balanceFuse = new CompoundV2BalanceFuse(1, address(priceOracleMiddlewareProxy));
+        CompoundV2BalanceFuse balanceFuse = new CompoundV2BalanceFuse(1);
         CompoundV2SupplyFuse fuse = new CompoundV2SupplyFuse(1);
         VaultCompoundV2Mock vaultMock = new VaultCompoundV2Mock(address(fuse), address(balanceFuse));
+        vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         address[] memory assets = new address[](1);
         assets[0] = CDAI;
@@ -66,9 +67,10 @@ contract SparkSupplyFuseTest is Test {
     function testShouldBeAbleToWithdrawDai() external {
         // given
 
-        CompoundV2BalanceFuse balanceFuse = new CompoundV2BalanceFuse(1, address(priceOracleMiddlewareProxy));
+        CompoundV2BalanceFuse balanceFuse = new CompoundV2BalanceFuse(1);
         CompoundV2SupplyFuse fuse = new CompoundV2SupplyFuse(1);
         VaultCompoundV2Mock vaultMock = new VaultCompoundV2Mock(address(fuse), address(balanceFuse));
+        vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         address[] memory assets = new address[](1);
         assets[0] = CDAI;

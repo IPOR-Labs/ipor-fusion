@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AggregatorV3Interface} from "../AggregatorV3Interface.sol";
+import {AggregatorV3Interface} from "../ext/AggregatorV3Interface.sol";
 
-import {IPriceFeed} from "../IPriceFeed.sol";
-import {ISavingsDai} from "./ISavingsDai.sol";
+import {IPriceFeed} from "./IPriceFeed.sol";
+import {ISavingsDai} from "./ext/ISavingsDai.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 
+/// @title Price feed for sDai on Ethereum Mainnet
 contract SDaiPriceFeedEthereum is IPriceFeed {
     using SafeCast for int256;
     using SafeCast for uint256;

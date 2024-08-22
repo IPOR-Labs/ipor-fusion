@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
@@ -9,9 +9,9 @@ import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PriceOracleMiddlewareMock} from "../priceOracle/PriceOracleMiddlewareMock.sol";
+import {PriceOracleMiddlewareMock} from "../price_oracle/PriceOracleMiddlewareMock.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
@@ -1280,21 +1280,21 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 8, address(0)));
-        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
+        address newPriceOracleMiddleware = address(new PriceOracleMiddlewareMock(USD, 8, address(0)));
+        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
 
         // when
-        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracle(newPriceOracle);
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracleMiddleware(newPriceOracleMiddleware);
 
         // then
-        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
 
         assertEq(
             priceOracleBefore,
             address(priceOracleMiddlewareProxy),
             "Price oracle before should be equal to priceOracleMiddlewareProxy"
         );
-        assertEq(priceOracleAfter, newPriceOracle, "Price oracle after should be equal to newPriceOracle");
+        assertEq(priceOracleAfter, newPriceOracleMiddleware, "Price oracle after should be equal to newPriceOracle");
     }
 
     function testShouldNotBeAbleToUpdatePriceOracleWhenDecimalIdWrong() external {
@@ -1330,16 +1330,16 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 6, address(0)));
-        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
+        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
 
-        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle()");
+        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracleMiddleware()");
 
         // when
         vm.expectRevert(error);
-        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracle(newPriceOracle);
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracleMiddleware(newPriceOracle);
 
         // when
-        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
 
         assertEq(
             priceOracleBefore,
@@ -1386,16 +1386,16 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(address(0x777), 8, address(0)));
-        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
+        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
 
-        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracle()");
+        bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracleMiddleware()");
 
         // when
         vm.expectRevert(error);
-        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracle(newPriceOracle);
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracleMiddleware(newPriceOracle);
 
         // when
-        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
 
         assertEq(
             priceOracleBefore,
@@ -1442,17 +1442,17 @@ contract PlasmaVaultMaintenanceTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 8, address(0)));
-        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
+        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
 
         // when
         vm.expectRevert(error);
         vm.prank(address(0x777));
-        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracle(newPriceOracle);
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracleMiddleware(newPriceOracle);
 
         // then
-        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracle();
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
 
         assertEq(
             priceOracleBefore,

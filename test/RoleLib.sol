@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {IporFusionAccessManager} from "../contracts/managers/access/IporFusionAccessManager.sol";
 import {Vm} from "forge-std/Test.sol";
@@ -91,7 +91,7 @@ library RoleLib {
         atomistsSig[0] = PlasmaVaultGovernance.addBalanceFuse.selector;
         atomistsSig[1] = PlasmaVaultGovernance.addFuses.selector;
         atomistsSig[2] = PlasmaVaultGovernance.removeFuses.selector;
-        atomistsSig[3] = PlasmaVaultGovernance.setPriceOracle.selector;
+        atomistsSig[3] = PlasmaVaultGovernance.setPriceOracleMiddleware.selector;
         atomistsSig[4] = PlasmaVaultGovernance.setupMarketsLimits.selector;
         atomistsSig[5] = PlasmaVaultGovernance.activateMarketsLimits.selector;
         atomistsSig[6] = PlasmaVaultGovernance.deactivateMarketsLimits.selector;

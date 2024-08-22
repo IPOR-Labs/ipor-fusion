@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -8,6 +8,8 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IComet} from "./ext/IComet.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @title Fuse for Compound V3 protocol responsible for calculating the balance of the Plasma Vault in the Compound V3 protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the assets that are used in the Compound V3 protocol for a given MARKET_ID
 contract CompoundV3BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
     using SafeCast for uint256;
@@ -28,6 +30,9 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
         COMPOUND_BASE_TOKEN_DECIMALS = ERC20(COMPOUND_BASE_TOKEN).decimals();
     }
 
+    /// @notice Get the balance of the given address in the market in USD
+    /// @param plasmaVault_ The address of the Plasma Vault
+    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
     function balanceOf(address plasmaVault_) external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 

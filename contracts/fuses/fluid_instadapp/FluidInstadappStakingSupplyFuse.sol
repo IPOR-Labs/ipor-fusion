@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -11,6 +11,7 @@ import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IFluidLendingStakingRewards} from "./ext/IFluidLendingStakingRewards.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
+/// @notice Data structure for entering - supplying - the Fluid Instadapp Staking protocol
 struct FluidInstadappStakingSupplyFuseEnterData {
     /// @dev max fluidTokenAmount to deposit, in fluidTokenAmount decimals
     uint256 fluidTokenAmount;
@@ -18,6 +19,7 @@ struct FluidInstadappStakingSupplyFuseEnterData {
     address stakingPool;
 }
 
+/// @notice Data structure for exiting - withdrawing - the Fluid Instadapp Staking protocol
 struct FluidInstadappStakingSupplyFuseExitData {
     /// @dev fluidTokenAmount to deposit, in fluidTokenAmount decimals
     uint256 fluidTokenAmount;
@@ -25,6 +27,8 @@ struct FluidInstadappStakingSupplyFuseExitData {
     address stakingPool;
 }
 
+/// @title Fuse for Fluid Instadapp Staking protocol responsible for supplying and withdrawing assets from the Fluid Instadapp Staking protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the staking pools addresses that are used in the Fluid Instadapp Staking protocol for a given MARKET_ID
 contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeERC20 for IERC20;
 

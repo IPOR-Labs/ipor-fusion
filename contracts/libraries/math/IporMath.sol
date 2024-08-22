@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
+/// @title Ipor Math library with math functions
 library IporMath {
     uint256 private constant WAD_DECIMALS = 18;
     uint256 public constant BASIS_OF_POWER = 10;
@@ -12,6 +13,10 @@ library IporMath {
         return a < b ? a : b;
     }
 
+    /// @notice Converts the value to WAD decimals, WAD decimals are 18
+    /// @param value The value to convert
+    /// @param assetDecimals The decimals of the asset
+    /// @return The value in WAD decimals
     function convertToWad(uint256 value, uint256 assetDecimals) internal pure returns (uint256) {
         if (value > 0) {
             if (assetDecimals == WAD_DECIMALS) {
@@ -26,6 +31,10 @@ library IporMath {
         }
     }
 
+    /// @notice Converts the value to WAD decimals, WAD decimals are 18
+    /// @param value The value to convert
+    /// @param assetDecimals The decimals of the asset
+    /// @return The value in WAD decimals
     function convertWadToAssetDecimals(uint256 value, uint256 assetDecimals) internal pure returns (uint256) {
         if (assetDecimals == WAD_DECIMALS) {
             return value;
@@ -36,6 +45,10 @@ library IporMath {
         }
     }
 
+    /// @notice Converts the int value to WAD decimals, WAD decimals are 18
+    /// @param value The int value to convert
+    /// @param assetDecimals The decimals of the asset
+    /// @return The value in WAD decimals, int
     function convertToWadInt(int256 value, uint256 assetDecimals) internal pure returns (int256) {
         if (value == 0) {
             return 0;
@@ -49,6 +62,10 @@ library IporMath {
         }
     }
 
+    /// @notice Divides two int256 numbers and rounds the result to the nearest integer
+    /// @param x The numerator
+    /// @param y The denominator
+    /// @return z The result of the division
     function divisionInt(int256 x, int256 y) internal pure returns (int256 z) {
         uint256 absX = uint256(x < 0 ? -x : x);
         uint256 absY = uint256(y < 0 ? -y : y);
@@ -83,6 +100,10 @@ library IporMath {
         }
     }
 
+    /// @notice Divides two uint256 numbers and rounds the result to the nearest integer
+    /// @param x The numerator
+    /// @param y The denominator
+    /// @return z The result of the division
     function division(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x / y;
     }

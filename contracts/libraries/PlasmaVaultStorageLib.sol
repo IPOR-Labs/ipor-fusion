@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
-/// @title Storage
+/// @title Library responsible for managing access to the storage of the PlasmaVault contract using the ERC-7201 standard
 library PlasmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
@@ -23,8 +23,9 @@ library PlasmaVaultStorageLib {
     bytes32 private constant CFG_PLASMA_VAULT_INSTANT_WITHDRAWAL_FUSES_ARRAY =
         0xd243afa3da07e6bdec20fdd573a17f99411aa8a62ae64ca2c426d3a86ae0ac00;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PriceOracle")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant PRICE_ORACLE = 0x13673b0e97c9c64fe16a7d0ebe40964562729b0147b60cb9a5240695a3704a00;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PriceOracleMiddleware")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant PRICE_ORACLE_MIDDLEWARE =
+        0x0d761ae54d86fc3be4f1f2b44ade677efb1c84a85fc6bb1d087dc42f1e319a00;
 
     /// @notice Every fuse has a list of parameters used for instant withdrawal
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultInstantWithdrawalFusesParams")) - 1)) & ~bytes32(uint256(0xff));
@@ -137,8 +138,8 @@ library PlasmaVaultStorageLib {
         uint32 lastUpdateTimestamp;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.PriceOracle
-    struct PriceOracle {
+    /// @custom:storage-location erc7201:io.ipor.PriceOracleMiddleware
+    struct PriceOracleMiddleware {
         address value;
     }
 
@@ -149,54 +150,69 @@ library PlasmaVaultStorageLib {
 
     /// @dev limit is percentage of total assets in the market in 18 decimals, 1e18 is 100%
     /// @deb if limit for zero marketId is greater than 0, then limits are activated
-    /// @custom:storage-location erc7201:io.ipor.matrketLimits
+    /// @custom:storage-location erc7201:io.ipor.MarketLimits
     struct MarketLimits {
         mapping(uint256 marketId => uint256 limit) limitInPercentage;
     }
 
+    /// @notice Gets the total assets storage pointer
+    /// @return totalAssets storage pointer
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
         assembly {
             totalAssets.slot := PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS
         }
     }
 
+    /// @notice Gets execution state storage pointer
+    /// @return executeRunning storage pointer
     function getExecutionState() internal pure returns (ExecuteState storage executeRunning) {
         assembly {
             executeRunning.slot := EXECUTE_RUNNING
         }
     }
 
+    /// @notice Gets the callback handler storage pointer
+    /// @return handler storage pointer
     function getCallbackHandler() internal pure returns (CallbackHandler storage handler) {
         assembly {
             handler.slot := CALLBACK_HANDLER
         }
     }
 
-    function getDependencyBalanceGraph() internal pure returns (DependencyBalanceGraph storage dependencyGraph) {
+    /// @notice Gets the dependency balance graph storage pointer
+    /// @return dependencyBalanceGraph storage pointer
+    function getDependencyBalanceGraph() internal pure returns (DependencyBalanceGraph storage dependencyBalanceGraph) {
         assembly {
-            dependencyGraph.slot := DEPENDENCY_BALANCE_GRAPH
+            dependencyBalanceGraph.slot := DEPENDENCY_BALANCE_GRAPH
         }
     }
 
+    /// @notice Gets the market total assets storage pointer
+    /// @return marketTotalAssets storage pointer
     function getMarketTotalAssets() internal pure returns (MarketTotalAssets storage marketTotalAssets) {
         assembly {
             marketTotalAssets.slot := PLASMA_VAULT_TOTAL_ASSETS_IN_MARKET
         }
     }
 
-    /// @notice Space in storage to store the market configuration for a given PlasmaVault
+    /// @notice Gets the market substrates storage pointer
+    /// @return marketSubstrates storage pointer
     function getMarketSubstrates() internal pure returns (MarketSubstrates storage marketSubstrates) {
         assembly {
             marketSubstrates.slot := CFG_PLASMA_VAULT_MARKET_SUBSTRATES
         }
     }
 
+    /// @notice Gets the balance fuses storage pointer
+    /// @return balanceFuses storage pointer
     function getBalanceFuses() internal pure returns (BalanceFuses storage balanceFuses) {
         assembly {
             balanceFuses.slot := CFG_PLASMA_VAULT_BALANCE_FUSES
         }
     }
 
+    /// @notice Gets the instant withdrawal fuses storage pointer
+    /// @return instantWithdrawalFuses storage pointer
     function getInstantWithdrawalFusesArray()
         internal
         pure
@@ -207,6 +223,8 @@ library PlasmaVaultStorageLib {
         }
     }
 
+    /// @notice Gets the instant withdrawal fuses params storage pointer
+    /// @return instantWithdrawalFusesParams storage pointer
     function getInstantWithdrawalFusesParams()
         internal
         pure
@@ -217,34 +235,44 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getPriceOracle() internal pure returns (PriceOracle storage oracle) {
+    /// @notice Gets the PriceOracleMiddleware storage pointer
+    /// @return oracle storage pointer
+    function getPriceOracleMiddleware() internal pure returns (PriceOracleMiddleware storage oracle) {
         assembly {
-            oracle.slot := PRICE_ORACLE
+            oracle.slot := PRICE_ORACLE_MIDDLEWARE
         }
     }
 
+    /// @notice Gets performance fee config storage pointer
+    /// @return performanceFeeData storage pointer
     function getPerformanceFeeData() internal pure returns (PerformanceFeeData storage performanceFeeData) {
         assembly {
             performanceFeeData.slot := PLASMA_VAULT_PERFORMANCE_FEE_DATA
         }
     }
 
+    /// @notice Gets management fee config storage pointer
+    /// @return managementFeeData storage pointer
     function getManagementFeeData() internal pure returns (ManagementFeeData storage managementFeeData) {
         assembly {
             managementFeeData.slot := PLASMA_VAULT_MANAGEMENT_FEE_DATA
         }
     }
 
+    /// @notice Gets the Rewards Claim Manager address storage pointer
+    /// @return rewardsClaimManagerAddress storage pointer
     function getRewardsClaimManagerAddress()
         internal
         pure
-        returns (RewardsClaimManagerAddress storage rewardsClaimManagerAddress_)
+        returns (RewardsClaimManagerAddress storage rewardsClaimManagerAddress)
     {
         assembly {
-            rewardsClaimManagerAddress_.slot := REWARDS_CLAIM_MANAGER_ADDRESS
+            rewardsClaimManagerAddress.slot := REWARDS_CLAIM_MANAGER_ADDRESS
         }
     }
 
+    /// @notice Gets the MarketLimits storage pointer
+    /// @return marketLimits storage pointer
     function getMarketsLimits() internal pure returns (MarketLimits storage marketLimits) {
         assembly {
             marketLimits.slot := MARKET_LIMITS

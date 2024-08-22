@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib, InstantWithdrawalFusesParamsStruct} from "../libraries/PlasmaVaultLib.sol";
-import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
+import {IPriceOracleMiddleware} from "../price_oracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
@@ -34,8 +34,8 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return FusesLib.getFusesArray();
     }
 
-    function getPriceOracle() external view override returns (address) {
-        return PlasmaVaultLib.getPriceOracle();
+    function getPriceOracleMiddleware() external view override returns (address) {
+        return PlasmaVaultLib.getPriceOracleMiddleware();
     }
 
     function getPerformanceFeeData()
@@ -128,18 +128,20 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         }
     }
 
-    function setPriceOracle(address priceOracle_) external override restricted {
-        IPriceOracleMiddleware oldPriceOracle = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle());
-        IPriceOracleMiddleware newPriceOracle = IPriceOracleMiddleware(priceOracle_);
+    function setPriceOracleMiddleware(address priceOracleMiddleware_) external override restricted {
+        IPriceOracleMiddleware oldPriceOracleMiddleware = IPriceOracleMiddleware(
+            PlasmaVaultLib.getPriceOracleMiddleware()
+        );
+        IPriceOracleMiddleware newPriceOracleMiddleware = IPriceOracleMiddleware(priceOracleMiddleware_);
 
         if (
-            oldPriceOracle.QUOTE_CURRENCY() != newPriceOracle.QUOTE_CURRENCY() ||
-            oldPriceOracle.QUOTE_CURRENCY_DECIMALS() != newPriceOracle.QUOTE_CURRENCY_DECIMALS()
+            oldPriceOracleMiddleware.QUOTE_CURRENCY() != newPriceOracleMiddleware.QUOTE_CURRENCY() ||
+            oldPriceOracleMiddleware.QUOTE_CURRENCY_DECIMALS() != newPriceOracleMiddleware.QUOTE_CURRENCY_DECIMALS()
         ) {
-            revert Errors.UnsupportedPriceOracle();
+            revert Errors.UnsupportedPriceOracleMiddleware();
         }
 
-        PlasmaVaultLib.setPriceOracle(priceOracle_);
+        PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 
     function configurePerformanceFee(address feeManager_, uint256 feeInPercentage_) external override restricted {

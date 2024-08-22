@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -10,11 +10,11 @@ import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultCo
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
-import {USDMPriceFeedArbitrum} from "./../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
-import {IChronicle, IToll} from "./../../../contracts/priceOracle/IChronicle.sol";
+import {USDMPriceFeedArbitrum} from "./../../../contracts/price_oracle/price_feed/USDMPriceFeedArbitrum.sol";
+import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 
 contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
@@ -86,10 +86,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     function testShouldBeAbleToCalculateBalanceWhenSupplySingleAsset() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -200,10 +197,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     function testShouldBeAbleToCalculateBalanceWhenSupplyAndExitSingleAsset() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);

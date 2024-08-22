@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
@@ -10,10 +10,9 @@ import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {AaveConstantsEthereum} from "../../contracts/fuses/aave_v3/AaveConstantsEthereum.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
@@ -864,8 +863,9 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         address userThree = address(0x999);
 
@@ -1027,8 +1027,9 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         address userThree = address(0x999);
 
@@ -1182,8 +1183,9 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.redeem(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         address userThree = address(0x999);
 
@@ -1303,8 +1305,9 @@ contract PlasmaVaultWithdrawTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         /// @dev artificially transfer aTokens to a Plasma Vault to increase shares values
         vm.prank(userOne);
@@ -1417,8 +1420,9 @@ contract PlasmaVaultWithdrawTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         /// @dev artificially transfer aTokens to a Plasma Vault to increase shares values
         vm.prank(userOne);
@@ -1573,8 +1577,9 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.redeem(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         address userThree = address(0x999);
 

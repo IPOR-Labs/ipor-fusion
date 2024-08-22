@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -24,6 +24,8 @@ struct GearboxV3FarmdSupplyFuseExitData {
     address farmdToken;
 }
 
+/// @title Fuse for Gearbox V3 Farmd protocol responsible for supplying and withdrawing assets from the Gearbox V3 Farmd protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the farmd tokens addresses that are used in the Gearbox V3 Farmd protocol for a given MARKET_ID
 contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeERC20 for IERC20;
 

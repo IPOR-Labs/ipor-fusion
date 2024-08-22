@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -11,6 +11,8 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @title Fuse for Aave V3 protocol responsible for calculating the balance of the Plasma Vault in Aaave V3 protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the assets that are used in the Aave V3 protocol for a given MARKET_ID
 contract AaveV3BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
 
@@ -49,8 +51,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
         int256 balanceTemp;
         int256 balanceInLoop;
         uint256 decimals;
-        // @dev this value has 8 decimals
-        uint256 price;
+        uint256 price; // @dev assume price represented in 8 decimals
         address asset;
         address aTokenAddress;
         address stableDebtTokenAddress;

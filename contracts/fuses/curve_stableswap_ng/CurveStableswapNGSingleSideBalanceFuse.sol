@@ -1,36 +1,32 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IMarketBalanceFuse} from "./../IMarketBalanceFuse.sol";
+import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
+import {IPriceOracleMiddleware} from "./../../price_oracle/IPriceOracleMiddleware.sol";
 import {IporMath} from "./../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
-import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
-import {IPriceOracleMiddleware} from "./../../priceOracle/IPriceOracleMiddleware.sol";
+import {PlasmaVaultLib} from "./../../libraries/PlasmaVaultLib.sol";
 
-/// @notice This Balance Fuse can only be used for assets compaitble with the underlying of the Plasma Vault asset
+/// @title Fuse for Curve Stableswap NG protocol responsible for calculating the balance of the Plasma Vault in the Curve Stableswap NG protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the Curve LP Tokens that are used in the Curve Stableswap NG protocol for a given MARKET_ID
 contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
-    uint256 private constant PRICE_ORACLE_MIDDLEWARE_DECIMALS = 8;
-
     uint256 public immutable MARKET_ID;
-    IPriceOracleMiddleware public immutable PRICE_ORACLE_MIDDLEWARE;
 
     error AssetNotFoundInCurvePool(address curvePool, address asset);
 
-    constructor(uint256 marketId_, address priceOracle_) {
+    constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
-        PRICE_ORACLE_MIDDLEWARE = IPriceOracleMiddleware(priceOracle_);
-        if (PRICE_ORACLE_MIDDLEWARE.QUOTE_CURRENCY_DECIMALS() != PRICE_ORACLE_MIDDLEWARE_DECIMALS) {
-            revert IPriceOracleMiddleware.WrongDecimals();
-        }
     }
-
+    /// @param plasmaVault_ The address of the Plasma Vault
+    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
     function balanceOf(address plasmaVault_) external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -41,20 +37,24 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
 
         uint256 balance;
         uint256 withdrawTokenAmount;
-        address lpTokenAddress; // Curve LP token
-        address underlyingAsset = IERC4626(plasmaVault_).asset(); // Plasma Vault asset
-        int128 indexCoin;
+        address lpTokenAddress; /// @dev Curve LP token
+        uint256 price;
+        uint256 priceDecimals;
+        address underlyingAsset = IERC4626(plasmaVault_).asset();
+        address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 
         for (uint256 i; i < len; ++i) {
             lpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
-            indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), underlyingAsset);
+
             withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
                 ERC20(lpTokenAddress).balanceOf(plasmaVault_),
-                indexCoin
+                _getCoinIndex(ICurveStableswapNG(lpTokenAddress), underlyingAsset)
             );
+            (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(underlyingAsset);
+
             balance += IporMath.convertToWad(
-                withdrawTokenAmount * PRICE_ORACLE_MIDDLEWARE.getAssetPrice(underlyingAsset),
-                ERC20(IERC4626(plasmaVault_).asset()).decimals() + PRICE_ORACLE_MIDDLEWARE_DECIMALS
+                withdrawTokenAmount * price,
+                ERC20(IERC4626(plasmaVault_).asset()).decimals() + priceDecimals
             );
         }
         return balance;

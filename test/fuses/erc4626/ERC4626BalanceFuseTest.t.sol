@@ -1,7 +1,7 @@
 // Tests for ERC4646BalanceFuse
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 
@@ -12,7 +12,7 @@ import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData
 import {ERC4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {VaultERC4626Mock} from "./VaultERC4626Mock.sol";
 
-import {PriceOracleMiddleware} from "./../../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "./../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 
 contract ERC4646BalanceFuseTest is Test {
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -35,8 +35,9 @@ contract ERC4646BalanceFuseTest is Test {
     function testShouldBeAbleToSupplyAndCalculateBalance() external {
         // given
         Erc4626SupplyFuse supplyFuse = new Erc4626SupplyFuse(1);
-        ERC4626BalanceFuse balanceFuse = new ERC4626BalanceFuse(1, address(priceOracleMiddlewareProxy));
+        ERC4626BalanceFuse balanceFuse = new ERC4626BalanceFuse(1);
         VaultERC4626Mock vault = new VaultERC4626Mock(address(supplyFuse), address(balanceFuse));
+        vault.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         address[] memory assets = new address[](1);
         assets[0] = SDAI;
@@ -70,8 +71,9 @@ contract ERC4646BalanceFuseTest is Test {
     function testShouldBeAbleToWithdrawAndCalculateBalance() external {
         // given
         Erc4626SupplyFuse supplyFuse = new Erc4626SupplyFuse(1);
-        ERC4626BalanceFuse balanceFuse = new ERC4626BalanceFuse(1, address(priceOracleMiddlewareProxy));
+        ERC4626BalanceFuse balanceFuse = new ERC4626BalanceFuse(1);
         VaultERC4626Mock vault = new VaultERC4626Mock(address(supplyFuse), address(balanceFuse));
+        vault.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         address[] memory assets = new address[](1);
         assets[0] = SDAI;

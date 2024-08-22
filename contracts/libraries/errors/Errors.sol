@@ -1,12 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
+/// @title Errors in Ipor Fusion
 library Errors {
+    /// @notice Error when wrong address is used
     error WrongAddress();
+    /// @notice Error when wrong value is used
     error WrongValue();
+    /// @notice Error when wrong decimals are used
     error WrongDecimals();
-    error UnsupportedBaseCurrencyFromOracle();
-    error UnsupportedPriceOracle();
+    /// @notice Error when wrong array length is used
     error WrongArrayLength();
+    /// @notice Error when wrong caller is used
     error WrongCaller(address caller);
+    /// @notice TODO: check if still used
+    error UnsupportedBaseCurrencyFromOracle();
+    /// @notice Error when unsupported price oracle middleware is used
+    error UnsupportedPriceOracleMiddleware();
 }

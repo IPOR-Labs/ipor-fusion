@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {CompoundConstantsEthereum} from "../../../contracts/fuses/compound_v3/CompoundConstantsEthereum.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {IComet} from "../../../contracts/fuses/compound_v3/ext/IComet.sol";
 
 import {CompoundV3SupplyFuseMock} from "./CompoundV3SupplyFuseMock.sol";
 
 contract CompoundUsdcV3SupplyFuseTest is Test {
+    address public constant COMET_V3_USDC = 0xc3d688B66703497DAA19211EEdff47f25384cdc3;
     struct SupportedToken {
         address asset;
         string name;
     }
 
     SupportedToken private activeTokens;
-    IComet private constant COMET = IComet(CompoundConstantsEthereum.COMET_V3_USDC);
+    IComet private constant COMET = IComet(COMET_V3_USDC);
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
@@ -24,7 +24,7 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstantsEthereum.COMET_V3_USDC);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, COMET_V3_USDC);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -53,7 +53,7 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
 
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
-        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, CompoundConstantsEthereum.COMET_V3_USDC);
+        CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, COMET_V3_USDC);
         CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();

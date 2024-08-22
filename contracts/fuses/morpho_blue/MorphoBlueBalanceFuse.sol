@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
-import {IPriceOracleMiddleware} from "../../priceOracle/IPriceOracleMiddleware.sol";
+import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
@@ -13,7 +13,10 @@ import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {MorphoStorageLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoStorageLib.sol";
 import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib.sol";
+import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
+/// @title Fuse Morpho Blue Balance protocol responsible for calculating the balance of the Plasma Vault in the Morpho Blue protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the Morpho Blue Market IDs that are used in the Morpho Blue protocol for a given MARKET_ID
 contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using SafeCast for int256;
@@ -24,22 +27,15 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
 
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
     address private constant USD = address(0x0000000000000000000000000000000000000348);
-    uint256 private constant PRICE_ORACLE_MIDDLEWARE_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
-    IPriceOracleMiddleware public immutable PRICE_ORACLE_MIDDLEWARE;
 
-    constructor(uint256 marketId_, address priceOracle_) {
+    constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
-        PRICE_ORACLE_MIDDLEWARE = IPriceOracleMiddleware(priceOracle_);
-        if (PRICE_ORACLE_MIDDLEWARE.QUOTE_CURRENCY() != USD) {
-            revert UnsupportedBaseCurrencyFromOracle();
-        }
-        if (PRICE_ORACLE_MIDDLEWARE.QUOTE_CURRENCY_DECIMALS() != PRICE_ORACLE_MIDDLEWARE_DECIMALS) {
-            revert IPriceOracleMiddleware.WrongDecimals();
-        }
     }
 
+    /// @param plasmaVault_ The address of the Plasma Vault
+    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
     function balanceOf(address plasmaVault_) external view override returns (uint256) {
         bytes32[] memory morphoMarkets = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -57,6 +53,8 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
 
         MarketParams memory marketParams;
 
+        address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+
         for (uint256 i; i < len; ++i) {
             marketParams = MORPHO.idToMarketParams(Id.wrap(morphoMarkets[i]));
             totalSupplyAssets = MORPHO.expectedSupplyAssets(marketParams, plasmaVault_);
@@ -67,23 +65,33 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
 
             totalBorrowAssets = MORPHO.expectedBorrowAssets(marketParams, plasmaVault_);
 
-            balance += _convertToUsd(marketParams.collateralToken, totalCollateralAssets).toInt256();
+            balance += _convertToUsd(priceOracleMiddleware, marketParams.collateralToken, totalCollateralAssets)
+                .toInt256();
             if (totalSupplyAssets > totalBorrowAssets) {
-                balance += _convertToUsd(marketParams.loanToken, totalSupplyAssets - totalBorrowAssets).toInt256();
+                balance += _convertToUsd(
+                    priceOracleMiddleware,
+                    marketParams.loanToken,
+                    totalSupplyAssets - totalBorrowAssets
+                ).toInt256();
             } else {
-                balance -= _convertToUsd(marketParams.loanToken, totalBorrowAssets - totalSupplyAssets).toInt256();
+                balance -= _convertToUsd(
+                    priceOracleMiddleware,
+                    marketParams.loanToken,
+                    totalBorrowAssets - totalSupplyAssets
+                ).toInt256();
             }
         }
 
         return balance.toUint256();
     }
 
-    function _convertToUsd(address asset_, uint256 amount_) internal view returns (uint256) {
+    function _convertToUsd(
+        address priceOracleMiddleware_,
+        address asset_,
+        uint256 amount_
+    ) internal view returns (uint256) {
         if (amount_ == 0) return 0;
-        return
-            IporMath.convertToWad(
-                amount_ * PRICE_ORACLE_MIDDLEWARE.getAssetPrice(asset_),
-                ERC20(asset_).decimals() + PRICE_ORACLE_MIDDLEWARE_DECIMALS
-            );
+        (uint256 price, uint256 decimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(asset_);
+        return IporMath.convertToWad(amount_ * price, ERC20(asset_).decimals() + decimals);
     }
 }

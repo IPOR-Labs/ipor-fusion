@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
-import {IPriceFeed} from "./IPriceFeed.sol";
+import {IPriceFeed} from "./price_feed/IPriceFeed.sol";
 import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
 
+/// @title Price Oracle Middleware contract responsible for calculating the price of assets in USD
 contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeable, UUPSUpgradeable {
     using SafeCast for int256;
 
@@ -29,24 +30,29 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         __UUPSUpgradeable_init();
     }
 
-    function getAssetPrice(address asset_) external view returns (uint256) {
-        return _getAssetPrice(asset_);
+    function getAssetPrice(address asset_) external view returns (uint256 assetPrice, uint256 decimals) {
+        (assetPrice, decimals) = _getAssetPrice(asset_);
     }
 
-    function getAssetsPrices(address[] calldata assets_) external view returns (uint256[] memory) {
+    function getAssetsPrices(
+        address[] calldata assets_
+    ) external view returns (uint256[] memory assetPrices, uint256[] memory decimalsList) {
         uint256 assetsLength = assets_.length;
+
         if (assetsLength == 0) {
             revert IPriceOracleMiddleware.EmptyArrayNotSupported();
         }
-        uint256[] memory prices = new uint256[](assetsLength);
+
+        assetPrices = new uint256[](assetsLength);
+        decimalsList = new uint256[](assetsLength);
+
         for (uint256 i; i < assetsLength; ++i) {
-            prices[i] = _getAssetPrice(assets_[i]);
+            (assetPrices[i], decimalsList[i]) = _getAssetPrice(assets_[i]);
         }
-        return prices;
     }
 
-    function getSourceOfAssetPrice(address asset_) external view returns (address) {
-        return PriceOracleMiddlewareStorageLib.getSourceOfAssetPrice(asset_);
+    function getSourceOfAssetPrice(address asset_) external view returns (address sourceOfAssetPrice) {
+        sourceOfAssetPrice = PriceOracleMiddlewareStorageLib.getSourceOfAssetPrice(asset_);
     }
 
     function setAssetsPricesSources(address[] calldata assets_, address[] calldata sources_) external onlyOwner {
@@ -65,15 +71,18 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         }
     }
 
-    /// @notice Returns the price in 8 decimals of the base currency for a given asset
-    /// @return asset price in 8 decimals in quote currency (default USD)
-    function _getAssetPrice(address asset_) private view returns (uint256) {
+    /// @notice Returns the price in QUOTE_CURRENCY_DECIMALS of the quote currency for a given asset
+    /// @param asset_ address of the asset
+    /// @return assetPrice price in QUOTE_CURRENCY (default USD) of the asset
+    /// @return decimals number of decimals of the asset price
+    function _getAssetPrice(address asset_) private view returns (uint256 assetPrice, uint256 decimals) {
         address source = PriceOracleMiddlewareStorageLib.getSourceOfAssetPrice(asset_);
         uint80 roundId;
         int256 price;
         uint256 startedAt;
         uint256 time;
         uint80 answeredInRound;
+
         if (source != address(0)) {
             if (QUOTE_CURRENCY_DECIMALS != IPriceFeed(source).decimals()) {
                 revert IPriceOracleMiddleware.WrongDecimalsInPriceFeed();
@@ -84,7 +93,10 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
                 revert IPriceOracleMiddleware.UnsupportedAsset();
             }
 
-            if (QUOTE_CURRENCY_DECIMALS != FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).decimals(asset_, QUOTE_CURRENCY)) {
+            if (
+                QUOTE_CURRENCY_DECIMALS !=
+                FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).decimals(asset_, QUOTE_CURRENCY)
+            ) {
                 revert IPriceOracleMiddleware.WrongDecimalsInPriceFeed();
             }
 
@@ -103,7 +115,9 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         if (price <= 0) {
             revert IPriceOracleMiddleware.UnexpectedPriceResult();
         }
-        return price.toUint256();
+
+        assetPrice = price.toUint256();
+        decimals = QUOTE_CURRENCY_DECIMALS;
     }
 
     //solhint-disable-next-line

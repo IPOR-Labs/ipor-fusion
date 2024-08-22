@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IChronicle} from "./../IChronicle.sol";
-import {IPriceFeed} from "./../IPriceFeed.sol";
+import {IChronicle} from "../ext/IChronicle.sol";
+import {IPriceFeed} from "./IPriceFeed.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 
-/// @title USDMPriceFeedArbitrum
+/// @title Price feed for USDM on Arbitrum
 /// @notice PriceOracle adapter for Chronicle push-based price feeds.
 /// @dev Note: Chronicle price feeds currently have a caller whitelist.
 /// To be able read price data, the caller (this contract) must be explicitly authorized.

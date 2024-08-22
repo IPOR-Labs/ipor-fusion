@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
-/// @title Predefined markets used in the IPOR Fusion protocol
+/// @title Predefined markets used in the IPOR Fusion protocol on Arbitrum
 /// @notice For documentation purposes: When new markets are added by authorized property of PlasmaVault during runtime, they should be added and described here as well.
 library IporFusionMarketsArbitrum {
     /// @dev AAVE V3 market

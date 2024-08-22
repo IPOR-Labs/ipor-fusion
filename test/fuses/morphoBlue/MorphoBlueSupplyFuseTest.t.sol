@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {VaultMorphoBlueMock} from "./VaultMorphoBlueMock.sol";
-import {MorphoBlueSupplyFuse, MorphoBlueSupplyFuseExitData, MorphoBlueSupplyFuseEnterData} from "../../../contracts/fuses/morphoBlue/MorphoBlueSupplyFuse.sol";
-import {MorphoBlueBalanceFuse} from "../../../contracts/fuses/morphoBlue/MorphoBlueBalanceFuse.sol";
+import {MorphoBlueSupplyFuse, MorphoBlueSupplyFuseExitData, MorphoBlueSupplyFuseEnterData} from "../../../contracts/fuses/morpho_blue/MorphoBlueSupplyFuse.sol";
+import {MorphoBlueBalanceFuse} from "../../../contracts/fuses/morpho_blue/MorphoBlueBalanceFuse.sol";
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib.sol";
 import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParamsLib.sol";
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 
 contract MorphoBlueSupplyFuseTest is Test {
     using MorphoBalancesLib for IMorpho;
@@ -42,9 +42,10 @@ contract MorphoBlueSupplyFuseTest is Test {
         bytes32 marketIdBytes32 = 0xb1eac1c0f3ad13fb45b01beac8458c055c903b1bff8cb882346635996a774f77;
         Id marketId = Id.wrap(marketIdBytes32);
 
-        MorphoBlueBalanceFuse balanceFuse = new MorphoBlueBalanceFuse(1, address(priceOracleMiddlewareProxy));
+        MorphoBlueBalanceFuse balanceFuse = new MorphoBlueBalanceFuse(1);
         MorphoBlueSupplyFuse fuse = new MorphoBlueSupplyFuse(1);
         VaultMorphoBlueMock vaultMock = new VaultMorphoBlueMock(address(fuse), address(balanceFuse));
+        vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         uint256 amount = 100e18;
 
@@ -85,6 +86,7 @@ contract MorphoBlueSupplyFuseTest is Test {
         Id marketId = Id.wrap(marketIdBytes32);
         MorphoBlueSupplyFuse fuse = new MorphoBlueSupplyFuse(1);
         VaultMorphoBlueMock vaultMock = new VaultMorphoBlueMock(address(fuse), address(0));
+        vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         uint256 amount = 100e18;
 

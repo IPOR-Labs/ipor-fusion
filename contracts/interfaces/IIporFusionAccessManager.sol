@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 
+/// @title Interface for the IporFusionAccessManager contract that manages access control for the IporFusion contract and its contract satellites
 interface IIporFusionAccessManager is IAccessManager {
     /// @notice Check if the caller can call the target with the given selector. Update the account lock time.
     /// @dev canCall cannot be a view function because it updates the account lock time.
@@ -34,11 +35,21 @@ interface IIporFusionAccessManager is IAccessManager {
     /// @param delays The minimal execution delays for the specified roles
     function setMinimalExecutionDelaysForRoles(uint64[] calldata rolesIds, uint256[] calldata delays) external;
 
+    /// @notice Returns the minimal execution delay required for the specified role.
+    /// @param roleId The role for which the minimal execution delay is returned
+    /// @return The minimal execution delay in seconds
     function getMinimalExecutionDelayForRole(uint64 roleId) external view returns (uint256);
 
+    /// @notice Returns the account lock time for the specified account.
+    /// @param account The account for which the account lock time is returned
+    /// @return The account lock time in seconds
     function getAccountLockTime(address account) external view returns (uint256);
 
+    /// @notice Returns the redemption delay.
+    /// @return The redemption delay in seconds
     function getRedemptionDelay() external view returns (uint256);
 
+    /// @notice Returns the function selector for the scheduled operation that is currently being consumed.
+    /// @return The function selector
     function isConsumingScheduledOp() external view returns (bytes4);
 }

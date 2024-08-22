@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
-/// @title Fuses storage library
+/// @title Fuses storage library responsible for managing storage fuses in the Plasma Vault
 library FuseStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgFuses")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_FUSES = 0x48932b860eb451ad240d4fe2b46522e5a0ac079d201fe50d4e0be078c75b5400;
@@ -21,12 +21,14 @@ library FuseStorageLib {
         address[] value;
     }
 
+    /// @notice Gets the fuses storage pointer
     function getFuses() internal pure returns (Fuses storage fuses) {
         assembly {
             fuses.slot := CFG_FUSES
         }
     }
 
+    /// @notice Gets the fuses array storage pointer
     function getFusesArray() internal pure returns (FusesArray storage fusesArray) {
         assembly {
             fusesArray.slot := CFG_FUSES_ARRAY

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
 import {IporFusionAccessManagersStorageLib} from "./IporFusionAccessManagersStorageLib.sol";
@@ -10,12 +10,14 @@ bytes4 constant MINT_SELECTOR = PlasmaVault.mint.selector;
 bytes4 constant WITHDRAW_SELECTOR = PlasmaVault.withdraw.selector;
 bytes4 constant REDEEM_SELECTOR = PlasmaVault.redeem.selector;
 
+/// @title Library for the redemption delay responsible for locking accounts for withdraw and redeem functions after deposit or mint functions.
 library RedemptionDelayLib {
     error AccountIsLocked(uint256 unlockTime);
 
     /// @notice Get the account lock time for a redemption function (withdraw, redeem)
     /// @param account_ The account to check the lock time
     /// @return The lock time in seconds
+    /// @dev The lock time is the time the account is locked for withdraw and redeem functions after deposit or mint functions
     function getAccountLockTime(address account_) internal view returns (uint256) {
         return IporFusionAccessManagersStorageLib.getRedemptionLocks().redemptionLock[account_];
     }

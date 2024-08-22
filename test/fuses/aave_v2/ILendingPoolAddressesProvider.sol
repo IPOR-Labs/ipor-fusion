@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 /**
  * @title LendingPoolAddressesProvider contract

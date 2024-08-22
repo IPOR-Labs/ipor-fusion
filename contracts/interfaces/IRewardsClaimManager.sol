@@ -1,17 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {FuseAction} from "../interfaces/IPlasmaVault.sol";
 
+/// @notice Vesting data struct
 /// @custom:storage-location erc7201:io.ipor.managers.rewards.VestingData
 struct VestingData {
-    /// @dev value in seconds
+    /// @notice vestingTime The time when the vesting is pending
     uint32 vestingTime;
+    /// @notice updateBalanceTimestamp The timestamp of the last balance update
     uint32 updateBalanceTimestamp;
+    /// @notice transferredTokens The number of tokens that have been transferred from RewardsClaimManager to the Plasma Vault
     uint128 transferredTokens;
+    /// @notice lastUpdateBalance The balance of the last update
     uint128 lastUpdateBalance;
 }
 
+/// @title Rewards Claim Manager interface
 interface IRewardsClaimManager {
     /// @notice Retrieves the balance of linear vested underlying tokens owned by RewardsClaimManager.sol contract
     /// @return balance The balance of the vesting data in uint256.

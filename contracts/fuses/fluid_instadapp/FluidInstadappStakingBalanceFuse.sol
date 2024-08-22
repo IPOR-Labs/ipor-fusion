@@ -1,31 +1,29 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {IPriceOracleMiddleware} from "../../priceOracle/IPriceOracleMiddleware.sol";
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFluidLendingStakingRewards} from "./ext/IFluidLendingStakingRewards.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
+/// @title Fuse Fluid Instadapp Staking protocol responsible for calculating the balance of the Plasma Vault in the Fluid Instadapp Staking protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the staking pools addresses that are used in the Fluid Instadapp Staking protocol for a given MARKET_ID
 contract FluidInstadappStakingBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
-    uint256 private constant PRICE_ORACLE_MIDDLEWARE_DECIMALS = 8;
-
     uint256 public immutable MARKET_ID;
-    IPriceOracleMiddleware public immutable PRICE_ORACLE_MIDDLEWARE;
 
-    constructor(uint256 marketId_, address priceOracle_) {
+    constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
-        PRICE_ORACLE_MIDDLEWARE = IPriceOracleMiddleware(priceOracle_);
-        if (PRICE_ORACLE_MIDDLEWARE.QUOTE_CURRENCY_DECIMALS() != PRICE_ORACLE_MIDDLEWARE_DECIMALS) {
-            revert IPriceOracleMiddleware.WrongDecimals();
-        }
     }
 
+    /// @param plasmaVault_ The address of the Plasma Vault
+    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
     function balanceOf(address plasmaVault_) external view override returns (uint256) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -47,12 +45,10 @@ contract FluidInstadappStakingBalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        uint256 price = PRICE_ORACLE_MIDDLEWARE.getAssetPrice(asset);
+        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracleMiddleware())
+            .getAssetPrice(asset);
 
         return
-            IporMath.convertToWad(
-                balanceOfUnderlyingAssets * price,
-                IERC20Metadata(asset).decimals() + PRICE_ORACLE_MIDDLEWARE_DECIMALS
-            );
+            IporMath.convertToWad(balanceOfUnderlyingAssets * price, IERC20Metadata(asset).decimals() + priceDecimals);
     }
 }

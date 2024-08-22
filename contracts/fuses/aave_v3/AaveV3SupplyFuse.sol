@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -12,6 +12,7 @@ import {IAavePoolDataProvider} from "./ext/IAavePoolDataProvider.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @dev Struct for entering with supply to the Aave V3 protocol
 struct AaveV3SupplyFuseEnterData {
     /// @notice asset address to supply
     address asset;
@@ -21,13 +22,14 @@ struct AaveV3SupplyFuseEnterData {
     uint256 userEModeCategoryId;
 }
 
+/// @dev Struct for exiting with supply (redeem) from the Aave V3 protocol
 struct AaveV3SupplyFuseExitData {
     /// @notice asset address to withdraw
     address asset;
     /// @notice asset amount to withdraw
     uint256 amount;
 }
-
+/// @dev Fuse for Aave V3 protocol responsible for supplying and withdrawing assets from the Aave V3 protocol
 contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;

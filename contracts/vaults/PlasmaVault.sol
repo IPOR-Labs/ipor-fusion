@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -16,7 +16,7 @@ import {IPlasmaVault, FuseAction} from "../interfaces/IPlasmaVault.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
-import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
+import {IPriceOracleMiddleware} from "../price_oracle/IPriceOracleMiddleware.sol";
 import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
 import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradeable.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
@@ -28,17 +28,29 @@ import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 
+/// @notice PlasmaVaultInitData is a struct that represents a configuration of a Plasma Vault during construction
 struct PlasmaVaultInitData {
+    /// @notice assetName is a name of the asset shares in Plasma Vault
     string assetName;
+    /// @notice assetSymbol is a symbol of the asset shares in Plasma Vault
     string assetSymbol;
+    /// @notice underlyingToken is a address of the underlying token in Plasma Vault
     address underlyingToken;
-    address priceOracle;
+    /// @notice priceOracleMiddleware is an address of the Price Oracle Middleware from Ipor Fusion
+    address priceOracleMiddleware;
+    /// @notice alphas is a list of addresses of the Alphas
     address[] alphas;
+    /// @notice marketSubstratesConfigs is a list of MarketSubstratesConfig structs, which define substrates for specific markets
     MarketSubstratesConfig[] marketSubstratesConfigs;
+    /// @notice fuses is a list of addresses of the Fuses
     address[] fuses;
+    /// @notice balanceFuses is a list of MarketBalanceFuseConfig structs, which define balance fuses for specific markets
     MarketBalanceFuseConfig[] balanceFuses;
+    /// @notice feeConfig is a FeeConfig struct, which defines performance, management fees and their managers
     FeeConfig feeConfig;
+    /// @notice accessManager is a address of the Ipor Fusion Access Manager
     address accessManager;
+    /// @notice plasmaVaultBase is a address of the Plasma Vault Base - contract that is responsible for the common logic of the Plasma Vault
     address plasmaVaultBase;
 }
 
@@ -72,7 +84,7 @@ struct FeeConfig {
     uint256 managementFeeInPercentage;
 }
 
-/// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
+/// @title Main contract of the Plasma Vault in ERC4626 standard - responsible for managing assets and shares by the Alphas via Fuses.
 contract PlasmaVault is
     ERC20Upgradeable,
     ERC4626Upgradeable,
@@ -82,11 +94,12 @@ contract PlasmaVault is
 {
     using Address for address;
     using SafeCast for int256;
+
+    address private constant USD = address(0x0000000000000000000000000000000000000348);
+    /// @dev Additional offset to withdraw from markets in case of rounding issues
     uint256 private constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
     /// @dev 10 attempts to withdraw from markets in case of rounding issues
     uint256 private constant REDEEM_ATTEMPTS = 10;
-    address private constant USD = address(0x0000000000000000000000000000000000000348);
-
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
 
     error NoSharesToRedeem();
@@ -99,7 +112,6 @@ contract PlasmaVault is
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
-    uint256 public immutable QUOTE_CURRENCY_DECIMALS;
     address public immutable PLASMA_VAULT_BASE;
 
     constructor(PlasmaVaultInitData memory initData_) ERC20Upgradeable() ERC4626Upgradeable() initializer {
@@ -111,15 +123,13 @@ contract PlasmaVault is
             abi.encodeWithSelector(IPlasmaVaultBase.init.selector, initData_.assetName, initData_.accessManager)
         );
 
-        IPriceOracleMiddleware priceOracle = IPriceOracleMiddleware(initData_.priceOracle);
+        IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(initData_.priceOracleMiddleware);
 
-        if (priceOracle.QUOTE_CURRENCY() != USD) {
+        if (priceOracleMiddleware.QUOTE_CURRENCY() != USD) {
             revert Errors.UnsupportedBaseCurrencyFromOracle();
         }
 
-        QUOTE_CURRENCY_DECIMALS = priceOracle.QUOTE_CURRENCY_DECIMALS();
-
-        PlasmaVaultLib.setPriceOracle(initData_.priceOracle);
+        PlasmaVaultLib.setPriceOracleMiddleware(initData_.priceOracleMiddleware);
 
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSelector(PlasmaVaultGovernance.addFuses.selector, initData_.fuses)
@@ -157,6 +167,7 @@ contract PlasmaVault is
 
     fallback(bytes calldata) external returns (bytes memory) {
         if (PlasmaVaultLib.isExecutionStarted()) {
+            /// @dev Handle callback can be done only during the execution of the FuseActions by Alpha
             CallbackHandlerLib.handleCallback();
             return "";
         } else {
@@ -326,7 +337,7 @@ contract PlasmaVault is
 
     /// @notice Returns the total assets in the vault for a specific market
     /// @param marketId_ The market id
-    /// @return total assets in the vault for the market, represented in underlying token decimals
+    /// @return total assets in the Plasma Vault for given market, represented in underlying token decimals
     function totalAssetsInMarket(uint256 marketId_) public view virtual returns (uint256) {
         return PlasmaVaultLib.getTotalAssetsInMarket(marketId_);
     }
@@ -511,7 +522,10 @@ contract PlasmaVault is
         uint256[] memory markets = _checkBalanceFusesDependencies(markets_);
         uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
-        uint256 underlyingAssetPrice = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle()).getAssetPrice(asset());
+
+        (uint256 underlyingAssetPrice, uint256 underlyingAssePriceDecimals) = IPriceOracleMiddleware(
+            PlasmaVaultLib.getPriceOracleMiddleware()
+        ).getAssetPrice(asset());
 
         dataToCheck.marketsToCheck = new MarketToCheck[](marketsLength);
 
@@ -530,7 +544,7 @@ contract PlasmaVault is
 
             dataToCheck.marketsToCheck[i].balanceInMarket = IporMath.convertWadToAssetDecimals(
                 IporMath.division(
-                    wadBalanceAmountInUSD * IporMath.BASIS_OF_POWER ** QUOTE_CURRENCY_DECIMALS,
+                    wadBalanceAmountInUSD * IporMath.BASIS_OF_POWER ** underlyingAssePriceDecimals,
                     underlyingAssetPrice
                 ),
                 decimals()

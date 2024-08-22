@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 import {ERC4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {PlasmaVaultStorageLib} from "./../../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 
 contract ERC4626BalanceFuseMock is ERC4626BalanceFuse {
-    constructor(uint256 marketIdInput, address priceOracle) ERC4626BalanceFuse(marketIdInput, priceOracle) {}
+    constructor(uint256 marketIdInput) ERC4626BalanceFuse(marketIdInput) {}
 
     function updateMarketConfiguration(address[] memory supportedAssets) public {
         PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = PlasmaVaultStorageLib

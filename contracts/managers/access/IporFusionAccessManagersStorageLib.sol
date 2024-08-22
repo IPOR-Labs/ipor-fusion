@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+/// @notice RedemptionLocks storage structure
 /// @custom:storage-location erc7201:io.ipor.managers.access.RedemptionLocks
 struct RedemptionLocks {
     mapping(address acount => uint256 depositTime) redemptionLock;
@@ -44,12 +45,16 @@ library IporFusionAccessManagersStorageLib {
     event RedemptionDelayUpdated(uint256 redemptionDelay);
     event RedemptionDelayForAccountUpdated(address account, uint256 redemptionDelay);
 
+    /// @notice gets the  Ipor Fusion Access Manager initialization flag storage pointer
+    /// @return initializationFlag the storage pointer to the Ipor Fusion Access Manager initialization flag
     function getInitializationFlag() internal view returns (InitializationFlag storage initializationFlag) {
         assembly {
             initializationFlag.slot := INITIALIZATION_FLAG
         }
     }
 
+    /// @notice gets the  minimal execution delay for role storage pointer
+    /// @return minimalExecutionDelayForRole the storage pointer to the minimal execution delay for role
     function getMinimalExecutionDelayForRole()
         internal
         pure
@@ -60,23 +65,33 @@ library IporFusionAccessManagersStorageLib {
         }
     }
 
+    /// @notice gets the  redemption delay storage pointer
+    /// @return redemptionDelay the storage pointer to the redemption delay
     function getRedemptionDelay() internal view returns (RedemptionDelay storage redemptionDelay) {
         assembly {
             redemptionDelay.slot := REDEMPTION_DELAY
         }
     }
 
+    /// @notice sets the redemption delay
+    /// @param redemptionDelay_ the redemption delay in seconds
+    /// @dev Redemption delay is the time an account is locked for withdraw and redeem functions after deposit or mint functions
     function setRedemptionDelay(uint256 redemptionDelay_) internal {
         getRedemptionDelay().redemptionDelay = redemptionDelay_;
         emit RedemptionDelayUpdated(redemptionDelay_);
     }
 
+    /// @notice gets the redemption locks storage pointer
+    /// @return redemptionLocks the storage pointer to the redemption locks
     function getRedemptionLocks() internal view returns (RedemptionLocks storage redemptionLocks) {
         assembly {
             redemptionLocks.slot := REDEMPTION_LOCKS
         }
     }
 
+    /// @notice sets the redemption locks for an account
+    /// @param account_ the account to set the redemption locks for
+    /// @dev When deposit or mint functions are called, the account is locked for withdraw and redeem functions for a specific time defined by the redemption delay
     function setRedemptionLocks(address account_) internal {
         uint256 redemptionDelay = getRedemptionDelay().redemptionDelay.toUint32();
         if (redemptionDelay == 0) {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -8,16 +8,19 @@ import {IFuse} from "../IFuse.sol";
 
 import {ISavingsDai} from "./ext/ISavingsDai.sol";
 
+/// @notice Structure for entering (supply) to the Spark protocol
 struct SparkSupplyFuseEnterData {
     /// @dev amount od DAI to supply
     uint256 amount;
 }
 
+/// @notice Structure for exiting (withdraw) from the Spark protocol
 struct SparkSupplyFuseExitData {
     /// @dev  amount of DAI to withdraw
     uint256 amount;
 }
 
+/// @title Fuse Spark Supply protocol responsible for supplying and withdrawing assets from the Spark protocol
 contract SparkSupplyFuse is IFuse {
     using SafeERC20 for ERC20;
 

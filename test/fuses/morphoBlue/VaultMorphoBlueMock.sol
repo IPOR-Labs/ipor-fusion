@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {MorphoBlueSupplyFuse, MorphoBlueSupplyFuseExitData, MorphoBlueSupplyFuseEnterData} from "../../../contracts/fuses/morphoBlue/MorphoBlueSupplyFuse.sol";
+import {MorphoBlueSupplyFuse, MorphoBlueSupplyFuseExitData, MorphoBlueSupplyFuseEnterData} from "../../../contracts/fuses/morpho_blue/MorphoBlueSupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 contract VaultMorphoBlueMock {
     using Address for address;
@@ -46,5 +47,9 @@ contract VaultMorphoBlueMock {
     //solhint-disable-next-line
     function balanceOf(address plasmaVault) external returns (uint256) {
         return abi.decode(morphoBalanceFuse.functionDelegateCall(msg.data), (uint256));
+    }
+
+    function setPriceOracleMiddleware(address priceOracleMiddleware_) external {
+        PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 }

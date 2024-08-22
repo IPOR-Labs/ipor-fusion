@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
@@ -68,13 +68,11 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         ERC4626BalanceFuse fluidInstadappBalances = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
-            priceOracle
+            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
         );
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalances = new FluidInstadappStakingBalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING,
-            priceOracle
+            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
         );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);

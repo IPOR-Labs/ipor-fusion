@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.26;
 
 /// @title Predefined roles used in the IPOR Fusion protocol
 /// @notice For documentation purposes: When new roles are added by authorized property of PlasmaVault during runtime, they should be added and described here as well.
@@ -56,5 +56,6 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE = 900;
 
+    /// @notice Public role, no restrictions
     uint64 public constant PUBLIC_ROLE = type(uint64).max;
 }
