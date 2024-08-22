@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -9,14 +9,12 @@ import {IMarketBalanceFuse} from "./../IMarketBalanceFuse.sol";
 import {IporMath} from "./../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
 import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
-import {IPriceOracleMiddleware} from "./../../priceOracle/IPriceOracleMiddleware.sol";
+import {IPriceOracleMiddleware} from "./../../price_oracle/IPriceOracleMiddleware.sol";
 
 /// @notice This Balance Fuse can only be used for assets compaitble with the underlying of the Plasma Vault asset
 contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
-
-    uint256 private constant PRICE_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
     IPriceOracleMiddleware public immutable PRICE_ORACLE;
@@ -37,21 +35,26 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
         }
 
         uint256 balance;
+        uint256 lpTokenBalance;
         uint256 withdrawTokenAmount;
+        uint256 assetPrice;
+        uint256 assetDecimals;
         address lpTokenAddress; // Curve LP token
         address underlyingAsset = IERC4626(plasmaVault_).asset(); // Plasma Vault asset
         int128 indexCoin;
 
         for (uint256 i; i < len; ++i) {
             lpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
+            lpTokenBalance = ERC20(lpTokenAddress).balanceOf(plasmaVault_);
+            if (lpTokenBalance == 0) {
+                continue;
+            }
             indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), underlyingAsset);
-            withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
-                ERC20(lpTokenAddress).balanceOf(plasmaVault_),
-                indexCoin
-            );
+            withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(lpTokenBalance, indexCoin);
+            (assetPrice, assetDecimals) = PRICE_ORACLE.getAssetPrice(underlyingAsset);
             balance += IporMath.convertToWad(
-                withdrawTokenAmount * PRICE_ORACLE.getAssetPrice(underlyingAsset),
-                ERC20(IERC4626(plasmaVault_).asset()).decimals() + PRICE_DECIMALS
+                withdrawTokenAmount * assetPrice,
+                ERC20(IERC4626(plasmaVault_).asset()).decimals() + assetDecimals
             );
         }
         return balance;

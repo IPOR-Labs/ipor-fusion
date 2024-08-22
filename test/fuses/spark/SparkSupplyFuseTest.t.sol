@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {VaultSparkMock} from "./VaultSparkMock.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {SDaiPriceFeedEthereum} from "../../../contracts/priceOracle/priceFeed/SDaiPriceFeedEthereum.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {SDaiPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/SDaiPriceFeedEthereum.sol";
 
 import {SparkBalanceFuse} from "../../../contracts/fuses/spark/SparkBalanceFuse.sol";
 import {SparkSupplyFuse, SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../../contracts/fuses/spark/SparkSupplyFuse.sol";
@@ -22,11 +22,7 @@ contract SparkSupplyFuseTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19538857);
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
@@ -45,10 +41,10 @@ contract SparkSupplyFuseTest is Test {
     function testShouldBeAbleToSupplyDaiToSpark() external {
         // given
         // sDAI/DAI
-
-        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1, address(priceOracleMiddlewareProxy));
+        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1);
         SparkSupplyFuse fuse = new SparkSupplyFuse(1);
         VaultSparkMock vaultMock = new VaultSparkMock(address(fuse), address(balanceFuse));
+        vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         uint256 amount = 100e18;
 
@@ -77,10 +73,10 @@ contract SparkSupplyFuseTest is Test {
     function testShouldBeAbleToWithdrawSDaiFormSpark() external {
         // given
         // sDAI/DAI
-
-        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1, address(priceOracleMiddlewareProxy));
+        SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1);
         SparkSupplyFuse fuse = new SparkSupplyFuse(1);
         VaultSparkMock vaultMock = new VaultSparkMock(address(fuse), address(balanceFuse));
+        vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         uint256 amount = 100e18;
 

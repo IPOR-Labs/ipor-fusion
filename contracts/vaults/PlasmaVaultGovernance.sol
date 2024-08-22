@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {FusesLib} from "../libraries/FusesLib.sol";
-import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol"; // TODO External??
+import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib, InstantWithdrawalFusesParamsStruct} from "../libraries/PlasmaVaultLib.sol";
-import {IPriceOracleMiddleware} from "../priceOracle/IPriceOracleMiddleware.sol";
+import {IPriceOracleMiddleware} from "../price_oracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
-import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol"; // TODO External??
+import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
 import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradeable.sol";
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 
-/// @title PlasmaVault contract, ERC4626 contract, decimals in underlying token decimals
+/// @title Plasma Vault Governance part of the Plasma Vault including Access Manager. Allows to manage the vault configuration like fuses, price oracle, fees, etc.
 abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManagedUpgradeable {
     function isMarketSubstrateGranted(uint256 marketId_, bytes32 substrate_) external view override returns (bool) {
         return PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId_, substrate_);
@@ -34,8 +34,8 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return FusesLib.getFusesArray();
     }
 
-    function getPriceOracle() external view override returns (address) {
-        return PlasmaVaultLib.getPriceOracle();
+    function getPriceOracleMiddleware() external view override returns (address) {
+        return PlasmaVaultLib.getPriceOracleMiddleware();
     }
 
     function getPerformanceFeeData()
@@ -128,18 +128,20 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         }
     }
 
-    function setPriceOracle(address priceOracle_) external override restricted {
-        IPriceOracleMiddleware oldPriceOracle = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracle());
-        IPriceOracleMiddleware newPriceOracle = IPriceOracleMiddleware(priceOracle_);
+    function setPriceOracleMiddleware(address priceOracleMiddleware_) external override restricted {
+        IPriceOracleMiddleware oldPriceOracleMiddleware = IPriceOracleMiddleware(
+            PlasmaVaultLib.getPriceOracleMiddleware()
+        );
+        IPriceOracleMiddleware newPriceOracleMiddleware = IPriceOracleMiddleware(priceOracleMiddleware_);
 
         if (
-            oldPriceOracle.BASE_CURRENCY() != newPriceOracle.BASE_CURRENCY() ||
-            oldPriceOracle.BASE_CURRENCY_DECIMALS() != newPriceOracle.BASE_CURRENCY_DECIMALS()
+            oldPriceOracleMiddleware.QUOTE_CURRENCY() != newPriceOracleMiddleware.QUOTE_CURRENCY() ||
+            oldPriceOracleMiddleware.QUOTE_CURRENCY_DECIMALS() != newPriceOracleMiddleware.QUOTE_CURRENCY_DECIMALS()
         ) {
-            revert Errors.UnsupportedPriceOracle();
+            revert Errors.UnsupportedPriceOracleMiddleware();
         }
 
-        PlasmaVaultLib.setPriceOracle(priceOracle_);
+        PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 
     function configurePerformanceFee(address feeManager_, uint256 feeInPercentage_) external override restricted {

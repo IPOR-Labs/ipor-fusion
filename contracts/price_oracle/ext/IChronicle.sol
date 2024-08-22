@@ -11,6 +11,9 @@ interface IChronicle {
     /// @dev Reverts if no value set.
     /// @return value The oracle's current value.
     function read() external view returns (uint256 value);
+
+    /// @notice Returns the number of decimals of the oracle's value.
+    function decimals() external view returns (uint8);
 }
 
 interface IToll {

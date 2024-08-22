@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -18,12 +18,12 @@ import {IporFusionAccessManager} from "./../../../contracts/managers/access/Ipor
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
-import {USDMPriceFeedArbitrum} from "../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
+import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/USDMPriceFeedArbitrum.sol";
 import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
-import {IChronicle, IToll} from "../../../contracts/priceOracle/IChronicle.sol";
+import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 
 contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -91,7 +91,9 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     function testShouldBeAbleToEnterCurveChildLiquidityGaugeSupplyFuse() public {
         // given
         uint256 amount = 1_000 * 10 ** ERC20(asset).decimals();
+
         _depositIntoVaultAndProvideLiquidityToCurvePool(amount);
+
         PlasmaVaultState memory vaultStateAfterEnterCurvePool = getPlasmaVaultState();
 
         // when
@@ -112,12 +114,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             vaultStateAfterEnterCurveGauge.vaultBalance,
             "Vault balance should be the same after enter Curve pool and gauge"
         );
-        // TODO Confirm if intended behavior: After stake LP tokens in gauge, vaultTotalAssetsInCurvePool is the same as vaultTotalAssetsInGauge, and vaultTotalAssets is the sum of both
-        // vaultStateAfterEnterCurveGauge vaultTotalAssets 1999788249352498839192
-        // vaultStateAfterEnterCurveGauge vaultTotalAssetsInCurvePool 999894124676249419596
-        // vaultStateAfterEnterCurveGauge vaultTotalAssetsInGauge 999894124676249419596
-        // vaultTotalAssetsInCurvePool is the same as vaultTotalAssetsInGauge
-        // after staking the LP tokens vaultTotalAssets is adding up both vaultTotalAssetsInCurvePool and vaultTotalAssetsInGauge
         assertEq(
             vaultStateAfterEnterCurvePool.vaultTotalAssets,
             999894124676249419596,
@@ -125,9 +121,13 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         );
         assertEq(
             vaultStateAfterEnterCurveGauge.vaultTotalAssets,
-            vaultStateAfterEnterCurveGauge.vaultTotalAssetsInCurvePool +
-                vaultStateAfterEnterCurveGauge.vaultTotalAssetsInGauge,
-            "Vault vaultTotalAssets should be the sum of vaultTotalAssetsInCurvePool and vaultTotalAssetsInGauge"
+            999894124676249419596,
+            "Vault total assets should be 999894124676249419596"
+        );
+        assertEq(
+            vaultStateAfterEnterCurvePool.vaultTotalAssets,
+            vaultStateAfterEnterCurveGauge.vaultTotalAssets,
+            "Vault total assets should be the same after enter Curve pool and gauge"
         );
         assertEq(
             vaultStateAfterEnterCurvePool.vaultTotalAssetsInCurvePool,
@@ -136,23 +136,18 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         );
         assertEq(
             vaultStateAfterEnterCurveGauge.vaultTotalAssetsInCurvePool,
-            999894124676249419596,
-            "Vault total assets in curve pool should be 999894124676249419596 after enter curve pool"
-        );
-        assertEq(
-            vaultStateAfterEnterCurveGauge.vaultTotalAssetsInGauge,
-            999894124676249419596,
-            "Vault total assets in curve pool should be 999894124676249419596 after enter curve pool"
-        );
-        assertEq(
-            vaultStateAfterEnterCurvePool.vaultTotalAssetsInCurvePool,
-            vaultStateAfterEnterCurveGauge.vaultTotalAssetsInCurvePool,
-            "Vault total assets in curve pool should be the same after enter curve pool and gauge"
+            0,
+            "Vault total assets in curve pool should be 0 after enter curve gauge"
         );
         assertEq(
             vaultStateAfterEnterCurvePool.vaultTotalAssetsInGauge,
             0,
-            "Vault total assets in gauge should be 0 after enter curve pool and not stake LP tokens in gauge"
+            "Vault total assets in curve gauge should be 0 after enter curve pool"
+        );
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultTotalAssetsInGauge,
+            999894124676249419596,
+            "Vault total assets in curve gauge should be 999894124676249419596 after enter curve gauge"
         );
         assertEq(
             vaultStateAfterEnterCurvePool.vaultTotalAssetsInCurvePool,
@@ -199,11 +194,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             996561228119407211058,
             "Vault staked LP tokens balance should be 996561228119407211058 after enter curve gauge"
         );
-        assertLt(
-            vaultStateAfterEnterCurvePool.vaultStakedLpTokensBalance,
-            vaultStateAfterEnterCurveGauge.vaultStakedLpTokensBalance,
-            "Vault staked LP tokens balance should be greater after enter gauge"
-        );
     }
 
     function testShouldNotBeAbleToEnterCurveChildLiquidityGaugeSupplyFuseWithUnsupportedGauge() public {
@@ -240,8 +230,28 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         );
         assertEq(
             vaultStateAfterEnterCurvePool.vaultTotalAssets,
+            999894124676249419596,
+            "Vault total assets should be 999894124676249419596 after enter curve pool"
+        );
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultTotalAssets,
+            999894124676249419596,
+            "Vault total assets should be 999894124676249419596 after enter curve pool"
+        );
+        assertEq(
+            vaultStateAfterEnterCurvePool.vaultTotalAssets,
             vaultStateAfterEnterCurveGauge.vaultTotalAssets,
             "Vault total assets should be the same after enter Curve pool and enter gauge fails"
+        );
+        assertEq(
+            vaultStateAfterEnterCurvePool.vaultTotalAssetsInCurvePool,
+            999894124676249419596,
+            "Vault total assets in curve pool should be 999894124676249419596 after enter curve pool"
+        );
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultTotalAssetsInCurvePool,
+            999894124676249419596,
+            "Vault total assets in curve pool should be 999894124676249419596 after enter curve gauge fails"
         );
         assertEq(
             vaultStateAfterEnterCurvePool.vaultTotalAssetsInCurvePool,
@@ -438,19 +448,29 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             "Vault balance should be the same before and after exit Curve gauge"
         );
         assertEq(
-            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            vaultStateBeforeExitCurveGauge.vaultTotalAssets,
             999894124676249419596,
-            "Vault total assets in curve pool should be 999894124676249419596 before exit curve gauge"
+            "Vault total assets should be 999894124676249419596 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultTotalAssets,
+            999894124676249419596,
+            "Vault total assets should be 999894124676249419596 after exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssets,
+            vaultStateAfterExitCurveGauge.vaultTotalAssets,
+            "Vault total assets should be the same before and after exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            0,
+            "Vault total assets in curve pool should be 0 before exit curve gauge"
         );
         assertEq(
             vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
             999894124676249419596,
             "Vault total assets in curve pool should be 999894124676249419596 after exit curve gauge"
-        );
-        assertEq(
-            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
-            vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
-            "Vault total assets in curve pool should be the same before and after exit Curve gauge"
         );
         assertEq(
             vaultStateBeforeExitCurveGauge.vaultTotalAssetsInGauge,
@@ -523,19 +543,29 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             "Vault balance should be the same before and after exit Curve gauge"
         );
         assertEq(
-            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            vaultStateBeforeExitCurveGauge.vaultTotalAssets,
             999894124676249419596,
-            "Vault total assets in curve pool should be 999894124676249419596 before exit curve gauge"
+            "Vault total assets should be 999894124676249419596 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultTotalAssets,
+            999894124676249419596,
+            "Vault total assets should be 999894124676249419596 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssets,
+            vaultStateAfterExitCurveGauge.vaultTotalAssets,
+            "Vault total assets should be the same before and after failt to exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            0,
+            "Vault total assets in curve pool should be 0 before exit curve gauge"
         );
         assertEq(
             vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
-            999894124676249419596,
-            "Vault total assets in curve pool should be 999894124676249419596 after fail to exit curve gauge"
-        );
-        assertEq(
-            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
-            vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
-            "Vault total assets in curve pool should be the same before and after failt to exit Curve gauge"
+            0,
+            "Vault total assets in curve pool should be 0 after fail to exit curve gauge"
         );
         assertEq(
             vaultStateBeforeExitCurveGauge.vaultTotalAssetsInGauge,
@@ -619,14 +649,29 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             "Vault balance should be the same before and after exit Curve gauge"
         );
         assertEq(
-            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            vaultStateBeforeExitCurveGauge.vaultTotalAssets,
             999894124676249419596,
-            "Vault total assets in curve pool should be 999894124676249419596 before exit curve gauge"
+            "Vault total assets should be 999894124676249419596 before exit curve gauge"
+        );
+        assertEq(
+            vaultStateAfterExitCurveGauge.vaultTotalAssets,
+            999894124676249419596,
+            "Vault total assets should be 999894124676249419596 after fail to exit curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssets,
+            vaultStateAfterExitCurveGauge.vaultTotalAssets,
+            "Vault total assets should be the same before and after failt to exit Curve gauge"
+        );
+        assertEq(
+            vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
+            0,
+            "Vault total assets in curve pool should be 0 before exit curve gauge"
         );
         assertEq(
             vaultStateAfterExitCurveGauge.vaultTotalAssetsInCurvePool,
-            999894124676249419596,
-            "Vault total assets in curve pool should be 999894124676249419596 after fail to exit curve gauge"
+            0,
+            "Vault total assets in curve pool should be 0 after fail to exit curve gauge"
         );
         assertEq(
             vaultStateBeforeExitCurveGauge.vaultTotalAssetsInCurvePool,
@@ -798,19 +843,28 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     }
 
     function _setupPlasmaVault() private {
-        vm.prank(admin);
+        vm.startPrank(admin);
         PlasmaVaultGovernance(address(plasmaVault)).setRewardsClaimManagerAddress(address(rewardsClaimManager));
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarketsArbitrum.CURVE_LP_GAUGE;
+
+        uint256[] memory dependencies = new uint256[](1);
+        dependencies[0] = IporFusionMarketsArbitrum.CURVE_POOL;
+
+        uint256[][] memory dependencyMarkets = new uint256[][](1);
+        dependencyMarkets[0] = dependencies;
+
+        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
+
+        vm.stopPrank();
     }
 
     function _setupPriceOracle() private {
         address[] memory assets;
         address[] memory sources;
         (assets, sources) = _setupPriceOracleSources();
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            BASE_CURRENCY,
-            BASE_CURRENCY_DECIMALS,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
@@ -824,7 +878,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",
                 underlyingToken: USDM,
-                priceOracle: address(priceOracleMiddlewareProxy),
+                priceOracleMiddleware: address(priceOracleMiddlewareProxy),
                 alphas: alphas,
                 marketSubstratesConfigs: _setupMarketConfigs(),
                 fuses: fuses,

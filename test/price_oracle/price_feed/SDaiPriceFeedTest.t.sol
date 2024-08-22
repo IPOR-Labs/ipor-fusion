@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {SDaiPriceFeedEthereum} from "../../../contracts/priceOracle/priceFeed/SDaiPriceFeedEthereum.sol";
+import {SDaiPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/SDaiPriceFeedEthereum.sol";
 
 contract SDaiPriceFeedTest is Test {
     function setUp() public {

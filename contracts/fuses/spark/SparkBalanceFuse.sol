@@ -1,34 +1,34 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {ISavingsDai} from "./ext/ISavingsDai.sol";
-
-import {IPriceOracleMiddleware} from "../../priceOracle/IPriceOracleMiddleware.sol";
+import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
+import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
+/// @title Fuse Spark Balance protocol responsible for calculating the balance of the Plasma Vault in the Spark protocol
 contract SparkBalanceFuse is IMarketBalanceFuse {
     address public constant SDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
     address private constant USD = address(0x0000000000000000000000000000000000000348);
 
     uint256 public immutable MARKET_ID;
-    IPriceOracleMiddleware public immutable PRICE_ORACLE;
 
-    constructor(uint256 marketIdInput, address priceOracle) {
-        MARKET_ID = marketIdInput;
-        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle);
-        if (PRICE_ORACLE.BASE_CURRENCY() != USD) {
-            revert Errors.UnsupportedBaseCurrencyFromOracle();
-        }
+    constructor(uint256 marketId_) {
+        MARKET_ID = marketId_;
     }
 
-    function balanceOf(address plasmaVault) external view override returns (uint256) {
-        return _convertToUsd(SDAI, ISavingsDai(SDAI).balanceOf(plasmaVault));
+    /// @param plasmaVault_ The address of the Plasma Vault
+    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    function balanceOf(address plasmaVault_) external view override returns (uint256) {
+        return _convertToUsd(SDAI, ISavingsDai(SDAI).balanceOf(plasmaVault_));
     }
 
-    function _convertToUsd(address asset, uint256 amount) internal view returns (uint256) {
-        if (amount == 0) return 0;
-        return IporMath.convertToWad(amount * PRICE_ORACLE.getAssetPrice(asset), 18 + 8);
+    function _convertToUsd(address asset_, uint256 amount_) internal view returns (uint256) {
+        if (amount_ == 0) return 0;
+        (uint256 price, uint256 decimals) = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracleMiddleware())
+            .getAssetPrice(asset_);
+        return IporMath.convertToWad(amount_ * price, IERC20Metadata(asset_).decimals() + decimals);
     }
 }
