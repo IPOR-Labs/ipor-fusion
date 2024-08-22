@@ -17,4 +17,6 @@ library IporFusionMarketsArbitrum {
     /// @dev Fluid Instadapp market
     uint256 public constant FLUID_INSTADAPP_POOL = 5;
     uint256 public constant FLUID_INSTADAPP_STAKING = 6;
+
+    uint256 public constant ERC20_VAULT_BALANCE = 8;
 }
