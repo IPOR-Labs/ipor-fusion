@@ -184,7 +184,9 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
 
     function _setupFuses() private returns (address[] memory) {
         erc4626SupplyFuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL);
-        fluidInstadappStakingSupplyFuse = new FluidInstadappStakingSupplyFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING);
+        fluidInstadappStakingSupplyFuse = new FluidInstadappStakingSupplyFuse(
+            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+        );
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(erc4626SupplyFuse);
@@ -215,7 +217,10 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     }
 
     function _getEnterFuseData(uint256 amount_) private view returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
+            vault: F_TOKEN,
+            vaultAssetAmount: amount_
+        });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
             fluidTokenAmount: amount_
@@ -236,10 +241,11 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
             vault: F_TOKEN,
             vaultAssetAmount: depositAmount
         });
-        FluidInstadappStakingSupplyFuseEnterData memory fluidInstadappStakingSupplyFuseEnterData = FluidInstadappStakingSupplyFuseEnterData({
-            stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            fluidTokenAmount: depositAmount
-        });
+        FluidInstadappStakingSupplyFuseEnterData
+            memory fluidInstadappStakingSupplyFuseEnterData = FluidInstadappStakingSupplyFuseEnterData({
+                stakingPool: FLUID_LENDING_STAKING_REWARDS,
+                fluidTokenAmount: depositAmount
+            });
         bytes[] memory data = new bytes[](2);
         data[0] = abi.encode(erc4626SupplyFuseEnterData);
         data[1] = abi.encode(fluidInstadappStakingSupplyFuseEnterData);
@@ -247,7 +253,10 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
         uint256 len = data.length;
         FuseAction[] memory enterCalls = new FuseAction[](len);
         enterCalls[0] = FuseAction(address(erc4626SupplyFuse), abi.encodeWithSignature("enter(bytes)", data[0]));
-        enterCalls[1] = FuseAction(address(fluidInstadappStakingSupplyFuse), abi.encodeWithSignature("enter(bytes)", data[1]));
+        enterCalls[1] = FuseAction(
+            address(fluidInstadappStakingSupplyFuse),
+            abi.encodeWithSignature("enter(bytes)", data[1])
+        );
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING;
