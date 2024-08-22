@@ -37,6 +37,7 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
         }
 
         uint256 balance;
+        uint256 lpTokenBalance;
         uint256 withdrawTokenAmount;
         address lpTokenAddress; // Curve LP token
         address underlyingAsset = IERC4626(plasmaVault_).asset(); // Plasma Vault asset
@@ -44,11 +45,13 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             lpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
+            lpTokenBalance = ERC20(lpTokenAddress).balanceOf(plasmaVault_);
+            // Skip the calculation if the balance is 0 (calc_withdraw_one_coin will revert)
+            if (lpTokenBalance == 0) {
+                continue;
+            }
             indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), underlyingAsset);
-            withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
-                ERC20(lpTokenAddress).balanceOf(plasmaVault_),
-                indexCoin
-            );
+            withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(lpTokenBalance, indexCoin);
             balance += IporMath.convertToWad(
                 withdrawTokenAmount * PRICE_ORACLE.getAssetPrice(underlyingAsset),
                 ERC20(IERC4626(plasmaVault_).asset()).decimals() + PRICE_DECIMALS
