@@ -54,7 +54,7 @@ contract FluidInstadappClaimFuse {
                 continue;
             }
 
-            IFluidLendingStakingRewards(fluidLendingStakingRewards).exit();
+            IFluidLendingStakingRewards(fluidLendingStakingRewards).getReward();
 
             rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
 
