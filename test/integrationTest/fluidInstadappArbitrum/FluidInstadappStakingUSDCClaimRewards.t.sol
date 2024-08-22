@@ -13,7 +13,7 @@ import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626Balanc
 import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {IporPlasmaVault} from "../../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
@@ -21,6 +21,7 @@ import {FluidInstadappStakingSupplyFuse, FluidInstadappStakingSupplyFuseEnterDat
 import {IFluidLendingStakingRewards} from "../../../contracts/fuses/fluid_instadapp/ext/IFluidLendingStakingRewards.sol";
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
 import {FluidInstadappClaimFuse} from "../../../contracts/rewards_fuses/fluid_instadapp/FluidInstadappClaimFuse.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 
 contract FluidInstadappStakingUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -61,7 +62,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
         _plasmaVault = address(
-            new IporPlasmaVault(
+            new PlasmaVault(
                 PlasmaVaultInitData({
                     assetName: "TEST PLASMA VAULT",
                     assetSymbol: "TPLASMA",
@@ -72,7 +73,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                     fuses: _setupFuses(),
                     balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
-                    accessManager: _accessManager
+                    accessManager: _accessManager,
+                    plasmaVaultBase: address(new PlasmaVaultBase())
                 })
             )
         );
