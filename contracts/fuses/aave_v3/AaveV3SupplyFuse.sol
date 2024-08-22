@@ -50,10 +50,7 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
         if (marketId_ == 0) {
             revert Errors.WrongValue();
         }
-        if (aavePool_ == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        if (aavePoolDataProviderV3_ == address(0)) {
+        if (aavePool_ == address(0) || aavePoolDataProviderV3_ == address(0)) {
             revert Errors.WrongAddress();
         }
 

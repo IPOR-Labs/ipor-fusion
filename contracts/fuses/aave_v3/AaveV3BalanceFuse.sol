@@ -27,10 +27,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
         if (marketId_ == 0) {
             revert Errors.WrongValue();
         }
-        if (aavePriceOracle_ == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        if (aavePoolDataProviderV3_ == address(0)) {
+        if (aavePriceOracle_ == address(0) || aavePoolDataProviderV3_ == address(0)) {
             revert Errors.WrongAddress();
         }
 
