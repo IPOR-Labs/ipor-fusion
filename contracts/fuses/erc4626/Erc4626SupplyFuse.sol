@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,6 +10,7 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @notice Data structure for entering - supply - the ERC4626 vault
 struct Erc4626SupplyFuseEnterData {
     /// @dev ERC4626 vault address
     address vault;
@@ -17,6 +18,7 @@ struct Erc4626SupplyFuseEnterData {
     uint256 vaultAssetAmount;
 }
 
+/// @notice Data structure for exiting - withdrawing - the ERC4626 vault
 struct Erc4626SupplyFuseExitData {
     /// @dev ERC4626 vault address
     address vault;
@@ -24,7 +26,8 @@ struct Erc4626SupplyFuseExitData {
     uint256 vaultAssetAmount;
 }
 
-// https://github.com/morpho-org/metamorpho
+/// @title Generic fuse for ERC4626 vaults responsible for supplying and withdrawing assets from the ERC4626 vaults based on preconfigured market substrates
+/// @dev Substrates in this fuse are the assets that are used in the ERC4626 vaults for a given MARKET_ID
 contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;

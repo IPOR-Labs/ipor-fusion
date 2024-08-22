@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {RoleToFunction, AdminRole, AccountToRole, InitializationData} from "../../managers/access/IporFusionAccessManagerInitializationLib.sol";
@@ -9,31 +9,56 @@ import {Roles} from "../../libraries/Roles.sol";
 import {RewardsClaimManager} from "../../managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
 
+/// @notice Plasma Vault address struct.
 struct PlasmaVaultAddress {
+    /// @notice Address of the Plasma Vault.
     address plasmaVault;
+    /// @notice Address of the Ipor Fusion Access Manager.
     address accessManager;
+    /// @notice Address of the Rewards Claim Manager.
     address rewardsClaimManager;
+    /// @notice Address of the Fee Manager.
     address feeManager;
 }
 
+/// @notice Data for the initialization of the IPOR Fusion Plasma Vault, contain accounts involved in interactions with the Plasma Vault.
 struct DataForInitialization {
+    /// @notice Array of addresses of the Admins (Roles.ADMIN_ROLE)
     address[] admins;
+    /// @notice Array of addresses of the Owners (Roles.OWNER_ROLE)
     address[] owners;
+    /// @notice Array of addresses of the Atomists (Roles.ATOMIST_ROLE)
     address[] atomists;
+    /// @notice Array of addresses of the Alphas (Roles.ALPHA_ROLE)
     address[] alphas;
+    /// @notice Array of addresses of the Whitelist (Roles.WHITELIST_ROLE)
     address[] whitelist;
+    /// @notice Array of addresses of the Guardians (Roles.GUARDIAN_ROLE)
     address[] guardians;
+    /// @notice Array of addresses of the Fuse Managers (Roles.FUSE_MANAGER_ROLE)
     address[] fuseManagers;
+    /// @notice Array of addresses of the Performance Fee Managers (Roles.PERFORMANCE_FEE_MANAGER_ROLE)
     address[] performanceFeeManagers;
+    /// @notice Array of addresses of the Management Fee Managers (Roles.MANAGEMENT_FEE_MANAGER_ROLE)
     address[] managementFeeManagers;
+    /// @notice Array of addresses of the Claim Rewards Managers (Roles.CLAIM_REWARDS_ROLE)
     address[] claimRewards;
+    /// @notice Array of addresses of the Transfer Rewards Managers (Roles.TRANSFER_REWARDS_ROLE)
     address[] transferRewardsManagers;
+    /// @notice Array of addresses of the Config Instant Withdrawal Fuses Managers (Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE)
     address[] configInstantWithdrawalFusesManagers;
+    /// @notice Plasma Vault address struct.
     PlasmaVaultAddress plasmaVaultAddress;
 }
 
-/// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM.
+/// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 12;
+    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER = 30;
+    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_REWARDS_CLAIM_MANAGER = 38;
+
+    /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
+    /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
     function generateInitializeIporPlasmaVault(
         DataForInitialization memory data_
     ) internal returns (InitializationData memory) {
@@ -175,7 +200,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     }
 
     function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
-        adminRoles_ = new AdminRole[](12);
+        adminRoles_ = new AdminRole[](ADMIN_ROLES_ARRAY_LENGTH);
         adminRoles_[0] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         adminRoles_[1] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[2] = AdminRole({roleId: Roles.ATOMIST_ROLE, adminRoleId: Roles.OWNER_ROLE});
@@ -204,8 +229,8 @@ library IporFusionAccessManagerInitializerLibV1 {
         PlasmaVaultAddress memory plasmaVaultAddress_
     ) private returns (RoleToFunction[] memory rolesToFunction) {
         rolesToFunction = plasmaVaultAddress_.rewardsClaimManager == address(0)
-            ? new RoleToFunction[](30)
-            : new RoleToFunction[](38);
+            ? new RoleToFunction[](ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER)
+            : new RoleToFunction[](ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_REWARDS_CLAIM_MANAGER);
 
         rolesToFunction[0] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
@@ -309,7 +334,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         rolesToFunction[16] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.ATOMIST_ROLE,
-            functionSelector: PlasmaVaultGovernance.setPriceOracle.selector,
+            functionSelector: PlasmaVaultGovernance.setPriceOracleMiddleware.selector,
             minimalExecutionDelay: 0
         });
         rolesToFunction[17] = RoleToFunction({

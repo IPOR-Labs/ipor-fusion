@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 contract VaultERC4626Mock {
     using Address for address;
@@ -48,5 +49,9 @@ contract VaultERC4626Mock {
     //solhint-disable-next-line
     function balanceOf(address plasmaVault) external returns (uint256) {
         return abi.decode(address(balanceFuse).functionDelegateCall(msg.data), (uint256));
+    }
+
+    function setPriceOracleMiddleware(address priceOracleMiddleware_) external {
+        PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 }

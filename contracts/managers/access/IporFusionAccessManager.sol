@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
@@ -11,6 +11,7 @@ import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
 import {IporFusionAccessManagerInitializationLib, InitializationData} from "./IporFusionAccessManagerInitializationLib.sol";
 import {Roles} from "../../libraries/Roles.sol";
 
+/// @title IporFusionAccessManager contract responsible for managing access control to the IporFusion contract
 contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
     error AccessManagedUnauthorized(address caller);
     error TooShortExecutionDelayForRole(uint64 roleId, uint32 executionDelay);

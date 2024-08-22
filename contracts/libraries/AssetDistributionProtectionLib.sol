@@ -1,19 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+/// @notice MarketToCheck struct for the markets limits protection
 struct MarketToCheck {
+    /// @param marketId The market id
     uint256 marketId;
+    /// @param balanceInMarket The balance in the market, represented in 18 decimals
     uint256 balanceInMarket;
 }
 
+/// @notice DataToCheck struct for the markets limits protection
 struct DataToCheck {
+    /// @param totalBalanceInVault The total balance in the Plasma Vault, represented in 18 decimals
     uint256 totalBalanceInVault;
+    /// @param marketsToCheck The array of MarketToCheck structs
     MarketToCheck[] marketsToCheck;
 }
 
+/// @notice Market limit struct
 struct MarketLimit {
     /// @dev MarketId: the same value as used in fuse
     uint256 marketId;
@@ -21,6 +28,7 @@ struct MarketLimit {
     uint256 limitInPercentage;
 }
 
+/// @title Asset Distribution Protection Library responsible for the markets limits protection in the Plasma Vault
 library AssetDistributionProtectionLib {
     event MarketsLimitsActivated();
     event MarketsLimitsDeactivated();
@@ -43,6 +51,7 @@ library AssetDistributionProtectionLib {
     }
 
     /// @notice Sets up the limits for each market separately.
+    /// @param marketsLimits_ The array of MarketLimit structs
     function setupMarketsLimits(MarketLimit[] calldata marketsLimits_) internal {
         uint256 len = marketsLimits_.length;
         for (uint256 i; i < len; ++i) {
@@ -56,6 +65,8 @@ library AssetDistributionProtectionLib {
     }
 
     /// @notice Checks if the limits are exceeded for the markets.
+    /// @param data_ The DataToCheck struct
+    /// @dev revert if the limit is exceeded
     function checkLimits(DataToCheck memory data_) internal view {
         if (!isMarketsLimitsActivated()) {
             return;
@@ -78,6 +89,7 @@ library AssetDistributionProtectionLib {
     }
 
     /// @notice Checks if the markets limits protection is activated.
+    /// @return bool true if the markets limits protection is activated
     function isMarketsLimitsActivated() internal view returns (bool) {
         return PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[0] != 0;
     }

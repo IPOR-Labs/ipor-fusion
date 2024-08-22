@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IAavePriceOracle} from "./ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "./ext/IAavePoolDataProvider.sol";
@@ -10,6 +11,8 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @title Fuse for Aave V3 protocol responsible for calculating the balance of the Plasma Vault in Aaave V3 protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the assets that are used in the Aave V3 protocol for a given MARKET_ID
 contract AaveV3BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
 
@@ -20,10 +23,17 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
     address public immutable AAVE_PRICE_ORACLE;
     address public immutable AAVE_POOL_DATA_PROVIDER_V3;
 
-    constructor(uint256 marketIdInput, address aavePriceOracle, address aavePoolDataProviderV3) {
-        MARKET_ID = marketIdInput;
-        AAVE_PRICE_ORACLE = aavePriceOracle;
-        AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3;
+    constructor(uint256 marketId_, address aavePriceOracle_, address aavePoolDataProviderV3_) {
+        if (marketId_ == 0) {
+            revert Errors.WrongValue();
+        }
+        if (aavePriceOracle_ == address(0) || aavePoolDataProviderV3_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
+        MARKET_ID = marketId_;
+        AAVE_PRICE_ORACLE = aavePriceOracle_;
+        AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3_;
     }
 
     function balanceOf(address plasmaVault_) external view override returns (uint256) {
@@ -35,11 +45,10 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        int256 balanceTemp = 0;
+        int256 balanceTemp;
         int256 balanceInLoop;
         uint256 decimals;
-        // @dev this value has 8 decimals
-        uint256 price;
+        uint256 price; // @dev assume price represented in 8 decimals
         address asset;
         address aTokenAddress;
         address stableDebtTokenAddress;

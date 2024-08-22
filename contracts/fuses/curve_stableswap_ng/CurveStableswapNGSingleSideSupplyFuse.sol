@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -30,6 +30,7 @@ struct CurveStableswapNGSingleSideSupplyFuseExitData {
     uint256 minReceived;
 }
 
+/// @title Fuse for Curve Stableswap NG protocol responsible for supplying and withdrawing assets from the Curve Stableswap NG protocol based on preconfigured market substrates
 contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
