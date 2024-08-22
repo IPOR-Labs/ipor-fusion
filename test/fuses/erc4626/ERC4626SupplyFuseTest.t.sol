@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -41,7 +41,7 @@ contract Erc4626SupplyFuseTest is Test {
 
         // when
 
-        vaultMock.enter(Erc4626SupplyFuseEnterData({vault: marketAddress, amount: amount}));
+        vaultMock.enter(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -70,14 +70,14 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enter(Erc4626SupplyFuseEnterData({vault: marketAddress, amount: amount}));
+        vaultMock.enter(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount}));
 
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
         uint256 balanceOnMarketBefore = vault.balanceOf(address(vaultMock));
 
         // when
 
-        vaultMock.exit(Erc4626SupplyFuseExitData({vault: marketAddress, amount: amount / 2}));
+        vaultMock.exit(Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2}));
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -108,7 +108,7 @@ contract Erc4626SupplyFuseTest is Test {
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         // when
-        vaultMock.enter(Erc4626SupplyFuseEnterData({vault: marketAddress, amount: amount}));
+        vaultMock.enter(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -134,14 +134,14 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enter(Erc4626SupplyFuseEnterData({vault: marketAddress, amount: amount}));
+        vaultMock.enter(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount}));
 
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
         uint256 balanceOnMarketBefore = vault.balanceOf(address(vaultMock));
 
         // when
 
-        vaultMock.exit(Erc4626SupplyFuseExitData({vault: marketAddress, amount: amount / 2}));
+        vaultMock.exit(Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2}));
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));

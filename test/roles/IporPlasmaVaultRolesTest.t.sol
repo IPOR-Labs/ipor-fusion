@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {IporFusionMarketsArbitrum} from "../../contracts/libraries/IporFusionMarketsArbitrum.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -16,7 +16,8 @@ import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.s
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManagerInitializerLibV1} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {PlasmaVaultFusionMock} from "../mocks/PlasmaVaultFusionMock.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -41,13 +42,13 @@ contract IporPlasmaVaultRolesTest is Test {
         _initializeAccessManager();
     }
 
-    function testDeployerShouldNotBeAdminAfterInitialization() external {
+    function testDeployerShouldNotBeAdminAfterInitialization() external view {
         // then
         (bool isMember, ) = _accessManager.hasRole(Roles.ADMIN_ROLE, _deployer);
         assertFalse(isMember, "Deployer should not be an admin");
     }
 
-    function testDeployerShouldNotBeAlphaAfterInitialization() external {
+    function testDeployerShouldNotBeAlphaAfterInitialization() external view {
         // then
         (bool isMember, ) = _accessManager.hasRole(Roles.ALPHA_ROLE, _deployer);
         assertFalse(isMember, "Deployer should not be an alpha");
@@ -290,7 +291,7 @@ contract IporPlasmaVaultRolesTest is Test {
         _accessManager.grantRole(Roles.ATOMIST_ROLE, user, 10000);
 
         address target = address(_plasmaVault);
-        bytes memory data = abi.encodeWithSignature("setPriceOracle(address)", 21, address(this));
+        bytes memory data = abi.encodeWithSignature("setPriceOracleMiddleware(address)", 21, address(this));
 
         vm.prank(user);
         (, uint32 nonceSchedule) = _accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
@@ -438,7 +439,7 @@ contract IporPlasmaVaultRolesTest is Test {
         assertEq(nonceSchedule, nonceCancel, "Nonce should be equal");
     }
 
-    function testSetRewardsClaimManagerAddressCannotBeUsedAfterBootstraping() external {
+    function testSetRewardsClaimManagerAddressCannotBeUsedAfterBootstraping() external view {
         // then
         uint64 roleId = _accessManager.getTargetFunctionRole(
             address(_plasmaVault),
@@ -454,7 +455,7 @@ contract IporPlasmaVaultRolesTest is Test {
         assertEq(executionDelay, 0, "Execution delay should be 0");
     }
 
-    function testShouldReturnAccessManagerAsAuthority() external {
+    function testShouldReturnAccessManagerAsAuthority() external view {
         // then
         assertEq(_plasmaVault.authority(), address(_accessManager), "Access manager should be an authority");
         assertEq(_rewardsClaimManager.authority(), address(_accessManager), "Access manager should be an authority");
@@ -489,11 +490,7 @@ contract IporPlasmaVaultRolesTest is Test {
     function _setupPriceOracleMiddleware() private {
         vm.startPrank(_data.owners[0]);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            address(0)
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(address(0));
 
         _priceOracleMiddlewareProxy = address(
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", _data.owners[0]))
@@ -538,7 +535,7 @@ contract IporPlasmaVaultRolesTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarketsArbitrum.AAVE_V3, address(balanceFuse));
         _accessManager = new IporFusionAccessManager(_deployer);
 
-        _plasmaVault = new PlasmaVaultFusionMock(
+        _plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -549,7 +546,8 @@ contract IporPlasmaVaultRolesTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(_data.performanceFeeManagers[0], 0, _data.managementFeeManagers[0], 0),
-                address(_accessManager)
+                address(_accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         vm.stopPrank();
@@ -558,7 +556,7 @@ contract IporPlasmaVaultRolesTest is Test {
     function _generateRewardsClaimManager() private {
         _rewardsClaimManager = new RewardsClaimManager(address(_accessManager), address(_plasmaVault));
         vm.prank(_deployer);
-        _plasmaVault.setRewardsClaimManagerAddress(address(_rewardsClaimManager));
+        IPlasmaVaultGovernance(address(_plasmaVault)).setRewardsClaimManagerAddress(address(_rewardsClaimManager));
     }
 
     function _initializeAccessManager() private {

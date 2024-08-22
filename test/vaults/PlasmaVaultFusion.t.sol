@@ -1,23 +1,26 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultFusion} from "../../contracts/vaults/extensions/PlasmaVaultFusion.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
-import {PlasmaVaultFusionMock} from "../mocks/PlasmaVaultFusionMock.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 
 contract PlasmaVaultErc20FusionTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -33,7 +36,7 @@ contract PlasmaVaultErc20FusionTest is Test {
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
-    PlasmaVaultFusion private plasmaVault;
+    PlasmaVault private plasmaVault;
     address private owner;
     uint256 private ownerPrivKey;
     address private spender;
@@ -54,11 +57,7 @@ contract PlasmaVaultErc20FusionTest is Test {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
@@ -105,7 +104,7 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         accessManager = createAccessManager(usersToRoles);
 
-        plasmaVault = new PlasmaVaultFusionMock(
+        plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -116,11 +115,26 @@ contract PlasmaVaultErc20FusionTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
         setupRoles(plasmaVault, accessManager);
+    }
+
+    function testShouldNotCallFunctionUpdateInternal() public {
+        //given
+        address spender = address(0x1);
+        bytes memory error = abi.encodeWithSignature("UnsupportedMethod()");
+
+        //then
+        vm.expectRevert(error);
+        //when
+        // solhint-disable-next-line  avoid-low-level-calls
+        address(plasmaVault).call(
+            abi.encodeWithSignature("updateInternal(address,address,uint256)", owner, spender, 100)
+        );
     }
 
     function testERC20PermitShouldHaveAllowanceWhenPermit() public {
@@ -149,7 +163,7 @@ contract PlasmaVaultErc20FusionTest is Test {
             )
         );
 
-        uint256 nonce = plasmaVault.nonces(owner);
+        uint256 nonce = Nonces(address(plasmaVault)).nonces(owner);
 
         bytes32 structHash = keccak256(
             abi.encode(
@@ -168,7 +182,7 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         //when
         vm.prank(owner);
-        plasmaVault.permit(owner, spender, value, deadline, v, r, s);
+        IERC20Permit(address(plasmaVault)).permit(owner, spender, value, deadline, v, r, s);
 
         //then
         assertEq(plasmaVault.allowance(owner, spender), value);
@@ -200,7 +214,7 @@ contract PlasmaVaultErc20FusionTest is Test {
             )
         );
 
-        uint256 nonce = plasmaVault.nonces(owner);
+        uint256 nonce = Nonces(address(plasmaVault)).nonces(owner);
 
         bytes32 structHash = keccak256(
             abi.encode(
@@ -218,7 +232,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivKey, digest);
 
         vm.prank(owner);
-        plasmaVault.permit(owner, spender, value, deadline, v, r, s);
+        IERC20Permit(address(plasmaVault)).permit(owner, spender, value, deadline, v, r, s);
 
         bytes4[] memory sig = new bytes4[](2);
         sig[0] = PlasmaVault.transfer.selector;
@@ -249,10 +263,10 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         /// @dev Activate checkpoint
         vm.prank(owner);
-        plasmaVault.delegate(owner);
+        IVotes(address(plasmaVault)).delegate(owner);
 
         //when
-        uint256 votes = plasmaVault.getVotes(owner);
+        uint256 votes = IVotes(address(plasmaVault)).getVotes(owner);
 
         //then
         assertEq(votes, amount);
@@ -271,7 +285,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         plasmaVault.deposit(amount, owner);
 
         //when
-        uint256 votes = plasmaVault.getVotes(owner);
+        uint256 votes = IVotes(address(plasmaVault)).getVotes(owner);
 
         //then
         assertEq(votes, 0);
@@ -290,10 +304,10 @@ contract PlasmaVaultErc20FusionTest is Test {
         plasmaVault.deposit(amount, owner);
 
         vm.prank(owner);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
         //when
-        uint256 votes = plasmaVault.getVotes(delegatee);
+        uint256 votes = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         //then
         assertEq(votes, amount);
@@ -312,13 +326,13 @@ contract PlasmaVaultErc20FusionTest is Test {
         plasmaVault.deposit(amount, owner);
 
         vm.prank(owner);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
         // @dev Activate checkpoint
         vm.prank(delegatee);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
-        uint256 votesBefore = plasmaVault.getVotes(delegatee);
+        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         bytes4[] memory sig = new bytes4[](1);
         sig[0] = PlasmaVault.transfer.selector;
@@ -331,7 +345,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         plasmaVault.transfer(delegatee, amount);
 
         //then
-        uint256 votesAfter = plasmaVault.getVotes(delegatee);
+        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         assertEq(votesBefore, votesAfter);
     }
@@ -349,20 +363,21 @@ contract PlasmaVaultErc20FusionTest is Test {
         plasmaVault.deposit(amount, owner);
 
         vm.prank(owner);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
         // @dev Activate checkpoint
         vm.prank(delegatee);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
-        uint256 votesBefore = plasmaVault.getVotes(delegatee);
+        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         //when
         vm.prank(delegatee);
-        plasmaVault.delegate(spender);
+        IVotes(address(plasmaVault)).delegate(spender);
 
         //then
-        uint256 votesAfter = plasmaVault.getVotes(spender);
+        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(spender);
+
         uint256 delegateeBalanceOf = plasmaVault.balanceOf(delegatee);
 
         assertNotEq(
@@ -390,13 +405,13 @@ contract PlasmaVaultErc20FusionTest is Test {
         plasmaVault.deposit(amount, owner);
 
         vm.prank(owner);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
         // @dev Activate checkpoint
         vm.prank(delegatee);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
-        uint256 votesBefore = plasmaVault.getVotes(delegatee);
+        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         bytes4[] memory sig = new bytes4[](1);
         sig[0] = PlasmaVault.transfer.selector;
@@ -410,10 +425,11 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         //when
         vm.prank(delegatee);
-        plasmaVault.delegate(spender);
+        IVotes(address(plasmaVault)).delegate(spender);
 
         //then
-        uint256 votesAfter = plasmaVault.getVotes(spender);
+        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(spender);
+
         uint256 delegateeBalanceOf = plasmaVault.balanceOf(delegatee);
 
         assertNotEq(
@@ -448,16 +464,16 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         /// @dev Activate checkpoint
         vm.prank(owner);
-        plasmaVault.delegate(owner);
+        IVotes(address(plasmaVault)).delegate(owner);
 
-        uint256 votesBefore = plasmaVault.getVotes(owner);
+        uint256 votesBefore = IVotes(address(plasmaVault)).getVotes(owner);
 
         //when
         vm.prank(owner);
         plasmaVault.withdraw(50 * 1e6, owner, owner);
 
         //then
-        uint256 votesAfter = plasmaVault.getVotes(owner);
+        uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(owner);
 
         assertEq(votesBefore, amount, "Voting power should be equal to deposited amount");
         assertEq(votesAfter, 150 * 1e6, "Voting power should be equal to 0 after burn");
@@ -476,12 +492,12 @@ contract PlasmaVaultErc20FusionTest is Test {
         plasmaVault.deposit(100 * 1e6, owner);
 
         vm.prank(delegatee);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
         vm.prank(owner);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
-        uint256 delegateeVotesBefore = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         bytes4[] memory sig = new bytes4[](1);
         sig[0] = PlasmaVault.transfer.selector;
@@ -497,7 +513,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         plasmaVault.transfer(delegatee, 200 * 1e6);
 
         //then
-        uint256 delegateeVotesAfter = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         assertEq(delegateeVotesBefore, 100 * 1e6, "Delegatee should have voting power equal to 100 * 1e6");
         assertEq(delegateeVotesAfter, 200 * 1e6, "Delegatee should have voting power equal to 200 * 1e6");
@@ -517,9 +533,9 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         /// @dev Activate checkpoint
         vm.prank(owner);
-        plasmaVault.delegate(owner);
+        IVotes(address(plasmaVault)).delegate(owner);
 
-        uint256 delegateeVotesBefore = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         bytes32 domainSeparator = keccak256(
             abi.encode(
@@ -531,7 +547,7 @@ contract PlasmaVaultErc20FusionTest is Test {
             )
         );
 
-        uint256 nonce = plasmaVault.nonces(owner);
+        uint256 nonce = Nonces(address(plasmaVault)).nonces(owner);
 
         bytes32 structHash = keccak256(
             abi.encode(
@@ -548,14 +564,15 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         //when
         vm.prank(owner);
-        plasmaVault.delegateBySig(delegatee, nonce, block.timestamp + 1 days, v, r, s);
+        IVotes(address(plasmaVault)).delegateBySig(delegatee, nonce, block.timestamp + 1 days, v, r, s);
 
         //then
-        uint256 delegateeVotesAfter = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
 
-        assertEq(plasmaVault.delegates(owner), delegatee, "Owner's delegatee should be set correctly");
+        assertEq(IVotes(address(plasmaVault)).delegates(owner), delegatee, "Owner's delegatee should be set correctly");
+
         assertEq(
-            plasmaVault.getVotes(delegatee),
+            IVotes(address(plasmaVault)).getVotes(delegatee),
             100 * 1e6,
             "Delegatee's voting power should be equal to the owner's balance"
         );
@@ -581,7 +598,7 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         /// @dev Initialize delegatee
         vm.prank(delegatee);
-        plasmaVault.delegate(delegatee);
+        IVotes(address(plasmaVault)).delegate(delegatee);
 
         bytes32 domainSeparator = keccak256(
             abi.encode(
@@ -599,7 +616,7 @@ contract PlasmaVaultErc20FusionTest is Test {
                 owner,
                 delegatee,
                 amount,
-                plasmaVault.nonces(owner),
+                Nonces(address(plasmaVault)).nonces(owner),
                 deadline
             )
         );
@@ -610,9 +627,9 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         /// @dev Owner permits transfer to delegatee
         vm.prank(owner);
-        plasmaVault.permit(owner, delegatee, amount, deadline, permitV, permitR, permitS);
+        IERC20Permit(address(plasmaVault)).permit(owner, delegatee, amount, deadline, permitV, permitR, permitS);
 
-        uint256 nonce = plasmaVault.nonces(owner);
+        uint256 nonce = Nonces(address(plasmaVault)).nonces(owner);
 
         bytes32 delegationStructHash = keccak256(
             abi.encode(
@@ -630,9 +647,16 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         /// @dev owner delegates to delegatee
         vm.prank(owner);
-        plasmaVault.delegateBySig(delegatee, nonce, block.timestamp + 1 days, delegationV, delegationR, delegationS);
+        IVotes(address(plasmaVault)).delegateBySig(
+            delegatee,
+            nonce,
+            block.timestamp + 1 days,
+            delegationV,
+            delegationR,
+            delegationS
+        );
 
-        uint256 delegateeVotesBefore = plasmaVault.getVotes(delegatee);
+        uint256 delegateeVotesBefore = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         bytes4[] memory sig = new bytes4[](1);
         sig[0] = PlasmaVault.transferFrom.selector;
@@ -646,8 +670,8 @@ contract PlasmaVaultErc20FusionTest is Test {
         plasmaVault.transferFrom(owner, delegatee, amount);
 
         //then
+        uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
 
-        uint256 delegateeVotesAfter = plasmaVault.getVotes(delegatee);
         uint256 delegateeBalanceOf = plasmaVault.balanceOf(delegatee);
 
         assertEq(delegateeVotesBefore, delegateeVotesAfter, "Delegatee's voting power should not change");

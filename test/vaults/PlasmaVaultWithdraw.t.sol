@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
-
+pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {AaveConstantsEthereum} from "../../contracts/fuses/aave_v3/AaveConstantsEthereum.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -65,11 +64,7 @@ contract PlasmaVaultWithdrawTest is Test {
         userOne = address(0x777);
         userTwo = address(0x888);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
@@ -124,7 +119,9 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        IporFusionAccessManager accessManager = IporFusionAccessManager(plasmaVault.getAccessManagerAddress());
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
 
         vm.prank(atomist);
         accessManager.setRedemptionDelay(10 minutes);
@@ -163,7 +160,9 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        IporFusionAccessManager accessManager = IporFusionAccessManager(plasmaVault.getAccessManagerAddress());
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
 
         vm.prank(atomist);
         accessManager.setRedemptionDelay(10 minutes);
@@ -183,8 +182,8 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
         uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
-        assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
-        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+        assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter, "vaultTotalAssetsBefore - amount");
+        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter, "userVaultBalanceBefore - amount");
 
         assertEq(vaultTotalAssetsAfter, 0);
     }
@@ -202,7 +201,9 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        IporFusionAccessManager accessManager = IporFusionAccessManager(plasmaVault.getAccessManagerAddress());
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
 
         vm.prank(atomist);
         accessManager.setRedemptionDelay(10 minutes);
@@ -232,7 +233,9 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
 
-        IporFusionAccessManager accessManager = IporFusionAccessManager(plasmaVault.getAccessManagerAddress());
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
 
         vm.prank(atomist);
         accessManager.setRedemptionDelay(10 minutes);
@@ -305,7 +308,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -316,7 +319,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -357,7 +361,7 @@ contract PlasmaVaultWithdrawTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -416,7 +420,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -427,7 +431,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -482,7 +487,7 @@ contract PlasmaVaultWithdrawTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //when
         vm.prank(userOne);
@@ -534,7 +539,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -545,7 +550,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -587,7 +593,7 @@ contract PlasmaVaultWithdrawTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //then
         vm.expectEmit(true, true, true, true);
@@ -640,7 +646,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -651,7 +657,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -706,7 +713,7 @@ contract PlasmaVaultWithdrawTest is Test {
             params: instantWithdrawParams
         });
 
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         //then
         vm.expectEmit(true, true, true, true);
@@ -773,7 +780,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -784,7 +791,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -849,14 +857,15 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         address userThree = address(0x999);
 
@@ -935,7 +944,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -946,7 +955,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1011,14 +1021,15 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         address userThree = address(0x999);
 
@@ -1089,7 +1100,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1100,7 +1111,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1165,14 +1177,15 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
         plasmaVault.redeem(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         address userThree = address(0x999);
 
@@ -1188,8 +1201,8 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
         uint256 userTwoBalanceAfter = ERC20(USDC).balanceOf(userTwo);
 
-        assertEq(userOneBalanceAfter, 174999999);
-        assertEq(userTwoBalanceAfter, 16666666);
+        assertEq(userOneBalanceAfter, 174999999, "userOneBalanceAfter");
+        assertEq(userTwoBalanceAfter, 16666666, "userTwoBalanceAfter");
 
         /// CompoundV3 balance
         uint256 vaultTotalAssetInCompoundV3After = plasmaVault.totalAssetsInMarket(COMPOUND_V3_MARKET_ID);
@@ -1234,7 +1247,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1245,7 +1258,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1288,11 +1302,12 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         /// @dev artificially transfer aTokens to a Plasma Vault to increase shares values
         vm.prank(userOne);
@@ -1347,7 +1362,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1358,7 +1373,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1401,11 +1417,12 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         /// @dev artificially transfer aTokens to a Plasma Vault to increase shares values
         vm.prank(userOne);
@@ -1476,7 +1493,9 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVaultBase plasmaVaultBase = new PlasmaVaultBase();
+
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1487,7 +1506,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(plasmaVaultBase)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1551,14 +1571,15 @@ contract PlasmaVaultWithdrawTest is Test {
         });
 
         /// @dev configure order for instant withdraw
-        plasmaVault.configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
         plasmaVault.redeem(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(AaveConstantsEthereum.AAVE_POOL_DATA_PROVIDER_V3_MAINNET)
-            .getReserveTokensAddresses(USDC);
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+            USDC
+        );
 
         address userThree = address(0x999);
 
@@ -1626,7 +1647,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1637,7 +1658,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1680,7 +1702,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1691,7 +1713,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 

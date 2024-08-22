@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
@@ -54,10 +54,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3,
-            priceOracle
-        );
+        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
 
         balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(
@@ -73,7 +70,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: GEARBOX_V3_POOL,
-            amount: amount_
+            vaultAssetAmount: amount_
         });
         data = new bytes[](1);
         data[0] = abi.encode(enterData);
@@ -86,7 +83,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: GEARBOX_V3_POOL,
-            amount: amount_
+            vaultAssetAmount: amount_
         });
         data = new bytes[](1);
         data[0] = abi.encode(exitData);
