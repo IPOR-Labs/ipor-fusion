@@ -31,9 +31,8 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
     }
 
     /// @notice Get the balance of the given address in the market in USD
-    /// @param plasmaVault_ The address of the Plasma Vault
-    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
-    function balanceOf(address plasmaVault_) external view override returns (uint256) {
+    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    function balanceOf() external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
@@ -55,13 +54,13 @@ contract CompoundV3BalanceFuse is IMarketBalanceFuse {
             price = _getPrice(asset);
 
             balanceTemp += IporMath.convertToWadInt(
-                _getBalance(plasmaVault_, asset).toInt256() * int256(price),
+                _getBalance(address(this), asset).toInt256() * int256(price),
                 decimals + PRICE_DECIMALS
             );
         }
 
         int256 borrowBalance = IporMath.convertToWadInt(
-            (COMET.borrowBalanceOf(plasmaVault_) * COMET.getPrice(BASE_TOKEN_PRICE_FEED)).toInt256(),
+            (COMET.borrowBalanceOf(address(this)) * COMET.getPrice(BASE_TOKEN_PRICE_FEED)).toInt256(),
             COMPOUND_BASE_TOKEN_DECIMALS + PRICE_DECIMALS
         );
 
