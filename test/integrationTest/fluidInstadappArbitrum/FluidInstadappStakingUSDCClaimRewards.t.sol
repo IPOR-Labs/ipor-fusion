@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -12,7 +12,7 @@ import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData} from "../../../contracts/
 import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
@@ -67,7 +67,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                     assetName: "TEST PLASMA VAULT",
                     assetSymbol: "TPLASMA",
                     underlyingToken: USDC,
-                    priceOracle: _priceOracleMiddlewareProxy,
+                    priceOracleMiddleware: _priceOracleMiddlewareProxy,
                     alphas: alphas,
                     marketSubstratesConfigs: _setupMarketConfigs(),
                     fuses: _setupFuses(),
@@ -148,9 +148,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
         vm.startPrank(admin);
 
         PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            address(0)
+            0x0000000000000000000000000000000000000348
         );
 
         _priceOracleMiddlewareProxy = address(
@@ -198,8 +196,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
-            _priceOracleMiddlewareProxy
+            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
         );
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalanceFuse = new FluidInstadappStakingBalanceFuse(
