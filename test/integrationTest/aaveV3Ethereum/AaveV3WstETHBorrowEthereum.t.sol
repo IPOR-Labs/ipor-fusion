@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {BorrowTest} from "../supplyFuseTemplate/BorrowTests.sol";
+import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
 import {PlasmaVault, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
-import {IPriceOracleMiddleware} from "../../../contracts/priceOracle/IPriceOracleMiddleware.sol";
+import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
 
 contract AaveV3WstEthBorrowEthereum is BorrowTest {
     address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -134,8 +135,13 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
 
-        uint256 priceBorrowAsset = IPriceOracleMiddleware(AAVE_PRICE_ORACLE).getAssetPrice(borrowAsset) * 10 ** 18;
-        uint256 priceDepositAsset = IPriceOracleMiddleware(priceOracle).getAssetPrice(asset) * 10 ** 18;
+        uint256 borrowAssetPrice = IAavePriceOracle(AAVE_PRICE_ORACLE).getAssetPrice(borrowAsset);
+
+        uint256 priceBorrowAsset = borrowAssetPrice * 10 ** 18;
+
+        (uint256 assetPrice, uint256 assetPriceDecimals) = IPriceOracleMiddleware(priceOracle).getAssetPrice(asset);
+
+        uint256 priceDepositAsset = assetPrice * 10 ** 18;
 
         uint256 vaultBalanceInUnderlying = (((depositAmount * priceDepositAsset) /
             10 ** 18 -

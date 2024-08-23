@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -8,6 +8,7 @@ import {IFuse} from "../IFuse.sol";
 import {IPool} from "./ext/IPool.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @notice Structure for entering (borrow) to the Aave V3 protocol
 struct AaveV3BorrowFuseEnterData {
     /// @notice asset address to borrow
     address asset;
@@ -15,6 +16,7 @@ struct AaveV3BorrowFuseEnterData {
     uint256 amount;
 }
 
+/// @notice Structure for exiting (repay) from the Aave V3 protocol
 struct AaveV3BorrowFuseExitData {
     /// @notice borrowed asset address to repay
     address asset;
@@ -22,6 +24,8 @@ struct AaveV3BorrowFuseExitData {
     uint256 amount;
 }
 
+/// @title Fuse Aave V3 Borrow protocol responsible for borrowing and repaying assets in variable interest rate from the Aave V3 protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the assets that are used in the Aave V3 protocol for a given MARKET_ID
 contract AaveV3BorrowFuse is IFuse {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
