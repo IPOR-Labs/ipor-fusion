@@ -537,7 +537,7 @@ contract PlasmaVault is
             balanceFuse = FusesLib.getBalanceFuse(markets[i]);
 
             wadBalanceAmountInUSD = abi.decode(
-                balanceFuse.functionDelegateCall(abi.encodeWithSignature("balanceOf(address)", address(this))),
+                balanceFuse.functionDelegateCall(abi.encodeWithSignature("balanceOf()")),
                 (uint256)
             );
             dataToCheck.marketsToCheck[i].marketId = markets[i];

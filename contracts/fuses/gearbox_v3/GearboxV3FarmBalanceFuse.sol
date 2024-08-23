@@ -22,9 +22,8 @@ contract GearboxV3FarmBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
     }
 
-    /// @param plasmaVault_ The address of the Plasma Vault
-    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
-    function balanceOf(address plasmaVault_) external view override returns (uint256) {
+    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    function balanceOf() external view override returns (uint256) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = substrates.length;
@@ -39,7 +38,7 @@ contract GearboxV3FarmBalanceFuse is IMarketBalanceFuse {
 
         /// @dev exchange rate between farmDToken and dToken is 1:1
         uint256 balanceOfUnderlyingAssets = IERC4626(dToken).convertToAssets(
-            IFarmingPool(farmDToken).balanceOf(plasmaVault_)
+            IFarmingPool(farmDToken).balanceOf(address(this))
         );
 
         (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracleMiddleware())

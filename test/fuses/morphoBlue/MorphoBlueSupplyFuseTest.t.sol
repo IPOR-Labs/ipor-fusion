@@ -5,7 +5,6 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {VaultMorphoBlueMock} from "./VaultMorphoBlueMock.sol";
 import {MorphoBlueSupplyFuse, MorphoBlueSupplyFuseExitData, MorphoBlueSupplyFuseEnterData} from "../../../contracts/fuses/morpho_blue/MorphoBlueSupplyFuse.sol";
 import {MorphoBlueBalanceFuse} from "../../../contracts/fuses/morpho_blue/MorphoBlueBalanceFuse.sol";
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
@@ -14,6 +13,7 @@ import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib
 import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParamsLib.sol";
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract MorphoBlueSupplyFuseTest is Test {
     using MorphoBalancesLib for IMorpho;
@@ -44,7 +44,7 @@ contract MorphoBlueSupplyFuseTest is Test {
 
         MorphoBlueBalanceFuse balanceFuse = new MorphoBlueBalanceFuse(1);
         MorphoBlueSupplyFuse fuse = new MorphoBlueSupplyFuse(1);
-        VaultMorphoBlueMock vaultMock = new VaultMorphoBlueMock(address(fuse), address(balanceFuse));
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
         vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         uint256 amount = 100e18;
@@ -55,19 +55,21 @@ contract MorphoBlueSupplyFuseTest is Test {
 
         uint256 balanceBefore = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceOnMorphoBlueBefore = MORPHO.expectedSupplyAssets(marketParams, address(vaultMock));
-        uint256 balanceFromBalanceFuseBefore = vaultMock.balanceOf(address(vaultMock));
+        uint256 balanceFromBalanceFuseBefore = vaultMock.balanceOf();
 
         bytes32[] memory marketIds = new bytes32[](1);
         marketIds[0] = marketIdBytes32;
         vaultMock.grandMarketSubstrates(fuse.MARKET_ID(), marketIds);
 
         // when
-        vaultMock.enter(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
+        vaultMock.enter(
+            abi.encode(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}))
+        );
 
         // then
         uint256 balanceAfter = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceOnMorphoBlueAfter = MORPHO.expectedSupplyAssets(marketParams, address(vaultMock));
-        uint256 balanceFromBalanceFuseAfter = vaultMock.balanceOf(address(vaultMock));
+        uint256 balanceFromBalanceFuseAfter = vaultMock.balanceOf();
 
         assertEq(balanceFromBalanceFuseAfter, 100042570999999999998, "balance should be 100042570999999999998");
         assertEq(balanceFromBalanceFuseBefore, uint256(0), "balance should be 0");
@@ -85,7 +87,7 @@ contract MorphoBlueSupplyFuseTest is Test {
         bytes32 marketIdBytes32 = 0xb1eac1c0f3ad13fb45b01beac8458c055c903b1bff8cb882346635996a774f77;
         Id marketId = Id.wrap(marketIdBytes32);
         MorphoBlueSupplyFuse fuse = new MorphoBlueSupplyFuse(1);
-        VaultMorphoBlueMock vaultMock = new VaultMorphoBlueMock(address(fuse), address(0));
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0));
         vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         uint256 amount = 100e18;
@@ -98,14 +100,16 @@ contract MorphoBlueSupplyFuseTest is Test {
         marketIds[0] = marketIdBytes32;
         vaultMock.grandMarketSubstrates(fuse.MARKET_ID(), marketIds);
 
-        vaultMock.enter(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
+        vaultMock.enter(
+            abi.encode(MorphoBlueSupplyFuseEnterData({morphoBlueMarketId: marketIdBytes32, amount: amount}))
+        );
 
         uint256 balanceBefore = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceOnMorphoBlueBefore = MORPHO.expectedSupplyAssets(marketParams, address(vaultMock));
 
         // when
 
-        vaultMock.exit(MorphoBlueSupplyFuseExitData({morphoBlueMarketId: marketIdBytes32, amount: amount}));
+        vaultMock.exit(abi.encode(MorphoBlueSupplyFuseExitData({morphoBlueMarketId: marketIdBytes32, amount: amount})));
 
         // then
         uint256 balanceAfter = ERC20(DAI).balanceOf(address(vaultMock));
