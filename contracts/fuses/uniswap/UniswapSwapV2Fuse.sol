@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -11,16 +11,18 @@ struct UniswapSwapV2FuseEnterData {
     uint256 tokenInAmount;
     address[] path;
     uint256 minOutAmount;
-    uint256 uniswapVersion;
 }
 
+//@dev from uniswap documentation
 uint256 constant V2_SWAP_EXACT_IN = 0x08;
-uint256 constant V3_SWAP_EXACT_IN = 0x00;
 
 contract UniswapSwapV2Fuse is IFuse {
     using SafeERC20 for IERC20;
+
     error UniswapSwapV2FuseUnsupportedToken(address asset);
     error UnsupportedMethod();
+
+    event UniswapSwapV2EnterFuse(address version, uint256 tokenInAmount, address[] path, uint256 minOutAmount);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -55,11 +57,14 @@ contract UniswapSwapV2Fuse is IFuse {
 
         bytes memory commands = abi.encodePacked(bytes1(uint8(V2_SWAP_EXACT_IN)));
         bytes[] memory inputs = new bytes[](1);
-        inputs[0] = abi.encode(address(this), inputAmount, data_.minOutAmount, data_.path, false);
+        inputs[0] = abi.encode(address(1), inputAmount, data_.minOutAmount, data_.path, false);
 
         IUniversalRouter(UNIVERSAL_ROUTER).execute(commands, inputs);
+
+        emit UniswapSwapV2EnterFuse(VERSION, data_.tokenInAmount, data_.path, data_.minOutAmount);
     }
 
+    //solhint-disable-next-line
     function exit(bytes calldata data_) external override {
         revert UnsupportedMethod();
     }
