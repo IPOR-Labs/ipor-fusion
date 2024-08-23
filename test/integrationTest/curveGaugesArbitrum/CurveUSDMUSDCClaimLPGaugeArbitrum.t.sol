@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -18,12 +18,12 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {USDMPriceFeedArbitrum} from "../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/USDMPriceFeedArbitrum.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
-import {IChronicle, IToll} from "../../../contracts/priceOracle/IChronicle.sol";
+import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 
 contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -117,16 +117,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         );
         PlasmaVaultState memory vaultStateAfterEnterCurveGauge = getPlasmaVaultState();
 
-        uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.CURVE_LP_GAUGE;
-
-        uint256[] memory dependencies = new uint256[](1);
-        dependencies[0] = IporFusionMarketsArbitrum.CURVE_POOL;
-
-        uint256[][] memory dependencyMarkets = new uint256[][](1);
-        dependencyMarkets[0] = dependencies;
-
-        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
+        _setupDependencyBalanceGraphs();
 
         vm.prank(address(plasmaVault));
         CURVE_LIQUIDITY_GAUGE.user_checkpoint(address(plasmaVault));
@@ -152,6 +143,16 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         );
         assertEq(vaultStateAfterEnterCurveGauge.vaultBalance, 0, "Vault balance should be 0 after enter curve gauge");
         assertEq(vaultStateAfterClaiming.vaultBalance, 0, "Vault balance should be 0 after claiming rewards");
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultTotalAssets,
+            1999767029320268709038,
+            "Vault total assets after entering curve gauge should equal 1999767029320268709038"
+        );
+        assertEq(
+            vaultStateAfterClaiming.vaultTotalAssets,
+            1999767029320268709038,
+            "Vault total assets after claiming should equal 1999767029320268709038"
+        );
         assertEq(
             vaultStateAfterEnterCurveGauge.vaultTotalAssets,
             vaultStateAfterClaiming.vaultTotalAssets,
@@ -289,16 +290,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         );
         PlasmaVaultState memory vaultStateAfterEnterCurveGauge = getPlasmaVaultState();
 
-        uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.CURVE_LP_GAUGE;
-
-        uint256[] memory dependencies = new uint256[](1);
-        dependencies[0] = IporFusionMarketsArbitrum.CURVE_POOL;
-
-        uint256[][] memory dependencyMarkets = new uint256[][](1);
-        dependencyMarkets[0] = dependencies;
-
-        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
+        _setupDependencyBalanceGraphs();
 
         // when
         FuseAction[] memory rewardsClaimCalls = new FuseAction[](1);
@@ -315,6 +307,16 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         );
         assertEq(vaultStateAfterEnterCurveGauge.vaultBalance, 0, "Vault balance should be 0 after enter curve gauge");
         assertEq(vaultStateAfterClaiming.vaultBalance, 0, "Vault balance should be 0 after claiming rewards");
+        assertEq(
+            vaultStateAfterEnterCurveGauge.vaultTotalAssets,
+            1999767029320268709038,
+            "Vault total assets after entering curve gauge should equal 1999767029320268709038"
+        );
+        assertEq(
+            vaultStateAfterClaiming.vaultTotalAssets,
+            1999767029320268709038,
+            "Vault total assets after claiming should equal 1999767029320268709038"
+        );
         assertEq(
             vaultStateAfterEnterCurveGauge.vaultTotalAssets,
             vaultStateAfterClaiming.vaultTotalAssets,
@@ -455,11 +457,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         address[] memory assets;
         address[] memory sources;
         (assets, sources) = _setupPriceOracleSources();
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            BASE_CURRENCY,
-            BASE_CURRENCY_DECIMALS,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
@@ -509,7 +507,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",
                 underlyingToken: asset,
-                priceOracle: address(priceOracleMiddlewareProxy),
+                priceOracleMiddleware: address(priceOracleMiddlewareProxy),
                 alphas: alphas,
                 marketSubstratesConfigs: _setupMarketConfigs(),
                 fuses: fuses,
@@ -604,6 +602,20 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     /// HELPERS
+
+    function _setupDependencyBalanceGraphs() private {
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarketsArbitrum.CURVE_LP_GAUGE;
+
+        uint256[] memory dependencies = new uint256[](1);
+        dependencies[0] = IporFusionMarketsArbitrum.CURVE_POOL;
+
+        uint256[][] memory dependencyMarkets = new uint256[][](1);
+        dependencyMarkets[0] = dependencies;
+
+        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
+    }
+
     function _depositIntoVaultAndProvideLiquidityToCurvePool(uint256 amount) private {
         dealAsset(asset, admin, amount);
         vm.startPrank(admin);
