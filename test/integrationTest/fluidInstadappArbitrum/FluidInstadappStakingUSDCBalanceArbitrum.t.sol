@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -20,6 +20,7 @@ import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {TestAccountSetup} from "../supplyFuseTemplate/TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "../supplyFuseTemplate/TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "../supplyFuseTemplate/TestVaultSetup.sol";
+import {IPlasmaVaultGovernance} from "../../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {
     using SafeERC20 for ERC20;
@@ -104,10 +105,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
-            priceOracle
-        );
+        ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL);
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalance = new FluidInstadappStakingBalanceFuse(
             IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
@@ -157,7 +155,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         });
 
         vm.prank(getOwner());
-        PlasmaVault(plasmaVault).configureInstantWithdrawalFuses(instantWithdrawFuses);
+        IPlasmaVaultGovernance(plasmaVault).configureInstantWithdrawalFuses(instantWithdrawFuses);
     }
 
     function getEnterFuseData(

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -14,13 +14,13 @@ import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusion
 import {GearboxV3FarmdSupplyFuseEnterData, GearboxV3FarmSupplyFuse} from "../../../contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol";
 import {GearboxV3FarmBalanceFuse} from "../../../contracts/fuses/gearbox_v3/GearboxV3FarmBalanceFuse.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {IporPlasmaVault} from "../../../contracts/vaults/IporPlasmaVault.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {GearboxV3FarmDTokenClaimFuse} from "../../../contracts/rewards_fuses/gearbox_v3/GearboxV3FarmDTokenClaimFuse.sol";
 import {IFarmingPool} from "../../../contracts/fuses/gearbox_v3/ext/IFarmingPool.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 
 contract GearboxV3FarmdUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -61,18 +61,19 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
         _plasmaVault = address(
-            new IporPlasmaVault(
+            new PlasmaVault(
                 PlasmaVaultInitData({
                     assetName: "TEST PLASMA VAULT",
                     assetSymbol: "TPLASMA",
                     underlyingToken: USDC,
-                    priceOracle: _priceOracleMiddlewareProxy,
+                    priceOracleMiddleware: _priceOracleMiddlewareProxy,
                     alphas: alphas,
                     marketSubstratesConfigs: _setupMarketConfigs(),
                     fuses: _setupFuses(),
                     balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
-                    accessManager: _accessManager
+                    accessManager: _accessManager,
+                    plasmaVaultBase: address(new PlasmaVaultBase())
                 })
             )
         );
@@ -145,11 +146,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
 
         vm.startPrank(admin);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            address(0)
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(address(0));
 
         _priceOracleMiddlewareProxy = address(
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", admin))
@@ -193,10 +190,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3,
-            _priceOracleMiddlewareProxy
-        );
+        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
 
         GearboxV3FarmBalanceFuse gearboxV3FarmdBalance = new GearboxV3FarmBalanceFuse(
             IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3

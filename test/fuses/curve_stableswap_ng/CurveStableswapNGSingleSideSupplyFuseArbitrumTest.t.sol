@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -8,13 +8,14 @@ import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
 import {FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
-import {IporPlasmaVault} from "./../../../contracts/vaults/IporPlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
-import {PriceOracleMiddleware} from "../../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {USDMPriceFeedArbitrum} from "./../../../contracts/priceOracle/priceFeed/USDMPriceFeedArbitrum.sol";
-import {IChronicle, IToll} from "./../../../contracts/priceOracle/IChronicle.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {USDMPriceFeedArbitrum} from "./../../../contracts/price_oracle/price_feed/USDMPriceFeedArbitrum.sol";
+import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 
 contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     struct PlasmaVaultState {
@@ -44,7 +45,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     IChronicle public constant CHRONICLE = IChronicle(WUSDM_USD_ORACLE_FEED);
     USDMPriceFeedArbitrum public priceFeed;
 
-    IporPlasmaVault public plasmaVault;
+    PlasmaVault public plasmaVault;
 
     address public atomist = address(this);
     address public alpha = address(0x1);
@@ -76,11 +77,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         // price feed admin needs to whitelist the caller address for reading the price
         vm.prank(CHRONICLE_ADMIN);
         IToll(address(CHRONICLE)).kiss(address(priceFeed));
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            BASE_CURRENCY,
-            BASE_CURRENCY_DECIMALS,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
@@ -97,10 +94,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldBeAbleToSupplyOneTokenSupportedByThePool() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -112,7 +106,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -123,7 +117,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -184,10 +179,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldRevertWhenEnterWithUnsupportedPool() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         ICurveStableswapNG curvePool = ICurveStableswapNG(address(0x888));
 
@@ -199,7 +191,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -210,7 +202,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -261,10 +254,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldRevertWhenEnterWithUnsupportedPoolAsset() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -274,7 +264,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(DAI).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -285,7 +275,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -331,10 +322,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldRevertWhenMinMintAmountRequestedIsNotMet() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -346,7 +334,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -357,7 +345,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -403,10 +392,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldRevertWhenEnterWithAllZeroAmounts() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -416,7 +402,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 0;
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -427,7 +413,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -477,10 +464,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldBeAbleToExit() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -492,7 +476,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -503,7 +487,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -592,10 +577,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldRevertOnExitWithUnsupportedPoolAsset() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -605,7 +587,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -616,7 +598,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -699,10 +682,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldRevertWhenBurnAmountExitExceedsLPBalance() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -712,7 +692,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -723,7 +703,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -793,10 +774,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldRevertWhenMinReceivedIsNotMet() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -806,7 +784,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -817,7 +795,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -890,10 +869,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     function testShouldRevertWhenBurnAmountIsZero() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -903,7 +879,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        IporPlasmaVault plasmaVault = new IporPlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -914,7 +890,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
-                address(accessManager)
+                address(accessManager),
+                address(new PlasmaVaultBase())
             )
         );
 
@@ -1037,7 +1014,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     }
 
     function getPlasmaVaultState(
-        IporPlasmaVault plasmaVault,
+        PlasmaVault plasmaVault,
         CurveStableswapNGSingleSideSupplyFuse fuse,
         address activeToken
     ) private view returns (PlasmaVaultState memory) {
@@ -1050,7 +1027,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             });
     }
 
-    function setupRoles(IporPlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
+    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -22,6 +22,8 @@ struct CompoundV2SupplyFuseExitData {
     uint256 amount;
 }
 
+/// @dev Fuse for Compound V2 protocol responsible for supplying and withdrawing assets from the Compound V2 protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the cTokens that are used in the Compound V2 protocol for a given MARKET_ID
 contract CompoundV2SupplyFuse is IFuse {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
