@@ -7,6 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IMarketBalanceFuse} from "./../IMarketBalanceFuse.sol";
 import {IporMath} from "./../../libraries/math/IporMath.sol";
+import {PlasmaVaultLib} from "./../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
 import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
 import {IPriceOracleMiddleware} from "./../../price_oracle/IPriceOracleMiddleware.sol";
@@ -25,7 +26,6 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
         PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
     }
-    /// @param plasmaVault_ The address of the Plasma Vault
     /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
@@ -41,8 +41,8 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
         address lpTokenAddress; /// @dev Curve LP token
         uint256 price;
         uint256 priceDecimals;
-        address plamaVault = address(this);
-        address underlyingAsset = IERC4626(plasmaVault_).asset();
+        address plasmaVault = address(this);
+        address underlyingAsset = IERC4626(plasmaVault).asset();
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 
         for (uint256 i; i < len; ++i) {

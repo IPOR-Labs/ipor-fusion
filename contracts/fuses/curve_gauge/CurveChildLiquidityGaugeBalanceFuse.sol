@@ -28,9 +28,8 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
     /// @notice Returns the value of the LP tokens staked in the Curve pool
     /// @notice Rewards are not included here
     /// @notice Value of LP tokens is estimated based on the amount of the underluing that can be withdrawn
-    /// @param plasmaVault_ Plasma Vault address
     /// @return balance_ Plasma Vault balance
-    function balanceOf(address plasmaVault_) external view override returns (uint256) {
+    function balanceOf() external view override returns (uint256) {
         /// @notice substrates below are the Curve staked LP tokens
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -44,6 +43,7 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
         uint256 withdrawTokenAmount; // underlying asset of the vault amount to withdraw from LP
         uint256 assetPrice;
         uint256 assetDecimals;
+        address plasmaVault = address(this);
         address stakedLpTokenAddress;
         address lpTokenAddress; // Curve LP token
         int128 indexCoin; // index of the underlying asset in the Curve pool
@@ -51,17 +51,17 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
         for (uint256 i; i < len; ++i) {
             stakedLpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
             lpTokenAddress = IChildLiquidityGauge(stakedLpTokenAddress).lp_token();
-            indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), IERC4626(plasmaVault_).asset());
-            stakedLPTokenBalance = ERC20(stakedLpTokenAddress).balanceOf(plasmaVault_);
+            indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), IERC4626(plasmaVault).asset());
+            stakedLPTokenBalance = ERC20(stakedLpTokenAddress).balanceOf(plasmaVault);
             if (stakedLPTokenBalance > 0) {
                 withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
                     stakedLPTokenBalance,
                     indexCoin
                 );
-                (assetPrice, assetDecimals) = PRICE_ORACLE.getAssetPrice(IERC4626(plasmaVault_).asset());
+                (assetPrice, assetDecimals) = PRICE_ORACLE.getAssetPrice(IERC4626(plasmaVault).asset());
                 balance += IporMath.convertToWad(
                     withdrawTokenAmount * assetPrice,
-                    ERC20(IERC4626(plasmaVault_).asset()).decimals() + assetDecimals
+                    ERC20(IERC4626(plasmaVault).asset()).decimals() + assetDecimals
                 );
             }
         }
