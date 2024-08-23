@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 
@@ -13,7 +13,7 @@ import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
@@ -57,11 +57,7 @@ contract PlasmaVaultErc20FusionTest is Test {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(

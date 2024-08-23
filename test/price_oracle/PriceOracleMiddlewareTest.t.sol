@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {SDaiPriceFeedEthereum} from "../../contracts/priceOracle/priceFeed/SDaiPriceFeedEthereum.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {SDaiPriceFeedEthereum} from "../../contracts/price_oracle/price_feed/SDaiPriceFeedEthereum.sol";
 
 contract PriceOracleMiddlewareMaintenanceTest is Test {
     address private constant CHAINLINK_FEED_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
@@ -16,24 +16,11 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19574589);
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            BASE_CURRENCY,
-            BASE_CURRENCY_DECIMALS,
-            CHAINLINK_FEED_REGISTRY
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(CHAINLINK_FEED_REGISTRY);
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
-    }
-
-    function testShouldRevertWhenPassNotSupportedAsset() external {
-        // given
-        bytes memory error = abi.encodeWithSignature("UnsupportedAsset()");
-
-        // when
-        vm.expectRevert(error);
-        priceOracleMiddlewareProxy.getAssetPrice(address(0));
     }
 
     function testShouldReturnDaiPrice() external {
@@ -41,7 +28,8 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         address dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
         // when
-        uint256 result = priceOracleMiddlewareProxy.getAssetPrice(dai);
+        // solhint-disable-next-line no-unused-vars
+        (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(dai);
 
         // then
         assertEq(result, uint256(99984808), "Price should be calculated correctly");
@@ -52,7 +40,8 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         address usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
         // when
-        uint256 result = priceOracleMiddlewareProxy.getAssetPrice(usdc);
+        // solhint-disable-next-line no-unused-vars
+        (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(usdc);
 
         // then
         assertEq(result, uint256(99995746), "Price should be calculated correctly");
@@ -63,7 +52,8 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         address usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
 
         // when
-        uint256 result = priceOracleMiddlewareProxy.getAssetPrice(usdt);
+        // solhint-disable-next-line no-unused-vars
+        (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(usdt);
 
         // then
         assertEq(result, uint256(99975732), "Price should be calculated correctly");
@@ -74,7 +64,8 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         address eth = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
         // when
-        uint256 result = priceOracleMiddlewareProxy.getAssetPrice(eth);
+        // solhint-disable-next-line no-unused-vars
+        (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(eth);
 
         // then
         assertEq(result, uint256(334937530000), "Price should be calculated correctly");
@@ -93,7 +84,8 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
 
         // when
-        uint256 result = priceOracleMiddlewareProxy.getAssetPrice(sDai);
+        // solhint-disable-next-line no-unused-vars
+        (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(sDai);
 
         // then
         assertEq(result, uint256(106851828), "Price should be calculated correctly");

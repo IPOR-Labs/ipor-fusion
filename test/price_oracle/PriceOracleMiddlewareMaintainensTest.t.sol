@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 
 contract PriceOracleMiddlewareMaintenanceTest is Test {
     address private constant CHAINLINK_FEED_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
@@ -15,32 +15,19 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19574589);
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            BASE_CURRENCY,
-            BASE_CURRENCY_DECIMALS,
-            CHAINLINK_FEED_REGISTRY
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(CHAINLINK_FEED_REGISTRY);
 
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
     }
 
-    function testShouldSetupInitialOwner() external {
+    function testShouldSetupInitialOwner() external view {
         // when
         address owner = priceOracleMiddlewareProxy.owner();
 
         // then
         assertEq(owner, OWNER, "Owner should be set correctly");
-    }
-
-    function testShouldNotBeAbleToSetBaseCurrencyAsZeroAddress() external {
-        // given
-        bytes memory error = abi.encodeWithSignature("ZeroAddress(string)", "baseCurrency");
-
-        // when
-        vm.expectRevert(error);
-        new PriceOracleMiddleware(address(0), BASE_CURRENCY_DECIMALS, CHAINLINK_FEED_REGISTRY);
     }
 
     function testShouldNotBeAbleToSetAssetWithEmptyArrays() external {

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {IporFusionMarketsArbitrum} from "../../contracts/libraries/IporFusionMarketsArbitrum.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -291,7 +291,7 @@ contract IporPlasmaVaultRolesTest is Test {
         _accessManager.grantRole(Roles.ATOMIST_ROLE, user, 10000);
 
         address target = address(_plasmaVault);
-        bytes memory data = abi.encodeWithSignature("setPriceOracle(address)", 21, address(this));
+        bytes memory data = abi.encodeWithSignature("setPriceOracleMiddleware(address)", 21, address(this));
 
         vm.prank(user);
         (, uint32 nonceSchedule) = _accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
@@ -490,11 +490,7 @@ contract IporPlasmaVaultRolesTest is Test {
     function _setupPriceOracleMiddleware() private {
         vm.startPrank(_data.owners[0]);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            address(0)
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(address(0));
 
         _priceOracleMiddlewareProxy = address(
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", _data.owners[0]))
