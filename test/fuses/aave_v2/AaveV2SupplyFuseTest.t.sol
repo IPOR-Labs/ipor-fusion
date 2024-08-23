@@ -7,8 +7,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {AaveLendingPoolV2, ReserveData} from "../../../contracts/fuses/aave_v2/ext/AaveLendingPoolV2.sol";
 import {AaveV2SupplyFuse, AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
-import {AaveV2SupplyFuseMock} from "./AaveV2SupplyFuseMock.sol";
 import {ILendingPoolAddressesProvider} from "./ILendingPoolAddressesProvider.sol";
+import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract AaveV2SupplyFuseTest is Test {
     struct SupportedToken {
@@ -30,25 +30,26 @@ contract AaveV2SupplyFuseTest is Test {
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
         AaveV2SupplyFuse fuse = new AaveV2SupplyFuse(1, address(AAVE_POOL));
-        AaveV2SupplyFuseMock fuseMock = new AaveV2SupplyFuseMock(address(fuse));
+
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.asset, address(fuseMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.asset, address(vaultMock), 1_000 * 10 ** decimals);
 
-        uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
+        uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.asset;
-        fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
+        vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         // when
 
-        fuseMock.enter(AaveV2SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
+        vaultMock.enter(abi.encode(AaveV2SupplyFuseEnterData({asset: activeTokens.asset, amount: amount})));
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
+        uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
         ReserveData memory reserveData = AAVE_POOL.getReserveData(activeTokens.asset);
 
         address aTokenAddress = reserveData.aTokenAddress;
@@ -57,14 +58,14 @@ contract AaveV2SupplyFuseTest is Test {
 
         assertApproxEqAbs(balanceAfter + amount, balanceBefore, 100, "vault balance should be decreased by amount");
         assertApproxEqAbs(
-            ERC20(aTokenAddress).balanceOf(address(fuseMock)),
+            ERC20(aTokenAddress).balanceOf(address(vaultMock)),
             amount,
             100,
             "aToken balance should be increased by amount"
         );
-        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(fuseMock)), 0, "stableDebtToken balance should be 0");
+        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken balance should be 0");
         assertEq(
-            ERC20(variableDebtTokenAddress).balanceOf(address(fuseMock)),
+            ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)),
             0,
             "variableDebtToken balance should be 0"
         );
@@ -74,28 +75,28 @@ contract AaveV2SupplyFuseTest is Test {
         // given
         uint256 dustOnAToken = 10;
         AaveV2SupplyFuse fuse = new AaveV2SupplyFuse(1, address(AAVE_POOL));
-        AaveV2SupplyFuseMock fuseMock = new AaveV2SupplyFuseMock(address(fuse));
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
         uint256 enterAmount = 100 * 10 ** decimals;
         uint256 exitAmount = 50 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.asset, address(fuseMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.asset, address(vaultMock), 1_000 * 10 ** decimals);
 
-        uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
+        uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.asset;
-        fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
+        vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
-        fuseMock.enter(AaveV2SupplyFuseEnterData({asset: activeTokens.asset, amount: enterAmount}));
+        vaultMock.enter(abi.encode(AaveV2SupplyFuseEnterData({asset: activeTokens.asset, amount: enterAmount})));
 
         // when
 
-        fuseMock.exit(AaveV2SupplyFuseExitData({asset: activeTokens.asset, amount: exitAmount}));
+        vaultMock.exit(abi.encode(AaveV2SupplyFuseExitData({asset: activeTokens.asset, amount: exitAmount})));
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
+        uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
 
         ReserveData memory reserveData = AAVE_POOL.getReserveData(activeTokens.asset);
 
@@ -105,14 +106,14 @@ contract AaveV2SupplyFuseTest is Test {
 
         assertEq(balanceAfter + enterAmount - exitAmount, balanceBefore, "vault balance should be decreased by amount");
         assertApproxEqAbs(
-            ERC20(aTokenAddress).balanceOf(address(fuseMock)),
+            ERC20(aTokenAddress).balanceOf(address(vaultMock)),
             enterAmount - exitAmount,
             dustOnAToken,
             "aToken balance should be decreased by amount"
         );
-        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(fuseMock)), 0, "stableDebtToken balance should be 0");
+        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken balance should be 0");
         assertEq(
-            ERC20(variableDebtTokenAddress).balanceOf(address(fuseMock)),
+            ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)),
             0,
             "variableDebtToken balance should be 0"
         );

@@ -36,7 +36,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
         AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3_;
     }
 
-    function balanceOf(address plasmaVault_) external view override returns (uint256) {
+    function balanceOf() external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
@@ -53,6 +53,7 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
         address aTokenAddress;
         address stableDebtTokenAddress;
         address variableDebtTokenAddress;
+        address plasmaVault = address(this);
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
@@ -69,13 +70,13 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
             ).getReserveTokensAddresses(asset);
 
             if (aTokenAddress != address(0)) {
-                balanceInLoop += int256(ERC20(aTokenAddress).balanceOf(plasmaVault_));
+                balanceInLoop += int256(ERC20(aTokenAddress).balanceOf(plasmaVault));
             }
             if (stableDebtTokenAddress != address(0)) {
-                balanceInLoop -= int256(ERC20(stableDebtTokenAddress).balanceOf(plasmaVault_));
+                balanceInLoop -= int256(ERC20(stableDebtTokenAddress).balanceOf(plasmaVault));
             }
             if (variableDebtTokenAddress != address(0)) {
-                balanceInLoop -= int256(ERC20(variableDebtTokenAddress).balanceOf(plasmaVault_));
+                balanceInLoop -= int256(ERC20(variableDebtTokenAddress).balanceOf(plasmaVault));
             }
 
             balanceTemp += IporMath.convertToWadInt(

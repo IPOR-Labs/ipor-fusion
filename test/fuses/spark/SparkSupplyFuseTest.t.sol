@@ -5,13 +5,13 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {VaultSparkMock} from "./VaultSparkMock.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {SDaiPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/SDaiPriceFeedEthereum.sol";
 
 import {SparkBalanceFuse} from "../../../contracts/fuses/spark/SparkBalanceFuse.sol";
 import {SparkSupplyFuse, SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../../contracts/fuses/spark/SparkSupplyFuse.sol";
 import {ISavingsDai} from "../../../contracts/fuses/spark/ext/ISavingsDai.sol";
+import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract SparkSupplyFuseTest is Test {
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -43,7 +43,7 @@ contract SparkSupplyFuseTest is Test {
         // sDAI/DAI
         SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1);
         SparkSupplyFuse fuse = new SparkSupplyFuse(1);
-        VaultSparkMock vaultMock = new VaultSparkMock(address(fuse), address(balanceFuse));
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
         vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         uint256 amount = 100e18;
@@ -52,15 +52,15 @@ contract SparkSupplyFuseTest is Test {
 
         uint256 balanceBefore = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceSDAIBefore = ISavingsDai(SDAI).balanceOf(address(vaultMock));
-        uint256 balanceFromBalanceFuseBefore = vaultMock.balanceOf(address(vaultMock));
+        uint256 balanceFromBalanceFuseBefore = vaultMock.balanceOf();
 
         // when
-        vaultMock.enter(SparkSupplyFuseEnterData({amount: amount}));
+        vaultMock.enter(abi.encode(SparkSupplyFuseEnterData({amount: amount})));
 
         // then
         uint256 balanceAfter = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceSDAIAfter = ISavingsDai(SDAI).balanceOf(address(vaultMock));
-        uint256 balanceFromBalanceFuseAfter = vaultMock.balanceOf(address(vaultMock));
+        uint256 balanceFromBalanceFuseAfter = vaultMock.balanceOf();
 
         assertEq(balanceBefore, 1_000e18, "vault balance should be 1_000e18");
         assertEq(balanceAfter, 900e18, "vault balance should be 900e18");
@@ -75,26 +75,28 @@ contract SparkSupplyFuseTest is Test {
         // sDAI/DAI
         SparkBalanceFuse balanceFuse = new SparkBalanceFuse(1);
         SparkSupplyFuse fuse = new SparkSupplyFuse(1);
-        VaultSparkMock vaultMock = new VaultSparkMock(address(fuse), address(balanceFuse));
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
         vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         uint256 amount = 100e18;
 
         deal(DAI, address(vaultMock), 1_000e18);
 
-        vaultMock.enter(SparkSupplyFuseEnterData({amount: amount}));
+        vaultMock.enter(abi.encode(SparkSupplyFuseEnterData({amount: amount})));
 
         uint256 balanceBefore = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceSDAIBefore = ISavingsDai(SDAI).balanceOf(address(vaultMock));
-        uint256 balanceFromBalanceFuseBefore = vaultMock.balanceOf(address(vaultMock));
+        uint256 balanceFromBalanceFuseBefore = vaultMock.balanceOf();
 
         // when
-        vaultMock.exit(SparkSupplyFuseExitData({amount: ISavingsDai(SDAI).convertToAssets(balanceSDAIBefore)}));
+        vaultMock.exit(
+            abi.encode(SparkSupplyFuseExitData({amount: ISavingsDai(SDAI).convertToAssets(balanceSDAIBefore)}))
+        );
 
         // then
         uint256 balanceAfter = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceSDAIAfter = ISavingsDai(SDAI).balanceOf(address(vaultMock));
-        uint256 balanceFromBalanceFuseAfter = vaultMock.balanceOf(address(vaultMock));
+        uint256 balanceFromBalanceFuseAfter = vaultMock.balanceOf();
 
         assertEq(balanceBefore, 900e18, "vault balance should be 900e18");
         assertEq(balanceAfter, 999999999999999999999, "vault balance should be 999999999999999999999");

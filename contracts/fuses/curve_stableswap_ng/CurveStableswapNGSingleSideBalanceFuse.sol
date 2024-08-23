@@ -25,9 +25,9 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
     constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
     }
-    /// @param plasmaVault_ The address of the Plasma Vault
-    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
-    function balanceOf(address plasmaVault_) external view override returns (uint256) {
+
+    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    function balanceOf() external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
@@ -40,21 +40,22 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
         address lpTokenAddress; /// @dev Curve LP token
         uint256 price;
         uint256 priceDecimals;
-        address underlyingAsset = IERC4626(plasmaVault_).asset();
+        address plasmaVault = address(this);
+        address underlyingAsset = IERC4626(plasmaVault).asset();
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 
         for (uint256 i; i < len; ++i) {
             lpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
 
             withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
-                ERC20(lpTokenAddress).balanceOf(plasmaVault_),
+                ERC20(lpTokenAddress).balanceOf(plasmaVault),
                 _getCoinIndex(ICurveStableswapNG(lpTokenAddress), underlyingAsset)
             );
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(underlyingAsset);
 
             balance += IporMath.convertToWad(
                 withdrawTokenAmount * price,
-                ERC20(IERC4626(plasmaVault_).asset()).decimals() + priceDecimals
+                ERC20(IERC4626(plasmaVault).asset()).decimals() + priceDecimals
             );
         }
         return balance;
