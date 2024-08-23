@@ -47,7 +47,10 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             lpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
-
+            lpTokenBalance = ERC20(lpTokenAddress).balanceOf(plasmaVault);
+            if (lpTokenBalance == 0) {
+                continue;
+            }
             withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
                 ERC20(lpTokenAddress).balanceOf(plasmaVault),
                 _getCoinIndex(ICurveStableswapNG(lpTokenAddress), underlyingAsset)
