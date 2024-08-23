@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {CompoundV2SupplyFuse, CompoundV2SupplyFuseEnterData, CompoundV2SupplyFuseExitData} from "../../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 contract VaultCompoundV2Mock {
     using Address for address;
@@ -46,5 +47,9 @@ contract VaultCompoundV2Mock {
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
         PlasmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
+    }
+
+    function setPriceOracleMiddleware(address priceOracleMiddleware_) external {
+        PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 }

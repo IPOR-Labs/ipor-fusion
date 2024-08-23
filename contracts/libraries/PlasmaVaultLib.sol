@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Errors} from "./errors/Errors.sol";
@@ -10,9 +10,11 @@ struct InstantWithdrawalFusesParamsStruct {
     /// @notice The address of the fuse
     address fuse;
     /// @notice The parameters of the fuse, first element is an amount, second element is an address of the asset or a market id or other substrate specific for the fuse
+    /// @dev Notice! Always first param is the asset value in underlying, next params are specific for the Fuse
     bytes32[] params;
 }
 
+/// @title Plasma Vault Library responsible for managing the Plasma Vault
 library PlasmaVaultLib {
     using SafeCast for uint256;
     using SafeCast for int256;
@@ -20,7 +22,7 @@ library PlasmaVaultLib {
     error InvalidPerformanceFee(uint256 feeInPercentage);
 
     event InstantWithdrawalFusesConfigured(InstantWithdrawalFusesParamsStruct[] fuses);
-    event PriceOracleChanged(address newPriceOracle);
+    event PriceOracleMiddlewareChanged(address newPriceOracleMiddleware);
     event PerformanceFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event RewardsClaimManagerAddressChanged(address newRewardsClaimManagerAddress);
@@ -41,16 +43,23 @@ library PlasmaVaultLib {
         return PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_];
     }
 
+    /// @notice Gets the dependency balance graph for a specific market
+    /// @param marketId_ The market id
+    /// @return The dependency balance graph for the market
+    /// @dev The dependency balance graph is used to update appropriate balance markets when Plasma Vault interact with a given marketId_
     function getDependencyBalanceGraph(uint256 marketId_) internal view returns (uint256[] memory) {
         return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_];
     }
 
+    /// @notice Updates the dependency balance graph for a specific market
+    /// @param marketId_ The market id
+    /// @param newDependenceGraph_ The new dependency balance graph for the market
     function updateDependencyBalanceGraph(uint256 marketId_, uint256[] memory newDependenceGraph_) internal {
         PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_] = newDependenceGraph_;
         emit DependencyBalanceGraphChanged(marketId_, newDependenceGraph_);
     }
 
-    /// @notice Adds an amount to the total assets in the vault for all markets
+    /// @notice Adds an amount to the total assets in the Plasma Vault for all markets
     /// @param amount_ The amount to add, represented in decimals of the underlying asset
     function addToTotalAssetsInAllMarkets(int256 amount_) internal {
         if (amount_ < 0) {
@@ -63,6 +72,7 @@ library PlasmaVaultLib {
     /// @notice Updates the total assets in the Plasma Vault for a specific market
     /// @param marketId_ The market id
     /// @param newTotalAssetsInUnderlying_ The new total assets in the vault for the market, represented in decimals of the underlying asset
+    /// @return deltaInUnderlying The difference between the old and the new total assets in the vault for the market
     function updateTotalAssetsInMarket(
         uint256 marketId_,
         uint256 newTotalAssetsInUnderlying_
@@ -73,6 +83,7 @@ library PlasmaVaultLib {
     }
 
     /// @notice Gets the management fee data
+    /// @return managementFeeData The management fee data, like the fee manager and the fee in percentage
     //solhint-disable-next-line
     function getManagementFeeData()
         internal
@@ -103,6 +114,7 @@ library PlasmaVaultLib {
     }
 
     /// @notice Gets the performance fee data
+    /// @return performanceFeeData The performance fee data, like the fee manager and the fee in percentage
     //solhint-disable-next-line
     function getPerformanceFeeData()
         internal
@@ -140,13 +152,15 @@ library PlasmaVaultLib {
     }
 
     /// @notice Gets instant withdrawal fuses
+    /// @return The instant withdrawal fuses, the order of the fuses is important
     function getInstantWithdrawalFuses() internal view returns (address[] memory) {
         return PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
     }
 
     /// @notice Gets the instant withdrawal fuses parameters for a specific fuse
     /// @param fuse_ The fuse address
-    /// @param index_ The index of the param in the fuse
+    /// @param index_ The index of the Fuse in the fuses array
+    /// @return The instant withdrawal fuses parameters
     function getInstantWithdrawalFusesParams(address fuse_, uint256 index_) internal view returns (bytes32[] memory) {
         return
             PlasmaVaultStorageLib.getInstantWithdrawalFusesParams().value[keccak256(abi.encodePacked(fuse_, index_))];
@@ -181,38 +195,46 @@ library PlasmaVaultLib {
         emit InstantWithdrawalFusesConfigured(fuses_);
     }
 
-    /// @notice Gets the price oracle address
-    function getPriceOracle() internal view returns (address) {
-        return PlasmaVaultStorageLib.getPriceOracle().value;
+    /// @notice Gets the Price Oracle Middleware address
+    /// @return The Price Oracle Middleware address
+    function getPriceOracleMiddleware() internal view returns (address) {
+        return PlasmaVaultStorageLib.getPriceOracleMiddleware().value;
     }
 
-    /// @notice Sets the price oracle address
-    /// @param priceOracle_ The price oracle address
-    function setPriceOracle(address priceOracle_) internal {
-        PlasmaVaultStorageLib.getPriceOracle().value = priceOracle_;
-        emit PriceOracleChanged(priceOracle_);
+    /// @notice Sets the Price Oracle Middleware address
+    /// @param priceOracleMiddleware_ The Price Oracle Middleware address
+    function setPriceOracleMiddleware(address priceOracleMiddleware_) internal {
+        PlasmaVaultStorageLib.getPriceOracleMiddleware().value = priceOracleMiddleware_;
+        emit PriceOracleMiddlewareChanged(priceOracleMiddleware_);
     }
 
-    /// @notice Gets the rewards claim manager address
+    /// @notice Gets the Rewards Claim Manager address
+    /// @return The Rewards Claim Manager address
     function getRewardsClaimManagerAddress() internal view returns (address) {
         return PlasmaVaultStorageLib.getRewardsClaimManagerAddress().value;
     }
 
-    /// @notice Sets the rewards claim manager address
+    /// @notice Sets the Rewards Claim Manager address
     /// @param rewardsClaimManagerAddress_ The rewards claim manager address
     function setRewardsClaimManagerAddress(address rewardsClaimManagerAddress_) internal {
         PlasmaVaultStorageLib.getRewardsClaimManagerAddress().value = rewardsClaimManagerAddress_;
         emit RewardsClaimManagerAddressChanged(rewardsClaimManagerAddress_);
     }
 
+    /// @notice Sets the execution state to started, used in the execute function called by Alpha
+    /// @dev Alpha can do interaction with the Plasma Vault using more than one FuseAction
     function executeStarted() internal {
         PlasmaVaultStorageLib.getExecutionState().value = 1;
     }
 
+    /// @notice Sets the execution state to finished, used in the execute function called by Alpha
+    /// @dev Alpha can do interaction with the Plasma Vault using more than one FuseAction
     function executeFinished() internal {
         PlasmaVaultStorageLib.getExecutionState().value = 0;
     }
 
+    /// @notice Checks if the execution is started
+    /// @return true if the execution is started
     function isExecutionStarted() internal view returns (bool) {
         return PlasmaVaultStorageLib.getExecutionState().value == 1;
     }

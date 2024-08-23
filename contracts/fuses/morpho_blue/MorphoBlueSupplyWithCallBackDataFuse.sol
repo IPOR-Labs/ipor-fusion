@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -31,7 +31,9 @@ struct MorphoBlueSupplyFuseExitData {
     uint256 amount;
 }
 
-// TODO Not production ready yet
+/// @title Fuse Morpho Blue Supply protocol responsible for supplying and withdrawing assets from the Morpho Blue protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the Morpho Blue Market IDs that are used in the Morpho Blue protocol for a given MARKET_ID
+/// TODO - code is not production ready
 contract MorphoBlueSupplyWithCallBackDataFuse is IFuse, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;

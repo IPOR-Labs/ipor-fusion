@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {IMorpho} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {MorphoBlueSupplyWithCallBackDataFuse, MorphoBlueSupplyFuseEnterData} from "../../contracts/fuses/morphoBlue/MorphoBlueSupplyWithCallBackDataFuse.sol";
-import {MorphoBlueBalanceFuse} from "../../contracts/fuses/morphoBlue/MorphoBlueBalanceFuse.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {MorphoBlueSupplyWithCallBackDataFuse, MorphoBlueSupplyFuseEnterData} from "../../contracts/fuses/morpho_blue/MorphoBlueSupplyWithCallBackDataFuse.sol";
+import {MorphoBlueBalanceFuse} from "../../contracts/fuses/morpho_blue/MorphoBlueBalanceFuse.sol";
 import {MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -53,11 +53,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20432470);
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
         _priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
@@ -133,7 +129,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
         balanceFuses[0] = MarketBalanceFuseConfig(
             _MORPHO_BLUE_MARKET_ID,
-            address(new MorphoBlueBalanceFuse(_MORPHO_BLUE_MARKET_ID, address(_priceOracleMiddlewareProxy)))
+            address(new MorphoBlueBalanceFuse(_MORPHO_BLUE_MARKET_ID))
         );
         balanceFuses[1] = MarketBalanceFuseConfig(
             _AAVE_V3_MARKET_ID,

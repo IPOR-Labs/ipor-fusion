@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SparkSupplyFuse, SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../../contracts/fuses/spark/SparkSupplyFuse.sol";
+import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 contract VaultSparkMock {
     using Address for address;
@@ -41,5 +42,9 @@ contract VaultSparkMock {
     //solhint-disable-next-line
     function balanceOf(address plasmaVault) external returns (uint256) {
         return abi.decode(sparkBalanceFuse.functionDelegateCall(msg.data), (uint256));
+    }
+
+    function setPriceOracleMiddleware(address priceOracleMiddleware_) external {
+        PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 }
