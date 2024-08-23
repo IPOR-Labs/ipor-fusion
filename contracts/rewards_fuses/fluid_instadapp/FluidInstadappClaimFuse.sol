@@ -37,10 +37,14 @@ contract FluidInstadappClaimFuse {
             return;
         }
 
+        address rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
+        if (rewardsClaimManager == address(0)) {
+            revert FluidInstadappClaimFuseRewardsClaimManagerZeroAddress(VERSION);
+        }
+
         address fluidLendingStakingRewards;
         address rewardsToken;
         uint256 rewardsTokenBalance;
-        address rewardsClaimManager;
 
         for (uint256 i; i < len; ++i) {
             fluidLendingStakingRewards = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
@@ -55,12 +59,6 @@ contract FluidInstadappClaimFuse {
             }
 
             IFluidLendingStakingRewards(fluidLendingStakingRewards).getReward();
-
-            rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
-
-            if (rewardsClaimManager == address(0)) {
-                revert FluidInstadappClaimFuseRewardsClaimManagerZeroAddress(VERSION);
-            }
 
             IERC20(rewardsToken).safeTransfer(rewardsClaimManager, rewardsTokenBalance);
 
