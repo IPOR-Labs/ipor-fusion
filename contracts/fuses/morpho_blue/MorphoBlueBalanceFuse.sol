@@ -34,9 +34,8 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
     }
 
-    /// @param plasmaVault_ The address of the Plasma Vault
-    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
-    function balanceOf(address plasmaVault_) external view override returns (uint256) {
+    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    function balanceOf() external view override returns (uint256) {
         bytes32[] memory morphoMarkets = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = morphoMarkets.length;
@@ -50,6 +49,7 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
         uint256 totalSupplyAssets;
         bytes32[] memory slots = new bytes32[](1);
         bytes32[] memory values;
+        address plasmaVault = address(this);
 
         MarketParams memory marketParams;
 
@@ -57,13 +57,13 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < len; ++i) {
             marketParams = MORPHO.idToMarketParams(Id.wrap(morphoMarkets[i]));
-            totalSupplyAssets = MORPHO.expectedSupplyAssets(marketParams, plasmaVault_);
+            totalSupplyAssets = MORPHO.expectedSupplyAssets(marketParams, plasmaVault);
 
-            slots[0] = MorphoStorageLib.positionBorrowSharesAndCollateralSlot(Id.wrap(morphoMarkets[i]), plasmaVault_);
+            slots[0] = MorphoStorageLib.positionBorrowSharesAndCollateralSlot(Id.wrap(morphoMarkets[i]), plasmaVault);
             values = MORPHO.extSloads(slots);
             totalCollateralAssets = uint256(values[0] >> 128);
 
-            totalBorrowAssets = MORPHO.expectedBorrowAssets(marketParams, plasmaVault_);
+            totalBorrowAssets = MORPHO.expectedBorrowAssets(marketParams, plasmaVault);
 
             balance += _convertToUsd(priceOracleMiddleware, marketParams.collateralToken, totalCollateralAssets)
                 .toInt256();

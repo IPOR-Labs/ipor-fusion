@@ -6,8 +6,9 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
-import {AaveV2BalanceFuseMock} from "./AaveV2BalanceFuseMock.sol";
 import {AaveLendingPoolV2} from "../../../contracts/fuses/aave_v2/ext/AaveLendingPoolV2.sol";
+import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
+import {AaveV2BalanceFuse} from "../../../contracts/fuses/aave_v2/AaveV2BalanceFuse.sol";
 
 contract AaveV3BalanceFuseTest is Test {
     struct SupportedToken {
@@ -26,28 +27,30 @@ contract AaveV3BalanceFuseTest is Test {
         // given
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19508857);
 
-        AaveV2BalanceFuseMock aaveV2Balances = new AaveV2BalanceFuseMock(1);
-        address user = vm.rememberKey(123);
+        AaveV2BalanceFuse aaveV2Balances = new AaveV2BalanceFuse(1);
+
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(aaveV2Balances));
+
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.token, user, 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.token, address(vaultMock), 1_000 * 10 ** decimals);
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
 
-        aaveV2Balances.updateMarketConfiguration(assets);
+        vaultMock.updateMarketConfiguration(1, assets);
 
-        uint256 balanceBefore = aaveV2Balances.balanceOf(user);
+        uint256 balanceBefore = vaultMock.balanceOf();
 
         // when
 
-        vm.prank(user);
+        vm.prank(address(vaultMock));
         ERC20(activeTokens.token).forceApprove(address(AAVE_POOL), amount);
-        vm.prank(user);
-        AAVE_POOL.deposit(activeTokens.token, amount, user, 0);
+        vm.prank(address(vaultMock));
+        AAVE_POOL.deposit(activeTokens.token, amount, address(vaultMock), 0);
 
-        uint256 balanceAfter = aaveV2Balances.balanceOf(user);
+        uint256 balanceAfter = vaultMock.balanceOf();
 
         // then
         assertTrue(balanceAfter > balanceBefore, "Balance should be greater after supply");
