@@ -9,6 +9,7 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFluidLendingStakingRewards} from "../../fuses/fluid_instadapp/ext/IFluidLendingStakingRewards.sol";
 
+/// @title Claim Fuse for Fluid Instadapp rewards - responsible for claiming rewards from FluidLendingStakingRewards contracts
 contract FluidInstadappClaimFuse {
     using SafeERC20 for IERC20;
 
