@@ -10,7 +10,7 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/priceOracle/IPriceOracleMiddleware.sol";
 
-contract AaveV3WstEthBorrowArbitrum is BorrowTest {
+contract AaveV3WstEthBorrowEthereum is BorrowTest {
     address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address private constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address private constant CHAINLINK_ETH = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;

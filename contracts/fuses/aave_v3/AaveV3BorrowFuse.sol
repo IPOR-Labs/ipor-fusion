@@ -51,7 +51,6 @@ contract AaveV3BorrowFuse is IFuse {
         _enter(abi.decode(data_, (AaveV3BorrowFuseEnterData)));
     }
 
-    /// @dev technical method to generate ABI
     function enter(AaveV3BorrowFuseEnterData memory data_) external {
         _enter(data_);
     }
@@ -60,7 +59,6 @@ contract AaveV3BorrowFuse is IFuse {
         _exit(abi.decode(data_, (AaveV3BorrowFuseExitData)));
     }
 
-    /// @dev technical method to generate ABI
     function exit(AaveV3BorrowFuseExitData calldata data_) external {
         _exit(data_);
     }
@@ -73,8 +71,6 @@ contract AaveV3BorrowFuse is IFuse {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
             revert AaveV3BorrowFuseUnsupportedAsset("enter", data_.asset);
         }
-
-        ERC20(data_.asset).forceApprove(address(AAVE_POOL), data_.amount);
 
         AAVE_POOL.borrow(data_.asset, data_.amount, INTEREST_RATE_MODE, 0, address(this));
 
@@ -89,6 +85,8 @@ contract AaveV3BorrowFuse is IFuse {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
             revert AaveV3BorrowFuseUnsupportedAsset("exit", data_.asset);
         }
+
+        ERC20(data_.asset).forceApprove(address(AAVE_POOL), data_.amount);
 
         uint256 repaidAmount = AAVE_POOL.repay(data_.asset, data_.amount, INTEREST_RATE_MODE, address(this));
 
