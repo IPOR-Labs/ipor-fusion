@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {IMorpho} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
-import {PriceOracleMiddleware} from "../../contracts/priceOracle/PriceOracleMiddleware.sol";
-import {MorphoBlueSupplyWithCallBackDataFuse, MorphoBlueSupplyFuseEnterData} from "../../contracts/fuses/morphoBlue/MorphoBlueSupplyWithCallBackDataFuse.sol";
-import {MorphoBlueBalanceFuse} from "../../contracts/fuses/morphoBlue/MorphoBlueBalanceFuse.sol";
+import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {MorphoBlueSupplyWithCallBackDataFuse, MorphoBlueSupplyFuseEnterData} from "../../contracts/fuses/morpho_blue/MorphoBlueSupplyWithCallBackDataFuse.sol";
+import {MorphoBlueBalanceFuse} from "../../contracts/fuses/morpho_blue/MorphoBlueBalanceFuse.sol";
 import {MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -22,7 +22,8 @@ import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {CallbackHandlerMorpho} from "../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
 
-import {IporPlasmaVault} from "../../contracts/vaults/IporPlasmaVault.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract PlasmaVaultCallbackHandler is Test {
     address private constant _AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
@@ -52,11 +53,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20432470);
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348,
-            8,
-            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
         _priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
@@ -74,7 +71,7 @@ contract PlasmaVaultCallbackHandler is Test {
         _createAccessManager();
 
         _plasmaVault = address(
-            new IporPlasmaVault(
+            new PlasmaVault(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "TPLASMA",
@@ -85,7 +82,8 @@ contract PlasmaVaultCallbackHandler is Test {
                     _setupFuses(),
                     balanceFuses,
                     feeConfig,
-                    _accessManager
+                    _accessManager,
+                    address(new PlasmaVaultBase())
                 )
             )
         );
@@ -96,7 +94,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
     function _setuCallbackCals() private {
         CallbackHandlerMorpho callbackHandlerMorpho = new CallbackHandlerMorpho();
-        PlasmaVault(_plasmaVault).updateCallbackHandler(
+        IPlasmaVaultGovernance(address(_plasmaVault)).updateCallbackHandler(
             address(callbackHandlerMorpho),
             address(_MORPHO),
             CallbackHandlerMorpho.onMorphoSupply.selector
@@ -114,7 +112,7 @@ contract PlasmaVaultCallbackHandler is Test {
         fuses[2] = address(_supplyFuseCompoundV3);
     }
 
-    function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
+    function _setupMarketConfigs() private pure returns (MarketSubstratesConfig[] memory marketConfigs) {
         marketConfigs = new MarketSubstratesConfig[](3);
         bytes32[] memory morphoBlue = new bytes32[](1);
         morphoBlue[0] = _MARKET_ID_BYTES32;
@@ -131,7 +129,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
         balanceFuses[0] = MarketBalanceFuseConfig(
             _MORPHO_BLUE_MARKET_ID,
-            address(new MorphoBlueBalanceFuse(_MORPHO_BLUE_MARKET_ID, address(_priceOracleMiddlewareProxy)))
+            address(new MorphoBlueBalanceFuse(_MORPHO_BLUE_MARKET_ID))
         );
         balanceFuses[1] = MarketBalanceFuseConfig(
             _AAVE_V3_MARKET_ID,

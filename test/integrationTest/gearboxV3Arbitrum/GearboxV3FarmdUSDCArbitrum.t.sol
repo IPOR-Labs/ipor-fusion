@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
@@ -66,10 +66,7 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3,
-            priceOracle
-        );
+        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
 
         GearboxV3FarmBalanceFuse gearboxV3FarmdBalances = new GearboxV3FarmBalanceFuse(
             IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
@@ -92,7 +89,10 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: D_USDC, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
+            vault: D_USDC,
+            vaultAssetAmount: amount_
+        });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_
@@ -107,7 +107,10 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
-        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: D_USDC, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
+            vault: D_USDC,
+            vaultAssetAmount: amount_
+        });
         GearboxV3FarmdSupplyFuseExitData memory exitDataFarm = GearboxV3FarmdSupplyFuseExitData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -111,10 +111,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3,
-            priceOracle
-        );
+        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
 
         GearboxV3FarmBalanceFuse gearboxV3FarmdBalance = new GearboxV3FarmBalanceFuse(
             IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
@@ -150,7 +147,10 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: D_USDC, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
+            vault: D_USDC,
+            vaultAssetAmount: amount_
+        });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_

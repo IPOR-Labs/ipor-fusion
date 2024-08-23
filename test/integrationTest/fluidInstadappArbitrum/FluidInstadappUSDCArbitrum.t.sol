@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
@@ -55,8 +55,7 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         ERC4626BalanceFuse fluidInstadappBalances = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
-            priceOracle
+            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
         );
 
         balanceFuses = new MarketBalanceFuseConfig[](1);
@@ -71,7 +70,10 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
+            vault: F_TOKEN,
+            vaultAssetAmount: amount_
+        });
         data = new bytes[](1);
         data[0] = abi.encode(enterData);
     }
@@ -81,7 +83,10 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         //solhint-disable-next-line
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
-        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({vault: F_TOKEN, vaultAssetAmount: amount_});
+        Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
+            vault: F_TOKEN,
+            vaultAssetAmount: amount_
+        });
         data = new bytes[](1);
         data[0] = abi.encode(exitData);
         fusesSetup = fuses;
