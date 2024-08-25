@@ -25,9 +25,8 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
     }
 
-    /// @param plasmaVault_ The address of the Plasma Vault
     /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
-    function balanceOf(address plasmaVault_) external override returns (uint256) {
+    function balanceOf() external override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         if (assetsRaw.length == 0) {
@@ -50,11 +49,11 @@ contract CompoundV2BalanceFuse is IMarketBalanceFuse {
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(underlying);
 
             balanceTemp += IporMath.convertToWadInt(
-                cToken.balanceOfUnderlying(plasmaVault_).toInt256() * int256(price),
+                cToken.balanceOfUnderlying(address(this)).toInt256() * int256(price),
                 decimals + priceDecimals
             );
             balanceTemp -= IporMath.convertToWadInt(
-                (cToken.borrowBalanceCurrent(plasmaVault_) * price).toInt256(),
+                (cToken.borrowBalanceCurrent(address(this)) * price).toInt256(),
                 decimals + priceDecimals
             );
         }
