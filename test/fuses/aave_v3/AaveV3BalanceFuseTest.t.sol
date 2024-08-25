@@ -8,7 +8,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
-import {AaveV3BalanceFuseMock} from "./AaveV3BalanceFuseMock.sol";
+import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
 contract AaveV3BalanceFuseTest is Test {
@@ -31,32 +32,34 @@ contract AaveV3BalanceFuseTest is Test {
         // given
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19508857);
 
-        AaveV3BalanceFuseMock aaveV3Balances = new AaveV3BalanceFuseMock(
+        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
             1,
             address(AAVE_PRICE_ORACLE),
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
-        address user = vm.rememberKey(123);
+
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(aaveV3Balances));
+
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.token, user, 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.token, address(vaultMock), 1_000 * 10 ** decimals);
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
 
-        aaveV3Balances.updateMarketConfiguration(assets);
+        vaultMock.updateMarketConfiguration(1, assets);
 
-        uint256 balanceBefore = aaveV3Balances.balanceOf(user);
+        uint256 balanceBefore = vaultMock.balanceOf();
 
         // when
-
-        vm.prank(user);
+        vm.prank(address(vaultMock));
         ERC20(activeTokens.token).forceApprove(address(AAVE_POOL), amount);
-        vm.prank(user);
-        AAVE_POOL.supply(activeTokens.token, amount, user, 0);
 
-        uint256 balanceAfter = aaveV3Balances.balanceOf(user);
+        vm.prank(address(vaultMock));
+        AAVE_POOL.supply(activeTokens.token, amount, address(vaultMock), 0);
+
+        uint256 balanceAfter = vaultMock.balanceOf();
 
         // then
         assertTrue(balanceAfter > balanceBefore, "Balance should be greater after supply");
@@ -66,34 +69,36 @@ contract AaveV3BalanceFuseTest is Test {
     function testShouldDecreaseBalanceWhenBorrowVariable() external iterateSupportedTokens {
         // given
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19508857);
-        AaveV3BalanceFuseMock aaveV3Balances = new AaveV3BalanceFuseMock(
+        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
             1,
             address(AAVE_PRICE_ORACLE),
             ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
         );
-        address user = vm.rememberKey(123);
+
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(aaveV3Balances));
+
         uint256 decimals = ERC20(activeTokens.token).decimals();
         uint256 amount = 100 * 10 ** decimals;
         uint256 borrowAmount = 20 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.token, user, 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.token, address(vaultMock), 1_000 * 10 ** decimals);
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.token;
-        aaveV3Balances.updateMarketConfiguration(assets);
+        vaultMock.updateMarketConfiguration(1, assets);
 
-        vm.prank(user);
+        vm.prank(address(vaultMock));
         ERC20(activeTokens.token).forceApprove(address(AAVE_POOL), amount);
-        vm.prank(user);
-        AAVE_POOL.supply(activeTokens.token, amount, user, 0);
+        vm.prank(address(vaultMock));
+        AAVE_POOL.supply(activeTokens.token, amount, address(vaultMock), 0);
 
-        uint256 balanceBefore = aaveV3Balances.balanceOf(user);
+        uint256 balanceBefore = vaultMock.balanceOf();
 
         // when
-        vm.prank(user);
-        AAVE_POOL.borrow(activeTokens.token, borrowAmount, uint256(2), 0, user);
+        vm.prank(address(vaultMock));
+        AAVE_POOL.borrow(activeTokens.token, borrowAmount, uint256(2), 0, address(vaultMock));
 
-        uint256 balanceAfter = aaveV3Balances.balanceOf(user);
+        uint256 balanceAfter = vaultMock.balanceOf();
 
         // then
         assertTrue(balanceAfter < balanceBefore, "Balance should be greater after supply");
