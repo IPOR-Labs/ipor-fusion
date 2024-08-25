@@ -17,7 +17,7 @@ contract ERC20BalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
     }
 
-    function balanceOf(address plasmaVault_) external view override returns (uint256) {
+    function balanceOf() external view override returns (uint256) {
         bytes32[] memory vaults = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = vaults.length;
@@ -32,6 +32,7 @@ contract ERC20BalanceFuse is IMarketBalanceFuse {
         uint256 priceDecimals;
         address underlineAsset = IERC4626(address(this)).asset();
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+
         for (uint256 i; i < len; ++i) {
             asset = PlasmaVaultConfigLib.bytes32ToAddress(vaults[i]);
             if (address(asset) == underlineAsset) {
@@ -40,7 +41,7 @@ contract ERC20BalanceFuse is IMarketBalanceFuse {
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);
 
             balance += IporMath.convertToWad(
-                IERC20(asset).balanceOf(plasmaVault_) * price,
+                IERC20(asset).balanceOf(address(this)) * price,
                 IERC20Metadata(asset).decimals() + priceDecimals
             );
         }
