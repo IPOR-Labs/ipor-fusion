@@ -7,7 +7,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
-import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 import {UniswapSwapV2Fuse, UniswapSwapV2FuseEnterData} from "../../../contracts/fuses/uniswap/UniswapSwapV2Fuse.sol";
 
@@ -17,7 +17,7 @@ import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {UniswapBalanceFuse} from "../../../contracts/fuses/uniswap/UniswapBalanceFuse.sol";
+import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
 contract UniswapSwapV2FuseTest is Test {
     using SafeERC20 for ERC20;
@@ -229,7 +229,7 @@ contract UniswapSwapV2FuseTest is Test {
 
     function _getFuses() private returns (address[] memory fuses_) {
         UniswapSwapV2Fuse uniswapSwapV2Fuse = new UniswapSwapV2Fuse(
-            IporFusionMarketsArbitrum.UNISWAP_SWAP_V2,
+            IporFusionMarkets.UNISWAP_SWAP_V2,
             UNIVERSAL_ROUTER
         );
 
@@ -245,11 +245,11 @@ contract UniswapSwapV2FuseTest is Test {
         uniswapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(USDT);
         uniswapTokens[2] = PlasmaVaultConfigLib.addressToBytes32(DAI);
 
-        marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.UNISWAP_SWAP_V2, uniswapTokens);
+        marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.UNISWAP_SWAP_V2, uniswapTokens);
     }
     //
     function _setupFuses() private returns (address[] memory fuses_) {
-        _uniswapSwapV2Fuse = new UniswapSwapV2Fuse(IporFusionMarketsArbitrum.UNISWAP_SWAP_V2, UNIVERSAL_ROUTER);
+        _uniswapSwapV2Fuse = new UniswapSwapV2Fuse(IporFusionMarkets.UNISWAP_SWAP_V2, UNIVERSAL_ROUTER);
 
         fuses_ = new address[](1);
         fuses_[0] = address(_uniswapSwapV2Fuse);
@@ -257,9 +257,9 @@ contract UniswapSwapV2FuseTest is Test {
     //
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
         // @Dev this setup is ignored for tests
-        UniswapBalanceFuse uniswapBalance = new UniswapBalanceFuse(IporFusionMarketsArbitrum.UNISWAP_SWAP_V2);
+        ZeroBalanceFuse uniswapBalance = new ZeroBalanceFuse(IporFusionMarkets.UNISWAP_SWAP_V2);
 
         balanceFuses_ = new MarketBalanceFuseConfig[](1);
-        balanceFuses_[0] = MarketBalanceFuseConfig(IporFusionMarketsArbitrum.UNISWAP_SWAP_V2, address(uniswapBalance));
+        balanceFuses_[0] = MarketBalanceFuseConfig(IporFusionMarkets.UNISWAP_SWAP_V2, address(uniswapBalance));
     }
 }
