@@ -7,20 +7,20 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IFarmingPool} from "../../fuses/gearbox_v3/ext/IFarmingPool.sol";
+import {IFluidLendingStakingRewards} from "../../fuses/fluid_instadapp/ext/IFluidLendingStakingRewards.sol";
 
-/// @title Claim Fuse for GearboxV3 FarmDToken rewards - responsible for claiming rewards from FarmDToken contracts
-contract GearboxV3FarmDTokenClaimFuse {
+/// @title Claim Fuse for Fluid Instadapp rewards - responsible for claiming rewards from FluidLendingStakingRewards contracts
+contract FluidInstadappClaimFuse {
     using SafeERC20 for IERC20;
 
-    event GearboxV3FarmDTokenClaimFuseRewardsClaimed(
+    event FluidInstadappClaimFuseRewardsClaimed(
         address version,
         address rewardsToken,
         uint256 rewardsTokenBalance,
         address rewardsClaimManager
     );
 
-    error GearboxV3FarmDTokenClaimFuseRewardsClaimManagerZeroAddress(address version);
+    error FluidInstadappClaimFuseRewardsClaimManagerZeroAddress(address version);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -30,7 +30,6 @@ contract GearboxV3FarmDTokenClaimFuse {
         MARKET_ID = marketId_;
     }
 
-    /// @notice Claims rewards from FarmDToken contracts
     function claim() external {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 len = substrates.length;
@@ -41,35 +40,30 @@ contract GearboxV3FarmDTokenClaimFuse {
 
         address rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
         if (rewardsClaimManager == address(0)) {
-            revert GearboxV3FarmDTokenClaimFuseRewardsClaimManagerZeroAddress(VERSION);
+            revert FluidInstadappClaimFuseRewardsClaimManagerZeroAddress(VERSION);
         }
 
-        address farmDToken;
+        address fluidLendingStakingRewards;
         address rewardsToken;
         uint256 rewardsTokenBalance;
 
         for (uint256 i; i < len; ++i) {
-            farmDToken = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
-            if (farmDToken == address(0)) {
+            fluidLendingStakingRewards = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
+            if (fluidLendingStakingRewards == address(0)) {
                 continue;
             }
-            rewardsToken = IFarmingPool(farmDToken).rewardsToken();
-            rewardsTokenBalance = IFarmingPool(farmDToken).farmed(address(this));
+            rewardsToken = IFluidLendingStakingRewards(fluidLendingStakingRewards).rewardsToken();
+            rewardsTokenBalance = IFluidLendingStakingRewards(fluidLendingStakingRewards).earned(address(this));
 
             if (rewardsTokenBalance == 0) {
                 continue;
             }
 
-            IFarmingPool(farmDToken).claim();
+            IFluidLendingStakingRewards(fluidLendingStakingRewards).getReward();
 
             IERC20(rewardsToken).safeTransfer(rewardsClaimManager, rewardsTokenBalance);
 
-            emit GearboxV3FarmDTokenClaimFuseRewardsClaimed(
-                VERSION,
-                rewardsToken,
-                rewardsTokenBalance,
-                rewardsClaimManager
-            );
+            emit FluidInstadappClaimFuseRewardsClaimed(VERSION, rewardsToken, rewardsTokenBalance, rewardsClaimManager);
         }
     }
 }
