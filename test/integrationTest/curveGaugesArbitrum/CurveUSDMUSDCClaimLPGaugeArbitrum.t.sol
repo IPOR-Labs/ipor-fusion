@@ -22,7 +22,7 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/USDMPriceFeedArbitrum.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
-import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 
 contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
@@ -466,12 +466,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _setupFuses() private {
-        curveStableswapNGSingleSideSupplyFuse = new CurveStableswapNGSingleSideSupplyFuse(
-            IporFusionMarketsArbitrum.CURVE_POOL
-        );
-        curveChildLiquidityGaugeSupplyFuse = new CurveChildLiquidityGaugeSupplyFuse(
-            IporFusionMarketsArbitrum.CURVE_LP_GAUGE
-        );
+        curveStableswapNGSingleSideSupplyFuse = new CurveStableswapNGSingleSideSupplyFuse(IporFusionMarkets.CURVE_POOL);
+        curveChildLiquidityGaugeSupplyFuse = new CurveChildLiquidityGaugeSupplyFuse(IporFusionMarkets.CURVE_LP_GAUGE);
 
         fuses = new address[](2);
         fuses[0] = address(curveStableswapNGSingleSideSupplyFuse);
@@ -479,7 +475,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _createClaimFuse() private {
-        curveGaugeTokenClaimFuse = new CurveGaugeTokenClaimFuse(IporFusionMarketsArbitrum.CURVE_LP_GAUGE);
+        curveGaugeTokenClaimFuse = new CurveGaugeTokenClaimFuse(IporFusionMarkets.CURVE_LP_GAUGE);
     }
 
     function _createAlphas() private {
@@ -523,31 +519,28 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         marketConfigs = new MarketSubstratesConfig[](2);
         bytes32[] memory substratesCurvePool = new bytes32[](1);
         substratesCurvePool[0] = PlasmaVaultConfigLib.addressToBytes32(CURVE_STABLESWAP_NG_POOL);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.CURVE_POOL, substratesCurvePool);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.CURVE_POOL, substratesCurvePool);
 
         bytes32[] memory substratesCurveGauge = new bytes32[](1);
         substratesCurveGauge[0] = PlasmaVaultConfigLib.addressToBytes32(CHILD_LIQUIDITY_GAUGE);
-        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarketsArbitrum.CURVE_LP_GAUGE, substratesCurveGauge);
+        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarkets.CURVE_LP_GAUGE, substratesCurveGauge);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         CurveStableswapNGSingleSideBalanceFuse curveStableswapNGBalanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-                IporFusionMarketsArbitrum.CURVE_POOL,
+                IporFusionMarkets.CURVE_POOL,
                 address(priceOracleMiddlewareProxy)
             );
 
         CurveChildLiquidityGaugeBalanceFuse curveChildLiquidityGaugeBalanceFuse = new CurveChildLiquidityGaugeBalanceFuse(
-                IporFusionMarketsArbitrum.CURVE_LP_GAUGE,
+                IporFusionMarkets.CURVE_LP_GAUGE,
                 address(priceOracleMiddlewareProxy)
             );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.CURVE_POOL,
-            address(curveStableswapNGBalanceFuse)
-        );
+        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.CURVE_POOL, address(curveStableswapNGBalanceFuse));
         balanceFuses[1] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.CURVE_LP_GAUGE,
+            IporFusionMarkets.CURVE_LP_GAUGE,
             address(curveChildLiquidityGaugeBalanceFuse)
         );
     }
@@ -605,10 +598,10 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
     function _setupDependencyBalanceGraphs() private {
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.CURVE_LP_GAUGE;
+        marketIds[0] = IporFusionMarkets.CURVE_LP_GAUGE;
 
         uint256[] memory dependencies = new uint256[](1);
-        dependencies[0] = IporFusionMarketsArbitrum.CURVE_POOL;
+        dependencies[0] = IporFusionMarkets.CURVE_POOL;
 
         uint256[][] memory dependencyMarkets = new uint256[][](1);
         dependencyMarkets[0] = dependencies;
