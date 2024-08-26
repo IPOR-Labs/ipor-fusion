@@ -33,4 +33,6 @@ contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20Votes
     ) internal virtual override(ERC20Upgradeable, ERC20VotesUpgradeable) {
         ERC20VotesUpgradeable._update(from_, to_, value_);
     }
+
+    //    function _checkCanCall(address caller, bytes calldata data) internal virtual override {} // solhint-disable-line no-empty-blocks
 }

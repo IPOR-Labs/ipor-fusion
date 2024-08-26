@@ -147,7 +147,7 @@ contract PlasmaVault is
         }
 
         for (uint256 i; i < initData_.marketSubstratesConfigs.length; ++i) {
-            PlasmaVaultConfigLib.grandMarketSubstrates(
+            PlasmaVaultConfigLib.grantMarketSubstrates(
                 initData_.marketSubstratesConfigs[i].marketId,
                 initData_.marketSubstratesConfigs[i].substrates
             );

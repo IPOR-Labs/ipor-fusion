@@ -2,10 +2,10 @@
 pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IChronicle} from "../ext/IChronicle.sol";
-import {IPriceFeed} from "./IPriceFeed.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
+import {IChronicle} from "../../../ext/IChronicle.sol";
+import {IPriceFeed} from "../../IPriceFeed.sol";
+import {Errors} from "../../../../libraries/errors/Errors.sol";
 
 /// @title Price feed for USDM on Arbitrum
 /// @notice PriceOracle adapter for Chronicle push-based price feeds.

@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {SDaiPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/SDaiPriceFeedEthereum.sol";
+import {SDaiPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/SDaiPriceFeedEthereum.sol";
 
 contract SDaiPriceFeedTest is Test {
     function setUp() public {
