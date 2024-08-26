@@ -12,7 +12,7 @@ import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultCo
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {USDMPriceFeedArbitrum} from "./../../../contracts/price_oracle/price_feed/USDMPriceFeedArbitrum.sol";
+import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/chains/arbitrum/USDMPriceFeedArbitrum.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";

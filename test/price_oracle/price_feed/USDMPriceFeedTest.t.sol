@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/USDMPriceFeedArbitrum.sol";
+import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/chains/arbitrum/USDMPriceFeedArbitrum.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 
 contract USDMPriceFeedTest is Test {

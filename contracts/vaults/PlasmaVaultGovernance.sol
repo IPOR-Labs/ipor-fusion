@@ -91,8 +91,8 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         FusesLib.removeBalanceFuse(marketId_, fuse_);
     }
 
-    function grandMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external override restricted {
-        PlasmaVaultConfigLib.grandMarketSubstrates(marketId_, substrates_);
+    function grantMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external override restricted {
+        PlasmaVaultConfigLib.grantMarketSubstrates(marketId_, substrates_);
     }
 
     function updateDependencyBalanceGraphs(
