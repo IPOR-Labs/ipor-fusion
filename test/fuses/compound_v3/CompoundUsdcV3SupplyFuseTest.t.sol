@@ -5,8 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {IComet} from "../../../contracts/fuses/compound_v3/ext/IComet.sol";
-
-import {CompoundV3SupplyFuseMock} from "./CompoundV3SupplyFuseMock.sol";
+import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract CompoundUsdcV3SupplyFuseTest is Test {
     address public constant COMET_V3_USDC = 0xc3d688B66703497DAA19211EEdff47f25384cdc3;
@@ -25,27 +24,27 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
         CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, COMET_V3_USDC);
-        CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.asset, address(fuseMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.asset, address(vaultMock), 1_000 * 10 ** decimals);
 
-        uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
-        uint256 balanceOnCometBefore = _getBalance(address(fuseMock), activeTokens.asset);
+        uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
+        uint256 balanceOnCometBefore = _getBalance(address(vaultMock), activeTokens.asset);
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.asset;
-        fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
+        vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         // when
 
-        fuseMock.enter(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
+        vaultMock.enter(abi.encode(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount})));
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
-        uint256 balanceOnCometAfter = _getBalance(address(fuseMock), activeTokens.asset);
+        uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
+        uint256 balanceOnCometAfter = _getBalance(address(vaultMock), activeTokens.asset);
 
         assertEq(balanceAfter + amount, balanceBefore, "vault balance should be decreased by amount");
         assertTrue(balanceOnCometAfter > balanceOnCometBefore, "collateral balance should be increased by amount");
@@ -54,28 +53,30 @@ contract CompoundUsdcV3SupplyFuseTest is Test {
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
         CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, COMET_V3_USDC);
-        CompoundV3SupplyFuseMock fuseMock = new CompoundV3SupplyFuseMock(address(fuse));
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
         uint256 amount = 100 * 10 ** decimals;
 
-        _supplyTokensToMockVault(activeTokens.asset, address(fuseMock), 1_000 * 10 ** decimals);
+        _supplyTokensToMockVault(activeTokens.asset, address(vaultMock), 1_000 * 10 ** decimals);
 
         address[] memory assets = new address[](1);
         assets[0] = activeTokens.asset;
-        fuseMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
+        vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
-        fuseMock.enter(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
+        vaultMock.enter(abi.encode(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount})));
 
-        uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
-        uint256 balanceOnCometBefore = _getBalance(address(fuseMock), activeTokens.asset);
+        uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
+        uint256 balanceOnCometBefore = _getBalance(address(vaultMock), activeTokens.asset);
 
         // when
-        fuseMock.exit(CompoundV3SupplyFuseExitData({asset: activeTokens.asset, amount: balanceOnCometBefore}));
+        vaultMock.exit(
+            abi.encode(CompoundV3SupplyFuseExitData({asset: activeTokens.asset, amount: balanceOnCometBefore}))
+        );
 
         // then
-        uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(fuseMock));
-        uint256 balanceOnCometAfter = _getBalance(address(fuseMock), activeTokens.asset);
+        uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
+        uint256 balanceOnCometAfter = _getBalance(address(vaultMock), activeTokens.asset);
 
         assertTrue(balanceAfter > balanceBefore, "vault balance should be increased by amount");
         assertTrue(balanceOnCometAfter < balanceOnCometBefore, "collateral balance should be decreased by amount");

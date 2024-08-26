@@ -10,9 +10,10 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "./../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
-import {VaultERC4626Mock} from "./VaultERC4626Mock.sol";
 
 import {PriceOracleMiddleware} from "./../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+
+import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract ERC4646BalanceFuseTest is Test {
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -36,7 +37,7 @@ contract ERC4646BalanceFuseTest is Test {
         // given
         Erc4626SupplyFuse supplyFuse = new Erc4626SupplyFuse(1);
         ERC4626BalanceFuse balanceFuse = new ERC4626BalanceFuse(1);
-        VaultERC4626Mock vault = new VaultERC4626Mock(address(supplyFuse), address(balanceFuse));
+        PlasmaVaultMock vault = new PlasmaVaultMock(address(supplyFuse), address(balanceFuse));
         vault.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         address[] memory assets = new address[](1);
@@ -47,14 +48,14 @@ contract ERC4646BalanceFuseTest is Test {
         deal(DAI, address(vault), 1_000e18);
 
         uint256 balanceBefore = IERC4626(SDAI).balanceOf(address(vault));
-        uint256 balanceFromFuseBefore = vault.balanceOf(address(vault));
+        uint256 balanceFromFuseBefore = vault.balanceOf();
 
         // when
-        vault.enter(Erc4626SupplyFuseEnterData({vault: SDAI, vaultAssetAmount: amount}));
+        vault.enter(abi.encode(Erc4626SupplyFuseEnterData({vault: SDAI, vaultAssetAmount: amount})));
 
         //then
         uint256 balanceAfter = IERC4626(SDAI).balanceOf(address(vault));
-        uint256 balanceFromFuseAfter = vault.balanceOf(address(vault));
+        uint256 balanceFromFuseAfter = vault.balanceOf();
 
         assertEq(balanceBefore, 0, "Balance before should be 0");
         assertEq(balanceFromFuseBefore, 0, "Balance from fuse before should be 0");
@@ -72,7 +73,7 @@ contract ERC4646BalanceFuseTest is Test {
         // given
         Erc4626SupplyFuse supplyFuse = new Erc4626SupplyFuse(1);
         ERC4626BalanceFuse balanceFuse = new ERC4626BalanceFuse(1);
-        VaultERC4626Mock vault = new VaultERC4626Mock(address(supplyFuse), address(balanceFuse));
+        PlasmaVaultMock vault = new PlasmaVaultMock(address(supplyFuse), address(balanceFuse));
         vault.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
         address[] memory assets = new address[](1);
@@ -82,22 +83,24 @@ contract ERC4646BalanceFuseTest is Test {
 
         deal(DAI, address(vault), 1_000e18);
 
-        vault.enter(Erc4626SupplyFuseEnterData({vault: SDAI, vaultAssetAmount: amount}));
+        vault.enter(abi.encode(Erc4626SupplyFuseEnterData({vault: SDAI, vaultAssetAmount: amount})));
 
         uint256 balanceBeforeWithdraw = IERC4626(SDAI).balanceOf(address(vault));
-        uint256 balanceFromFuseBeforeWithdraw = vault.balanceOf(address(vault));
+        uint256 balanceFromFuseBeforeWithdraw = vault.balanceOf();
 
         // when
         vault.exit(
-            Erc4626SupplyFuseExitData({
-                vault: SDAI,
-                vaultAssetAmount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw)
-            })
+            abi.encode(
+                Erc4626SupplyFuseExitData({
+                    vault: SDAI,
+                    vaultAssetAmount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw)
+                })
+            )
         );
 
         // then
         uint256 balanceAfterWithdraw = IERC4626(SDAI).balanceOf(address(vault));
-        uint256 balanceFromFuseAfterWithdraw = vault.balanceOf(address(vault));
+        uint256 balanceFromFuseAfterWithdraw = vault.balanceOf();
 
         assertEq(
             balanceBeforeWithdraw,

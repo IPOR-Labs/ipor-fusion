@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
@@ -10,18 +10,13 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
-/// @title Generic fuse for ERC4626 vaults responsible for calculating the balance of the Plasma Vault in the ERC4626 vaults based on preconfigured market substrates
-/// @dev Substrates in this fuse are the assets that are used in the ERC4626 vaults for a given MARKET_ID
-contract ERC4626BalanceFuse is IMarketBalanceFuse {
-    using SafeCast for uint256;
-
+contract ERC20BalanceFuse is IMarketBalanceFuse {
     uint256 public immutable MARKET_ID;
 
     constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
     }
 
-    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory vaults = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -32,20 +27,23 @@ contract ERC4626BalanceFuse is IMarketBalanceFuse {
         }
 
         uint256 balance;
-        uint256 vaultAssets;
-        IERC4626 vault;
         address asset;
         uint256 price;
         uint256 priceDecimals;
+        address underlineAsset = IERC4626(address(this)).asset();
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
-        address plasmaVault = address(this);
 
         for (uint256 i; i < len; ++i) {
-            vault = IERC4626(PlasmaVaultConfigLib.bytes32ToAddress(vaults[i]));
-            vaultAssets = vault.convertToAssets(vault.balanceOf(plasmaVault));
-            asset = vault.asset();
+            asset = PlasmaVaultConfigLib.bytes32ToAddress(vaults[i]);
+            if (address(asset) == underlineAsset) {
+                continue;
+            }
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);
-            balance += IporMath.convertToWad(vaultAssets * price, IERC20Metadata(asset).decimals() + priceDecimals);
+
+            balance += IporMath.convertToWad(
+                IERC20(asset).balanceOf(address(this)) * price,
+                IERC20Metadata(asset).decimals() + priceDecimals
+            );
         }
 
         return balance;

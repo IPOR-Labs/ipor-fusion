@@ -19,10 +19,9 @@ contract SparkBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
     }
 
-    /// @param plasmaVault_ The address of the Plasma Vault
-    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
-    function balanceOf(address plasmaVault_) external view override returns (uint256) {
-        return _convertToUsd(SDAI, ISavingsDai(SDAI).balanceOf(plasmaVault_));
+    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    function balanceOf() external view override returns (uint256) {
+        return _convertToUsd(SDAI, ISavingsDai(SDAI).balanceOf(address(this)));
     }
 
     function _convertToUsd(address asset_, uint256 amount_) internal view returns (uint256) {
