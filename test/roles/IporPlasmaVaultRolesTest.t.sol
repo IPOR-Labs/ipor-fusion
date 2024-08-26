@@ -7,7 +7,7 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {IporFusionMarketsArbitrum} from "../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
@@ -514,16 +514,16 @@ contract IporPlasmaVaultRolesTest is Test {
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.AAVE_V3, assets);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.AAVE_V3, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
-            IporFusionMarketsArbitrum.AAVE_V3,
+            IporFusionMarkets.AAVE_V3,
             AAVE_PRICE_ORACLE,
             AAVE_POOL_DATA_PROVIDER
         );
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
-            IporFusionMarketsArbitrum.AAVE_V3,
+            IporFusionMarkets.AAVE_V3,
             AAVE_POOL,
             AAVE_POOL_DATA_PROVIDER
         );
@@ -532,7 +532,7 @@ contract IporPlasmaVaultRolesTest is Test {
         fuses[0] = address(supplyFuse);
 
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarketsArbitrum.AAVE_V3, address(balanceFuse));
+        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.AAVE_V3, address(balanceFuse));
         _accessManager = new IporFusionAccessManager(_deployer);
 
         _plasmaVault = new PlasmaVault(

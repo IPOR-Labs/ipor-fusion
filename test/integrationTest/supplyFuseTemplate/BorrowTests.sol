@@ -5,6 +5,7 @@ import {TestAccountSetup} from "./TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "./TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "./TestVaultSetup.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 abstract contract BorrowTest is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {
     uint256 public constant ERROR_DELTA = 100;
@@ -34,7 +35,7 @@ abstract contract BorrowTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function setupBalanceFuses() public virtual override returns (MarketBalanceFuseConfig[] memory balanceFuses);
 
     function getMarketId() public view virtual returns (uint256) {
-        return 1;
+        return IporFusionMarkets.AAVE_V3;
     }
 
     function getEnterFuseData(

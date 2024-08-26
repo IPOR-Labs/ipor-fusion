@@ -9,7 +9,7 @@ import {FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
-import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 import {TestAccountSetup} from "../../integrationTest/supplyFuseTemplate/TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "../../integrationTest/supplyFuseTemplate/TestPriceOracleSetup.sol";
@@ -76,38 +76,32 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         marketConfigs = new MarketSubstratesConfig[](2);
         bytes32[] memory assetsDUsdc = new bytes32[](1);
         assetsDUsdc[0] = PlasmaVaultConfigLib.addressToBytes32(D_USDC);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.GEARBOX_POOL_V3, assetsDUsdc);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.GEARBOX_POOL_V3, assetsDUsdc);
 
         bytes32[] memory assetsErc20 = new bytes32[](3);
         assetsErc20[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
         assetsErc20[1] = PlasmaVaultConfigLib.addressToBytes32(DAI);
         assetsErc20[2] = PlasmaVaultConfigLib.addressToBytes32(USDT);
 
-        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE, assetsErc20);
+        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, assetsErc20);
     }
 
     function setupFuses() public override {
-        gearboxV3DTokenFuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
+        gearboxV3DTokenFuse = new Erc4626SupplyFuse(IporFusionMarkets.GEARBOX_POOL_V3);
 
         fuses = new address[](1);
         fuses[0] = address(gearboxV3DTokenFuse);
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
+        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarkets.GEARBOX_POOL_V3);
 
-        ERC20BalanceFuse erc20BalanceArbitrum = new ERC20BalanceFuse(IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE);
+        ERC20BalanceFuse erc20BalanceArbitrum = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
 
         balanceFuses = new MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3,
-            address(gearboxV3Balances)
-        );
+        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.GEARBOX_POOL_V3, address(gearboxV3Balances));
 
-        balanceFuses[1] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE,
-            address(erc20BalanceArbitrum)
-        );
+        balanceFuses[1] = MarketBalanceFuseConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, address(erc20BalanceArbitrum));
     }
 
     function getEnterFuseData(
@@ -154,10 +148,10 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(enterData)));
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
 
         uint256[] memory dependence = new uint256[](1);
-        dependence[0] = IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE;
+        dependence[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
         dependenceMarkets[0] = dependence;
@@ -167,11 +161,9 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
 
-        uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
-        );
+        uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.GEARBOX_POOL_V3);
         uint256 assetsInErc20Before = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE
+            IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
         //when
@@ -181,11 +173,9 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         // then
 
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
-        );
+        uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.GEARBOX_POOL_V3);
         uint256 assetsInErc20After = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE
+            IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
@@ -222,10 +212,10 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(enterData)));
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
 
         uint256[] memory dependence = new uint256[](1);
-        dependence[0] = IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE;
+        dependence[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
         dependenceMarkets[0] = dependence;
@@ -240,11 +230,9 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
 
-        uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
-        );
+        uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.GEARBOX_POOL_V3);
         uint256 assetsInErc20Before = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE
+            IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
         //when
@@ -254,11 +242,9 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         // then
 
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
-        );
+        uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.GEARBOX_POOL_V3);
         uint256 assetsInErc20After = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE
+            IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
@@ -291,10 +277,10 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(enterData)));
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
 
         uint256[] memory dependence = new uint256[](1);
-        dependence[0] = IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE;
+        dependence[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
         dependenceMarkets[0] = dependence;
@@ -312,11 +298,9 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
 
-        uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
-        );
+        uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.GEARBOX_POOL_V3);
         uint256 assetsInErc20Before = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE
+            IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
         //when
@@ -326,11 +310,9 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         // then
 
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
-        );
+        uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.GEARBOX_POOL_V3);
         uint256 assetsInErc20After = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE
+            IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
@@ -362,10 +344,10 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(enterData)));
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
 
         uint256[] memory dependence = new uint256[](1);
-        dependence[0] = IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE;
+        dependence[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
         dependenceMarkets[0] = dependence;
@@ -375,11 +357,9 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
 
-        uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
-        );
+        uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.GEARBOX_POOL_V3);
         uint256 assetsInErc20Before = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE
+            IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
         //when
@@ -392,11 +372,9 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         // then
 
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
-        uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3
-        );
+        uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.GEARBOX_POOL_V3);
         uint256 assetsInErc20After = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.ERC20_VAULT_BALANCE
+            IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");

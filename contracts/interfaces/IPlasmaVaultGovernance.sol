@@ -87,7 +87,7 @@ interface IPlasmaVaultGovernance {
     /// @param marketId_ The marketId of the market
     /// @param substrates_ The substrates to grant
     /// @dev Substrates can be assets, vault, markets or any other parameter specific for the market and associated with market external protocol
-    function grandMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external;
+    function grantMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external;
 
     /// @notice Updates the dependency balance graphs for the markets
     /// @param marketIds_ The array of marketIds

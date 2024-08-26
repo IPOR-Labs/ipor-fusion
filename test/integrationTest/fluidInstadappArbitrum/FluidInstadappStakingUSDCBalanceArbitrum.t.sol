@@ -9,7 +9,7 @@ import {FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
-import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {FluidInstadappStakingSupplyFuseExitData, FluidInstadappStakingSupplyFuseEnterData, FluidInstadappStakingSupplyFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol";
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
@@ -76,27 +76,23 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         marketConfigs = new MarketSubstratesConfig[](3);
         bytes32[] memory assetsFToken = new bytes32[](1);
         assetsFToken[0] = PlasmaVaultConfigLib.addressToBytes32(F_TOKEN);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL, assetsFToken);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.FLUID_INSTADAPP_POOL, assetsFToken);
 
         bytes32[] memory assetsStakingUsdc = new bytes32[](1);
         assetsStakingUsdc[0] = PlasmaVaultConfigLib.addressToBytes32(FLUID_LENDING_STAKING_REWARDS);
-        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING, assetsStakingUsdc);
+        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarkets.FLUID_INSTADAPP_STAKING, assetsStakingUsdc);
 
         bytes32[] memory assetsAave = new bytes32[](1);
         assetsAave[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        marketConfigs[2] = MarketSubstratesConfig(IporFusionMarketsArbitrum.AAVE_V3, assetsAave);
+        marketConfigs[2] = MarketSubstratesConfig(IporFusionMarkets.AAVE_V3, assetsAave);
     }
 
     function setupFuses() public override {
-        erc4626SupplyFuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL);
+        erc4626SupplyFuse = new Erc4626SupplyFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
         fluidInstadappStakingSupplyFuse = new FluidInstadappStakingSupplyFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
-        AaveV3SupplyFuse fuseAave = new AaveV3SupplyFuse(
-            IporFusionMarketsArbitrum.AAVE_V3,
-            AAVE_POOL,
-            AAVE_POOL_DATA_PROVIDER
-        );
+        AaveV3SupplyFuse fuseAave = new AaveV3SupplyFuse(IporFusionMarkets.AAVE_V3, AAVE_POOL, AAVE_POOL_DATA_PROVIDER);
 
         fuses = new address[](3);
         fuses[0] = address(erc4626SupplyFuse);
@@ -105,30 +101,23 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL);
+        ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalance = new FluidInstadappStakingBalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
-        aaveFuseBalance = new AaveV3BalanceFuse(
-            IporFusionMarketsArbitrum.AAVE_V3,
-            AAVE_PRICE_ORACLE,
-            AAVE_POOL_DATA_PROVIDER
-        );
+        aaveFuseBalance = new AaveV3BalanceFuse(IporFusionMarkets.AAVE_V3, AAVE_PRICE_ORACLE, AAVE_POOL_DATA_PROVIDER);
 
         balanceFuses = new MarketBalanceFuseConfig[](3);
-        balanceFuses[0] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
-            address(erc4626BalanceFuse)
-        );
+        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.FLUID_INSTADAPP_POOL, address(erc4626BalanceFuse));
 
         balanceFuses[1] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING,
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING,
             address(fluidInstadappStakingBalance)
         );
 
-        balanceFuses[2] = MarketBalanceFuseConfig(IporFusionMarketsArbitrum.AAVE_V3, address(aaveFuseBalance));
+        balanceFuses[2] = MarketBalanceFuseConfig(IporFusionMarkets.AAVE_V3, address(aaveFuseBalance));
     }
 
     function setupInstantWithdrawFusesOrder() internal {
@@ -223,10 +212,10 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
 
         uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
+            IporFusionMarkets.FLUID_INSTADAPP_POOL
         );
         uint256 assetsInStakedUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
         // when
@@ -237,10 +226,10 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
         uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
+            IporFusionMarkets.FLUID_INSTADAPP_POOL
         );
         uint256 assetsInStakedUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
@@ -277,10 +266,10 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         }
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING;
+        marketIds[0] = IporFusionMarkets.FLUID_INSTADAPP_STAKING;
 
         uint256[] memory dependence = new uint256[](1);
-        dependence[0] = IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL;
+        dependence[0] = IporFusionMarkets.FLUID_INSTADAPP_POOL;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
         dependenceMarkets[0] = dependence;
@@ -294,10 +283,10 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
 
         uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
+            IporFusionMarkets.FLUID_INSTADAPP_POOL
         );
         uint256 assetsInStakedUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
         // when
@@ -308,10 +297,10 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
         uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
+            IporFusionMarkets.FLUID_INSTADAPP_POOL
         );
         uint256 assetsInStakedUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
@@ -348,11 +337,11 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         }
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING;
+        marketIds[0] = IporFusionMarkets.FLUID_INSTADAPP_STAKING;
 
         uint256[] memory dependencies = new uint256[](2);
-        dependencies[0] = IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL;
-        dependencies[1] = IporFusionMarketsArbitrum.AAVE_V3;
+        dependencies[0] = IporFusionMarkets.FLUID_INSTADAPP_POOL;
+        dependencies[1] = IporFusionMarkets.AAVE_V3;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
         dependenceMarkets[0] = dependencies;
@@ -375,13 +364,13 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         IPool(AAVE_POOL).supply(USDC, amountDepositedToAave, address(plasmaVault), 0);
         vm.stopPrank();
 
-        uint256 assetInAaveV3Before = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarketsArbitrum.AAVE_V3);
+        uint256 assetInAaveV3Before = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
         uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
         uint256 assetsInDUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
+            IporFusionMarkets.FLUID_INSTADAPP_POOL
         );
         uint256 assetsInStakedUsdcBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
         // when
@@ -392,12 +381,12 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
         uint256 assetsInDUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
+            IporFusionMarkets.FLUID_INSTADAPP_POOL
         );
         uint256 assetsInStakedUsdcAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
-        uint256 assetInAaveV3After = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarketsArbitrum.AAVE_V3);
+        uint256 assetInAaveV3After = PlasmaVault(plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
 
         assertEq(assetsInDUsdcBefore, 0, "assetsInDUsdcBefore should be 0");
         assertGt(assetsInStakedUsdcBefore, 0, "assetsInStakedUsdcBefore should be greater than 0");

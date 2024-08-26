@@ -9,7 +9,11 @@ import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} f
 import {PlasmaVault, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {WstETHPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
 
 contract AaveV3WstEthBorrowEthereum is BorrowTest {
     address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -42,10 +46,13 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
     }
 
     function setupPriceOracle() public override returns (address[] memory assets, address[] memory sources) {
-        assets = new address[](1);
-        sources = new address[](1);
+        assets = new address[](2);
+        sources = new address[](2);
         assets[0] = W_ETH;
         sources[0] = CHAINLINK_ETH;
+
+        assets[1] = WST_ETH;
+        sources[1] = address(new WstETHPriceFeedEthereum());
     }
 
     function setupMarketConfigs() public override returns (MarketSubstratesConfig[] memory marketConfigs) {
@@ -54,6 +61,18 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(W_ETH);
         assets[1] = PlasmaVaultConfigLib.addressToBytes32(WST_ETH);
         marketConfigs[0] = MarketSubstratesConfig(getMarketId(), assets);
+    }
+
+    function setupMarketConfigsWithErc20Balance() public returns (MarketSubstratesConfig[] memory marketConfigs) {
+        marketConfigs = new MarketSubstratesConfig[](2);
+        bytes32[] memory assets = new bytes32[](2);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(W_ETH);
+        assets[1] = PlasmaVaultConfigLib.addressToBytes32(WST_ETH);
+        marketConfigs[0] = MarketSubstratesConfig(getMarketId(), assets);
+
+        bytes32[] memory assets2 = new bytes32[](1);
+        assets2[0] = PlasmaVaultConfigLib.addressToBytes32(WST_ETH);
+        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, assets2);
     }
 
     function setupFuses() public override {
@@ -73,6 +92,36 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
 
         balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(getMarketId(), address(aaveV3Balances));
+    }
+
+    function setupBalanceFusesWithErc20Balance() public returns (MarketBalanceFuseConfig[] memory balanceFuses) {
+        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
+            getMarketId(),
+            AAVE_PRICE_ORACLE,
+            AAVE_POOL_DATA_PROVIDER
+        );
+
+        ERC20BalanceFuse erc20Balances = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
+
+        balanceFuses = new MarketBalanceFuseConfig[](2);
+        balanceFuses[0] = MarketBalanceFuseConfig(getMarketId(), address(aaveV3Balances));
+
+        balanceFuses[1] = MarketBalanceFuseConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, address(erc20Balances));
+    }
+
+    function setupDependencyBalanceGraphsWithErc20BalanceFuse() public {
+        uint256[] memory marketIds = new uint256[](1);
+
+        marketIds[0] = IporFusionMarkets.AAVE_V3;
+
+        uint256[] memory dependence = new uint256[](1);
+        dependence[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
+
+        uint256[][] memory dependencies = new uint256[][](1);
+        dependencies[0] = dependence;
+
+        vm.prank(accounts[0]);
+        PlasmaVaultGovernance(plasmaVault).updateDependencyBalanceGraphs(marketIds, dependencies);
     }
 
     function getEnterFuseData(
@@ -117,7 +166,7 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
         fusesSetup = fuses;
     }
 
-    function testShouldEnterBorrow() public {
+    function testShouldEnterBorrowErc20BalanceNotTakenIntoAccount() public {
         //given
         vm.prank(accounts[1]);
         PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
@@ -139,7 +188,7 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
 
         uint256 priceBorrowAsset = borrowAssetPrice * 10 ** 18;
 
-        (uint256 assetPrice, uint256 assetPriceDecimals) = IPriceOracleMiddleware(priceOracle).getAssetPrice(asset);
+        (uint256 assetPrice, ) = IPriceOracleMiddleware(priceOracle).getAssetPrice(asset);
 
         uint256 priceDepositAsset = assetPrice * 10 ** 18;
 
@@ -160,6 +209,46 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
         assertApproxEqAbs(totalAssetsAfter, vaultBalanceInUnderlying, ERROR_DELTA, "totalAssets");
         assertApproxEqAbs(assetsInMarketAfter, vaultBalanceInUnderlying, ERROR_DELTA, "assetsInMarket");
+    }
+
+    function testShouldEnterBorrowErc20BalanceISTakenIntoAccount() public {
+        //given
+        initPlasmaVaultCustom(setupMarketConfigsWithErc20Balance(), setupBalanceFusesWithErc20Balance());
+        initApprove();
+        setupDependencyBalanceGraphsWithErc20BalanceFuse();
+
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        bytes memory enterSupplyFuseData = getEnterFuseData(depositAmount, new bytes32[](0))[0];
+        address supplyFuse = fuses[0];
+        address borrowFuse = fuses[1];
+
+        calls[0] = FuseAction(supplyFuse, abi.encodeWithSignature("enter(bytes)", enterSupplyFuseData));
+
+        bytes memory enterBorrowFuseData = getEnterFuseData(borrowAmount, new bytes32[](0))[1];
+        calls[1] = FuseAction(borrowFuse, abi.encodeWithSignature("enter(bytes)", enterBorrowFuseData));
+
+        uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
+
+        uint256 totalAssetsBefore = PlasmaVault(plasmaVault).totalAssets();
+        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
+
+        //when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(calls);
+
+        //then
+        uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
+        uint256 totalAssetsAfter = PlasmaVault(plasmaVault).totalAssets();
+        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
+
+        assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
+        assertGt(totalAssetsAfter, totalAssetsBefore - 1e16, "totalAssets");
+        assertEq(assetsInMarketBefore, 0, "assetsInMarketBefore");
+        assertGt(assetsInMarketAfter, 0, "assetsInMarketAfter");
     }
 
     function testShouldExitBorrowRepay() public {
