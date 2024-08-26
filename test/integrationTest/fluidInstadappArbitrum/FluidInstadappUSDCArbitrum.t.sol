@@ -7,7 +7,7 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contract
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
-import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 contract FluidInstadappUSDCArbitrum is SupplyTest {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -21,7 +21,7 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
     }
 
     function getMarketId() public view override returns (uint256) {
-        return IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL;
+        return IporFusionMarkets.FLUID_INSTADAPP_POOL;
     }
 
     function setupAsset() public override {
@@ -44,23 +44,21 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         marketConfigs = new MarketSubstratesConfig[](1);
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(F_TOKEN);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL, assets);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.FLUID_INSTADAPP_POOL, assets);
     }
 
     function setupFuses() public override {
-        Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL);
+        Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
         fuses = new address[](1);
         fuses[0] = address(fuse);
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse fluidInstadappBalances = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
-        );
+        ERC4626BalanceFuse fluidInstadappBalances = new ERC4626BalanceFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
 
         balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
+            IporFusionMarkets.FLUID_INSTADAPP_POOL,
             address(fluidInstadappBalances)
         );
     }

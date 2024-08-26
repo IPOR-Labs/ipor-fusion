@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {SDaiPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/SDaiPriceFeedEthereum.sol";
+import {SDaiPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/SDaiPriceFeedEthereum.sol";
 
 import {SparkBalanceFuse} from "../../../contracts/fuses/spark/SparkBalanceFuse.sol";
 import {SparkSupplyFuse, SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../../contracts/fuses/spark/SparkSupplyFuse.sol";
