@@ -147,9 +147,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
 
         vm.startPrank(admin);
 
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(
-            0x0000000000000000000000000000000000000348
-        );
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x0000000000000000000000000000000000000348);
 
         _priceOracleMiddlewareProxy = address(
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", admin))
@@ -195,9 +193,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
-        );
+        ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL);
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalanceFuse = new FluidInstadappStakingBalanceFuse(
             IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING

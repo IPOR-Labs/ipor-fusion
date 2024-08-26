@@ -18,7 +18,9 @@ library IporFusionMarketsArbitrum {
     uint256 public constant FLUID_INSTADAPP_POOL = 5;
     uint256 public constant FLUID_INSTADAPP_STAKING = 6;
 
+    uint256 public constant ERC20_VAULT_BALANCE = 8;
+
     /// @dev Curve USDM/USDC/LP market
-    uint256 public constant CURVE_POOL = 7;
-    uint256 public constant CURVE_LP_GAUGE = 8;
+    uint256 public constant CURVE_POOL = 9;
+    uint256 public constant CURVE_LP_GAUGE = 10;
 }
