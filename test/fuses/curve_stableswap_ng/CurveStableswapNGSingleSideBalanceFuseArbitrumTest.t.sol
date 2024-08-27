@@ -108,7 +108,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -219,7 +220,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 

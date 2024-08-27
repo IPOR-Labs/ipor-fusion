@@ -20,7 +20,7 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         init();
     }
 
-    function getMarketId() public view override returns (uint256) {
+    function getMarketId() public pure override returns (uint256) {
         return IporFusionMarkets.FLUID_INSTADAPP_POOL;
     }
 
@@ -33,14 +33,14 @@ contract FluidInstadappUSDCArbitrum is SupplyTest {
         ERC20(asset).transfer(account_, amount_);
     }
 
-    function setupPriceOracle() public override returns (address[] memory assets, address[] memory sources) {
+    function setupPriceOracle() public pure override returns (address[] memory assets, address[] memory sources) {
         assets = new address[](1);
         sources = new address[](1);
         assets[0] = USDC;
         sources[0] = CHAINLINK_USDC;
     }
 
-    function setupMarketConfigs() public override returns (MarketSubstratesConfig[] memory marketConfigs) {
+    function setupMarketConfigs() public pure override returns (MarketSubstratesConfig[] memory marketConfigs) {
         marketConfigs = new MarketSubstratesConfig[](1);
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(F_TOKEN);

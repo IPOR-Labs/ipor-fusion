@@ -52,7 +52,7 @@ contract RewardsClaimManagerTest is Test {
         _accessManager.setTargetFunctionRole(address(_rewardsClaimManager), sig, _REWARD_MANAGER_ROLE);
     }
 
-    function testShouldGetInitialBalanceZero() public {
+    function testShouldGetInitialBalanceZero() public view {
         assertEq(_rewardsClaimManager.balanceOf(), 0, "Initial balance should be zero");
     }
 

@@ -73,6 +73,10 @@ interface IPlasmaVaultGovernance {
     /// @return Dependency balance graph is required because exists external protocols where interaction with the market can affect the balance of other markets
     function getDependencyBalanceGraph(uint256 marketId_) external view returns (uint256[] memory);
 
+    /// @notice Returns the total supply cap
+    /// @return The total supply cap, the values is represented in underlying decimals
+    function getTotalSupplyCap() external view returns (uint256);
+
     /// @notice Adds the balance fuse to the market
     /// @param marketId_ The marketId of the market
     /// @param fuse_ The address of the balance fuse
@@ -140,4 +144,8 @@ interface IPlasmaVaultGovernance {
     /// @param sender_ The address of the sender
     /// @param sig_ The signature of the function
     function updateCallbackHandler(address handler_, address sender_, bytes4 sig_) external;
+
+    /// @notice Sets the total supply cap
+    /// @param cap_ The total supply cap, the values is represented in underlying decimals
+    function setTotalSupplyCap(uint256 cap_) external;
 }

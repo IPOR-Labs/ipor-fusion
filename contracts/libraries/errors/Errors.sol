@@ -13,8 +13,8 @@ library Errors {
     error WrongArrayLength();
     /// @notice Error when wrong caller is used
     error WrongCaller(address caller);
-    /// @notice TODO: check if still used
-    error UnsupportedBaseCurrencyFromOracle();
+    /// @notice Error when wrong quote currency is used
+    error UnsupportedQuoteCurrencyFromOracle();
     /// @notice Error when unsupported price oracle middleware is used
     error UnsupportedPriceOracleMiddleware();
 }
