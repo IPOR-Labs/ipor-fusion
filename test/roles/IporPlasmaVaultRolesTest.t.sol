@@ -464,9 +464,9 @@ contract IporPlasmaVaultRolesTest is Test {
     function testShouldSetupTotalSupplyCapByAtomist() external {
         // given
         uint256 totalSupplyCap = 1000;
-        vm.prank(_data.atomists[0]);
 
         // when
+        vm.prank(_data.atomists[0]);
         IPlasmaVaultGovernance(address(_plasmaVault)).setTotalSupplyCap(totalSupplyCap);
 
         // then
