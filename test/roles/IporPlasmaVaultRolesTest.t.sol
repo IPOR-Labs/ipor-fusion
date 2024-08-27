@@ -461,6 +461,22 @@ contract IporPlasmaVaultRolesTest is Test {
         assertEq(_rewardsClaimManager.authority(), address(_accessManager), "Access manager should be an authority");
     }
 
+    function testShouldSetupTotalSupplyCapByAtomist() external {
+        // given
+        uint256 totalSupplyCap = 1000;
+        vm.prank(_data.atomists[0]);
+
+        // when
+        IPlasmaVaultGovernance(address(_plasmaVault)).setTotalSupplyCap(totalSupplyCap);
+
+        // then
+        assertEq(
+            IPlasmaVaultGovernance(address(_plasmaVault)).getTotalSupplyCap(),
+            totalSupplyCap,
+            "Total supply cap should be set"
+        );
+    }
+
     function _generateDataForInitialization() private {
         _data.admins = new address[](0);
         _data.owners = new address[](1);
@@ -547,7 +563,8 @@ contract IporPlasmaVaultRolesTest is Test {
                 balanceFuses,
                 FeeConfig(_data.performanceFeeManagers[0], 0, _data.managementFeeManagers[0], 0),
                 address(_accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
         vm.stopPrank();

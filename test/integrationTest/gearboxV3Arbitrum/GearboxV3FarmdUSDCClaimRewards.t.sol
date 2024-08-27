@@ -73,7 +73,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                     balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: _accessManager,
-                    plasmaVaultBase: address(new PlasmaVaultBase())
+                    plasmaVaultBase: address(new PlasmaVaultBase()),
+                    totalSupplyCap: type(uint256).max
                 })
             )
         );

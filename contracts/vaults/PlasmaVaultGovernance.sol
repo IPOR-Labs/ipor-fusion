@@ -83,6 +83,10 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_];
     }
 
+    function getTotalSupplyCap() external view override returns (uint256) {
+        return PlasmaVaultLib.getTotalSupplyCap();
+    }
+
     function addBalanceFuse(uint256 marketId_, address fuse_) external override restricted {
         _addBalanceFuse(marketId_, fuse_);
     }
@@ -173,6 +177,10 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
 
     function updateCallbackHandler(address handler_, address sender_, bytes4 sig_) external override restricted {
         CallbackHandlerLib.updateCallbackHandler(handler_, sender_, sig_);
+    }
+
+    function setTotalSupplyCap(uint256 cap_) external override restricted {
+        PlasmaVaultLib.setTotalSupplyCap(cap_);
     }
 
     function _addFuse(address fuse_) internal {
