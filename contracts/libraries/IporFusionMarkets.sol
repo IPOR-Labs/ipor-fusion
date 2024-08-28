@@ -19,4 +19,7 @@ library IporFusionMarkets {
     uint256 public constant FLUID_INSTADAPP_STAKING = 6;
 
     uint256 public constant ERC20_VAULT_BALANCE = 8;
+
+    /// @dev Euler market
+    uint256 public constant EULER_V2 = 9;
 }
