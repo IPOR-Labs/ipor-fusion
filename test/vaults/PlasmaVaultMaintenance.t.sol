@@ -2685,4 +2685,50 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertEq(marketIdsBefore.length, 0, "Market ids before should be empty");
         assertEq(marketIdsAfter.length, 0, "Market ids after should be empty");
     }
+
+    function testShouldDisplayMarketSubstrates() public {
+
+        // given
+        address underlyingToken = USDC;
+        address user = address(0x555);
+
+        address USDT = address(0x777);
+        address DAI = address(0x888);
+
+        bytes32[] memory substrates = new bytes32[](3);
+        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+        substrates[1] = PlasmaVaultConfigLib.addressToBytes32(USDT);
+        substrates[2] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
+        marketConfigs[0] = MarketSubstratesConfig(1, substrates);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                marketConfigs,
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        // when
+        bytes32[] memory substratesResult = IPlasmaVaultGovernance(address(plasmaVault)).getMarketSubstrates(1);
+
+        // then
+        assertEq(substratesResult.length, 3, "Substrates should have length 3");
+        assertEq(uint256(substratesResult[0]), uint256(PlasmaVaultConfigLib.addressToBytes32(USDC)), "First substrate should be USDC");
+        assertEq(uint256(substratesResult[1]), uint256(PlasmaVaultConfigLib.addressToBytes32(USDT)), "Second substrate should be USDT");
+        assertEq(uint256(substratesResult[2]), uint256(PlasmaVaultConfigLib.addressToBytes32(DAI)), "Third substrate should be DAI");
+    }
 }

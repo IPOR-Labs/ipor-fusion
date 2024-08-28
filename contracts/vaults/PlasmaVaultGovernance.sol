@@ -30,6 +30,10 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return AssetDistributionProtectionLib.isMarketsLimitsActivated();
     }
 
+    function getMarketSubstrates(uint256 marketId_) external view override returns (bytes32[] memory) {
+        return PlasmaVaultConfigLib.getMarketSubstrates(marketId_);
+    }
+
     function getFuses() external view override returns (address[] memory) {
         return FusesLib.getFusesArray();
     }
