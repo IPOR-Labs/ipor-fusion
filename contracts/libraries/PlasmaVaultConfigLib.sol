@@ -38,7 +38,7 @@ library PlasmaVaultConfigLib {
     /// @param marketId_ The market id
     /// @param substrates_ The array of substrates
     /// @dev Substrates can be asset, vault, or any other params, only granted substrates can be used by Fuses in interaction with a given market and external protocols.
-    function grandMarketSubstrates(uint256 marketId_, bytes32[] memory substrates_) internal {
+    function grantMarketSubstrates(uint256 marketId_, bytes32[] memory substrates_) internal {
         PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId_);
 
         bytes32[] memory list = new bytes32[](substrates_.length);
@@ -57,7 +57,7 @@ library PlasmaVaultConfigLib {
     /// @param marketId_ The market id
     /// @param substratesAsAssets_ The array of substrates treated as assets
     /// @dev Substrates are stored as bytes32, only granted substrates can be used by Fuses in interaction with a given market and external protocols.
-    function grandSubstratesAsAssetsToMarket(uint256 marketId_, address[] calldata substratesAsAssets_) internal {
+    function grantSubstratesAsAssetsToMarket(uint256 marketId_, address[] calldata substratesAsAssets_) internal {
         PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId_);
 
         bytes32[] memory list = new bytes32[](substratesAsAssets_.length);

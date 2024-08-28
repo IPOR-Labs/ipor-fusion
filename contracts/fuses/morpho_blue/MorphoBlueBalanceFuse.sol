@@ -23,8 +23,6 @@ contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
     using MorphoBalancesLib for IMorpho;
     using SharesMathLib for uint256;
 
-    error UnsupportedBaseCurrencyFromOracle();
-
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
     address private constant USD = address(0x0000000000000000000000000000000000000348);
 
