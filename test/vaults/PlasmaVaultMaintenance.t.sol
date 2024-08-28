@@ -78,7 +78,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -115,7 +116,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -154,7 +156,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -201,7 +204,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -245,7 +249,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -288,7 +293,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -334,7 +340,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -377,7 +384,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -435,7 +443,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -482,7 +491,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -530,7 +540,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -576,7 +587,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -639,7 +651,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -748,7 +761,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -810,7 +824,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -893,7 +908,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -976,7 +992,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1030,7 +1047,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1092,7 +1110,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1153,7 +1172,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1220,7 +1240,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1274,7 +1295,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1323,7 +1345,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1379,7 +1402,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1435,7 +1459,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1511,7 +1536,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1552,7 +1578,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1598,7 +1625,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1647,7 +1675,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1691,7 +1720,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1735,7 +1765,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1784,7 +1815,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1825,7 +1857,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1871,7 +1904,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1919,7 +1953,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2009,7 +2044,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2101,7 +2137,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2195,7 +2232,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2292,7 +2330,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2350,7 +2389,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2407,7 +2447,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2463,7 +2504,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2523,7 +2565,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2554,6 +2597,39 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertEq(marketIdsAfter[1], 2, "Market id 2 should be second");
     }
 
+    function testShouldNotBeAbleToSetupTotalSupplyCapEqualZero() public {
+        // given
+        address underlyingToken = USDC;
+
+        UsersToRoles memory usersToRoles;
+
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                alphas,
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        bytes memory error = abi.encodeWithSignature("WrongValue()");
+
+        //when
+        vm.prank(usersToRoles.atomist);
+        vm.expectRevert(error);
+        IPlasmaVaultGovernance(address(plasmaVault)).setTotalSupplyCap(0);
+    }
+
     function testShouldNotBeAbleToSetupDependencyBalanceGraphWhenNotAtomist() public {
         // given
         address underlyingToken = USDC;
@@ -2577,7 +2653,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 

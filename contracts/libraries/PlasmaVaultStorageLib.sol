@@ -3,6 +3,11 @@ pragma solidity 0.8.26;
 
 /// @title Library responsible for managing access to the storage of the PlasmaVault contract using the ERC-7201 standard
 library PlasmaVaultStorageLib {
+    /// @dev value taken from ERC20CappedUpgradeable contract, don't change it
+    // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ERC20Capped")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ERC20_CAPPED_STORAGE_LOCATION =
+        0x0f070392f17d5f958cc1ac31867dabecfc5c9758b4a419a200803226d7155d00;
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
         0x24e02552e88772b8e8fd15f3e6699ba530635ffc6b52322da922b0b497a77300;
@@ -60,6 +65,11 @@ library PlasmaVaultStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.callbackHandler")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CALLBACK_HANDLER = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e00;
+
+    /// @custom:storage-location erc7201:openzeppelin.storage.ERC20Capped
+    struct ERC20CappedStorage {
+        uint256 cap;
+    }
 
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
     struct RewardsClaimManagerAddress {
@@ -153,6 +163,12 @@ library PlasmaVaultStorageLib {
     /// @custom:storage-location erc7201:io.ipor.MarketLimits
     struct MarketLimits {
         mapping(uint256 marketId => uint256 limit) limitInPercentage;
+    }
+
+    function getERC20CappedStorage() internal pure returns (ERC20CappedStorage storage $) {
+        assembly {
+            $.slot := ERC20_CAPPED_STORAGE_LOCATION
+        }
     }
 
     /// @notice Gets the total assets storage pointer

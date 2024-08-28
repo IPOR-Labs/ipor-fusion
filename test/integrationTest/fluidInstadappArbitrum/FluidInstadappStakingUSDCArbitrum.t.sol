@@ -7,7 +7,7 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contract
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
-import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
 import {FluidInstadappStakingSupplyFuse, FluidInstadappStakingSupplyFuseEnterData, FluidInstadappStakingSupplyFuseExitData} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol";
 
@@ -26,7 +26,7 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
     }
 
     function getMarketId() public view override returns (uint256) {
-        return IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING;
+        return IporFusionMarkets.FLUID_INSTADAPP_STAKING;
     }
 
     function setupAsset() public override {
@@ -49,17 +49,17 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
         marketConfigs = new MarketSubstratesConfig[](2);
         bytes32[] memory assetsFToken = new bytes32[](1);
         assetsFToken[0] = PlasmaVaultConfigLib.addressToBytes32(F_TOKEN);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL, assetsFToken);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.FLUID_INSTADAPP_POOL, assetsFToken);
 
         bytes32[] memory assetsStaking = new bytes32[](1);
         assetsStaking[0] = PlasmaVaultConfigLib.addressToBytes32(FLUID_LENDING_STAKING_REWARDS);
-        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING, assetsStaking);
+        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarkets.FLUID_INSTADAPP_STAKING, assetsStaking);
     }
 
     function setupFuses() public override {
-        erc4626SupplyFuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL);
+        erc4626SupplyFuse = new Erc4626SupplyFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
         fluidInstadappStakingSupplyFuse = new FluidInstadappStakingSupplyFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
         fuses = new address[](2);
         fuses[0] = address(erc4626SupplyFuse);
@@ -67,22 +67,20 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse fluidInstadappBalances = new ERC4626BalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL
-        );
+        ERC4626BalanceFuse fluidInstadappBalances = new ERC4626BalanceFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalances = new FluidInstadappStakingBalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);
         balanceFuses[0] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
+            IporFusionMarkets.FLUID_INSTADAPP_POOL,
             address(fluidInstadappBalances)
         );
 
         balanceFuses[1] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING,
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING,
             address(fluidInstadappStakingBalances)
         );
     }

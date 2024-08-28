@@ -83,7 +83,8 @@ contract PlasmaVaultCallbackHandler is Test {
                     balanceFuses,
                     feeConfig,
                     _accessManager,
-                    address(new PlasmaVaultBase())
+                    address(new PlasmaVaultBase()),
+                    type(uint256).max
                 )
             )
         );
