@@ -61,7 +61,8 @@ contract UniswapSwapV3FuseTest is Test {
                     _setupBalanceFuses(),
                     _setupFeeConfig(),
                     _createAccessManager(),
-                    address(new PlasmaVaultBase())
+                    address(new PlasmaVaultBase()),
+                    type(uint256).max
                 )
             )
         );
