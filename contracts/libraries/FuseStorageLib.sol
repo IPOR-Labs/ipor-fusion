@@ -28,8 +28,8 @@ library FuseStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.TokenIdsUsedInFuse
     struct TokenIdsUsedInFuse {
-        /// @dev value is a fuse address
         uint256[] tokenIds;
+        mapping(uint256 tokenId => uint256 index) indexes;
     }
 
     /// @notice Gets the fuses storage pointer

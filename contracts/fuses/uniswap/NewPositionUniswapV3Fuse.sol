@@ -21,6 +21,10 @@ struct MintParams {
     uint256 deadline;
 }
 
+struct ClosePositions {
+    uint256[] tokenIds;
+}
+
 contract NewPositionUniswapV3Fuse is IFuse {
     using SafeERC20 for IERC20;
 
@@ -80,13 +84,26 @@ contract NewPositionUniswapV3Fuse is IFuse {
             NONFUNGIBLE_POSITION_MANAGER
         ).mint(params);
 
-        FuseStorageLib.getTokenIdUsedFuse().tokenIds.push(tokenId);
+        TokenIdsUsedInFuse storage tokensIds = FuseStorageLib.getTokenIdUsedFuse();
+        tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
+        tokensIds.tokenIds.push(tokenId);
 
         emit NewPositionUniswapV3FuseEnter(VERSION, tokenId, liquidity, amount0, amount1);
     }
 
     function exit(bytes calldata data) external override {
-        MintParams memory mintParams = abi.decode(data, (MintParams));
-        // burn position
+        exit(abi.decode(data, (ClosePositions)));
+    }
+
+    function exit(ClosePositions closePositions) public {
+        TokenIdsUsedInFuse storage tokensIds = FuseStorageLib.getTokenIdUsedFuse();
+        for (uint256 i = 0; i < closePositions.tokenIds.length; i++) {
+            uint256 len = tokensIds.tokenIds.length;
+            uint256 tokenIndex = tokensIds.indexes[closePositions.tokenIds[i]];
+            if (tokenIndex != len - 1) {
+                tokensIds.tokenIds[tokenIndex] = tokensIds.tokenIds[len - 1];
+            }
+            --tokensIds.length;
+        }
     }
 }

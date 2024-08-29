@@ -1,40 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 
 import {INonfungiblePositionManager, IUniswapV3Factory, IUniswapV3Pool} from "./ext/INonfungiblePositionManager.sol";
 
-struct TempMemory {
-    uint96 nonce;
-    address operator;
-    uint128 tokensOwed0;
-    uint128 tokensOwed1;
-    address token0Address;
-    address token1Address;
+struct Position2 {
+    address token0;
+    address token1;
     uint24 fee;
     int24 tickLower;
     int24 tickUpper;
     uint128 liquidity;
     uint256 feeGrowthInside0LastX128;
     uint256 feeGrowthInside1LastX128;
-    uint256 feeGrowthGlobal0X128;
-    uint256 feeGrowthGlobal1X128;
-    uint256 token0FeesOwed;
-    uint256 token1FeesOwed;
-    uint256 balance;
-    uint256 priceToken;
-    uint256 priceDecimals;
-    address priceOracleMiddleware;
-    uint256 len;
+    uint128 tokensOwed0;
+    uint128 tokensOwed1;
 }
 
 contract UniswapV3Balance is IMarketBalanceFuse {
@@ -49,73 +35,83 @@ contract UniswapV3Balance is IMarketBalanceFuse {
     }
 
     function balanceOf() external view override returns (uint256) {
-        TempMemory memory tempMemory;
+        address priceOracleMiddleware;
+        uint256 balance;
         uint256[] memory tokenIds = FuseStorageLib.getTokenIdUsedFuse().tokenIds;
-        //        tempMemory.len = tokenIds.length;
+        uint256 len = tokenIds.length;
 
-        //        if (tempMemory.len == 0) {
-        //            return 0;
-        //        }
-
-        tempMemory.priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
-
-        for (uint256 i; i < tokenIds.length; ++i) {
-            (
-                tempMemory.nonce,
-                tempMemory.operator,
-                tempMemory.token0Address,
-                tempMemory.token1Address,
-                tempMemory.fee,
-                tempMemory.tickLower,
-                tempMemory.tickUpper,
-                tempMemory.liquidity,
-                tempMemory.feeGrowthInside0LastX128,
-                tempMemory.feeGrowthInside1LastX128,
-                tempMemory.tokensOwed0,
-                tempMemory.tokensOwed1
-            ) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).positions(tokenIds[i]);
-
-            //            (tempMemory.feeGrowthGlobal0X128, tempMemory.feeGrowthGlobal1X128) = _getCurrentFeeGrowth(
-            //                tempMemory.token0Address,
-            //                tempMemory.token1Address,
-            //                tempMemory.fee,
-            //                tempMemory.tickLower,
-            //                tempMemory.tickUpper
-            //            );
-            //
-            //            tempMemory.token0FeesOwed =
-            //                (tempMemory.liquidity * (tempMemory.feeGrowthGlobal0X128 - tempMemory.feeGrowthInside0LastX128)) /
-            //                2 ** 128; //TODO check this
-            //            tempMemory.token1FeesOwed =
-            //                (tempMemory.liquidity * (tempMemory.feeGrowthGlobal1X128 - tempMemory.feeGrowthInside1LastX128)) /
-            //                2 ** 128;
-            //
-            //            (tempMemory.priceToken, tempMemory.priceDecimals) = IPriceOracleMiddleware(tempMemory.priceOracleMiddleware)
-            //                .getAssetPrice(tempMemory.token0Address);
-            //
-            //            tempMemory.balance += IporMath.convertToWad(
-            //                (tempMemory.token0FeesOwed + tempMemory.tokensOwed0) * tempMemory.priceToken,
-            //                IERC20Metadata(tempMemory.token0Address).decimals() + tempMemory.priceDecimals
-            //            );
-            //
-            //            (tempMemory.priceToken, tempMemory.priceDecimals) = IPriceOracleMiddleware(tempMemory.priceOracleMiddleware)
-            //                .getAssetPrice(tempMemory.token1Address);
-            //            tempMemory.balance += IporMath.convertToWad(
-            //                (tempMemory.token1FeesOwed + tempMemory.tokensOwed1) * tempMemory.priceToken,
-            //                IERC20Metadata(tempMemory.token1Address).decimals() + tempMemory.priceDecimals
-            //            );
+        if (len == 0) {
+            return 0;
         }
 
-        //        return tempMemory.balance;
-        return 0;
+        priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+
+        Position2 memory position;
+
+        for (uint256 i = 0; i < len; i++) {
+            position = extractData(tokenIds[0]);
+
+            (uint256 feeGrowthGlobal0X128, uint256 feeGrowthGlobal1X128) = _getCurrentFeeGrowth(
+                position.token0,
+                position.token1,
+                position.fee
+            );
+
+            uint256 token0FeesOwed = (position.liquidity * (feeGrowthGlobal0X128 - position.feeGrowthInside0LastX128)) /
+                2 ** 128; //TODO check this
+            uint256 token1FeesOwed = (position.liquidity * (feeGrowthGlobal1X128 - position.feeGrowthInside1LastX128)) /
+                2 ** 128; //TODO check this
+
+            (uint256 priceToken, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
+                position.token0
+            );
+
+            balance += IporMath.convertToWad(
+                (token0FeesOwed + position.tokensOwed0) * priceToken,
+                IERC20Metadata(position.token0).decimals() + priceDecimals
+            );
+
+            (priceToken, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(position.token1);
+            balance += IporMath.convertToWad(
+                (token1FeesOwed + position.tokensOwed1) * priceToken,
+                IERC20Metadata(position.token1).decimals() + priceDecimals
+            );
+        }
+
+        return balance;
+    }
+
+    function extractData(uint256 tokenId) private view returns (Position2 memory position) {
+        (
+            ,
+            ,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        ) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).positions(tokenId);
+        position.token0 = token0;
+        position.token1 = token1;
+        position.fee = fee;
+        position.tickLower = tickLower;
+        position.tickUpper = tickUpper;
+        position.liquidity = liquidity;
+        position.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
+        position.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
+        position.tokensOwed0 = tokensOwed0;
+        position.tokensOwed1 = tokensOwed1;
     }
 
     function _getCurrentFeeGrowth(
         address token0_,
         address token1_,
-        uint24 fee_,
-        int24 tickLower_,
-        int24 tickUpper_
+        uint24 fee_
     ) private view returns (uint256 feeGrowthGlobal0X128, uint256 feeGrowthGlobal1X128) {
         address pool = IUniswapV3Factory(UNISWAP_FACTORY).getPool(token0_, token1_, fee_);
         require(pool != address(0), "Pool does not exist");

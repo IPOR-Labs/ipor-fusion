@@ -6,7 +6,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuse} from "../IFuse.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
-import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 
 struct IncreaseLiquidityUniswapV3FuseEnterData {
     address token0;
