@@ -189,8 +189,7 @@ contract PlasmaVaultCallbackHandler is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(this),
-                feeManager: address(this)
+                rewardsClaimManager: address(this)
             })
         });
 
