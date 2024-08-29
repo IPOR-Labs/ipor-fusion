@@ -63,7 +63,8 @@ contract InitializeAccessManagerTest is Test {
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(performanceFeeManager, 0, managementFeeManager, 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
         vm.stopPrank();

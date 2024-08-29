@@ -9,19 +9,19 @@ import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData
 import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
-contract GearboxV3USDCArbitrum is SupplyTest {
-    address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
-    address private constant CHAINLINK_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
-    address public constant GEARBOX_V3_POOL = 0x890A69EF363C9c7BdD5E36eb95Ceb569F63ACbF6;
-    address public constant PRICE_ORACLE_MIDDLEWARE_USD = 0x85a3Ee1688eE8D320eDF4024fB67734Fa8492cF4;
+contract EulerV2SupplyUSDCVault is SupplyTest {
+    // eUSDC-1
+    address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant EULER_VAULT = 0xB93d4928f39fBcd6C89a7DFbF0A867E6344561bE;
+    address public constant CHAINLINK_USDC_USD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 226213814);
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20626532);
         init();
     }
 
     function getMarketId() public view override returns (uint256) {
-        return IporFusionMarkets.GEARBOX_POOL_V3;
+        return IporFusionMarkets.EULER_V2;
     }
 
     function setupAsset() public override {
@@ -29,7 +29,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
     }
 
     function dealAssets(address account_, uint256 amount_) public override {
-        vm.prank(0x47c031236e19d024b42f8AE6780E44A573170703);
+        vm.prank(0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa);
         ERC20(asset).transfer(account_, amount_);
     }
 
@@ -37,27 +37,27 @@ contract GearboxV3USDCArbitrum is SupplyTest {
         assets = new address[](1);
         sources = new address[](1);
         assets[0] = USDC;
-        sources[0] = CHAINLINK_USDC;
+        sources[0] = CHAINLINK_USDC_USD;
     }
 
     function setupMarketConfigs() public override returns (MarketSubstratesConfig[] memory marketConfigs) {
         marketConfigs = new MarketSubstratesConfig[](1);
         bytes32[] memory assets = new bytes32[](1);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(GEARBOX_V3_POOL);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.GEARBOX_POOL_V3, assets);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(EULER_VAULT);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.EULER_V2, assets);
     }
 
     function setupFuses() public override {
-        Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(IporFusionMarkets.GEARBOX_POOL_V3);
+        Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(IporFusionMarkets.EULER_V2);
         fuses = new address[](1);
         fuses[0] = address(fuse);
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarkets.GEARBOX_POOL_V3);
+        ERC4626BalanceFuse eulerV2Balances = new ERC4626BalanceFuse(IporFusionMarkets.EULER_V2);
 
         balanceFuses = new MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.GEARBOX_POOL_V3, address(gearboxV3Balances));
+        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.EULER_V2, address(eulerV2Balances));
     }
 
     function getEnterFuseData(
@@ -66,7 +66,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
         bytes32[] memory data_
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: GEARBOX_V3_POOL,
+            vault: EULER_VAULT,
             vaultAssetAmount: amount_
         });
         data = new bytes[](1);
@@ -79,7 +79,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
-            vault: GEARBOX_V3_POOL,
+            vault: EULER_VAULT,
             vaultAssetAmount: amount_
         });
         data = new bytes[](1);

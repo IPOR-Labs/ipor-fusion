@@ -28,6 +28,12 @@ interface IPlasmaVaultGovernance {
     /// @return True if the markets limits protection is activated
     function isMarketsLimitsActivated() external view returns (bool);
 
+    /// @notice Returns the array of market substrates granted in the market
+    /// @param marketId_ The marketId of the market
+    /// @return The array of substrates granted in the market
+    /// @dev Substrates can be assets, vault, markets or any other parameter specific for the market and associated with market external protocol
+    function getMarketSubstrates(uint256 marketId_) external view returns (bytes32[] memory);
+
     /// @notice Returns the array of fuses supported by the Plasma Vault
     /// @return The array of fuses
     function getFuses() external view returns (address[] memory);
@@ -73,6 +79,10 @@ interface IPlasmaVaultGovernance {
     /// @return Dependency balance graph is required because exists external protocols where interaction with the market can affect the balance of other markets
     function getDependencyBalanceGraph(uint256 marketId_) external view returns (uint256[] memory);
 
+    /// @notice Returns the total supply cap
+    /// @return The total supply cap, the values is represented in underlying decimals
+    function getTotalSupplyCap() external view returns (uint256);
+
     /// @notice Adds the balance fuse to the market
     /// @param marketId_ The marketId of the market
     /// @param fuse_ The address of the balance fuse
@@ -87,7 +97,7 @@ interface IPlasmaVaultGovernance {
     /// @param marketId_ The marketId of the market
     /// @param substrates_ The substrates to grant
     /// @dev Substrates can be assets, vault, markets or any other parameter specific for the market and associated with market external protocol
-    function grandMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external;
+    function grantMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external;
 
     /// @notice Updates the dependency balance graphs for the markets
     /// @param marketIds_ The array of marketIds
@@ -140,4 +150,8 @@ interface IPlasmaVaultGovernance {
     /// @param sender_ The address of the sender
     /// @param sig_ The signature of the function
     function updateCallbackHandler(address handler_, address sender_, bytes4 sig_) external;
+
+    /// @notice Sets the total supply cap
+    /// @param cap_ The total supply cap, the values is represented in underlying decimals
+    function setTotalSupplyCap(uint256 cap_) external;
 }

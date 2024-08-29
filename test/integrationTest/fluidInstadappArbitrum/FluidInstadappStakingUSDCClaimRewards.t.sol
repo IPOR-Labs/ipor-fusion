@@ -10,7 +10,7 @@ import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData} from "../../../
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
-import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -74,7 +74,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                     balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: _accessManager,
-                    plasmaVaultBase: address(new PlasmaVaultBase())
+                    plasmaVaultBase: address(new PlasmaVaultBase()),
+                    totalSupplyCap: type(uint256).max
                 })
             )
         );
@@ -117,7 +118,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     }
 
     function _createClaimFuse() private {
-        _claimFuse = address(new FluidInstadappClaimFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING));
+        _claimFuse = address(new FluidInstadappClaimFuse(IporFusionMarkets.FLUID_INSTADAPP_STAKING));
     }
 
     function _addClaimFuseToClaimRewardsManager() private {
@@ -173,17 +174,17 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
         marketConfigs = new MarketSubstratesConfig[](2);
         bytes32[] memory assetsPoolUsdc = new bytes32[](1);
         assetsPoolUsdc[0] = PlasmaVaultConfigLib.addressToBytes32(F_TOKEN);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL, assetsPoolUsdc);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.FLUID_INSTADAPP_POOL, assetsPoolUsdc);
 
         bytes32[] memory assetsStakingUsdc = new bytes32[](1);
         assetsStakingUsdc[0] = PlasmaVaultConfigLib.addressToBytes32(FLUID_LENDING_STAKING_REWARDS);
-        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING, assetsStakingUsdc);
+        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarkets.FLUID_INSTADAPP_STAKING, assetsStakingUsdc);
     }
 
     function _setupFuses() private returns (address[] memory) {
-        erc4626SupplyFuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL);
+        erc4626SupplyFuse = new Erc4626SupplyFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
         fluidInstadappStakingSupplyFuse = new FluidInstadappStakingSupplyFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
         address[] memory fuses = new address[](2);
@@ -193,20 +194,17 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL);
+        ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalanceFuse = new FluidInstadappStakingBalanceFuse(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL,
-            address(erc4626BalanceFuse)
-        );
+        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.FLUID_INSTADAPP_POOL, address(erc4626BalanceFuse));
 
         balanceFuses[1] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING,
+            IporFusionMarkets.FLUID_INSTADAPP_STAKING,
             address(fluidInstadappStakingBalanceFuse)
         );
     }
@@ -254,10 +252,10 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
         );
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.FLUID_INSTADAPP_STAKING;
+        marketIds[0] = IporFusionMarkets.FLUID_INSTADAPP_STAKING;
 
         uint256[] memory dependence = new uint256[](1);
-        dependence[0] = IporFusionMarketsArbitrum.FLUID_INSTADAPP_POOL;
+        dependence[0] = IporFusionMarkets.FLUID_INSTADAPP_POOL;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
         dependenceMarkets[0] = dependence;

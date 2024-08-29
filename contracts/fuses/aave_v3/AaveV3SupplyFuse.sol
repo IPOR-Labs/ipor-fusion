@@ -64,7 +64,6 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
         _enter(abi.decode(data_, (AaveV3SupplyFuseEnterData)));
     }
 
-    /// @dev technical method to generate ABI
     function enter(AaveV3SupplyFuseEnterData memory data_) external {
         _enter(data_);
     }

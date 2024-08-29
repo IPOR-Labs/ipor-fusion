@@ -221,6 +221,17 @@ library PlasmaVaultLib {
         emit RewardsClaimManagerAddressChanged(rewardsClaimManagerAddress_);
     }
 
+    function getTotalSupplyCap() internal view returns (uint256) {
+        return PlasmaVaultStorageLib.getERC20CappedStorage().cap;
+    }
+
+    function setTotalSupplyCap(uint256 cap_) internal {
+        if (cap_ == 0) {
+            revert Errors.WrongValue();
+        }
+        PlasmaVaultStorageLib.getERC20CappedStorage().cap = cap_;
+    }
+
     /// @notice Sets the execution state to started, used in the execute function called by Alpha
     /// @dev Alpha can do interaction with the Plasma Vault using more than one FuseAction
     function executeStarted() internal {

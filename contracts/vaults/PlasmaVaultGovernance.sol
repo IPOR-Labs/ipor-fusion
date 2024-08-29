@@ -30,6 +30,10 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return AssetDistributionProtectionLib.isMarketsLimitsActivated();
     }
 
+    function getMarketSubstrates(uint256 marketId_) external view override returns (bytes32[] memory) {
+        return PlasmaVaultConfigLib.getMarketSubstrates(marketId_);
+    }
+
     function getFuses() external view override returns (address[] memory) {
         return FusesLib.getFusesArray();
     }
@@ -83,6 +87,10 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketId_];
     }
 
+    function getTotalSupplyCap() external view override returns (uint256) {
+        return PlasmaVaultLib.getTotalSupplyCap();
+    }
+
     function addBalanceFuse(uint256 marketId_, address fuse_) external override restricted {
         _addBalanceFuse(marketId_, fuse_);
     }
@@ -91,8 +99,8 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         FusesLib.removeBalanceFuse(marketId_, fuse_);
     }
 
-    function grandMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external override restricted {
-        PlasmaVaultConfigLib.grandMarketSubstrates(marketId_, substrates_);
+    function grantMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external override restricted {
+        PlasmaVaultConfigLib.grantMarketSubstrates(marketId_, substrates_);
     }
 
     function updateDependencyBalanceGraphs(
@@ -173,6 +181,10 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
 
     function updateCallbackHandler(address handler_, address sender_, bytes4 sig_) external override restricted {
         CallbackHandlerLib.updateCallbackHandler(handler_, sender_, sig_);
+    }
+
+    function setTotalSupplyCap(uint256 cap_) external override restricted {
+        PlasmaVaultLib.setTotalSupplyCap(cap_);
     }
 
     function _addFuse(address fuse_) internal {
