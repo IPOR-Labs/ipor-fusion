@@ -10,7 +10,7 @@ import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData} from "../../../
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
-import {IporFusionMarketsArbitrum} from "../../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {GearboxV3FarmdSupplyFuseEnterData, GearboxV3FarmSupplyFuse} from "../../../contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol";
 import {GearboxV3FarmBalanceFuse} from "../../../contracts/fuses/gearbox_v3/GearboxV3FarmBalanceFuse.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -73,7 +73,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                     balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: _accessManager,
-                    plasmaVaultBase: address(new PlasmaVaultBase())
+                    plasmaVaultBase: address(new PlasmaVaultBase()),
+                    totalSupplyCap: type(uint256).max
                 })
             )
         );
@@ -116,7 +117,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     }
 
     function _createClaimFuse() private {
-        _claimFuse = address(new GearboxV3FarmDTokenClaimFuse(IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3));
+        _claimFuse = address(new GearboxV3FarmDTokenClaimFuse(IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3));
     }
 
     function _addClaimFuseToClaimRewardsManager() private {
@@ -172,16 +173,16 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         marketConfigs = new MarketSubstratesConfig[](2);
         bytes32[] memory assetsDUsdc = new bytes32[](1);
         assetsDUsdc[0] = PlasmaVaultConfigLib.addressToBytes32(D_USDC);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.GEARBOX_POOL_V3, assetsDUsdc);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.GEARBOX_POOL_V3, assetsDUsdc);
 
         bytes32[] memory assetsFarmDUsdc = new bytes32[](1);
         assetsFarmDUsdc[0] = PlasmaVaultConfigLib.addressToBytes32(FARM_D_USDC);
-        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3, assetsFarmDUsdc);
+        marketConfigs[1] = MarketSubstratesConfig(IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3, assetsFarmDUsdc);
     }
 
     function _setupFuses() private returns (address[] memory) {
-        gearboxV3DTokenFuse = new Erc4626SupplyFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
-        gearboxV3FarmSupplyFuse = new GearboxV3FarmSupplyFuse(IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3);
+        gearboxV3DTokenFuse = new Erc4626SupplyFuse(IporFusionMarkets.GEARBOX_POOL_V3);
+        gearboxV3FarmSupplyFuse = new GearboxV3FarmSupplyFuse(IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3);
 
         address[] memory fuses = new address[](2);
         fuses[0] = address(gearboxV3DTokenFuse);
@@ -190,20 +191,17 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarketsArbitrum.GEARBOX_POOL_V3);
+        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarkets.GEARBOX_POOL_V3);
 
         GearboxV3FarmBalanceFuse gearboxV3FarmdBalance = new GearboxV3FarmBalanceFuse(
-            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3
+            IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3
         );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);
-        balanceFuses[0] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.GEARBOX_POOL_V3,
-            address(gearboxV3Balances)
-        );
+        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.GEARBOX_POOL_V3, address(gearboxV3Balances));
 
         balanceFuses[1] = MarketBalanceFuseConfig(
-            IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3,
+            IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3,
             address(gearboxV3FarmdBalance)
         );
     }
@@ -247,10 +245,10 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         enterCalls[1] = FuseAction(address(gearboxV3FarmSupplyFuse), abi.encodeWithSignature("enter(bytes)", data[1]));
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarketsArbitrum.GEARBOX_FARM_DTOKEN_V3;
+        marketIds[0] = IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3;
 
         uint256[] memory dependence = new uint256[](1);
-        dependence[0] = IporFusionMarketsArbitrum.GEARBOX_POOL_V3;
+        dependence[0] = IporFusionMarkets.GEARBOX_POOL_V3;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
         dependenceMarkets[0] = dependence;

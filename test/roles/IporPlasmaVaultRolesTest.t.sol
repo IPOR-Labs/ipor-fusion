@@ -7,7 +7,7 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {IporFusionMarketsArbitrum} from "../../contracts/libraries/IporFusionMarketsArbitrum.sol";
+import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
@@ -461,6 +461,22 @@ contract IporPlasmaVaultRolesTest is Test {
         assertEq(_rewardsClaimManager.authority(), address(_accessManager), "Access manager should be an authority");
     }
 
+    function testShouldSetupTotalSupplyCapByAtomist() external {
+        // given
+        uint256 totalSupplyCap = 1000;
+
+        // when
+        vm.prank(_data.atomists[0]);
+        IPlasmaVaultGovernance(address(_plasmaVault)).setTotalSupplyCap(totalSupplyCap);
+
+        // then
+        assertEq(
+            IPlasmaVaultGovernance(address(_plasmaVault)).getTotalSupplyCap(),
+            totalSupplyCap,
+            "Total supply cap should be set"
+        );
+    }
+
     function _generateDataForInitialization() private {
         _data.admins = new address[](0);
         _data.owners = new address[](1);
@@ -514,16 +530,16 @@ contract IporPlasmaVaultRolesTest is Test {
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarketsArbitrum.AAVE_V3, assets);
+        marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.AAVE_V3, assets);
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
-            IporFusionMarketsArbitrum.AAVE_V3,
+            IporFusionMarkets.AAVE_V3,
             AAVE_PRICE_ORACLE,
             AAVE_POOL_DATA_PROVIDER
         );
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
-            IporFusionMarketsArbitrum.AAVE_V3,
+            IporFusionMarkets.AAVE_V3,
             AAVE_POOL,
             AAVE_POOL_DATA_PROVIDER
         );
@@ -532,7 +548,7 @@ contract IporPlasmaVaultRolesTest is Test {
         fuses[0] = address(supplyFuse);
 
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
-        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarketsArbitrum.AAVE_V3, address(balanceFuse));
+        balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.AAVE_V3, address(balanceFuse));
         _accessManager = new IporFusionAccessManager(_deployer);
 
         _plasmaVault = new PlasmaVault(
@@ -547,7 +563,8 @@ contract IporPlasmaVaultRolesTest is Test {
                 balanceFuses,
                 FeeConfig(_data.performanceFeeManagers[0], 0, _data.managementFeeManagers[0], 0),
                 address(_accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
         vm.stopPrank();

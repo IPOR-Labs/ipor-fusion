@@ -404,7 +404,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function generateExitCallsData(
         uint256 amount_,
         bytes32[] memory data_
-    ) private returns (FuseAction[] memory enterCalls) {
+    ) private view returns (FuseAction[] memory enterCalls) {
         (address[] memory fusesSetup, bytes[] memory enterData) = getExitFuseData(amount_, data_);
         uint256 len = enterData.length;
         enterCalls = new FuseAction[](len);

@@ -32,7 +32,43 @@ abstract contract TestVaultSetup is TestStorage {
                     balanceFuses,
                     feeConfig,
                     accessManager,
-                    address(new PlasmaVaultBase())
+                    address(new PlasmaVaultBase()),
+                    type(uint256).max
+                )
+            )
+        );
+        vm.stopPrank();
+
+        setupRoles();
+    }
+
+    function initPlasmaVaultCustom(
+        MarketSubstratesConfig[] memory marketConfigs,
+        MarketBalanceFuseConfig[] memory balanceFuses
+    ) public {
+        address[] memory alphas = new address[](1);
+        alphas[0] = alpha;
+
+        FeeConfig memory feeConfig = setupFeeConfig();
+
+        createAccessManager();
+
+        vm.startPrank(accounts[0]);
+        plasmaVault = address(
+            new PlasmaVault(
+                PlasmaVaultInitData(
+                    "TEST PLASMA VAULT",
+                    "TPLASMA",
+                    asset,
+                    priceOracle,
+                    alphas,
+                    marketConfigs,
+                    fuses,
+                    balanceFuses,
+                    feeConfig,
+                    accessManager,
+                    address(new PlasmaVaultBase()),
+                    type(uint256).max
                 )
             )
         );

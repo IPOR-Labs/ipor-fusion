@@ -102,7 +102,7 @@ contract PlasmaVaultDepositTest is Test {
 
     function testShouldDepositToPlasmaVaultWithUSDCAsUnderlyingToken() public {
         //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc();
+        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(type(uint256).max);
 
         userOne = address(0x777);
 
@@ -141,9 +141,29 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
-    function _preparePlasmaVaultUsdc() public returns (PlasmaVault) {
-        string memory assetName = "IPOR Fusion USDC";
-        string memory assetSymbol = "ipfUSDC";
+    function testShouldNotDepositBecauseOfTotalSupplyCap() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(99 * 1e6);
+
+        userOne = address(0x777);
+
+        amount = 100 * 1e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        bytes memory error = abi.encodeWithSignature("ERC20ExceededCap(uint256,uint256)", amount, 99 * 1e6);
+
+        //when
+        vm.prank(userOne);
+        vm.expectRevert(error);
+        plasmaVault.deposit(amount, userOne);
+    }
+
+    function _preparePlasmaVaultUsdc(uint256 totalSupplyCap) public returns (PlasmaVault) {
         address underlyingToken = USDC;
         address[] memory alphas = new address[](1);
 
@@ -184,8 +204,8 @@ contract PlasmaVaultDepositTest is Test {
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
+                "IPOR Fusion USDC",
+                "ipfUSDC",
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
                 alphas,
@@ -194,7 +214,8 @@ contract PlasmaVaultDepositTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                totalSupplyCap
             )
         );
 
@@ -248,7 +269,8 @@ contract PlasmaVaultDepositTest is Test {
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -460,7 +482,7 @@ contract PlasmaVaultDepositTest is Test {
 
         uint256 amount = 100 * 1e6;
 
-        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc();
+        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(type(uint256).max);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             privateKey,
@@ -510,7 +532,7 @@ contract PlasmaVaultDepositTest is Test {
 
         uint256 amount = 100 * 1e6;
 
-        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc();
+        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(type(uint256).max);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             privateKey,

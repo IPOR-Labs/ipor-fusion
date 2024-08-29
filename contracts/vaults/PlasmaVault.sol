@@ -52,6 +52,8 @@ struct PlasmaVaultInitData {
     address accessManager;
     /// @notice plasmaVaultBase is a address of the Plasma Vault Base - contract that is responsible for the common logic of the Plasma Vault
     address plasmaVaultBase;
+    /// @notice totalSupplyCap is a initial total supply cap of the Plasma Vault, represented in underlying token decimals
+    uint256 totalSupplyCap;
 }
 
 /// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
@@ -120,13 +122,18 @@ contract PlasmaVault is
 
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
         PLASMA_VAULT_BASE.functionDelegateCall(
-            abi.encodeWithSelector(IPlasmaVaultBase.init.selector, initData_.assetName, initData_.accessManager)
+            abi.encodeWithSelector(
+                IPlasmaVaultBase.init.selector,
+                initData_.assetName,
+                initData_.accessManager,
+                initData_.totalSupplyCap
+            )
         );
 
         IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(initData_.priceOracleMiddleware);
 
         if (priceOracleMiddleware.QUOTE_CURRENCY() != USD) {
-            revert Errors.UnsupportedBaseCurrencyFromOracle();
+            revert Errors.UnsupportedQuoteCurrencyFromOracle();
         }
 
         PlasmaVaultLib.setPriceOracleMiddleware(initData_.priceOracleMiddleware);
@@ -147,7 +154,7 @@ contract PlasmaVault is
         }
 
         for (uint256 i; i < initData_.marketSubstratesConfigs.length; ++i) {
-            PlasmaVaultConfigLib.grandMarketSubstrates(
+            PlasmaVaultConfigLib.grantMarketSubstrates(
                 initData_.marketSubstratesConfigs[i].marketId,
                 initData_.marketSubstratesConfigs[i].substrates
             );

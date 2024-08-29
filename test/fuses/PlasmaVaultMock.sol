@@ -28,11 +28,11 @@ contract PlasmaVaultMock {
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
-        PlasmaVaultConfigLib.grandSubstratesAsAssetsToMarket(marketId, assets);
+        PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket(marketId, assets);
     }
 
-    function grandMarketSubstrates(uint256 marketId, bytes32[] calldata substrates) external {
-        PlasmaVaultConfigLib.grandMarketSubstrates(marketId, substrates);
+    function grantMarketSubstrates(uint256 marketId, bytes32[] calldata substrates) external {
+        PlasmaVaultConfigLib.grantMarketSubstrates(marketId, substrates);
     }
 
     //solhint-disable-next-line

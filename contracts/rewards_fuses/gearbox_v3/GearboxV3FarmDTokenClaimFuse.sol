@@ -39,10 +39,14 @@ contract GearboxV3FarmDTokenClaimFuse {
             return;
         }
 
+        address rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
+        if (rewardsClaimManager == address(0)) {
+            revert GearboxV3FarmDTokenClaimFuseRewardsClaimManagerZeroAddress(VERSION);
+        }
+
         address farmDToken;
         address rewardsToken;
         uint256 rewardsTokenBalance;
-        address rewardsClaimManager;
 
         for (uint256 i; i < len; ++i) {
             farmDToken = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
@@ -57,12 +61,6 @@ contract GearboxV3FarmDTokenClaimFuse {
             }
 
             IFarmingPool(farmDToken).claim();
-
-            rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
-
-            if (rewardsClaimManager == address(0)) {
-                revert GearboxV3FarmDTokenClaimFuseRewardsClaimManagerZeroAddress(VERSION);
-            }
 
             IERC20(rewardsToken).safeTransfer(rewardsClaimManager, rewardsTokenBalance);
 
