@@ -106,8 +106,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: _claimRewardsManager,
-                feeManager: address(this)
+                rewardsClaimManager: _claimRewardsManager
             })
         });
 

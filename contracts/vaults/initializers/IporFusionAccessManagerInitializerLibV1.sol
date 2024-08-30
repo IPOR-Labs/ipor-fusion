@@ -17,8 +17,6 @@ struct PlasmaVaultAddress {
     address accessManager;
     /// @notice Address of the Rewards Claim Manager.
     address rewardsClaimManager;
-    /// @notice Address of the Fee Manager.
-    address feeManager;
 }
 
 /// @notice Data for the initialization of the IPOR Fusion Plasma Vault, contain accounts involved in interactions with the Plasma Vault.
