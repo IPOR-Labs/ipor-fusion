@@ -2754,12 +2754,12 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
         assertEq(
             uint256(substratesResult[1]),
-            uint256(PlasmaVaultConfigLib.addressToBytes32(USDT)),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(usdt)),
             "Second substrate should be USDT"
         );
         assertEq(
             uint256(substratesResult[2]),
-            uint256(PlasmaVaultConfigLib.addressToBytes32(DAI)),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(dai)),
             "Third substrate should be DAI"
         );
     }
