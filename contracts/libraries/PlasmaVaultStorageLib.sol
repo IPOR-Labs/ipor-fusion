@@ -8,6 +8,11 @@ library PlasmaVaultStorageLib {
     bytes32 private constant ERC20_CAPPED_STORAGE_LOCATION =
         0x0f070392f17d5f958cc1ac31867dabecfc5c9758b4a419a200803226d7155d00;
 
+    /// @dev storage pointer location for a flag which indicates if the Total Supply Cap validation is enabled
+    // keccak256(abi.encode(uint256(keccak256("io.ipor.Erc20CappedValidationFlag")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ERC20_CAPPED_VALIDATION_FLAG =
+        0xaef487a7a52e82ae7bbc470b42be72a1d3c066fb83773bf99cce7e6a7df2f900;
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
         0x24e02552e88772b8e8fd15f3e6699ba530635ffc6b52322da922b0b497a77300;
@@ -69,6 +74,13 @@ library PlasmaVaultStorageLib {
     /// @custom:storage-location erc7201:openzeppelin.storage.ERC20Capped
     struct ERC20CappedStorage {
         uint256 cap;
+    }
+
+    /// @notice ERC20CappedValidationFlag is used to enable or disable the total supply cap validation during execution
+    /// Required for situation when performance fee or management fee is minted for fee managers
+    /// @custom:storage-location erc7201:io.ipor.Erc20CappedValidationFlag
+    struct ERC20CappedValidationFlag {
+        uint256 value;
     }
 
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
@@ -168,6 +180,12 @@ library PlasmaVaultStorageLib {
     function getERC20CappedStorage() internal pure returns (ERC20CappedStorage storage $) {
         assembly {
             $.slot := ERC20_CAPPED_STORAGE_LOCATION
+        }
+    }
+
+    function getERC20CappedValidationFlag() internal pure returns (ERC20CappedValidationFlag storage $) {
+        assembly {
+            $.slot := ERC20_CAPPED_VALIDATION_FLAG
         }
     }
 

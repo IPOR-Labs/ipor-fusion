@@ -56,7 +56,6 @@ contract UniswapSwapV2FuseTest is Test {
                     "pvUSDC",
                     USDC,
                     _priceOracle,
-                    alphas,
                     _setupMarketConfigs(),
                     _setupFuses(),
                     _setupBalanceFuses(),

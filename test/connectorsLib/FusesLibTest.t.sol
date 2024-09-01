@@ -3,6 +3,8 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {FusesLibMock} from "./FusesLibMock.sol";
+import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
+import {DustBalanceFuseMock} from "./DustBalanceFuseMock.sol";
 
 contract FusesLibTest is Test {
     FusesLibMock internal fusesLibMock;
@@ -25,8 +27,8 @@ contract FusesLibTest is Test {
 
     function testShouldRemoveBalanceFuse() public {
         //given
-        address fuse = address(0x1);
         uint256 marketId = 1;
+        address fuse = address(new ZeroBalanceFuse(marketId));
 
         fusesLibMock.addBalanceFuse(marketId, fuse);
 
@@ -38,6 +40,25 @@ contract FusesLibTest is Test {
         //then
         assertFalse(fusesLibMock.isBalanceFuseSupported(marketId, fuse));
         assertTrue(fuseBefore);
+    }
+
+    function testShouldNotRemoveBalanceFuseBecauseOfDust() public {
+        //given
+        uint256 marketId = 1;
+        address fuse = address(new DustBalanceFuseMock(marketId));
+
+        fusesLibMock.addBalanceFuse(marketId, fuse);
+
+        bytes memory error = abi.encodeWithSignature(
+            "BalanceFuseNotReadyToRemove(uint256,address,uint256)",
+            marketId,
+            fuse,
+            1001
+        );
+
+        //when
+        vm.expectRevert(error);
+        fusesLibMock.removeBalanceFuse(marketId, fuse);
     }
 
     function testShouldRemoveFuseCheckLastFuseId() public {

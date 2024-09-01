@@ -9,10 +9,12 @@ bytes4 constant DEPOSIT_WITH_PERMIT_SELECTOR = PlasmaVault.depositWithPermit.sel
 bytes4 constant MINT_SELECTOR = PlasmaVault.mint.selector;
 bytes4 constant WITHDRAW_SELECTOR = PlasmaVault.withdraw.selector;
 bytes4 constant REDEEM_SELECTOR = PlasmaVault.redeem.selector;
+uint256 constant MAX_REDEMPTION_DELAY = 30 days;
 
 /// @title Library for the redemption delay responsible for locking accounts for withdraw and redeem functions after deposit or mint functions.
 library RedemptionDelayLib {
     error AccountIsLocked(uint256 unlockTime);
+    error RedemptionDelayTooLong(uint256 redemptionDelay);
 
     /// @notice Get the account lock time for a redemption function (withdraw, redeem)
     /// @param account_ The account to check the lock time
@@ -31,6 +33,9 @@ library RedemptionDelayLib {
     /// @notice Set the redemption delay, defining the time an account is locked for withdraw and redeem functions after deposit or mint functions
     /// @param delay_ The redemption delay in seconds
     function setRedemptionDelay(uint256 delay_) internal {
+        if (delay_ > MAX_REDEMPTION_DELAY) {
+            revert RedemptionDelayTooLong(delay_);
+        }
         IporFusionAccessManagersStorageLib.setRedemptionDelay(delay_);
     }
 

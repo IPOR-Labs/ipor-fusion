@@ -19,7 +19,14 @@ library PlasmaVaultLib {
     using SafeCast for uint256;
     using SafeCast for int256;
 
+    /// @dev Hard CAP for the performance fee in percentage - 50%
+    uint256 public constant PERFORMANCE_MAX_FEE_IN_PERCENTAGE = 5000;
+
+    /// @dev Hard CAP for the management fee in percentage - 5%
+    uint256 public constant MANAGEMENT_MAX_FEE_IN_PERCENTAGE = 500;
+
     error InvalidPerformanceFee(uint256 feeInPercentage);
+    error InvalidManagementFee(uint256 feeInPercentage);
 
     event InstantWithdrawalFusesConfigured(InstantWithdrawalFusesParamsStruct[] fuses);
     event PriceOracleMiddlewareChanged(address newPriceOracleMiddleware);
@@ -100,8 +107,8 @@ library PlasmaVaultLib {
         if (feeManager_ == address(0)) {
             revert Errors.WrongAddress();
         }
-        if (feeInPercentage_ > 10000) {
-            revert InvalidPerformanceFee(feeInPercentage_);
+        if (feeInPercentage_ > MANAGEMENT_MAX_FEE_IN_PERCENTAGE) {
+            revert InvalidManagementFee(feeInPercentage_);
         }
 
         PlasmaVaultStorageLib.ManagementFeeData storage managementFeeData = PlasmaVaultStorageLib
@@ -131,7 +138,7 @@ library PlasmaVaultLib {
         if (feeManager_ == address(0)) {
             revert Errors.WrongAddress();
         }
-        if (feeInPercentage_ > 10000) {
+        if (feeInPercentage_ > PERFORMANCE_MAX_FEE_IN_PERCENTAGE) {
             revert InvalidPerformanceFee(feeInPercentage_);
         }
 
@@ -221,15 +228,33 @@ library PlasmaVaultLib {
         emit RewardsClaimManagerAddressChanged(rewardsClaimManagerAddress_);
     }
 
+    /// @notice Gets the total supply cap
+    /// @return The total supply cap, represented in decimals of the underlying asset
     function getTotalSupplyCap() internal view returns (uint256) {
         return PlasmaVaultStorageLib.getERC20CappedStorage().cap;
     }
 
+    /// @notice Sets the total supply cap
+    /// @param cap_ The total supply cap, represented in decimals of the underlying asset
     function setTotalSupplyCap(uint256 cap_) internal {
         if (cap_ == 0) {
             revert Errors.WrongValue();
         }
         PlasmaVaultStorageLib.getERC20CappedStorage().cap = cap_;
+    }
+
+    /// @notice Sets the total supply cap validation
+    /// @param flag_ The total supply cap validation flag
+    /// @dev 1 - no validation, 0 - validation, total supply validation cap is disabled when performance fee or management fee is minted.
+    /// By default, the total supply cap validation is enabled (flag_ = 0)
+    function setTotalSupplyCapValidation(uint256 flag_) internal {
+        PlasmaVaultStorageLib.getERC20CappedValidationFlag().value = flag_;
+    }
+
+    /// @notice Checks if the total supply cap validation is enabled
+    /// @return true if the total supply cap validation is enabled, false otherwise
+    function isTotalSupplyCapValidationEnabled() internal view returns (bool) {
+        return PlasmaVaultStorageLib.getERC20CappedValidationFlag().value == 0;
     }
 
     /// @notice Sets the execution state to started, used in the execute function called by Alpha

@@ -8,6 +8,7 @@ import {ERC20VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/token/E
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {ERC20CappedUpgradeable} from "./ERC20CappedUpgradeable.sol";
+import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 
 /// @title Stateless extension of PlasmaVault with ERC20 Votes, ERC20 Permit. Used in the context of Plasma Vault (only by delegatecall).
 contract PlasmaVaultBase is
@@ -45,7 +46,11 @@ contract PlasmaVaultBase is
     ) internal virtual override(ERC20Upgradeable, ERC20VotesUpgradeable, ERC20CappedUpgradeable) {
         /// @dev update votes and update total supply and balance
         ERC20VotesUpgradeable._update(from_, to_, value_);
-        /// @dev check total supply cap
-        ERC20CappedUpgradeable._update(from_, to_, value_);
+
+        /// @dev total supply cap validation is disabled when performance and management fee is minted
+        if (PlasmaVaultLib.isTotalSupplyCapValidationEnabled()) {
+            /// @dev check total supply cap
+            ERC20CappedUpgradeable._update(from_, to_, value_);
+        }
     }
 }

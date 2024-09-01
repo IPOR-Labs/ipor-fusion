@@ -110,7 +110,6 @@ contract PlasmaVaultErc20FusionTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,

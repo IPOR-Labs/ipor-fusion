@@ -72,7 +72,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -110,7 +109,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -134,6 +132,74 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertEq(feeData.feeInPercentage, 55);
     }
 
+    function testShouldNotConfigureManagementFeeDataBecauseOfCap() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory managementFeeManagers = new address[](1);
+        managementFeeManagers[0] = address(0x555);
+        usersToRoles.managementFeeManagers = managementFeeManagers;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes memory error = abi.encodeWithSignature("InvalidManagementFee(uint256)", 501);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x555));
+        IPlasmaVaultGovernance(address(plasmaVault)).configureManagementFee(address(0x555), 501);
+    }
+
+    function testShouldNotCinfigurePerformanceFeeDataBecauseOfCap() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory performanceFeeManagers = new address[](1);
+        performanceFeeManagers[0] = address(0x777);
+        usersToRoles.performanceFeeManagers = performanceFeeManagers;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes memory error = abi.encodeWithSignature("InvalidPerformanceFee(uint256)", 5001);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        IPlasmaVaultGovernance(address(plasmaVault)).configurePerformanceFee(address(0x555), 5001);
+    }
+
     function testShouldConfigureManagementFeeDataWhenTimelock() public {
         // given
 
@@ -150,7 +216,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -198,7 +263,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -243,7 +307,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -287,7 +350,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -334,7 +396,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -378,7 +439,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -437,7 +497,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -485,7 +544,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -534,7 +592,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -581,7 +638,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -645,7 +701,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -755,7 +810,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -818,7 +872,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -902,7 +955,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -986,7 +1038,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1041,7 +1092,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1104,7 +1154,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 supplyFuses,
                 balanceFuses,
@@ -1166,7 +1215,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1234,7 +1282,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1289,7 +1336,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1339,7 +1385,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1396,7 +1441,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1453,7 +1497,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1530,7 +1573,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1572,7 +1614,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1619,7 +1660,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1669,7 +1709,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1714,7 +1753,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1759,7 +1797,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1809,7 +1846,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1851,7 +1887,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1898,7 +1933,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -1947,7 +1981,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2038,7 +2071,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2131,7 +2163,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2226,7 +2257,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2324,7 +2354,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2383,7 +2412,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2441,7 +2469,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2498,7 +2525,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2559,7 +2585,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2611,7 +2636,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -2647,7 +2671,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
@@ -2687,18 +2710,16 @@ contract PlasmaVaultMaintenanceTest is Test {
     }
 
     function testShouldDisplayMarketSubstrates() public {
-
         // given
         address underlyingToken = USDC;
-        address user = address(0x555);
 
-        address USDT = address(0x777);
-        address DAI = address(0x888);
+        address usdt = address(0x777);
+        address dai = address(0x888);
 
         bytes32[] memory substrates = new bytes32[](3);
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        substrates[1] = PlasmaVaultConfigLib.addressToBytes32(USDT);
-        substrates[2] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        substrates[1] = PlasmaVaultConfigLib.addressToBytes32(usdt);
+        substrates[2] = PlasmaVaultConfigLib.addressToBytes32(dai);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
         marketConfigs[0] = MarketSubstratesConfig(1, substrates);
@@ -2711,7 +2732,6 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -2727,8 +2747,62 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // then
         assertEq(substratesResult.length, 3, "Substrates should have length 3");
-        assertEq(uint256(substratesResult[0]), uint256(PlasmaVaultConfigLib.addressToBytes32(USDC)), "First substrate should be USDC");
-        assertEq(uint256(substratesResult[1]), uint256(PlasmaVaultConfigLib.addressToBytes32(USDT)), "Second substrate should be USDT");
-        assertEq(uint256(substratesResult[2]), uint256(PlasmaVaultConfigLib.addressToBytes32(DAI)), "Third substrate should be DAI");
+        assertEq(
+            uint256(substratesResult[0]),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(USDC)),
+            "First substrate should be USDC"
+        );
+        assertEq(
+            uint256(substratesResult[1]),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(USDT)),
+            "Second substrate should be USDT"
+        );
+        assertEq(
+            uint256(substratesResult[2]),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(DAI)),
+            "Third substrate should be DAI"
+        );
+    }
+
+    function testShouldNotSetMarketLimits() public {
+        // given
+        address underlyingToken = USDC;
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        MarketLimit[] memory marketsLimits = new MarketLimit[](1);
+        marketsLimits[0] = MarketLimit(1, 1e18 + 1);
+
+        // when
+        bytes memory error = abi.encodeWithSignature("MarketLimitSetupInPercentageIsTooHigh(uint256)", 1e18 + 1);
+
+        //when
+        vm.prank(usersToRoles.atomist);
+        //then
+        vm.expectRevert(error);
+        IPlasmaVaultGovernance(address(plasmaVault)).setupMarketsLimits(marketsLimits);
     }
 }

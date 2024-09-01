@@ -77,7 +77,6 @@ contract PlasmaVaultCallbackHandler is Test {
                     "TPLASMA",
                     _DAI,
                     address(_priceOracleMiddlewareProxy),
-                    alphas,
                     marketConfigs,
                     _setupFuses(),
                     balanceFuses,

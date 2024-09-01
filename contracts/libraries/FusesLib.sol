@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 
 /// @title Fuses Library responsible for managing fuses in the Plasma Vault
 library FusesLib {
+    using Address for address;
+
+    uint256 public constant ALLOWED_DUST_IN_BALANCE_FUSE = 1000;
+
     event FuseAdded(address fuse);
     event FuseRemoved(address fuse);
     event BalanceFuseAdded(uint256 marketId, address fuse);
@@ -16,6 +21,7 @@ library FusesLib {
     error FuseUnsupported(address fuse);
     error BalanceFuseAlreadyExists(uint256 marketId, address fuse);
     error BalanceFuseDoesNotExist(uint256 marketId, address fuse);
+    error BalanceFuseNotReadyToRemove(uint256 marketId, address fuse, uint256 currentBalance);
 
     /// @notice Checks if the fuse is supported
     /// @param fuse_ The address of the fuse
@@ -119,10 +125,19 @@ library FusesLib {
     /// @param fuse_ The address of the fuse
     /// @dev Every market can have one dedicated balance fuse
     function removeBalanceFuse(uint256 marketId_, address fuse_) internal {
-        address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
+        address currentBalanceFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
 
-        if (currentFuse != fuse_) {
+        if (currentBalanceFuse != fuse_) {
             revert BalanceFuseDoesNotExist(marketId_, fuse_);
+        }
+
+        uint256 wadBalanceAmountInUSD = abi.decode(
+            currentBalanceFuse.functionDelegateCall(abi.encodeWithSignature("balanceOf()")),
+            (uint256)
+        );
+
+        if (wadBalanceAmountInUSD > ALLOWED_DUST_IN_BALANCE_FUSE) {
+            revert BalanceFuseNotReadyToRemove(marketId_, fuse_, wadBalanceAmountInUSD);
         }
 
         PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] = address(0);

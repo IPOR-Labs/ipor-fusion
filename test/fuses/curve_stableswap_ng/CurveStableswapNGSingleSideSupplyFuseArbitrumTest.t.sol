@@ -98,7 +98,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -112,7 +111,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -186,7 +184,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -198,7 +195,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -260,7 +256,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -272,7 +267,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -329,7 +323,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -343,7 +336,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -400,7 +392,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -412,7 +403,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -473,7 +463,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -487,7 +476,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -587,7 +575,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -599,7 +586,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -693,7 +679,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -705,7 +690,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -786,7 +770,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -798,7 +781,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -882,7 +864,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
-        address[] memory alphas = createAlphas();
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
@@ -894,7 +875,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,

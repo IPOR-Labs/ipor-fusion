@@ -73,6 +73,22 @@ contract PlasmaVaultWithdrawTest is Test {
         );
     }
 
+    function testShouldNotSetRedemptionDelay() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
+
+        bytes memory error = abi.encodeWithSignature("RedemptionDelayTooLong(uint256)", 31 days);
+
+        //when
+        vm.expectRevert(error);
+        vm.prank(atomist);
+        accessManager.setRedemptionDelay(31 days);
+    }
+
     function testShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
@@ -314,7 +330,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -378,6 +393,112 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(vaultTotalAssetsAfter, 1e6);
     }
 
+    function testShouldInstantlyWithdrawExitFromOneMarketAaveV3TotalSupplyCapAchieved() public {
+        /// @dev Scenario: test shows that even if total supply cap is achieved and performance fee and managment fee will be minted in shares of vault, user can still withdraw his assets
+
+        //given
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseAaveV3);
+
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        amount = 200 * 1e6;
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 2000, address(0x555), 200),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                amount
+            )
+        );
+        setupRoles(plasmaVault, accessManager);
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+
+        calls[0] = FuseAction(
+            address(supplyFuseAaveV3),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
+            )
+        );
+
+        /// @dev first call to move some assets to a external market
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+
+        /// @dev prepare instant withdraw config
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory instantWithdrawParams = new bytes32[](2);
+        instantWithdrawParams[0] = 0;
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
+            fuse: address(supplyFuseAaveV3),
+            params: instantWithdrawParams
+        });
+
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+
+        //when
+        /// @dev important in this test to accrue some interest in external markets
+        vm.warp(block.timestamp + 100 days);
+
+        vm.prank(userOne);
+        plasmaVault.withdraw(199 * 1e6, userOne, userOne);
+
+        //then
+        uint256 userBalanceAfter = ERC20(USDC).balanceOf(userOne);
+
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+
+        assertEq(userBalanceAfter, 199 * 1e6);
+        assertGt(vaultTotalAssetsAfter, 0);
+        assertEq(vaultTotalAssetsAfter, 4708504);
+    }
+
     function testShouldInstantWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3() public {
         //given
         assetName = "IPOR Fusion USDC";
@@ -427,7 +548,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -547,7 +667,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -655,7 +774,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -790,7 +908,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -955,7 +1072,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1112,7 +1228,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1260,7 +1375,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1376,7 +1490,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1510,7 +1623,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1663,7 +1775,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
@@ -1719,7 +1830,6 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,

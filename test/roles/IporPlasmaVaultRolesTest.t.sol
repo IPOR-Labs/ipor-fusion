@@ -557,7 +557,6 @@ contract IporPlasmaVaultRolesTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(_priceOracleMiddlewareProxy),
-                _data.alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,

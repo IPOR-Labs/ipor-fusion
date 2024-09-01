@@ -38,8 +38,6 @@ struct PlasmaVaultInitData {
     address underlyingToken;
     /// @notice priceOracleMiddleware is an address of the Price Oracle Middleware from Ipor Fusion
     address priceOracleMiddleware;
-    /// @notice alphas is a list of addresses of the Alphas
-    address[] alphas;
     /// @notice marketSubstratesConfigs is a list of MarketSubstratesConfig structs, which define substrates for specific markets
     MarketSubstratesConfig[] marketSubstratesConfigs;
     /// @notice fuses is a list of addresses of the Fuses
@@ -443,7 +441,13 @@ contract PlasmaVault is
 
         uint256 fee = Math.mulDiv(totalAssetsAfter - totalAssetsBefore_, feeData.feeInPercentage, 1e4);
 
+        /// @dev total supply cap validation is disabled for fee minting
+        PlasmaVaultLib.setTotalSupplyCapValidation(1);
+
         _mint(feeData.feeManager, convertToShares(fee));
+
+        /// @dev total supply cap validation is enabled when fee minting is finished
+        PlasmaVaultLib.setTotalSupplyCapValidation(0);
     }
 
     function _realizeManagementFee() internal {
@@ -460,7 +464,13 @@ contract PlasmaVault is
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
 
         /// @dev minting is an act of management fee realization
+        /// @dev total supply cap validation is disabled for fee minting
+        PlasmaVaultLib.setTotalSupplyCapValidation(1);
+
         _mint(feeData.feeManager, unrealizedFeeInShares);
+
+        /// @dev total supply cap validation is enabled when fee minting is finished
+        PlasmaVaultLib.setTotalSupplyCapValidation(0);
 
         emit ManagementFeeRealized(unrealizedFeeInUnderlying, unrealizedFeeInShares);
     }
