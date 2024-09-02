@@ -68,7 +68,6 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                     assetSymbol: "TPLASMA",
                     underlyingToken: USDC,
                     priceOracleMiddleware: _priceOracleMiddlewareProxy,
-                    alphas: alphas,
                     marketSubstratesConfigs: _setupMarketConfigs(),
                     fuses: _setupFuses(),
                     balanceFuses: _setupBalanceFuses(),
@@ -132,7 +131,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     }
 
     function _createAccessManager() private {
-        _accessManager = address(new IporFusionAccessManager(admin));
+        _accessManager = address(new IporFusionAccessManager(admin, 0));
     }
 
     function _createClaimRewardsManager() private {

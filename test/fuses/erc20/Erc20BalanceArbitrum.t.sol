@@ -129,7 +129,6 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
     function testShouldCalculateErc20BalanceEqual0WhenExecute() external {
         // given
-
         address userOne = accounts[1];
         uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),

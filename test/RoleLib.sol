@@ -18,8 +18,15 @@ struct UsersToRoles {
 
 /// @title Storage
 library RoleLib {
-    function createAccessManager(UsersToRoles memory usersWithRoles, Vm vm) public returns (IporFusionAccessManager) {
-        IporFusionAccessManager accessManager = new IporFusionAccessManager(usersWithRoles.superAdmin);
+    function createAccessManager(
+        UsersToRoles memory usersWithRoles,
+        uint256 redemptionDelay_,
+        Vm vm
+    ) public returns (IporFusionAccessManager) {
+        IporFusionAccessManager accessManager = new IporFusionAccessManager(
+            usersWithRoles.superAdmin,
+            redemptionDelay_
+        );
 
         vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(Roles.ALPHA_ROLE, Roles.ATOMIST_ROLE);
@@ -100,10 +107,9 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, atomistsSig, Roles.ATOMIST_ROLE);
 
-        bytes4[] memory atomistsSig2 = new bytes4[](3);
-        atomistsSig2[0] = IporFusionAccessManager.setRedemptionDelay.selector;
-        atomistsSig2[1] = IporFusionAccessManager.enableTransferShares.selector;
-        atomistsSig2[2] = IporFusionAccessManager.convertToPublicVault.selector;
+        bytes4[] memory atomistsSig2 = new bytes4[](2);
+        atomistsSig2[0] = IporFusionAccessManager.enableTransferShares.selector;
+        atomistsSig2[1] = IporFusionAccessManager.convertToPublicVault.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(address(accessManager_), atomistsSig2, Roles.ATOMIST_ROLE);

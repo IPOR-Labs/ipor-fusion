@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
+
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -38,8 +39,6 @@ struct PlasmaVaultInitData {
     address underlyingToken;
     /// @notice priceOracleMiddleware is an address of the Price Oracle Middleware from Ipor Fusion
     address priceOracleMiddleware;
-    /// @notice alphas is a list of addresses of the Alphas
-    address[] alphas;
     /// @notice marketSubstratesConfigs is a list of MarketSubstratesConfig structs, which define substrates for specific markets
     MarketSubstratesConfig[] marketSubstratesConfigs;
     /// @notice fuses is a list of addresses of the Fuses
@@ -322,6 +321,14 @@ contract PlasmaVault is
         return super.redeem(shares_, receiver_, owner_);
     }
 
+    function maxDeposit(address) public view virtual override returns (uint256) {
+        return convertToAssets(PlasmaVaultLib.getTotalSupplyCap() - totalSupply());
+    }
+
+    function maxMint(address) public view virtual override returns (uint256) {
+        return PlasmaVaultLib.getTotalSupplyCap() - totalSupply();
+    }
+
     function claimRewards(FuseAction[] calldata calls_) external override nonReentrant restricted {
         uint256 callsCount = calls_.length;
         for (uint256 i; i < callsCount; ++i) {
@@ -443,7 +450,13 @@ contract PlasmaVault is
 
         uint256 fee = Math.mulDiv(totalAssetsAfter - totalAssetsBefore_, feeData.feeInPercentage, 1e4);
 
+        /// @dev total supply cap validation is disabled for fee minting
+        PlasmaVaultLib.setTotalSupplyCapValidation(1);
+
         _mint(feeData.feeManager, convertToShares(fee));
+
+        /// @dev total supply cap validation is enabled when fee minting is finished
+        PlasmaVaultLib.setTotalSupplyCapValidation(0);
     }
 
     function _realizeManagementFee() internal {
@@ -460,7 +473,13 @@ contract PlasmaVault is
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
 
         /// @dev minting is an act of management fee realization
+        /// @dev total supply cap validation is disabled for fee minting
+        PlasmaVaultLib.setTotalSupplyCapValidation(1);
+
         _mint(feeData.feeManager, unrealizedFeeInShares);
+
+        /// @dev total supply cap validation is enabled when fee minting is finished
+        PlasmaVaultLib.setTotalSupplyCapValidation(0);
 
         emit ManagementFeeRealized(unrealizedFeeInUnderlying, unrealizedFeeInShares);
     }
@@ -554,8 +573,9 @@ contract PlasmaVault is
                     wadBalanceAmountInUSD * IporMath.BASIS_OF_POWER ** underlyingAssePriceDecimals,
                     underlyingAssetPrice
                 ),
-                decimals()
+                (decimals() - _decimalsOffset())
             );
+
             deltasInUnderlying =
                 deltasInUnderlying +
                 PlasmaVaultLib.updateTotalAssetsInMarket(markets[i], dataToCheck.marketsToCheck[i].balanceInMarket);
@@ -717,5 +737,9 @@ contract PlasmaVault is
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSelector(IPlasmaVaultBase.updateInternal.selector, from_, to_, value_)
         );
+    }
+
+    function _decimalsOffset() internal view virtual override returns (uint8) {
+        return PlasmaVaultLib.DECIMALS_OFFSET;
     }
 }

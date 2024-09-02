@@ -4,11 +4,11 @@ pragma solidity 0.8.26;
 /// @title Predefined roles used in the IPOR Fusion protocol
 /// @notice For documentation purposes: When new roles are added by authorized property of PlasmaVault during runtime, they should be added and described here as well.
 library Roles {
-    /// @notice Account with this role has rights to manage the IporFusionAccessManager in general. The highest role, which could manage all roles including ADMIN_ROLE and OWNER_ROLE.
+    /// @notice Account with this role has rights to manage the IporFusionAccessManager in general. The highest role, which could manage all roles including ADMIN_ROLE and OWNER_ROLE. It recommended to use MultiSig contract for this role.
     /// @dev Managed by the Admin, the highest role from AccessManager
     uint64 public constant ADMIN_ROLE = 0;
 
-    /// @notice Account with this role has rights to manage Owners, Guardians, Atomists
+    /// @notice Account with this role has rights to manage Owners, Guardians, Atomists. It recommended to use MultiSig contract for this role.
     /// @dev Managed by the Owner, if applicable managed by the Admin
     uint64 public constant OWNER_ROLE = 1;
 
@@ -16,7 +16,7 @@ library Roles {
     /// @dev Managed by the Owner
     uint64 public constant GUARDIAN_ROLE = 2;
 
-    /// @notice Account with this role has rights to manage the PlasmaVault.
+    /// @notice Account with this role has rights to manage the PlasmaVault. It recommended to use MultiSig contract for this role.
     /// @dev Managed by Owner
     uint64 public constant ATOMIST_ROLE = 100;
 

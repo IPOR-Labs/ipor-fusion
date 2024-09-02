@@ -16,6 +16,8 @@ contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
     error AccessManagedUnauthorized(address caller);
     error TooShortExecutionDelayForRole(uint64 roleId, uint32 executionDelay);
 
+    uint256 public immutable override REDEMPTION_DELAY_IN_SECONDS;
+
     bool private _customConsumingSchedule;
 
     modifier restricted() {
@@ -23,7 +25,9 @@ contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
         _;
     }
 
-    constructor(address initialAdmin_) AccessManager(initialAdmin_) {}
+    constructor(address initialAdmin_, uint256 redemptionDelayInSeconds_) AccessManager(initialAdmin_) {
+        REDEMPTION_DELAY_IN_SECONDS = redemptionDelayInSeconds_;
+    }
 
     /// @notice Initializes the IporFusionAccessManager with the specified initial data.
     /// @param initialData_ A struct containing the initial configuration data, including role-to-function mappings and execution delays.
@@ -74,9 +78,6 @@ contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
                 );
             }
         }
-        if (initialData_.redemptionDelay > 0) {
-            RedemptionDelayLib.setRedemptionDelay(initialData_.redemptionDelay);
-        }
     }
 
     function canCallAndUpdate(
@@ -103,10 +104,6 @@ contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
         _setTargetFunctionRole(vault_, PlasmaVault.transferFrom.selector, PUBLIC_ROLE);
     }
 
-    function setRedemptionDelay(uint256 delay_) external override restricted {
-        RedemptionDelayLib.setRedemptionDelay(delay_);
-    }
-
     function setMinimalExecutionDelaysForRoles(
         uint64[] calldata rolesIds_,
         uint256[] calldata delays_
@@ -128,10 +125,6 @@ contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
 
     function getAccountLockTime(address account_) external view override returns (uint256) {
         return RedemptionDelayLib.getAccountLockTime(account_);
-    }
-
-    function getRedemptionDelay() external view override returns (uint256) {
-        return RedemptionDelayLib.getRedemptionDelay();
     }
 
     function isConsumingScheduledOp() external view override returns (bytes4) {
