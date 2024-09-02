@@ -5,7 +5,8 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 
 /// @title Interface for the IporFusionAccessManager contract that manages access control for the IporFusion contract and its contract satellites
 interface IIporFusionAccessManager is IAccessManager {
-    /// @notice The minimal delay required for the timelocked functions
+    /// @notice The minimal delay required for the timelocked functions, value is set in the constructor, cannot be changed
+    /// @return The minimal delay in seconds
     // solhint-disable-next-line func-name-mixedcase
     function REDEMPTION_DELAY_IN_SECONDS() external view returns (uint256);
 
