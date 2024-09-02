@@ -88,7 +88,7 @@ contract InitializeAccessManagerTest is Test {
         vm.prank(admin);
         accessManager.initialize(initData);
 
-        address target = address(plasmaVault);
+        address target = address(accessManager);
         bytes memory scheduleData = abi.encodeWithSignature("setRedemptionDelay(uint256)", 123);
 //
 //
@@ -96,10 +96,23 @@ contract InitializeAccessManagerTest is Test {
 //
         vm.warp(block.timestamp + 10 days);
 
+        (bool flag, uint32 delay) = accessManager.hasRole(Roles.REDEMPTION_DELAY_SETUP_ROLE, data.redemptionDelaySetupList[0]);
+
+        console2.log("hasRole:", flag);
+        console2.log("delay:", delay);
+
+        uint64 funcRole = accessManager.getTargetFunctionRole(target, IporFusionAccessManager.setRedemptionDelay.selector);
+
+        console2.log("Selector:");
+        console2.logBytes4(IporFusionAccessManager.setRedemptionDelay.selector);
+
+        console2.log("funcRole:", funcRole);
+
+        console2.log("data.redemptionDelaySetupList[0]:",data.redemptionDelaySetupList[0]);
         //when
         vm.startPrank(data.redemptionDelaySetupList[0]);
 //        accessManager.setRedemptionDelay(123);
-        (, uint32 nonceSchedule) = accessManager.schedule(target, scheduleData, uint48(block.timestamp + 10 days ));
+        (, uint32 nonceSchedule) = accessManager.schedule(target, scheduleData, uint48(block.timestamp + 24 hours +1));
         vm.stopPrank();
 
         // then
