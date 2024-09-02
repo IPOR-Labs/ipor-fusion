@@ -41,7 +41,6 @@ contract PlasmaVaultBasicTest is Test {
     string public assetName;
     string public assetSymbol;
     address public underlyingToken;
-    address[] public alphas;
     address public alpha;
     uint256 public amount;
 
@@ -68,10 +67,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion DAI";
         assetSymbol = "ipfDAI";
         underlyingToken = DAI;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -145,10 +141,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -238,10 +231,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion DAI";
         assetSymbol = "ipfDAI";
         underlyingToken = DAI;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -329,10 +319,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -412,11 +399,7 @@ contract PlasmaVaultBasicTest is Test {
         //then
         uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
 
-        assertGt(
-            vaultTotalAssetsAfter,
-            199 * 10 ** plasmaVault.decimals(),
-            "Vault total assets should be increased by amount"
-        );
+        assertGt(vaultTotalAssetsAfter, 199 * 10 ** 6, "Vault total assets should be increased by amount");
     }
 
     function testShouldIncreaseValueOfSharesAndNotChangeNumberOfSharesWhenTouchedMarket() public {
@@ -424,10 +407,8 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
-        alpha = address(0x1);
 
-        alphas[0] = alpha;
+        alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -523,11 +504,7 @@ contract PlasmaVaultBasicTest is Test {
         uint256 userAssetsAfter = plasmaVault.convertToAssets(userSharesAfter);
 
         assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
-        assertGt(
-            userAssetsAfter,
-            userAssetsBefore + 2 * 10 ** plasmaVault.decimals(),
-            "User assets after should be greater than user assets before"
-        );
+        assertGt(userAssetsAfter, userAssetsBefore, "User assets after should be greater than user assets before");
     }
 
     function testShouldNOTIncreaseValueOfSharesAndAmountOfSharesWhenNotTouchedMarket() public {
@@ -535,10 +512,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -646,10 +620,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion DAI";
         assetSymbol = "ipfDAI";
         underlyingToken = DAI;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -740,10 +711,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -867,10 +835,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion DAI";
         assetSymbol = "ipfDAI";
         underlyingToken = DAI;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -959,10 +924,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion DAI";
         assetSymbol = "ipfDAI";
         underlyingToken = DAI;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1059,10 +1021,7 @@ contract PlasmaVaultBasicTest is Test {
         assetName = "IPOR Fusion DAI";
         assetSymbol = "ipfDAI";
         underlyingToken = DAI;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 

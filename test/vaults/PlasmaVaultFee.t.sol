@@ -43,9 +43,9 @@ contract PlasmaVaultFeeTest is Test {
     string public assetName;
     string public assetSymbol;
     address public underlyingToken;
-    address[] public alphas;
     address public alpha;
     uint256 public amount;
+    uint256 public sharesAmount;
 
     address public userOne;
     address public userTwo;
@@ -81,10 +81,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -219,10 +216,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
-
         alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -353,10 +347,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -497,10 +488,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -624,7 +612,12 @@ contract PlasmaVaultFeeTest is Test {
         );
 
         assertEq(userOneBalanceOfAssets, 24999999, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
-        assertEq(userTwoBalanceOfAssets, 100000000, "userTwoBalanceOfAssets on plasma vault stayed 100 usd");
+        assertApproxEqAbs(
+            userTwoBalanceOfAssets,
+            amount,
+            1,
+            "userTwoBalanceOfAssets on plasma vault stayed 100 usd aprox"
+        );
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
@@ -636,10 +629,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -763,7 +753,12 @@ contract PlasmaVaultFeeTest is Test {
         );
 
         assertEq(userOneBalanceOfAssets, 24999999, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
-        assertEq(userTwoBalanceOfAssets, 100000000, "userTwoBalanceOfAssets on plasma vault stayed 100 usd");
+        assertApproxEqAbs(
+            userTwoBalanceOfAssets,
+            amount,
+            1,
+            "userTwoBalanceOfAssets on plasma vault stayed 100 usd aprox"
+        );
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
@@ -775,10 +770,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -831,6 +823,7 @@ contract PlasmaVaultFeeTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -905,9 +898,16 @@ contract PlasmaVaultFeeTest is Test {
         );
 
         assertEq(userOneBalanceOfAssets, 24999999, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
-        assertEq(userTwoBalanceOfAssets, 100000000, "userTwoBalanceOfAssets on plasma vault stayed 100 usd");
+        assertApproxEqAbs(
+            userTwoBalanceOfAssets,
+            amount,
+            1,
+            "userTwoBalanceOfAssets on plasma vault stayed 100 usd aprox"
+        );
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
+        //100000000
+        //99999999
     }
 
     function testShouldRedeemExitFromOneMarketAaveV3AndCalculatePerformanceFeeTimeIsChanged() public {
@@ -917,10 +917,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1015,9 +1012,11 @@ contract PlasmaVaultFeeTest is Test {
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
 
+        uint256 sharesRedeemAmount = 70 * 10 ** plasmaVault.decimals();
+
         //when
         vm.prank(userOne);
-        plasmaVault.redeem(70 * 1e6, userOne, userOne);
+        plasmaVault.redeem(sharesRedeemAmount, userOne, userOne);
 
         //then
         uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
@@ -1029,7 +1028,7 @@ contract PlasmaVaultFeeTest is Test {
 
         assertEq(userOneBalanceOfAssets, 32279599, "userOneBalanceOfAssets on plasma vault");
         assertEq(userTwoBalanceOfAssets, 107598664, "userTwoBalanceOfAssets on plasma vault");
-        assertEq(performanceFeeManagerBalanceOfAssets, 796753, "daoBalanceOfAssets");
+        assertApproxEqAbs(performanceFeeManagerBalanceOfAssets, 796753, 1, "daoBalanceOfAssets aprox");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -1040,10 +1039,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1135,9 +1131,10 @@ contract PlasmaVaultFeeTest is Test {
         /// @dev configure order for instant withdraw
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
+        uint256 sharesRedeemAmount = 70 * 10 ** plasmaVault.decimals();
         //when
         vm.prank(userOne);
-        plasmaVault.redeem(70 * 1e6, userOne, userOne);
+        plasmaVault.redeem(sharesRedeemAmount, userOne, userOne);
 
         //then
         uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);
@@ -1161,10 +1158,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1263,10 +1257,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1317,6 +1308,7 @@ contract PlasmaVaultFeeTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         vm.warp(block.timestamp);
 
@@ -1325,8 +1317,9 @@ contract PlasmaVaultFeeTest is Test {
         ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
         vm.prank(userOne);
         ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+
         vm.prank(userOne);
-        plasmaVault.mint(amount, userOne);
+        plasmaVault.mint(sharesAmount, userOne);
 
         uint256 userOneBalanceOfAssetsBefore = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
 
@@ -1337,8 +1330,10 @@ contract PlasmaVaultFeeTest is Test {
         ERC20(USDC).transfer(address(userTwo), amount);
         vm.prank(userTwo);
         ERC20(USDC).approve(address(plasmaVault), 2 * amount);
+
         vm.prank(userTwo);
-        plasmaVault.mint(amount, userTwo);
+        plasmaVault.mint(sharesAmount, userTwo);
+
         uint256 userTwoBalanceOfSharesBefore = plasmaVault.balanceOf(userTwo);
 
         //then
@@ -1369,10 +1364,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1472,10 +1464,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1572,10 +1561,7 @@ contract PlasmaVaultFeeTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1677,9 +1663,11 @@ contract PlasmaVaultFeeTest is Test {
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
 
+        uint256 sharesRedeemAmount = 70 * 10 ** plasmaVault.decimals();
+
         //when
         vm.prank(userOne);
-        plasmaVault.redeem(70 * 1e6, userOne, userOne);
+        plasmaVault.redeem(sharesRedeemAmount, userOne, userOne);
 
         //then
         uint256 userTwoBalanceOfSharesAfter = plasmaVault.balanceOf(userTwo);

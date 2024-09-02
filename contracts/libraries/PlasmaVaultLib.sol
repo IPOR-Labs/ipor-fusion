@@ -25,6 +25,9 @@ library PlasmaVaultLib {
     /// @dev Hard CAP for the management fee in percentage - 5%
     uint256 public constant MANAGEMENT_MAX_FEE_IN_PERCENTAGE = 500;
 
+    /// @dev The offset for the underlying asset decimals in the Plasma Vault
+    uint8 public constant DECIMALS_OFFSET = 2;
+
     error InvalidPerformanceFee(uint256 feeInPercentage);
     error InvalidManagementFee(uint256 feeInPercentage);
 
