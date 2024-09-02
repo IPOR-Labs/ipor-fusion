@@ -573,8 +573,9 @@ contract PlasmaVault is
                     wadBalanceAmountInUSD * IporMath.BASIS_OF_POWER ** underlyingAssePriceDecimals,
                     underlyingAssetPrice
                 ),
-                decimals()
+                (decimals() - _decimalsOffset())
             );
+
             deltasInUnderlying =
                 deltasInUnderlying +
                 PlasmaVaultLib.updateTotalAssetsInMarket(markets[i], dataToCheck.marketsToCheck[i].balanceInMarket);
@@ -736,5 +737,9 @@ contract PlasmaVault is
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSelector(IPlasmaVaultBase.updateInternal.selector, from_, to_, value_)
         );
+    }
+
+    function _decimalsOffset() internal view virtual override returns (uint8) {
+        return PlasmaVaultLib.DECIMALS_OFFSET;
     }
 }
