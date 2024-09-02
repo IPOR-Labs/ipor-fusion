@@ -2687,18 +2687,16 @@ contract PlasmaVaultMaintenanceTest is Test {
     }
 
     function testShouldDisplayMarketSubstrates() public {
-
         // given
         address underlyingToken = USDC;
-        address user = address(0x555);
 
-        address USDT = address(0x777);
-        address DAI = address(0x888);
+        address usdt = address(0x777);
+        address dai = address(0x888);
 
         bytes32[] memory substrates = new bytes32[](3);
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        substrates[1] = PlasmaVaultConfigLib.addressToBytes32(USDT);
-        substrates[2] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        substrates[1] = PlasmaVaultConfigLib.addressToBytes32(usdt);
+        substrates[2] = PlasmaVaultConfigLib.addressToBytes32(dai);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
         marketConfigs[0] = MarketSubstratesConfig(1, substrates);
@@ -2727,8 +2725,20 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // then
         assertEq(substratesResult.length, 3, "Substrates should have length 3");
-        assertEq(uint256(substratesResult[0]), uint256(PlasmaVaultConfigLib.addressToBytes32(USDC)), "First substrate should be USDC");
-        assertEq(uint256(substratesResult[1]), uint256(PlasmaVaultConfigLib.addressToBytes32(USDT)), "Second substrate should be USDT");
-        assertEq(uint256(substratesResult[2]), uint256(PlasmaVaultConfigLib.addressToBytes32(DAI)), "Third substrate should be DAI");
+        assertEq(
+            uint256(substratesResult[0]),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(USDC)),
+            "First substrate should be USDC"
+        );
+        assertEq(
+            uint256(substratesResult[1]),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(usdt)),
+            "Second substrate should be USDT"
+        );
+        assertEq(
+            uint256(substratesResult[2]),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(dai)),
+            "Third substrate should be DAI"
+        );
     }
 }

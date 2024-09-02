@@ -36,6 +36,8 @@ contract NewPositionUniswapV3Fuse is IFuse {
         uint256 amount1
     );
 
+    event ClosePositionUniswapV3Fuse(address version, uint256 tokenIds);
+
     error NewPositionUniswapV3FuseUnsupportedToken(address token0, address token1);
 
     address public immutable VERSION;
@@ -84,26 +86,30 @@ contract NewPositionUniswapV3Fuse is IFuse {
             NONFUNGIBLE_POSITION_MANAGER
         ).mint(params);
 
-        TokenIdsUsedInFuse storage tokensIds = FuseStorageLib.getTokenIdUsedFuse();
+        IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
+        IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
+
+        FuseStorageLib.TokenIdsUsedInFuse storage tokensIds = FuseStorageLib.getTokenIdUsedFuse();
         tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
         tokensIds.tokenIds.push(tokenId);
 
         emit NewPositionUniswapV3FuseEnter(VERSION, tokenId, liquidity, amount0, amount1);
     }
 
-    function exit(bytes calldata data) external override {
-        exit(abi.decode(data, (ClosePositions)));
+    function exit(bytes calldata data_) external override {
+        exit(abi.decode(data_, (ClosePositions)));
     }
 
-    function exit(ClosePositions closePositions) public {
-        TokenIdsUsedInFuse storage tokensIds = FuseStorageLib.getTokenIdUsedFuse();
+    function exit(ClosePositions memory closePositions) public {
+        FuseStorageLib.TokenIdsUsedInFuse storage tokensIds = FuseStorageLib.getTokenIdUsedFuse();
         for (uint256 i = 0; i < closePositions.tokenIds.length; i++) {
             uint256 len = tokensIds.tokenIds.length;
             uint256 tokenIndex = tokensIds.indexes[closePositions.tokenIds[i]];
             if (tokenIndex != len - 1) {
                 tokensIds.tokenIds[tokenIndex] = tokensIds.tokenIds[len - 1];
             }
-            --tokensIds.length;
+            tokensIds.tokenIds.pop();
+            emit ClosePositionUniswapV3Fuse(VERSION, closePositions.tokenIds[i]);
         }
     }
 }

@@ -24,6 +24,8 @@
     "@chainlink/contracts": "^1.0.0",
     "@morpho-org/morpho-blue": "^1.0.0",
     "@openzeppelin/contracts": "5.0.2",
-    "@openzeppelin/contracts-upgradeable": "5.0.2"
+    "@openzeppelin/contracts-upgradeable": "5.0.2",
+    "@uniswap/v3-core": "^1.0.1",
+    "@uniswap/v3-periphery": "^1.4.4"
   }
 }

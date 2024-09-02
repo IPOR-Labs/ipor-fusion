@@ -98,10 +98,6 @@ contract ModifyPositionUniswapV3Fuse is IFuse {
     }
 
     function exit(DecreaseLiquidityUniswapV3FuseEnterData memory data_) public {
-        if (data_.liquidity == 0) {
-            return;
-        }
-
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
                 tokenId: data_.tokenId,

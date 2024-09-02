@@ -12,7 +12,7 @@ library FuseStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.tokenIdsUsedInFuse")) - 1)) & ~bytes32(uint256(0xff));
     /// @dev this memory is designed to use with uniswap v3 fuses
     bytes32 private constant TOKEN_IDS_USED_IN_FUSE =
-        0xad43e358bd6e59a5a0c80f6bf25fa771408af4d80f621cdc680c8dfbf607ab11; // TODO fix
+        0xda8804a8d91737b4c393e8fbbd1085e373450a3e16b6b8ef2011e85a93352600;
 
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {

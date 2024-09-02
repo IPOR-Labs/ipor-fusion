@@ -8,6 +8,7 @@ libraries = []
 remappings = [
     '@ensdomains/=node_modules/@ensdomains/',
     '@openzeppelin/=node_modules/@openzeppelin/',
+    '@uniswap/v3-core/=node_modules/@uniswap/v3-core/',
     'eth-gas-reporter/=node_modules/eth-gas-reporter/',
     'ds-test/=lib/forge-std/lib/ds-test/src/',
     'forge-std/=lib/forge-std/src/',
