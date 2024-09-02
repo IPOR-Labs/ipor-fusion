@@ -34,7 +34,7 @@ contract PlasmaVaultErc20FusionTest is Test {
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
-        IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
+    IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
     PlasmaVault private plasmaVault;
     address private owner;
@@ -47,6 +47,7 @@ contract PlasmaVaultErc20FusionTest is Test {
     address private underlyingToken;
     address private alpha;
     uint256 private amount;
+    uint256 private sharesAmount;
     uint256 private deadline;
     uint256 private nonce;
 
@@ -269,7 +270,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         uint256 votes = IVotes(address(plasmaVault)).getVotes(owner);
 
         //then
-        assertEq(votes, amount);
+        assertEq(votes, 200 * 10 ** plasmaVault.decimals());
     }
 
     function testERC20VotesShouldNOTShowVotes() public {
@@ -293,7 +294,9 @@ contract PlasmaVaultErc20FusionTest is Test {
 
     function testERC20VotestShouldShowVotesInDelegatee() public {
         //given
-        uint256 amount = 200 * 1e6;
+        amount = 200 * 1e6;
+        sharesAmount = 200 * 10 ** plasmaVault.decimals();
+
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(owner), amount);
 
@@ -310,12 +313,13 @@ contract PlasmaVaultErc20FusionTest is Test {
         uint256 votes = IVotes(address(plasmaVault)).getVotes(delegatee);
 
         //then
-        assertEq(votes, amount);
+        assertEq(votes, sharesAmount);
     }
 
     function testERC20VotesShouldDelegateAndTransferAndNotChangeVotingPower() public {
         //given
-        uint256 amount = 200 * 1e6;
+        amount = 200 * 1e6;
+
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(owner), amount);
 
@@ -452,7 +456,9 @@ contract PlasmaVaultErc20FusionTest is Test {
 
     function testErc20VotesShouldDecreaseVotingPowerWhenBurn() public {
         //given
-        uint256 amount = 200 * 1e6;
+        amount = 200 * 1e6;
+        sharesAmount = 200 * 10 ** plasmaVault.decimals();
+
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(owner), amount);
 
@@ -475,13 +481,15 @@ contract PlasmaVaultErc20FusionTest is Test {
         //then
         uint256 votesAfter = IVotes(address(plasmaVault)).getVotes(owner);
 
-        assertEq(votesBefore, amount, "Voting power should be equal to deposited amount");
-        assertEq(votesAfter, 150 * 1e6, "Voting power should be equal to 0 after burn");
+        assertEq(votesBefore, sharesAmount, "Voting power should be equal to deposited amount");
+        assertEq(votesAfter, 150 * 10 ** plasmaVault.decimals(), "Voting power should be equal to 0 after burn");
     }
 
     function testErc20VotesShouldIncreaseVotes() public {
         //given
-        uint256 amount = 200 * 1e6;
+        amount = 200 * 1e6;
+        sharesAmount = 200 * 10 ** plasmaVault.decimals();
+
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(owner), amount);
 
@@ -510,18 +518,20 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         //when
         vm.prank(owner);
-        plasmaVault.transfer(delegatee, 200 * 1e6);
+        plasmaVault.transfer(delegatee, sharesAmount);
 
         //then
         uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
 
-        assertEq(delegateeVotesBefore, 100 * 1e6, "Delegatee should have voting power equal to 100 * 1e6");
-        assertEq(delegateeVotesAfter, 200 * 1e6, "Delegatee should have voting power equal to 200 * 1e6");
+        assertEq(delegateeVotesBefore, 100 * 10 ** plasmaVault.decimals(), "Delegatee should have voting power equal to 100 * 1e6");
+        assertEq(delegateeVotesAfter, sharesAmount, "Delegatee should have voting power equal to 200 * 1e6");
     }
 
     function testErc20VotesDelegateBySig() public {
         //given
-        uint256 amount = 200 * 1e6;
+        amount = 200 * 1e6;
+        sharesAmount = 200 * 10 ** plasmaVault.decimals();
+
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(owner), amount);
 
@@ -529,7 +539,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         ERC20(USDC).approve(address(plasmaVault), amount);
 
         vm.prank(owner);
-        plasmaVault.deposit(100 * 1e6, owner);
+        plasmaVault.deposit(amount, owner);
 
         /// @dev Activate checkpoint
         vm.prank(owner);
@@ -573,17 +583,19 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         assertEq(
             IVotes(address(plasmaVault)).getVotes(delegatee),
-            100 * 1e6,
+            sharesAmount,
             "Delegatee's voting power should be equal to the owner's balance"
         );
 
         assertEq(delegateeVotesBefore, 0, "Delegatee should have voting power equal to 0");
-        assertEq(delegateeVotesAfter, 100 * 1e6, "Delegatee should have voting power equal to 100 * 1e6");
+        assertEq(delegateeVotesAfter, sharesAmount, "Delegatee should have voting power equal to 100 * 1e6");
     }
 
     function testErc20VotesErc20PermitShouldPermitToDelegateeAndTransferToDelegateeNoChangesInVotesPower() public {
         //given
         amount = 200 * 1e6;
+        sharesAmount = 200 * 10 ** plasmaVault.decimals();
+
         deadline = block.timestamp + 1 days;
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -615,7 +627,7 @@ contract PlasmaVaultErc20FusionTest is Test {
                 keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
                 owner,
                 delegatee,
-                amount,
+                sharesAmount,
                 Nonces(address(plasmaVault)).nonces(owner),
                 deadline
             )
@@ -627,7 +639,7 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         /// @dev Owner permits transfer to delegatee
         vm.prank(owner);
-        IERC20Permit(address(plasmaVault)).permit(owner, delegatee, amount, deadline, permitV, permitR, permitS);
+        IERC20Permit(address(plasmaVault)).permit(owner, delegatee, sharesAmount, deadline, permitV, permitR, permitS);
 
         uint256 nonce = Nonces(address(plasmaVault)).nonces(owner);
 
@@ -667,7 +679,7 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         //when
         vm.prank(delegatee);
-        plasmaVault.transferFrom(owner, delegatee, amount);
+        plasmaVault.transferFrom(owner, delegatee, sharesAmount);
 
         //then
         uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
@@ -678,7 +690,7 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         assertEq(delegateeVotesAfter, delegateeBalanceOf, "Delegatee's voting power should be equal to the balance");
 
-        assertEq(delegateeVotesAfter, amount, "Delegatee's voting power should be equal to the transferred amount");
+        assertEq(delegateeVotesAfter, sharesAmount, "Delegatee's voting power should be equal to the transferred amount");
     }
 
     function createAccessManager(UsersToRoles memory usersToRoles) public returns (IporFusionAccessManager) {

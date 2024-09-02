@@ -45,9 +45,9 @@ contract PlasmaVaultWithdrawTest is Test {
     string public assetName;
     string public assetSymbol;
     address public underlyingToken;
-    address[] public alphas;
     address public alpha;
     uint256 public amount;
+    uint256 public sharesAmount;
 
     address public userOne;
     address public userTwo;
@@ -95,7 +95,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         userOne = address(0x777);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -117,7 +118,7 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
-        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+        assertEq(userVaultBalanceBefore - sharesAmount, userVaultBalanceAfter);
 
         assertEq(vaultTotalAssetsAfter, 0);
     }
@@ -128,7 +129,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         userOne = address(0x777);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -158,7 +160,7 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
-        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+        assertEq(userVaultBalanceBefore - sharesAmount, userVaultBalanceAfter);
 
         assertEq(vaultTotalAssetsAfter, 0);
     }
@@ -169,7 +171,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         userOne = address(0x777);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -199,7 +202,7 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter, "vaultTotalAssetsBefore - amount");
-        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter, "userVaultBalanceBefore - amount");
+        assertEq(userVaultBalanceBefore - sharesAmount, userVaultBalanceAfter, "userVaultBalanceBefore - amount");
 
         assertEq(vaultTotalAssetsAfter, 0);
     }
@@ -293,10 +296,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -428,6 +428,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         amount = 200 * 1e6;
+        sharesAmount = 200 * 10 ** (6 + 2);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -441,7 +442,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 2000, address(0x555), 200),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                amount
+                sharesAmount
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -504,10 +505,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -630,10 +628,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -730,10 +725,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -864,10 +856,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1028,10 +1017,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1085,6 +1071,7 @@ contract PlasmaVaultWithdrawTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         /// @dev user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -1184,10 +1171,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1241,6 +1225,7 @@ contract PlasmaVaultWithdrawTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+
 
         /// @dev user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -1302,7 +1287,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
-        plasmaVault.redeem(175 * 1e6, userOne, userOne);
+        plasmaVault.redeem(175 * 10 ** plasmaVault.decimals(), userOne, userOne);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
@@ -1317,13 +1302,13 @@ contract PlasmaVaultWithdrawTest is Test {
 
         //when
         vm.prank(userTwo);
-        plasmaVault.redeem(30 * 1e6, userTwo, userTwo);
+        plasmaVault.redeem(30 * 10 ** plasmaVault.decimals(), userTwo, userTwo);
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
         uint256 userTwoBalanceAfter = ERC20(USDC).balanceOf(userTwo);
 
-        assertEq(userOneBalanceAfter, 174999999, "userOneBalanceAfter");
+        assertApproxEqAbs(userOneBalanceAfter, 175 * 1e6, 1, "userOneBalanceAfter aprox");
         assertEq(userTwoBalanceAfter, 16666666, "userTwoBalanceAfter");
 
         /// CompoundV3 balance
@@ -1338,10 +1323,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1392,6 +1374,7 @@ contract PlasmaVaultWithdrawTest is Test {
         /// @dev user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), 3 * amount);
+
         vm.prank(userOne);
         ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
@@ -1440,7 +1423,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         //when
         vm.prank(userOne);
-        plasmaVault.redeem(200 * 1e6, userOne, userOne);
+        plasmaVault.redeem(200 * 10 ** plasmaVault.decimals(), userOne, userOne);
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1453,10 +1436,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1556,7 +1536,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         //when
         vm.prank(userOne);
-        plasmaVault.redeem(170 * 1e6, userOne, userOne);
+        plasmaVault.redeem(170 * 10**plasmaVault.decimals(), userOne, userOne);
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1577,10 +1557,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1696,7 +1673,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         vm.prank(userOne);
-        plasmaVault.redeem(175 * 1e6, userOne, userOne);
+        plasmaVault.redeem(175 * 10**plasmaVault.decimals(), userOne, userOne);
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
@@ -1711,10 +1688,10 @@ contract PlasmaVaultWithdrawTest is Test {
 
         //when
         vm.prank(userTwo);
-        plasmaVault.redeem(200 * 1e6, userTwo, userTwo);
+        plasmaVault.redeem(200 * 10**plasmaVault.decimals(), userTwo, userTwo);
 
         vm.prank(userOne);
-        plasmaVault.redeem(25 * 1e6, userOne, userOne);
+        plasmaVault.redeem(25 * 10**plasmaVault.decimals(), userOne, userOne);
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1732,9 +1709,6 @@ contract PlasmaVaultWithdrawTest is Test {
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
         address underlyingToken = USDC;
-        address[] memory alphas = new address[](1);
-
-        alphas[0] = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1793,10 +1767,7 @@ contract PlasmaVaultWithdrawTest is Test {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
         address alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 

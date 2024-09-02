@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
-
+import "forge-std/console2.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -129,15 +129,16 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
     function testShouldCalculateErc20BalanceEqual0WhenExecute() external {
         // given
-
         address userOne = accounts[1];
         uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );
 
+        console2.log("before deposit", depositAmount);
         vm.prank(userOne);
         PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
+        console2.log("after deposit", depositAmount);
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,

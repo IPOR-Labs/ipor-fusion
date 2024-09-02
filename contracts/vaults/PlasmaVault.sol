@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
+import "forge-std/console2.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -101,6 +102,7 @@ contract PlasmaVault is
     /// @dev 10 attempts to withdraw from markets in case of rounding issues
     uint256 private constant REDEEM_ATTEMPTS = 10;
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
+    uint8 public constant DECIMALS_OFFSET = 2;
 
     error NoSharesToRedeem();
     error NoSharesToMint();
@@ -212,7 +214,9 @@ contract PlasmaVault is
     }
 
     function decimals() public view virtual override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
-        return super.decimals();
+        uint8 d = super.decimals();
+        console2.log("decimals:", d);
+        return d;
     }
 
     function transfer(
@@ -564,8 +568,8 @@ contract PlasmaVault is
                     wadBalanceAmountInUSD * IporMath.BASIS_OF_POWER ** underlyingAssePriceDecimals,
                     underlyingAssetPrice
                 ),
-                decimals()
-            );
+            (decimals() - _decimalsOffset()));
+
             deltasInUnderlying =
                 deltasInUnderlying +
                 PlasmaVaultLib.updateTotalAssetsInMarket(markets[i], dataToCheck.marketsToCheck[i].balanceInMarket);
@@ -727,5 +731,9 @@ contract PlasmaVault is
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSelector(IPlasmaVaultBase.updateInternal.selector, from_, to_, value_)
         );
+    }
+
+    function _decimalsOffset() internal view virtual override returns (uint8) {
+        return DECIMALS_OFFSET;
     }
 }

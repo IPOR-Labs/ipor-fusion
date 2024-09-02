@@ -49,13 +49,19 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function testShouldDepositRandomAmount() external {
         // given
         uint256 sum;
+        uint256 sumShares;
+
+        uint256 amountStep;
+        uint256 sharesStep;
 
         // when
         for (uint256 i = 2; i < 5; i++) {
-            uint256 amount = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
-            sum += amount;
+            amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
+            sharesStep = amountStep * 10 ** PlasmaVault(plasmaVault).DECIMALS_OFFSET();
+            sum += amountStep;
+            sumShares += sharesStep;
             vm.prank(accounts[i]);
-            PlasmaVault(plasmaVault).deposit(amount, accounts[i]);
+            PlasmaVault(plasmaVault).deposit(amountStep, accounts[i]);
         }
 
         // then
@@ -63,22 +69,28 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         uint256 totalShares = PlasmaVault(plasmaVault).totalSupply();
 
         assertEq(totalAssets, sum, "totalSupply");
-        assertEq(totalShares, sum, "totalShares");
+        assertEq(totalShares, sumShares, "totalShares");
     }
 
     function testShouldDepositRandomAmountWhenMoveBlockNumberAndTimestamp() external {
         // given
         uint256 sum;
+        uint256 sumShares;
+
+        uint256 amountStep;
+        uint256 sharesStep;
 
         // when
         for (uint256 i; i < 10; i++) {
             vm.roll(block.number + 100);
             vm.warp(block.timestamp + 1200);
             for (uint256 i; i < 5; i++) {
-                uint256 amount = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
-                sum += amount;
+                amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
+                sharesStep = amountStep * 10 ** PlasmaVault(plasmaVault).DECIMALS_OFFSET();
+                sum += amountStep;
+                sumShares += sharesStep;
                 vm.prank(accounts[i]);
-                PlasmaVault(plasmaVault).deposit(amount, accounts[i]);
+                PlasmaVault(plasmaVault).deposit(amountStep, accounts[i]);
             }
         }
 
@@ -87,19 +99,27 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         uint256 totalShares = PlasmaVault(plasmaVault).totalSupply();
 
         assertEq(totalAssets, sum, "totalSupply");
-        assertEq(totalShares, sum, "totalShares");
+        assertEq(totalShares, sumShares, "totalShares");
     }
 
     function testShouldMintRandomAmount() external {
         // given
         uint256 sum;
+        uint256 sumShares;
+
+        uint256 amountStep;
+        uint256 sharesStep;
 
         // when
         for (uint256 i; i < 5; i++) {
-            uint256 amount = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
-            sum += amount;
+            amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
+            sharesStep = amountStep * 10 ** PlasmaVault(plasmaVault).DECIMALS_OFFSET();
+            sum += amountStep;
+            sumShares += sharesStep;
+
+            /// @dev shares are minted by PlasmaVault
             vm.prank(accounts[i]);
-            PlasmaVault(plasmaVault).mint(amount, accounts[i]);
+            PlasmaVault(plasmaVault).mint(sharesStep, accounts[i]);
         }
 
         // then
@@ -107,22 +127,30 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         uint256 totalShares = PlasmaVault(plasmaVault).totalSupply();
 
         assertEq(totalAssets, sum, "totalSupply");
-        assertEq(totalShares, sum, "totalShares");
+        assertEq(totalShares, sumShares, "totalShares");
     }
 
     function testShouldMintRandomAmountWhenMoveBlockNumberAndTimestamp() external {
         // given
         uint256 sum;
+        uint256 sumShares;
+
+        uint256 amountStep;
+        uint256 sharesStep;
 
         // when
         for (uint256 i; i < 10; i++) {
             vm.roll(block.number + 100);
             vm.warp(block.timestamp + 1200);
             for (uint256 i; i < 5; i++) {
-                uint256 amount = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
-                sum += amount;
+                amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
+                sharesStep = amountStep * 10 ** PlasmaVault(plasmaVault).DECIMALS_OFFSET();
+                sum += amountStep;
+                sumShares += sharesStep;
+
+                /// @dev shares are minted by PlasmaVault
                 vm.prank(accounts[i]);
-                PlasmaVault(plasmaVault).mint(amount, accounts[i]);
+                PlasmaVault(plasmaVault).mint(sharesStep, accounts[i]);
             }
         }
 
@@ -131,7 +159,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         uint256 totalShares = PlasmaVault(plasmaVault).totalSupply();
 
         assertEq(totalAssets, sum, "totalSupply");
-        assertEq(totalShares, sum, "totalShares");
+        assertEq(totalShares, sumShares, "totalShares");
     }
 
     function testShouldUseEnterMethodWithAllDepositAssets() external {
