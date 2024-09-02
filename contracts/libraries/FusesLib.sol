@@ -9,8 +9,6 @@ import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 library FusesLib {
     using Address for address;
 
-    uint256 public constant ALLOWED_DUST_IN_BALANCE_FUSE = 1000;
-
     event FuseAdded(address fuse);
     event FuseRemoved(address fuse);
     event BalanceFuseAdded(uint256 marketId, address fuse);
@@ -136,12 +134,16 @@ library FusesLib {
             (uint256)
         );
 
-        if (wadBalanceAmountInUSD > ALLOWED_DUST_IN_BALANCE_FUSE) {
+        if (wadBalanceAmountInUSD > calculateAllowedDustInBalanceFuse()) {
             revert BalanceFuseNotReadyToRemove(marketId_, fuse_, wadBalanceAmountInUSD);
         }
 
         PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] = address(0);
 
         emit BalanceFuseRemoved(marketId_, fuse_);
+    }
+
+    function calculateAllowedDustInBalanceFuse() private view returns (uint256) {
+        return 10 ** (PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals / 2);
     }
 }

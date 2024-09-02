@@ -321,6 +321,14 @@ contract PlasmaVault is
         return super.redeem(shares_, receiver_, owner_);
     }
 
+    function maxDeposit(address) public view virtual override returns (uint256) {
+        return convertToAssets(PlasmaVaultLib.getTotalSupplyCap() - totalSupply());
+    }
+
+    function maxMint(address) public view virtual override returns (uint256) {
+        return PlasmaVaultLib.getTotalSupplyCap() - totalSupply();
+    }
+
     function claimRewards(FuseAction[] calldata calls_) external override nonReentrant restricted {
         uint256 callsCount = calls_.length;
         for (uint256 i; i < callsCount; ++i) {
