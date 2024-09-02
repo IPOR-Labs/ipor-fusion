@@ -20,6 +20,10 @@ library Roles {
     /// @dev Managed by Owner
     uint64 public constant ATOMIST_ROLE = 100;
 
+    /// @notice Account with this role has rights to set the redemption delay for the PlasmaVault users
+    /// @dev Redemption delay is a minimal delay required between deposit / mint and withdrawal / redeem operations
+    uint64 public constant REDEMPTION_DELAY_SETUP_ROLE = 101;
+
     /// @notice Account with this role has rights to execute the alpha strategy on the PlasmaVault using execute method.
     /// @dev Managed by the Atomist
     uint64 public constant ALPHA_ROLE = 200;

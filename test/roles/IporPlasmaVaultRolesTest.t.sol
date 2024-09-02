@@ -81,6 +81,10 @@ contract IporPlasmaVaultRolesTest is Test {
 
         vm.prank(_deployer);
         vm.expectRevert(error);
+        _accessManager.setRoleAdmin(Roles.REDEMPTION_DELAY_SETUP_ROLE, uint64(11111));
+
+        vm.prank(_deployer);
+        vm.expectRevert(error);
         _accessManager.setRoleAdmin(Roles.ALPHA_ROLE, uint64(11111));
 
         vm.prank(_deployer);

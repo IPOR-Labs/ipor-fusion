@@ -93,6 +93,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
+            redemptionDelaySetupList: initAddress,
             alphas: initAddress,
             whitelist: initAddress,
             guardians: initAddress,

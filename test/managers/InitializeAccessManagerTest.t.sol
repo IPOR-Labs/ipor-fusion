@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-
+import "forge-std/console2.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -69,6 +69,42 @@ contract InitializeAccessManagerTest is Test {
         vm.stopPrank();
 
         rewardsClaimManager = new RewardsClaimManager(address(accessManager), address(plasmaVault));
+    }
+
+    function testShouldSetRedemptionDelayWhenInitialRedemptionDelayIsZero() public {
+        //given
+        vm.warp(block.timestamp);
+        DataForInitialization memory data = _generateDataForInitialization();
+
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        initData.redemptionDelay = 10;
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address target = address(plasmaVault);
+        bytes memory scheduleData = abi.encodeWithSignature("setRedemptionDelay(uint256)", 123);
+//
+//
+//        console2.log("data.redemptionDelaySetupList[0]:",data.redemptionDelaySetupList[0]);
+//
+        vm.warp(block.timestamp + 10 days);
+
+        //when
+        vm.startPrank(data.redemptionDelaySetupList[0]);
+//        accessManager.setRedemptionDelay(123);
+        (, uint32 nonceSchedule) = accessManager.schedule(target, scheduleData, uint48(block.timestamp + 10 days ));
+        vm.stopPrank();
+
+        // then
+        assertEq(accessManager.getRedemptionDelay(), 123);
+
     }
 
     function testShouldSetupAccessManager() public {
@@ -218,6 +254,7 @@ contract InitializeAccessManagerTest is Test {
         data.admins = _generateAddresses(10, 10);
         data.owners = _generateAddresses(100, 10);
         data.atomists = _generateAddresses(1_000, 10);
+        data.redemptionDelaySetupList = _generateAddresses(10_000, 10);
         data.alphas = _generateAddresses(10_000, 10);
         data.whitelist = _generateAddresses(100_000, 10);
         data.guardians = _generateAddresses(1_000_000, 10);
