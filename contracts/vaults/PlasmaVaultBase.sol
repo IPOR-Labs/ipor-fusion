@@ -42,8 +42,7 @@ contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20Votes
     }
 
     function cap() public view virtual returns (uint256) {
-        PlasmaVaultStorageLib.ERC20CappedStorage storage $ = PlasmaVaultStorageLib.getERC20CappedStorage();
-        return $.cap;
+        return PlasmaVaultStorageLib.getERC20CappedStorage().cap;
     }
 
     /// @dev Notice! Can be executed only by Plasma Vault in delegatecall. PlasmaVault execute this function only using delegatecall, to get PlasmaVault context and storage.

@@ -22,32 +22,9 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
  * requires users to delegate to themselves in order to activate checkpoints and have their voting power tracked.
  */
 abstract contract ERC20VotesUpgradeable is Initializable, ERC20Upgradeable, VotesUpgradeable {
-    /**
-     * @dev Total supply cap has been exceeded, introducing a risk of votes overflowing.
-     */
-    error ERC20ExceededSafeSupply(uint256 increasedSupply, uint256 cap);
-
     // solhint-disable-next-line func-name-mixedcase
     function __ERC20Votes_init() internal onlyInitializing {
         // solhint-disable-previous-line no-empty-blocks
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
-    function __ERC20Votes_init_unchained() internal onlyInitializing {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-    /**
-     * @dev Maximum token supply. Defaults to `type(uint208).max` (2^208^ - 1).
-     *
-     * This maximum is enforced in {_update}. It limits the total supply of the token, which is otherwise a uint256,
-     * so that checkpoints can be stored in the Trace208 structure used by {{Votes}}. Increasing this value will not
-     * remove the underlying limitation, and will cause {_update} to fail because of a math overflow in
-     * {_transferVotingUnits}. An override could be used to further restrict the total supply (to a lower value) if
-     * additional logic requires it. When resolving override conflicts on this function, the minimum should be
-     * returned.
-     */
-    function _maxSupply() internal view virtual returns (uint256) {
-        return type(uint208).max;
     }
 
     /**

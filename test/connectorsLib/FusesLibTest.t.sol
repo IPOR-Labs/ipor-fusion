@@ -45,7 +45,8 @@ contract FusesLibTest is Test {
     function testShouldNotRemoveBalanceFuseBecauseOfDust() public {
         //given
         uint256 marketId = 1;
-        address fuse = address(new DustBalanceFuseMock(marketId));
+        uint256 underlyingDecimals = 18;
+        address fuse = address(new DustBalanceFuseMock(marketId, underlyingDecimals));
 
         fusesLibMock.addBalanceFuse(marketId, fuse);
 
@@ -53,7 +54,7 @@ contract FusesLibTest is Test {
             "BalanceFuseNotReadyToRemove(uint256,address,uint256)",
             marketId,
             fuse,
-            1001
+            10 ** (underlyingDecimals / 2) + 1
         );
 
         //when
