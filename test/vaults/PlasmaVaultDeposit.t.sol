@@ -155,7 +155,12 @@ contract PlasmaVaultDepositTest is Test {
         vm.prank(userOne);
         ERC20(USDC).approve(address(plasmaVault), amount);
 
-        bytes memory error = abi.encodeWithSignature("ERC20ExceededCap(uint256,uint256)", amount, 99 * 1e6);
+        bytes memory error = abi.encodeWithSignature(
+            "ERC4626ExceededMaxDeposit(address,uint256,uint256)",
+            userOne,
+            amount,
+            99 * 1e6
+        );
 
         //when
         vm.prank(userOne);

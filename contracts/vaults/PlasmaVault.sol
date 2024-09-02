@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
+
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -318,6 +319,14 @@ contract PlasmaVault is
         _addPerformanceFee(totalAssetsBefore);
 
         return super.redeem(shares_, receiver_, owner_);
+    }
+
+    function maxDeposit(address) public view virtual override returns (uint256) {
+        return convertToAssets(PlasmaVaultLib.getTotalSupplyCap() - totalSupply());
+    }
+
+    function maxMint(address) public view virtual override returns (uint256) {
+        return PlasmaVaultLib.getTotalSupplyCap() - totalSupply();
     }
 
     function claimRewards(FuseAction[] calldata calls_) external override nonReentrant restricted {
