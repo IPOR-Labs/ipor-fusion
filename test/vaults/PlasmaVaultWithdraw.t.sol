@@ -17,6 +17,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -428,7 +429,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         amount = 200 * 1e6;
-        sharesAmount = 200 * 10 ** (6 + 2);
+        sharesAmount = 200 * 10 ** (6 + PlasmaVaultLib.DECIMALS_OFFSET);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(

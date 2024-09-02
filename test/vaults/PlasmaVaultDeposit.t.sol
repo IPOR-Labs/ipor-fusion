@@ -18,6 +18,7 @@ import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -150,7 +151,7 @@ contract PlasmaVaultDepositTest is Test {
 
     function testShouldNotDepositBecauseOfTotalSupplyCap() public {
         //given
-        uint256 decimals = 6 + 2; /// @dev USDC has 6 decimals, 2 decimals offset in PlasmaVault
+        uint256 decimals = 6 + PlasmaVaultLib.DECIMALS_OFFSET;
         PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(99 * 10 ** decimals);
 
         userOne = address(0x777);

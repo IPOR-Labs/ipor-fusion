@@ -7,6 +7,7 @@ import {TestAccountSetup} from "./TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "./TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "./TestVaultSetup.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {
     uint256 private constant ERROR_DELTA = 100;
@@ -57,7 +58,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         // when
         for (uint256 i = 2; i < 5; i++) {
             amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
-            sharesStep = amountStep * 10 ** PlasmaVault(plasmaVault).DECIMALS_OFFSET();
+            sharesStep = amountStep * 10 ** PlasmaVaultLib.DECIMALS_OFFSET;
             sum += amountStep;
             sumShares += sharesStep;
             vm.prank(accounts[i]);
@@ -86,7 +87,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
             vm.warp(block.timestamp + 1200);
             for (uint256 i; i < 5; i++) {
                 amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
-                sharesStep = amountStep * 10 ** PlasmaVault(plasmaVault).DECIMALS_OFFSET();
+                sharesStep = amountStep * 10 ** PlasmaVaultLib.DECIMALS_OFFSET;
                 sum += amountStep;
                 sumShares += sharesStep;
                 vm.prank(accounts[i]);
@@ -113,7 +114,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         // when
         for (uint256 i; i < 5; i++) {
             amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
-            sharesStep = amountStep * 10 ** PlasmaVault(plasmaVault).DECIMALS_OFFSET();
+            sharesStep = amountStep * 10 ** PlasmaVaultLib.DECIMALS_OFFSET;
             sum += amountStep;
             sumShares += sharesStep;
 
@@ -144,7 +145,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
             vm.warp(block.timestamp + 1200);
             for (uint256 i; i < 5; i++) {
                 amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
-                sharesStep = amountStep * 10 ** PlasmaVault(plasmaVault).DECIMALS_OFFSET();
+                sharesStep = amountStep * 10 ** PlasmaVaultLib.DECIMALS_OFFSET;
                 sum += amountStep;
                 sumShares += sharesStep;
 

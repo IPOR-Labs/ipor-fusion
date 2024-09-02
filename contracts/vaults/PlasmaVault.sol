@@ -102,7 +102,6 @@ contract PlasmaVault is
     /// @dev 10 attempts to withdraw from markets in case of rounding issues
     uint256 private constant REDEEM_ATTEMPTS = 10;
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
-    uint8 public constant DECIMALS_OFFSET = 2;
 
     error NoSharesToRedeem();
     error NoSharesToMint();
@@ -733,6 +732,6 @@ contract PlasmaVault is
     }
 
     function _decimalsOffset() internal view virtual override returns (uint8) {
-        return DECIMALS_OFFSET;
+        return PlasmaVaultLib.DECIMALS_OFFSET;
     }
 }
