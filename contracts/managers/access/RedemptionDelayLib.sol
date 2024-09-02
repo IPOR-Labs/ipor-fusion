@@ -14,7 +14,6 @@ uint256 constant MAX_REDEMPTION_DELAY = 30 days;
 /// @title Library for the redemption delay responsible for locking accounts for withdraw and redeem functions after deposit or mint functions.
 library RedemptionDelayLib {
     error AccountIsLocked(uint256 unlockTime);
-    error RedemptionDelayTooLong(uint256 redemptionDelay);
 
     /// @notice Get the account lock time for a redemption function (withdraw, redeem)
     /// @param account_ The account to check the lock time
@@ -22,21 +21,6 @@ library RedemptionDelayLib {
     /// @dev The lock time is the time the account is locked for withdraw and redeem functions after deposit or mint functions
     function getAccountLockTime(address account_) internal view returns (uint256) {
         return IporFusionAccessManagersStorageLib.getRedemptionLocks().redemptionLock[account_];
-    }
-
-    /// @notice Get the redemption delay
-    /// @return The redemption delay in seconds
-    function getRedemptionDelay() internal view returns (uint256) {
-        return IporFusionAccessManagersStorageLib.getRedemptionDelay().redemptionDelay;
-    }
-
-    /// @notice Set the redemption delay, defining the time an account is locked for withdraw and redeem functions after deposit or mint functions
-    /// @param delay_ The redemption delay in seconds
-    function setRedemptionDelay(uint256 delay_) internal {
-        if (delay_ > MAX_REDEMPTION_DELAY) {
-            revert RedemptionDelayTooLong(delay_);
-        }
-        IporFusionAccessManagersStorageLib.setRedemptionDelay(delay_);
     }
 
     /// @notice Check if account is locked for a specific function (correlation withdraw, redeem functions to deposit, mint functions)

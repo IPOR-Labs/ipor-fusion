@@ -325,7 +325,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             alphas[0] = alpha;
             usersToRoles.alphas = alphas;
         }
-        return RoleLib.createAccessManager(usersToRoles, vm);
+        return RoleLib.createAccessManager(usersToRoles, 0, vm);
     }
 
     function createMarketConfigs(

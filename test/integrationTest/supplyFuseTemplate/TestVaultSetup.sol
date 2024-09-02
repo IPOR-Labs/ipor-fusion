@@ -92,7 +92,7 @@ abstract contract TestVaultSetup is TestStorage {
         address[] memory alphas = new address[](1);
         alphas[0] = alpha;
         usersToRoles.alphas = alphas;
-        accessManager = address(RoleLib.createAccessManager(usersToRoles, vm));
+        accessManager = address(RoleLib.createAccessManager(usersToRoles, 0, vm));
     }
 
     function setupRoles() private {

@@ -207,7 +207,7 @@ contract UniswapSwapV3FuseTest is Test {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
         usersToRoles.alphas = alphas;
-        accessManager_ = address(RoleLib.createAccessManager(usersToRoles, vm));
+        accessManager_ = address(RoleLib.createAccessManager(usersToRoles, 0, vm));
         _accessManager = accessManager_;
     }
 

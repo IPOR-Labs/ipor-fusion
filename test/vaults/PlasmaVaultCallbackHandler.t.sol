@@ -164,7 +164,7 @@ contract PlasmaVaultCallbackHandler is Test {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
         usersToRoles.alphas = alphas;
-        _accessManager = address(RoleLib.createAccessManager(usersToRoles, vm));
+        _accessManager = address(RoleLib.createAccessManager(usersToRoles, 0, vm));
     }
 
     function _initAccessManager() private {
@@ -176,7 +176,6 @@ contract PlasmaVaultCallbackHandler is Test {
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
-            redemptionDelaySetupList: initAddress,
             alphas: initAddress,
             whitelist: initAddress,
             guardians: initAddress,

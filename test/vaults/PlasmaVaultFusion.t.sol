@@ -104,7 +104,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        accessManager = createAccessManager(usersToRoles);
+        accessManager = createAccessManager(usersToRoles, 0);
 
         plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -702,7 +702,10 @@ contract PlasmaVaultErc20FusionTest is Test {
         );
     }
 
-    function createAccessManager(UsersToRoles memory usersToRoles) public returns (IporFusionAccessManager) {
+    function createAccessManager(
+        UsersToRoles memory usersToRoles,
+        uint256 redemptionDelay_
+    ) public returns (IporFusionAccessManager) {
         address atomist = address(this);
         if (usersToRoles.superAdmin == address(0)) {
             usersToRoles.superAdmin = atomist;
@@ -711,7 +714,7 @@ contract PlasmaVaultErc20FusionTest is Test {
             alphas[0] = alpha;
             usersToRoles.alphas = alphas;
         }
-        return RoleLib.createAccessManager(usersToRoles, vm);
+        return RoleLib.createAccessManager(usersToRoles, redemptionDelay_, vm);
     }
 
     function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {

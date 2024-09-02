@@ -81,10 +81,6 @@ contract IporPlasmaVaultRolesTest is Test {
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.REDEMPTION_DELAY_SETUP_ROLE, uint64(11111));
-
-        vm.prank(_deployer);
-        vm.expectRevert(error);
         _accessManager.setRoleAdmin(Roles.ALPHA_ROLE, uint64(11111));
 
         vm.prank(_deployer);
@@ -553,7 +549,7 @@ contract IporPlasmaVaultRolesTest is Test {
 
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.AAVE_V3, address(balanceFuse));
-        _accessManager = new IporFusionAccessManager(_deployer);
+        _accessManager = new IporFusionAccessManager(_deployer, 0);
 
         _plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(

@@ -5,6 +5,10 @@ import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessMana
 
 /// @title Interface for the IporFusionAccessManager contract that manages access control for the IporFusion contract and its contract satellites
 interface IIporFusionAccessManager is IAccessManager {
+    /// @notice The minimal delay required for the timelocked functions
+    // solhint-disable-next-line func-name-mixedcase
+    function REDEMPTION_DELAY_IN_SECONDS() external view returns (uint256);
+
     /// @notice Check if the caller can call the target with the given selector. Update the account lock time.
     /// @dev canCall cannot be a view function because it updates the account lock time.
     function canCallAndUpdate(
@@ -26,10 +30,6 @@ interface IIporFusionAccessManager is IAccessManager {
     /// @param vault The address of the vault
     function enableTransferShares(address vault) external;
 
-    /// @notice Sets the minimal delay required between deposit / mint and withdrawal / redeem operations.
-    /// @param delay The minimal delay in seconds
-    function setRedemptionDelay(uint256 delay) external;
-
     /// @notice Sets the minimal execution delay required for the specified roles.
     /// @param rolesIds The roles for which the minimal execution delay is set
     /// @param delays The minimal execution delays for the specified roles
@@ -44,10 +44,6 @@ interface IIporFusionAccessManager is IAccessManager {
     /// @param account The account for which the account lock time is returned
     /// @return The account lock time in seconds
     function getAccountLockTime(address account) external view returns (uint256);
-
-    /// @notice Returns the redemption delay.
-    /// @return The redemption delay in seconds
-    function getRedemptionDelay() external view returns (uint256);
 
     /// @notice Returns the function selector for the scheduled operation that is currently being consumed.
     /// @return The function selector

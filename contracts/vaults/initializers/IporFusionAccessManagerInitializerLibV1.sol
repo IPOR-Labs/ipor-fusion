@@ -27,8 +27,6 @@ struct DataForInitialization {
     address[] owners;
     /// @notice Array of addresses of the Atomists (Roles.ATOMIST_ROLE)
     address[] atomists;
-    /// @notice Array of addresses of the Redemption Delay Setup (Roles.REDEMPTION_DELAY_SETUP_ROLE)
-    address[] redemptionDelaySetupList;
     /// @notice Array of addresses of the Alphas (Roles.ALPHA_ROLE)
     address[] alphas;
     /// @notice Array of addresses of the Whitelist (Roles.WHITELIST_ROLE)
@@ -53,11 +51,9 @@ struct DataForInitialization {
 
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
-    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 13;
-    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER = 31;
-    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_REWARDS_CLAIM_MANAGER = 39;
-    /// @dev Default redemption delay setup timelock for the Plasma Vault in seconds - 24 hours.
-    uint32 private constant DEFAULT_REDEMPTION_DELAY_SETUP_TIMELOCK = 86400;
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 12;
+    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER = 30;
+    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_REWARDS_CLAIM_MANAGER = 38;
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
     /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
@@ -68,7 +64,6 @@ library IporFusionAccessManagerInitializerLibV1 {
         initializeData.roleToFunctions = _generateRoleToFunction(data_.plasmaVaultAddress);
         initializeData.adminRoles = _generateAdminRoles();
         initializeData.accountToRoles = _generateAccountToRoles(data_);
-        initializeData.redemptionDelay = 0;
         return initializeData;
     }
 
@@ -76,11 +71,10 @@ library IporFusionAccessManagerInitializerLibV1 {
         DataForInitialization memory data_
     ) private pure returns (AccountToRole[] memory accountToRoles) {
         accountToRoles = new AccountToRole[](
-                data_.admins.length +
+            data_.admins.length +
                 data_.owners.length +
                 data_.guardians.length +
                 data_.atomists.length +
-                data_.redemptionDelaySetupList.length +
                 data_.alphas.length +
                 data_.fuseManagers.length +
                 data_.performanceFeeManagers.length +
@@ -134,15 +128,6 @@ library IporFusionAccessManagerInitializerLibV1 {
                 roleId: Roles.ATOMIST_ROLE,
                 account: data_.atomists[i],
                 executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.redemptionDelaySetupList.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.REDEMPTION_DELAY_SETUP_ROLE,
-                account: data_.redemptionDelaySetupList[i],
-                executionDelay: DEFAULT_REDEMPTION_DELAY_SETUP_TIMELOCK
             });
             ++index;
         }
@@ -227,25 +212,24 @@ library IporFusionAccessManagerInitializerLibV1 {
         adminRoles_[0] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         adminRoles_[1] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[2] = AdminRole({roleId: Roles.ATOMIST_ROLE, adminRoleId: Roles.OWNER_ROLE});
-        adminRoles_[3] = AdminRole({roleId: Roles.REDEMPTION_DELAY_SETUP_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[4] = AdminRole({roleId: Roles.ALPHA_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[5] = AdminRole({roleId: Roles.WHITELIST_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[6] = AdminRole({
+        adminRoles_[3] = AdminRole({roleId: Roles.ALPHA_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
+        adminRoles_[4] = AdminRole({roleId: Roles.WHITELIST_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
+        adminRoles_[5] = AdminRole({
             roleId: Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE,
             adminRoleId: Roles.ATOMIST_ROLE
         });
-        adminRoles_[7] = AdminRole({roleId: Roles.TRANSFER_REWARDS_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[8] = AdminRole({roleId: Roles.CLAIM_REWARDS_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[9] = AdminRole({roleId: Roles.FUSE_MANAGER_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[10] = AdminRole({
+        adminRoles_[6] = AdminRole({roleId: Roles.TRANSFER_REWARDS_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
+        adminRoles_[7] = AdminRole({roleId: Roles.CLAIM_REWARDS_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
+        adminRoles_[8] = AdminRole({roleId: Roles.FUSE_MANAGER_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
+        adminRoles_[9] = AdminRole({
             roleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE,
             adminRoleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE
         });
-        adminRoles_[11] = AdminRole({
+        adminRoles_[10] = AdminRole({
             roleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE,
             adminRoleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE
         });
-        adminRoles_[12] = AdminRole({roleId: Roles.REWARDS_CLAIM_MANAGER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
+        adminRoles_[11] = AdminRole({roleId: Roles.REWARDS_CLAIM_MANAGER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         return adminRoles_;
     }
 
@@ -441,13 +425,8 @@ library IporFusionAccessManagerInitializerLibV1 {
             functionSelector: AccessManager.cancel.selector,
             minimalExecutionDelay: 0
         });
+
         rolesToFunction[29] = RoleToFunction({
-            target: plasmaVaultAddress_.accessManager,
-            roleId: Roles.REDEMPTION_DELAY_SETUP_ROLE,
-            functionSelector: IporFusionAccessManager.setRedemptionDelay.selector,
-            minimalExecutionDelay: DEFAULT_REDEMPTION_DELAY_SETUP_TIMELOCK
-        });
-        rolesToFunction[30] = RoleToFunction({
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.GUARDIAN_ROLE,
             functionSelector: IporFusionAccessManager.updateTargetClosed.selector,
@@ -459,28 +438,34 @@ library IporFusionAccessManagerInitializerLibV1 {
             return rolesToFunction;
         }
 
-        rolesToFunction[31] = RoleToFunction({
+        rolesToFunction[30] = RoleToFunction({
             target: plasmaVaultAddress_.rewardsClaimManager,
             roleId: Roles.CLAIM_REWARDS_ROLE,
             functionSelector: RewardsClaimManager.claimRewards.selector,
             minimalExecutionDelay: 0
         });
-        rolesToFunction[32] = RoleToFunction({
+        rolesToFunction[31] = RoleToFunction({
             target: plasmaVaultAddress_.rewardsClaimManager,
             roleId: Roles.TRANSFER_REWARDS_ROLE,
             functionSelector: RewardsClaimManager.transfer.selector,
             minimalExecutionDelay: 0
         });
-        rolesToFunction[33] = RoleToFunction({
+        rolesToFunction[32] = RoleToFunction({
             target: plasmaVaultAddress_.rewardsClaimManager,
             roleId: Roles.PUBLIC_ROLE,
             functionSelector: RewardsClaimManager.updateBalance.selector,
             minimalExecutionDelay: 0
         });
-        rolesToFunction[34] = RoleToFunction({
+        rolesToFunction[33] = RoleToFunction({
             target: plasmaVaultAddress_.rewardsClaimManager,
             roleId: Roles.ATOMIST_ROLE,
             functionSelector: RewardsClaimManager.setupVestingTime.selector,
+            minimalExecutionDelay: 0
+        });
+        rolesToFunction[34] = RoleToFunction({
+            target: plasmaVaultAddress_.rewardsClaimManager,
+            roleId: Roles.FUSE_MANAGER_ROLE,
+            functionSelector: RewardsClaimManager.addRewardFuses.selector,
             minimalExecutionDelay: 0
         });
         rolesToFunction[35] = RoleToFunction({
@@ -492,16 +477,10 @@ library IporFusionAccessManagerInitializerLibV1 {
         rolesToFunction[36] = RoleToFunction({
             target: plasmaVaultAddress_.rewardsClaimManager,
             roleId: Roles.FUSE_MANAGER_ROLE,
-            functionSelector: RewardsClaimManager.addRewardFuses.selector,
-            minimalExecutionDelay: 0
-        });
-        rolesToFunction[37] = RoleToFunction({
-            target: plasmaVaultAddress_.rewardsClaimManager,
-            roleId: Roles.FUSE_MANAGER_ROLE,
             functionSelector: RewardsClaimManager.removeRewardFuses.selector,
             minimalExecutionDelay: 0
         });
-        rolesToFunction[38] = RoleToFunction({
+        rolesToFunction[37] = RoleToFunction({
             target: plasmaVaultAddress_.rewardsClaimManager,
             roleId: Roles.PUBLIC_ROLE,
             functionSelector: RewardsClaimManager.transferVestedTokensToVault.selector,

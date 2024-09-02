@@ -93,7 +93,6 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
-            redemptionDelaySetupList: initAddress,
             alphas: initAddress,
             whitelist: initAddress,
             guardians: initAddress,
@@ -131,7 +130,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     }
 
     function _createAccessManager() private {
-        _accessManager = address(new IporFusionAccessManager(admin));
+        _accessManager = address(new IporFusionAccessManager(admin, 0));
     }
 
     function _createClaimRewardsManager() private {
