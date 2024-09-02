@@ -41,8 +41,6 @@ struct InitializationData {
     AccountToRole[] accountToRoles;
     /// @notice The admin role mappings
     AdminRole[] adminRoles;
-    /// @notice The redemption delay, if greater than 0 then the redemption is timelocked
-    uint256 redemptionDelay;
 }
 
 /// @title Library for initializing the IporFusionAccessManager contract, initializing the contract can only be done once

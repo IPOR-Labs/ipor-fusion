@@ -3,10 +3,20 @@ pragma solidity 0.8.26;
 
 /// @title Library responsible for managing access to the storage of the PlasmaVault contract using the ERC-7201 standard
 library PlasmaVaultStorageLib {
-    /// @dev value taken from ERC20CappedUpgradeable contract, don't change it
+    /// @dev value taken from ERC4626 contract, don't change it!
+    // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ERC4626")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ERC4626_STORAGE_LOCATION =
+        0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00;
+
+    /// @dev value taken from ERC20CappedUpgradeable contract, don't change it!
     // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ERC20Capped")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ERC20_CAPPED_STORAGE_LOCATION =
         0x0f070392f17d5f958cc1ac31867dabecfc5c9758b4a419a200803226d7155d00;
+
+    /// @dev storage pointer location for a flag which indicates if the Total Supply Cap validation is enabled
+    // keccak256(abi.encode(uint256(keccak256("io.ipor.Erc20CappedValidationFlag")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ERC20_CAPPED_VALIDATION_FLAG =
+        0xaef487a7a52e82ae7bbc470b42be72a1d3c066fb83773bf99cce7e6a7df2f900;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultTotalAssetsInAllMarkets")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS =
@@ -66,9 +76,26 @@ library PlasmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.callbackHandler")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CALLBACK_HANDLER = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e00;
 
+    /// @dev Value taken from ERC20VotesUpgradeable contract, don't change it!
+    /// @custom:storage-location erc7201:openzeppelin.storage.ERC4626
+    struct ERC4626Storage {
+        /// @dev underlying asset in Plasma Vault
+        address asset;
+        /// @dev underlying asset decimals in Plasma Vault
+        uint8 underlyingDecimals;
+    }
+
+    /// @dev Value taken from ERC20VotesUpgradeable contract, don't change it!
     /// @custom:storage-location erc7201:openzeppelin.storage.ERC20Capped
     struct ERC20CappedStorage {
         uint256 cap;
+    }
+
+    /// @notice ERC20CappedValidationFlag is used to enable or disable the total supply cap validation during execution
+    /// Required for situation when performance fee or management fee is minted for fee managers
+    /// @custom:storage-location erc7201:io.ipor.Erc20CappedValidationFlag
+    struct ERC20CappedValidationFlag {
+        uint256 value;
     }
 
     /// @custom:storage-location erc7201:io.ipor.RewardsClaimManagerAddress
@@ -165,9 +192,21 @@ library PlasmaVaultStorageLib {
         mapping(uint256 marketId => uint256 limit) limitInPercentage;
     }
 
+    function getERC4626Storage() internal pure returns (ERC4626Storage storage $) {
+        assembly {
+            $.slot := ERC4626_STORAGE_LOCATION
+        }
+    }
+
     function getERC20CappedStorage() internal pure returns (ERC20CappedStorage storage $) {
         assembly {
             $.slot := ERC20_CAPPED_STORAGE_LOCATION
+        }
+    }
+
+    function getERC20CappedValidationFlag() internal pure returns (ERC20CappedValidationFlag storage $) {
+        assembly {
+            $.slot := ERC20_CAPPED_VALIDATION_FLAG
         }
     }
 
