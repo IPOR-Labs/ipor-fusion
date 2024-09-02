@@ -22,6 +22,7 @@ import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.s
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 
+// solhint-disable-next-line max-states-count
 contract PlasmaVaultErc20FusionTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
@@ -34,7 +35,7 @@ contract PlasmaVaultErc20FusionTest is Test {
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
-    IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
+        IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
     PlasmaVault private plasmaVault;
     address private owner;
@@ -523,7 +524,11 @@ contract PlasmaVaultErc20FusionTest is Test {
         //then
         uint256 delegateeVotesAfter = IVotes(address(plasmaVault)).getVotes(delegatee);
 
-        assertEq(delegateeVotesBefore, 100 * 10 ** plasmaVault.decimals(), "Delegatee should have voting power equal to 100 * 1e6");
+        assertEq(
+            delegateeVotesBefore,
+            100 * 10 ** plasmaVault.decimals(),
+            "Delegatee should have voting power equal to 100 * 1e6"
+        );
         assertEq(delegateeVotesAfter, sharesAmount, "Delegatee should have voting power equal to 200 * 1e6");
     }
 
@@ -690,7 +695,11 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         assertEq(delegateeVotesAfter, delegateeBalanceOf, "Delegatee's voting power should be equal to the balance");
 
-        assertEq(delegateeVotesAfter, sharesAmount, "Delegatee's voting power should be equal to the transferred amount");
+        assertEq(
+            delegateeVotesAfter,
+            sharesAmount,
+            "Delegatee's voting power should be equal to the transferred amount"
+        );
     }
 
     function createAccessManager(UsersToRoles memory usersToRoles) public returns (IporFusionAccessManager) {

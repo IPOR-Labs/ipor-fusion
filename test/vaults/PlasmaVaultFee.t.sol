@@ -612,7 +612,12 @@ contract PlasmaVaultFeeTest is Test {
         );
 
         assertEq(userOneBalanceOfAssets, 24999999, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
-        assertApproxEqAbs(userTwoBalanceOfAssets, amount, 1, "userTwoBalanceOfAssets on plasma vault stayed 100 usd aprox");
+        assertApproxEqAbs(
+            userTwoBalanceOfAssets,
+            amount,
+            1,
+            "userTwoBalanceOfAssets on plasma vault stayed 100 usd aprox"
+        );
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
@@ -748,7 +753,12 @@ contract PlasmaVaultFeeTest is Test {
         );
 
         assertEq(userOneBalanceOfAssets, 24999999, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
-        assertApproxEqAbs(userTwoBalanceOfAssets, amount, 1, "userTwoBalanceOfAssets on plasma vault stayed 100 usd aprox");
+        assertApproxEqAbs(
+            userTwoBalanceOfAssets,
+            amount,
+            1,
+            "userTwoBalanceOfAssets on plasma vault stayed 100 usd aprox"
+        );
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
@@ -888,7 +898,12 @@ contract PlasmaVaultFeeTest is Test {
         );
 
         assertEq(userOneBalanceOfAssets, 24999999, "userOneBalanceOfAssets on plasma vault stayed 25 usd");
-        assertApproxEqAbs(userTwoBalanceOfAssets, amount, 1, "userTwoBalanceOfAssets on plasma vault stayed 100 usd aprox");
+        assertApproxEqAbs(
+            userTwoBalanceOfAssets,
+            amount,
+            1,
+            "userTwoBalanceOfAssets on plasma vault stayed 100 usd aprox"
+        );
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "daoBalanceOfAssets - no interest when time is not changed");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
         //100000000
@@ -1293,8 +1308,7 @@ contract PlasmaVaultFeeTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
-        sharesAmount = 100 * 10**plasmaVault.decimals();
-
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         vm.warp(block.timestamp);
 
@@ -1649,7 +1663,7 @@ contract PlasmaVaultFeeTest is Test {
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
 
-        uint256 sharesRedeemAmount = 70 * 10**plasmaVault.decimals();
+        uint256 sharesRedeemAmount = 70 * 10 ** plasmaVault.decimals();
 
         //when
         vm.prank(userOne);

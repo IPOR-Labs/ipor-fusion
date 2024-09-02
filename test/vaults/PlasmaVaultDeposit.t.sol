@@ -68,7 +68,7 @@ contract PlasmaVaultDepositTest is Test {
         userOne = address(0x777);
 
         amount = 100 * 1e18;
-        sharesAmount = 100 * 10**plasmaVault.decimals();
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -99,7 +99,11 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(ERC20(DAI).balanceOf(userOne), 0, "ERC20(DAI).balanceOf(userOne)");
 
         /// @dev no transfer to the market when depositing
-        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0, "plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID)");
+        assertEq(
+            plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID),
+            0,
+            "plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID)"
+        );
     }
 
     function testShouldDepositToPlasmaVaultWithUSDCAsUnderlyingToken() public {
@@ -109,8 +113,7 @@ contract PlasmaVaultDepositTest is Test {
         userOne = address(0x777);
 
         amount = 100 * 1e6;
-        sharesAmount = 100 * 10**plasmaVault.decimals();
-
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount);
@@ -148,12 +151,12 @@ contract PlasmaVaultDepositTest is Test {
     function testShouldNotDepositBecauseOfTotalSupplyCap() public {
         //given
         uint256 decimals = 6 + 2; /// @dev USDC has 6 decimals, 2 decimals offset in PlasmaVault
-        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(99 * 10**decimals);
+        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(99 * 10 ** decimals);
 
         userOne = address(0x777);
 
         amount = 100 * 1e6;
-        sharesAmount = 100 * 10**plasmaVault.decimals();
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount);
@@ -161,7 +164,11 @@ contract PlasmaVaultDepositTest is Test {
         vm.prank(userOne);
         ERC20(USDC).approve(address(plasmaVault), amount);
 
-        bytes memory error = abi.encodeWithSignature("ERC20ExceededCap(uint256,uint256)", sharesAmount, 99 * 10**plasmaVault.decimals());
+        bytes memory error = abi.encodeWithSignature(
+            "ERC20ExceededCap(uint256,uint256)",
+            sharesAmount,
+            99 * 10 ** plasmaVault.decimals()
+        );
 
         //when
         vm.prank(userOne);
@@ -328,7 +335,7 @@ contract PlasmaVaultDepositTest is Test {
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         amount = 100 * 1e18;
-        sharesAmount = 100 * 10**plasmaVault.decimals();
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -359,7 +366,11 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(ERC20(DAI).balanceOf(userOne), 0, "ERC20(DAI).balanceOf(userOne)");
 
         /// @dev no transfer to the market when depositing
-        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0, "plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID)");
+        assertEq(
+            plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID),
+            0,
+            "plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID)"
+        );
     }
 
     function testShouldMintToPlasmaVaultWithDAIAsUnderlyingToken() public {
@@ -369,7 +380,7 @@ contract PlasmaVaultDepositTest is Test {
         address userOne = address(0x777);
 
         amount = 100 * 1e18;
-        sharesAmount = 100 * 10**plasmaVault.decimals();
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -400,7 +411,11 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(ERC20(DAI).balanceOf(userOne), 0, "ERC20(DAI).balanceOf(userOne)");
 
         /// @dev no transfer to the market when depositing
-        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0, "plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID)");
+        assertEq(
+            plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID),
+            0,
+            "plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID)"
+        );
     }
 
     function testShouldNotMintToPlasmaVaultWithDAIAsUnderlyingTokenWhenNoOnAccessList() public {
@@ -410,7 +425,7 @@ contract PlasmaVaultDepositTest is Test {
         address userOne = address(0x777);
 
         amount = 100 * 1e18;
-        sharesAmount = 100 * 10**plasmaVault.decimals();
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -449,7 +464,7 @@ contract PlasmaVaultDepositTest is Test {
         PlasmaVault plasmaVault = _preparePlasmaVaultDai();
 
         amount = 100 * 1e18;
-        sharesAmount = 100 * 10**plasmaVault.decimals();
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -480,7 +495,11 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(ERC20(DAI).balanceOf(userOne), 0, "ERC20(DAI).balanceOf(userOne)");
 
         /// @dev no transfer to the market when depositing
-        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0, "plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID)");
+        assertEq(
+            plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID),
+            0,
+            "plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID)"
+        );
     }
 
     function testShouldDepositWithPermitToPlasmaVault() public {
@@ -491,8 +510,7 @@ contract PlasmaVaultDepositTest is Test {
         PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(type(uint256).max);
 
         amount = 100 * 1e6;
-        sharesAmount = 100 * 10**plasmaVault.decimals();
-
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             privateKey,

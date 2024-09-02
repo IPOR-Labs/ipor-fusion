@@ -399,11 +399,7 @@ contract PlasmaVaultBasicTest is Test {
         //then
         uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
 
-        assertGt(
-            vaultTotalAssetsAfter,
-            199 * 10 **6,
-            "Vault total assets should be increased by amount"
-        );
+        assertGt(vaultTotalAssetsAfter, 199 * 10 ** 6, "Vault total assets should be increased by amount");
     }
 
     function testShouldIncreaseValueOfSharesAndNotChangeNumberOfSharesWhenTouchedMarket() public {
@@ -508,11 +504,7 @@ contract PlasmaVaultBasicTest is Test {
         uint256 userAssetsAfter = plasmaVault.convertToAssets(userSharesAfter);
 
         assertEq(userSharesBefore, userSharesAfter, "User shares before and after should be equal");
-        assertGt(
-            userAssetsAfter,
-            userAssetsBefore,
-            "User assets after should be greater than user assets before"
-        );
+        assertGt(userAssetsAfter, userAssetsBefore, "User assets after should be greater than user assets before");
     }
 
     function testShouldNOTIncreaseValueOfSharesAndAmountOfSharesWhenNotTouchedMarket() public {

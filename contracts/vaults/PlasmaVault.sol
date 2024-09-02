@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
-import "forge-std/console2.sol";
+
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -214,9 +214,7 @@ contract PlasmaVault is
     }
 
     function decimals() public view virtual override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
-        uint8 d = super.decimals();
-        console2.log("decimals:", d);
-        return d;
+        return super.decimals();
     }
 
     function transfer(
@@ -568,7 +566,8 @@ contract PlasmaVault is
                     wadBalanceAmountInUSD * IporMath.BASIS_OF_POWER ** underlyingAssePriceDecimals,
                     underlyingAssetPrice
                 ),
-            (decimals() - _decimalsOffset()));
+                (decimals() - _decimalsOffset())
+            );
 
             deltasInUnderlying =
                 deltasInUnderlying +

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
-import "forge-std/console2.sol";
+
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
@@ -44,10 +44,6 @@ contract PlasmaVaultBase is
         address to_,
         uint256 value_
     ) internal virtual override(ERC20Upgradeable, ERC20VotesUpgradeable, ERC20CappedUpgradeable) {
-        console2.log("PlasmaVaultBase._update");
-        console2.log("from_", from_);
-        console2.log("to_", to_);
-        console2.log("value_", value_);
         /// @dev update votes and update total supply and balance
         ERC20VotesUpgradeable._update(from_, to_, value_);
 

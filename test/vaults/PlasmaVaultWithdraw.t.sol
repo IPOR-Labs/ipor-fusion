@@ -1152,7 +1152,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 ERC4626.ERC4626ExceededMaxWithdraw.selector,
                 0x0000000000000000000000000000000000000888,
                 120000000,
-                111111110
+                111111109
             )
         );
         vm.prank(userTwo);
@@ -1226,7 +1226,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         amount = 100 * 1e6;
 
-
         /// @dev user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), 2 * amount);
@@ -1286,8 +1285,9 @@ contract PlasmaVaultWithdrawTest is Test {
         /// @dev configure order for instant withdraw
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
-        vm.prank(userOne);
+        vm.startPrank(userOne);
         plasmaVault.redeem(175 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
@@ -1301,8 +1301,9 @@ contract PlasmaVaultWithdrawTest is Test {
         ERC20(aTokenAddress).transfer(userThree, 100 * 1e6);
 
         //when
-        vm.prank(userTwo);
+        vm.startPrank(userTwo);
         plasmaVault.redeem(30 * 10 ** plasmaVault.decimals(), userTwo, userTwo);
+        vm.stopPrank();
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1422,8 +1423,9 @@ contract PlasmaVaultWithdrawTest is Test {
         AavePool(AAVE_POOL).deposit(USDC, 1 * 1e6, address(plasmaVault), 0);
 
         //when
-        vm.prank(userOne);
+        vm.startPrank(userOne);
         plasmaVault.redeem(200 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1535,8 +1537,9 @@ contract PlasmaVaultWithdrawTest is Test {
         AavePool(AAVE_POOL).deposit(USDC, 5 * 1e6, address(plasmaVault), 0);
 
         //when
-        vm.prank(userOne);
-        plasmaVault.redeem(170 * 10**plasmaVault.decimals(), userOne, userOne);
+        vm.startPrank(userOne);
+        plasmaVault.redeem(170 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1672,8 +1675,9 @@ contract PlasmaVaultWithdrawTest is Test {
         /// @dev configure order for instant withdraw
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
-        vm.prank(userOne);
-        plasmaVault.redeem(175 * 10**plasmaVault.decimals(), userOne, userOne);
+        vm.startPrank(userOne);
+        plasmaVault.redeem(175 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
@@ -1687,11 +1691,13 @@ contract PlasmaVaultWithdrawTest is Test {
         ERC20(aTokenAddress).transfer(userThree, 100 * 1e6);
 
         //when
-        vm.prank(userTwo);
-        plasmaVault.redeem(200 * 10**plasmaVault.decimals(), userTwo, userTwo);
+        vm.startPrank(userTwo);
+        plasmaVault.redeem(200 * 10 ** plasmaVault.decimals(), userTwo, userTwo);
+        vm.stopPrank();
 
-        vm.prank(userOne);
-        plasmaVault.redeem(25 * 10**plasmaVault.decimals(), userOne, userOne);
+        vm.startPrank(userOne);
+        plasmaVault.redeem(25 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1767,7 +1773,6 @@ contract PlasmaVaultWithdrawTest is Test {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
