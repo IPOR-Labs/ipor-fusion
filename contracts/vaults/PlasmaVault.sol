@@ -322,11 +322,25 @@ contract PlasmaVault is
     }
 
     function maxDeposit(address) public view virtual override returns (uint256) {
-        return convertToAssets(PlasmaVaultLib.getTotalSupplyCap() - totalSupply());
+        uint256 totalSupplyCap = PlasmaVaultLib.getTotalSupplyCap();
+        uint256 totalSupply = totalSupply();
+
+        if (totalSupply >= totalSupplyCap) {
+            return 0;
+        }
+
+        return convertToAssets(totalSupplyCap - totalSupply);
     }
 
     function maxMint(address) public view virtual override returns (uint256) {
-        return PlasmaVaultLib.getTotalSupplyCap() - totalSupply();
+        uint256 totalSupplyCap = PlasmaVaultLib.getTotalSupplyCap();
+        uint256 totalSupply = totalSupply();
+
+        if (totalSupply >= totalSupplyCap) {
+            return 0;
+        }
+
+        return totalSupplyCap - totalSupply;
     }
 
     function claimRewards(FuseAction[] calldata calls_) external override nonReentrant restricted {
@@ -342,6 +356,7 @@ contract PlasmaVault is
     function totalAssets() public view virtual override returns (uint256) {
         uint256 grossTotalAssets = _getGrossTotalAssets();
         uint256 unrealizedManagementFee = _getUnrealizedManagementFee(grossTotalAssets);
+
         if (unrealizedManagementFee >= grossTotalAssets) {
             return 0;
         } else {
@@ -514,6 +529,7 @@ contract PlasmaVault is
             left = assets_ - vaultCurrentBalanceUnderlying_;
 
             uint256 i;
+            uint256 balanceOf;
             uint256 fusesLength = fuses.length;
 
             for (i; left != 0 && i < fusesLength; ++i) {
@@ -524,7 +540,13 @@ contract PlasmaVault is
 
                 fuses[i].functionDelegateCall(abi.encodeWithSignature("instantWithdraw(bytes32[])", params));
 
-                left = assets_ - IERC20(asset()).balanceOf(address(this));
+                balanceOf = IERC20(asset()).balanceOf(address(this));
+
+                if (assets_ > balanceOf) {
+                    left = assets_ - balanceOf;
+                } else {
+                    left = 0;
+                }
 
                 fuseMarketId = IFuseCommon(fuses[i]).MARKET_ID();
 
