@@ -17,8 +17,6 @@ struct PlasmaVaultAddress {
     address accessManager;
     /// @notice Address of the Rewards Claim Manager.
     address rewardsClaimManager;
-    /// @notice Address of the Fee Manager.
-    address feeManager;
 }
 
 /// @notice Data for the initialization of the IPOR Fusion Plasma Vault, contain accounts involved in interactions with the Plasma Vault.
@@ -66,7 +64,6 @@ library IporFusionAccessManagerInitializerLibV1 {
         initializeData.roleToFunctions = _generateRoleToFunction(data_.plasmaVaultAddress);
         initializeData.adminRoles = _generateAdminRoles();
         initializeData.accountToRoles = _generateAccountToRoles(data_);
-        initializeData.redemptionDelay = 0;
         return initializeData;
     }
 
@@ -74,17 +71,17 @@ library IporFusionAccessManagerInitializerLibV1 {
         DataForInitialization memory data_
     ) private pure returns (AccountToRole[] memory accountToRoles) {
         accountToRoles = new AccountToRole[](
-            data_.owners.length +
-                data_.admins.length +
+            data_.admins.length +
+                data_.owners.length +
+                data_.guardians.length +
                 data_.atomists.length +
                 data_.alphas.length +
-                data_.whitelist.length +
-                data_.guardians.length +
                 data_.fuseManagers.length +
                 data_.performanceFeeManagers.length +
                 data_.managementFeeManagers.length +
                 data_.claimRewards.length +
                 data_.transferRewardsManagers.length +
+                data_.whitelist.length +
                 data_.configInstantWithdrawalFusesManagers.length +
                 (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1)
         );
@@ -107,54 +104,6 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             ++index;
         }
-        for (uint256 i; i < data_.guardians.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.GUARDIAN_ROLE,
-                account: data_.guardians[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-        for (uint256 i; i < data_.fuseManagers.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.FUSE_MANAGER_ROLE,
-                account: data_.fuseManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-        for (uint256 i; i < data_.performanceFeeManagers.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE,
-                account: data_.performanceFeeManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-        for (uint256 i; i < data_.managementFeeManagers.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE,
-                account: data_.managementFeeManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-        for (uint256 i; i < data_.claimRewards.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.CLAIM_REWARDS_ROLE,
-                account: data_.claimRewards[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-        for (uint256 i; i < data_.transferRewardsManagers.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.TRANSFER_REWARDS_ROLE,
-                account: data_.transferRewardsManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
 
         for (uint256 i; i < data_.owners.length; ++i) {
             accountToRoles[index] = AccountToRole({
@@ -164,6 +113,16 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             ++index;
         }
+
+        for (uint256 i; i < data_.guardians.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.GUARDIAN_ROLE,
+                account: data_.guardians[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
         for (uint256 i; i < data_.atomists.length; ++i) {
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.ATOMIST_ROLE,
@@ -172,6 +131,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             ++index;
         }
+
         for (uint256 i; i < data_.alphas.length; ++i) {
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.ALPHA_ROLE,
@@ -180,6 +140,52 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             ++index;
         }
+
+        for (uint256 i; i < data_.fuseManagers.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.FUSE_MANAGER_ROLE,
+                account: data_.fuseManagers[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
+        for (uint256 i; i < data_.performanceFeeManagers.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE,
+                account: data_.performanceFeeManagers[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
+        for (uint256 i; i < data_.managementFeeManagers.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE,
+                account: data_.managementFeeManagers[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
+        for (uint256 i; i < data_.claimRewards.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.CLAIM_REWARDS_ROLE,
+                account: data_.claimRewards[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
+        for (uint256 i; i < data_.transferRewardsManagers.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.TRANSFER_REWARDS_ROLE,
+                account: data_.transferRewardsManagers[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
         for (uint256 i; i < data_.whitelist.length; ++i) {
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.WHITELIST_ROLE,
@@ -188,6 +194,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             ++index;
         }
+
         for (uint256 i; i < data_.configInstantWithdrawalFusesManagers.length; ++i) {
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE,
@@ -196,6 +203,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             ++index;
         }
+
         return accountToRoles;
     }
 
@@ -366,12 +374,19 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         rolesToFunction[21] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
+            roleId: Roles.ATOMIST_ROLE,
+            functionSelector: PlasmaVaultGovernance.setTotalSupplyCap.selector,
+            minimalExecutionDelay: 0
+        });
+
+        rolesToFunction[22] = RoleToFunction({
+            target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.WHITELIST_ROLE,
             functionSelector: PlasmaVault.depositWithPermit.selector,
             minimalExecutionDelay: 0
         });
 
-        rolesToFunction[22] = RoleToFunction({
+        rolesToFunction[23] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.ATOMIST_ROLE,
             functionSelector: PlasmaVaultGovernance.updateCallbackHandler.selector,
@@ -379,43 +394,38 @@ library IporFusionAccessManagerInitializerLibV1 {
         });
 
         // IporFuseAccessManager
-        rolesToFunction[23] = RoleToFunction({
+        rolesToFunction[24] = RoleToFunction({
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.ADMIN_ROLE,
             functionSelector: IporFusionAccessManager.initialize.selector,
             minimalExecutionDelay: 0
         });
 
-        rolesToFunction[24] = RoleToFunction({
+        rolesToFunction[25] = RoleToFunction({
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.ATOMIST_ROLE,
             functionSelector: IporFusionAccessManager.convertToPublicVault.selector,
             minimalExecutionDelay: 0
         });
-        rolesToFunction[25] = RoleToFunction({
+        rolesToFunction[26] = RoleToFunction({
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.ATOMIST_ROLE,
             functionSelector: IporFusionAccessManager.enableTransferShares.selector,
             minimalExecutionDelay: 0
         });
-        rolesToFunction[26] = RoleToFunction({
+        rolesToFunction[27] = RoleToFunction({
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.OWNER_ROLE,
             functionSelector: IporFusionAccessManager.setMinimalExecutionDelaysForRoles.selector,
             minimalExecutionDelay: 0
         });
-        rolesToFunction[27] = RoleToFunction({
+        rolesToFunction[28] = RoleToFunction({
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.GUARDIAN_ROLE,
             functionSelector: AccessManager.cancel.selector,
             minimalExecutionDelay: 0
         });
-        rolesToFunction[28] = RoleToFunction({
-            target: plasmaVaultAddress_.accessManager,
-            roleId: Roles.ATOMIST_ROLE,
-            functionSelector: IporFusionAccessManager.setRedemptionDelay.selector,
-            minimalExecutionDelay: 0
-        });
+
         rolesToFunction[29] = RoleToFunction({
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.GUARDIAN_ROLE,

@@ -25,6 +25,8 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         CHAINLINK_FEED_REGISTRY = chainlinkFeedRegistry_;
     }
 
+    /// @notice Initializes the contract.
+    /// @param initialOwner_ The initial owner of the contract, it recommended to use MultiSig wallet
     function initialize(address initialOwner_) external initializer {
         __Ownable_init(initialOwner_);
         __UUPSUpgradeable_init();

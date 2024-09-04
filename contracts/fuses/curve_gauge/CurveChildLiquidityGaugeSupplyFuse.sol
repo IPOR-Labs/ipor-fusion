@@ -9,18 +9,14 @@ import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
 
 struct CurveChildLiquidityGaugeSupplyFuseEnterData {
     /// Curve gauge
-    IChildLiquidityGauge childLiquidityGauge;
-    /// @notice LP Token to deposit (stake)
-    address lpToken;
+    address childLiquidityGauge;
     /// @notice Amount of the LP Token to deposit (stake)
     uint256 amount;
 }
 
 struct CurveChildLiquidityGaugeSupplyFuseExitData {
     /// Curve gauge
-    IChildLiquidityGauge childLiquidityGauge;
-    /// @notice LP Token to withdraw (unstake)
-    address lpToken;
+    address childLiquidityGauge;
     /// @notice Amount of the LP Token to withdraw (unstake)
     uint256 amount;
 }
@@ -28,11 +24,11 @@ struct CurveChildLiquidityGaugeSupplyFuseExitData {
 contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
     using SafeERC20 for IERC20;
 
-    event CurveChildLiquidityGaugeSupplyFuseEnter(address version, address lpToken, uint256 amount);
+    event CurveChildLiquidityGaugeSupplyFuseEnter(address version, address childLiquidityGauge, uint256 amount);
 
-    event CurveChildLiquidityGaugeSupplyFuseExit(address version, address lpToken, uint256 amount);
+    event CurveChildLiquidityGaugeSupplyFuseExit(address version, address childLiquidityGauge, uint256 amount);
 
-    error CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address lpToken);
+    error CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address childLiquidityGauge);
     error CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount();
     error CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount();
 
@@ -54,17 +50,23 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
     }
 
     function _enter(CurveChildLiquidityGaugeSupplyFuseEnterData memory data_) internal {
-        IChildLiquidityGauge childLiquidityGauge = data_.childLiquidityGauge;
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.childLiquidityGauge))) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.childLiquidityGauge)) {
             /// @notice substrate here refers to the staked Curve LP token (Gauge address)
-            revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address(data_.childLiquidityGauge));
+            revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
         }
         if (data_.amount == 0) {
             revert CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount();
         }
-        IERC20(data_.lpToken).forceApprove(address(childLiquidityGauge), data_.amount);
-        childLiquidityGauge.deposit(data_.amount, address(this), false);
-        emit CurveChildLiquidityGaugeSupplyFuseEnter(VERSION, data_.lpToken, data_.amount);
+        uint256 balanceOfPlasmaVault = IERC20(IChildLiquidityGauge(data_.childLiquidityGauge).lp_token()).balanceOf(
+            address(this)
+        );
+        uint256 depositAmount = data_.amount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.amount;
+        IERC20(IChildLiquidityGauge(data_.childLiquidityGauge).lp_token()).forceApprove(
+            data_.childLiquidityGauge,
+            depositAmount
+        );
+        IChildLiquidityGauge(data_.childLiquidityGauge).deposit(depositAmount, address(this), false);
+        emit CurveChildLiquidityGaugeSupplyFuseEnter(VERSION, data_.childLiquidityGauge, depositAmount);
     }
 
     function exit(bytes calldata data_) external override {
@@ -77,14 +79,15 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
     }
 
     function _exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_) internal {
-        IChildLiquidityGauge childLiquidityGauge = data_.childLiquidityGauge;
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.childLiquidityGauge))) {
-            revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address(data_.childLiquidityGauge));
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.childLiquidityGauge)) {
+            revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
         }
         if (data_.amount == 0) {
             revert CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount();
         }
-        childLiquidityGauge.withdraw(data_.amount, address(this), false);
-        emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data_.lpToken, data_.amount);
+        uint256 balanceOfPlasmaVault = IERC20(data_.childLiquidityGauge).balanceOf(address(this));
+        uint256 withdrawAmount = data_.amount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.amount;
+        IChildLiquidityGauge(data_.childLiquidityGauge).withdraw(withdrawAmount, address(this), false);
+        emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data_.childLiquidityGauge, withdrawAmount);
     }
 }

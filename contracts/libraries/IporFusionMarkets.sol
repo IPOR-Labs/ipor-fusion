@@ -12,15 +12,25 @@ library IporFusionMarkets {
 
     /// @dev Gearbox V3 market
     uint256 public constant GEARBOX_POOL_V3 = 3;
+    /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with balance of GEARBOX_POOL_V3
     uint256 public constant GEARBOX_FARM_DTOKEN_V3 = 4;
 
     /// @dev Fluid Instadapp market
     uint256 public constant FLUID_INSTADAPP_POOL = 5;
     uint256 public constant FLUID_INSTADAPP_STAKING = 6;
 
-    uint256 public constant ERC20_VAULT_BALANCE = 8;
+    uint256 public constant ERC20_VAULT_BALANCE = 7;
 
-    /// @dev Curve USDM/USDC/LP market
-    uint256 public constant CURVE_POOL = 9;
-    uint256 public constant CURVE_LP_GAUGE = 10;
+    /// @dev Uniswap market
+    /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with balance of ERC20_VAULT_BALANCE
+    uint256 public constant UNISWAP_SWAP_V2 = 9;
+    /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with balance of ERC20_VAULT_BALANCE
+    uint256 public constant UNISWAP_SWAP_V3 = 10;
+
+    /// @dev Euler market
+    uint256 public constant EULER_V2 = 11;
+
+    /// @dev Curve market
+    uint256 public constant CURVE_POOL = 12;
+    uint256 public constant CURVE_LP_GAUGE = 13;
 }

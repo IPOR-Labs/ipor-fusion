@@ -17,6 +17,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -45,9 +46,9 @@ contract PlasmaVaultWithdrawTest is Test {
     string public assetName;
     string public assetSymbol;
     address public underlyingToken;
-    address[] public alphas;
     address public alpha;
     uint256 public amount;
+    uint256 public sharesAmount;
 
     address public userOne;
     address public userTwo;
@@ -75,11 +76,12 @@ contract PlasmaVaultWithdrawTest is Test {
 
     function testShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
         //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(0);
 
         userOne = address(0x777);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -101,30 +103,24 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
-        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+        assertEq(userVaultBalanceBefore - sharesAmount, userVaultBalanceAfter);
 
         assertEq(vaultTotalAssetsAfter, 0);
     }
 
     function testShouldBeAbleWithdrawAfterRedemptioLock() public {
         //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
         userOne = address(0x777);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
-
-        IporFusionAccessManager accessManager = IporFusionAccessManager(
-            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
-        );
-
-        vm.prank(atomist);
-        accessManager.setRedemptionDelay(10 minutes);
 
         vm.prank(userOne);
         plasmaVault.deposit(amount, userOne);
@@ -142,30 +138,24 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter);
-        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter);
+        assertEq(userVaultBalanceBefore - sharesAmount, userVaultBalanceAfter);
 
         assertEq(vaultTotalAssetsAfter, 0);
     }
 
     function testShouldBeAbleRedeemAfterRedemptioLock() public {
         //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
         userOne = address(0x777);
 
-        uint256 amount = 100 * 1e18;
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
-
-        IporFusionAccessManager accessManager = IporFusionAccessManager(
-            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
-        );
-
-        vm.prank(atomist);
-        accessManager.setRedemptionDelay(10 minutes);
 
         vm.prank(userOne);
         plasmaVault.deposit(amount, userOne);
@@ -183,14 +173,14 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
 
         assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter, "vaultTotalAssetsBefore - amount");
-        assertEq(userVaultBalanceBefore - amount, userVaultBalanceAfter, "userVaultBalanceBefore - amount");
+        assertEq(userVaultBalanceBefore - sharesAmount, userVaultBalanceAfter, "userVaultBalanceBefore - amount");
 
         assertEq(vaultTotalAssetsAfter, 0);
     }
 
-    function testShouldNotBeAbleWithdrawDuringRedemptioLock() public {
+    function testShouldNotBeAbleWithdrawDuringRedemptionLock() public {
         //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
         userOne = address(0x777);
 
@@ -200,13 +190,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
-
-        IporFusionAccessManager accessManager = IporFusionAccessManager(
-            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
-        );
-
-        vm.prank(atomist);
-        accessManager.setRedemptionDelay(10 minutes);
 
         vm.prank(userOne);
         plasmaVault.deposit(amount, userOne);
@@ -220,9 +203,9 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(amount, userOne, userOne);
     }
 
-    function testShouldNotBeAbleRedeemDuringRedemptioLock() public {
+    function testShouldNotBeAbleRedeemDuringRedemptionLock() public {
         //given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
         userOne = address(0x777);
 
@@ -232,13 +215,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         vm.prank(userOne);
         ERC20(DAI).approve(address(plasmaVault), 3 * amount);
-
-        IporFusionAccessManager accessManager = IporFusionAccessManager(
-            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
-        );
-
-        vm.prank(atomist);
-        accessManager.setRedemptionDelay(10 minutes);
 
         vm.prank(userOne);
         plasmaVault.deposit(amount, userOne);
@@ -254,7 +230,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
     function testShouldNotInstantWithdrawBecauseNoShares() public {
         // given
-        PlasmaVault plasmaVault = _preparePlasmaVaultDai();
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(0);
 
         userOne = address(0x777);
 
@@ -277,10 +253,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -306,7 +279,7 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -314,13 +287,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -377,15 +350,119 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(vaultTotalAssetsAfter, 1e6);
     }
 
+    function testShouldInstantlyWithdrawExitFromOneMarketAaveV3TotalSupplyCapAchieved() public {
+        /// @dev Scenario: test shows that even if total supply cap is achieved and performance fee and managment fee will be minted in shares of vault, user can still withdraw his assets
+
+        //given
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_PRICE_ORACLE_MAINNET,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            AAVE_POOL,
+            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseAaveV3);
+
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        amount = 200 * 1e6;
+        sharesAmount = 200 * 10 ** (6 + PlasmaVaultLib.DECIMALS_OFFSET);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 2000, address(0x555), 200),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                sharesAmount
+            )
+        );
+        setupRoles(plasmaVault, accessManager);
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+
+        calls[0] = FuseAction(
+            address(supplyFuseAaveV3),
+            abi.encodeWithSignature(
+                "enter(bytes)",
+                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
+            )
+        );
+
+        /// @dev first call to move some assets to a external market
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+
+        /// @dev prepare instant withdraw config
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory instantWithdrawParams = new bytes32[](2);
+        instantWithdrawParams[0] = 0;
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
+            fuse: address(supplyFuseAaveV3),
+            params: instantWithdrawParams
+        });
+
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+
+        //when
+        /// @dev important in this test to accrue some interest in external markets
+        vm.warp(block.timestamp + 100 days);
+
+        vm.prank(userOne);
+        plasmaVault.withdraw(199 * 1e6, userOne, userOne);
+
+        //then
+        uint256 userBalanceAfter = ERC20(USDC).balanceOf(userOne);
+
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+
+        assertEq(userBalanceAfter, 199 * 1e6);
+        assertGt(vaultTotalAssetsAfter, 0);
+        assertEq(vaultTotalAssetsAfter, 4708504);
+    }
+
     function testShouldInstantWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -418,7 +495,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -426,13 +503,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -508,10 +585,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -537,7 +611,7 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -545,13 +619,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -608,10 +682,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -644,7 +715,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -652,13 +723,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -742,10 +813,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -778,7 +846,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -786,13 +854,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -906,10 +974,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -942,7 +1007,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -950,19 +1015,20 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         /// @dev user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -1043,7 +1109,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 ERC4626.ERC4626ExceededMaxWithdraw.selector,
                 0x0000000000000000000000000000000000000888,
                 120000000,
-                111111110
+                111111109
             )
         );
         vm.prank(userTwo);
@@ -1062,10 +1128,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1098,7 +1161,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1106,13 +1169,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1179,8 +1242,9 @@ contract PlasmaVaultWithdrawTest is Test {
         /// @dev configure order for instant withdraw
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
-        vm.prank(userOne);
-        plasmaVault.redeem(175 * 1e6, userOne, userOne);
+        vm.startPrank(userOne);
+        plasmaVault.redeem(175 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
@@ -1194,14 +1258,15 @@ contract PlasmaVaultWithdrawTest is Test {
         ERC20(aTokenAddress).transfer(userThree, 100 * 1e6);
 
         //when
-        vm.prank(userTwo);
-        plasmaVault.redeem(30 * 1e6, userTwo, userTwo);
+        vm.startPrank(userTwo);
+        plasmaVault.redeem(30 * 10 ** plasmaVault.decimals(), userTwo, userTwo);
+        vm.stopPrank();
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
         uint256 userTwoBalanceAfter = ERC20(USDC).balanceOf(userTwo);
 
-        assertEq(userOneBalanceAfter, 174999999, "userOneBalanceAfter");
+        assertApproxEqAbs(userOneBalanceAfter, 175 * 1e6, 1, "userOneBalanceAfter aprox");
         assertEq(userTwoBalanceAfter, 16666666, "userTwoBalanceAfter");
 
         /// CompoundV3 balance
@@ -1216,10 +1281,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1245,7 +1307,7 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1253,13 +1315,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1270,6 +1332,7 @@ contract PlasmaVaultWithdrawTest is Test {
         /// @dev user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), 3 * amount);
+
         vm.prank(userOne);
         ERC20(USDC).approve(address(plasmaVault), 3 * amount);
 
@@ -1317,8 +1380,9 @@ contract PlasmaVaultWithdrawTest is Test {
         AavePool(AAVE_POOL).deposit(USDC, 1 * 1e6, address(plasmaVault), 0);
 
         //when
-        vm.prank(userOne);
-        plasmaVault.redeem(200 * 1e6, userOne, userOne);
+        vm.startPrank(userOne);
+        plasmaVault.redeem(200 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1331,10 +1395,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1360,7 +1421,7 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1368,13 +1429,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1433,8 +1494,9 @@ contract PlasmaVaultWithdrawTest is Test {
         AavePool(AAVE_POOL).deposit(USDC, 5 * 1e6, address(plasmaVault), 0);
 
         //when
-        vm.prank(userOne);
-        plasmaVault.redeem(170 * 1e6, userOne, userOne);
+        vm.startPrank(userOne);
+        plasmaVault.redeem(170 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1455,10 +1517,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
         underlyingToken = USDC;
-        alphas = new address[](1);
         alpha = address(0x1);
-
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1491,7 +1550,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVaultBase plasmaVaultBase = new PlasmaVaultBase();
 
@@ -1501,13 +1560,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(plasmaVaultBase)
+                address(plasmaVaultBase),
+                type(uint256).max
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1573,8 +1632,9 @@ contract PlasmaVaultWithdrawTest is Test {
         /// @dev configure order for instant withdraw
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
-        vm.prank(userOne);
-        plasmaVault.redeem(175 * 1e6, userOne, userOne);
+        vm.startPrank(userOne);
+        plasmaVault.redeem(175 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         address aTokenAddress;
         (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
@@ -1588,11 +1648,13 @@ contract PlasmaVaultWithdrawTest is Test {
         ERC20(aTokenAddress).transfer(userThree, 100 * 1e6);
 
         //when
-        vm.prank(userTwo);
-        plasmaVault.redeem(200 * 1e6, userTwo, userTwo);
+        vm.startPrank(userTwo);
+        plasmaVault.redeem(200 * 10 ** plasmaVault.decimals(), userTwo, userTwo);
+        vm.stopPrank();
 
-        vm.prank(userOne);
-        plasmaVault.redeem(25 * 1e6, userOne, userOne);
+        vm.startPrank(userOne);
+        plasmaVault.redeem(25 * 10 ** plasmaVault.decimals(), userOne, userOne);
+        vm.stopPrank();
 
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
@@ -1610,9 +1672,6 @@ contract PlasmaVaultWithdrawTest is Test {
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
         address underlyingToken = USDC;
-        address[] memory alphas = new address[](1);
-
-        alphas[0] = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1645,7 +1704,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1653,13 +1712,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1667,14 +1726,10 @@ contract PlasmaVaultWithdrawTest is Test {
         return plasmaVault;
     }
 
-    function _preparePlasmaVaultDai() public returns (PlasmaVault) {
+    function _preparePlasmaVaultDai(uint256 redemptionDelay) public returns (PlasmaVault) {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
-
-        address alpha = address(0x1);
-        alphas[0] = alpha;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1700,7 +1755,7 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, redemptionDelay);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1708,13 +1763,13 @@ contract PlasmaVaultWithdrawTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1723,7 +1778,10 @@ contract PlasmaVaultWithdrawTest is Test {
         return plasmaVault;
     }
 
-    function createAccessManager(UsersToRoles memory usersToRoles_) public returns (IporFusionAccessManager) {
+    function createAccessManager(
+        UsersToRoles memory usersToRoles_,
+        uint256 redemptionDelay_
+    ) public returns (IporFusionAccessManager) {
         if (usersToRoles_.superAdmin == address(0)) {
             usersToRoles_.superAdmin = atomist;
             usersToRoles_.atomist = atomist;
@@ -1731,7 +1789,7 @@ contract PlasmaVaultWithdrawTest is Test {
             alphas[0] = alpha;
             usersToRoles_.alphas = alphas;
         }
-        return RoleLib.createAccessManager(usersToRoles_, vm);
+        return RoleLib.createAccessManager(usersToRoles_, redemptionDelay_, vm);
     }
 
     function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
