@@ -111,7 +111,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            CURVE_LIQUIDITY_GAUGE,
+            address(CURVE_LIQUIDITY_GAUGE),
             CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance
         );
@@ -284,7 +284,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            CURVE_LIQUIDITY_GAUGE,
+            address(CURVE_LIQUIDITY_GAUGE),
             CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance
         );
@@ -489,7 +489,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             usersToRoles.atomist = atomist;
             usersToRoles.alphas = alphas;
         }
-        accessManager = IporFusionAccessManager(RoleLib.createAccessManager(usersToRoles, vm));
+        accessManager = IporFusionAccessManager(RoleLib.createAccessManager(usersToRoles, 0, vm));
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
     }
 
@@ -504,13 +504,13 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 assetSymbol: "PLASMA",
                 underlyingToken: asset,
                 priceOracleMiddleware: address(priceOracleMiddlewareProxy),
-                alphas: alphas,
                 marketSubstratesConfigs: _setupMarketConfigs(),
                 fuses: fuses,
                 balanceFuses: _setupBalanceFuses(),
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(accessManager),
-                plasmaVaultBase: address(new PlasmaVaultBase())
+                plasmaVaultBase: address(new PlasmaVaultBase()),
+                totalSupplyCap: type(uint256).max
             })
         );
     }
@@ -528,13 +528,11 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         CurveStableswapNGSingleSideBalanceFuse curveStableswapNGBalanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-                IporFusionMarkets.CURVE_POOL,
-                address(priceOracleMiddlewareProxy)
+                IporFusionMarkets.CURVE_POOL
             );
 
         CurveChildLiquidityGaugeBalanceFuse curveChildLiquidityGaugeBalanceFuse = new CurveChildLiquidityGaugeBalanceFuse(
-                IporFusionMarkets.CURVE_LP_GAUGE,
-                address(priceOracleMiddlewareProxy)
+                IporFusionMarkets.CURVE_LP_GAUGE
             );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);
@@ -585,8 +583,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(plasmaVault),
                 accessManager: address(accessManager),
-                rewardsClaimManager: address(rewardsClaimManager),
-                feeManager: address(this)
+                rewardsClaimManager: address(rewardsClaimManager)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
@@ -636,7 +633,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
     function _executeCurveChildLiquidityGaugeSupplyFuseEnter(
         CurveChildLiquidityGaugeSupplyFuse fuseInstance,
-        IChildLiquidityGauge curveGauge,
+        address curveGauge,
         address lpToken,
         uint256 amount
     ) internal {
@@ -646,11 +643,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    CurveChildLiquidityGaugeSupplyFuseEnterData({
-                        childLiquidityGauge: curveGauge,
-                        lpToken: lpToken,
-                        amount: amount
-                    })
+                    CurveChildLiquidityGaugeSupplyFuseEnterData({childLiquidityGauge: curveGauge, amount: amount})
                 )
             )
         );
