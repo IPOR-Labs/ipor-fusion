@@ -3,27 +3,24 @@ pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IMarketBalanceFuse} from "./../IMarketBalanceFuse.sol";
 import {IporMath} from "./../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultLib} from "./../../libraries/PlasmaVaultLib.sol";
 import {IChildLiquidityGauge} from "./ext/IChildLiquidityGauge.sol";
 import {ICurveStableswapNG} from "./../curve_stableswap_ng/ext/ICurveStableswapNG.sol";
 import {IPriceOracleMiddleware} from "./../../price_oracle/IPriceOracleMiddleware.sol";
 
 contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
-    using SafeERC20 for ERC20;
 
     uint256 public immutable MARKET_ID;
-    IPriceOracleMiddleware public immutable PRICE_ORACLE;
 
     error AssetNotFoundInCurvePool(address curvePool, address asset);
 
-    constructor(uint256 marketIdInput_, address priceOracle_) {
+    constructor(uint256 marketIdInput_) {
         MARKET_ID = marketIdInput_;
-        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
     }
     /// @notice Returns the value of the LP tokens staked in the Curve pool
     /// @notice Rewards are not included here
@@ -42,8 +39,9 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
         uint256 stakedLPTokenBalance;
         uint256 withdrawTokenAmount; // underlying asset of the vault amount to withdraw from LP
         uint256 assetPrice;
-        uint256 assetDecimals;
+        uint256 priceDecimals;
         address plasmaVault = address(this);
+        address plasmaVaultAsset = IERC4626(plasmaVault).asset();
         address stakedLpTokenAddress;
         address lpTokenAddress; // Curve LP token
         int128 indexCoin; // index of the underlying asset in the Curve pool
@@ -51,17 +49,18 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
         for (uint256 i; i < len; ++i) {
             stakedLpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
             lpTokenAddress = IChildLiquidityGauge(stakedLpTokenAddress).lp_token();
-            indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), IERC4626(plasmaVault).asset());
+            indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), plasmaVaultAsset);
             stakedLPTokenBalance = ERC20(stakedLpTokenAddress).balanceOf(plasmaVault);
             if (stakedLPTokenBalance > 0) {
                 withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
                     stakedLPTokenBalance,
                     indexCoin
                 );
-                (assetPrice, assetDecimals) = PRICE_ORACLE.getAssetPrice(IERC4626(plasmaVault).asset());
+                (assetPrice, priceDecimals) = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracleMiddleware())
+                    .getAssetPrice(plasmaVaultAsset);
                 balance += IporMath.convertToWad(
                     withdrawTokenAmount * assetPrice,
-                    ERC20(IERC4626(plasmaVault).asset()).decimals() + assetDecimals
+                    ERC20(plasmaVaultAsset).decimals() + priceDecimals
                 );
             }
         }

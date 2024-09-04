@@ -86,10 +86,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     function testShouldBeAbleToCalculateBalanceWhenSupplySingleAsset() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);
@@ -200,10 +197,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     function testShouldBeAbleToCalculateBalanceWhenSupplyAndExitSingleAsset() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
-        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-            1,
-            address(priceOracleMiddlewareProxy)
-        );
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
 
         MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
         address[] memory fuses = createFuses(fuse);

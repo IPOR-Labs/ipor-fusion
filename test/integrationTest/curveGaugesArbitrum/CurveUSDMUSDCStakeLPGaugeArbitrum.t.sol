@@ -99,7 +99,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         // when
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            CURVE_LIQUIDITY_GAUGE,
+            address(CURVE_LIQUIDITY_GAUGE),
             CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             true
@@ -213,7 +213,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         vm.expectRevert(error);
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            IChildLiquidityGauge(unsupportedGauge),
+            unsupportedGauge,
             CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             false
@@ -317,7 +317,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         vm.expectRevert(error);
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            CURVE_LIQUIDITY_GAUGE,
+            address(CURVE_LIQUIDITY_GAUGE),
             CURVE_STABLESWAP_NG_POOL,
             0,
             false
@@ -421,7 +421,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         PlasmaVaultState memory vaultStateAfterEnterCurvePool = getPlasmaVaultState();
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            CURVE_LIQUIDITY_GAUGE,
+            address(CURVE_LIQUIDITY_GAUGE),
             CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             true
@@ -431,7 +431,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         // when
         _executeCurveChildLiquidityGaugeSupplyFuseExit(
             curveChildLiquidityGaugeSupplyFuse,
-            CURVE_LIQUIDITY_GAUGE,
+            address(CURVE_LIQUIDITY_GAUGE),
             CURVE_STABLESWAP_NG_POOL,
             vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
             true
@@ -511,7 +511,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         PlasmaVaultState memory vaultStateAfterEnterCurvePool = getPlasmaVaultState();
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            CURVE_LIQUIDITY_GAUGE,
+            address(CURVE_LIQUIDITY_GAUGE),
             CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             true
@@ -519,15 +519,15 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         PlasmaVaultState memory vaultStateBeforeExitCurveGauge = getPlasmaVaultState();
 
         // when
-        address unsupportedLPToken = 0xB08FEf57bFcc5f7bF0EF69C0c090849d497C8F8A;
+        address unsupportedGauge = 0xB08FEf57bFcc5f7bF0EF69C0c090849d497C8F8A;
         bytes memory error = abi.encodeWithSignature(
             "CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address)",
-            unsupportedLPToken
+            unsupportedGauge
         );
         vm.expectRevert(error);
         _executeCurveChildLiquidityGaugeSupplyFuseExit(
             curveChildLiquidityGaugeSupplyFuse,
-            IChildLiquidityGauge(unsupportedLPToken),
+            unsupportedGauge,
             CURVE_STABLESWAP_NG_POOL,
             vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
             false
@@ -616,7 +616,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         PlasmaVaultState memory vaultStateAfterEnterCurvePool = getPlasmaVaultState();
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            CURVE_LIQUIDITY_GAUGE,
+            address(CURVE_LIQUIDITY_GAUGE),
             CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             true
@@ -628,7 +628,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         vm.expectRevert(error);
         _executeCurveChildLiquidityGaugeSupplyFuseExit(
             curveChildLiquidityGaugeSupplyFuse,
-            CURVE_LIQUIDITY_GAUGE,
+            address(CURVE_LIQUIDITY_GAUGE),
             CURVE_STABLESWAP_NG_POOL,
             0,
             false
@@ -809,13 +809,11 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         CurveStableswapNGSingleSideBalanceFuse curveStableswapNGBalanceFuse = new CurveStableswapNGSingleSideBalanceFuse(
-                IporFusionMarkets.CURVE_POOL,
-                address(priceOracleMiddlewareProxy)
+                IporFusionMarkets.CURVE_POOL
             );
 
         CurveChildLiquidityGaugeBalanceFuse curveChildLiquidityGaugeBalanceFuse = new CurveChildLiquidityGaugeBalanceFuse(
-                IporFusionMarkets.CURVE_LP_GAUGE,
-                address(priceOracleMiddlewareProxy)
+                IporFusionMarkets.CURVE_LP_GAUGE
             );
 
         balanceFuses = new MarketBalanceFuseConfig[](2);
@@ -941,7 +939,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
 
     function _executeCurveChildLiquidityGaugeSupplyFuseEnter(
         CurveChildLiquidityGaugeSupplyFuse fuseInstance,
-        IChildLiquidityGauge curveGauge,
+        address curveGauge,
         address lpToken,
         uint256 amount,
         bool success
@@ -952,18 +950,14 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    CurveChildLiquidityGaugeSupplyFuseEnterData({
-                        childLiquidityGauge: curveGauge,
-                        lpToken: lpToken,
-                        amount: amount
-                    })
+                    CurveChildLiquidityGaugeSupplyFuseEnterData({childLiquidityGauge: curveGauge, amount: amount})
                 )
             )
         );
 
         if (success) {
             vm.expectEmit(true, true, true, true);
-            emit CurveChildLiquidityGaugeSupplyFuseEnter(address(fuseInstance), lpToken, amount);
+            emit CurveChildLiquidityGaugeSupplyFuseEnter(address(fuseInstance), curveGauge, amount);
         }
 
         vm.prank(alpha);
@@ -972,7 +966,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
 
     function _executeCurveChildLiquidityGaugeSupplyFuseExit(
         CurveChildLiquidityGaugeSupplyFuse fuseInstance,
-        IChildLiquidityGauge curveGauge,
+        address curveGauge,
         address lpToken,
         uint256 amount,
         bool success
@@ -983,18 +977,14 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             abi.encodeWithSignature(
                 "exit(bytes)",
                 abi.encode(
-                    CurveChildLiquidityGaugeSupplyFuseExitData({
-                        childLiquidityGauge: curveGauge,
-                        lpToken: lpToken,
-                        amount: amount
-                    })
+                    CurveChildLiquidityGaugeSupplyFuseExitData({childLiquidityGauge: curveGauge, amount: amount})
                 )
             )
         );
 
         if (success) {
             vm.expectEmit(true, true, true, true);
-            emit CurveChildLiquidityGaugeSupplyFuseExit(address(fuseInstance), lpToken, amount);
+            emit CurveChildLiquidityGaugeSupplyFuseExit(address(fuseInstance), curveGauge, amount);
         }
 
         vm.prank(alpha);

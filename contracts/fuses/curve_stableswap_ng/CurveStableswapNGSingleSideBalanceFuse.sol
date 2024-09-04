@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IMarketBalanceFuse} from "./../IMarketBalanceFuse.sol";
 import {IporMath} from "./../../libraries/math/IporMath.sol";
@@ -15,16 +14,12 @@ import {IPriceOracleMiddleware} from "./../../price_oracle/IPriceOracleMiddlewar
 /// @notice This Balance Fuse can only be used for assets compaitble with the underlying of the Plasma Vault asset
 contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
-    using SafeERC20 for ERC20;
-
     uint256 public immutable MARKET_ID;
-    IPriceOracleMiddleware public immutable PRICE_ORACLE;
 
     error AssetNotFoundInCurvePool(address curvePool, address asset);
 
-    constructor(uint256 marketId_, address priceOracle_) {
+    constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
-        PRICE_ORACLE = IPriceOracleMiddleware(priceOracle_);
     }
     /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
     function balanceOf() external view override returns (uint256) {
@@ -52,14 +47,14 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
                 continue;
             }
             withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
-                ERC20(lpTokenAddress).balanceOf(plasmaVault),
+                lpTokenBalance,
                 _getCoinIndex(ICurveStableswapNG(lpTokenAddress), underlyingAsset)
             );
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(underlyingAsset);
 
             balance += IporMath.convertToWad(
                 withdrawTokenAmount * price,
-                ERC20(IERC4626(plasmaVault).asset()).decimals() + priceDecimals
+                ERC20(underlyingAsset).decimals() + priceDecimals
             );
         }
         return balance;
