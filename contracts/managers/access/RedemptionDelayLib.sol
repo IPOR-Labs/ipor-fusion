@@ -22,18 +22,6 @@ library RedemptionDelayLib {
         return IporFusionAccessManagersStorageLib.getRedemptionLocks().redemptionLock[account_];
     }
 
-    /// @notice Get the redemption delay
-    /// @return The redemption delay in seconds
-    function getRedemptionDelay() internal view returns (uint256) {
-        return IporFusionAccessManagersStorageLib.getRedemptionDelay().redemptionDelay;
-    }
-
-    /// @notice Set the redemption delay, defining the time an account is locked for withdraw and redeem functions after deposit or mint functions
-    /// @param delay_ The redemption delay in seconds
-    function setRedemptionDelay(uint256 delay_) internal {
-        IporFusionAccessManagersStorageLib.setRedemptionDelay(delay_);
-    }
-
     /// @notice Check if account is locked for a specific function (correlation withdraw, redeem functions to deposit, mint functions)
     /// @dev When deposit or mint functions are called, the account is locked for withdraw and redeem functions for a specific time defined by the redemption delay.
     function lockChecks(address account_, bytes4 sig_) internal {

@@ -64,7 +64,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory performanceFeeManagers = new address[](1);
         performanceFeeManagers[0] = address(0x777);
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -72,13 +72,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -101,7 +101,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory managementFeeManagers = new address[](1);
         managementFeeManagers[0] = address(0x555);
         usersToRoles.managementFeeManagers = managementFeeManagers;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -109,13 +109,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -132,6 +132,74 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertEq(feeData.feeInPercentage, 55);
     }
 
+    function testShouldNotConfigureManagementFeeDataBecauseOfCap() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory managementFeeManagers = new address[](1);
+        managementFeeManagers[0] = address(0x555);
+        usersToRoles.managementFeeManagers = managementFeeManagers;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes memory error = abi.encodeWithSignature("InvalidManagementFee(uint256)", 501);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x555));
+        IPlasmaVaultGovernance(address(plasmaVault)).configureManagementFee(address(0x555), 501);
+    }
+
+    function testShouldNotCinfigurePerformanceFeeDataBecauseOfCap() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory performanceFeeManagers = new address[](1);
+        performanceFeeManagers[0] = address(0x777);
+        usersToRoles.performanceFeeManagers = performanceFeeManagers;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes memory error = abi.encodeWithSignature("InvalidPerformanceFee(uint256)", 5001);
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(address(0x777));
+        IPlasmaVaultGovernance(address(plasmaVault)).configurePerformanceFee(address(0x555), 5001);
+    }
+
     function testShouldConfigureManagementFeeDataWhenTimelock() public {
         // given
 
@@ -140,7 +208,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         managementFeeManagers[0] = address(0x555);
         usersToRoles.managementFeeManagers = managementFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -148,13 +216,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -187,7 +255,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         managementFeeManagers[0] = address(0x555);
         usersToRoles.managementFeeManagers = managementFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -195,13 +263,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -231,7 +299,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         managementFeeManagers[0] = address(0x555);
         usersToRoles.managementFeeManagers = managementFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -239,13 +307,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -274,7 +342,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         performanceFeeManagers[0] = address(0x555);
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -282,13 +350,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -320,7 +388,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         performanceFeeManagers[0] = address(0x777);
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -328,13 +396,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -363,7 +431,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         performanceFeeManagers[0] = address(0x777);
         usersToRoles.performanceFeeManagers = performanceFeeManagers;
         usersToRoles.feeTimelock = 1 days;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -371,13 +439,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -420,7 +488,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         // when
         PlasmaVault plasmaVault = new PlasmaVault(
@@ -429,13 +497,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -468,7 +536,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -476,13 +544,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -515,7 +583,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         // when
         PlasmaVault plasmaVault = new PlasmaVault(
@@ -524,13 +592,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -562,7 +630,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -570,13 +638,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -625,7 +693,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -633,13 +701,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -734,7 +802,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -742,13 +810,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -796,7 +864,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -804,13 +872,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -879,7 +947,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -887,13 +955,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -962,7 +1030,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -970,13 +1038,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1016,7 +1084,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1024,13 +1092,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1078,7 +1146,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1086,13 +1154,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 supplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1139,7 +1207,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1147,13 +1215,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1206,7 +1274,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1214,13 +1282,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1260,7 +1328,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1268,13 +1336,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1309,7 +1377,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1317,13 +1385,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1365,7 +1433,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1373,13 +1441,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1421,7 +1489,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1429,13 +1497,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1466,7 +1534,10 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
     }
 
-    function createAccessManager(UsersToRoles memory usersToRoles_) public returns (IporFusionAccessManager) {
+    function createAccessManager(
+        UsersToRoles memory usersToRoles_,
+        uint256 redemptionDelay_
+    ) public returns (IporFusionAccessManager) {
         if (usersToRoles_.superAdmin == address(0)) {
             usersToRoles_.superAdmin = atomist;
             usersToRoles_.atomist = atomist;
@@ -1474,7 +1545,7 @@ contract PlasmaVaultMaintenanceTest is Test {
             alphas[0] = alpha;
             usersToRoles_.alphas = alphas;
         }
-        return RoleLib.createAccessManager(usersToRoles_, vm);
+        return RoleLib.createAccessManager(usersToRoles_, redemptionDelay_, vm);
     }
 
     function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
@@ -1497,7 +1568,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1505,13 +1576,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1538,7 +1609,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1546,13 +1617,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1584,7 +1655,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1592,13 +1663,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1633,7 +1704,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1641,13 +1712,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1677,7 +1748,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1685,13 +1756,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1721,7 +1792,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1729,13 +1800,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1770,7 +1841,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1778,13 +1849,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1811,7 +1882,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1819,13 +1890,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1857,7 +1928,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1865,13 +1936,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1905,7 +1976,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1913,13 +1984,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -1995,7 +2066,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -2003,13 +2074,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2087,7 +2158,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -2095,13 +2166,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2181,7 +2252,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -2189,13 +2260,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2278,7 +2349,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address owner = usersToRoles.atomist;
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -2286,13 +2357,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2337,20 +2408,20 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2394,20 +2465,20 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2450,20 +2521,20 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2510,20 +2581,20 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2554,6 +2625,38 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertEq(marketIdsAfter[1], 2, "Market id 2 should be second");
     }
 
+    function testShouldNotBeAbleToSetupTotalSupplyCapEqualZero() public {
+        // given
+        address underlyingToken = USDC;
+
+        UsersToRoles memory usersToRoles;
+
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        bytes memory error = abi.encodeWithSignature("WrongValue()");
+
+        //when
+        vm.prank(usersToRoles.atomist);
+        vm.expectRevert(error);
+        IPlasmaVaultGovernance(address(plasmaVault)).setTotalSupplyCap(0);
+    }
+
     function testShouldNotBeAbleToSetupDependencyBalanceGraphWhenNotAtomist() public {
         // given
         address underlyingToken = USDC;
@@ -2564,20 +2667,20 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                alphas,
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
-                address(new PlasmaVaultBase())
+                address(new PlasmaVaultBase()),
+                type(uint256).max
             )
         );
 
@@ -2607,5 +2710,102 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         assertEq(marketIdsBefore.length, 0, "Market ids before should be empty");
         assertEq(marketIdsAfter.length, 0, "Market ids after should be empty");
+    }
+
+    function testShouldDisplayMarketSubstrates() public {
+        // given
+        address underlyingToken = USDC;
+
+        address usdt = address(0x777);
+        address dai = address(0x888);
+
+        bytes32[] memory substrates = new bytes32[](3);
+        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+        substrates[1] = PlasmaVaultConfigLib.addressToBytes32(usdt);
+        substrates[2] = PlasmaVaultConfigLib.addressToBytes32(dai);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
+        marketConfigs[0] = MarketSubstratesConfig(1, substrates);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        // when
+        bytes32[] memory substratesResult = IPlasmaVaultGovernance(address(plasmaVault)).getMarketSubstrates(1);
+
+        // then
+        assertEq(substratesResult.length, 3, "Substrates should have length 3");
+        assertEq(
+            uint256(substratesResult[0]),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(USDC)),
+            "First substrate should be USDC"
+        );
+        assertEq(
+            uint256(substratesResult[1]),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(usdt)),
+            "Second substrate should be USDT"
+        );
+        assertEq(
+            uint256(substratesResult[2]),
+            uint256(PlasmaVaultConfigLib.addressToBytes32(dai)),
+            "Third substrate should be DAI"
+        );
+    }
+
+    function testShouldNotSetMarketLimits() public {
+        // given
+        address underlyingToken = USDC;
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        MarketLimit[] memory marketsLimits = new MarketLimit[](1);
+        marketsLimits[0] = MarketLimit(1, 1e18 + 1);
+
+        // when
+        bytes memory error = abi.encodeWithSignature("MarketLimitSetupInPercentageIsTooHigh(uint256)", 1e18 + 1);
+
+        //when
+        vm.prank(usersToRoles.atomist);
+        //then
+        vm.expectRevert(error);
+        IPlasmaVaultGovernance(address(plasmaVault)).setupMarketsLimits(marketsLimits);
     }
 }

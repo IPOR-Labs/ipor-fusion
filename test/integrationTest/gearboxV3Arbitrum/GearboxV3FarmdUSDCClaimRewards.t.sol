@@ -67,13 +67,13 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                     assetSymbol: "TPLASMA",
                     underlyingToken: USDC,
                     priceOracleMiddleware: _priceOracleMiddlewareProxy,
-                    alphas: alphas,
                     marketSubstratesConfigs: _setupMarketConfigs(),
                     fuses: _setupFuses(),
                     balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: _accessManager,
-                    plasmaVaultBase: address(new PlasmaVaultBase())
+                    plasmaVaultBase: address(new PlasmaVaultBase()),
+                    totalSupplyCap: type(uint256).max
                 })
             )
         );
@@ -105,8 +105,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: _claimRewardsManager,
-                feeManager: address(this)
+                rewardsClaimManager: _claimRewardsManager
             })
         });
 
@@ -131,7 +130,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     }
 
     function _createAccessManager() private {
-        _accessManager = address(new IporFusionAccessManager(admin));
+        _accessManager = address(new IporFusionAccessManager(admin, 0));
     }
 
     function _createClaimRewardsManager() private {
