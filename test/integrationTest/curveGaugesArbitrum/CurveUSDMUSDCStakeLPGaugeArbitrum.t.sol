@@ -764,7 +764,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             usersToRoles.atomist = atomist;
             usersToRoles.alphas = alphas;
         }
-        accessManager = IporFusionAccessManager(RoleLib.createAccessManager(usersToRoles, vm));
+        accessManager = IporFusionAccessManager(RoleLib.createAccessManager(usersToRoles, 0, vm));
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
     }
 
@@ -870,13 +870,13 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 assetSymbol: "PLASMA",
                 underlyingToken: USDM,
                 priceOracleMiddleware: address(priceOracleMiddlewareProxy),
-                alphas: alphas,
                 marketSubstratesConfigs: _setupMarketConfigs(),
                 fuses: fuses,
                 balanceFuses: _setupBalanceFuses(),
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(accessManager),
-                plasmaVaultBase: address(new PlasmaVaultBase())
+                plasmaVaultBase: address(new PlasmaVaultBase()),
+                totalSupplyCap: type(uint256).max
             })
         );
     }
@@ -901,8 +901,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(plasmaVault),
                 accessManager: address(accessManager),
-                rewardsClaimManager: address(rewardsClaimManager),
-                feeManager: address(this)
+                rewardsClaimManager: address(rewardsClaimManager)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
