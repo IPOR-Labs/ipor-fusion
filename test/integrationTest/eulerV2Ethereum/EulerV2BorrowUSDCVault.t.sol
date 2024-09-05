@@ -130,7 +130,7 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
     function testShouldEnterBorrow() public {
         // given
         uint256 initialUSDTEulerVaultBalance = ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW);
-        uint256 initialUSDCVaultBalance = ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL);
+        uint256 initialUSDCEulerVaultBalance = ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL);
 
         vm.prank(accounts[1]);
         PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
@@ -173,13 +173,13 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
         assertEq(ERC20(USDT).balanceOf(address(plasmaVault)), borrowAmount);
         assertEq(ERC20(USDC).balanceOf(address(plasmaVault)), 0);
         assertEq(ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW), initialUSDTEulerVaultBalance - borrowAmount);
-        assertEq(ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL), initialUSDCVaultBalance + depositAmount);
+        assertEq(ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL), initialUSDCEulerVaultBalance + depositAmount);
     }
 
     function testShouldExitBorrow() public {
         // given
         uint256 initialUSDTEulerVaultBalance = ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW);
-        uint256 initialUSDCVaultBalance = ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL);
+        uint256 initialUSDCEulerVaultBalance = ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL);
 
         vm.prank(accounts[1]);
         PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
@@ -234,6 +234,151 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
         assertEq(ERC20(USDT).balanceOf(address(plasmaVault)), 0);
         assertEq(ERC20(USDC).balanceOf(address(plasmaVault)), 0);
         assertEq(ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW), initialUSDTEulerVaultBalance);
-        assertEq(ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL), initialUSDCVaultBalance + depositAmount);
+        assertEq(ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL), initialUSDCEulerVaultBalance + depositAmount);
+    }
+
+    function testShouldEnterBorrowWithZeroAmount() public {
+        // given
+        uint256 initialUSDTEulerVaultBalance = ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW);
+        uint256 initialUSDCEulerVaultBalance = ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL);
+
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        Erc4626SupplyFuseEnterData memory supplyData = Erc4626SupplyFuseEnterData({
+            vault: EULER_USDC2_VAULT_COLLATERAL,
+            vaultAssetAmount: depositAmount
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(supplyData)));
+
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(supplyActions);
+
+        vm.prank(address(plasmaVault));
+        IEVC(EVC).setAccountOperator(address(plasmaVault), alpha, true);
+
+        vm.prank(alpha);
+        IEVC(EVC).enableCollateral(address(plasmaVault), EULER_USDC2_VAULT_COLLATERAL);
+
+        vm.prank(alpha);
+        IEVC(EVC).enableController(address(plasmaVault), EULER_USDT2_VAULT_BORROW);
+
+        EulerV2BorrowFuseEnterData memory enterBorrowData = EulerV2BorrowFuseEnterData({
+            vault: EULER_USDT2_VAULT_BORROW,
+            amount: 0
+        });
+
+        FuseAction[] memory borrowActions = new FuseAction[](1);
+        borrowActions[0] = FuseAction(fuses[1], abi.encodeWithSignature("enter(bytes)", abi.encode(enterBorrowData)));
+
+        // when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(borrowActions);
+
+        // then
+        // No state change expected, but the transaction should succeed
+        assertEq(ERC20(USDT).balanceOf(address(plasmaVault)), 0);
+        assertEq(ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL), initialUSDCEulerVaultBalance + depositAmount);
+        assertEq(ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW), initialUSDTEulerVaultBalance);
+    }
+
+    function testShouldExitBorrowWithZeroAmount() public {
+        // given
+        uint256 initialUSDTEulerVaultBalance = ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW);
+        uint256 initialUSDCEulerVaultBalance = ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL);
+
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        Erc4626SupplyFuseEnterData memory supplyData = Erc4626SupplyFuseEnterData({
+            vault: EULER_USDC2_VAULT_COLLATERAL,
+            vaultAssetAmount: depositAmount
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(supplyData)));
+
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(supplyActions);
+
+        vm.prank(address(plasmaVault));
+        IEVC(EVC).setAccountOperator(address(plasmaVault), alpha, true);
+
+        vm.prank(alpha);
+        IEVC(EVC).enableCollateral(address(plasmaVault), EULER_USDC2_VAULT_COLLATERAL);
+
+        vm.prank(alpha);
+        IEVC(EVC).enableController(address(plasmaVault), EULER_USDT2_VAULT_BORROW);
+
+        EulerV2BorrowFuseEnterData memory enterBorrowData = EulerV2BorrowFuseEnterData({
+            vault: EULER_USDT2_VAULT_BORROW,
+            amount: borrowAmount
+        });
+
+        FuseAction[] memory borrowActions = new FuseAction[](1);
+        borrowActions[0] = FuseAction(fuses[1], abi.encodeWithSignature("enter(bytes)", abi.encode(enterBorrowData)));
+
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(borrowActions);
+
+        EulerV2BorrowFuseExitData memory exitBorrowData = EulerV2BorrowFuseExitData({
+            vault: EULER_USDT2_VAULT_BORROW,
+            amount: 0
+        });
+
+        FuseAction[] memory exitBorrowActions = new FuseAction[](1);
+        exitBorrowActions[0] = FuseAction(fuses[1], abi.encodeWithSignature("exit(bytes)", abi.encode(exitBorrowData)));
+
+        // when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(exitBorrowActions);
+
+        // then
+        // No state change expected, but the transaction should succeed
+        assertEq(ERC20(USDT).balanceOf(address(plasmaVault)), borrowAmount);
+        assertEq(ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL), initialUSDCEulerVaultBalance + depositAmount);
+        assertEq(ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW), initialUSDTEulerVaultBalance - borrowAmount);
+    }
+
+    function testShouldFailEnterBorrowWithInsufficientCollateral() public {
+        // given
+        uint256 insufficientDepositAmount = 90e6;
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(insufficientDepositAmount, accounts[1]);
+
+        Erc4626SupplyFuseEnterData memory supplyData = Erc4626SupplyFuseEnterData({
+            vault: EULER_USDC2_VAULT_COLLATERAL,
+            vaultAssetAmount: insufficientDepositAmount
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(supplyData)));
+
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(supplyActions);
+
+        vm.prank(address(plasmaVault));
+        IEVC(EVC).setAccountOperator(address(plasmaVault), alpha, true);
+
+        vm.prank(alpha);
+        IEVC(EVC).enableCollateral(address(plasmaVault), EULER_USDC2_VAULT_COLLATERAL);
+
+        vm.prank(alpha);
+        IEVC(EVC).enableController(address(plasmaVault), EULER_USDT2_VAULT_BORROW);
+
+        EulerV2BorrowFuseEnterData memory enterBorrowData = EulerV2BorrowFuseEnterData({
+            vault: EULER_USDT2_VAULT_BORROW,
+            amount: borrowAmount
+        });
+
+        FuseAction[] memory borrowActions = new FuseAction[](1);
+        borrowActions[0] = FuseAction(fuses[1], abi.encodeWithSignature("enter(bytes)", abi.encode(enterBorrowData)));
+
+        // when / then
+        vm.expectRevert();
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(borrowActions);
     }
 }
