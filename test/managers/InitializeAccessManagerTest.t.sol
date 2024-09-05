@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -48,7 +47,7 @@ contract InitializeAccessManagerTest is Test {
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", admin)))
         );
 
-        accessManager = new IporFusionAccessManager(admin);
+        accessManager = new IporFusionAccessManager(admin, 0);
 
         vm.startPrank(admin);
         plasmaVault = new PlasmaVault(
@@ -57,7 +56,6 @@ contract InitializeAccessManagerTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new address[](0),
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
@@ -118,7 +116,7 @@ contract InitializeAccessManagerTest is Test {
             }
         }
 
-        assertEq(accessManager.getRedemptionDelay(), 0);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
     }
 
     function testShouldSetupAccessManagerWithoutRewardsClaimManager() public {
@@ -171,7 +169,7 @@ contract InitializeAccessManagerTest is Test {
             }
         }
 
-        assertEq(accessManager.getRedemptionDelay(), 0);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
     }
 
     function testShouldNotBeAbleToCallInitializeTwiceWhenRevokeAdminRole() external {

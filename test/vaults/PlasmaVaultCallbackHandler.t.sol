@@ -77,7 +77,6 @@ contract PlasmaVaultCallbackHandler is Test {
                     "TPLASMA",
                     _DAI,
                     address(_priceOracleMiddlewareProxy),
-                    alphas,
                     marketConfigs,
                     _setupFuses(),
                     balanceFuses,
@@ -165,7 +164,7 @@ contract PlasmaVaultCallbackHandler is Test {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
         usersToRoles.alphas = alphas;
-        _accessManager = address(RoleLib.createAccessManager(usersToRoles, vm));
+        _accessManager = address(RoleLib.createAccessManager(usersToRoles, 0, vm));
     }
 
     function _initAccessManager() private {
@@ -189,8 +188,7 @@ contract PlasmaVaultCallbackHandler is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(this),
-                feeManager: address(this)
+                rewardsClaimManager: address(this)
             })
         });
 

@@ -26,7 +26,7 @@ contract RewardsClaimManagerTest is Test {
         _userTwo = address(0x3333);
         _underlyingToken = address(new MockToken("Underlying Token", "UT"));
         _rewardsToken = address(new MockToken("Rewards Token", "RT"));
-        _accessManager = new IporFusionAccessManager(_atomist);
+        _accessManager = new IporFusionAccessManager(_atomist, 0);
         _plasmaVault = new MockPlasmaVault(address(_underlyingToken));
 
         _rewardsClaimManager = new RewardsClaimManager(address(_accessManager), address(_plasmaVault));
