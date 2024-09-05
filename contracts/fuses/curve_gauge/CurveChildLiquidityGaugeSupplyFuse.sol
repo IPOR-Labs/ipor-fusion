@@ -57,14 +57,10 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
         if (data_.amount == 0) {
             revert CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount();
         }
-        uint256 balanceOfPlasmaVault = IERC20(IChildLiquidityGauge(data_.childLiquidityGauge).lp_token()).balanceOf(
-            address(this)
-        );
+        address lpToken = IChildLiquidityGauge(data_.childLiquidityGauge).lp_token();
+        uint256 balanceOfPlasmaVault = IERC20(lpToken).balanceOf(address(this));
         uint256 depositAmount = data_.amount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.amount;
-        IERC20(IChildLiquidityGauge(data_.childLiquidityGauge).lp_token()).forceApprove(
-            data_.childLiquidityGauge,
-            depositAmount
-        );
+        IERC20(lpToken).forceApprove(data_.childLiquidityGauge, depositAmount);
         IChildLiquidityGauge(data_.childLiquidityGauge).deposit(depositAmount, address(this), false);
         emit CurveChildLiquidityGaugeSupplyFuseEnter(VERSION, data_.childLiquidityGauge, depositAmount);
     }
