@@ -9,8 +9,8 @@ library FuseStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_FUSES_ARRAY = 0xad43e358bd6e59a5a0c80f6bf25fa771408af4d80f621cdc680c8dfbf607ab00;
 
+    /// @notice This memory is designed to use with Uniswap V3 fuses
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.tokenIdsUsedInFuse")) - 1)) & ~bytes32(uint256(0xff));
-    /// @dev this memory is designed to use with uniswap v3 fuses
     bytes32 private constant TOKEN_IDS_USED_IN_FUSE =
         0xda8804a8d91737b4c393e8fbbd1085e373450a3e16b6b8ef2011e85a93352600;
 
