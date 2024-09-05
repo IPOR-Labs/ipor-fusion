@@ -549,7 +549,7 @@ contract IporPlasmaVaultRolesTest is Test {
 
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.AAVE_V3, address(balanceFuse));
-        _accessManager = new IporFusionAccessManager(_deployer);
+        _accessManager = new IporFusionAccessManager(_deployer, 0);
 
         _plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -557,7 +557,6 @@ contract IporPlasmaVaultRolesTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(_priceOracleMiddlewareProxy),
-                _data.alphas,
                 marketConfigs,
                 fuses,
                 balanceFuses,

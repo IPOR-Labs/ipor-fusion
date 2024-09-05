@@ -30,11 +30,14 @@ struct MarketLimit {
 
 /// @title Asset Distribution Protection Library responsible for the markets limits protection in the Plasma Vault
 library AssetDistributionProtectionLib {
+    uint256 private constant ONE_HUNDRED_PERCENT = 1e18;
+
     event MarketsLimitsActivated();
     event MarketsLimitsDeactivated();
     event MarketLimitUpdated(uint256 marketId, uint256 newLimit);
 
     error MarketLimitExceeded(uint256 marketId, uint256 balanceInMarket, uint256 limit);
+    error MarketLimitSetupInPercentageIsTooHigh(uint256 limit);
     error WrongMarketId(uint256 marketId);
 
     /// @notice Activates the markets limits protection, by default it is deactivated. After activation the limits
@@ -58,6 +61,9 @@ library AssetDistributionProtectionLib {
             if (marketsLimits_[i].marketId == 0) {
                 revert WrongMarketId(marketsLimits_[i].marketId);
             }
+            if (marketsLimits_[i].limitInPercentage > ONE_HUNDRED_PERCENT) {
+                revert MarketLimitSetupInPercentageIsTooHigh(marketsLimits_[i].limitInPercentage);
+            }
             PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[marketsLimits_[i].marketId] = marketsLimits_[i]
                 .limitInPercentage;
             emit MarketLimitUpdated(marketsLimits_[i].marketId, marketsLimits_[i].limitInPercentage);
@@ -76,7 +82,7 @@ library AssetDistributionProtectionLib {
             uint256 limit = Math.mulDiv(
                 PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[data_.marketsToCheck[i].marketId],
                 data_.totalBalanceInVault,
-                1e18
+                ONE_HUNDRED_PERCENT
             );
             if (limit < data_.marketsToCheck[i].balanceInMarket) {
                 revert MarketLimitExceeded(

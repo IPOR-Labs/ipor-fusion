@@ -28,6 +28,12 @@ interface IPlasmaVaultGovernance {
     /// @return True if the markets limits protection is activated
     function isMarketsLimitsActivated() external view returns (bool);
 
+    /// @notice Returns the array of market substrates granted in the market
+    /// @param marketId_ The marketId of the market
+    /// @return The array of substrates granted in the market
+    /// @dev Substrates can be assets, vault, markets or any other parameter specific for the market and associated with market external protocol
+    function getMarketSubstrates(uint256 marketId_) external view returns (bytes32[] memory);
+
     /// @notice Returns the array of fuses supported by the Plasma Vault
     /// @return The array of fuses
     function getFuses() external view returns (address[] memory);
