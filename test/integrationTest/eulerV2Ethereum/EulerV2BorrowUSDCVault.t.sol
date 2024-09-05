@@ -16,6 +16,9 @@ import {IEVC} from "../../../node_modules/ethereum-vault-connector/src/interface
 contract EulerV2BorrowUSDCVault is BorrowTest {
     using SafeERC20 for ERC20;
 
+    event EulerV2BorrowEnterFuse(address version, address vault, uint256 amount);
+    event EulerV2BorrowExitFuse(address version, address vault, uint256 repaidAmount);
+
     address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address public constant EULER_USDT2_VAULT_BORROW = 0x313603FA690301b0CaeEf8069c065862f9162162;
@@ -24,8 +27,8 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
     address public constant CHAINLINK_USDT_USD = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
     address public constant EVC = 0x0C9a3dd6b8F28529d72d7f9cE918D493519EE383;
 
-    uint256 internal depositAmount = 1000e6; // 1000 USDC
-    uint256 internal borrowAmount = 500e6; // 500 USDT
+    uint256 internal depositAmount = 10000e6; // 1000 USDC
+    uint256 internal borrowAmount = 80e6; // 500 USDT
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20626532);
@@ -126,6 +129,9 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
 
     function testShouldEnterBorrow() public {
         // given
+        uint256 initialUSDTEulerVaultBalance = ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW);
+        uint256 initialUSDCVaultBalance = ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL);
+
         vm.prank(accounts[1]);
         PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
 
@@ -157,10 +163,77 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
         FuseAction[] memory borrowActions = new FuseAction[](1);
         borrowActions[0] = FuseAction(fuses[1], abi.encodeWithSignature("enter(bytes)", abi.encode(enterBorrowData)));
 
+        vm.expectEmit(true, true, true, true);
+        emit EulerV2BorrowEnterFuse(address(fuses[1]), EULER_USDT2_VAULT_BORROW, borrowAmount);
         // when
         vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(borrowActions);
 
         // then
+        assertEq(ERC20(USDT).balanceOf(address(plasmaVault)), borrowAmount);
+        assertEq(ERC20(USDC).balanceOf(address(plasmaVault)), 0);
+        assertEq(ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW), initialUSDTEulerVaultBalance - borrowAmount);
+        assertEq(ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL), initialUSDCVaultBalance + depositAmount);
+    }
+
+    function testShouldExitBorrow() public {
+        // given
+        uint256 initialUSDTEulerVaultBalance = ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW);
+        uint256 initialUSDCVaultBalance = ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL);
+
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        Erc4626SupplyFuseEnterData memory supplyData = Erc4626SupplyFuseEnterData({
+            vault: EULER_USDC2_VAULT_COLLATERAL,
+            vaultAssetAmount: depositAmount
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(supplyData)));
+
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(supplyActions);
+
+        vm.prank(address(plasmaVault));
+        IEVC(EVC).setAccountOperator(address(plasmaVault), alpha, true);
+
+        vm.prank(alpha);
+        IEVC(EVC).enableCollateral(address(plasmaVault), EULER_USDC2_VAULT_COLLATERAL);
+
+        vm.prank(alpha);
+        IEVC(EVC).enableController(address(plasmaVault), EULER_USDT2_VAULT_BORROW);
+
+        EulerV2BorrowFuseEnterData memory enterBorrowData = EulerV2BorrowFuseEnterData({
+            vault: EULER_USDT2_VAULT_BORROW,
+            amount: borrowAmount
+        });
+
+        FuseAction[] memory borrowActions = new FuseAction[](1);
+        borrowActions[0] = FuseAction(fuses[1], abi.encodeWithSignature("enter(bytes)", abi.encode(enterBorrowData)));
+
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(borrowActions);
+
+        EulerV2BorrowFuseExitData memory exitBorrowData = EulerV2BorrowFuseExitData({
+            vault: EULER_USDT2_VAULT_BORROW,
+            amount: borrowAmount
+        });
+
+        FuseAction[] memory exitBorrowActions = new FuseAction[](1);
+        exitBorrowActions[0] = FuseAction(fuses[1], abi.encodeWithSignature("exit(bytes)", abi.encode(exitBorrowData)));
+
+        vm.expectEmit(true, true, true, true);
+        emit EulerV2BorrowExitFuse(address(fuses[1]), EULER_USDT2_VAULT_BORROW, borrowAmount);
+
+        // when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(exitBorrowActions);
+
+        // then
+        assertEq(ERC20(USDT).balanceOf(address(plasmaVault)), 0);
+        assertEq(ERC20(USDC).balanceOf(address(plasmaVault)), 0);
+        assertEq(ERC20(USDT).balanceOf(EULER_USDT2_VAULT_BORROW), initialUSDTEulerVaultBalance);
+        assertEq(ERC20(USDC).balanceOf(EULER_USDC2_VAULT_COLLATERAL), initialUSDCVaultBalance + depositAmount);
     }
 }
