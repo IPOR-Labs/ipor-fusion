@@ -8,23 +8,38 @@ import {IFuse} from "../IFuse.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 
+/// @notice Data for entering NewPositionUniswapV3Fuse
 struct MintParams {
+    /// @notice Token0 of the Uniswap V3 pool
     address token0;
+    /// @notice Token1 of the Uniswap V3 pool
     address token1;
+    /// @notice Fee tier of the Uniswap V3 pool, 0,05%, 0,3% or 1%
     uint24 fee;
+    /// @notice The lower end of the tick range for the position
     int24 tickLower;
+    /// @notice The higher end of the tick range for the position
     int24 tickUpper;
+    /// @notice The amount of token0 desired to be spent
     uint256 amount0Desired;
+    /// @notice The amount of token1 desired to be spent
     uint256 amount1Desired;
+    /// @notice The minimum amount of token0 that must be received
     uint256 amount0Min;
+    /// @notice The minimum amount of token1 that must be received
     uint256 amount1Min;
+    /// @notice Deadline for the transaction
     uint256 deadline;
 }
 
+/// @notice Data for exiting NewPositionUniswapV3Fuse
 struct ClosePositions {
+    /// @notice Token IDs to close, NTFs minted on Uniswap V3, which represent liquidity positions
     uint256[] tokenIds;
 }
 
+/// @title Fuse responsible for create new Uniswap V3 positions.
+/// @dev Associated with fuse balance UniswapV3Balance.
 contract NewPositionUniswapV3Fuse is IFuse {
     using SafeERC20 for IERC20;
 
@@ -65,8 +80,7 @@ contract NewPositionUniswapV3Fuse is IFuse {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
 
-        // The values for tickLower and tickUpper may not work for all tick spacings.
-        // Setting amount0Min and amount1Min to 0 is unsafe.
+        /// @dev The values for tickLower and tickUpper may not work for all tick spacings. Setting amount0Min and amount1Min to 0 is unsafe.
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
             token0: data_.token0,
             token1: data_.token1,

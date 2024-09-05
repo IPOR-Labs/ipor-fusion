@@ -7,6 +7,7 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuse} from "../IFuse.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
+/// @notice Data for entering ModifyPositionUniswapV3Fuse - increase liquidity
 struct IncreaseLiquidityUniswapV3FuseEnterData {
     address token0;
     address token1;
@@ -18,14 +19,17 @@ struct IncreaseLiquidityUniswapV3FuseEnterData {
     uint256 deadline;
 }
 
+/// @notice Data for exiting ModifyPositionUniswapV3Fuse - decrease liquidity
 struct DecreaseLiquidityUniswapV3FuseEnterData {
     uint256 tokenId;
+    /// @notice The amount of liquidity to decrease
     uint128 liquidity;
     uint256 amount0Min;
     uint256 amount1Min;
     uint256 deadline;
 }
 
+/// @dev Associated with fuse balance UniswapV3Balance.
 contract ModifyPositionUniswapV3Fuse is IFuse {
     using SafeERC20 for IERC20;
 
@@ -49,6 +53,7 @@ contract ModifyPositionUniswapV3Fuse is IFuse {
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
+    /// @dev Manage NFTs representing liquidity positions
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
 
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
@@ -107,6 +112,7 @@ contract ModifyPositionUniswapV3Fuse is IFuse {
                 deadline: data_.deadline
             });
 
+        /// @dev This method doesn't transfer the liquidity to the caller
         (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER)
             .decreaseLiquidity(params);
 

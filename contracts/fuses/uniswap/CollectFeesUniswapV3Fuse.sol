@@ -6,10 +6,14 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuse} from "../IFuse.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
+/// @notice Data for entering CollectUniswapV3Fuse
 struct CollectFeesUniswapV3FuseEnterData {
+    /// @notice Token IDs to collect fees from, NTFs minted on Uniswap V3, which represent liquidity positions
     uint256[] tokenIds;
 }
 
+/// @title Collect fees from Uniswap V3 positions.
+/// @dev Associated with fuse balance UniswapV3Balance.
 contract CollectFeesUniswapV3Fuse is IFuse {
     using SafeERC20 for IERC20;
 
@@ -19,6 +23,8 @@ contract CollectFeesUniswapV3Fuse is IFuse {
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
+
+    /// @dev Manage NFTs representing liquidity positions
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
 
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
@@ -43,6 +49,7 @@ contract CollectFeesUniswapV3Fuse is IFuse {
 
         uint256 amount0;
         uint256 amount1;
+
         for (uint256 i = 0; i < data_.tokenIds.length; i++) {
             params.tokenId = data_.tokenIds[i];
 
