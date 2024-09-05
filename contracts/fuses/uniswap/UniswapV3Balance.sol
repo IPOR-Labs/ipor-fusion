@@ -13,7 +13,6 @@ import {PositionValue} from "./ext/PositionValue.sol";
 
 /// @title Fuse balance for Uniswap V3 positions.
 contract UniswapV3Balance is IMarketBalanceFuse {
-
     uint256 public immutable MARKET_ID;
     /// @dev Manage NFTs representing liquidity positions
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
@@ -26,7 +25,7 @@ contract UniswapV3Balance is IMarketBalanceFuse {
     }
 
     function balanceOf() external view override returns (uint256) {
-        uint256[] memory tokenIds = FuseStorageLib.getTokenIdUsedFuse().tokenIds;
+        uint256[] memory tokenIds = FuseStorageLib.getUniswapV3TokenIds().tokenIds;
         uint256 len = tokenIds.length;
 
         if (len == 0) {

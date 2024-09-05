@@ -4,52 +4,57 @@ pragma solidity 0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
 /// @notice Data for entering ModifyPositionUniswapV3Fuse - increase liquidity
-struct IncreaseLiquidityUniswapV3FuseEnterData {
+struct ModifyPositionUniswapV3FuseEnterData {
+    /// @notice The address of the token0 for a specific pool
     address token0;
+    /// @notice The address of the token1 for a specific pool
     address token1;
+    /// @notice tokenId The ID of the token that represents the minted position
     uint256 tokenId;
+    /// @notice The desired amount of token0 to be spent
     uint256 amount0Desired;
+    /// @notice The desired amount of token1 to be spent
     uint256 amount1Desired;
+    /// @notice The minimum amount of token0 to spend, which serves as a slippage check
     uint256 amount0Min;
+    /// @notice The minimum amount of token1 to spend, which serves as a slippage check
     uint256 amount1Min;
+    /// @notice The time by which the transaction must be included to effect the change
     uint256 deadline;
 }
 
 /// @notice Data for exiting ModifyPositionUniswapV3Fuse - decrease liquidity
-struct DecreaseLiquidityUniswapV3FuseEnterData {
+struct ModifyPositionUniswapV3FuseExitData {
+    /// @notice tokenId The ID of the token for which liquidity is being decreased
     uint256 tokenId;
-    /// @notice The amount of liquidity to decrease
+    /// @notice The amount by which liquidity will be decreased
     uint128 liquidity;
+    /// @notice The minimum amount of token0 that should be accounted for the burned liquidity
     uint256 amount0Min;
+    /// @notice The minimum amount of token1 that should be accounted for the burned liquidity
     uint256 amount1Min;
+    /// @notice The time by which the transaction must be included to effect the change
     uint256 deadline;
 }
 
 /// @dev Associated with fuse balance UniswapV3Balance.
-contract ModifyPositionUniswapV3Fuse is IFuse {
+contract ModifyPositionUniswapV3Fuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    event NewPositionUniswapV3FuseEnter(
+    event ModifyPositionUniswapV3FuseEnter(
         address version,
         uint256 tokenId,
         uint128 liquidity,
         uint256 amount0,
         uint256 amount1
     );
-    event DecreaseLiquidityUniswapV3FuseExit(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
-    event IncreaseLiquidityUniswapV3FuseEnter(
-        address version,
-        uint256 tokenId,
-        uint128 liquidity,
-        uint256 amount0,
-        uint256 amount1
-    );
+    event ModifyPositionUniswapV3FuseExit(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
 
-    error NewPositionUniswapV3FuseUnsupportedToken(address token0, address token1);
+    error ModifyPositionUniswapV3FuseUnsupportedToken(address token0, address token1);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -62,16 +67,12 @@ contract ModifyPositionUniswapV3Fuse is IFuse {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
-    function enter(bytes calldata data_) external override {
-        enter(abi.decode(data_, (IncreaseLiquidityUniswapV3FuseEnterData)));
-    }
-
-    function enter(IncreaseLiquidityUniswapV3FuseEnterData memory data_) public {
+    function enter(ModifyPositionUniswapV3FuseEnterData calldata data_) public {
         if (
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
         ) {
-            revert NewPositionUniswapV3FuseUnsupportedToken(data_.token0, data_.token1);
+            revert ModifyPositionUniswapV3FuseUnsupportedToken(data_.token0, data_.token1);
         }
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
@@ -95,14 +96,10 @@ contract ModifyPositionUniswapV3Fuse is IFuse {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
-        emit IncreaseLiquidityUniswapV3FuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
+        emit ModifyPositionUniswapV3FuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
     }
 
-    function exit(bytes calldata data) external override {
-        exit(abi.decode(data, (DecreaseLiquidityUniswapV3FuseEnterData)));
-    }
-
-    function exit(DecreaseLiquidityUniswapV3FuseEnterData memory data_) public {
+    function exit(ModifyPositionUniswapV3FuseExitData calldata data_) public {
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
                 tokenId: data_.tokenId,
@@ -116,6 +113,6 @@ contract ModifyPositionUniswapV3Fuse is IFuse {
         (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER)
             .decreaseLiquidity(params);
 
-        emit DecreaseLiquidityUniswapV3FuseExit(VERSION, data_.tokenId, amount0, amount1);
+        emit ModifyPositionUniswapV3FuseExit(VERSION, data_.tokenId, amount0, amount1);
     }
 }

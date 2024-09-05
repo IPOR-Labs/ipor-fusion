@@ -19,11 +19,11 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {UniswapV3Balance} from "../../../contracts/fuses/uniswap/UniswapV3Balance.sol";
-import {NewPositionUniswapV3Fuse, MintParams, ClosePositions} from "../../../contracts/fuses/uniswap/NewPositionUniswapV3Fuse.sol";
-import {ModifyPositionUniswapV3Fuse, IncreaseLiquidityUniswapV3FuseEnterData, DecreaseLiquidityUniswapV3FuseEnterData} from "../../../contracts/fuses/uniswap/ModifyPositionUniswapV3Fuse.sol";
+import {NewPositionUniswapV3Fuse, NewPositionUniswapV3FuseEnterData, NewPositionUniswapV3FuseExitData} from "../../../contracts/fuses/uniswap/NewPositionUniswapV3Fuse.sol";
+import {ModifyPositionUniswapV3Fuse, ModifyPositionUniswapV3FuseEnterData, ModifyPositionUniswapV3FuseExitData} from "../../../contracts/fuses/uniswap/ModifyPositionUniswapV3Fuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {CollectFeesUniswapV3Fuse, CollectFeesUniswapV3FuseEnterData} from "../../../contracts/fuses/uniswap/CollectFeesUniswapV3Fuse.sol";
+import {CollectUniswapV3Fuse, CollectUniswapV3FuseEnterData} from "../../../contracts/fuses/uniswap/CollectUniswapV3Fuse.sol";
 
 contract UniswapPositionV3FuseTest is Test {
     using SafeERC20 for ERC20;
@@ -48,7 +48,7 @@ contract UniswapPositionV3FuseTest is Test {
     UniswapSwapV3Fuse private _uniswapSwapV3Fuse;
     NewPositionUniswapV3Fuse private _newPositionUniswapV3Fuse;
     ModifyPositionUniswapV3Fuse private _modifyPositionUniswapV3Fuse;
-    CollectFeesUniswapV3Fuse private _collectFeesUniswapV3Fuse;
+    CollectUniswapV3Fuse private _collectFeesUniswapV3Fuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20639326);
@@ -112,7 +112,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldOpenNewPosition() external {
         // given
-        MintParams memory mintParams = MintParams({
+        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -166,7 +166,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldOpenTwoNewPosition() external {
         // given
-        MintParams memory mintParams = MintParams({
+        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -208,7 +208,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function stestShouldIncreaseLiquidity() external {
         // given
-        MintParams memory mintParams = MintParams({
+        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -243,7 +243,7 @@ contract UniswapPositionV3FuseTest is Test {
             IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
-        IncreaseLiquidityUniswapV3FuseEnterData memory enterDataIncrease = IncreaseLiquidityUniswapV3FuseEnterData({
+        ModifyPositionUniswapV3FuseEnterData memory enterDataIncrease = ModifyPositionUniswapV3FuseEnterData({
             tokenId: tokenId,
             token0: USDC,
             token1: USDT,
@@ -294,7 +294,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldDecreaseLiquidity() external {
         // given
-        MintParams memory mintParams = MintParams({
+        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -328,7 +328,7 @@ contract UniswapPositionV3FuseTest is Test {
             uint256 amount1MintPosition
         ) = _extractMarketIdsFromEvent(entries);
 
-        DecreaseLiquidityUniswapV3FuseEnterData memory exitDataDecrease = DecreaseLiquidityUniswapV3FuseEnterData({
+        ModifyPositionUniswapV3FuseExitData memory exitDataDecrease = ModifyPositionUniswapV3FuseExitData({
             tokenId: tokenIdMintPosition,
             liquidity: liquidity,
             amount0Min: 0,
@@ -366,7 +366,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldDecreaseHalfLiquidity() external {
         // given
-        MintParams memory mintParams = MintParams({
+        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -400,7 +400,7 @@ contract UniswapPositionV3FuseTest is Test {
             uint256 amount1MintPosition
         ) = _extractMarketIdsFromEvent(entries);
 
-        DecreaseLiquidityUniswapV3FuseEnterData memory exitDataDecrease = DecreaseLiquidityUniswapV3FuseEnterData({
+        ModifyPositionUniswapV3FuseExitData memory exitDataDecrease = ModifyPositionUniswapV3FuseExitData({
             tokenId: tokenIdMintPosition,
             liquidity: liquidity / 2,
             amount0Min: 0,
@@ -438,7 +438,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldCollectAllAfterDecreaseLiquidity() external {
         // given
-        MintParams memory mintParams = MintParams({
+        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -466,7 +466,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         (, uint256 tokenIdMintPosition, uint128 liquidity, , ) = _extractMarketIdsFromEvent(entries);
 
-        DecreaseLiquidityUniswapV3FuseEnterData memory exitDataDecrease = DecreaseLiquidityUniswapV3FuseEnterData({
+        ModifyPositionUniswapV3FuseExitData memory exitDataDecrease = ModifyPositionUniswapV3FuseExitData({
             tokenId: tokenIdMintPosition,
             liquidity: liquidity,
             amount0Min: 0,
@@ -491,7 +491,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         uint256 usdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
 
-        CollectFeesUniswapV3FuseEnterData memory collectFeesData;
+        CollectUniswapV3FuseEnterData memory collectFeesData;
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = tokenIdMintPosition;
         collectFeesData.tokenIds = tokenIds;
@@ -533,7 +533,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldCRemovePosition() external {
         // given
-        MintParams memory mintParams = MintParams({
+        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -561,7 +561,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         (, uint256 tokenIdMintPosition, uint128 liquidity, , ) = _extractMarketIdsFromEvent(entries);
 
-        DecreaseLiquidityUniswapV3FuseEnterData memory exitDataDecrease = DecreaseLiquidityUniswapV3FuseEnterData({
+        ModifyPositionUniswapV3FuseExitData memory exitDataDecrease = ModifyPositionUniswapV3FuseExitData({
             tokenId: tokenIdMintPosition,
             liquidity: liquidity,
             amount0Min: 0,
@@ -577,7 +577,7 @@ contract UniswapPositionV3FuseTest is Test {
         );
         PlasmaVault(_plasmaVault).execute(exitCallsIncrease);
 
-        CollectFeesUniswapV3FuseEnterData memory collectFeesData;
+        CollectUniswapV3FuseEnterData memory collectFeesData;
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = tokenIdMintPosition;
         collectFeesData.tokenIds = tokenIds;
@@ -590,7 +590,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         PlasmaVault(_plasmaVault).execute(enterCollect);
 
-        ClosePositions memory closePositions;
+        NewPositionUniswapV3FuseExitData memory closePositions;
         closePositions.tokenIds = tokenIds;
 
         enterCalls[0] = FuseAction(
@@ -661,7 +661,7 @@ contract UniswapPositionV3FuseTest is Test {
             _NONFUNGIBLE_POSITION_MANAGER
         );
 
-        _collectFeesUniswapV3Fuse = new CollectFeesUniswapV3Fuse(
+        _collectFeesUniswapV3Fuse = new CollectUniswapV3Fuse(
             IporFusionMarkets.UNISWAP_SWAP_V3_POSITIONS,
             _NONFUNGIBLE_POSITION_MANAGER
         );
@@ -712,11 +712,13 @@ contract UniswapPositionV3FuseTest is Test {
         for (uint256 i = 0; i < entries.length; i++) {
             if (
                 entries[i].topics[0] ==
-                keccak256("NewPositionUniswapV3FuseEnter(address,uint256,uint128,uint256,uint256)")
+                keccak256(
+                    "NewPositionUniswapV3FuseEnter(address,uint256,uint128,uint256,uint256,address,address,uint24,int24,int24)"
+                )
             ) {
-                (version, tokenId, liquidity, amount0, amount1) = abi.decode(
+                (version, tokenId, liquidity, amount0, amount1, , , , , ) = abi.decode(
                     entries[i].data,
-                    (address, uint256, uint128, uint256, uint256)
+                    (address, uint256, uint128, uint256, uint256, address, address, uint24, int24, int24)
                 );
                 break;
             }
@@ -729,7 +731,7 @@ contract UniswapPositionV3FuseTest is Test {
         for (uint256 i = 0; i < entries.length; i++) {
             if (
                 entries[i].topics[0] ==
-                keccak256("IncreaseLiquidityUniswapV3FuseEnter(address,uint256,uint128,uint256,uint256)")
+                keccak256("ModifyPositionUniswapV3FuseEnter(address,uint256,uint128,uint256,uint256)")
             ) {
                 (version, tokenId, liquidity, amount0, amount1) = abi.decode(
                     entries[i].data,
@@ -743,9 +745,7 @@ contract UniswapPositionV3FuseTest is Test {
         Vm.Log[] memory entries
     ) private view returns (address version, uint256 tokenId, uint256 amount0, uint256 amount1) {
         for (uint256 i = 0; i < entries.length; i++) {
-            if (
-                entries[i].topics[0] == keccak256("DecreaseLiquidityUniswapV3FuseExit(address,uint256,uint256,uint256)")
-            ) {
+            if (entries[i].topics[0] == keccak256("ModifyPositionUniswapV3FuseExit(address,uint256,uint256,uint256)")) {
                 (version, tokenId, amount0, amount1) = abi.decode(
                     entries[i].data,
                     (address, uint256, uint256, uint256)
@@ -759,7 +759,7 @@ contract UniswapPositionV3FuseTest is Test {
         Vm.Log[] memory entries
     ) private view returns (address version, uint256 tokenId, uint256 amount0, uint256 amount1) {
         for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("CollectFeesUniswapV3FuseEnter(address,uint256,uint256,uint256)")) {
+            if (entries[i].topics[0] == keccak256("CollectUniswapV3FuseEnter(address,uint256,uint256,uint256)")) {
                 (version, tokenId, amount0, amount1) = abi.decode(
                     entries[i].data,
                     (address, uint256, uint256, uint256)
