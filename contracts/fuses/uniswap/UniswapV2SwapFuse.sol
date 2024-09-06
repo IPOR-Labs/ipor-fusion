@@ -5,7 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IUniversalRouter} from "./ext/IUniversalRouter.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 
 /**
  * @dev Data structure used for entering a swap operation through Uniswap V2. https://docs.uniswap.org/contracts/universal-router/technical-reference
@@ -24,11 +24,11 @@ uint256 constant V2_SWAP_EXACT_IN = 0x08;
 address constant INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER = address(1);
 
 /**
- * @title UniswapV2SwapFuse.sol
+ * @title UniswapV2SwapFuse
  * @dev A smart contract for interacting with the Uniswap V2 protocol to swap tokens.
  *      This contract allows users to exchange tokens using Uniswap's liquidity pools by interfacing with a universal router.
  */
-contract UniswapV2SwapFuse is IFuse {
+contract UniswapV2SwapFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
     error UniswapV2SwapFuseUnsupportedToken(address asset);
@@ -41,7 +41,7 @@ contract UniswapV2SwapFuse is IFuse {
      * @param path The token path used for the swap.
      * @param minOutAmount The minimum amount of output tokens expected from the swap.
      */
-    event UniswapV2SwapEnterFuse(address version, uint256 tokenInAmount, address[] path, uint256 minOutAmount);
+    event UniswapV2SwapFuseEnter(address version, uint256 tokenInAmount, address[] path, uint256 minOutAmount);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -59,14 +59,6 @@ contract UniswapV2SwapFuse is IFuse {
     }
 
     /**
-     * @dev External function to execute the entry operation into the Uniswap swap using encoded data.
-     * @param data_ Encoded data containing the swap parameters (token amount, path, and minimum output amount).
-     */
-    function enter(bytes calldata data_) external override {
-        enter(abi.decode(data_, (UniswapV2SwapFuseEnterData)));
-    }
-
-    /**
      * @dev Public function to execute a token swap using Uniswap V2 protocol.
      *      This function verifies the token path and checks if the input amount is valid,
      *      then proceeds to perform the token swap through the Uniswap V2 Universal Router.
@@ -78,7 +70,7 @@ contract UniswapV2SwapFuse is IFuse {
      * - Each token in the `path` must be a supported asset according to `PlasmaVaultConfigLib`.
      * - The contract must have enough balance of the input token to perform the swap.
      *
-     * Emits an `UniswapV2SwapEnterFuse` event indicating the details of the swap.
+     * Emits an `UniswapV2SwapFuseEnter` event indicating the details of the swap.
      */
     function enter(UniswapV2SwapFuseEnterData memory data_) public {
         uint256 pathLength = data_.path.length;
@@ -110,11 +102,6 @@ contract UniswapV2SwapFuse is IFuse {
 
         IUniversalRouter(UNIVERSAL_ROUTER).execute(commands, inputs);
 
-        emit UniswapV2SwapEnterFuse(VERSION, data_.tokenInAmount, data_.path, data_.minOutAmount);
-    }
-
-    //solhint-disable-next-line
-    function exit(bytes calldata data_) external override {
-        revert UnsupportedMethod();
+        emit UniswapV2SwapFuseEnter(VERSION, data_.tokenInAmount, data_.path, data_.minOutAmount);
     }
 }

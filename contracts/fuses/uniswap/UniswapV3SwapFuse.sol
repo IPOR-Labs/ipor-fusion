@@ -6,7 +6,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IUniversalRouter} from "./ext/IUniversalRouter.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 
 /**
  * @dev Data structure used for entering a swap operation through Uniswap V3.  https://docs.uniswap.org/contracts/universal-router/technical-reference
@@ -41,7 +41,7 @@ address constant INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER = address(1);
  * @dev A smart contract for interacting with the Uniswap V3 protocol to swap tokens.
  *      This contract allows users to exchange tokens using Uniswap's liquidity pools by interfacing with a universal router.
  */
-contract UniswapV3SwapFuse is IFuse {
+contract UniswapV3SwapFuse is IFuseCommon {
     using SafeERC20 for IERC20;
     using SafeCast for int256;
     using SafeCast for uint256;
@@ -57,7 +57,7 @@ contract UniswapV3SwapFuse is IFuse {
      * @param path The encoded path used for the swap.
      * @param minOutAmount The minimum amount of output tokens expected from the swap.
      */
-    event UniswapV3SwapEnterFuse(address version, uint256 tokenInAmount, bytes path, uint256 minOutAmount);
+    event UniswapV3SwapFuseEnter(address version, uint256 tokenInAmount, bytes path, uint256 minOutAmount);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -75,15 +75,6 @@ contract UniswapV3SwapFuse is IFuse {
     }
 
     /**
-     * @dev Placeholder function for entry operation, not supported in this contract.
-     * @param data_ Encoded data (not used).
-     */
-    //solhint-disable-next-line
-    function enter(bytes calldata data_) external override {
-        revert UnsupportedMethod();
-    }
-
-    /**
      * @dev Public function to execute a token swap using Uniswap V3 protocol.
      *      This function verifies the token path, checks if the input amount is valid,
      *      and then proceeds to perform the token swap through the Uniswap V3 Universal Router.
@@ -94,7 +85,7 @@ contract UniswapV3SwapFuse is IFuse {
      * - Each token in the `path` must be a supported asset according to `PlasmaVaultConfigLib`.
      * - The contract must have enough balance of the input token to perform the swap.
      *
-     * Emits an `UniswapV2SwapEnterFuse` event indicating the details of the swap.
+     * Emits an `UniswapV2SwapFuseEnter` event indicating the details of the swap.
      */
     function enter(UniswapV3SwapFuseEnterData calldata data_) external {
         address[] memory tokens;
@@ -143,12 +134,7 @@ contract UniswapV3SwapFuse is IFuse {
 
         IUniversalRouter(UNIVERSAL_ROUTER).execute(commands, inputs);
 
-        emit UniswapV3SwapEnterFuse(VERSION, data_.tokenInAmount, memoryPath, data_.minOutAmount);
-    }
-
-    //solhint-disable-next-line
-    function exit(bytes memory data_) external override {
-        revert UnsupportedMethod();
+        emit UniswapV3SwapFuseEnter(VERSION, data_.tokenInAmount, memoryPath, data_.minOutAmount);
     }
 
     /// @notice Returns true iff the path contains two or more pools

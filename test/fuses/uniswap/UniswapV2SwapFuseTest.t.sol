@@ -96,7 +96,7 @@ contract UniswapV2SwapFuseTest is Test {
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_uniswapV2SwapFuse),
-            abi.encodeWithSignature("enter(bytes)", abi.encode(enterData))
+            abi.encodeWithSignature("enter((uint256,address[],uint256))", enterData)
         );
 
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
@@ -143,7 +143,7 @@ contract UniswapV2SwapFuseTest is Test {
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_uniswapV2SwapFuse),
-            abi.encodeWithSignature("enter(bytes)", abi.encode(enterData))
+            abi.encodeWithSignature("enter((uint256,address[],uint256))", enterData)
         );
 
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
@@ -190,7 +190,7 @@ contract UniswapV2SwapFuseTest is Test {
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_uniswapV2SwapFuse),
-            abi.encodeWithSignature("enter(bytes)", abi.encode(enterData))
+            abi.encodeWithSignature("enter((uint256,address[],uint256))", enterData)
         );
 
         bytes memory error = abi.encodeWithSignature("UniswapV2SwapFuseUnsupportedToken(address)", address(0x76543));

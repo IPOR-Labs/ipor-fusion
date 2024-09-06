@@ -45,14 +45,14 @@ struct UniswapV3ModifyPositionFuseExitData {
 contract UniswapV3ModifyPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    event UniswapV3ModifyPositionEnterFuse(
+    event UniswapV3ModifyPositionFuseEnter(
         address version,
         uint256 tokenId,
         uint128 liquidity,
         uint256 amount0,
         uint256 amount1
     );
-    event UniswapV3ModifyPositionExitFuse(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
+    event UniswapV3ModifyPositionFuseExit(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
 
     error UniswapV3ModifyPositionFuseUnsupportedToken(address token0, address token1);
 
@@ -96,7 +96,7 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
-        emit UniswapV3ModifyPositionEnterFuse(VERSION, data_.tokenId, liquidity, amount0, amount1);
+        emit UniswapV3ModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
     }
 
     function exit(UniswapV3ModifyPositionFuseExitData calldata data_) public {
@@ -113,6 +113,6 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
         (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER)
             .decreaseLiquidity(params);
 
-        emit UniswapV3ModifyPositionExitFuse(VERSION, data_.tokenId, amount0, amount1);
+        emit UniswapV3ModifyPositionFuseExit(VERSION, data_.tokenId, amount0, amount1);
     }
 }

@@ -713,7 +713,7 @@ contract UniswapV3PositionFuseTest is Test {
             if (
                 entries[i].topics[0] ==
                 keccak256(
-                    "UniswapV3NewPositionEnterFuse(address,uint256,uint128,uint256,uint256,address,address,uint24,int24,int24)"
+                    "UniswapV3NewPositionFuseEnter(address,uint256,uint128,uint256,uint256,address,address,uint24,int24,int24)"
                 )
             ) {
                 (version, tokenId, liquidity, amount0, amount1, , , , , ) = abi.decode(
@@ -731,7 +731,7 @@ contract UniswapV3PositionFuseTest is Test {
         for (uint256 i = 0; i < entries.length; i++) {
             if (
                 entries[i].topics[0] ==
-                keccak256("UniswapV3ModifyPositionEnterFuse(address,uint256,uint128,uint256,uint256)")
+                keccak256("UniswapV3ModifyPositionFuseEnter(address,uint256,uint128,uint256,uint256)")
             ) {
                 (version, tokenId, liquidity, amount0, amount1) = abi.decode(
                     entries[i].data,
@@ -745,7 +745,7 @@ contract UniswapV3PositionFuseTest is Test {
         Vm.Log[] memory entries
     ) private view returns (address version, uint256 tokenId, uint256 amount0, uint256 amount1) {
         for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("UniswapV3ModifyPositionExitFuse(address,uint256,uint256,uint256)")) {
+            if (entries[i].topics[0] == keccak256("UniswapV3ModifyPositionFuseExit(address,uint256,uint256,uint256)")) {
                 (version, tokenId, amount0, amount1) = abi.decode(
                     entries[i].data,
                     (address, uint256, uint256, uint256)
@@ -759,7 +759,7 @@ contract UniswapV3PositionFuseTest is Test {
         Vm.Log[] memory entries
     ) private view returns (address version, uint256 tokenId, uint256 amount0, uint256 amount1) {
         for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("UniswapV3CollectEnterFuse(address,uint256,uint256,uint256)")) {
+            if (entries[i].topics[0] == keccak256("UniswapV3CollectFuseEnter(address,uint256,uint256,uint256)")) {
                 (version, tokenId, amount0, amount1) = abi.decode(
                     entries[i].data,
                     (address, uint256, uint256, uint256)
@@ -773,7 +773,7 @@ contract UniswapV3PositionFuseTest is Test {
         Vm.Log[] memory entries
     ) private view returns (address version, uint256 tokenId) {
         for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("UniswapV3NewPositionExitFuse(address,uint256)")) {
+            if (entries[i].topics[0] == keccak256("UniswapV3NewPositionFuseExit(address,uint256)")) {
                 (version, tokenId) = abi.decode(entries[i].data, (address, uint256));
                 break;
             }

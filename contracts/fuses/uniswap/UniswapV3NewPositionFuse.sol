@@ -45,7 +45,7 @@ struct UniswapV3NewPositionFuseExitData {
 contract UniswapV3NewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    event UniswapV3NewPositionEnterFuse(
+    event UniswapV3NewPositionFuseEnter(
         address version,
         uint256 tokenId,
         uint128 liquidity,
@@ -58,7 +58,7 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         int24 tickUpper
     );
 
-    event UniswapV3NewPositionExitFuse(address version, uint256 tokenIds);
+    event UniswapV3NewPositionFuseExit(address version, uint256 tokenIds);
 
     error UniswapV3NewPositionFuseUnsupportedToken(address token0, address token1);
 
@@ -110,7 +110,7 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
         tokensIds.tokenIds.push(tokenId);
 
-        emit UniswapV3NewPositionEnterFuse(
+        emit UniswapV3NewPositionFuseEnter(
             VERSION,
             tokenId,
             liquidity,
@@ -141,7 +141,7 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
             }
             tokensIds.tokenIds.pop();
 
-            emit UniswapV3NewPositionExitFuse(VERSION, closePositions.tokenIds[i]);
+            emit UniswapV3NewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
         }
     }
 
