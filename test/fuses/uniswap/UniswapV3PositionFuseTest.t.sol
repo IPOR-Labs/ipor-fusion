@@ -10,7 +10,7 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
-import {UniswapSwapV3Fuse, UniswapSwapV3FuseEnterData} from "../../../contracts/fuses/uniswap/UniswapSwapV3Fuse.sol";
+import {UniswapV3SwapFuse, UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
@@ -19,13 +19,13 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {UniswapV3Balance} from "../../../contracts/fuses/uniswap/UniswapV3Balance.sol";
-import {NewPositionUniswapV3Fuse, NewPositionUniswapV3FuseEnterData, NewPositionUniswapV3FuseExitData} from "../../../contracts/fuses/uniswap/NewPositionUniswapV3Fuse.sol";
-import {ModifyPositionUniswapV3Fuse, ModifyPositionUniswapV3FuseEnterData, ModifyPositionUniswapV3FuseExitData} from "../../../contracts/fuses/uniswap/ModifyPositionUniswapV3Fuse.sol";
+import {UniswapV3NewPositionFuse, UniswapV3NewPositionFuseEnterData, UniswapV3NewPositionFuseExitData} from "../../../contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol";
+import {UniswapV3ModifyPositionFuse, UniswapV3ModifyPositionFuseEnterData, UniswapV3ModifyPositionFuseExitData} from "../../../contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {CollectUniswapV3Fuse, CollectUniswapV3FuseEnterData} from "../../../contracts/fuses/uniswap/CollectUniswapV3Fuse.sol";
+import {UniswapV3CollectFuse, UniswapV3CollectFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3CollectFuse.sol";
 
-contract UniswapPositionV3FuseTest is Test {
+contract UniswapV3PositionFuseTest is Test {
     using SafeERC20 for ERC20;
 
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -45,10 +45,10 @@ contract UniswapPositionV3FuseTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
-    UniswapSwapV3Fuse private _uniswapSwapV3Fuse;
-    NewPositionUniswapV3Fuse private _newPositionUniswapV3Fuse;
-    ModifyPositionUniswapV3Fuse private _modifyPositionUniswapV3Fuse;
-    CollectUniswapV3Fuse private _collectFeesUniswapV3Fuse;
+    UniswapV3SwapFuse private _uniswapV3SwapFuse;
+    UniswapV3NewPositionFuse private _uniswapV3NewPositionFuse;
+    UniswapV3ModifyPositionFuse private _uniswapV3ModifyPositionFuse;
+    UniswapV3CollectFuse private _uniswapV3CollectFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20639326);
@@ -95,7 +95,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         bytes memory path = abi.encodePacked(USDC, uint24(100), USDT);
 
-        UniswapSwapV3FuseEnterData memory enterData = UniswapSwapV3FuseEnterData({
+        UniswapV3SwapFuseEnterData memory enterData = UniswapV3SwapFuseEnterData({
             tokenInAmount: 5_000e6,
             path: path,
             minOutAmount: 0
@@ -103,7 +103,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_uniswapSwapV3Fuse),
+            address(_uniswapV3SwapFuse),
             abi.encodeWithSignature("enter((uint256,uint256,bytes))", enterData)
         );
 
@@ -112,7 +112,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldOpenNewPosition() external {
         // given
-        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
+        UniswapV3NewPositionFuseEnterData memory mintParams = UniswapV3NewPositionFuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -127,7 +127,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_newPositionUniswapV3Fuse),
+            address(_uniswapV3NewPositionFuse),
             abi.encodeWithSignature(
                 "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
                 mintParams
@@ -166,7 +166,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldOpenTwoNewPosition() external {
         // given
-        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
+        UniswapV3NewPositionFuseEnterData memory mintParams = UniswapV3NewPositionFuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -181,7 +181,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_newPositionUniswapV3Fuse),
+            address(_uniswapV3NewPositionFuse),
             abi.encodeWithSignature(
                 "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
                 mintParams
@@ -208,7 +208,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function stestShouldIncreaseLiquidity() external {
         // given
-        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
+        UniswapV3NewPositionFuseEnterData memory mintParams = UniswapV3NewPositionFuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -223,7 +223,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_newPositionUniswapV3Fuse),
+            address(_uniswapV3NewPositionFuse),
             abi.encodeWithSignature(
                 "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
                 mintParams
@@ -243,7 +243,7 @@ contract UniswapPositionV3FuseTest is Test {
             IporFusionMarkets.ERC20_VAULT_BALANCE
         );
 
-        ModifyPositionUniswapV3FuseEnterData memory enterDataIncrease = ModifyPositionUniswapV3FuseEnterData({
+        UniswapV3ModifyPositionFuseEnterData memory enterDataIncrease = UniswapV3ModifyPositionFuseEnterData({
             tokenId: tokenId,
             token0: USDC,
             token1: USDT,
@@ -257,7 +257,7 @@ contract UniswapPositionV3FuseTest is Test {
         FuseAction[] memory enterCallsIncrease = new FuseAction[](1);
 
         enterCallsIncrease[0] = FuseAction(
-            address(_modifyPositionUniswapV3Fuse),
+            address(_uniswapV3ModifyPositionFuse),
             abi.encodeWithSignature(
                 "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
                 enterDataIncrease
@@ -294,7 +294,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldDecreaseLiquidity() external {
         // given
-        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
+        UniswapV3NewPositionFuseEnterData memory mintParams = UniswapV3NewPositionFuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -309,7 +309,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_newPositionUniswapV3Fuse),
+            address(_uniswapV3NewPositionFuse),
             abi.encodeWithSignature(
                 "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
                 mintParams
@@ -328,7 +328,7 @@ contract UniswapPositionV3FuseTest is Test {
             uint256 amount1MintPosition
         ) = _extractMarketIdsFromEvent(entries);
 
-        ModifyPositionUniswapV3FuseExitData memory exitDataDecrease = ModifyPositionUniswapV3FuseExitData({
+        UniswapV3ModifyPositionFuseExitData memory exitDataDecrease = UniswapV3ModifyPositionFuseExitData({
             tokenId: tokenIdMintPosition,
             liquidity: liquidity,
             amount0Min: 0,
@@ -339,7 +339,7 @@ contract UniswapPositionV3FuseTest is Test {
         FuseAction[] memory exitCallsIncrease = new FuseAction[](1);
 
         exitCallsIncrease[0] = FuseAction(
-            address(_modifyPositionUniswapV3Fuse),
+            address(_uniswapV3ModifyPositionFuse),
             abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", exitDataDecrease)
         );
 
@@ -366,7 +366,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldDecreaseHalfLiquidity() external {
         // given
-        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
+        UniswapV3NewPositionFuseEnterData memory mintParams = UniswapV3NewPositionFuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -381,7 +381,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_newPositionUniswapV3Fuse),
+            address(_uniswapV3NewPositionFuse),
             abi.encodeWithSignature(
                 "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
                 mintParams
@@ -400,7 +400,7 @@ contract UniswapPositionV3FuseTest is Test {
             uint256 amount1MintPosition
         ) = _extractMarketIdsFromEvent(entries);
 
-        ModifyPositionUniswapV3FuseExitData memory exitDataDecrease = ModifyPositionUniswapV3FuseExitData({
+        UniswapV3ModifyPositionFuseExitData memory exitDataDecrease = UniswapV3ModifyPositionFuseExitData({
             tokenId: tokenIdMintPosition,
             liquidity: liquidity / 2,
             amount0Min: 0,
@@ -411,7 +411,7 @@ contract UniswapPositionV3FuseTest is Test {
         FuseAction[] memory exitCallsIncrease = new FuseAction[](1);
 
         exitCallsIncrease[0] = FuseAction(
-            address(_modifyPositionUniswapV3Fuse),
+            address(_uniswapV3ModifyPositionFuse),
             abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", exitDataDecrease)
         );
 
@@ -438,7 +438,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldCollectAllAfterDecreaseLiquidity() external {
         // given
-        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
+        UniswapV3NewPositionFuseEnterData memory mintParams = UniswapV3NewPositionFuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -453,7 +453,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_newPositionUniswapV3Fuse),
+            address(_uniswapV3NewPositionFuse),
             abi.encodeWithSignature(
                 "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
                 mintParams
@@ -466,7 +466,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         (, uint256 tokenIdMintPosition, uint128 liquidity, , ) = _extractMarketIdsFromEvent(entries);
 
-        ModifyPositionUniswapV3FuseExitData memory exitDataDecrease = ModifyPositionUniswapV3FuseExitData({
+        UniswapV3ModifyPositionFuseExitData memory exitDataDecrease = UniswapV3ModifyPositionFuseExitData({
             tokenId: tokenIdMintPosition,
             liquidity: liquidity,
             amount0Min: 0,
@@ -477,7 +477,7 @@ contract UniswapPositionV3FuseTest is Test {
         FuseAction[] memory exitCallsIncrease = new FuseAction[](1);
 
         exitCallsIncrease[0] = FuseAction(
-            address(_modifyPositionUniswapV3Fuse),
+            address(_uniswapV3ModifyPositionFuse),
             abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", exitDataDecrease)
         );
         PlasmaVault(_plasmaVault).execute(exitCallsIncrease);
@@ -491,14 +491,14 @@ contract UniswapPositionV3FuseTest is Test {
 
         uint256 usdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
 
-        CollectUniswapV3FuseEnterData memory collectFeesData;
+        UniswapV3CollectFuseEnterData memory collectFeesData;
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = tokenIdMintPosition;
         collectFeesData.tokenIds = tokenIds;
 
         FuseAction[] memory enterCollect = new FuseAction[](1);
         enterCollect[0] = FuseAction(
-            address(_collectFeesUniswapV3Fuse),
+            address(_uniswapV3CollectFuse),
             abi.encodeWithSignature("enter((uint256[]))", collectFeesData)
         );
 
@@ -533,7 +533,7 @@ contract UniswapPositionV3FuseTest is Test {
 
     function testShouldCRemovePosition() external {
         // given
-        NewPositionUniswapV3FuseEnterData memory mintParams = NewPositionUniswapV3FuseEnterData({
+        UniswapV3NewPositionFuseEnterData memory mintParams = UniswapV3NewPositionFuseEnterData({
             token0: USDC,
             token1: USDT,
             fee: 100,
@@ -548,7 +548,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_newPositionUniswapV3Fuse),
+            address(_uniswapV3NewPositionFuse),
             abi.encodeWithSignature(
                 "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
                 mintParams
@@ -561,7 +561,7 @@ contract UniswapPositionV3FuseTest is Test {
 
         (, uint256 tokenIdMintPosition, uint128 liquidity, , ) = _extractMarketIdsFromEvent(entries);
 
-        ModifyPositionUniswapV3FuseExitData memory exitDataDecrease = ModifyPositionUniswapV3FuseExitData({
+        UniswapV3ModifyPositionFuseExitData memory exitDataDecrease = UniswapV3ModifyPositionFuseExitData({
             tokenId: tokenIdMintPosition,
             liquidity: liquidity,
             amount0Min: 0,
@@ -572,29 +572,29 @@ contract UniswapPositionV3FuseTest is Test {
         FuseAction[] memory exitCallsIncrease = new FuseAction[](1);
 
         exitCallsIncrease[0] = FuseAction(
-            address(_modifyPositionUniswapV3Fuse),
+            address(_uniswapV3ModifyPositionFuse),
             abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", exitDataDecrease)
         );
         PlasmaVault(_plasmaVault).execute(exitCallsIncrease);
 
-        CollectUniswapV3FuseEnterData memory collectFeesData;
+        UniswapV3CollectFuseEnterData memory collectFeesData;
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = tokenIdMintPosition;
         collectFeesData.tokenIds = tokenIds;
 
         FuseAction[] memory enterCollect = new FuseAction[](1);
         enterCollect[0] = FuseAction(
-            address(_collectFeesUniswapV3Fuse),
+            address(_uniswapV3CollectFuse),
             abi.encodeWithSignature("enter((uint256[]))", collectFeesData)
         );
 
         PlasmaVault(_plasmaVault).execute(enterCollect);
 
-        NewPositionUniswapV3FuseExitData memory closePositions;
+        UniswapV3NewPositionFuseExitData memory closePositions;
         closePositions.tokenIds = tokenIds;
 
         enterCalls[0] = FuseAction(
-            address(_newPositionUniswapV3Fuse),
+            address(_uniswapV3NewPositionFuse),
             abi.encodeWithSignature("exit((uint256[]))", closePositions)
         );
 
@@ -647,32 +647,32 @@ contract UniswapPositionV3FuseTest is Test {
         marketConfigs_[1] = MarketSubstratesConfig(IporFusionMarkets.UNISWAP_SWAP_V3_POSITIONS, uniswapTokens);
         marketConfigs_[2] = MarketSubstratesConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, uniswapTokens);
     }
-    //
+
     function _setupFuses() private returns (address[] memory fuses) {
-        _uniswapSwapV3Fuse = new UniswapSwapV3Fuse(IporFusionMarkets.UNISWAP_SWAP_V3, _UNIVERSAL_ROUTER);
+        _uniswapV3SwapFuse = new UniswapV3SwapFuse(IporFusionMarkets.UNISWAP_SWAP_V3, _UNIVERSAL_ROUTER);
 
-        _newPositionUniswapV3Fuse = new NewPositionUniswapV3Fuse(
+        _uniswapV3NewPositionFuse = new UniswapV3NewPositionFuse(
             IporFusionMarkets.UNISWAP_SWAP_V3_POSITIONS,
             _NONFUNGIBLE_POSITION_MANAGER
         );
 
-        _modifyPositionUniswapV3Fuse = new ModifyPositionUniswapV3Fuse(
+        _uniswapV3ModifyPositionFuse = new UniswapV3ModifyPositionFuse(
             IporFusionMarkets.UNISWAP_SWAP_V3_POSITIONS,
             _NONFUNGIBLE_POSITION_MANAGER
         );
 
-        _collectFeesUniswapV3Fuse = new CollectUniswapV3Fuse(
+        _uniswapV3CollectFuse = new UniswapV3CollectFuse(
             IporFusionMarkets.UNISWAP_SWAP_V3_POSITIONS,
             _NONFUNGIBLE_POSITION_MANAGER
         );
 
         fuses = new address[](4);
-        fuses[0] = address(_uniswapSwapV3Fuse);
-        fuses[1] = address(_newPositionUniswapV3Fuse);
-        fuses[2] = address(_modifyPositionUniswapV3Fuse);
-        fuses[3] = address(_collectFeesUniswapV3Fuse);
+        fuses[0] = address(_uniswapV3SwapFuse);
+        fuses[1] = address(_uniswapV3NewPositionFuse);
+        fuses[2] = address(_uniswapV3ModifyPositionFuse);
+        fuses[3] = address(_uniswapV3CollectFuse);
     }
-    //
+
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
         ZeroBalanceFuse uniswapZeroBalance = new ZeroBalanceFuse(IporFusionMarkets.UNISWAP_SWAP_V3);
         UniswapV3Balance uniswapBalance = new UniswapV3Balance(
@@ -713,7 +713,7 @@ contract UniswapPositionV3FuseTest is Test {
             if (
                 entries[i].topics[0] ==
                 keccak256(
-                    "NewPositionUniswapV3FuseEnter(address,uint256,uint128,uint256,uint256,address,address,uint24,int24,int24)"
+                    "UniswapV3NewPositionFuseEnter(address,uint256,uint128,uint256,uint256,address,address,uint24,int24,int24)"
                 )
             ) {
                 (version, tokenId, liquidity, amount0, amount1, , , , , ) = abi.decode(
@@ -731,7 +731,7 @@ contract UniswapPositionV3FuseTest is Test {
         for (uint256 i = 0; i < entries.length; i++) {
             if (
                 entries[i].topics[0] ==
-                keccak256("ModifyPositionUniswapV3FuseEnter(address,uint256,uint128,uint256,uint256)")
+                keccak256("UniswapV3ModifyPositionFuseEnter(address,uint256,uint128,uint256,uint256)")
             ) {
                 (version, tokenId, liquidity, amount0, amount1) = abi.decode(
                     entries[i].data,
@@ -745,7 +745,7 @@ contract UniswapPositionV3FuseTest is Test {
         Vm.Log[] memory entries
     ) private view returns (address version, uint256 tokenId, uint256 amount0, uint256 amount1) {
         for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("ModifyPositionUniswapV3FuseExit(address,uint256,uint256,uint256)")) {
+            if (entries[i].topics[0] == keccak256("UniswapV3ModifyPositionFuseExit(address,uint256,uint256,uint256)")) {
                 (version, tokenId, amount0, amount1) = abi.decode(
                     entries[i].data,
                     (address, uint256, uint256, uint256)
@@ -759,7 +759,7 @@ contract UniswapPositionV3FuseTest is Test {
         Vm.Log[] memory entries
     ) private view returns (address version, uint256 tokenId, uint256 amount0, uint256 amount1) {
         for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("CollectUniswapV3FuseEnter(address,uint256,uint256,uint256)")) {
+            if (entries[i].topics[0] == keccak256("UniswapV3CollectFuseEnter(address,uint256,uint256,uint256)")) {
                 (version, tokenId, amount0, amount1) = abi.decode(
                     entries[i].data,
                     (address, uint256, uint256, uint256)
@@ -773,7 +773,7 @@ contract UniswapPositionV3FuseTest is Test {
         Vm.Log[] memory entries
     ) private view returns (address version, uint256 tokenId) {
         for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("ClosePositionUniswapV3Fuse(address,uint256)")) {
+            if (entries[i].topics[0] == keccak256("UniswapV3NewPositionFuseExit(address,uint256)")) {
                 (version, tokenId) = abi.decode(entries[i].data, (address, uint256));
                 break;
             }
