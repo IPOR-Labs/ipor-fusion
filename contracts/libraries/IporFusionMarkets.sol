@@ -21,6 +21,9 @@ library IporFusionMarkets {
 
     uint256 public constant ERC20_VAULT_BALANCE = 7;
 
+    /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with balance of ERC20_VAULT_BALANCE
+    uint256 public constant UNISWAP_SWAP_V3_POSITIONS = 8;
+
     /// @dev Uniswap market
     /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with balance of ERC20_VAULT_BALANCE
     uint256 public constant UNISWAP_SWAP_V2 = 9;
@@ -29,7 +32,4 @@ library IporFusionMarkets {
 
     /// @dev Euler market
     uint256 public constant EULER_V2 = 11;
-
-    /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with balance of ERC20_VAULT_BALANCE
-    uint256 public constant UNISWAP_SWAP_V3_POSITIONS = 12;
 }

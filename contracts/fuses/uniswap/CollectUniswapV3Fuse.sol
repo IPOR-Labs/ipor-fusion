@@ -30,7 +30,9 @@ contract CollectUniswapV3Fuse is IFuseCommon {
     }
 
     function enter(CollectUniswapV3FuseEnterData calldata data_) public {
-        if (data_.tokenIds.length == 0) {
+        uint256 len = data_.tokenIds.length;
+
+        if (len == 0) {
             return;
         }
 
@@ -41,8 +43,6 @@ contract CollectUniswapV3Fuse is IFuseCommon {
 
         uint256 amount0;
         uint256 amount1;
-
-        uint256 len = data_.tokenIds.length;
 
         for (uint256 i; i < len; ++i) {
             params.tokenId = data_.tokenIds[i];
