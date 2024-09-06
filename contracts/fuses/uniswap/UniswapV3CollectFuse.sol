@@ -6,14 +6,14 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
-struct CollectUniswapV3FuseEnterData {
+struct UniswapV3CollectFuseEnterData {
     uint256[] tokenIds;
 }
 
-contract CollectUniswapV3Fuse is IFuseCommon {
+contract UniswapV3CollectFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    event CollectUniswapV3FuseEnter(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
+    event UniswapV3CollectFuseEnter(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
 
     error UnsupportedMethod();
 
@@ -29,7 +29,7 @@ contract CollectUniswapV3Fuse is IFuseCommon {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
-    function enter(CollectUniswapV3FuseEnterData calldata data_) public {
+    function enter(UniswapV3CollectFuseEnterData calldata data_) public {
         uint256 len = data_.tokenIds.length;
 
         if (len == 0) {
@@ -49,7 +49,7 @@ contract CollectUniswapV3Fuse is IFuseCommon {
 
             (amount0, amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).collect(params);
 
-            emit CollectUniswapV3FuseEnter(VERSION, params.tokenId, amount0, amount1);
+            emit UniswapV3CollectFuseEnter(VERSION, params.tokenId, amount0, amount1);
         }
     }
 }

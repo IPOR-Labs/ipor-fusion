@@ -14,7 +14,7 @@ import {IFuse} from "../IFuse.sol";
  * @param minOutAmount The minimum amount of output tokens expected from the swap.
  * @param path Encoded path for the swap, containing addresses and pool fees ([address, fee,address, fee,... ,  address ]).
  */
-struct UniswapSwapV3FuseEnterData {
+struct UniswapV3SwapFuseEnterData {
     uint256 tokenInAmount;
     uint256 minOutAmount;
     bytes path;
@@ -37,16 +37,16 @@ uint256 constant MULTIPLE_V3_POOLS_MIN_LENGTH = V3_POP_OFFSET + NEXT_V3_POOL_OFF
 address constant INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER = address(1);
 
 /**
- * @title UniswapSwapV3Fuse
+ * @title UniswapV3SwapFuse.sol
  * @dev A smart contract for interacting with the Uniswap V3 protocol to swap tokens.
  *      This contract allows users to exchange tokens using Uniswap's liquidity pools by interfacing with a universal router.
  */
-contract UniswapSwapV3Fuse is IFuse {
+contract UniswapV3SwapFuse is IFuse {
     using SafeERC20 for IERC20;
     using SafeCast for int256;
     using SafeCast for uint256;
 
-    error UniswapSwapV3FuseUnsupportedToken(address asset);
+    error UniswapV3SwapFuseUnsupportedToken(address asset);
     error UnsupportedMethod();
     error SliceOutOfBounds();
 
@@ -57,7 +57,7 @@ contract UniswapSwapV3Fuse is IFuse {
      * @param path The encoded path used for the swap.
      * @param minOutAmount The minimum amount of output tokens expected from the swap.
      */
-    event UniswapSwapV3EnterFuse(address version, uint256 tokenInAmount, bytes path, uint256 minOutAmount);
+    event UniswapV3SwapEnterFuse(address version, uint256 tokenInAmount, bytes path, uint256 minOutAmount);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -94,9 +94,9 @@ contract UniswapSwapV3Fuse is IFuse {
      * - Each token in the `path` must be a supported asset according to `PlasmaVaultConfigLib`.
      * - The contract must have enough balance of the input token to perform the swap.
      *
-     * Emits an `UniswapSwapV2EnterFuse` event indicating the details of the swap.
+     * Emits an `UniswapV2SwapEnterFuse` event indicating the details of the swap.
      */
-    function enter(UniswapSwapV3FuseEnterData calldata data_) external {
+    function enter(UniswapV3SwapFuseEnterData calldata data_) external {
         address[] memory tokens;
         bytes calldata path = data_.path;
         bytes memory memoryPath = data_.path;
@@ -121,7 +121,7 @@ contract UniswapSwapV3Fuse is IFuse {
 
         for (uint256 i; i < numberOfTokens; ++i) {
             if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokens[i])) {
-                revert UniswapSwapV3FuseUnsupportedToken(tokens[i]);
+                revert UniswapV3SwapFuseUnsupportedToken(tokens[i]);
             }
         }
 
@@ -143,7 +143,7 @@ contract UniswapSwapV3Fuse is IFuse {
 
         IUniversalRouter(UNIVERSAL_ROUTER).execute(commands, inputs);
 
-        emit UniswapSwapV3EnterFuse(VERSION, data_.tokenInAmount, memoryPath, data_.minOutAmount);
+        emit UniswapV3SwapEnterFuse(VERSION, data_.tokenInAmount, memoryPath, data_.minOutAmount);
     }
 
     //solhint-disable-next-line

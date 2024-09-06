@@ -13,7 +13,7 @@ import {IFuse} from "../IFuse.sol";
  * @param path The path of token addresses for the swap, including the input and output tokens.
  * @param minOutAmount The minimum amount of output tokens expected from the swap, this is last token in the path.
  */
-struct UniswapSwapV2FuseEnterData {
+struct UniswapV2SwapFuseEnterData {
     uint256 tokenInAmount;
     address[] path;
     uint256 minOutAmount;
@@ -24,14 +24,14 @@ uint256 constant V2_SWAP_EXACT_IN = 0x08;
 address constant INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER = address(1);
 
 /**
- * @title UniswapSwapV2Fuse
+ * @title UniswapV2SwapFuse.sol
  * @dev A smart contract for interacting with the Uniswap V2 protocol to swap tokens.
  *      This contract allows users to exchange tokens using Uniswap's liquidity pools by interfacing with a universal router.
  */
-contract UniswapSwapV2Fuse is IFuse {
+contract UniswapV2SwapFuse is IFuse {
     using SafeERC20 for IERC20;
 
-    error UniswapSwapV2FuseUnsupportedToken(address asset);
+    error UniswapV2SwapFuseUnsupportedToken(address asset);
     error UnsupportedMethod();
 
     /**
@@ -41,7 +41,7 @@ contract UniswapSwapV2Fuse is IFuse {
      * @param path The token path used for the swap.
      * @param minOutAmount The minimum amount of output tokens expected from the swap.
      */
-    event UniswapSwapV2EnterFuse(address version, uint256 tokenInAmount, address[] path, uint256 minOutAmount);
+    event UniswapV2SwapEnterFuse(address version, uint256 tokenInAmount, address[] path, uint256 minOutAmount);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -63,7 +63,7 @@ contract UniswapSwapV2Fuse is IFuse {
      * @param data_ Encoded data containing the swap parameters (token amount, path, and minimum output amount).
      */
     function enter(bytes calldata data_) external override {
-        enter(abi.decode(data_, (UniswapSwapV2FuseEnterData)));
+        enter(abi.decode(data_, (UniswapV2SwapFuseEnterData)));
     }
 
     /**
@@ -78,9 +78,9 @@ contract UniswapSwapV2Fuse is IFuse {
      * - Each token in the `path` must be a supported asset according to `PlasmaVaultConfigLib`.
      * - The contract must have enough balance of the input token to perform the swap.
      *
-     * Emits an `UniswapSwapV2EnterFuse` event indicating the details of the swap.
+     * Emits an `UniswapV2SwapEnterFuse` event indicating the details of the swap.
      */
-    function enter(UniswapSwapV2FuseEnterData memory data_) public {
+    function enter(UniswapV2SwapFuseEnterData memory data_) public {
         uint256 pathLength = data_.path.length;
         if (data_.tokenInAmount == 0 || pathLength < 2) {
             return;
@@ -88,7 +88,7 @@ contract UniswapSwapV2Fuse is IFuse {
 
         for (uint256 i; i < pathLength; ++i) {
             if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.path[i])) {
-                revert UniswapSwapV2FuseUnsupportedToken(data_.path[i]);
+                revert UniswapV2SwapFuseUnsupportedToken(data_.path[i]);
             }
         }
 
@@ -110,7 +110,7 @@ contract UniswapSwapV2Fuse is IFuse {
 
         IUniversalRouter(UNIVERSAL_ROUTER).execute(commands, inputs);
 
-        emit UniswapSwapV2EnterFuse(VERSION, data_.tokenInAmount, data_.path, data_.minOutAmount);
+        emit UniswapV2SwapEnterFuse(VERSION, data_.tokenInAmount, data_.path, data_.minOutAmount);
     }
 
     //solhint-disable-next-line

@@ -10,8 +10,8 @@ import {INonfungiblePositionManager, IUniswapV3Pool, IUniswapV3Factory} from "./
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PositionValue} from "./ext/PositionValue.sol";
 
-/// @notice Data for entering NewPositionUniswapV3Fuse
-struct NewPositionUniswapV3FuseEnterData {
+/// @notice Data for entering new position in Uniswap V3
+struct UniswapV3NewPositionFuseEnterData {
     /// @notice The address of the token0 for a specific pool
     address token0;
     /// @notice The address of the token1 for a specific pool
@@ -34,18 +34,18 @@ struct NewPositionUniswapV3FuseEnterData {
     uint256 deadline;
 }
 
-/// @notice Data for exiting NewPositionUniswapV3Fuse
-struct NewPositionUniswapV3FuseExitData {
+/// @notice Data for closing position on Uniswap V3
+struct UniswapV3NewPositionFuseExitData {
     /// @notice Token IDs to close, NTFs minted on Uniswap V3, which represent liquidity positions
     uint256[] tokenIds;
 }
 
 /// @title Fuse responsible for create new Uniswap V3 positions.
 /// @dev Associated with fuse balance UniswapV3Balance.
-contract NewPositionUniswapV3Fuse is IFuseCommon {
+contract UniswapV3NewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    event NewPositionUniswapV3FuseEnter(
+    event UniswapV3NewPositionEnterFuse(
         address version,
         uint256 tokenId,
         uint128 liquidity,
@@ -58,9 +58,9 @@ contract NewPositionUniswapV3Fuse is IFuseCommon {
         int24 tickUpper
     );
 
-    event ClosePositionUniswapV3Fuse(address version, uint256 tokenIds);
+    event UniswapV3NewPositionExitFuse(address version, uint256 tokenIds);
 
-    error NewPositionUniswapV3FuseUnsupportedToken(address token0, address token1);
+    error UniswapV3NewPositionFuseUnsupportedToken(address token0, address token1);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -72,12 +72,12 @@ contract NewPositionUniswapV3Fuse is IFuseCommon {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
-    function enter(NewPositionUniswapV3FuseEnterData calldata data_) public {
+    function enter(UniswapV3NewPositionFuseEnterData calldata data_) public {
         if (
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
         ) {
-            revert NewPositionUniswapV3FuseUnsupportedToken(data_.token0, data_.token1);
+            revert UniswapV3NewPositionFuseUnsupportedToken(data_.token0, data_.token1);
         }
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
@@ -110,7 +110,7 @@ contract NewPositionUniswapV3Fuse is IFuseCommon {
         tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
         tokensIds.tokenIds.push(tokenId);
 
-        emit NewPositionUniswapV3FuseEnter(
+        emit UniswapV3NewPositionEnterFuse(
             VERSION,
             tokenId,
             liquidity,
@@ -124,7 +124,7 @@ contract NewPositionUniswapV3Fuse is IFuseCommon {
         );
     }
 
-    function exit(NewPositionUniswapV3FuseExitData calldata closePositions) public {
+    function exit(UniswapV3NewPositionFuseExitData calldata closePositions) public {
         FuseStorageLib.UniswapV3TokenIds storage tokensIds = FuseStorageLib.getUniswapV3TokenIds();
 
         uint256 len = tokensIds.tokenIds.length;
@@ -141,7 +141,7 @@ contract NewPositionUniswapV3Fuse is IFuseCommon {
             }
             tokensIds.tokenIds.pop();
 
-            emit ClosePositionUniswapV3Fuse(VERSION, closePositions.tokenIds[i]);
+            emit UniswapV3NewPositionExitFuse(VERSION, closePositions.tokenIds[i]);
         }
     }
 

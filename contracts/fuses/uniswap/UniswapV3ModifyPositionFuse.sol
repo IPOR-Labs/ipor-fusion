@@ -7,8 +7,8 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
-/// @notice Data for entering ModifyPositionUniswapV3Fuse - increase liquidity
-struct ModifyPositionUniswapV3FuseEnterData {
+/// @notice Data for entering UniswapV3ModifyPositionFuse.sol - increase liquidity
+struct UniswapV3ModifyPositionFuseEnterData {
     /// @notice The address of the token0 for a specific pool
     address token0;
     /// @notice The address of the token1 for a specific pool
@@ -27,8 +27,8 @@ struct ModifyPositionUniswapV3FuseEnterData {
     uint256 deadline;
 }
 
-/// @notice Data for exiting ModifyPositionUniswapV3Fuse - decrease liquidity
-struct ModifyPositionUniswapV3FuseExitData {
+/// @notice Data for exiting UniswapV3ModifyPositionFuse.sol - decrease liquidity
+struct UniswapV3ModifyPositionFuseExitData {
     /// @notice tokenId The ID of the token for which liquidity is being decreased
     uint256 tokenId;
     /// @notice The amount by which liquidity will be decreased
@@ -42,19 +42,19 @@ struct ModifyPositionUniswapV3FuseExitData {
 }
 
 /// @dev Associated with fuse balance UniswapV3Balance.
-contract ModifyPositionUniswapV3Fuse is IFuseCommon {
+contract UniswapV3ModifyPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    event ModifyPositionUniswapV3FuseEnter(
+    event UniswapV3ModifyPositionEnterFuse(
         address version,
         uint256 tokenId,
         uint128 liquidity,
         uint256 amount0,
         uint256 amount1
     );
-    event ModifyPositionUniswapV3FuseExit(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
+    event UniswapV3ModifyPositionExitFuse(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
 
-    error ModifyPositionUniswapV3FuseUnsupportedToken(address token0, address token1);
+    error UniswapV3ModifyPositionFuseUnsupportedToken(address token0, address token1);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -67,12 +67,12 @@ contract ModifyPositionUniswapV3Fuse is IFuseCommon {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
-    function enter(ModifyPositionUniswapV3FuseEnterData calldata data_) public {
+    function enter(UniswapV3ModifyPositionFuseEnterData calldata data_) public {
         if (
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
         ) {
-            revert ModifyPositionUniswapV3FuseUnsupportedToken(data_.token0, data_.token1);
+            revert UniswapV3ModifyPositionFuseUnsupportedToken(data_.token0, data_.token1);
         }
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
@@ -96,10 +96,10 @@ contract ModifyPositionUniswapV3Fuse is IFuseCommon {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
-        emit ModifyPositionUniswapV3FuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
+        emit UniswapV3ModifyPositionEnterFuse(VERSION, data_.tokenId, liquidity, amount0, amount1);
     }
 
-    function exit(ModifyPositionUniswapV3FuseExitData calldata data_) public {
+    function exit(UniswapV3ModifyPositionFuseExitData calldata data_) public {
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
                 tokenId: data_.tokenId,
@@ -113,6 +113,6 @@ contract ModifyPositionUniswapV3Fuse is IFuseCommon {
         (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER)
             .decreaseLiquidity(params);
 
-        emit ModifyPositionUniswapV3FuseExit(VERSION, data_.tokenId, amount0, amount1);
+        emit UniswapV3ModifyPositionExitFuse(VERSION, data_.tokenId, amount0, amount1);
     }
 }

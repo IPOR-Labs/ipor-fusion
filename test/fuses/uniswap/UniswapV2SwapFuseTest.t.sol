@@ -9,7 +9,7 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
-import {UniswapSwapV2Fuse, UniswapSwapV2FuseEnterData} from "../../../contracts/fuses/uniswap/UniswapSwapV2Fuse.sol";
+import {UniswapV2SwapFuse, UniswapV2SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV2SwapFuse.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
@@ -19,7 +19,7 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
-contract UniswapSwapV2FuseTest is Test {
+contract UniswapV2SwapFuseTest is Test {
     using SafeERC20 for ERC20;
 
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -33,7 +33,7 @@ contract UniswapSwapV2FuseTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
-    UniswapSwapV2Fuse private _uniswapSwapV2Fuse;
+    UniswapV2SwapFuse private _uniswapV2SwapFuse;
 
     function setUp() public {
         //        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"));
@@ -87,7 +87,7 @@ contract UniswapSwapV2FuseTest is Test {
         path[0] = USDC;
         path[1] = USDT;
 
-        UniswapSwapV2FuseEnterData memory enterData = UniswapSwapV2FuseEnterData({
+        UniswapV2SwapFuseEnterData memory enterData = UniswapV2SwapFuseEnterData({
             tokenInAmount: depositAmount,
             path: path,
             minOutAmount: 0
@@ -95,7 +95,7 @@ contract UniswapSwapV2FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_uniswapSwapV2Fuse),
+            address(_uniswapV2SwapFuse),
             abi.encodeWithSignature("enter(bytes)", abi.encode(enterData))
         );
 
@@ -134,7 +134,7 @@ contract UniswapSwapV2FuseTest is Test {
         path[1] = DAI;
         path[2] = USDT;
 
-        UniswapSwapV2FuseEnterData memory enterData = UniswapSwapV2FuseEnterData({
+        UniswapV2SwapFuseEnterData memory enterData = UniswapV2SwapFuseEnterData({
             tokenInAmount: depositAmount,
             path: path,
             minOutAmount: 0
@@ -142,7 +142,7 @@ contract UniswapSwapV2FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_uniswapSwapV2Fuse),
+            address(_uniswapV2SwapFuse),
             abi.encodeWithSignature("enter(bytes)", abi.encode(enterData))
         );
 
@@ -181,7 +181,7 @@ contract UniswapSwapV2FuseTest is Test {
         path[1] = address(0x76543);
         path[2] = USDT;
 
-        UniswapSwapV2FuseEnterData memory enterData = UniswapSwapV2FuseEnterData({
+        UniswapV2SwapFuseEnterData memory enterData = UniswapV2SwapFuseEnterData({
             tokenInAmount: depositAmount,
             path: path,
             minOutAmount: 0
@@ -189,11 +189,11 @@ contract UniswapSwapV2FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_uniswapSwapV2Fuse),
+            address(_uniswapV2SwapFuse),
             abi.encodeWithSignature("enter(bytes)", abi.encode(enterData))
         );
 
-        bytes memory error = abi.encodeWithSignature("UniswapSwapV2FuseUnsupportedToken(address)", address(0x76543));
+        bytes memory error = abi.encodeWithSignature("UniswapV2SwapFuseUnsupportedToken(address)", address(0x76543));
 
         //when
         vm.expectRevert(error);
@@ -228,13 +228,13 @@ contract UniswapSwapV2FuseTest is Test {
     }
 
     function _getFuses() private returns (address[] memory fuses_) {
-        UniswapSwapV2Fuse uniswapSwapV2Fuse = new UniswapSwapV2Fuse(
+        UniswapV2SwapFuse uniswapV2SwapFuse = new UniswapV2SwapFuse(
             IporFusionMarkets.UNISWAP_SWAP_V2,
             UNIVERSAL_ROUTER
         );
 
         fuses_ = new address[](1);
-        fuses_[0] = address(uniswapSwapV2Fuse);
+        fuses_[0] = address(uniswapV2SwapFuse);
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs_) {
@@ -249,10 +249,10 @@ contract UniswapSwapV2FuseTest is Test {
     }
     //
     function _setupFuses() private returns (address[] memory fuses_) {
-        _uniswapSwapV2Fuse = new UniswapSwapV2Fuse(IporFusionMarkets.UNISWAP_SWAP_V2, UNIVERSAL_ROUTER);
+        _uniswapV2SwapFuse = new UniswapV2SwapFuse(IporFusionMarkets.UNISWAP_SWAP_V2, UNIVERSAL_ROUTER);
 
         fuses_ = new address[](1);
-        fuses_[0] = address(_uniswapSwapV2Fuse);
+        fuses_[0] = address(_uniswapV2SwapFuse);
     }
     //
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
