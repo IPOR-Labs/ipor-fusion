@@ -37,14 +37,16 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
 
         uint256 balance;
         uint256 stakedLPTokenBalance;
-        uint256 withdrawTokenAmount; // underlying asset of the vault amount to withdraw from LP
-        uint256 assetPrice;
-        uint256 priceDecimals;
+        uint256 withdrawUnderlyingTokenAmount; // underlying asset of the vault amount to withdraw from LP
         address plasmaVault = address(this);
         address plasmaVaultAsset = IERC4626(plasmaVault).asset();
+        uint256 plasmaVaultAssetPriceDecimals = ERC20(plasmaVaultAsset).decimals();
         address stakedLpTokenAddress;
         address lpTokenAddress; // Curve LP token
         int128 indexCoin; // index of the underlying asset in the Curve pool
+        (uint256 assetPriceInUSD, uint256 priceDecimals) = IPriceOracleMiddleware(
+            PlasmaVaultLib.getPriceOracleMiddleware()
+        ).getAssetPrice(plasmaVaultAsset);
 
         for (uint256 i; i < len; ++i) {
             stakedLpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
@@ -52,15 +54,13 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
             indexCoin = _getCoinIndex(ICurveStableswapNG(lpTokenAddress), plasmaVaultAsset);
             stakedLPTokenBalance = ERC20(stakedLpTokenAddress).balanceOf(plasmaVault);
             if (stakedLPTokenBalance > 0) {
-                withdrawTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
+                withdrawUnderlyingTokenAmount = ICurveStableswapNG(lpTokenAddress).calc_withdraw_one_coin(
                     stakedLPTokenBalance,
                     indexCoin
                 );
-                (assetPrice, priceDecimals) = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracleMiddleware())
-                    .getAssetPrice(plasmaVaultAsset);
                 balance += IporMath.convertToWad(
-                    withdrawTokenAmount * assetPrice,
-                    ERC20(plasmaVaultAsset).decimals() + priceDecimals
+                    withdrawUnderlyingTokenAmount * assetPriceInUSD,
+                    plasmaVaultAssetPriceDecimals + priceDecimals
                 );
             }
         }

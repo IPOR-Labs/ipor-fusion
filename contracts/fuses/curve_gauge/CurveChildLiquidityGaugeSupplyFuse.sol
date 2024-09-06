@@ -7,18 +7,22 @@ import {IChildLiquidityGauge} from "./ext/IChildLiquidityGauge.sol";
 import {IFuse} from "../IFuse.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @notice Data structure for entering the Curve Child Liquidity Gauge Supply Fuse
+/// @dev This struct contains the necessary information for staking LP tokens into a Curve gauge
 struct CurveChildLiquidityGaugeSupplyFuseEnterData {
-    /// Curve gauge
+    /// @notice Address of the Curve child liquidity gauge
     address childLiquidityGauge;
-    /// @notice Amount of the LP Token to deposit (stake)
-    uint256 amount;
+    /// @notice Amount of the LP Token to deposit (stake) into the gauge (18 decimals)
+    uint256 lpTokenAmount;
 }
 
+/// @notice Data structure for exiting the Curve Child Liquidity Gauge Supply Fuse
+/// @dev This struct contains the necessary information for unstaking LP tokens from a Curve gauge
 struct CurveChildLiquidityGaugeSupplyFuseExitData {
-    /// Curve gauge
+    /// @notice Address of the Curve child liquidity gauge
     address childLiquidityGauge;
-    /// @notice Amount of the LP Token to withdraw (unstake)
-    uint256 amount;
+    /// @notice Amount of the LP Token to withdraw (unstake) from the gauge (18 decimals)
+    uint256 lpTokenAmount;
 }
 
 contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
@@ -54,12 +58,12 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
             /// @notice substrate here refers to the staked Curve LP token (Gauge address)
             revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
         }
-        if (data_.amount == 0) {
+        if (data_.lpTokenAmount == 0) {
             revert CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount();
         }
         address lpToken = IChildLiquidityGauge(data_.childLiquidityGauge).lp_token();
         uint256 balanceOfPlasmaVault = IERC20(lpToken).balanceOf(address(this));
-        uint256 depositAmount = data_.amount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.amount;
+        uint256 depositAmount = data_.lpTokenAmount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.lpTokenAmount;
         IERC20(lpToken).forceApprove(data_.childLiquidityGauge, depositAmount);
         IChildLiquidityGauge(data_.childLiquidityGauge).deposit(depositAmount, address(this), false);
         emit CurveChildLiquidityGaugeSupplyFuseEnter(VERSION, data_.childLiquidityGauge, depositAmount);
@@ -78,11 +82,13 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.childLiquidityGauge)) {
             revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
         }
-        if (data_.amount == 0) {
+        if (data_.lpTokenAmount == 0) {
             revert CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount();
         }
         uint256 balanceOfPlasmaVault = IERC20(data_.childLiquidityGauge).balanceOf(address(this));
-        uint256 withdrawAmount = data_.amount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.amount;
+        uint256 withdrawAmount = data_.lpTokenAmount > balanceOfPlasmaVault
+            ? balanceOfPlasmaVault
+            : data_.lpTokenAmount;
         IChildLiquidityGauge(data_.childLiquidityGauge).withdraw(withdrawAmount, address(this), false);
         emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data_.childLiquidityGauge, withdrawAmount);
     }

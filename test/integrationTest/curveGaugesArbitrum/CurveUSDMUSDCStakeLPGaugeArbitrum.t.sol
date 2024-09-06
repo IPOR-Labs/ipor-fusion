@@ -949,7 +949,10 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             abi.encodeWithSignature(
                 "enter(bytes)",
                 abi.encode(
-                    CurveChildLiquidityGaugeSupplyFuseEnterData({childLiquidityGauge: curveGauge, amount: amount})
+                    CurveChildLiquidityGaugeSupplyFuseEnterData({
+                        childLiquidityGauge: curveGauge,
+                        lpTokenAmount: amount
+                    })
                 )
             )
         );
@@ -976,7 +979,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             abi.encodeWithSignature(
                 "exit(bytes)",
                 abi.encode(
-                    CurveChildLiquidityGaugeSupplyFuseExitData({childLiquidityGauge: curveGauge, amount: amount})
+                    CurveChildLiquidityGaugeSupplyFuseExitData({childLiquidityGauge: curveGauge, lpTokenAmount: amount})
                 )
             )
         );
