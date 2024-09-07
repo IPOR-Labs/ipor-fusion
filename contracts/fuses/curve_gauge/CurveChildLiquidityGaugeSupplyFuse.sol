@@ -44,10 +44,6 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
         MARKET_ID = marketIdInput;
     }
 
-    function enter(bytes calldata data_) external override {
-        _enter(abi.decode(data_, (CurveChildLiquidityGaugeSupplyFuseEnterData)));
-    }
-
     /// @dev technical method to generate ABI
     function enter(CurveChildLiquidityGaugeSupplyFuseEnterData memory data_) external {
         _enter(data_);
@@ -67,10 +63,6 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
         IERC20(lpToken).forceApprove(data_.childLiquidityGauge, depositAmount);
         IChildLiquidityGauge(data_.childLiquidityGauge).deposit(depositAmount, address(this), false);
         emit CurveChildLiquidityGaugeSupplyFuseEnter(VERSION, data_.childLiquidityGauge, depositAmount);
-    }
-
-    function exit(bytes calldata data_) external override {
-        _exit(abi.decode(data_, (CurveChildLiquidityGaugeSupplyFuseExitData)));
     }
 
     /// @dev technical method to generate ABI
