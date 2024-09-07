@@ -15,6 +15,9 @@ import {Roles} from "../../libraries/Roles.sol";
 contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
     error AccessManagedUnauthorized(address caller);
     error TooShortExecutionDelayForRole(uint64 roleId, uint32 executionDelay);
+    error TooLongRedemptionDelay(uint256 redemptionDelayInSeconds);
+
+    uint256 public constant MAX_REDEMPTION_DELAY_IN_SECONDS = 7 days;
 
     uint256 public immutable override REDEMPTION_DELAY_IN_SECONDS;
 
@@ -26,6 +29,9 @@ contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
     }
 
     constructor(address initialAdmin_, uint256 redemptionDelayInSeconds_) AccessManager(initialAdmin_) {
+        if (redemptionDelayInSeconds_ > MAX_REDEMPTION_DELAY_IN_SECONDS) {
+            revert TooLongRedemptionDelay(redemptionDelayInSeconds_);
+        }
         REDEMPTION_DELAY_IN_SECONDS = redemptionDelayInSeconds_;
     }
 
