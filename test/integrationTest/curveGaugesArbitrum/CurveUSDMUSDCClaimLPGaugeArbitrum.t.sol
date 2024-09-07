@@ -641,10 +641,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         calls[0] = FuseAction(
             address(fuseInstance),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveChildLiquidityGaugeSupplyFuseEnterData({childLiquidityGauge: curveGauge, amount: amount})
-                )
+                "enter((address,uint256))",
+                CurveChildLiquidityGaugeSupplyFuseEnterData({childLiquidityGauge: curveGauge, lpTokenAmount: amount})
             )
         );
 
