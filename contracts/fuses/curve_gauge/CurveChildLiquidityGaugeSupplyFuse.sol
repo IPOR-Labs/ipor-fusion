@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IChildLiquidityGauge} from "./ext/IChildLiquidityGauge.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
 
 /// @notice Data structure for entering the Curve Child Liquidity Gauge Supply Fuse
@@ -25,7 +25,7 @@ struct CurveChildLiquidityGaugeSupplyFuseExitData {
     uint256 lpTokenAmount;
 }
 
-contract CurveChildLiquidityGaugeSupplyFuse is IFuse {
+contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
     event CurveChildLiquidityGaugeSupplyFuseEnter(address version, address childLiquidityGauge, uint256 amount);
