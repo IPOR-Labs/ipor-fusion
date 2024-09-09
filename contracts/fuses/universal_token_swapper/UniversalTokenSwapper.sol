@@ -2,16 +2,17 @@
 pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {SwapExecutor, SwapExecutorData} from "./SwapExecutor.sol";
 
 struct UniversalTokenSwapperData {
-    address[] dexes;
+    address[] dexs;
     bytes[] dexData;
 }
 
@@ -22,7 +23,7 @@ struct UniversalTokenSwapperEnterData {
     UniversalTokenSwapperData data;
 }
 
-contract UniversalTokenSwapperFuse is IFuse {
+contract UniversalTokenSwapperFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
     event UniversalTokenSwapperEnterFuse(address version, address asset, uint256 amount);
@@ -43,28 +44,17 @@ contract UniversalTokenSwapperFuse is IFuse {
         SLIPPAGE_REVERSE = slippageReverse_;
     }
 
-    function enter(bytes calldata data_) external override {
-        (address asset, uint256 amount) = abi.decode(data_, (address, uint256));
-        _enter(abi.decode(data_, UniversalTokenSwapperEnterData));
-    }
-
-    function exit(bytes memory data_) external override {
-        (address asset, uint256 amount) = abi.decode(data_, (address, uint256));
-        _exit(asset, amount);
-    }
-
-    function _enter(UniversalTokenSwapperEnterData memory data_) internal {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_tokenIn)) {
-            revert UniversalTokenSwapperFuseUnsupportedAsset(data_tokenIn);
+    function _enter(UniversalTokenSwapperEnterData calldata data_) internal {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
+            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
         }
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_tokenOut)) {
-            revert UniversalTokenSwapperFuseUnsupportedAsset(data_tokenOut);
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
+            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
         }
-        address[] memory dexs = data_.data.dexes;
-        uint256 dexsLength = dexs.length;
+        uint256 dexsLength = data_.data.dexs.length;
         for (uint256 i; i < dexsLength; ++i) {
-            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, dexs[i])) {
-                revert UniversalTokenSwapperFuseUnsupportedAsset(dexs[i]);
+            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.dexs[i])) {
+                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.dexs[i]);
             }
         }
 
@@ -73,27 +63,35 @@ contract UniversalTokenSwapperFuse is IFuse {
 
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
-        //TODO run executor
+        SwapExecutor(EXECUTOR).execute(
+            SwapExecutorData({
+                tokenIn: data_.tokenIn,
+                tokenOut: data_.tokenOut,
+                dexs: data_.data.dexs,
+                dexsData: data_.data.dexData
+            })
+        );
 
         uint256 tokenInBalanceAfter = ERC20(data_.tokenIn).balanceOf(EXECUTOR);
         uint256 tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(EXECUTOR);
 
+        if (tokenInBalanceAfter >= tokenInBalanceBefore) {
+            return;
+        }
 
-        // domyślne założenie in jest ujemne a out dodtanie
-        uint256 tokenInDelta = tokenInBalanceAfter < tokenInBalanceAfter
-            ? tokenInBalanceAfter - tokenInBalanceBefore
-            : tokenInBalanceBefore - tokenInBalanceAfter;
+        uint256 tokenInDelta = tokenInBalanceBefore - tokenInBalanceAfter;
 
-        uint256 tokenOutDelta = tokenOutBalanceAfter < tokenOutBalanceAfter
-            ? tokenOutBalanceAfter - tokenOutBalanceBefore
-            : tokenOutBalanceBefore - tokenOutBalanceAfter;
+        if (tokenOutBalanceAfter <= tokenOutBalanceBefore) {
+            revert UniversalTokenSwapperFuseSlippageFail();
+        }
+
+        uint256 tokenOutDelta = tokenOutBalanceAfter - tokenOutBalanceBefore;
 
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         (uint256 tokenInPrice, uint256 tokenInPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
             .getAssetPrice(data_.tokenIn);
-        (uint256 tokenOutPrice, uint256 tokenOutDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
-            data_.tokenOut
-        );
+        (uint256 tokenOutPrice, uint256 tokenOutPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
+            .getAssetPrice(data_.tokenOut);
 
         uint256 amountUsdInDelta = IporMath.convertToWad(
             tokenInDelta * tokenInPrice,
@@ -104,14 +102,9 @@ contract UniversalTokenSwapperFuse is IFuse {
             IERC20Metadata(data_.tokenOut).decimals() + tokenOutPriceDecimals
         );
 
-
         uint256 quotient = IporMath.division(amountUsdInDelta * 1e18, amountUsdOutDelta);
-        if(quotient <= SLIPPAGE_REVERSE) {
+        if (quotient <= SLIPPAGE_REVERSE) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
-    }
-
-    function _exit(address asset, uint256 amount) internal {
-        emit UniversalTokenSwapperExitFuse(VERSION, asset, amount);
     }
 }

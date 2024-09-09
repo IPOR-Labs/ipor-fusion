@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 struct SwapExecutorData {
     address tokenIn;
@@ -13,6 +14,7 @@ struct SwapExecutorData {
 
 contract SwapExecutor {
     using Address for address;
+    using SafeERC20 for IERC20;
 
     /**
      * @notice Executes a series of token swaps across multiple decentralized exchanges (DEXes).
@@ -28,8 +30,8 @@ contract SwapExecutor {
      * - `tokenIn`: The address of the input token.
      * - `tokenOut`: The address of the output token.
      */
-    function execute(SwapExecutorData memory data_) externa{
-        uint256 len = data.dexs.length;
+    function execute(SwapExecutorData memory data_) external {
+        uint256 len = data_.dexs.length;
         for (uint256 i; i < len; ++i) {
             data_.dexs[i].functionCall(data_.dexsData[i]);
         }
