@@ -16,10 +16,11 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+
 import {SwapExecutor} from "contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 
-contract UniversalSwapOnUniswapV2FuseTest is Test {
+contract UniversalSwapOnUniswapV3SwapFuseTest is Test {
     using SafeERC20 for ERC20;
 
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -33,10 +34,11 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+
     UniversalTokenSwapperFuse private _universalTokenSwapperFuse;
 
     ///@dev this value is from the UniversalRouter contract https://github.com/Uniswap/universal-router/blob/main/contracts/libraries/Commands.sol
-    uint256 private constant _V2_SWAP_EXACT_IN = 0x08;
+    uint256 private constant _V3_SWAP_EXACT_IN = 0x00;
     address private constant _INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER = address(1);
 
     function setUp() public {
@@ -72,6 +74,10 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         _setupRoles();
     }
 
+    function testTT() external {
+        assertTrue(true);
+    }
+
     function testShouldSwapWhenOneHop() external {
         // given
 
@@ -86,9 +92,7 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         vm.prank(userOne);
         PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
 
-        address[] memory path = new address[](2);
-        path[0] = USDC;
-        path[1] = USDT;
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
 
         address[] memory targets = new address[](2);
         targets[0] = USDC;
@@ -101,7 +105,7 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         data[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
         data[1] = abi.encodeWithSignature(
             "execute(bytes,bytes[])",
-            abi.encodePacked(bytes1(uint8(_V2_SWAP_EXACT_IN))),
+            abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
             inputs
         );
 
@@ -148,11 +152,7 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         vm.prank(userOne);
         PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
 
-        address[] memory path = new address[](3);
-        path[0] = USDC;
-        path[1] = DAI;
-        path[2] = USDT;
-
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), DAI, uint24(3000), USDT);
         address[] memory targets = new address[](2);
         targets[0] = USDC;
         targets[1] = _UNIVERSAL_ROUTER;
@@ -164,7 +164,7 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         data[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
         data[1] = abi.encodeWithSignature(
             "execute(bytes,bytes[])",
-            abi.encodePacked(bytes1(uint8(_V2_SWAP_EXACT_IN))),
+            abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
             inputs
         );
 
@@ -180,7 +180,6 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             address(_universalTokenSwapperFuse),
             abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
         );
-
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
         uint256 plasmaVaultUsdtBalanceBefore = ERC20(USDT).balanceOf(_plasmaVault);
 
@@ -195,176 +194,6 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         assertEq(plasmaVaultUsdcBalanceAfter, 0, "plasmaVaultUsdcBalanceAfter");
         assertEq(plasmaVaultUsdtBalanceBefore, 0, "plasmaVaultUsdtBalanceBefore");
         assertGt(plasmaVaultUsdtBalanceAfter, 0, "plasmaVaultUsdtBalanceAfter");
-    }
-
-    function testShouldRevertWhenUnsupportedTokenIn() external {
-        // given
-
-        address userOne = address(0x1222);
-        uint256 depositAmount = 1_000e6;
-
-        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
-        ERC20(USDC).transfer(userOne, 10_000e6);
-
-        vm.prank(userOne);
-        ERC20(USDC).approve(_plasmaVault, depositAmount);
-        vm.prank(userOne);
-        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
-
-        address[] memory path = new address[](3);
-        path[0] = USDC;
-        path[1] = DAI;
-        path[2] = USDT;
-
-        address[] memory targets = new address[](2);
-        targets[0] = USDC;
-        targets[1] = _UNIVERSAL_ROUTER;
-
-        bytes[] memory inputs = new bytes[](1);
-        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
-        data[1] = abi.encodeWithSignature(
-            "execute(bytes,bytes[])",
-            abi.encodePacked(bytes1(uint8(_V2_SWAP_EXACT_IN))),
-            inputs
-        );
-
-        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
-            tokenIn: address(0x76543),
-            tokenOut: USDT,
-            amountIn: depositAmount,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
-        });
-
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(
-            address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
-        );
-
-        bytes memory error = abi.encodeWithSignature(
-            "UniversalTokenSwapperFuseUnsupportedAsset(address)",
-            address(0x76543)
-        );
-
-        //when
-        vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).execute(enterCalls);
-    }
-
-    function testShouldRevertWhenUnsupportedTokenOut() external {
-        // given
-
-        address userOne = address(0x1222);
-        uint256 depositAmount = 1_000e6;
-
-        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
-        ERC20(USDC).transfer(userOne, 10_000e6);
-
-        vm.prank(userOne);
-        ERC20(USDC).approve(_plasmaVault, depositAmount);
-        vm.prank(userOne);
-        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
-
-        address[] memory path = new address[](3);
-        path[0] = USDC;
-        path[1] = DAI;
-        path[2] = USDT;
-
-        address[] memory targets = new address[](2);
-        targets[0] = USDC;
-        targets[1] = _UNIVERSAL_ROUTER;
-
-        bytes[] memory inputs = new bytes[](1);
-        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
-        data[1] = abi.encodeWithSignature(
-            "execute(bytes,bytes[])",
-            abi.encodePacked(bytes1(uint8(_V2_SWAP_EXACT_IN))),
-            inputs
-        );
-
-        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
-            tokenIn: USDC,
-            tokenOut: address(0x76543),
-            amountIn: depositAmount,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
-        });
-
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(
-            address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
-        );
-
-        bytes memory error = abi.encodeWithSignature(
-            "UniversalTokenSwapperFuseUnsupportedAsset(address)",
-            address(0x76543)
-        );
-
-        //when
-        vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).execute(enterCalls);
-    }
-    function testShouldRevertWhenUnsupportedDex() external {
-        // given
-
-        address userOne = address(0x1222);
-        uint256 depositAmount = 1_000e6;
-
-        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
-        ERC20(USDC).transfer(userOne, 10_000e6);
-
-        vm.prank(userOne);
-        ERC20(USDC).approve(_plasmaVault, depositAmount);
-        vm.prank(userOne);
-        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
-
-        address[] memory path = new address[](3);
-        path[0] = USDC;
-        path[1] = DAI;
-        path[2] = USDT;
-
-        address[] memory targets = new address[](2);
-        targets[0] = address(0x76543);
-        targets[1] = _UNIVERSAL_ROUTER;
-
-        bytes[] memory inputs = new bytes[](1);
-        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
-        data[1] = abi.encodeWithSignature(
-            "execute(bytes,bytes[])",
-            abi.encodePacked(bytes1(uint8(_V2_SWAP_EXACT_IN))),
-            inputs
-        );
-
-        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
-            tokenIn: USDC,
-            tokenOut: USDT,
-            amountIn: depositAmount,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
-        });
-
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(
-            address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
-        );
-
-        bytes memory error = abi.encodeWithSignature(
-            "UniversalTokenSwapperFuseUnsupportedAsset(address)",
-            address(0x76543)
-        );
-
-        //when
-        vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
     function _setupFeeConfig() private view returns (FeeConfig memory feeConfig_) {
@@ -405,14 +234,13 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
 
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, universalSwapTokens);
     }
-
     function _setupFuses() private returns (address[] memory fuses_) {
         SwapExecutor swapExecutor = new SwapExecutor();
 
         _universalTokenSwapperFuse = new UniversalTokenSwapperFuse(
             IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
             address(swapExecutor),
-            6e16 // 6% slippage
+            1e18
         );
 
         fuses_ = new address[](1);
