@@ -9,6 +9,10 @@ library FuseStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.CfgFusesArray")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CFG_FUSES_ARRAY = 0xad43e358bd6e59a5a0c80f6bf25fa771408af4d80f621cdc680c8dfbf607ab00;
 
+    /// @notice This memory is designed to use with Uniswap V3 fuses
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.UniswapV3TokenIds")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant UNISWAP_V3_TOKEN_IDS = 0x3651659bd419f7c37743f3e14a337c9f9d1cfc4d650d91508f44d1acbe960f00;
+
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
         /// @dev fuse address => If index = 0 - is not granted, otherwise - granted
@@ -19,6 +23,12 @@ library FuseStorageLib {
     struct FusesArray {
         /// @dev value is a fuse address
         address[] value;
+    }
+
+    /// @custom:storage-location erc7201:io.ipor.UniswapV3TokenIds
+    struct UniswapV3TokenIds {
+        uint256[] tokenIds;
+        mapping(uint256 tokenId => uint256 index) indexes;
     }
 
     /// @notice Gets the fuses storage pointer
@@ -32,6 +42,13 @@ library FuseStorageLib {
     function getFusesArray() internal pure returns (FusesArray storage fusesArray) {
         assembly {
             fusesArray.slot := CFG_FUSES_ARRAY
+        }
+    }
+
+    /// @notice Gets the UniswapV3TokenIds storage pointer
+    function getUniswapV3TokenIds() internal pure returns (UniswapV3TokenIds storage uniswapV3TokenIds) {
+        assembly {
+            uniswapV3TokenIds.slot := UNISWAP_V3_TOKEN_IDS
         }
     }
 }

@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {IPool} from "./ext/IPool.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
@@ -26,7 +26,7 @@ struct AaveV3BorrowFuseExitData {
 
 /// @title Fuse Aave V3 Borrow protocol responsible for borrowing and repaying assets in variable interest rate from the Aave V3 protocol based on preconfigured market substrates
 /// @dev Substrates in this fuse are the assets that are used in the Aave V3 protocol for a given MARKET_ID
-contract AaveV3BorrowFuse is IFuse {
+contract AaveV3BorrowFuse is IFuseCommon {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
@@ -38,10 +38,10 @@ contract AaveV3BorrowFuse is IFuse {
 
     IPool public immutable AAVE_POOL;
 
-    event AaveV3BorrowEnterFuse(address version, address asset, uint256 amount, uint256 interestRateMode);
+    event AaveV3BorrowFuseEnter(address version, address asset, uint256 amount, uint256 interestRateMode);
 
     /// @dev Exit for borrow is repay
-    event AaveV3BorrowExitFuse(address version, address asset, uint256 repaidAmount, uint256 interestRateMode);
+    event AaveV3BorrowFuseExit(address version, address asset, uint256 repaidAmount, uint256 interestRateMode);
 
     error AaveV3BorrowFuseUnsupportedAsset(string action, address asset);
 
@@ -51,23 +51,7 @@ contract AaveV3BorrowFuse is IFuse {
         AAVE_POOL = IPool(aavePool_);
     }
 
-    function enter(bytes calldata data_) external override {
-        _enter(abi.decode(data_, (AaveV3BorrowFuseEnterData)));
-    }
-
     function enter(AaveV3BorrowFuseEnterData memory data_) external {
-        _enter(data_);
-    }
-
-    function exit(bytes calldata data_) external override {
-        _exit(abi.decode(data_, (AaveV3BorrowFuseExitData)));
-    }
-
-    function exit(AaveV3BorrowFuseExitData calldata data_) external {
-        _exit(data_);
-    }
-
-    function _enter(AaveV3BorrowFuseEnterData memory data_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -78,10 +62,10 @@ contract AaveV3BorrowFuse is IFuse {
 
         AAVE_POOL.borrow(data_.asset, data_.amount, INTEREST_RATE_MODE, 0, address(this));
 
-        emit AaveV3BorrowEnterFuse(VERSION, data_.asset, data_.amount, INTEREST_RATE_MODE);
+        emit AaveV3BorrowFuseEnter(VERSION, data_.asset, data_.amount, INTEREST_RATE_MODE);
     }
 
-    function _exit(AaveV3BorrowFuseExitData memory data_) internal {
+    function exit(AaveV3BorrowFuseExitData calldata data_) external {
         if (data_.amount == 0) {
             return;
         }
@@ -94,6 +78,6 @@ contract AaveV3BorrowFuse is IFuse {
 
         uint256 repaidAmount = AAVE_POOL.repay(data_.asset, data_.amount, INTEREST_RATE_MODE, address(this));
 
-        emit AaveV3BorrowExitFuse(VERSION, data_.asset, repaidAmount, INTEREST_RATE_MODE);
+        emit AaveV3BorrowFuseExit(VERSION, data_.asset, repaidAmount, INTEREST_RATE_MODE);
     }
 }
