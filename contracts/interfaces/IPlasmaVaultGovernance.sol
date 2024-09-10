@@ -163,7 +163,7 @@ interface IPlasmaVaultGovernance {
     function enableTransferShares() external;
 
     /// @notice Sets the minimal execution delay required for the specified roles.
-    /// @param rolesIds The roles for which the minimal execution delay is set
-    /// @param delays The minimal execution delays for the specified roles
+    /// @param rolesIds_ The roles for which the minimal execution delay is set
+    /// @param delays_ The minimal execution delays for the specified roles
     function setMinimalExecutionDelaysForRoles(uint64[] calldata rolesIds_, uint256[] calldata delays_) external;
 }
