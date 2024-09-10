@@ -154,4 +154,16 @@ interface IPlasmaVaultGovernance {
     /// @notice Sets the total supply cap
     /// @param cap_ The total supply cap, the values is represented in underlying decimals
     function setTotalSupplyCap(uint256 cap_) external;
+
+    /// @notice Converts the specified vault to a public vault - mint and deposit functions are allowed for everyone.
+    /// @dev Notice! Can convert to public but cannot convert back to private.
+    function convertToPublicVault() external;
+
+    /// @notice Enables transfer shares, transfer and transferFrom functions are allowed for everyone.
+    function enableTransferShares() external;
+
+    /// @notice Sets the minimal execution delay required for the specified roles.
+    /// @param rolesIds The roles for which the minimal execution delay is set
+    /// @param delays The minimal execution delays for the specified roles
+    function setMinimalExecutionDelaysForRoles(uint64[] calldata rolesIds_, uint256[] calldata delays_) external;
 }
