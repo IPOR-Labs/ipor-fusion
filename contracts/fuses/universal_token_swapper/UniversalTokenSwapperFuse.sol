@@ -42,22 +42,26 @@ struct Balances {
 contract UniversalTokenSwapperFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
-    event UniversalTokenSwapperEnterFuse(address version, address asset, uint256 amount);
+    event UniversalTokenSwapperFuseEnter(address version, address asset, uint256 amount);
 
     error UniversalTokenSwapperFuseUnsupportedAsset(address asset);
     error UniversalTokenSwapperFuseSlippageFail();
 
     address public immutable VERSION;
-    address public immutable EXECUTOR;
     uint256 public immutable MARKET_ID;
+    address public immutable EXECUTOR;
     /// @dev slippageReverse in WAD decimals, 1e18 - slippage;
     uint256 public immutable SLIPPAGE_REVERSE;
+    uint256 private constant _ONE = 1e18;
 
     constructor(uint256 marketId_, address executor_, uint256 slippageReverse_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
         EXECUTOR = executor_;
-        SLIPPAGE_REVERSE = 1e18 - slippageReverse_;
+        if (slippageReverse_ > _ONE) {
+            revert UniversalTokenSwapperFuseSlippageFail();
+        }
+        SLIPPAGE_REVERSE = _ONE - slippageReverse_;
     }
 
     function enter(UniversalTokenSwapperEnterData calldata data_) external {
@@ -128,7 +132,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
 
         uint256 quotient = IporMath.division(amountUsdOutDelta * 1e18, amountUsdInDelta);
 
-        if (quotient <= SLIPPAGE_REVERSE) {
+        if (quotient < SLIPPAGE_REVERSE) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
     }
