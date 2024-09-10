@@ -72,7 +72,7 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
 
     function setupFuses() public override {
         Erc4626SupplyFuse fuseSupplyLoc = new Erc4626SupplyFuse(getMarketId());
-        EulerV2BorrowFuse fuseBorrowLoc = new EulerV2BorrowFuse(getMarketId());
+        EulerV2BorrowFuse fuseBorrowLoc = new EulerV2BorrowFuse(getMarketId(), address(EVC));
         fuses = new address[](2);
         fuses[0] = address(fuseSupplyLoc);
         fuses[1] = address(fuseBorrowLoc);

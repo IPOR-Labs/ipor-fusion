@@ -31,16 +31,17 @@ contract EulerV2BorrowFuse is IFuse {
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
-    IEVC public immutable EVC = IEVC(0x0C9a3dd6b8F28529d72d7f9cE918D493519EE383);
+    IEVC public immutable EVC;
 
     event EulerV2BorrowEnterFuse(address version, address vault, uint256 amount);
     event EulerV2BorrowExitFuse(address version, address vault, uint256 repaidAmount);
 
     error EulerV2BorrowFuseUnsupportedVault(string action, address vault);
 
-    constructor(uint256 marketId_) {
+    constructor(uint256 marketId_, address eulerV2EVC_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
+        EVC = IEVC(eulerV2EVC_);
     }
 
     function enter(bytes calldata data_) external override {
