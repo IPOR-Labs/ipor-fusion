@@ -378,21 +378,29 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
     }
 
     function _executeBorrowOrRepay(bool isBorrow, uint256 amount) private {
-        bytes memory actionData;
         if (isBorrow) {
-            actionData = abi.encode(EulerV2BorrowFuseEnterData({vault: EULER_USDT2_VAULT_BORROW, amount: amount}));
+            EulerV2BorrowFuseEnterData memory enterData = EulerV2BorrowFuseEnterData({
+                vault: EULER_USDT2_VAULT_BORROW,
+                amount: amount
+            });
+
+            FuseAction[] memory actions = new FuseAction[](1);
+            actions[0] = FuseAction(fuses[1], abi.encodeWithSelector(EulerV2BorrowFuse.enter.selector, enterData));
+
+            vm.prank(alpha);
+            PlasmaVault(plasmaVault).execute(actions);
         } else {
-            actionData = abi.encode(EulerV2BorrowFuseExitData({vault: EULER_USDT2_VAULT_BORROW, amount: amount}));
+            EulerV2BorrowFuseExitData memory exitData = EulerV2BorrowFuseExitData({
+                vault: EULER_USDT2_VAULT_BORROW,
+                amount: amount
+            });
+
+            FuseAction[] memory actions = new FuseAction[](1);
+            actions[0] = FuseAction(fuses[1], abi.encodeWithSelector(EulerV2BorrowFuse.exit.selector, exitData));
+
+            vm.prank(alpha);
+            PlasmaVault(plasmaVault).execute(actions);
         }
-
-        FuseAction[] memory actions = new FuseAction[](1);
-        actions[0] = FuseAction(
-            fuses[1],
-            abi.encodeWithSignature(isBorrow ? "enter(bytes)" : "exit(bytes)", actionData)
-        );
-
-        vm.prank(alpha);
-        PlasmaVault(plasmaVault).execute(actions);
     }
 
     function _setupInitialState() private {

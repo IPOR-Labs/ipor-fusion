@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {IEVault} from "./ext/IEVault.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IEVC} from "../../../node_modules/ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
@@ -26,7 +26,7 @@ struct EulerV2BorrowFuseExitData {
 
 /// @title Fuse Euler V2 Borrow responsible for borrowing and repaying assets from Euler V2 vaults
 /// @dev Substrates in this fuse are the EVaults that are used in Euler V2 for a given MARKET_ID
-contract EulerV2BorrowFuse is IFuse {
+contract EulerV2BorrowFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
     address public immutable VERSION;
@@ -44,23 +44,7 @@ contract EulerV2BorrowFuse is IFuse {
         EVC = IEVC(eulerV2EVC_);
     }
 
-    function enter(bytes calldata data_) external override {
-        _enter(abi.decode(data_, (EulerV2BorrowFuseEnterData)));
-    }
-
     function enter(EulerV2BorrowFuseEnterData memory data_) external {
-        _enter(data_);
-    }
-
-    function exit(bytes calldata data_) external override {
-        _exit(abi.decode(data_, (EulerV2BorrowFuseExitData)));
-    }
-
-    function exit(EulerV2BorrowFuseExitData calldata data_) external {
-        _exit(data_);
-    }
-
-    function _enter(EulerV2BorrowFuseEnterData memory data_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -78,7 +62,7 @@ contract EulerV2BorrowFuse is IFuse {
         /* solhint-enable avoid-low-level-calls */
     }
 
-    function _exit(EulerV2BorrowFuseExitData memory data_) internal {
+    function exit(EulerV2BorrowFuseExitData memory data_) external {
         if (data_.amount == 0) {
             return;
         }
