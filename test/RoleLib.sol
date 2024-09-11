@@ -76,6 +76,9 @@ library RoleLib {
         address plasmaVault_,
         IporFusionAccessManager accessManager_
     ) public {
+        vm_.prank(usersWithRoles_.superAdmin);
+        accessManager_.grantRole(Roles.PLASMA_VAULT_ROLE, plasmaVault_, 0);
+
         bytes4[] memory performanceFeeSig = new bytes4[](1);
         performanceFeeSig[0] = PlasmaVaultGovernance.configurePerformanceFee.selector;
 
@@ -94,7 +97,7 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, alphaSig, Roles.ALPHA_ROLE);
 
-        bytes4[] memory atomistsSig = new bytes4[](8);
+        bytes4[] memory atomistsSig = new bytes4[](10);
         atomistsSig[0] = PlasmaVaultGovernance.addBalanceFuse.selector;
         atomistsSig[1] = PlasmaVaultGovernance.addFuses.selector;
         atomistsSig[2] = PlasmaVaultGovernance.removeFuses.selector;
@@ -103,16 +106,19 @@ library RoleLib {
         atomistsSig[5] = PlasmaVaultGovernance.activateMarketsLimits.selector;
         atomistsSig[6] = PlasmaVaultGovernance.deactivateMarketsLimits.selector;
         atomistsSig[7] = PlasmaVaultGovernance.updateDependencyBalanceGraphs.selector;
+        atomistsSig[8] = PlasmaVaultGovernance.convertToPublicVault.selector;
+        atomistsSig[9] = PlasmaVaultGovernance.enableTransferShares.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, atomistsSig, Roles.ATOMIST_ROLE);
 
-        bytes4[] memory atomistsSig2 = new bytes4[](2);
-        atomistsSig2[0] = IporFusionAccessManager.enableTransferShares.selector;
-        atomistsSig2[1] = IporFusionAccessManager.convertToPublicVault.selector;
+        bytes4[] memory plasmaVaultRoles = new bytes4[](3);
+        plasmaVaultRoles[0] = IporFusionAccessManager.convertToPublicVault.selector;
+        plasmaVaultRoles[1] = IporFusionAccessManager.enableTransferShares.selector;
+        plasmaVaultRoles[2] = IporFusionAccessManager.setMinimalExecutionDelaysForRoles.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setTargetFunctionRole(address(accessManager_), atomistsSig2, Roles.ATOMIST_ROLE);
+        accessManager_.setTargetFunctionRole(address(accessManager_), plasmaVaultRoles, Roles.PLASMA_VAULT_ROLE);
 
         bytes4[] memory guardianSig = new bytes4[](1);
         guardianSig[0] = IporFusionAccessManager.updateTargetClosed.selector;
@@ -121,10 +127,10 @@ library RoleLib {
         accessManager_.setTargetFunctionRole(address(accessManager_), guardianSig, Roles.GUARDIAN_ROLE);
 
         bytes4[] memory ownerSig = new bytes4[](1);
-        ownerSig[0] = IporFusionAccessManager.setMinimalExecutionDelaysForRoles.selector;
+        ownerSig[0] = PlasmaVaultGovernance.setMinimalExecutionDelaysForRoles.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setTargetFunctionRole(address(accessManager_), ownerSig, Roles.OWNER_ROLE);
+        accessManager_.setTargetFunctionRole(plasmaVault_, ownerSig, Roles.OWNER_ROLE);
 
         bytes4[] memory publicSig = new bytes4[](5);
         publicSig[0] = PlasmaVault.deposit.selector;
