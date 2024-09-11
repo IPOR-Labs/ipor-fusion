@@ -10,7 +10,7 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
-import {UniswapSwapV3Fuse, UniswapSwapV3FuseEnterData} from "../../../contracts/fuses/uniswap/UniswapSwapV3Fuse.sol";
+import {UniswapV3SwapFuse, UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
@@ -19,7 +19,7 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
-contract UniswapSwapV3FuseTest is Test {
+contract UniswapV3SwapFuseTest is Test {
     using SafeERC20 for ERC20;
 
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -33,7 +33,7 @@ contract UniswapSwapV3FuseTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
-    UniswapSwapV3Fuse private _uniswapSwapV3Fuse;
+    UniswapV3SwapFuse private _uniswapV3SwapFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20590113);
@@ -84,7 +84,7 @@ contract UniswapSwapV3FuseTest is Test {
 
         bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
 
-        UniswapSwapV3FuseEnterData memory enterData = UniswapSwapV3FuseEnterData({
+        UniswapV3SwapFuseEnterData memory enterData = UniswapV3SwapFuseEnterData({
             tokenInAmount: depositAmount,
             path: path,
             minOutAmount: 0
@@ -92,7 +92,7 @@ contract UniswapSwapV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_uniswapSwapV3Fuse),
+            address(_uniswapV3SwapFuse),
             abi.encodeWithSignature("enter((uint256,uint256,bytes))", enterData)
         );
 
@@ -128,7 +128,7 @@ contract UniswapSwapV3FuseTest is Test {
 
         bytes memory path = abi.encodePacked(USDC, uint24(3000), DAI, uint24(3000), USDT);
 
-        UniswapSwapV3FuseEnterData memory enterData = UniswapSwapV3FuseEnterData({
+        UniswapV3SwapFuseEnterData memory enterData = UniswapV3SwapFuseEnterData({
             tokenInAmount: depositAmount,
             path: path,
             minOutAmount: 0
@@ -136,7 +136,7 @@ contract UniswapSwapV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_uniswapSwapV3Fuse),
+            address(_uniswapV3SwapFuse),
             abi.encodeWithSignature("enter((uint256,uint256,bytes))", enterData)
         );
 
@@ -172,7 +172,7 @@ contract UniswapSwapV3FuseTest is Test {
 
         bytes memory path = abi.encodePacked(USDC, uint24(3000), address(0x76543), uint24(3000), USDT);
 
-        UniswapSwapV3FuseEnterData memory enterData = UniswapSwapV3FuseEnterData({
+        UniswapV3SwapFuseEnterData memory enterData = UniswapV3SwapFuseEnterData({
             tokenInAmount: depositAmount,
             path: path,
             minOutAmount: 0
@@ -180,11 +180,11 @@ contract UniswapSwapV3FuseTest is Test {
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(_uniswapSwapV3Fuse),
+            address(_uniswapV3SwapFuse),
             abi.encodeWithSignature("enter((uint256,uint256,bytes))", enterData)
         );
 
-        bytes memory error = abi.encodeWithSignature("UniswapSwapV3FuseUnsupportedToken(address)", address(0x76543));
+        bytes memory error = abi.encodeWithSignature("UniswapV3SwapFuseUnsupportedToken(address)", address(0x76543));
 
         //when
         vm.expectRevert(error);
@@ -219,13 +219,13 @@ contract UniswapSwapV3FuseTest is Test {
     }
 
     function _getFuses() private returns (address[] memory fuses_) {
-        UniswapSwapV3Fuse uniswapSwapV3Fuse = new UniswapSwapV3Fuse(
+        UniswapV3SwapFuse uniswapV3SwapFuse = new UniswapV3SwapFuse(
             IporFusionMarkets.UNISWAP_SWAP_V3,
             _UNIVERSAL_ROUTER
         );
 
         fuses_ = new address[](1);
-        fuses_[0] = address(uniswapSwapV3Fuse);
+        fuses_[0] = address(uniswapV3SwapFuse);
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs_) {
@@ -240,10 +240,10 @@ contract UniswapSwapV3FuseTest is Test {
     }
     //
     function _setupFuses() private returns (address[] memory fuses_) {
-        _uniswapSwapV3Fuse = new UniswapSwapV3Fuse(IporFusionMarkets.UNISWAP_SWAP_V3, _UNIVERSAL_ROUTER);
+        _uniswapV3SwapFuse = new UniswapV3SwapFuse(IporFusionMarkets.UNISWAP_SWAP_V3, _UNIVERSAL_ROUTER);
 
         fuses_ = new address[](1);
-        fuses_[0] = address(_uniswapSwapV3Fuse);
+        fuses_[0] = address(_uniswapV3SwapFuse);
     }
     //
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
