@@ -11,6 +11,7 @@ import {AssetDistributionProtectionLib, MarketLimit} from "../libraries/AssetDis
 import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradeable.sol";
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
+import {IIporFusionAccessManager} from "../interfaces/IIporFusionAccessManager.sol";
 
 /// @title Plasma Vault Governance part of the Plasma Vault including Access Manager. Allows to manage the vault configuration like fuses, price oracle, fees, etc.
 abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManagedUpgradeable {
@@ -185,6 +186,21 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
 
     function setTotalSupplyCap(uint256 cap_) external override restricted {
         PlasmaVaultLib.setTotalSupplyCap(cap_);
+    }
+
+    function convertToPublicVault() external override restricted {
+        IIporFusionAccessManager(authority()).convertToPublicVault(address(this));
+    }
+
+    function enableTransferShares() external override restricted {
+        IIporFusionAccessManager(authority()).enableTransferShares(address(this));
+    }
+
+    function setMinimalExecutionDelaysForRoles(
+        uint64[] calldata rolesIds_,
+        uint256[] calldata delays_
+    ) external override restricted {
+        IIporFusionAccessManager(authority()).setMinimalExecutionDelaysForRoles(rolesIds_, delays_);
     }
 
     function _addFuse(address fuse_) internal {

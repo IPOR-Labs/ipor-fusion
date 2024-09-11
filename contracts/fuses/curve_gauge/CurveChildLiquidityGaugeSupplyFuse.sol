@@ -36,20 +36,16 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
     error CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount();
     error CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount();
 
-    uint256 public immutable MARKET_ID;
     address public immutable VERSION;
+    uint256 public immutable MARKET_ID;
 
-    constructor(uint256 marketIdInput) {
+    constructor(uint256 marketId_) {
         VERSION = address(this);
-        MARKET_ID = marketIdInput;
+        MARKET_ID = marketId_;
     }
 
     /// @dev technical method to generate ABI
     function enter(CurveChildLiquidityGaugeSupplyFuseEnterData memory data_) external {
-        _enter(data_);
-    }
-
-    function _enter(CurveChildLiquidityGaugeSupplyFuseEnterData memory data_) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.childLiquidityGauge)) {
             /// @notice substrate here refers to the staked Curve LP token (Gauge address)
             revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
@@ -67,10 +63,6 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
 
     /// @dev technical method to generate ABI
     function exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_) external {
-        _exit(data_);
-    }
-
-    function _exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.childLiquidityGauge)) {
             revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
         }
