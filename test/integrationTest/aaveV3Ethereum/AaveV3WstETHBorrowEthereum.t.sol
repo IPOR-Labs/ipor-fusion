@@ -173,14 +173,22 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
 
         FuseAction[] memory calls = new FuseAction[](2);
 
-        bytes memory enterSupplyFuseData = getEnterFuseData(depositAmount, new bytes32[](0))[0];
+        AaveV3SupplyFuseEnterData memory enterSupplyData = AaveV3SupplyFuseEnterData({
+            asset: asset,
+            amount: depositAmount,
+            userEModeCategoryId: 300
+        });
+
+        AaveV3BorrowFuseEnterData memory enterBorrowData = AaveV3BorrowFuseEnterData({
+            asset: borrowAsset,
+            amount: borrowAmount
+        });
+
         address supplyFuse = fuses[0];
         address borrowFuse = fuses[1];
 
-        calls[0] = FuseAction(supplyFuse, abi.encodeWithSignature("enter(bytes)", enterSupplyFuseData));
-
-        bytes memory enterBorrowFuseData = getEnterFuseData(borrowAmount, new bytes32[](0))[1];
-        calls[1] = FuseAction(borrowFuse, abi.encodeWithSignature("enter(bytes)", enterBorrowFuseData));
+        calls[0] = FuseAction(supplyFuse, abi.encodeWithSignature("enter((address,uint256,uint256))", enterSupplyData));
+        calls[1] = FuseAction(borrowFuse, abi.encodeWithSignature("enter((address,uint256))", enterBorrowData));
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
 
@@ -222,14 +230,22 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
 
         FuseAction[] memory calls = new FuseAction[](2);
 
-        bytes memory enterSupplyFuseData = getEnterFuseData(depositAmount, new bytes32[](0))[0];
+        AaveV3SupplyFuseEnterData memory enterSupplyData = AaveV3SupplyFuseEnterData({
+            asset: asset,
+            amount: depositAmount,
+            userEModeCategoryId: 300
+        });
+
+        AaveV3BorrowFuseEnterData memory enterBorrowData = AaveV3BorrowFuseEnterData({
+            asset: borrowAsset,
+            amount: borrowAmount
+        });
+
         address supplyFuse = fuses[0];
         address borrowFuse = fuses[1];
 
-        calls[0] = FuseAction(supplyFuse, abi.encodeWithSignature("enter(bytes)", enterSupplyFuseData));
-
-        bytes memory enterBorrowFuseData = getEnterFuseData(borrowAmount, new bytes32[](0))[1];
-        calls[1] = FuseAction(borrowFuse, abi.encodeWithSignature("enter(bytes)", enterBorrowFuseData));
+        calls[0] = FuseAction(supplyFuse, abi.encodeWithSignature("enter((address,uint256,uint256))", enterSupplyData));
+        calls[1] = FuseAction(borrowFuse, abi.encodeWithSignature("enter((address,uint256))", enterBorrowData));
 
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
 
@@ -262,32 +278,36 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
 
         FuseAction[] memory calls = new FuseAction[](2);
 
-        bytes memory enterSupplyFuseData = getEnterFuseData(depositAmount, new bytes32[](0))[0];
+        AaveV3SupplyFuseEnterData memory enterSupplyData = AaveV3SupplyFuseEnterData({
+            asset: asset,
+            amount: depositAmount,
+            userEModeCategoryId: 300
+        });
 
-        calls[0] = FuseAction(
-            fuses[0], /// @dev supply fuse
-            abi.encodeWithSignature("enter(bytes)", enterSupplyFuseData)
-        );
+        AaveV3BorrowFuseEnterData memory enterBorrowData = AaveV3BorrowFuseEnterData({
+            asset: borrowAsset,
+            amount: borrowAmount
+        });
 
-        bytes memory enterBorrowFuseData = getEnterFuseData(borrowAmount, new bytes32[](0))[1];
+        address supplyFuse = fuses[0];
+        address borrowFuse = fuses[1];
 
-        calls[1] = FuseAction(
-            fuses[1], /// @dev borrow fuse
-            abi.encodeWithSignature("enter(bytes)", enterBorrowFuseData)
-        );
+        calls[0] = FuseAction(supplyFuse, abi.encodeWithSignature("enter((address,uint256,uint256))", enterSupplyData));
+        calls[1] = FuseAction(borrowFuse, abi.encodeWithSignature("enter((address,uint256))", enterBorrowData));
 
         vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(calls);
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
 
-        bytes[] memory exitBorrowFuseData;
-
-        (, exitBorrowFuseData) = getExitFuseData(borrowAmount, new bytes32[](0));
+        AaveV3BorrowFuseExitData memory exitBorrowData = AaveV3BorrowFuseExitData({
+            asset: borrowAsset,
+            amount: borrowAmount
+        });
 
         exitCalls[0] = FuseAction(
             fuses[1], /// @dev borrow fuse
-            abi.encodeWithSignature("exit(bytes)", exitBorrowFuseData[1])
+            abi.encodeWithSignature("exit((address,uint256))", exitBorrowData)
         );
 
         //when
