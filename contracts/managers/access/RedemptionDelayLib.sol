@@ -34,4 +34,6 @@ library RedemptionDelayLib {
             IporFusionAccessManagersStorageLib.setRedemptionLocks(account_);
         }
     }
+
+    function
 }

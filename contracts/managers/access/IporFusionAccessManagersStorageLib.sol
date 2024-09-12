@@ -78,4 +78,5 @@ library IporFusionAccessManagersStorageLib {
         redemptionLocks.redemptionLock[account_] = redemptionLock;
         emit RedemptionDelayForAccountUpdated(account_, redemptionLock);
     }
+
 }
