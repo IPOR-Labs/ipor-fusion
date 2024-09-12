@@ -73,20 +73,4 @@ interface IChildLiquidityGauge {
      * @return address Address of the reward token
      */
     function reward_tokens(uint256 _index) external view returns (address);
-
-    /**
-     * @notice Get the reward data for a token
-     * @param token Address of the reward token
-     * @return distributor Address of the distributor
-     * @return period_finish Timestamp of the period finish
-     * @return rate Reward rate
-     * @return last_update Last update timestamp
-     * @return integral Integral
-     */
-    function reward_data(
-        address token
-    )
-        external
-        view
-        returns (address distributor, uint256 period_finish, uint256 rate, uint256 last_update, uint256 integral);
 }
