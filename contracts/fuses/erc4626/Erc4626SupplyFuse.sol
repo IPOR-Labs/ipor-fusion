@@ -87,22 +87,22 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
             revert Erc4626SupplyFuseUnsupportedVault("enter", data_.vault);
         }
 
-        address underlineAsset = IERC4626(data_.vault).asset();
+        address underlyingAsset = IERC4626(data_.vault).asset();
 
         uint256 finalVaultAssetAmount = IporMath.min(
             data_.vaultAssetAmount,
-            IERC4626(underlineAsset).balanceOf(address(this))
+            IERC4626(underlyingAsset).balanceOf(address(this))
         );
 
         if (finalVaultAssetAmount == 0) {
             return;
         }
 
-        ERC20(underlineAsset).forceApprove(data_.vault, finalVaultAssetAmount);
+        ERC20(underlyingAsset).forceApprove(data_.vault, finalVaultAssetAmount);
 
         IERC4626(data_.vault).deposit(finalVaultAssetAmount, address(this));
 
-        emit Erc4626SupplyEnterFuse(VERSION, underlineAsset, data_.vault, finalVaultAssetAmount);
+        emit Erc4626SupplyEnterFuse(VERSION, underlyingAsset, data_.vault, finalVaultAssetAmount);
     }
 
     function _exit(Erc4626SupplyFuseExitData memory data_) internal {
