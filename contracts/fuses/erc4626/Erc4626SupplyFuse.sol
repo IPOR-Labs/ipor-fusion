@@ -56,7 +56,6 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
         _enter(data);
     }
 
-    /// @dev technical method to generate ABI
     function enter(Erc4626SupplyFuseEnterData memory data_) external {
         _enter(data_);
     }
@@ -66,7 +65,6 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
         _exit(data);
     }
 
-    /// @dev technical method to generate ABI
     function exit(Erc4626SupplyFuseExitData calldata data_) external {
         _exit(data_);
     }

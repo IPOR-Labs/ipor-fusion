@@ -5,6 +5,8 @@ import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigL
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/spark/SparkSupplyFuse.sol";
+import {MorphoBlueSupplyFuseEnterData, MorphoBlueSupplyFuseExitData} from "../../contracts/fuses/morpho_blue/MorphoBlueSupplyFuse.sol";
 
 contract PlasmaVaultMock {
     using Address for address;
@@ -15,6 +17,22 @@ contract PlasmaVaultMock {
     constructor(address fuse_, address balanceFuse_) {
         fuse = fuse_;
         balanceFuse = balanceFuse_;
+    }
+
+    function enterSparkSupply(SparkSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256))", data));
+    }
+
+    function exitSparkSupply(SparkSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((uint256))", data));
+    }
+
+    function enterMorphoSupply(MorphoBlueSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((bytes32,uint256))", data));
+    }
+
+    function exitMorphoSupply(MorphoBlueSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((bytes32,uint256))", data));
     }
 
     //solhint-disable-next-line

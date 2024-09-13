@@ -81,6 +81,10 @@ contract CompoundV2SupplyFuse is IFuse {
         uint256 balance = cToken.balanceOfUnderlying(address(this));
         uint256 amountToWithdraw = data_.amount > balance ? balance : data_.amount;
 
+        if (amountToWithdraw == 0) {
+            return;
+        }
+
         cToken.redeemUnderlying(amountToWithdraw);
 
         emit CompoundV2SupplyExitFuse(VERSION, data_.asset, address(cToken), amountToWithdraw);

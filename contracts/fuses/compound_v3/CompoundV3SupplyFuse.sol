@@ -51,7 +51,6 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
         _enter(abi.decode(data_, (CompoundV3SupplyFuseEnterData)));
     }
 
-    /// @dev technical method to generate ABI
     function enter(CompoundV3SupplyFuseEnterData memory data_) external {
         _enter(data_);
     }
@@ -60,7 +59,6 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
         _exit(abi.decode(data_, (CompoundV3SupplyFuseExitData)));
     }
 
-    /// @dev technical method to generate ABI
     function exit(CompoundV3SupplyFuseExitData calldata data_) external {
         _exit(data_);
     }
@@ -99,7 +97,13 @@ contract CompoundV3SupplyFuse is IFuse, IFuseInstantWithdraw {
             revert CompoundV3SupplyFuseUnsupportedAsset("exit", data_.asset);
         }
 
-        COMET.withdraw(data_.asset, IporMath.min(data_.amount, _getBalance(data_.asset)));
+        uint256 finalAmount = IporMath.min(data_.amount, _getBalance(data_.asset));
+
+        if (finalAmount == 0) {
+            return;
+        }
+
+        COMET.withdraw(data_.asset, finalAmount);
 
         emit CompoundV3SupplyExitFuse(VERSION, data_.asset, address(COMET), data_.amount);
     }

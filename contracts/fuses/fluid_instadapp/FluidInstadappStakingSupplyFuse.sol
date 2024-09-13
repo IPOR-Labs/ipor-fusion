@@ -80,6 +80,7 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
         );
         exit(data);
     }
+
     /// @notice Exits from the Market
     function exit(FluidInstadappStakingSupplyFuseExitData memory data_) public {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.stakingPool)) {

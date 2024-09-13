@@ -72,7 +72,6 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
         _exit(abi.decode(data_, (AaveV3SupplyFuseExitData)));
     }
 
-    /// @dev technical method to generate ABI
     function exit(AaveV3SupplyFuseExitData calldata data_) external {
         _exit(data_);
     }
@@ -119,13 +118,13 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
             data.asset
         );
 
-        try
-            AAVE_POOL.withdraw(
-                data.asset,
-                IporMath.min(ERC20(aTokenAddress).balanceOf(address(this)), data.amount),
-                address(this)
-            )
-        returns (uint256 withdrawnAmount) {
+        uint256 finalAmount = IporMath.min(ERC20(aTokenAddress).balanceOf(address(this)), data.amount);
+
+        if (finalAmount == 0) {
+            return;
+        }
+
+        try AAVE_POOL.withdraw(data.asset, finalAmount, address(this)) returns (uint256 withdrawnAmount) {
             emit AaveV3SupplyExitFuse(VERSION, data.asset, withdrawnAmount);
         } catch {
             /// @dev if withdraw failed, continue with the next step

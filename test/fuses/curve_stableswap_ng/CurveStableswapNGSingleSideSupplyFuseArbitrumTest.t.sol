@@ -129,15 +129,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         calls[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        amount: amounts[1],
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    amount: amounts[1],
+                    minMintAmount: 0
+                })
             )
         );
 
@@ -218,15 +216,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         calls[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: curvePool,
-                        asset: USDM,
-                        amount: amount,
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: curvePool,
+                    asset: USDM,
+                    amount: amount,
+                    minMintAmount: 0
+                })
             )
         );
 
@@ -285,15 +281,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         calls[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: DAI,
-                        amount: amount,
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: DAI,
+                    amount: amount,
+                    minMintAmount: 0
+                })
             )
         );
 
@@ -354,15 +348,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         calls[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        amount: amounts[1],
-                        minMintAmount: CURVE_STABLESWAP_NG.calc_token_amount(amounts, true) + 1
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    amount: amounts[1],
+                    minMintAmount: CURVE_STABLESWAP_NG.calc_token_amount(amounts, true) + 1
+                })
             )
         );
 
@@ -385,7 +377,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         assertEq(afterState.vaultLpTokensBalance, 0);
     }
 
-    function testShouldRevertWhenEnterWithAllZeroAmounts() external {
+    function testNotShouldRevertWhenEnterWithAllZeroAmounts() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
@@ -421,19 +413,15 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         calls[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        amount: amount,
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    amount: amount,
+                    minMintAmount: 0
+                })
             )
         );
-
-        bytes memory error = abi.encodeWithSignature("CurveStableswapNGSingleSideSupplyFuseZeroAmount()");
 
         vm.startPrank(depositor);
         ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
@@ -444,7 +432,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.startPrank(alpha);
-        vm.expectRevert(error);
         plasmaVault.execute(calls);
         vm.stopPrank();
 
@@ -494,15 +481,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         callsEnter[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        amount: amounts[1],
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    amount: amounts[1],
+                    minMintAmount: 0
+                })
             )
         );
 
@@ -531,15 +516,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         callsExit[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseExitData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        burnAmount: beforeExitState.vaultLpTokensBalance,
-                        minReceived: 0
-                    })
-                )
+                "exit((address,uint256,address,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseExitData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    burnAmount: beforeExitState.vaultLpTokensBalance,
+                    minReceived: 0
+                })
             )
         );
 
@@ -604,15 +587,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         callsEnter[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        amount: amount,
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    amount: amount,
+                    minMintAmount: 0
+                })
             )
         );
 
@@ -644,15 +625,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         callsExit[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseExitData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: DAI,
-                        burnAmount: afterEnterState.vaultLpTokensBalance,
-                        minReceived: 0
-                    })
-                )
+                "exit((address,uint256,address,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseExitData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: DAI,
+                    burnAmount: afterEnterState.vaultLpTokensBalance,
+                    minReceived: 0
+                })
             )
         );
 
@@ -708,15 +687,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         callsEnter[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        amount: amount,
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    amount: amount,
+                    minMintAmount: 0
+                })
             )
         );
 
@@ -735,15 +712,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         callsExit[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseExitData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        burnAmount: afterEnterState.vaultLpTokensBalance + 1,
-                        minReceived: 0
-                    })
-                )
+                "exit((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseExitData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    burnAmount: afterEnterState.vaultLpTokensBalance + 1,
+                    minReceived: 0
+                })
             )
         );
 
@@ -799,15 +774,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         calls[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        amount: amount,
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    amount: amount,
+                    minMintAmount: 0
+                })
             )
         );
 
@@ -826,18 +799,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         callsExit[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseExitData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        burnAmount: afterEnterState.vaultLpTokensBalance,
-                        minReceived: CURVE_STABLESWAP_NG.calc_withdraw_one_coin(
-                            afterEnterState.vaultLpTokensBalance,
-                            1
-                        ) + 1
-                    })
-                )
+                "exit((address,uint256,address,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseExitData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    burnAmount: afterEnterState.vaultLpTokensBalance,
+                    minReceived: CURVE_STABLESWAP_NG.calc_withdraw_one_coin(afterEnterState.vaultLpTokensBalance, 1) + 1
+                })
             )
         );
 
@@ -857,7 +825,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         );
     }
 
-    function testShouldRevertWhenBurnAmountIsZero() external {
+    function testNotShouldRevertWhenBurnAmountIsZero() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
@@ -893,15 +861,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         calls[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        amount: amount,
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    amount: amount,
+                    minMintAmount: 0
+                })
             )
         );
 
@@ -914,29 +880,24 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         plasmaVault.execute(calls);
         vm.stopPrank();
 
-        bytes memory error = abi.encodeWithSignature("CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount()");
-
         PlasmaVaultState memory afterEnterState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
         FuseAction[] memory callsExit = new FuseAction[](1);
         callsExit[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseExitData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: USDM,
-                        burnAmount: 0,
-                        minReceived: 0
-                    })
-                )
+                "exit((address,uint256,address,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseExitData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    burnAmount: 0,
+                    minReceived: 0
+                })
             )
         );
 
         // when
         vm.startPrank(alpha);
-        vm.expectRevert(error);
         plasmaVault.execute(callsExit);
         vm.stopPrank();
 

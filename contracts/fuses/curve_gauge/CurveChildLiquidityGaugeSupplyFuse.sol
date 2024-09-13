@@ -29,12 +29,9 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
     event CurveChildLiquidityGaugeSupplyFuseEnter(address version, address childLiquidityGauge, uint256 amount);
-
     event CurveChildLiquidityGaugeSupplyFuseExit(address version, address childLiquidityGauge, uint256 amount);
 
     error CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address childLiquidityGauge);
-    error CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount();
-    error CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount();
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -44,36 +41,44 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    /// @dev technical method to generate ABI
     function enter(CurveChildLiquidityGaugeSupplyFuseEnterData memory data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.childLiquidityGauge)) {
             /// @notice substrate here refers to the staked Curve LP token (Gauge address)
             revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
         }
+
         if (data_.lpTokenAmount == 0) {
-            revert CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount();
+            return;
         }
+
         address lpToken = IChildLiquidityGauge(data_.childLiquidityGauge).lp_token();
         uint256 balanceOfPlasmaVault = IERC20(lpToken).balanceOf(address(this));
         uint256 depositAmount = data_.lpTokenAmount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.lpTokenAmount;
+
         IERC20(lpToken).forceApprove(data_.childLiquidityGauge, depositAmount);
         IChildLiquidityGauge(data_.childLiquidityGauge).deposit(depositAmount, address(this), false);
+
         emit CurveChildLiquidityGaugeSupplyFuseEnter(VERSION, data_.childLiquidityGauge, depositAmount);
     }
 
-    /// @dev technical method to generate ABI
     function exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.childLiquidityGauge)) {
             revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
         }
+
         if (data_.lpTokenAmount == 0) {
-            revert CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount();
+            return;
         }
+
         uint256 balanceOfPlasmaVault = IERC20(data_.childLiquidityGauge).balanceOf(address(this));
-        uint256 withdrawAmount = data_.lpTokenAmount > balanceOfPlasmaVault
-            ? balanceOfPlasmaVault
-            : data_.lpTokenAmount;
-        IChildLiquidityGauge(data_.childLiquidityGauge).withdraw(withdrawAmount, address(this), false);
-        emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data_.childLiquidityGauge, withdrawAmount);
+
+        uint256 finalAmount = data_.lpTokenAmount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.lpTokenAmount;
+
+        if (finalAmount == 0) {
+            return;
+        }
+
+        IChildLiquidityGauge(data_.childLiquidityGauge).withdraw(finalAmount, address(this), false);
+        emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data_.childLiquidityGauge, finalAmount);
     }
 }

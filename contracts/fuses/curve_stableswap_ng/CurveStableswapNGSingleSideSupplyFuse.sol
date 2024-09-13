@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 struct CurveStableswapNGSingleSideSupplyFuseEnterData {
@@ -31,7 +31,7 @@ struct CurveStableswapNGSingleSideSupplyFuseExitData {
 }
 
 /// @title Fuse for Curve Stableswap NG protocol responsible for supplying and withdrawing assets from the Curve Stableswap NG protocol based on preconfigured market substrates
-contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
+contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
@@ -56,36 +56,28 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
 
     error CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address poolAddress);
     error CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address asset);
-    error CurveStableswapNGSingleSideSupplyFuseAllZeroAmounts();
-    error CurveStableswapNGSingleSideSupplyFuseZeroAmount();
-    error CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
 
     constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
-    function enter(bytes calldata data_) external override {
-        _enter(abi.decode(data_, (CurveStableswapNGSingleSideSupplyFuseEnterData)));
-    }
-
-    /// @dev technical method to generate ABI
     function enter(CurveStableswapNGSingleSideSupplyFuseEnterData memory data_) external {
-        _enter(data_);
-    }
-
-    function _enter(CurveStableswapNGSingleSideSupplyFuseEnterData memory data_) internal {
         ICurveStableswapNG curvePool = ICurveStableswapNG(data_.curveStableswapNG);
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(curvePool))) {
             /// @notice substrateAsAsset here refers to the Curve pool LP token, not the underlying asset of the Plasma Vault
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address(curvePool));
         }
+
+        if (data_.amount == 0) {
+            return;
+        }
+
         uint256 nCoins = curvePool.N_COINS();
         uint256[] memory amounts = new uint256[](nCoins);
         bool supportedPoolAsset = false;
-        if (data_.amount == 0) {
-            revert CurveStableswapNGSingleSideSupplyFuseZeroAmount();
-        }
+
         for (uint256 i; i < nCoins; ++i) {
             if (curvePool.coins(i) == data_.asset) {
                 supportedPoolAsset = true;
@@ -93,10 +85,13 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
                 ERC20(data_.asset).forceApprove(address(curvePool), data_.amount);
             }
         }
+
         if (!supportedPoolAsset) {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data_.asset);
         }
+
         curvePool.add_liquidity(amounts, data_.minMintAmount, address(this));
+
         emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
             VERSION,
             address(curvePool),
@@ -106,27 +101,22 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
         );
     }
 
-    function exit(bytes calldata data_) external override {
-        _exit(abi.decode(data_, (CurveStableswapNGSingleSideSupplyFuseExitData)));
-    }
-
-    /// @dev technical method to generate ABI
     function exit(CurveStableswapNGSingleSideSupplyFuseExitData calldata data_) external {
-        _exit(data_);
-    }
-
-    function _exit(CurveStableswapNGSingleSideSupplyFuseExitData memory data_) internal {
         ICurveStableswapNG curvePool = ICurveStableswapNG(data_.curveStableswapNG);
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(curvePool))) {
             /// @notice substrateAsAsset here refers to the Curve pool LP token, not the underlying asset of the Plasma Vault
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address(curvePool));
         }
+
         if (data_.burnAmount == 0) {
-            revert CurveStableswapNGSingleSideSupplyFuseZeroBurnAmount();
+            return;
         }
+
         uint256 nCoins = curvePool.N_COINS();
         bool supportedPoolAsset = false;
         int128 index;
+
         for (uint256 i; i < nCoins; ++i) {
             if (curvePool.coins(i) == data_.asset) {
                 index = int128(int256(i));
@@ -134,10 +124,13 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuse {
                 break;
             }
         }
+
         if (!supportedPoolAsset) {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data_.asset);
         }
+
         curvePool.remove_liquidity_one_coin(data_.burnAmount, index, data_.minReceived, address(this));
+
         emit CurveSupplyStableswapNGSingleSideSupplyExitFuse(
             VERSION,
             address(curvePool),

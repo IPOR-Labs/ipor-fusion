@@ -97,6 +97,10 @@ contract AaveV2SupplyFuse is IFuse {
             amountToWithdraw = aTokenBalance;
         }
 
+        if (amountToWithdraw == 0) {
+            return;
+        }
+
         emit AaveV2SupplyExitFuse(
             VERSION,
             data_.asset,

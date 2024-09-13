@@ -26,6 +26,7 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = assetsRaw.length;
+
         if (len == 0) {
             return 0;
         }
