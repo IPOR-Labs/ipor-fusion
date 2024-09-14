@@ -6,7 +6,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {AaveLendingPoolV2, ReserveData} from "./ext/AaveLendingPoolV2.sol";
 import {AaveConstantsEthereum} from "./AaveConstantsEthereum.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
+import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 /// @dev Struct for entering with supply to the Aave V2 protocol
@@ -26,7 +27,7 @@ struct AaveV2SupplyFuseExitData {
 }
 
 /// @dev Fuse for Aave V2 protocol responsible for supplying and withdrawing assets from the Aave V2 protocol
-contract AaveV2SupplyFuse is IFuse {
+contract AaveV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
@@ -35,8 +36,9 @@ contract AaveV2SupplyFuse is IFuse {
 
     AaveLendingPoolV2 public immutable AAVE_POOL;
 
-    event AaveV2SupplyEnterFuse(address version, address asset, uint256 amount);
-    event AaveV2SupplyExitFuse(address version, address asset, uint256 amount);
+    event AaveV2SupplyFuseEnter(address version, address asset, uint256 amount);
+    event AaveV2SupplyFuseExit(address version, address asset, uint256 amount);
+    event AaveV2SupplyFuseExitFailed(address version, address asset, uint256 amount);
 
     error AaveV2SupplyFuseUnsupportedAsset(address asset);
 
@@ -46,23 +48,7 @@ contract AaveV2SupplyFuse is IFuse {
         AAVE_POOL = AaveLendingPoolV2(aavePool_);
     }
 
-    function enter(bytes calldata data_) external {
-        _enter(abi.decode(data_, (AaveV2SupplyFuseEnterData)));
-    }
-
     function enter(AaveV2SupplyFuseEnterData memory data_) external {
-        _enter(data_);
-    }
-
-    function exit(bytes calldata data_) external {
-        _exit(abi.decode(data_, (AaveV2SupplyFuseExitData)));
-    }
-
-    function exit(AaveV2SupplyFuseExitData calldata data_) external {
-        _exit(data_);
-    }
-
-    function _enter(AaveV2SupplyFuseEnterData memory data_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -75,7 +61,20 @@ contract AaveV2SupplyFuse is IFuse {
 
         AAVE_POOL.deposit(data_.asset, data_.amount, address(this), 0);
 
-        emit AaveV2SupplyEnterFuse(VERSION, data_.asset, data_.amount);
+        emit AaveV2SupplyFuseEnter(VERSION, data_.asset, data_.amount);
+    }
+
+    function exit(AaveV2SupplyFuseExitData calldata data_) external {
+        _exit(data_);
+    }
+
+    /// @dev params[0] - amount in underlying asset, params[1] - asset address
+    function instantWithdraw(bytes32[] calldata params_) external override {
+        uint256 amount = uint256(params_[0]);
+
+        address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
+
+        _exit(AaveV2SupplyFuseExitData(asset, amount));
     }
 
     function _exit(AaveV2SupplyFuseExitData memory data_) internal {
@@ -101,10 +100,11 @@ contract AaveV2SupplyFuse is IFuse {
             return;
         }
 
-        emit AaveV2SupplyExitFuse(
-            VERSION,
-            data_.asset,
-            AAVE_POOL.withdraw(data_.asset, amountToWithdraw, address(this))
-        );
+        try AAVE_POOL.withdraw(data_.asset, amountToWithdraw, address(this)) returns (uint256 withdrawnAmount) {
+            emit AaveV2SupplyFuseExit(VERSION, data_.asset, withdrawnAmount);
+        } catch {
+            /// @dev if withdraw failed, continue with the next step
+            emit AaveV2SupplyFuseExitFailed(VERSION, data_.asset, data_.amount);
+        }
     }
 }

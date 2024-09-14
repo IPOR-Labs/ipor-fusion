@@ -38,7 +38,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
-    event CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+    event CurveSupplyStableswapNGSingleSideSupplyFuseEnter(
         address version,
         address curvePool,
         address asset,
@@ -46,7 +46,15 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
         uint256 minMintAmount
     );
 
-    event CurveSupplyStableswapNGSingleSideSupplyExitFuse(
+    event CurveSupplyStableswapNGSingleSideSupplyFuseExit(
+        address version,
+        address curvePool,
+        uint256 burnAmount,
+        address asset,
+        uint256 minReceived
+    );
+
+    event CurveSupplyStableswapNGSingleSideSupplyFuseExitFailed(
         address version,
         address curvePool,
         uint256 burnAmount,
@@ -92,7 +100,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
 
         curvePool.add_liquidity(amounts, data_.minMintAmount, address(this));
 
-        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+        emit CurveSupplyStableswapNGSingleSideSupplyFuseEnter(
             VERSION,
             address(curvePool),
             data_.asset,
@@ -129,14 +137,26 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data_.asset);
         }
 
-        curvePool.remove_liquidity_one_coin(data_.burnAmount, index, data_.minReceived, address(this));
-
-        emit CurveSupplyStableswapNGSingleSideSupplyExitFuse(
-            VERSION,
-            address(curvePool),
-            data_.burnAmount,
-            data_.asset,
-            data_.minReceived
-        );
+        /// TODO: returns
+        try curvePool.remove_liquidity_one_coin(data_.burnAmount, index, data_.minReceived, address(this)) returns (
+            uint256 withdrawnAmount
+        ) {
+            emit CurveSupplyStableswapNGSingleSideSupplyFuseExit(
+                VERSION,
+                address(curvePool),
+                data_.burnAmount,
+                data_.asset,
+                data_.minReceived
+            );
+        } catch {
+            /// @dev if withdraw failed, continue with the next step
+            emit CurveSupplyStableswapNGSingleSideSupplyFuseExitFailed(
+                VERSION,
+                address(curvePool),
+                data_.burnAmount,
+                data_.asset,
+                data_.minReceived
+            );
+        }
     }
 }

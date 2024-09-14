@@ -30,6 +30,7 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
 
     event CurveChildLiquidityGaugeSupplyFuseEnter(address version, address childLiquidityGauge, uint256 amount);
     event CurveChildLiquidityGaugeSupplyFuseExit(address version, address childLiquidityGauge, uint256 amount);
+    event CurveChildLiquidityGaugeSupplyFuseExitFailed(address version, address childLiquidityGauge, uint256 amount);
 
     error CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address childLiquidityGauge);
 
@@ -78,7 +79,11 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
             return;
         }
 
-        IChildLiquidityGauge(data_.childLiquidityGauge).withdraw(finalAmount, address(this), false);
-        emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data_.childLiquidityGauge, finalAmount);
+        try IChildLiquidityGauge(data_.childLiquidityGauge).withdraw(finalAmount, address(this), false) {
+            emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data_.childLiquidityGauge, finalAmount);
+        } catch {
+            /// @dev if withdraw failed, continue with the next step
+            emit CurveChildLiquidityGaugeSupplyFuseExitFailed(VERSION, data_.childLiquidityGauge, finalAmount);
+        }
     }
 }

@@ -158,16 +158,16 @@ contract PlasmaVaultFeeTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount})
             )
         );
 
@@ -178,14 +178,14 @@ contract PlasmaVaultFeeTest is Test {
 
         callsSecond[0] = FuseAction(
             address(supplyFuseAaveV3),
-            abi.encodeWithSignature("exit(bytes)", abi.encode(AaveV3SupplyFuseExitData({asset: USDC, amount: amount})))
+            abi.encodeWithSignature("exit((address,uint256))", AaveV3SupplyFuseExitData({asset: USDC, amount: amount}))
         );
 
         callsSecond[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(CompoundV3SupplyFuseExitData({asset: USDC, amount: amount}))
+                "exit((address,uint256))",
+                CompoundV3SupplyFuseExitData({asset: USDC, amount: amount})
             )
         );
 
@@ -293,16 +293,16 @@ contract PlasmaVaultFeeTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount})
             )
         );
 
@@ -313,14 +313,14 @@ contract PlasmaVaultFeeTest is Test {
 
         callsSecond[0] = FuseAction(
             address(supplyFuseAaveV3),
-            abi.encodeWithSignature("exit(bytes)", abi.encode(AaveV3SupplyFuseExitData({asset: USDC, amount: amount})))
+            abi.encodeWithSignature("exit((address,uint256))", AaveV3SupplyFuseExitData({asset: USDC, amount: amount}))
         );
 
         callsSecond[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "exit(bytes)",
-                abi.encode(CompoundV3SupplyFuseExitData({asset: USDC, amount: amount}))
+                "exit((address,uint256))",
+                CompoundV3SupplyFuseExitData({asset: USDC, amount: amount})
             )
         );
 
@@ -423,16 +423,16 @@ contract PlasmaVaultFeeTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6})
             )
         );
 
@@ -564,16 +564,16 @@ contract PlasmaVaultFeeTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6})
             )
         );
 
@@ -705,16 +705,16 @@ contract PlasmaVaultFeeTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6})
             )
         );
 
@@ -847,16 +847,16 @@ contract PlasmaVaultFeeTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6})
             )
         );
 
@@ -986,8 +986,8 @@ contract PlasmaVaultFeeTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6})
             )
         );
 
@@ -1108,8 +1108,8 @@ contract PlasmaVaultFeeTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6})
             )
         );
 
@@ -1637,8 +1637,8 @@ contract PlasmaVaultFeeTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6})
             )
         );
 

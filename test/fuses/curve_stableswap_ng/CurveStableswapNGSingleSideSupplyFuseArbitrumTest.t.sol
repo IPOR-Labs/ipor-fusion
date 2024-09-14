@@ -55,7 +55,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
     PriceOracleMiddleware private priceOracleMiddlewareProxy;
 
-    event CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+    event CurveSupplyStableswapNGSingleSideSupplyFuseEnter(
         address version,
         address curvePool,
         address asset,
@@ -63,7 +63,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 minMintAmount
     );
 
-    event CurveSupplyStableswapNGSingleSideSupplyExitFuse(
+    event CurveSupplyStableswapNGSingleSideSupplyFuseExit(
         address version,
         address curvePool,
         uint256 burnAmount,
@@ -149,7 +149,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 expectedLpTokenAmount = CURVE_STABLESWAP_NG.calc_token_amount(amounts, true);
 
         vm.expectEmit(true, true, true, true);
-        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+        emit CurveSupplyStableswapNGSingleSideSupplyFuseEnter(
             address(fuse),
             address(CURVE_STABLESWAP_NG),
             USDM,
@@ -500,7 +500,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         vm.startPrank(alpha);
         vm.expectEmit(true, true, true, true);
-        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+        emit CurveSupplyStableswapNGSingleSideSupplyFuseEnter(
             address(fuse),
             address(CURVE_STABLESWAP_NG),
             USDM,
@@ -527,7 +527,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         );
 
         vm.expectEmit(true, true, true, true);
-        emit CurveSupplyStableswapNGSingleSideSupplyExitFuse(
+        emit CurveSupplyStableswapNGSingleSideSupplyFuseExit(
             address(fuse),
             address(CURVE_STABLESWAP_NG),
             beforeExitState.vaultLpTokensBalance,
@@ -604,7 +604,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         vm.startPrank(alpha);
         vm.expectEmit(true, true, true, true);
-        emit CurveSupplyStableswapNGSingleSideSupplyEnterFuse(
+        emit CurveSupplyStableswapNGSingleSideSupplyFuseEnter(
             address(fuse),
             address(CURVE_STABLESWAP_NG),
             USDM,
@@ -738,7 +738,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         );
     }
 
-    function testShouldRevertWhenMinReceivedIsNotMet() external {
+    function testShouldNOTRevertWhenMinReceivedIsNotMetAndDoExit() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
@@ -811,7 +811,6 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.startPrank(alpha);
-        vm.expectRevert("Not enough coins removed");
         plasmaVault.execute(callsExit);
         vm.stopPrank();
 

@@ -43,8 +43,9 @@ contract MorphoBlueSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
 
-    event MorphoBlueSupplyEnterFuse(address version, address asset, bytes32 market, uint256 amount);
-    event MorphoBlueSupplyExitFuse(address version, address asset, bytes32 market, uint256 amount);
+    event MorphoBlueSupplyFuseEnter(address version, address asset, bytes32 market, uint256 amount);
+    event MorphoBlueSupplyFuseExit(address version, address asset, bytes32 market, uint256 amount);
+    event MorphoBlueSupplyFuseExitFailed(address version, address asset, bytes32 market);
 
     error MorphoBlueSupplyFuseUnsupportedMarket(string action, bytes32 morphoBlueMarketId);
 
@@ -71,7 +72,7 @@ contract MorphoBlueSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         (uint256 assetsSupplied, ) = MORPHO.supply(marketParams, data_.amount, 0, address(this), bytes(""));
 
-        emit MorphoBlueSupplyEnterFuse(VERSION, marketParams.loanToken, data_.morphoBlueMarketId, assetsSupplied);
+        emit MorphoBlueSupplyFuseEnter(VERSION, marketParams.loanToken, data_.morphoBlueMarketId, assetsSupplied);
     }
 
     function exit(MorphoBlueSupplyFuseExitData calldata data_) external {
@@ -116,20 +117,36 @@ contract MorphoBlueSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        uint256 assetsWithdrawn;
-        uint256 sharesWithdrawn;
-
         if (data_.amount >= assetsMax) {
-            (assetsWithdrawn, sharesWithdrawn) = MORPHO.withdraw(marketParams, 0, shares, address(this), address(this));
+            try MORPHO.withdraw(marketParams, 0, shares, address(this), address(this)) returns (
+                uint256 assetsWithdrawn,
+                uint256 sharesWithdrawn
+            ) {
+                emit MorphoBlueSupplyFuseExit(
+                    VERSION,
+                    marketParams.loanToken,
+                    data_.morphoBlueMarketId,
+                    assetsWithdrawn
+                );
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit MorphoBlueSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoBlueMarketId);
+            }
         } else {
-            (assetsWithdrawn, sharesWithdrawn) = MORPHO.withdraw(
-                marketParams,
-                data_.amount,
-                0,
-                address(this),
-                address(this)
-            );
+            try MORPHO.withdraw(marketParams, data_.amount, 0, address(this), address(this)) returns (
+                uint256 assetsWithdrawn,
+                uint256 sharesWithdrawn
+            ) {
+                emit MorphoBlueSupplyFuseExit(
+                    VERSION,
+                    marketParams.loanToken,
+                    data_.morphoBlueMarketId,
+                    assetsWithdrawn
+                );
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit MorphoBlueSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoBlueMarketId);
+            }
         }
-        emit MorphoBlueSupplyExitFuse(VERSION, marketParams.loanToken, data_.morphoBlueMarketId, assetsWithdrawn);
     }
 }

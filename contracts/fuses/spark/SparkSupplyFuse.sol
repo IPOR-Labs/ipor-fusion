@@ -30,8 +30,9 @@ contract SparkSupplyFuse is IFuseCommon {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
-    event SparkSupplyEnterFuse(address version, uint256 amount);
-    event SparkSupplyExitFuse(address version, uint256 amount);
+    event SparkSupplyFuseEnter(address version, uint256 amount);
+    event SparkSupplyFuseExit(address version, uint256 amount);
+    event SparkSupplyFuseExitFailed(address version, uint256 amount);
 
     constructor(uint256 marketIdInput) {
         VERSION = address(this);
@@ -45,14 +46,16 @@ contract SparkSupplyFuse is IFuseCommon {
         ERC20(DAI).forceApprove(SDAI, data.amount);
         ISavingsDai(SDAI).deposit(data.amount, address(this));
 
-        emit SparkSupplyEnterFuse(VERSION, data.amount);
+        emit SparkSupplyFuseEnter(VERSION, data.amount);
     }
 
     function exit(SparkSupplyFuseExitData calldata data) external {
         if (data.amount == 0) {
             return;
         }
+
         ISavingsDai(SDAI).withdraw(data.amount, address(this), address(this));
-        emit SparkSupplyExitFuse(VERSION, data.amount);
+
+        emit SparkSupplyFuseExit(VERSION, data.amount);
     }
 }

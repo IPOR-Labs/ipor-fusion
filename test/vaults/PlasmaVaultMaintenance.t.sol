@@ -820,16 +820,16 @@ contract PlasmaVaultMaintenanceTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e18}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e18})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount})
             )
         );
 
@@ -989,8 +989,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         calls[0] = FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
             )
         );
 
@@ -1072,8 +1072,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         calls[0] = FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
             )
         );
 
