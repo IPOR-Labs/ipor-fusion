@@ -14,20 +14,20 @@ struct CurveStableswapNGSingleSideSupplyFuseEnterData {
     /// @notice asset to deposit
     address asset;
     /// @notice Amount of the asset to deposit
-    uint256 amount;
+    uint256 assetAmount;
     /// @notice Minimum amount of LP tokens to mint from the deposit
-    uint256 minMintAmount;
+    uint256 minLpTokenAmountReceived;
 }
 
 struct CurveStableswapNGSingleSideSupplyFuseExitData {
     /// @notice Curve pool contract to exit
     ICurveStableswapNG curveStableswapNG;
     /// @notice Amount of LP tokens to burn
-    uint256 burnAmount;
+    uint256 lpTokenAmount;
     /// @notice Address of the asset to withdraw
     address asset;
     /// @notice Minimum amount of the coin to receive
-    uint256 minReceived;
+    uint256 minCoinAmountReceived;
 }
 
 /// @title Fuse for Curve Stableswap NG protocol responsible for supplying and withdrawing assets from the Curve Stableswap NG protocol based on preconfigured market substrates
@@ -42,24 +42,24 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
         address version,
         address curvePool,
         address asset,
-        uint256 amount,
-        uint256 minMintAmount
+        uint256 assetAmount,
+        uint256 lpTokenAmountReceived
     );
 
     event CurveSupplyStableswapNGSingleSideSupplyFuseExit(
         address version,
         address curvePool,
-        uint256 burnAmount,
+        uint256 lpTokenAmount,
         address asset,
-        uint256 minReceived
+        uint256 coinAmountReceived
     );
 
     event CurveSupplyStableswapNGSingleSideSupplyFuseExitFailed(
         address version,
         address curvePool,
-        uint256 burnAmount,
+        uint256 lpTokenAmount,
         address asset,
-        uint256 minReceived
+        uint256 minCoinAmountReceived
     );
 
     error CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address poolAddress);
@@ -78,19 +78,19 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address(curvePool));
         }
 
-        if (data_.amount == 0) {
+        if (data_.assetAmount == 0) {
             return;
         }
 
         uint256 nCoins = curvePool.N_COINS();
-        uint256[] memory amounts = new uint256[](nCoins);
+        uint256[] memory coinsAmounts = new uint256[](nCoins);
         bool supportedPoolAsset = false;
 
         for (uint256 i; i < nCoins; ++i) {
             if (curvePool.coins(i) == data_.asset) {
                 supportedPoolAsset = true;
-                amounts[i] = data_.amount;
-                ERC20(data_.asset).forceApprove(address(curvePool), data_.amount);
+                coinsAmounts[i] = data_.assetAmount;
+                ERC20(data_.asset).forceApprove(address(curvePool), data_.assetAmount);
             }
         }
 
@@ -98,14 +98,18 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data_.asset);
         }
 
-        curvePool.add_liquidity(amounts, data_.minMintAmount, address(this));
+        uint256 lpTokenAmountReceived = curvePool.add_liquidity(
+            coinsAmounts,
+            data_.minLpTokenAmountReceived,
+            address(this)
+        );
 
         emit CurveSupplyStableswapNGSingleSideSupplyFuseEnter(
             VERSION,
             address(curvePool),
             data_.asset,
-            data_.amount,
-            data_.minMintAmount
+            data_.assetAmount,
+            lpTokenAmountReceived
         );
     }
 
@@ -117,7 +121,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address(curvePool));
         }
 
-        if (data_.burnAmount == 0) {
+        if (data_.lpTokenAmount == 0) {
             return;
         }
 
@@ -137,25 +141,24 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data_.asset);
         }
 
-        /// TODO: returns
-        try curvePool.remove_liquidity_one_coin(data_.burnAmount, index, data_.minReceived, address(this)) returns (
-            uint256 withdrawnAmount
-        ) {
+        try
+            curvePool.remove_liquidity_one_coin(data_.lpTokenAmount, index, data_.minCoinAmountReceived, address(this))
+        returns (uint256 coinAmountReceived) {
             emit CurveSupplyStableswapNGSingleSideSupplyFuseExit(
                 VERSION,
                 address(curvePool),
-                data_.burnAmount,
+                data_.lpTokenAmount,
                 data_.asset,
-                data_.minReceived
+                coinAmountReceived
             );
         } catch {
             /// @dev if withdraw failed, continue with the next step
             emit CurveSupplyStableswapNGSingleSideSupplyFuseExitFailed(
                 VERSION,
                 address(curvePool),
-                data_.burnAmount,
+                data_.lpTokenAmount,
                 data_.asset,
-                data_.minReceived
+                data_.minCoinAmountReceived
             );
         }
     }

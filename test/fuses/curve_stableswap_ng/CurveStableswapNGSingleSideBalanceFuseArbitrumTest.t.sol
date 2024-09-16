@@ -121,8 +121,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -229,8 +229,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -255,9 +255,9 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 "exit((address,uint256,address,uint256))",
                 CurveStableswapNGSingleSideSupplyFuseExitData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
-                    burnAmount: beforeExitState.vaultLpTokensBalance,
+                    lpTokenAmount: beforeExitState.vaultLpTokensBalance,
                     asset: USDM,
-                    minReceived: 0
+                    minCoinAmountReceived: 0
                 })
             )
         );

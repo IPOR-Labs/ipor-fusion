@@ -59,16 +59,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         address version,
         address curvePool,
         address asset,
-        uint256 amount,
-        uint256 minMintAmount
+        uint256 assetAmount,
+        uint256 lpTokenAmountReceived
     );
 
     event CurveSupplyStableswapNGSingleSideSupplyFuseExit(
         address version,
         address curvePool,
-        uint256 burnAmount,
+        uint256 lpTokenAmount,
         address asset,
-        uint256 minReceived
+        uint256 coinAmountReceived
     );
 
     function setUp() public {
@@ -133,8 +133,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amounts[1],
-                    minMintAmount: 0
+                    assetAmount: amounts[1],
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -154,7 +154,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             address(CURVE_STABLESWAP_NG),
             USDM,
             amounts[1],
-            0
+            99687822017724147655
         );
         // when
         vm.startPrank(alpha);
@@ -220,8 +220,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: curvePool,
                     asset: USDM,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -285,8 +285,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: DAI,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -352,8 +352,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amounts[1],
-                    minMintAmount: CURVE_STABLESWAP_NG.calc_token_amount(amounts, true) + 1
+                    assetAmount: amounts[1],
+                    minLpTokenAmountReceived: CURVE_STABLESWAP_NG.calc_token_amount(amounts, true) + 1
                 })
             )
         );
@@ -417,8 +417,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -485,8 +485,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amounts[1],
-                    minMintAmount: 0
+                    assetAmount: amounts[1],
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -505,7 +505,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             address(CURVE_STABLESWAP_NG),
             USDM,
             amounts[1],
-            0
+            99687822017724147655
         );
         plasmaVault.execute(callsEnter);
         vm.stopPrank();
@@ -520,8 +520,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseExitData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    burnAmount: beforeExitState.vaultLpTokensBalance,
-                    minReceived: 0
+                    lpTokenAmount: beforeExitState.vaultLpTokensBalance,
+                    minCoinAmountReceived: 0
                 })
             )
         );
@@ -532,7 +532,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             address(CURVE_STABLESWAP_NG),
             beforeExitState.vaultLpTokensBalance,
             USDM,
-            0
+            99989051174664190291
         );
 
         // when
@@ -591,8 +591,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -609,7 +609,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             address(CURVE_STABLESWAP_NG),
             USDM,
             amount,
-            0
+            99687822017724147655
         );
         plasmaVault.execute(callsEnter);
         vm.stopPrank();
@@ -629,8 +629,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseExitData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: DAI,
-                    burnAmount: afterEnterState.vaultLpTokensBalance,
-                    minReceived: 0
+                    lpTokenAmount: afterEnterState.vaultLpTokensBalance,
+                    minCoinAmountReceived: 0
                 })
             )
         );
@@ -691,8 +691,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -716,8 +716,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseExitData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    burnAmount: afterEnterState.vaultLpTokensBalance + 1,
-                    minReceived: 0
+                    lpTokenAmount: afterEnterState.vaultLpTokensBalance + 1,
+                    minCoinAmountReceived: 0
                 })
             )
         );
@@ -778,8 +778,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -803,8 +803,11 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseExitData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    burnAmount: afterEnterState.vaultLpTokensBalance,
-                    minReceived: CURVE_STABLESWAP_NG.calc_withdraw_one_coin(afterEnterState.vaultLpTokensBalance, 1) + 1
+                    lpTokenAmount: afterEnterState.vaultLpTokensBalance,
+                    minCoinAmountReceived: CURVE_STABLESWAP_NG.calc_withdraw_one_coin(
+                        afterEnterState.vaultLpTokensBalance,
+                        1
+                    ) + 1
                 })
             )
         );
@@ -864,8 +867,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );
@@ -889,8 +892,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 CurveStableswapNGSingleSideSupplyFuseExitData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
-                    burnAmount: 0,
-                    minReceived: 0
+                    lpTokenAmount: 0,
+                    minCoinAmountReceived: 0
                 })
             )
         );

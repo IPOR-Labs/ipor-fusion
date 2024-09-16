@@ -910,8 +910,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 CurveStableswapNGSingleSideSupplyFuseEnterData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: asset,
-                    amount: amount,
-                    minMintAmount: 0
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
                 })
             )
         );

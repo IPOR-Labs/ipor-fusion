@@ -288,29 +288,29 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(generateEnterCallsData(depositAmount, new bytes32[](0)));
 
-        //        vm.roll(block.number + 1000);
-        //        vm.warp(block.timestamp + 12000);
-        //
-        //        uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
-        //        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
-        //
-        //        uint256 userAssetsBefore = PlasmaVault(plasmaVault).convertToAssets(
-        //            PlasmaVault(plasmaVault).balanceOf(userOne)
-        //        );
-        //
-        //        // when
-        //        vm.prank(alpha);
-        //        PlasmaVault(plasmaVault).execute(generateExitCallsData(assetsInMarketBefore, new bytes32[](0)));
-        //
-        //        // then
-        //
-        //        uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
-        //        uint256 userAssetsAfter = PlasmaVault(plasmaVault).convertToAssets(PlasmaVault(plasmaVault).balanceOf(userOne));
-        //        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
-        //
-        //        assertGe(userAssetsAfter, userAssetsBefore, "userAssets from shares");
-        //        assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
-        //        assertApproxEqAbs(assetsInMarketAfter + depositAmount, assetsInMarketBefore, ERROR_DELTA, "assetsInMarket");
+        vm.roll(block.number + 1000);
+        vm.warp(block.timestamp + 12000);
+
+        uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
+        uint256 assetsInMarketBefore = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
+
+        uint256 userAssetsBefore = PlasmaVault(plasmaVault).convertToAssets(
+            PlasmaVault(plasmaVault).balanceOf(userOne)
+        );
+
+        // when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(generateExitCallsData(assetsInMarketBefore, new bytes32[](0)));
+
+        // then
+
+        uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
+        uint256 userAssetsAfter = PlasmaVault(plasmaVault).convertToAssets(PlasmaVault(plasmaVault).balanceOf(userOne));
+        uint256 assetsInMarketAfter = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
+
+        assertGe(userAssetsAfter, userAssetsBefore, "userAssets from shares");
+        assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
+        assertApproxEqAbs(assetsInMarketAfter + depositAmount, assetsInMarketBefore, ERROR_DELTA, "assetsInMarket");
     }
 
     function testShouldUseExitMethodTwice() external {
