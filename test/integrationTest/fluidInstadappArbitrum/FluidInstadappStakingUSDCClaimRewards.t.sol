@@ -237,16 +237,15 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                 stakingPool: FLUID_LENDING_STAKING_REWARDS,
                 fluidTokenAmount: depositAmount
             });
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encode(erc4626SupplyFuseEnterData);
-        data[1] = abi.encode(fluidInstadappStakingSupplyFuseEnterData);
 
-        uint256 len = data.length;
-        FuseAction[] memory enterCalls = new FuseAction[](len);
-        enterCalls[0] = FuseAction(address(erc4626SupplyFuse), abi.encodeWithSignature("enter(bytes)", data[0]));
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction(
+            address(erc4626SupplyFuse),
+            abi.encodeWithSignature("enter((address,uint256))", erc4626SupplyFuseEnterData)
+        );
         enterCalls[1] = FuseAction(
             address(fluidInstadappStakingSupplyFuse),
-            abi.encodeWithSignature("enter(bytes)", data[1])
+            abi.encodeWithSignature("enter((uint256,address))", fluidInstadappStakingSupplyFuseEnterData)
         );
 
         uint256[] memory marketIds = new uint256[](1);

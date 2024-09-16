@@ -95,12 +95,12 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
             vaultAssetAmount: amount_
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
-            stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            fluidTokenAmount: amount_
+            fluidTokenAmount: amount_,
+            stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
         data = new bytes[](2);
-        data[0] = abi.encode(enterData);
-        data[1] = abi.encode(enterDataStaking);
+        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaking);
     }
 
     function getExitFuseData(
@@ -113,13 +113,13 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
             vaultAssetAmount: amount_
         });
         FluidInstadappStakingSupplyFuseExitData memory exitDataStaking = FluidInstadappStakingSupplyFuseExitData({
-            stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            fluidTokenAmount: amount_
+            fluidTokenAmount: amount_,
+            stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
 
         data = new bytes[](2);
-        data[1] = abi.encode(exitData);
-        data[0] = abi.encode(exitDataStaking);
+        data[1] = abi.encodeWithSignature("exit((address,uint256))", exitData);
+        data[0] = abi.encodeWithSignature("exit((uint256,address))", exitDataStaking);
 
         fusesSetup = new address[](2);
         fusesSetup[0] = address(fluidInstadappStakingSupplyFuse);

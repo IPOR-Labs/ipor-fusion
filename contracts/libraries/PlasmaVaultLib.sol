@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Errors} from "./errors/Errors.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
+import {FusesLib} from "./FusesLib.sol";
 
 /// @notice Technical struct used to pass parameters in the `updateInstantWithdrawalFuses` function
 struct InstantWithdrawalFusesParamsStruct {
@@ -176,7 +177,7 @@ library PlasmaVaultLib {
             PlasmaVaultStorageLib.getInstantWithdrawalFusesParams().value[keccak256(abi.encodePacked(fuse_, index_))];
     }
 
-    /// @notice Configures the instant withdrawal fuses. Order of the fuse is important, as it will be used in the same order during the instant withdrawal process
+    /// @notice Configures order of the instant withdrawal fuses. Order of the fuse is important, as it will be used in the same order during the instant withdrawal process
     /// @param fuses_ The fuses to configure
     /// @dev Order of the fuses is important, the same fuse can be used multiple times with different parameters (for example different assets, markets or any other substrate specific for the fuse)
     function configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses_) internal {
@@ -188,6 +189,10 @@ library PlasmaVaultLib {
         bytes32 key;
 
         for (uint256 i; i < fuses_.length; ++i) {
+            if (!FusesLib.isFuseSupported(fuses_[i].fuse)) {
+                revert FusesLib.FuseUnsupported(fuses_[i].fuse);
+            }
+
             fusesList[i] = fuses_[i].fuse;
             key = keccak256(abi.encodePacked(fuses_[i].fuse, i));
 

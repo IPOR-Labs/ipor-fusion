@@ -230,17 +230,17 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
             vaultAssetAmount: depositAmount
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
-            farmdToken: FARM_D_USDC,
-            dTokenAmount: depositAmount
+            dTokenAmount: depositAmount,
+            farmdToken: FARM_D_USDC
         });
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encode(enterData);
-        data[1] = abi.encode(enterDataFarm);
+        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataFarm);
 
         uint256 len = data.length;
         FuseAction[] memory enterCalls = new FuseAction[](len);
-        enterCalls[0] = FuseAction(address(gearboxV3DTokenFuse), abi.encodeWithSignature("enter(bytes)", data[0]));
-        enterCalls[1] = FuseAction(address(gearboxV3FarmSupplyFuse), abi.encodeWithSignature("enter(bytes)", data[1]));
+        enterCalls[0] = FuseAction(address(gearboxV3DTokenFuse), data[0]);
+        enterCalls[1] = FuseAction(address(gearboxV3FarmSupplyFuse), data[1]);
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3;

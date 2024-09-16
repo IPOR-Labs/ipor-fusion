@@ -35,4 +35,8 @@ library IporFusionMarkets {
 
     /// @dev universal token swapper, one need add dependence graph with balance of ERC20_VAULT_BALANCE
     uint256 public constant UNIVERSAL_TOKEN_SWAPPER = 12;
+
+    /// @dev Curve market
+    uint256 public constant CURVE_POOL = 13;
+    uint256 public constant CURVE_LP_GAUGE = 14;
 }

@@ -49,7 +49,7 @@ contract SparkSupplyFuseTest is Test {
         uint256 balanceFromBalanceFuseBefore = vaultMock.balanceOf();
 
         // when
-        vaultMock.enter(abi.encode(CompoundV2SupplyFuseEnterData({asset: DAI, amount: amount})));
+        vaultMock.enterCompoundV2Supply(CompoundV2SupplyFuseEnterData({asset: DAI, amount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(DAI).balanceOf(address(vaultMock));
@@ -81,14 +81,14 @@ contract SparkSupplyFuseTest is Test {
 
         deal(DAI, address(vaultMock), 1_000e18);
 
-        vaultMock.enter(abi.encode(CompoundV2SupplyFuseEnterData({asset: DAI, amount: amount})));
+        vaultMock.enterCompoundV2Supply(CompoundV2SupplyFuseEnterData({asset: DAI, amount: amount}));
 
         uint256 balanceBefore = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceCDAIBefore = ERC20(CDAI).balanceOf(address(vaultMock));
         uint256 balanceFromBalanceFuseBefore = vaultMock.balanceOf();
 
         // when
-        vaultMock.exit(abi.encode(CompoundV2SupplyFuseExitData({asset: DAI, amount: amount})));
+        vaultMock.exitCompoundV2Supply(CompoundV2SupplyFuseExitData({asset: DAI, amount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(DAI).balanceOf(address(vaultMock));

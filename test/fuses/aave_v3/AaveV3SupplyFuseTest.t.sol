@@ -28,7 +28,7 @@ contract AaveV3SupplyFuseTest is Test {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
     }
 
-    function testShouldBeAbleToSupply() external iterateSupportedTokens {
+    function testShouldBeAbleToSupplyAaveV3() external iterateSupportedTokens {
         // given
         AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, address(AAVE_POOL), address(AAVE_POOL_DATA_PROVIDER));
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
@@ -45,15 +45,8 @@ contract AaveV3SupplyFuseTest is Test {
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         // when
-
-        vaultMock.enter(
-            abi.encode(
-                AaveV3SupplyFuseEnterData({
-                    asset: activeTokens.asset,
-                    amount: amount,
-                    userEModeCategoryId: uint256(300)
-                })
-            )
+        vaultMock.enterAaveV3Supply(
+            AaveV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount, userEModeCategoryId: uint256(300)})
         );
 
         // then
@@ -96,19 +89,17 @@ contract AaveV3SupplyFuseTest is Test {
         assets[0] = activeTokens.asset;
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
-        vaultMock.enter(
-            abi.encode(
-                AaveV3SupplyFuseEnterData({
-                    asset: activeTokens.asset,
-                    amount: enterAmount,
-                    userEModeCategoryId: uint256(300)
-                })
-            )
+        vaultMock.enterAaveV3Supply(
+            AaveV3SupplyFuseEnterData({
+                asset: activeTokens.asset,
+                amount: enterAmount,
+                userEModeCategoryId: uint256(300)
+            })
         );
 
         // when
 
-        vaultMock.exit(abi.encode(AaveV3SupplyFuseExitData({asset: activeTokens.asset, amount: exitAmount})));
+        vaultMock.exitAaveV3Supply(AaveV3SupplyFuseExitData({asset: activeTokens.asset, amount: exitAmount}));
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
