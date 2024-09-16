@@ -214,16 +214,16 @@ contract PlasmaVaultCallbackHandler is Test {
         callbackCalls[0] = FuseAction(
             address(_supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: _USDC, amount: 10e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: _USDC, amount: 10e6, userEModeCategoryId: 1e6})
             )
         );
 
         callbackCalls[1] = FuseAction(
             address(_supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: _USDC, amount: 10e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: _USDC, amount: 10e6})
             )
         );
 
@@ -233,14 +233,12 @@ contract PlasmaVaultCallbackHandler is Test {
         morphoCalls[0] = FuseAction(
             address(_morphoBlueFuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    MorphoBlueSupplyFuseEnterData({
-                        morphoBlueMarketId: _MARKET_ID_BYTES32,
-                        amount: 100e18,
-                        callbackData: callbackCallsBytes
-                    })
-                )
+                "enter((bytes32,uint256,bytes))",
+                MorphoBlueSupplyFuseEnterData({
+                    morphoBlueMarketId: _MARKET_ID_BYTES32,
+                    amount: 100e18,
+                    callbackData: callbackCallsBytes
+                })
             )
         );
 

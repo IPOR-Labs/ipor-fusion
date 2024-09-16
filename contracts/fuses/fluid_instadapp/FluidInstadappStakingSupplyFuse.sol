@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuse.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IFluidLendingStakingRewards} from "./ext/IFluidLendingStakingRewards.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
@@ -29,11 +29,12 @@ struct FluidInstadappStakingSupplyFuseExitData {
 
 /// @title Fuse for Fluid Instadapp Staking protocol responsible for supplying and withdrawing assets from the Fluid Instadapp Staking protocol based on preconfigured market substrates
 /// @dev Substrates in this fuse are the staking pools addresses that are used in the Fluid Instadapp Staking protocol for a given MARKET_ID
-contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
+contract FluidInstadappStakingSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for IERC20;
 
-    event FluidInstadappStakingEnterFuse(address version, address stakingPool, address stakingToken, uint256 amount);
-    event FluidInstadappStakingExitFuse(address version, address stakingPool, uint256 amount);
+    event FluidInstadappStakingFuseEnter(address version, address stakingPool, address stakingToken, uint256 amount);
+    event FluidInstadappStakingFuseExit(address version, address stakingPool, uint256 amount);
+    event FluidInstadappStakingFuseExitFailed(address version, address stakingPool, uint256 amount);
 
     error FluidInstadappStakingSupplyFuseUnsupportedStakingPool(string action, address stakingPool);
 
@@ -45,16 +46,7 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    /// @notice Enters to the Market
-    function enter(bytes calldata data_) external {
-        FluidInstadappStakingSupplyFuseEnterData memory data = abi.decode(
-            data_,
-            (FluidInstadappStakingSupplyFuseEnterData)
-        );
-        enter(data);
-    }
-
-    function enter(FluidInstadappStakingSupplyFuseEnterData memory data_) public {
+    function enter(FluidInstadappStakingSupplyFuseEnterData memory data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.stakingPool)) {
             revert FluidInstadappStakingSupplyFuseUnsupportedStakingPool("enter", data_.stakingPool);
         }
@@ -69,32 +61,12 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
         IERC20(stakingToken).forceApprove(data_.stakingPool, deposit);
         IFluidLendingStakingRewards(data_.stakingPool).stake(deposit);
 
-        emit FluidInstadappStakingEnterFuse(VERSION, data_.stakingPool, stakingToken, deposit);
+        emit FluidInstadappStakingFuseEnter(VERSION, data_.stakingPool, stakingToken, deposit);
     }
 
     /// @notice Exits from the Market
-    function exit(bytes calldata data_) external {
-        FluidInstadappStakingSupplyFuseExitData memory data = abi.decode(
-            data_,
-            (FluidInstadappStakingSupplyFuseExitData)
-        );
-        exit(data);
-    }
-    /// @notice Exits from the Market
-    function exit(FluidInstadappStakingSupplyFuseExitData memory data_) public {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.stakingPool)) {
-            revert FluidInstadappStakingSupplyFuseUnsupportedStakingPool("enter", data_.stakingPool);
-        }
-
-        uint256 balanceOf = IFluidLendingStakingRewards(data_.stakingPool).balanceOf(address(this));
-        uint256 withdrawAmount = IporMath.min(data_.fluidTokenAmount, balanceOf);
-
-        if (withdrawAmount == 0) {
-            return;
-        }
-
-        IFluidLendingStakingRewards(data_.stakingPool).withdraw(withdrawAmount);
-        emit FluidInstadappStakingExitFuse(VERSION, data_.stakingPool, withdrawAmount);
+    function exit(FluidInstadappStakingSupplyFuseExitData memory data_) external {
+        _exit(data_);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
@@ -107,7 +79,7 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
 
         address stakingPool = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        exit(
+        _exit(
             FluidInstadappStakingSupplyFuseExitData({
                 stakingPool: stakingPool,
                 fluidTokenAmount: IERC4626(IFluidLendingStakingRewards(stakingPool).stakingToken()).convertToShares(
@@ -115,5 +87,25 @@ contract FluidInstadappStakingSupplyFuse is IFuse, IFuseInstantWithdraw {
                 )
             })
         );
+    }
+
+    function _exit(FluidInstadappStakingSupplyFuseExitData memory data_) internal {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.stakingPool)) {
+            revert FluidInstadappStakingSupplyFuseUnsupportedStakingPool("enter", data_.stakingPool);
+        }
+
+        uint256 balanceOf = IFluidLendingStakingRewards(data_.stakingPool).balanceOf(address(this));
+        uint256 withdrawAmount = IporMath.min(data_.fluidTokenAmount, balanceOf);
+
+        if (withdrawAmount == 0) {
+            return;
+        }
+
+        try IFluidLendingStakingRewards(data_.stakingPool).withdraw(withdrawAmount) {
+            emit FluidInstadappStakingFuseExit(VERSION, data_.stakingPool, withdrawAmount);
+        } catch {
+            /// @dev if withdraw failed, continue with the next step
+            emit FluidInstadappStakingFuseExitFailed(VERSION, data_.stakingPool, withdrawAmount);
+        }
     }
 }

@@ -45,8 +45,7 @@ contract AaveV2SupplyFuseTest is Test {
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         // when
-
-        vaultMock.enter(abi.encode(AaveV2SupplyFuseEnterData({asset: activeTokens.asset, amount: amount})));
+        vaultMock.enterAaveV2Supply(AaveV2SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
@@ -89,11 +88,10 @@ contract AaveV2SupplyFuseTest is Test {
         assets[0] = activeTokens.asset;
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
-        vaultMock.enter(abi.encode(AaveV2SupplyFuseEnterData({asset: activeTokens.asset, amount: enterAmount})));
+        vaultMock.enterAaveV2Supply(AaveV2SupplyFuseEnterData({asset: activeTokens.asset, amount: enterAmount}));
 
         // when
-
-        vaultMock.exit(abi.encode(AaveV2SupplyFuseExitData({asset: activeTokens.asset, amount: exitAmount})));
+        vaultMock.exitAaveV2Supply(AaveV2SupplyFuseExitData({asset: activeTokens.asset, amount: exitAmount}));
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(vaultMock));

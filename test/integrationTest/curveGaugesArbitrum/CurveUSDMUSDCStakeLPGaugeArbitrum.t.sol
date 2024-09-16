@@ -303,16 +303,13 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         );
     }
 
-    function testShouldNotBeAbleToEnterCurveChildLiquidityGaugeSupplyFuseWithZeroLPDepositAmount() public {
+    function testShouldBeAbleToEnterCurveChildLiquidityGaugeSupplyFuseWithZeroLPDepositAmount() public {
         // given
         uint256 amount = 1_000 * 10 ** ERC20(asset).decimals();
         _depositIntoVaultAndProvideLiquidityToCurvePool(amount);
         PlasmaVaultState memory vaultStateAfterEnterCurvePool = getPlasmaVaultState();
 
-        bytes memory error = abi.encodeWithSignature("CurveChildLiquidityGaugeSupplyFuseZeroDepositAmount()");
-
         // when
-        vm.expectRevert(error);
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
             address(CURVE_LIQUIDITY_GAUGE),
@@ -602,7 +599,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         );
     }
 
-    function testShouldNotBeAbleToExitCurveChildLiquidityGaugeSupplyFuseWithZeroWithdrawAmount() public {
+    function testShouldBeAbleToExitCurveChildLiquidityGaugeSupplyFuseWithZeroWithdrawAmount() public {
         // given
         uint256 amount = 1_000 * 10 ** ERC20(asset).decimals();
         _depositIntoVaultAndProvideLiquidityToCurvePool(amount);
@@ -616,8 +613,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         PlasmaVaultState memory vaultStateBeforeExitCurveGauge = getPlasmaVaultState();
 
         // when
-        bytes memory error = abi.encodeWithSignature("CurveChildLiquidityGaugeSupplyFuseZeroWithdrawAmount()");
-        vm.expectRevert(error);
         _executeCurveChildLiquidityGaugeSupplyFuseExit(
             curveChildLiquidityGaugeSupplyFuse,
             address(CURVE_LIQUIDITY_GAUGE),
@@ -911,15 +906,13 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         calls[0] = FuseAction(
             address(curveStableswapNGSingleSideSupplyFuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
-                        asset: asset,
-                        amount: amount,
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: asset,
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
+                })
             )
         );
         vm.startPrank(alpha);
