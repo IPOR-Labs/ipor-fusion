@@ -112,7 +112,6 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
             address(instances.curveLiquidityGauge),
-            addresses.curveStableswapNgPool,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance
         );
         PlasmaVaultState memory vaultStateAfterEnterCurveGauge = getPlasmaVaultState();
@@ -285,7 +284,6 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
             address(instances.curveLiquidityGauge),
-            addresses.curveStableswapNgPool,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance
         );
         PlasmaVaultState memory vaultStateAfterEnterCurveGauge = getPlasmaVaultState();
@@ -647,15 +645,13 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         calls[0] = FuseAction(
             address(curveStableswapNGSingleSideSupplyFuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: instances.curveStableswapNg,
-                        asset: asset,
-                        amount: amount,
-                        minMintAmount: 0
-                    })
-                )
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: instances.curveStableswapNg,
+                    asset: asset,
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
+                })
             )
         );
         vm.prank(ALPHA);
@@ -665,7 +661,6 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     function _executeCurveChildLiquidityGaugeSupplyFuseEnter(
         CurveChildLiquidityGaugeSupplyFuse fuseInstance,
         address curveGauge,
-        address,
         uint256 amount
     ) internal {
         FuseAction[] memory calls = new FuseAction[](1);
