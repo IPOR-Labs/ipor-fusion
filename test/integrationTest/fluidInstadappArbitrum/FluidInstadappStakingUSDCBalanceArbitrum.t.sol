@@ -157,12 +157,12 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
             vaultAssetAmount: amount_
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
-            stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            fluidTokenAmount: amount_
+            fluidTokenAmount: amount_,
+            stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
         data = new bytes[](2);
-        data[0] = abi.encode(enterData);
-        data[1] = abi.encode(enterDataStaking);
+        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaking);
     }
 
     function getExitFuseData(
@@ -171,11 +171,12 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         bytes32[] memory data_
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         FluidInstadappStakingSupplyFuseExitData memory exitDataStaking = FluidInstadappStakingSupplyFuseExitData({
-            stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            fluidTokenAmount: amount_
+            fluidTokenAmount: amount_,
+            stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
+
         data = new bytes[](1);
-        data[0] = abi.encode(exitDataStaking);
+        data[0] = abi.encodeWithSignature("exit((uint256,address))", exitDataStaking);
 
         fusesSetup = new address[](2);
         fusesSetup[0] = address(fluidInstadappStakingSupplyFuse);
@@ -194,16 +195,19 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
             vaultAssetAmount: depositAmount
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
-            stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            fluidTokenAmount: depositAmount
+            fluidTokenAmount: depositAmount,
+            stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
+
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encode(enterData);
-        data[1] = abi.encode(enterDataStaking);
+        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaking);
+
         uint256 len = data.length;
         FuseAction[] memory enterCalls = new FuseAction[](len);
+
         for (uint256 i = 0; i < len; ++i) {
-            enterCalls[i] = FuseAction(fuses[i], abi.encodeWithSignature("enter(bytes)", data[i]));
+            enterCalls[i] = FuseAction(fuses[i], data[i]);
         }
 
         vm.prank(alpha);
@@ -253,16 +257,19 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
             vaultAssetAmount: depositAmount
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaked = FluidInstadappStakingSupplyFuseEnterData({
-            stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            fluidTokenAmount: depositAmount
+            fluidTokenAmount: depositAmount,
+            stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encode(enterData);
-        data[1] = abi.encode(enterDataStaked);
+        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaked);
+
         uint256 len = data.length;
+
         FuseAction[] memory enterCalls = new FuseAction[](len);
+
         for (uint256 i = 0; i < len; ++i) {
-            enterCalls[i] = FuseAction(fuses[i], abi.encodeWithSignature("enter(bytes)", data[i]));
+            enterCalls[i] = FuseAction(fuses[i], data[i]);
         }
 
         uint256[] memory marketIds = new uint256[](1);
@@ -324,16 +331,17 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
             vaultAssetAmount: depositAmount
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
-            stakingPool: FLUID_LENDING_STAKING_REWARDS,
-            fluidTokenAmount: depositAmount
+            fluidTokenAmount: depositAmount,
+            stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encode(enterData);
-        data[1] = abi.encode(enterDataStaking);
+        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaking);
         uint256 len = data.length;
         FuseAction[] memory enterCalls = new FuseAction[](len);
+
         for (uint256 i = 0; i < len; ++i) {
-            enterCalls[i] = FuseAction(fuses[i], abi.encodeWithSignature("enter(bytes)", data[i]));
+            enterCalls[i] = FuseAction(fuses[i], data[i]);
         }
 
         uint256[] memory marketIds = new uint256[](1);
@@ -423,26 +431,22 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         FuseAction[] memory calls = new FuseAction[](2);
 
-        calls[0] = FuseAction(
-            address(fuses[0]),
-            abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: depositAmount}))
-            )
+        bytes memory dataOne = abi.encodeWithSignature(
+            "enter((address,uint256))",
+            Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: depositAmount})
         );
 
-        calls[1] = FuseAction(
-            address(fuses[1]),
-            abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(
-                    FluidInstadappStakingSupplyFuseEnterData({
-                        stakingPool: FLUID_LENDING_STAKING_REWARDS,
-                        fluidTokenAmount: depositAmount
-                    })
-                )
-            )
+        calls[0] = FuseAction(address(fuses[0]), dataOne);
+
+        bytes memory dataTwo = abi.encodeWithSignature(
+            "enter((uint256,address))",
+            FluidInstadappStakingSupplyFuseEnterData({
+                fluidTokenAmount: depositAmount,
+                stakingPool: FLUID_LENDING_STAKING_REWARDS
+            })
         );
+
+        calls[1] = FuseAction(address(fuses[1]), dataTwo);
 
         vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(calls);
@@ -476,11 +480,12 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         uint256 amount_,
         bytes32[] memory data_
     ) private returns (FuseAction[] memory enterCalls) {
-        (address[] memory fusesSetup, bytes[] memory enterData) = getExitFuseData(amount_, data_);
-        uint256 len = enterData.length;
+        (address[] memory fusesSetup, bytes[] memory exitData) = getExitFuseData(amount_, data_);
+        uint256 len = exitData.length;
         enterCalls = new FuseAction[](len);
+
         for (uint256 i = 0; i < len; ++i) {
-            enterCalls[i] = FuseAction(fusesSetup[i], abi.encodeWithSignature("exit(bytes)", enterData[i]));
+            enterCalls[i] = FuseAction(fusesSetup[i], exitData[i]);
         }
         return enterCalls;
     }

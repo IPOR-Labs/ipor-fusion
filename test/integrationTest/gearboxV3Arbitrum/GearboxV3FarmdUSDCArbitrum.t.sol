@@ -95,8 +95,8 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
             dTokenAmount: amount_
         });
         data = new bytes[](2);
-        data[0] = abi.encode(enterData);
-        data[1] = abi.encode(enterDataFarm);
+        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataFarm);
     }
 
     function getExitFuseData(
@@ -113,8 +113,8 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
             dTokenAmount: amount_
         });
         data = new bytes[](2);
-        data[1] = abi.encode(exitData);
-        data[0] = abi.encode(exitDataFarm);
+        data[1] = abi.encodeWithSignature("exit((address,uint256))", exitData);
+        data[0] = abi.encodeWithSignature("exit((uint256,address))", exitDataFarm);
 
         fusesSetup = new address[](2);
         fusesSetup[0] = address(gearboxV3FarmSupplyFuse);

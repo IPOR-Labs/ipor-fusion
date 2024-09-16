@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
@@ -28,18 +28,19 @@ struct Erc4626SupplyFuseExitData {
 
 /// @title Generic fuse for ERC4626 vaults responsible for supplying and withdrawing assets from the ERC4626 vaults based on preconfigured market substrates
 /// @dev Substrates in this fuse are the assets that are used in the ERC4626 vaults for a given MARKET_ID
-contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
+contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
-    event Erc4626SupplyEnterFuse(address version, address asset, address vault, uint256 vaultAssetAmount);
-    event Erc4626SupplyExitFuse(
+    event Erc4626SupplyFuseEnter(address version, address asset, address vault, uint256 vaultAssetAmount);
+    event Erc4626SupplyFuseExit(
         address version,
         address asset,
         address vault,
         uint256 vaultAssetAmount,
         uint256 shares
     );
+    event Erc4626SupplyFuseExitFailed(address version, address asset, address vault, uint256 vaultAssetAmount);
 
     error Erc4626SupplyFuseUnsupportedVault(string action, address asset);
 
@@ -51,22 +52,33 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    function enter(bytes calldata data_) external override {
-        Erc4626SupplyFuseEnterData memory data = abi.decode(data_, (Erc4626SupplyFuseEnterData));
-        _enter(data);
-    }
-
-    /// @dev technical method to generate ABI
     function enter(Erc4626SupplyFuseEnterData memory data_) external {
-        _enter(data_);
+        if (data_.vaultAssetAmount == 0) {
+            return;
+        }
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.vault)) {
+            revert Erc4626SupplyFuseUnsupportedVault("enter", data_.vault);
+        }
+
+        address underlyingAsset = IERC4626(data_.vault).asset();
+
+        uint256 finalVaultAssetAmount = IporMath.min(
+            data_.vaultAssetAmount,
+            IERC4626(underlyingAsset).balanceOf(address(this))
+        );
+
+        if (finalVaultAssetAmount == 0) {
+            return;
+        }
+
+        ERC20(underlyingAsset).forceApprove(data_.vault, finalVaultAssetAmount);
+
+        IERC4626(data_.vault).deposit(finalVaultAssetAmount, address(this));
+
+        emit Erc4626SupplyFuseEnter(VERSION, underlyingAsset, data_.vault, finalVaultAssetAmount);
     }
 
-    function exit(bytes calldata data_) external override {
-        Erc4626SupplyFuseExitData memory data = abi.decode(data_, (Erc4626SupplyFuseExitData));
-        _exit(data);
-    }
-
-    /// @dev technical method to generate ABI
     function exit(Erc4626SupplyFuseExitData calldata data_) external {
         _exit(data_);
     }
@@ -78,33 +90,6 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
         address vault = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
         _exit(Erc4626SupplyFuseExitData(vault, amount));
-    }
-
-    function _enter(Erc4626SupplyFuseEnterData memory data_) internal {
-        if (data_.vaultAssetAmount == 0) {
-            return;
-        }
-
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.vault)) {
-            revert Erc4626SupplyFuseUnsupportedVault("enter", data_.vault);
-        }
-
-        address underlineAsset = IERC4626(data_.vault).asset();
-
-        uint256 finalVaultAssetAmount = IporMath.min(
-            data_.vaultAssetAmount,
-            IERC4626(underlineAsset).balanceOf(address(this))
-        );
-
-        if (finalVaultAssetAmount == 0) {
-            return;
-        }
-
-        ERC20(underlineAsset).forceApprove(data_.vault, finalVaultAssetAmount);
-
-        IERC4626(data_.vault).deposit(finalVaultAssetAmount, address(this));
-
-        emit Erc4626SupplyEnterFuse(VERSION, underlineAsset, data_.vault, finalVaultAssetAmount);
     }
 
     function _exit(Erc4626SupplyFuseExitData memory data_) internal {
@@ -125,8 +110,24 @@ contract Erc4626SupplyFuse is IFuse, IFuseInstantWithdraw {
             return;
         }
 
-        uint256 shares = IERC4626(data_.vault).withdraw(finalVaultAssetAmount, address(this), address(this));
-
-        emit Erc4626SupplyExitFuse(VERSION, IERC4626(data_.vault).asset(), data_.vault, finalVaultAssetAmount, shares);
+        try IERC4626(data_.vault).withdraw(finalVaultAssetAmount, address(this), address(this)) returns (
+            uint256 shares
+        ) {
+            emit Erc4626SupplyFuseExit(
+                VERSION,
+                IERC4626(data_.vault).asset(),
+                data_.vault,
+                finalVaultAssetAmount,
+                shares
+            );
+        } catch {
+            /// @dev if withdraw failed, continue with the next step
+            emit Erc4626SupplyFuseExitFailed(
+                VERSION,
+                IERC4626(data_.vault).asset(),
+                data_.vault,
+                finalVaultAssetAmount
+            );
+        }
     }
 }

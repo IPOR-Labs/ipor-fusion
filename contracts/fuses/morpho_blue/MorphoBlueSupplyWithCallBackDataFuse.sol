@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
@@ -34,7 +34,7 @@ struct MorphoBlueSupplyFuseExitData {
 /// @title Fuse Morpho Blue Supply protocol responsible for supplying and withdrawing assets from the Morpho Blue protocol based on preconfigured market substrates
 /// @dev Substrates in this fuse are the Morpho Blue Market IDs that are used in the Morpho Blue protocol for a given MARKET_ID
 /// TODO - code is not production ready
-contract MorphoBlueSupplyWithCallBackDataFuse is IFuse, IFuseInstantWithdraw {
+contract MorphoBlueSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
     using MorphoBalancesLib for IMorpho;
@@ -44,8 +44,9 @@ contract MorphoBlueSupplyWithCallBackDataFuse is IFuse, IFuseInstantWithdraw {
 
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
 
-    event MorphoBlueSupplyEnterFuse(address version, address asset, bytes32 market, uint256 amount);
-    event MorphoBlueSupplyExitFuse(address version, address asset, bytes32 market, uint256 amount);
+    event MorphoBlueSupplyFuseEnter(address version, address asset, bytes32 market, uint256 amount);
+    event MorphoBlueSupplyFuseExit(address version, address asset, bytes32 market, uint256 amount);
+    event MorphoBlueSupplyFuseExitFailed(address version, address asset, bytes32 market);
 
     error MorphoBlueSupplyFuseUnsupportedMarket(string action, bytes32 morphoBlueMarketId);
 
@@ -57,34 +58,7 @@ contract MorphoBlueSupplyWithCallBackDataFuse is IFuse, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    function enter(bytes calldata data_) external override {
-        _enter(abi.decode(data_, (MorphoBlueSupplyFuseEnterData)));
-    }
-
-    /// @dev technical method to generate ABI
     function enter(MorphoBlueSupplyFuseEnterData memory data_) external {
-        _enter(data_);
-    }
-
-    function exit(bytes calldata data_) external override {
-        _exit(abi.decode(data_, (MorphoBlueSupplyFuseExitData)));
-    }
-
-    /// @dev technical method to generate ABI
-    function exit(MorphoBlueSupplyFuseExitData calldata data_) external {
-        _exit(data_);
-    }
-
-    /// @dev params[0] - amount in underlying asset, params[1] - Morpho market id
-    function instantWithdraw(bytes32[] calldata params_) external override {
-        uint256 amount = uint256(params_[0]);
-
-        bytes32 morphoMarketId = params_[1];
-
-        _exit(MorphoBlueSupplyFuseExitData(morphoMarketId, amount));
-    }
-
-    function _enter(MorphoBlueSupplyFuseEnterData memory data_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -99,7 +73,20 @@ contract MorphoBlueSupplyWithCallBackDataFuse is IFuse, IFuseInstantWithdraw {
 
         (uint256 assetsSupplied, ) = MORPHO.supply(marketParams, data_.amount, 0, address(this), data_.callbackData);
 
-        emit MorphoBlueSupplyEnterFuse(VERSION, marketParams.loanToken, data_.morphoBlueMarketId, assetsSupplied);
+        emit MorphoBlueSupplyFuseEnter(VERSION, marketParams.loanToken, data_.morphoBlueMarketId, assetsSupplied);
+    }
+
+    function exit(MorphoBlueSupplyFuseExitData calldata data_) external {
+        _exit(data_);
+    }
+
+    /// @dev params[0] - amount in underlying asset, params[1] - Morpho market id
+    function instantWithdraw(bytes32[] calldata params_) external override {
+        uint256 amount = uint256(params_[0]);
+
+        bytes32 morphoMarketId = params_[1];
+
+        _exit(MorphoBlueSupplyFuseExitData(morphoMarketId, amount));
     }
 
     function _exit(MorphoBlueSupplyFuseExitData memory data_) internal {
@@ -121,22 +108,46 @@ contract MorphoBlueSupplyWithCallBackDataFuse is IFuse, IFuseInstantWithdraw {
 
         uint256 shares = MORPHO.supplyShares(id, address(this));
 
+        if (shares == 0) {
+            return;
+        }
+
         uint256 assetsMax = shares.toAssetsDown(totalSupplyAssets, totalSupplyShares);
 
-        uint256 assetsWithdrawn;
-        uint256 sharesWithdrawn;
+        if (assetsMax == 0) {
+            return;
+        }
 
         if (data_.amount >= assetsMax) {
-            (assetsWithdrawn, sharesWithdrawn) = MORPHO.withdraw(marketParams, 0, shares, address(this), address(this));
+            try MORPHO.withdraw(marketParams, 0, shares, address(this), address(this)) returns (
+                uint256 assetsWithdrawn,
+                uint256 sharesWithdrawn
+            ) {
+                emit MorphoBlueSupplyFuseExit(
+                    VERSION,
+                    marketParams.loanToken,
+                    data_.morphoBlueMarketId,
+                    assetsWithdrawn
+                );
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit MorphoBlueSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoBlueMarketId);
+            }
         } else {
-            (assetsWithdrawn, sharesWithdrawn) = MORPHO.withdraw(
-                marketParams,
-                data_.amount,
-                0,
-                address(this),
-                address(this)
-            );
+            try MORPHO.withdraw(marketParams, data_.amount, 0, address(this), address(this)) returns (
+                uint256 assetsWithdrawn,
+                uint256 sharesWithdrawn
+            ) {
+                emit MorphoBlueSupplyFuseExit(
+                    VERSION,
+                    marketParams.loanToken,
+                    data_.morphoBlueMarketId,
+                    assetsWithdrawn
+                );
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit MorphoBlueSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoBlueMarketId);
+            }
         }
-        emit MorphoBlueSupplyExitFuse(VERSION, marketParams.loanToken, data_.morphoBlueMarketId, assetsWithdrawn);
     }
 }

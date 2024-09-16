@@ -70,7 +70,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
             vaultAssetAmount: amount_
         });
         data = new bytes[](1);
-        data[0] = abi.encode(enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
     }
 
     function getExitFuseData(
@@ -83,7 +83,7 @@ contract GearboxV3USDCArbitrum is SupplyTest {
             vaultAssetAmount: amount_
         });
         data = new bytes[](1);
-        data[0] = abi.encode(exitData);
+        data[0] = abi.encodeWithSignature("exit((address,uint256))", exitData);
         fusesSetup = fuses;
     }
 }
