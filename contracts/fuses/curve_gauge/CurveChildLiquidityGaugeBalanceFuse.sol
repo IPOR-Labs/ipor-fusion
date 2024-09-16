@@ -31,19 +31,21 @@ contract CurveChildLiquidityGaugeBalanceFuse is IMarketBalanceFuse {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = substrates.length;
+
         if (len == 0) {
             return 0;
         }
 
         uint256 balance;
         uint256 stakedLPTokenBalance;
-        uint256 withdrawUnderlyingTokenAmount; // underlying asset of the vault amount to withdraw from LP
+        uint256 withdrawUnderlyingTokenAmount; /// @dev underlying asset of the vault amount to withdraw from LP
         address plasmaVault = address(this);
         address plasmaVaultAsset = IERC4626(plasmaVault).asset();
         uint256 plasmaVaultAssetPriceDecimals = ERC20(plasmaVaultAsset).decimals();
         address stakedLpTokenAddress;
-        address lpTokenAddress; // Curve LP token
-        int128 indexCoin; // index of the underlying asset in the Curve pool
+        address lpTokenAddress; /// @dev Curve LP token
+        int128 indexCoin; /// @dev index of the underlying asset in the Curve pool
+
         (uint256 assetPriceInUSD, uint256 priceDecimals) = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
         ).getAssetPrice(plasmaVaultAsset);

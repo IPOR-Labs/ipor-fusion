@@ -56,7 +56,7 @@ contract RewardsClaimManagerTest is Test {
         assertEq(_rewardsClaimManager.balanceOf(), 0, "Initial balance should be zero");
     }
 
-    function testShouldBalanceZeroWhenTransferUnderlineTokenToRewardsClaimManager() public {
+    function testShouldBalanceZeroWhenTransferUnderlyingTokenToRewardsClaimManager() public {
         // given
         vm.prank(_userOne);
         ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);

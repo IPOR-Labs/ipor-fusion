@@ -47,7 +47,7 @@ contract CompoundUsdcV3BalanceFuseTest is Test {
 
         // when
 
-        vaultMock.enter(abi.encode(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount})));
+        vaultMock.enterCompoundV3Supply(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
@@ -75,15 +75,15 @@ contract CompoundUsdcV3BalanceFuseTest is Test {
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
         vaultMock.updateMarketConfiguration(fuse.MARKET_ID(), assets);
 
-        vaultMock.enter(abi.encode(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount})));
+        vaultMock.enterCompoundV3Supply(CompoundV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount}));
 
         uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
         uint256 balanceOnCometBefore = _getBalance(address(vaultMock), activeTokens.asset);
         uint256 balanceMarketBefore = vaultMock.balanceOf();
 
         // when
-        vaultMock.exit(
-            abi.encode(CompoundV3SupplyFuseExitData({asset: activeTokens.asset, amount: balanceOnCometBefore}))
+        vaultMock.exitCompoundV3Supply(
+            CompoundV3SupplyFuseExitData({asset: activeTokens.asset, amount: balanceOnCometBefore})
         );
 
         // then
