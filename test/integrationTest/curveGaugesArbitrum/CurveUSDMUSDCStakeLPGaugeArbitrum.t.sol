@@ -100,7 +100,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
             address(CURVE_LIQUIDITY_GAUGE),
-            CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             true
         );
@@ -214,7 +213,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
             unsupportedGauge,
-            CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             false
         );
@@ -318,7 +316,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
             address(CURVE_LIQUIDITY_GAUGE),
-            CURVE_STABLESWAP_NG_POOL,
             0,
             false
         );
@@ -422,7 +419,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
             address(CURVE_LIQUIDITY_GAUGE),
-            CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             true
         );
@@ -432,7 +428,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseExit(
             curveChildLiquidityGaugeSupplyFuse,
             address(CURVE_LIQUIDITY_GAUGE),
-            CURVE_STABLESWAP_NG_POOL,
             vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
             true
         );
@@ -512,7 +507,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
             address(CURVE_LIQUIDITY_GAUGE),
-            CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             true
         );
@@ -528,7 +522,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseExit(
             curveChildLiquidityGaugeSupplyFuse,
             unsupportedGauge,
-            CURVE_STABLESWAP_NG_POOL,
             vaultStateBeforeExitCurveGauge.vaultStakedLpTokensBalance,
             false
         );
@@ -617,7 +610,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
             address(CURVE_LIQUIDITY_GAUGE),
-            CURVE_STABLESWAP_NG_POOL,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance,
             true
         );
@@ -629,7 +621,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _executeCurveChildLiquidityGaugeSupplyFuseExit(
             curveChildLiquidityGaugeSupplyFuse,
             address(CURVE_LIQUIDITY_GAUGE),
-            CURVE_STABLESWAP_NG_POOL,
             0,
             false
         );
@@ -939,7 +930,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     function _executeCurveChildLiquidityGaugeSupplyFuseEnter(
         CurveChildLiquidityGaugeSupplyFuse fuseInstance,
         address curveGauge,
-        address lpToken,
         uint256 amount,
         bool success
     ) internal {
@@ -964,7 +954,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     function _executeCurveChildLiquidityGaugeSupplyFuseExit(
         CurveChildLiquidityGaugeSupplyFuse fuseInstance,
         address curveGauge,
-        address lpToken,
         uint256 amount,
         bool success
     ) internal {

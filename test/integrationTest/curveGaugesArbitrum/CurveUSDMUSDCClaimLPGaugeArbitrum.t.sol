@@ -40,46 +40,38 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         uint256[] rewardsClaimManagerBalanceRewardTokens;
     }
 
-    struct ConstantAddresses {
-        address CURVE_STABLESWAP_NG_POOL;
-        address CHILD_LIQUIDITY_GAUGE;
-        address USDM;
-        address ARB;
-        address CHRONICLE_ADMIN;
-        address WUSDM_USD_ORACLE_FEED;
-        address CHAINLINK_ARB;
-        address OWNER;
+    struct ContractAddresses {
+        address curveStableswapNgPool;
+        address childLiquidityGauge;
+        address usdm;
+        address arb;
+        address chronicleAdmin;
+        address wusdmUsdOracleFeed;
+        address chainlinkArb;
+        address owner;
+    }
+
+    struct ContractInstances {
+        ICurveStableswapNG curveStableswapNg;
+        IChildLiquidityGauge curveLiquidityGauge;
+        PriceOracleMiddleware priceOracleMiddlewareProxy;
+        USDMPriceFeedArbitrum usdmPriceFeed;
+        PlasmaVault plasmaVault;
+        RewardsClaimManager rewardsClaimManager;
+        IporFusionAccessManager accessManager;
     }
 
     UsersToRoles public usersToRoles;
 
-    ConstantAddresses private ADDRESSES =
-        ConstantAddresses({
-            CURVE_STABLESWAP_NG_POOL: 0x4bD135524897333bec344e50ddD85126554E58B4,
-            CHILD_LIQUIDITY_GAUGE: 0xbdBb71914DdB650F96449b54d2CA15132Be56Aca,
-            USDM: 0x59D9356E565Ab3A36dD77763Fc0d87fEaf85508C,
-            ARB: 0x912CE59144191C1204E64559FE8253a0e49E6548,
-            CHRONICLE_ADMIN: 0x39aBD7819E5632Fa06D2ECBba45Dca5c90687EE3,
-            WUSDM_USD_ORACLE_FEED: 0xdC6720c996Fad27256c7fd6E0a271e2A4687eF18,
-            CHAINLINK_ARB: 0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6,
-            OWNER: 0xD92E9F039E4189c342b4067CC61f5d063960D248
-        });
-
-    ICurveStableswapNG public CURVE_STABLESWAP_NG = ICurveStableswapNG(ADDRESSES.CURVE_STABLESWAP_NG_POOL);
-    IChildLiquidityGauge public CURVE_LIQUIDITY_GAUGE = IChildLiquidityGauge(ADDRESSES.CHILD_LIQUIDITY_GAUGE);
+    ContractAddresses private addresses;
+    ContractInstances private instances;
 
     /// Assets
     address public asset;
     uint256 public constant BASE_CURRENCY_DECIMALS = 8;
 
     /// Oracles
-    PriceOracleMiddleware private priceOracleMiddlewareProxy;
-    IChronicle public CHRONICLE = IChronicle(ADDRESSES.WUSDM_USD_ORACLE_FEED);
-    // solhint-disable-next-line
-    USDMPriceFeedArbitrum public USDMPriceFeed;
-
-    /// Vaults
-    PlasmaVault public plasmaVault;
+    IChronicle public chronicleOracle;
 
     /// Fuses
     address[] public fuses;
@@ -90,11 +82,9 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
     /// Users
     address private admin = address(this);
-    address public alpha = address(0x1);
-    address public depositor = address(0x2);
-    address public atomist = address(0x3);
-    RewardsClaimManager public rewardsClaimManager;
-    IporFusionAccessManager public accessManager;
+    address public constant ALPHA = address(0x1);
+    address public constant DEPOSITOR = address(0x2);
+    address public constant ATOMIST = address(0x3);
     address[] public alphas;
 
     /// Events
@@ -121,27 +111,27 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            address(CURVE_LIQUIDITY_GAUGE),
-            ADDRESSES.CURVE_STABLESWAP_NG_POOL,
+            address(instances.curveLiquidityGauge),
+            addresses.curveStableswapNgPool,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance
         );
         PlasmaVaultState memory vaultStateAfterEnterCurveGauge = getPlasmaVaultState();
 
         _setupDependencyBalanceGraphs();
 
-        vm.prank(address(plasmaVault));
-        CURVE_LIQUIDITY_GAUGE.user_checkpoint(address(plasmaVault));
+        vm.prank(address(instances.plasmaVault));
+        instances.curveLiquidityGauge.user_checkpoint(address(instances.plasmaVault));
 
         vm.warp(block.timestamp + 100 days);
         vm.roll(block.number + 720000);
 
-        vm.prank(address(plasmaVault));
-        CURVE_LIQUIDITY_GAUGE.user_checkpoint(address(plasmaVault));
+        vm.prank(address(instances.plasmaVault));
+        instances.curveLiquidityGauge.user_checkpoint(address(instances.plasmaVault));
 
         // when
         FuseAction[] memory rewardsClaimCalls = new FuseAction[](1);
         rewardsClaimCalls[0] = FuseAction(address(curveGaugeTokenClaimFuse), abi.encodeWithSignature("claim()"));
-        rewardsClaimManager.claimRewards(rewardsClaimCalls);
+        instances.rewardsClaimManager.claimRewards(rewardsClaimCalls);
 
         PlasmaVaultState memory vaultStateAfterClaiming = getPlasmaVaultState();
 
@@ -206,7 +196,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         assertEq(vaultStateAfterEnterCurveGauge.vaultNumberRewardTokens, 2, "Number of reward tokens should be 2");
         for (uint256 i = 0; i < vaultStateAfterClaiming.vaultNumberRewardTokens; ++i) {
             // if USDM the balance should be 0 both before and after claiming rewards
-            if (vaultStateAfterEnterCurveGauge.vaultRewardTokens[i] == ADDRESSES.USDM) {
+            if (vaultStateAfterEnterCurveGauge.vaultRewardTokens[i] == addresses.usdm) {
                 assertEq(
                     vaultStateAfterEnterCurveGauge.vaultClaimedRewardTokens[i],
                     0,
@@ -239,7 +229,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 );
             }
             // if ARB the balance should be 0 before claiming and greater than 0 after claiming rewards
-            if (vaultStateAfterEnterCurveGauge.vaultRewardTokens[i] == ADDRESSES.ARB) {
+            if (vaultStateAfterEnterCurveGauge.vaultRewardTokens[i] == addresses.arb) {
                 assertEq(
                     vaultStateAfterEnterCurveGauge.vaultClaimedRewardTokens[i],
                     0,
@@ -294,8 +284,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
         _executeCurveChildLiquidityGaugeSupplyFuseEnter(
             curveChildLiquidityGaugeSupplyFuse,
-            address(CURVE_LIQUIDITY_GAUGE),
-            ADDRESSES.CURVE_STABLESWAP_NG_POOL,
+            address(instances.curveLiquidityGauge),
+            addresses.curveStableswapNgPool,
             vaultStateAfterEnterCurvePool.vaultLpTokensBalance
         );
         PlasmaVaultState memory vaultStateAfterEnterCurveGauge = getPlasmaVaultState();
@@ -305,7 +295,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         // when
         FuseAction[] memory rewardsClaimCalls = new FuseAction[](1);
         rewardsClaimCalls[0] = FuseAction(address(curveGaugeTokenClaimFuse), abi.encodeWithSignature("claim()"));
-        rewardsClaimManager.claimRewards(rewardsClaimCalls);
+        instances.rewardsClaimManager.claimRewards(rewardsClaimCalls);
 
         PlasmaVaultState memory vaultStateAfterClaiming = getPlasmaVaultState();
 
@@ -429,6 +419,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _init() private {
+        _setupAddresses();
         _setupAsset();
         _setupPriceOracle();
         _setupFuses();
@@ -442,8 +433,25 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         _initAccessManager();
     }
 
+    function _setupAddresses() private {
+        addresses = ContractAddresses({
+            curveStableswapNgPool: 0x4bD135524897333bec344e50ddD85126554E58B4,
+            childLiquidityGauge: 0xbdBb71914DdB650F96449b54d2CA15132Be56Aca,
+            usdm: 0x59D9356E565Ab3A36dD77763Fc0d87fEaf85508C,
+            arb: 0x912CE59144191C1204E64559FE8253a0e49E6548,
+            chronicleAdmin: 0x39aBD7819E5632Fa06D2ECBba45Dca5c90687EE3,
+            wusdmUsdOracleFeed: 0xdC6720c996Fad27256c7fd6E0a271e2A4687eF18,
+            chainlinkArb: 0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6,
+            owner: 0xD92E9F039E4189c342b4067CC61f5d063960D248
+        });
+
+        instances.curveStableswapNg = ICurveStableswapNG(addresses.curveStableswapNgPool);
+        instances.curveLiquidityGauge = IChildLiquidityGauge(addresses.childLiquidityGauge);
+        chronicleOracle = IChronicle(addresses.wusdmUsdOracleFeed);
+    }
+
     function _setupAsset() public {
-        asset = ADDRESSES.USDM;
+        asset = addresses.usdm;
     }
 
     function dealAsset(address asset_, address account_, uint256 amount_) public {
@@ -452,15 +460,15 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _setupPriceOracleSources() private returns (address[] memory assets, address[] memory sources) {
-        USDMPriceFeed = new USDMPriceFeedArbitrum();
-        vm.prank(ADDRESSES.CHRONICLE_ADMIN);
-        IToll(address(CHRONICLE)).kiss(address(USDMPriceFeed));
+        instances.usdmPriceFeed = new USDMPriceFeedArbitrum();
+        vm.prank(addresses.chronicleAdmin);
+        IToll(address(chronicleOracle)).kiss(address(instances.usdmPriceFeed));
         assets = new address[](2);
         sources = new address[](2);
-        assets[0] = ADDRESSES.USDM;
-        assets[1] = ADDRESSES.ARB;
-        sources[0] = address(USDMPriceFeed);
-        sources[1] = ADDRESSES.CHAINLINK_ARB;
+        assets[0] = addresses.usdm;
+        assets[1] = addresses.arb;
+        sources[0] = address(instances.usdmPriceFeed);
+        sources[1] = addresses.chainlinkArb;
     }
 
     function _setupPriceOracle() private {
@@ -468,16 +476,16 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         address[] memory sources;
         (assets, sources) = _setupPriceOracleSources();
         PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
-        priceOracleMiddlewareProxy = PriceOracleMiddleware(
+        instances.priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(
                 new ERC1967Proxy(
                     address(implementation),
-                    abi.encodeWithSignature("initialize(address)", ADDRESSES.OWNER)
+                    abi.encodeWithSignature("initialize(address)", addresses.owner)
                 )
             )
         );
-        vm.prank(ADDRESSES.OWNER);
-        priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
+        vm.prank(addresses.owner);
+        instances.priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
 
     function _setupFuses() private {
@@ -495,35 +503,38 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
     function _createAlphas() private {
         alphas = new address[](1);
-        alphas[0] = alpha;
+        alphas[0] = ALPHA;
     }
 
     function _createAccessManager() private {
         if (usersToRoles.superAdmin == address(0)) {
             usersToRoles.superAdmin = admin;
-            usersToRoles.atomist = atomist;
+            usersToRoles.atomist = ATOMIST;
             usersToRoles.alphas = alphas;
         }
-        accessManager = IporFusionAccessManager(RoleLib.createAccessManager(usersToRoles, 0, vm));
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+        instances.accessManager = IporFusionAccessManager(RoleLib.createAccessManager(usersToRoles, 0, vm));
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(instances.plasmaVault), instances.accessManager);
     }
 
     function _createClaimRewardsManager() private {
-        rewardsClaimManager = new RewardsClaimManager(address(accessManager), address(plasmaVault));
+        instances.rewardsClaimManager = new RewardsClaimManager(
+            address(instances.accessManager),
+            address(instances.plasmaVault)
+        );
     }
 
     function _createPlasmaVault() private {
-        plasmaVault = new PlasmaVault(
+        instances.plasmaVault = new PlasmaVault(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",
                 underlyingToken: asset,
-                priceOracleMiddleware: address(priceOracleMiddlewareProxy),
+                priceOracleMiddleware: address(instances.priceOracleMiddlewareProxy),
                 marketSubstratesConfigs: _setupMarketConfigs(),
                 fuses: fuses,
                 balanceFuses: _setupBalanceFuses(),
                 feeConfig: _setupFeeConfig(),
-                accessManager: address(accessManager),
+                accessManager: address(instances.accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
                 totalSupplyCap: type(uint256).max
             })
@@ -533,11 +544,11 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
         marketConfigs = new MarketSubstratesConfig[](2);
         bytes32[] memory substratesCurvePool = new bytes32[](1);
-        substratesCurvePool[0] = PlasmaVaultConfigLib.addressToBytes32(ADDRESSES.CURVE_STABLESWAP_NG_POOL);
+        substratesCurvePool[0] = PlasmaVaultConfigLib.addressToBytes32(addresses.curveStableswapNgPool);
         marketConfigs[0] = MarketSubstratesConfig(IporFusionMarkets.CURVE_POOL, substratesCurvePool);
 
         bytes32[] memory substratesCurveGauge = new bytes32[](1);
-        substratesCurveGauge[0] = PlasmaVaultConfigLib.addressToBytes32(ADDRESSES.CHILD_LIQUIDITY_GAUGE);
+        substratesCurveGauge[0] = PlasmaVaultConfigLib.addressToBytes32(addresses.childLiquidityGauge);
         marketConfigs[1] = MarketSubstratesConfig(IporFusionMarkets.CURVE_LP_GAUGE, substratesCurveGauge);
     }
 
@@ -560,7 +571,9 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
     function _setupPlasmaVault() private {
         vm.prank(admin);
-        PlasmaVaultGovernance(address(plasmaVault)).setRewardsClaimManagerAddress(address(rewardsClaimManager));
+        PlasmaVaultGovernance(address(instances.plasmaVault)).setRewardsClaimManagerAddress(
+            address(instances.rewardsClaimManager)
+        );
     }
 
     function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
@@ -575,7 +588,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     function _addClaimFuseToClaimRewardsManager() private {
         claimFuses = new address[](1);
         claimFuses[0] = address(curveGaugeTokenClaimFuse);
-        rewardsClaimManager.addRewardFuses(claimFuses);
+        instances.rewardsClaimManager.addRewardFuses(claimFuses);
     }
 
     function _initAccessManager() private {
@@ -596,14 +609,14 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
-                plasmaVault: address(plasmaVault),
-                accessManager: address(accessManager),
-                rewardsClaimManager: address(rewardsClaimManager)
+                plasmaVault: address(instances.plasmaVault),
+                accessManager: address(instances.accessManager),
+                rewardsClaimManager: address(instances.rewardsClaimManager)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
             .generateInitializeIporPlasmaVault(data);
-        accessManager.initialize(initializationData);
+        instances.accessManager.initialize(initializationData);
     }
 
     /// HELPERS
@@ -618,14 +631,17 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         uint256[][] memory dependencyMarkets = new uint256[][](1);
         dependencyMarkets[0] = dependencies;
 
-        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
+        PlasmaVaultGovernance(address(instances.plasmaVault)).updateDependencyBalanceGraphs(
+            marketIds,
+            dependencyMarkets
+        );
     }
 
     function _depositIntoVaultAndProvideLiquidityToCurvePool(uint256 amount) private {
         dealAsset(asset, admin, amount);
         vm.startPrank(admin);
-        ERC20(asset).approve(address(plasmaVault), amount);
-        plasmaVault.deposit(amount, address(admin));
+        ERC20(asset).approve(address(instances.plasmaVault), amount);
+        instances.plasmaVault.deposit(amount, address(admin));
         vm.stopPrank();
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(
@@ -634,7 +650,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 "enter(bytes)",
                 abi.encode(
                     CurveStableswapNGSingleSideSupplyFuseEnterData({
-                        curveStableswapNG: CURVE_STABLESWAP_NG,
+                        curveStableswapNG: instances.curveStableswapNg,
                         asset: asset,
                         amount: amount,
                         minMintAmount: 0
@@ -642,14 +658,14 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 )
             )
         );
-        vm.prank(alpha);
-        plasmaVault.execute(calls);
+        vm.prank(ALPHA);
+        instances.plasmaVault.execute(calls);
     }
 
     function _executeCurveChildLiquidityGaugeSupplyFuseEnter(
         CurveChildLiquidityGaugeSupplyFuse fuseInstance,
         address curveGauge,
-        address lpToken,
+        address,
         uint256 amount
     ) internal {
         FuseAction[] memory calls = new FuseAction[](1);
@@ -661,37 +677,41 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             )
         );
 
-        vm.prank(alpha);
-        plasmaVault.execute(calls);
+        vm.prank(ALPHA);
+        instances.plasmaVault.execute(calls);
     }
 
     function getPlasmaVaultState() public view returns (PlasmaVaultState memory) {
         PlasmaVaultState memory state;
-        state.vaultBalance = ERC20(asset).balanceOf(address(plasmaVault));
-        state.vaultTotalAssets = plasmaVault.totalAssets();
-        state.vaultTotalAssetsInCurvePool = plasmaVault.totalAssetsInMarket(
+        state.vaultBalance = ERC20(asset).balanceOf(address(instances.plasmaVault));
+        state.vaultTotalAssets = instances.plasmaVault.totalAssets();
+        state.vaultTotalAssetsInCurvePool = instances.plasmaVault.totalAssetsInMarket(
             curveStableswapNGSingleSideSupplyFuse.MARKET_ID()
         );
-        state.vaultTotalAssetsInGauge = plasmaVault.totalAssetsInMarket(curveChildLiquidityGaugeSupplyFuse.MARKET_ID());
-        state.vaultLpTokensBalance = ERC20(ADDRESSES.CURVE_STABLESWAP_NG_POOL).balanceOf(address(plasmaVault));
-        state.vaultStakedLpTokensBalance = ERC20(ADDRESSES.CHILD_LIQUIDITY_GAUGE).balanceOf(address(plasmaVault));
-        state.vaultNumberRewardTokens = CURVE_LIQUIDITY_GAUGE.reward_count();
+        state.vaultTotalAssetsInGauge = instances.plasmaVault.totalAssetsInMarket(
+            curveChildLiquidityGaugeSupplyFuse.MARKET_ID()
+        );
+        state.vaultLpTokensBalance = ERC20(addresses.curveStableswapNgPool).balanceOf(address(instances.plasmaVault));
+        state.vaultStakedLpTokensBalance = ERC20(addresses.childLiquidityGauge).balanceOf(
+            address(instances.plasmaVault)
+        );
+        state.vaultNumberRewardTokens = instances.curveLiquidityGauge.reward_count();
         state.vaultRewardTokens = new address[](state.vaultNumberRewardTokens);
         state.vaultClaimedRewardTokens = new uint256[](state.vaultNumberRewardTokens);
         state.vaultClaimableRewardTokens = new uint256[](state.vaultNumberRewardTokens);
         state.rewardsClaimManagerBalanceRewardTokens = new uint256[](state.vaultNumberRewardTokens);
         for (uint256 i = 0; i < state.vaultNumberRewardTokens; ++i) {
-            state.vaultRewardTokens[i] = CURVE_LIQUIDITY_GAUGE.reward_tokens(i);
-            state.vaultClaimedRewardTokens[i] = CURVE_LIQUIDITY_GAUGE.claimed_reward(
-                address(plasmaVault),
+            state.vaultRewardTokens[i] = instances.curveLiquidityGauge.reward_tokens(i);
+            state.vaultClaimedRewardTokens[i] = instances.curveLiquidityGauge.claimed_reward(
+                address(instances.plasmaVault),
                 state.vaultRewardTokens[i]
             );
-            state.vaultClaimableRewardTokens[i] = CURVE_LIQUIDITY_GAUGE.claimable_reward(
-                address(plasmaVault),
+            state.vaultClaimableRewardTokens[i] = instances.curveLiquidityGauge.claimable_reward(
+                address(instances.plasmaVault),
                 state.vaultRewardTokens[i]
             );
             state.rewardsClaimManagerBalanceRewardTokens[i] = ERC20(state.vaultRewardTokens[i]).balanceOf(
-                address(rewardsClaimManager)
+                address(instances.rewardsClaimManager)
             );
         }
         return state;
