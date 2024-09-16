@@ -92,7 +92,6 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        //TODO: check if return value is needed
         try COMET.withdraw(data_.asset, finalAmount) {
             emit CompoundV3SupplyFuseExit(VERSION, data_.asset, address(COMET), data_.amount);
         } catch {
