@@ -56,8 +56,8 @@ contract PlasmaVaultWithdrawTest is Test {
     PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
 
-    event AaveV3SupplyExitFuse(address version, address asset, uint256 amount);
-    event CompoundV3SupplyExitFuse(address version, address asset, address market, uint256 amount);
+    event AaveV3SupplyFuseExit(address version, address asset, uint256 amount);
+    event CompoundV3SupplyFuseExit(address version, address asset, address market, uint256 amount);
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19724793);
@@ -314,8 +314,8 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
             )
         );
 
@@ -418,8 +418,8 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
             )
         );
 
@@ -531,16 +531,16 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6})
             )
         );
 
@@ -647,8 +647,8 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e6})
             )
         );
 
@@ -671,7 +671,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         //then
         vm.expectEmit(true, true, true, true);
-        emit AaveV3SupplyExitFuse(address(supplyFuseAaveV3), USDC, 99 * 1e6 + WITHDRAW_FROM_MARKETS_OFFSET);
+        emit AaveV3SupplyFuseExit(address(supplyFuseAaveV3), USDC, 99 * 1e6 + WITHDRAW_FROM_MARKETS_OFFSET);
         //when
         vm.prank(userOne);
         plasmaVault.withdraw(199 * 1e6, userOne, userOne);
@@ -751,16 +751,16 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 50 * 1e6})
             )
         );
 
@@ -788,9 +788,9 @@ contract PlasmaVaultWithdrawTest is Test {
 
         //then
         vm.expectEmit(true, true, true, true);
-        emit AaveV3SupplyExitFuse(address(supplyFuseAaveV3), USDC, 50 * 1e6);
+        emit AaveV3SupplyFuseExit(address(supplyFuseAaveV3), USDC, 50 * 1e6);
         vm.expectEmit(true, true, true, true);
-        emit CompoundV3SupplyExitFuse(
+        emit CompoundV3SupplyFuseExit(
             address(supplyFuseCompoundV3),
             USDC,
             COMET_V3_USDC,
@@ -891,16 +891,16 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6})
             )
         );
 
@@ -1053,16 +1053,16 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6})
             )
         );
 
@@ -1206,16 +1206,16 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6})
             )
         );
 
@@ -1344,8 +1344,8 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6})
             )
         );
 
@@ -1457,8 +1457,8 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 2 * amount, userEModeCategoryId: 1e6})
             )
         );
 
@@ -1596,16 +1596,16 @@ contract PlasmaVaultWithdrawTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6, userEModeCategoryId: 1e6})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: 100 * 1e6})
             )
         );
 

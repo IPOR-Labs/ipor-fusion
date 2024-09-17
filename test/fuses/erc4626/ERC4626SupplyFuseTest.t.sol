@@ -39,8 +39,7 @@ contract Erc4626SupplyFuseTest is Test {
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         // when
-
-        vaultMock.enter(abi.encode(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount})));
+        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -69,14 +68,13 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enter(abi.encode(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount})));
+        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount}));
 
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
         uint256 balanceOnMarketBefore = vault.balanceOf(address(vaultMock));
 
         // when
-
-        vaultMock.exit(abi.encode(Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2})));
+        vaultMock.exitErc4626Supply(Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2}));
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -107,7 +105,7 @@ contract Erc4626SupplyFuseTest is Test {
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         // when
-        vaultMock.enter(abi.encode(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount})));
+        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -133,14 +131,13 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enter(abi.encode(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount})));
+        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount}));
 
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
         uint256 balanceOnMarketBefore = vault.balanceOf(address(vaultMock));
 
         // when
-
-        vaultMock.exit(abi.encode(Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2})));
+        vaultMock.exitErc4626Supply(Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2}));
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
