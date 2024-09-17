@@ -30,7 +30,6 @@ contract RamsesV2PositionFuseTest is Test {
     address private constant USDT = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
     address private constant DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
-    address private constant _UNIVERSAL_ROUTER = 0xAA273216Cc9201A1e4285CA623f584BADc736944;
     address private constant _NONFUNGIBLE_POSITION_MANAGER = 0xAA277CB7914b7e5514946Da92cb9De332Ce610EF;
     address private constant _RAMSES_FACTORY = 0xAA2cd7477c451E703f3B9Ba5663334914763edF8;
 
@@ -518,7 +517,7 @@ contract RamsesV2PositionFuseTest is Test {
         assertApproxEqAbs(usdcBalanceAfter, 9999999999, 1e6, "usdcBalanceAfter");
     }
 
-    function stestShouldCRemovePosition() external {
+    function testShouldCRemovePosition() external {
         // given
         RamsesV2NewPositionFuseEnterData memory mintParams = RamsesV2NewPositionFuseEnterData({
             token0: USDC,
