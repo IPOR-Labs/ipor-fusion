@@ -3,9 +3,9 @@ pragma solidity >=0.8.26;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
+import {INonfungiblePositionManagerRamses} from "./INonfungiblePositionManagerRamses.sol";
 import "./TickMath.sol";
 import "./Tick.sol";
-import {INonfungiblePositionManager} from "./INonfungiblePositionManager.sol";
 import "./LiquidityAmounts.sol";
 import "./PoolAddress.sol";
 import "./PositionKey.sol";
@@ -20,7 +20,7 @@ library PositionValue {
     /// @return amount0 The total amount of token0 including principal and fees
     /// @return amount1 The total amount of token1 including principal and fees
     function total(
-        INonfungiblePositionManager positionManager,
+        INonfungiblePositionManagerRamses positionManager,
         uint256 tokenId,
         uint160 sqrtRatioX96
     ) internal view returns (uint256 amount0, uint256 amount1) {
@@ -37,7 +37,7 @@ library PositionValue {
     /// @return amount0 The principal amount of token0
     /// @return amount1 The principal amount of token1
     function principal(
-        INonfungiblePositionManager positionManager,
+        INonfungiblePositionManagerRamses positionManager,
         uint256 tokenId,
         uint160 sqrtRatioX96
     ) internal view returns (uint256 amount0, uint256 amount1) {
@@ -71,7 +71,7 @@ library PositionValue {
     /// @return amount0 The amount of fees owed in token0
     /// @return amount1 The amount of fees owed in token1
     function fees(
-        INonfungiblePositionManager positionManager,
+        INonfungiblePositionManagerRamses positionManager,
         uint256 tokenId
     ) internal view returns (uint256 amount0, uint256 amount1) {
         (
@@ -108,7 +108,7 @@ library PositionValue {
     }
 
     function _fees(
-        INonfungiblePositionManager positionManager,
+        INonfungiblePositionManagerRamses positionManager,
         FeeParams memory feeParams
     ) private view returns (uint256 amount0, uint256 amount1) {
         (uint256 poolFeeGrowthInside0LastX128, uint256 poolFeeGrowthInside1LastX128) = _getFeeGrowthInside(

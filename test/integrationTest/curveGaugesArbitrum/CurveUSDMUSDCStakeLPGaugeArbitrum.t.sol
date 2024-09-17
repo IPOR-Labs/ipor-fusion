@@ -939,6 +939,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     function _executeCurveChildLiquidityGaugeSupplyFuseEnter(
         CurveChildLiquidityGaugeSupplyFuse fuseInstance,
         address curveGauge,
+        //solhint-disable-next-line
         address lpToken,
         uint256 amount,
         bool success
@@ -964,6 +965,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     function _executeCurveChildLiquidityGaugeSupplyFuseExit(
         CurveChildLiquidityGaugeSupplyFuse fuseInstance,
         address curveGauge,
+        //solhint-disable-next-line
         address lpToken,
         uint256 amount,
         bool success
