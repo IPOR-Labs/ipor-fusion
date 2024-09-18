@@ -17,7 +17,7 @@ To install the dependencies for this project:
 npm install
 ```
 
-This will install all the required Node.js packages listed in `package.json`.
+This will install all the required Node.js packages listed in [package.json](./package.json).
 
 ## Smart Contract Development
 
@@ -43,7 +43,7 @@ An example `.env` file is in [.env.example](./.env.example). Copy this file to `
 Test smart contracts using:
 
 ```bash
-forge test
+forge test -vvv --ffi
 ```
 
 ## Pre-commit hooks
