@@ -210,13 +210,17 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
         vm.prank(accounts[1]);
         PlasmaVault(plasmaVault).deposit(insufficientDepositAmount, accounts[1]);
 
-        Erc4626SupplyFuseEnterData memory supplyData = Erc4626SupplyFuseEnterData({
-            vault: EULER_USDC2_VAULT_COLLATERAL,
-            vaultAssetAmount: insufficientDepositAmount
-        });
-
         FuseAction[] memory supplyActions = new FuseAction[](1);
-        supplyActions[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(supplyData)));
+        supplyActions[0] = FuseAction(
+            fuses[0],
+            abi.encodeWithSignature(
+                "enter((address,uint256))",
+                Erc4626SupplyFuseEnterData({
+                    vault: EULER_USDC2_VAULT_COLLATERAL,
+                    vaultAssetAmount: insufficientDepositAmount
+                })
+            )
+        );
 
         vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(supplyActions);
@@ -407,13 +411,14 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
         vm.prank(accounts[1]);
         PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
 
-        Erc4626SupplyFuseEnterData memory supplyData = Erc4626SupplyFuseEnterData({
-            vault: EULER_USDC2_VAULT_COLLATERAL,
-            vaultAssetAmount: depositAmount
-        });
-
         FuseAction[] memory supplyActions = new FuseAction[](1);
-        supplyActions[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(supplyData)));
+        supplyActions[0] = FuseAction(
+            fuses[0],
+            abi.encodeWithSignature(
+                "enter((address,uint256))",
+                Erc4626SupplyFuseEnterData({vault: EULER_USDC2_VAULT_COLLATERAL, vaultAssetAmount: depositAmount})
+            )
+        );
 
         vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(supplyActions);
