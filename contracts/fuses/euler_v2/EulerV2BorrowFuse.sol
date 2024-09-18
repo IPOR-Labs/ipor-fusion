@@ -4,11 +4,11 @@ pragma solidity 0.8.26;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {IEVault} from "./ext/IEVault.sol";
+import {IBorrowing, IEVault} from "./ext/IEVault.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IEVC} from "../../../node_modules/ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 
-/// @notice Structure for entering (borrow)Euler V2 vaults
+/// @notice Structure for entering (borrow) Euler V2 vaults
 struct EulerV2BorrowFuseEnterData {
     /// @notice EVault address to borrow from
     address vault;
@@ -16,7 +16,7 @@ struct EulerV2BorrowFuseEnterData {
     uint256 amount;
 }
 
-/// @notice Structure for exiting (repay) from the Euler V2 protocol
+/// @notice Structure for exiting (repay) from Euler V2 vaults
 struct EulerV2BorrowFuseExitData {
     /// @notice EVault address to repay to
     address vault;
@@ -28,7 +28,6 @@ struct EulerV2BorrowFuseExitData {
 /// @dev Substrates in this fuse are the EVaults that are used in Euler V2 for a given MARKET_ID
 contract EulerV2BorrowFuse is IFuseCommon {
     using SafeERC20 for ERC20;
-
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
     IEVC public immutable EVC;
@@ -53,8 +52,12 @@ contract EulerV2BorrowFuse is IFuseCommon {
             revert EulerV2BorrowFuseUnsupportedVault("enter", data_.vault);
         }
 
-        // Prepare the calldata for the borrow function
-        bytes memory borrowCalldata = abi.encodeWithSelector(IEVault.borrow.selector, data_.amount, address(this));
+        IBorrowing borrowingModule = IBorrowing(IEVault(data_.vault).MODULE_BORROWING());
+        bytes memory borrowCalldata = abi.encodeWithSelector(
+            borrowingModule.borrow.selector,
+            data_.amount,
+            address(this)
+        );
 
         /* solhint-disable avoid-low-level-calls */
         uint256 borrowedAmount = abi.decode(EVC.call(data_.vault, address(this), 0, borrowCalldata), (uint256));
@@ -75,10 +78,13 @@ contract EulerV2BorrowFuse is IFuseCommon {
         address asset = vault.asset();
         ERC20(asset).forceApprove(data_.vault, data_.amount);
 
-        // Prepare the calldata for the repay function
-        bytes memory repayCalldata = abi.encodeWithSelector(IEVault.repay.selector, data_.amount, address(this));
+        IBorrowing borrowingModule = IBorrowing(IEVault(data_.vault).MODULE_BORROWING());
+        bytes memory repayCalldata = abi.encodeWithSelector(
+            borrowingModule.repay.selector,
+            data_.amount,
+            address(this)
+        );
 
-        // Call the vault through EVC
         /* solhint-disable avoid-low-level-calls */
         uint256 repaidAmount = abi.decode(EVC.call(data_.vault, address(this), 0, repayCalldata), (uint256));
         emit EulerV2BorrowExitFuse(VERSION, data_.vault, repaidAmount);
