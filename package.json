@@ -1,5 +1,5 @@
 {
-  "name": "IPOR_Fusion",
+  "name": "ipor-fusion",
   "engines": {
     "npm": "10.8.2",
     "node": "20.17.0"
