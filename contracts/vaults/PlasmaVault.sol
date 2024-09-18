@@ -351,7 +351,7 @@ contract PlasmaVault is
     }
 
     /// @notice Returns the total assets in the vault
-    /// @dev value not take into account runtime accrued interest in the markets, and NOT take into account runtime accrued management fee
+    /// @dev value not take into account runtime accrued interest in the markets, and NOT take into account runtime accrued performance fee
     /// @return total assets in the vault, represented in underlying token decimals
     function totalAssets() public view virtual override returns (uint256) {
         uint256 grossTotalAssets = _getGrossTotalAssets();
@@ -360,7 +360,7 @@ contract PlasmaVault is
         if (unrealizedManagementFee >= grossTotalAssets) {
             return 0;
         } else {
-            return grossTotalAssets - _getUnrealizedManagementFee(grossTotalAssets);
+            return grossTotalAssets - unrealizedManagementFee;
         }
     }
 

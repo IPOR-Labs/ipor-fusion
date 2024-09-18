@@ -21,7 +21,7 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
     address public immutable UNDERLYING_TOKEN;
     address public immutable PLASMA_VAULT;
 
-    error UnableToTransferUnderlineToken();
+    error UnableToTransferUnderlyingToken();
 
     event AmountWithdrawn(uint256 amount);
 
@@ -63,7 +63,7 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
 
     function transfer(address asset_, address to_, uint256 amount_) external restricted {
         if (asset_ == UNDERLYING_TOKEN) {
-            revert UnableToTransferUnderlineToken();
+            revert UnableToTransferUnderlyingToken();
         }
         IERC20(asset_).safeTransfer(to_, amount_);
     }

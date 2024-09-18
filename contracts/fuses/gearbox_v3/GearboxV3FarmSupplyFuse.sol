@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IFarmingPool} from "./ext/IFarmingPool.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
@@ -26,11 +26,12 @@ struct GearboxV3FarmdSupplyFuseExitData {
 
 /// @title Fuse for Gearbox V3 Farmd protocol responsible for supplying and withdrawing assets from the Gearbox V3 Farmd protocol based on preconfigured market substrates
 /// @dev Substrates in this fuse are the farmd tokens addresses that are used in the Gearbox V3 Farmd protocol for a given MARKET_ID
-contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
+contract GearboxV3FarmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for IERC20;
 
-    event GearboxV3FarmdEnterFuse(address version, address farmdToken, address dToken, uint256 amount);
-    event GearboxV3FarmdExitFuse(address version, address farmdToken, uint256 amount);
+    event GearboxV3FarmdFuseEnter(address version, address farmdToken, address dToken, uint256 amount);
+    event GearboxV3FarmdFuseExit(address version, address farmdToken, uint256 amount);
+    event GearboxV3FarmdFuseExitFailed(address version, address farmdToken, uint256 amount);
 
     error GearboxV3FarmdSupplyFuseUnsupportedFarmdToken(string action, address farmdToken);
 
@@ -42,13 +43,7 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    /// @notice Enters to the Market
-    function enter(bytes calldata data_) external {
-        GearboxV3FarmdSupplyFuseEnterData memory data = abi.decode(data_, (GearboxV3FarmdSupplyFuseEnterData));
-        enter(data);
-    }
-
-    function enter(GearboxV3FarmdSupplyFuseEnterData memory data_) public {
+    function enter(GearboxV3FarmdSupplyFuseEnterData memory data_) external {
         if (data_.dTokenAmount == 0) {
             return;
         }
@@ -67,16 +62,30 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
         IERC20(dToken).forceApprove(data_.farmdToken, dTokenDepositAmount);
         IFarmingPool(data_.farmdToken).deposit(dTokenDepositAmount);
 
-        emit GearboxV3FarmdEnterFuse(VERSION, data_.farmdToken, dToken, dTokenDepositAmount);
+        emit GearboxV3FarmdFuseEnter(VERSION, data_.farmdToken, dToken, dTokenDepositAmount);
     }
 
     /// @notice Exits from the Market
-    function exit(bytes calldata data_) external {
-        GearboxV3FarmdSupplyFuseExitData memory data = abi.decode(data_, (GearboxV3FarmdSupplyFuseExitData));
-        exit(data);
+    function exit(GearboxV3FarmdSupplyFuseExitData memory data_) external {
+        _exit(data_);
     }
-    /// @notice Exits from the Market
-    function exit(GearboxV3FarmdSupplyFuseExitData memory data_) public {
+
+    /// @dev params[0] - amount in underlying asset of Plasma Vault, params[1] - Farm dToken address
+    function instantWithdraw(bytes32[] calldata params_) external override {
+        uint256 amount = uint256(params_[0]);
+
+        address farmdToken = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
+
+        _exit(
+            GearboxV3FarmdSupplyFuseExitData({
+                farmdToken: farmdToken,
+                /// @dev dToken 1:1 Farm dToken
+                dTokenAmount: IERC4626(IFarmingPool(farmdToken).stakingToken()).convertToShares(amount)
+            })
+        );
+    }
+
+    function _exit(GearboxV3FarmdSupplyFuseExitData memory data_) internal {
         if (data_.dTokenAmount == 0) {
             return;
         }
@@ -94,22 +103,11 @@ contract GearboxV3FarmSupplyFuse is IFuse, IFuseInstantWithdraw {
             return;
         }
 
-        IFarmingPool(data_.farmdToken).withdraw(withdrawAmount);
-        emit GearboxV3FarmdExitFuse(VERSION, data_.farmdToken, withdrawAmount);
-    }
-
-    /// @dev params[0] - amount in underlying asset of Plasma Vault, params[1] - Farm dToken address
-    function instantWithdraw(bytes32[] calldata params_) external override {
-        uint256 amount = uint256(params_[0]);
-
-        address farmdToken = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
-
-        exit(
-            GearboxV3FarmdSupplyFuseExitData({
-                farmdToken: farmdToken,
-                /// @dev dToken 1:1 Farm dToken
-                dTokenAmount: IERC4626(IFarmingPool(farmdToken).stakingToken()).convertToShares(amount)
-            })
-        );
+        try IFarmingPool(data_.farmdToken).withdraw(withdrawAmount) {
+            emit GearboxV3FarmdFuseExit(VERSION, data_.farmdToken, withdrawAmount);
+        } catch {
+            /// @dev if withdraw failed, continue with the next step
+            emit GearboxV3FarmdFuseExitFailed(VERSION, data_.farmdToken, withdrawAmount);
+        }
     }
 }

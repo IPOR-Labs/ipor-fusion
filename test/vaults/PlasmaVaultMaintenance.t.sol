@@ -19,6 +19,7 @@ import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtection
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -55,6 +56,91 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
         );
+    }
+
+    function testShouldNotConfigureInstantWithdrawalFusesFuseNotSupported() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory performanceFeeManagers = new address[](1);
+        performanceFeeManagers[0] = address(0x777);
+        usersToRoles.performanceFeeManagers = performanceFeeManagers;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        address notSupportedFuse = address(0x777);
+
+        InstantWithdrawalFusesParamsStruct[] memory fusesCfg = new InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory params = new bytes32[](0);
+
+        fusesCfg[0] = InstantWithdrawalFusesParamsStruct(notSupportedFuse, params);
+
+        bytes memory error = abi.encodeWithSignature("FuseUnsupported(address)", notSupportedFuse);
+
+        //then
+        vm.expectRevert(error);
+        // when
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(fusesCfg);
+    }
+
+    function testShouldConfigureInstantWithdrawalFusesFuseNotSupported() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory performanceFeeManagers = new address[](1);
+        performanceFeeManagers[0] = address(0x777);
+        usersToRoles.performanceFeeManagers = performanceFeeManagers;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        address supportedFuse = address(0x777);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = supportedFuse;
+
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
+
+        InstantWithdrawalFusesParamsStruct[] memory fusesCfg = new InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory params = new bytes32[](0);
+        fusesCfg[0] = InstantWithdrawalFusesParamsStruct(supportedFuse, params);
+
+        // when
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(fusesCfg);
+
+        //then
+        address[] memory instantWithdrawFuses = IPlasmaVaultGovernance(address(plasmaVault))
+            .getInstantWithdrawalFuses();
+
+        assertEq(instantWithdrawFuses.length, 1);
+        assertEq(instantWithdrawFuses[0], supportedFuse);
     }
 
     function testShouldConfigurePerformanceFeeData() public {
@@ -734,16 +820,16 @@ contract PlasmaVaultMaintenanceTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e18}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e18})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount})
             )
         );
 
@@ -903,8 +989,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         calls[0] = FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
             )
         );
 
@@ -986,8 +1072,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         calls[0] = FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
             )
         );
 

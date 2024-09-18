@@ -30,12 +30,12 @@ contract ERC20BalanceFuse is IMarketBalanceFuse {
         address asset;
         uint256 price;
         uint256 priceDecimals;
-        address underlineAsset = IERC4626(address(this)).asset();
+        address underlyingAsset = IERC4626(address(this)).asset();
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 
         for (uint256 i; i < len; ++i) {
             asset = PlasmaVaultConfigLib.bytes32ToAddress(vaults[i]);
-            if (address(asset) == underlineAsset) {
+            if (address(asset) == underlyingAsset) {
                 continue;
             }
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);

@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {IFuse} from "../IFuse.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {IPool} from "./ext/IPool.sol";
 import {IAavePoolDataProvider} from "./ext/IAavePoolDataProvider.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
@@ -30,7 +30,7 @@ struct AaveV3SupplyFuseExitData {
     uint256 amount;
 }
 /// @dev Fuse for Aave V3 protocol responsible for supplying and withdrawing assets from the Aave V3 protocol
-contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
+contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
@@ -40,9 +40,9 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
     IPool public immutable AAVE_POOL;
     address public immutable AAVE_POOL_DATA_PROVIDER_V3;
 
-    event AaveV3SupplyEnterFuse(address version, address asset, uint256 amount, uint256 userEModeCategoryId);
-    event AaveV3SupplyExitFuse(address version, address asset, uint256 amount);
-    event AaveV3SupplyExitFailed(address version, address asset, uint256 amount);
+    event AaveV3SupplyFuseEnter(address version, address asset, uint256 amount, uint256 userEModeCategoryId);
+    event AaveV3SupplyFuseExit(address version, address asset, uint256 amount);
+    event AaveV3SupplyFuseExitFailed(address version, address asset, uint256 amount);
 
     error AaveV3SupplyFuseUnsupportedAsset(string action, address asset);
 
@@ -60,33 +60,7 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
         AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3_;
     }
 
-    function enter(bytes calldata data_) external override {
-        _enter(abi.decode(data_, (AaveV3SupplyFuseEnterData)));
-    }
-
     function enter(AaveV3SupplyFuseEnterData memory data_) external {
-        _enter(data_);
-    }
-
-    function exit(bytes calldata data_) external override {
-        _exit(abi.decode(data_, (AaveV3SupplyFuseExitData)));
-    }
-
-    /// @dev technical method to generate ABI
-    function exit(AaveV3SupplyFuseExitData calldata data_) external {
-        _exit(data_);
-    }
-
-    /// @dev params[0] - amount in underlying asset, params[1] - asset address
-    function instantWithdraw(bytes32[] calldata params_) external override {
-        uint256 amount = uint256(params_[0]);
-
-        address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
-
-        _exit(AaveV3SupplyFuseExitData(asset, amount));
-    }
-
-    function _enter(AaveV3SupplyFuseEnterData memory data_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -103,7 +77,20 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
             AAVE_POOL.setUserEMode(data_.userEModeCategoryId.toUint8());
         }
 
-        emit AaveV3SupplyEnterFuse(VERSION, data_.asset, data_.amount, data_.userEModeCategoryId);
+        emit AaveV3SupplyFuseEnter(VERSION, data_.asset, data_.amount, data_.userEModeCategoryId);
+    }
+
+    function exit(AaveV3SupplyFuseExitData calldata data_) external {
+        _exit(data_);
+    }
+
+    /// @dev params[0] - amount in underlying asset, params[1] - asset address
+    function instantWithdraw(bytes32[] calldata params_) external override {
+        uint256 amount = uint256(params_[0]);
+
+        address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
+
+        _exit(AaveV3SupplyFuseExitData(asset, amount));
     }
 
     function _exit(AaveV3SupplyFuseExitData memory data) internal {
@@ -119,17 +106,17 @@ contract AaveV3SupplyFuse is IFuse, IFuseInstantWithdraw {
             data.asset
         );
 
-        try
-            AAVE_POOL.withdraw(
-                data.asset,
-                IporMath.min(ERC20(aTokenAddress).balanceOf(address(this)), data.amount),
-                address(this)
-            )
-        returns (uint256 withdrawnAmount) {
-            emit AaveV3SupplyExitFuse(VERSION, data.asset, withdrawnAmount);
+        uint256 finalAmount = IporMath.min(ERC20(aTokenAddress).balanceOf(address(this)), data.amount);
+
+        if (finalAmount == 0) {
+            return;
+        }
+
+        try AAVE_POOL.withdraw(data.asset, finalAmount, address(this)) returns (uint256 withdrawnAmount) {
+            emit AaveV3SupplyFuseExit(VERSION, data.asset, withdrawnAmount);
         } catch {
             /// @dev if withdraw failed, continue with the next step
-            emit AaveV3SupplyExitFailed(VERSION, data.asset, data.amount);
+            emit AaveV3SupplyFuseExitFailed(VERSION, data.asset, data.amount);
         }
     }
 }
