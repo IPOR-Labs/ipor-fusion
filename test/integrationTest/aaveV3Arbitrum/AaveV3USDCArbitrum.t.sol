@@ -68,7 +68,7 @@ contract AaveV3USDCArbitrum is SupplyTest {
             userEModeCategoryId: 300
         });
         data = new bytes[](1);
-        data[0] = abi.encode(enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
     }
 
     function getExitFuseData(
@@ -78,7 +78,7 @@ contract AaveV3USDCArbitrum is SupplyTest {
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         AaveV3SupplyFuseExitData memory exitData = AaveV3SupplyFuseExitData({asset: asset, amount: amount_});
         data = new bytes[](1);
-        data[0] = abi.encode(exitData);
+        data[0] = abi.encodeWithSignature("exit((address,uint256))", exitData);
         fusesSetup = fuses;
     }
 }

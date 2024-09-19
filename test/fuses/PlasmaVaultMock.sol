@@ -5,6 +5,13 @@ import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigL
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/spark/SparkSupplyFuse.sol";
+import {MorphoBlueSupplyFuseEnterData, MorphoBlueSupplyFuseExitData} from "../../contracts/fuses/morpho_blue/MorphoBlueSupplyFuse.sol";
+import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
+import {AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {CompoundV2SupplyFuseEnterData, CompoundV2SupplyFuseExitData} from "../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
+import {CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 
 contract PlasmaVaultMock {
     using Address for address;
@@ -15,6 +22,60 @@ contract PlasmaVaultMock {
     constructor(address fuse_, address balanceFuse_) {
         fuse = fuse_;
         balanceFuse = balanceFuse_;
+    }
+
+    function enterCompoundV3Supply(CompoundV3SupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+    }
+
+    function enterCompoundV2Supply(CompoundV2SupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+    }
+
+    function enterAaveV3Supply(AaveV3SupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256,uint256))", data));
+    }
+
+    function enterAaveV2Supply(AaveV2SupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+    }
+    function enterErc4626Supply(Erc4626SupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+    }
+    function enterSparkSupply(SparkSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256))", data));
+    }
+
+    function enterMorphoSupply(MorphoBlueSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((bytes32,uint256))", data));
+    }
+
+    function exitCompoundV3Supply(CompoundV3SupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+    }
+
+    function exitCompoundV2Supply(CompoundV2SupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+    }
+
+    function exitAaveV3Supply(AaveV3SupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+    }
+
+    function exitSparkSupply(SparkSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((uint256))", data));
+    }
+
+    function exitAaveV2Supply(AaveV2SupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+    }
+
+    function exitErc4626Supply(Erc4626SupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+    }
+
+    function exitMorphoSupply(MorphoBlueSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((bytes32,uint256))", data));
     }
 
     //solhint-disable-next-line

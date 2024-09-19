@@ -19,6 +19,7 @@ import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtection
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -55,6 +56,91 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
         );
+    }
+
+    function testShouldNotConfigureInstantWithdrawalFusesFuseNotSupported() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory performanceFeeManagers = new address[](1);
+        performanceFeeManagers[0] = address(0x777);
+        usersToRoles.performanceFeeManagers = performanceFeeManagers;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        address notSupportedFuse = address(0x777);
+
+        InstantWithdrawalFusesParamsStruct[] memory fusesCfg = new InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory params = new bytes32[](0);
+
+        fusesCfg[0] = InstantWithdrawalFusesParamsStruct(notSupportedFuse, params);
+
+        bytes memory error = abi.encodeWithSignature("FuseUnsupported(address)", notSupportedFuse);
+
+        //then
+        vm.expectRevert(error);
+        // when
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(fusesCfg);
+    }
+
+    function testShouldConfigureInstantWithdrawalFusesFuseNotSupported() public {
+        // given
+        UsersToRoles memory usersToRoles;
+        address[] memory performanceFeeManagers = new address[](1);
+        performanceFeeManagers[0] = address(0x777);
+        usersToRoles.performanceFeeManagers = performanceFeeManagers;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion DAI",
+                "ipfDAI",
+                DAI,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        address supportedFuse = address(0x777);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = supportedFuse;
+
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
+
+        InstantWithdrawalFusesParamsStruct[] memory fusesCfg = new InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory params = new bytes32[](0);
+        fusesCfg[0] = InstantWithdrawalFusesParamsStruct(supportedFuse, params);
+
+        // when
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(fusesCfg);
+
+        //then
+        address[] memory instantWithdrawFuses = IPlasmaVaultGovernance(address(plasmaVault))
+            .getInstantWithdrawalFuses();
+
+        assertEq(instantWithdrawFuses.length, 1);
+        assertEq(instantWithdrawFuses[0], supportedFuse);
     }
 
     function testShouldConfigurePerformanceFeeData() public {
@@ -734,16 +820,16 @@ contract PlasmaVaultMaintenanceTest is Test {
         calls[0] = FuseAction(
             address(supplyFuseAaveV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e18}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount, userEModeCategoryId: 1e18})
             )
         );
 
         calls[1] = FuseAction(
             address(supplyFuseCompoundV3),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount}))
+                "enter((address,uint256))",
+                CompoundV3SupplyFuseEnterData({asset: USDC, amount: amount})
             )
         );
 
@@ -903,8 +989,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         calls[0] = FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
             )
         );
 
@@ -986,8 +1072,8 @@ contract PlasmaVaultMaintenanceTest is Test {
         calls[0] = FuseAction(
             address(supplyFuse),
             abi.encodeWithSignature(
-                "enter(bytes)",
-                abi.encode(AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18}))
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: DAI, amount: amount, userEModeCategoryId: 1e18})
             )
         );
 
@@ -2027,7 +2113,109 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // when
         vm.prank(usersToRoles.atomist);
-        accessManager.convertToPublicVault(address(plasmaVault));
+        IPlasmaVaultGovernance(address(plasmaVault)).convertToPublicVault();
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+        vm.stopPrank();
+
+        assertFalse(canDepositBefore, "User should not be able to deposit before");
+        assertFalse(canMintBefore, "User should not be able to mint before");
+        assertTrue(canDepositAfter, "User should be able to deposit after");
+        assertTrue(canMintAfter, "User should be able to mint after");
+    }
+
+    function testShouldBeAbleToMakePlasmaVaultPublicWithTimelock() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.deposit.selector;
+        sig[1] = PlasmaVault.mint.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        address userAtomist = address(0x777);
+        vm.prank(usersToRoles.atomist);
+        accessManager.grantRole(Roles.ATOMIST_ROLE, userAtomist, uint32(100));
+
+        bool canDepositBefore;
+        bool canMintBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        try plasmaVault.deposit(10e18, user) {
+            canDepositBefore = true;
+        } catch {
+            canDepositBefore = false;
+        }
+
+        try plasmaVault.mint(10e18, user) {
+            canMintBefore = true;
+        } catch {
+            canMintBefore = false;
+        }
+        vm.stopPrank();
+
+        // when
+        address target = address(plasmaVault);
+        bytes memory data = abi.encodeWithSignature("convertToPublicVault()");
+
+        vm.prank(userAtomist);
+        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 days);
+
+        vm.prank(userAtomist);
+        accessManager.execute(target, data);
 
         // then
         bool canDepositAfter;
@@ -2212,7 +2400,113 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // when
         vm.prank(usersToRoles.atomist);
-        accessManager.enableTransferShares(address(plasmaVault));
+        IPlasmaVaultGovernance(address(plasmaVault)).enableTransferShares();
+
+        // then
+        bool canDepositAfter;
+        bool canMintAfter;
+
+        vm.startPrank(user);
+        try plasmaVault.transfer(address(this), 10e18) {
+            canDepositAfter = true;
+        } catch {
+            canDepositAfter = false;
+        }
+
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canMintAfter = true;
+        } catch {
+            canMintAfter = false;
+        }
+
+        assertFalse(canTransferBefore, "User should not be able to deposit before");
+        assertFalse(canTransferFromBefore, "User should not be able to mint before");
+        assertTrue(canDepositAfter, "User should be able to deposit after");
+        assertTrue(canMintAfter, "User should be able to mint after");
+    }
+
+    function testShouldBeAbleToEnableTransferSharesWithTimelock() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        bytes4[] memory sig = new bytes4[](2);
+        sig[0] = PlasmaVault.transfer.selector;
+        sig[1] = PlasmaVault.transferFrom.selector;
+
+        vm.prank(usersToRoles.superAdmin);
+        accessManager.setTargetFunctionRole(address(plasmaVault), sig, Roles.WHITELIST_ROLE);
+
+        address user = address(0x555);
+
+        deal(USDC, user, 100e18);
+
+        address userAtomist = address(0x555);
+        vm.prank(usersToRoles.atomist);
+        accessManager.grantRole(Roles.ATOMIST_ROLE, userAtomist, uint32(100));
+
+        bool canTransferBefore;
+        bool canTransferFromBefore;
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), 100e18);
+        ERC20(address(plasmaVault)).approve(address(this), 100e18);
+        plasmaVault.deposit(50e18, user);
+
+        try plasmaVault.transfer(address(this), 10e18) {
+            canTransferBefore = true;
+        } catch {
+            canTransferBefore = false;
+        }
+        vm.stopPrank();
+
+        try plasmaVault.transferFrom(user, address(this), 10e18) {
+            canTransferFromBefore = true;
+        } catch {
+            canTransferFromBefore = false;
+        }
+
+        // when
+        address target = address(plasmaVault);
+        bytes memory data = abi.encodeWithSignature("enableTransferShares()");
+
+        vm.prank(userAtomist);
+        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 days);
+
+        vm.prank(userAtomist);
+        accessManager.execute(target, data);
 
         // then
         bool canDepositAfter;
@@ -2382,7 +2676,81 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // when
         vm.prank(owner);
-        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
+        IPlasmaVaultGovernance(address(plasmaVault)).setMinimalExecutionDelaysForRoles(roles, timeLocks);
+
+        // then
+        uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
+
+        assertEq(alphaTimeLockBefore, 0, "Alpha time lock before should be equal to 0");
+        assertEq(atomistTimeLockBefore, 0, "Atomist time lock before should be equal to 0");
+        assertEq(alphaTimeLockAfter, 100, "Alpha time lock after should be equal to 100");
+        assertEq(atomistTimeLockAfter, 200, "Atomist time lock after should be equal to 200");
+    }
+
+    function testShouldBeAbleToSetupMinimalExecutionTimelockOnRoleWithTimelock() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address owner = usersToRoles.atomist;
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfig(address(0x777), 0, address(0x555), 0),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        uint64[] memory roles = new uint64[](2);
+        roles[0] = Roles.ALPHA_ROLE;
+        roles[1] = Roles.ATOMIST_ROLE;
+
+        uint256[] memory timeLocks = new uint256[](2);
+        timeLocks[0] = 100;
+        timeLocks[1] = 200;
+
+        uint256 alphaTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
+        uint256 atomistTimeLockBefore = accessManager.getMinimalExecutionDelayForRole(Roles.ATOMIST_ROLE);
+
+        address userOwner = address(0x555);
+        vm.prank(owner);
+        accessManager.grantRole(Roles.OWNER_ROLE, userOwner, uint32(100));
+
+        // when
+        address target = address(plasmaVault);
+        bytes memory data = abi.encodeWithSignature(
+            "setMinimalExecutionDelaysForRoles(uint64[],uint256[])",
+            roles,
+            timeLocks
+        );
+
+        vm.prank(userOwner);
+        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
+
+        vm.warp(block.timestamp + 1 days);
+
+        vm.prank(userOwner);
+        accessManager.execute(target, data);
 
         // then
         uint256 alphaTimeLockAfter = accessManager.getMinimalExecutionDelayForRole(Roles.ALPHA_ROLE);
@@ -2493,7 +2861,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         timeLocks[1] = 200;
 
         vm.prank(usersToRoles.atomist);
-        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
+        IPlasmaVaultGovernance(address(plasmaVault)).setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
         (bool isMemberBefore, uint32 executionDelayBefore) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
 
@@ -2549,7 +2917,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         timeLocks[1] = 200;
 
         vm.prank(usersToRoles.atomist);
-        accessManager.setMinimalExecutionDelaysForRoles(roles, timeLocks);
+        IPlasmaVaultGovernance(address(plasmaVault)).setMinimalExecutionDelaysForRoles(roles, timeLocks);
 
         (bool isMemberBefore, ) = accessManager.hasRole(Roles.ALPHA_ROLE, user);
 

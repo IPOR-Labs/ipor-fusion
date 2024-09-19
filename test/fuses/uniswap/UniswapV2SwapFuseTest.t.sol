@@ -36,7 +36,6 @@ contract UniswapV2SwapFuseTest is Test {
     UniswapV2SwapFuse private _uniswapV2SwapFuse;
 
     function setUp() public {
-        //        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"));
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20590113);
 
         address[] memory alphas = new address[](1);

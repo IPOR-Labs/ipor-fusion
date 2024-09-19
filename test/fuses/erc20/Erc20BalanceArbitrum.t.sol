@@ -144,7 +144,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(enterData)));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
@@ -208,7 +208,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(enterData)));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
@@ -273,7 +273,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(enterData)));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
@@ -340,7 +340,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter(bytes)", abi.encode(enterData)));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
