@@ -50,8 +50,8 @@ forge test -vvv --ffi
 
 ### requirements
 
-- python 3.11.6
-- nodejs 20.11.1
+- Python 3.11.6
+- Node.js 20.17.0
 
 ### install pre-commit
 
