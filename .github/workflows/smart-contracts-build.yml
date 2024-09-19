@@ -12,7 +12,7 @@ on:
             node-version:
                 description: "Node.js version"
                 type: string
-                default: 20.11.1
+                default: 20.17.0
                 required: false
 
             build-enabled:
@@ -73,14 +73,14 @@ jobs:
 
         steps:
             - name: Checkout
-              # from tag: v4.1.4
-              uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
+              # from tag: v4.1.7
+              uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
               with:
                   submodules: recursive
 
             - name: Setup Node.js
-              # from tag: v4.0.2
-              uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8
+              # from tag: v4.0.3
+              uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b
               with:
                   node-version: ${{ inputs.node-version }}
 
@@ -95,7 +95,7 @@ jobs:
               # from tag: v1.2.0-ipor
               uses: IPOR-Labs/foundry-toolchain@18ecb60c02f281f6906d3349abfe450d295be7a8
               with:
-                  version: nightly-e01038f35750b4a41b1eda5a4ea3da976027eee2
+                  version: nightly-03ea54c63e33e3175a6f44d8cfe3718bd6c962ba
 
             - name: Install
               run: npm install
