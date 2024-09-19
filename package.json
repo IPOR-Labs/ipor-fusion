@@ -14,8 +14,7 @@
   "scripts": {
     "solhint:contract": "./node_modules/.bin/solhint 'contracts/**/*.sol'",
     "solhint:test": "./node_modules/.bin/solhint 'test/**/*.sol'",
-    "solhint:script": "./node_modules/.bin/solhint 'script/**/*.sol'",
-    "solhint:all": "npm-run-all --parallel solhint:contract solhint:test solhint:script",
+    "solhint:all": "npm-run-all --parallel solhint:contract solhint:test",
     "prettier:contracts": "./node_modules/.bin/prettier --write 'contracts/**/*.sol'",
     "prettier:test": "./node_modules/.bin/prettier --write 'test/**/*.sol'",
     "prettier:all": "npm-run-all --parallel prettier:contracts prettier:test"
