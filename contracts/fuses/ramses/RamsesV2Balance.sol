@@ -14,21 +14,34 @@ import {PoolAddress} from "./ext/PoolAddress.sol";
 import {INonfungiblePositionManagerRamses, IRamsesV2Pool} from "./ext/INonfungiblePositionManagerRamses.sol";
 import {PositionKey} from "./ext/PositionKey.sol";
 
-/// @title Fuse balance for Ramses V2 positions.
+/**
+ * @title RamsesV2Balance
+ * @dev Fuse balance for Ramses V2 positions. This contract calculates the balance of a given market by summing up the value of all positions.
+ */
 contract RamsesV2Balance is IMarketBalanceFuse {
     bytes32 internal constant POOL_INIT_CODE_HASH = 0x1565b129f2d1790f12d45301b9b084335626f0c92410bc43130763b69971135d;
 
     uint256 public immutable MARKET_ID;
-    /// @dev Manage NFTs representing liquidity positions
+    // @dev Manage NFTs representing liquidity positions
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
     address public immutable RAMSES_FACTORY;
 
+    /**
+     * @dev Constructor for the RamsesV2Balance contract.
+     * @param marketId_ The ID of the market.
+     * @param nonfungiblePositionManager_ The address of the non-fungible position manager.
+     * @param ramsesFactory_ The address of the Ramses factory.
+     */
     constructor(uint256 marketId_, address nonfungiblePositionManager_, address ramsesFactory_) {
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
         RAMSES_FACTORY = ramsesFactory_;
     }
 
+    /**
+     * @notice Calculates the total balance of the market.
+     * @return The total balance of the market in WAD (18 decimal places).
+     */
     function balanceOf() external view override returns (uint256) {
         uint256[] memory tokenIds = FuseStorageLib.getRamsesV2TokenIds().tokenIds;
         uint256 len = tokenIds.length;
@@ -64,6 +77,14 @@ contract RamsesV2Balance is IMarketBalanceFuse {
         return balance;
     }
 
+    /**
+     * @dev Internal function to get the amounts for a given position.
+     * @param tokenId The ID of the token.
+     * @return token0t The address of token0.
+     * @return token1t The address of token1.
+     * @return amount0 The amount of token0.
+     * @return amount1 The amount of token1.
+     */
     function getAmountsForPosition(
         uint256 tokenId
     ) internal view returns (address token0t, address token1t, uint256 amount0, uint256 amount1) {
@@ -104,6 +125,18 @@ contract RamsesV2Balance is IMarketBalanceFuse {
         token1t = position.token1;
     }
 
+    /**
+     * @dev Internal function to calculate the fees for a given position.
+     * @param feeGrowthInside0Last The last recorded fee growth inside for token0.
+     * @param feeGrowthInside1Last The last recorded fee growth inside for token1.
+     * @param liquidity The liquidity of the position.
+     * @param tokenId The ID of the token.
+     * @param tickLower The lower tick of the position.
+     * @param tickUpper The upper tick of the position.
+     * @param pool The pool associated with the position.
+     * @return fee0 The calculated fee for token0.
+     * @return fee1 The calculated fee for token1.
+     */
     function calculateFees(
         uint256 feeGrowthInside0Last,
         uint256 feeGrowthInside1Last,
@@ -127,6 +160,11 @@ contract RamsesV2Balance is IMarketBalanceFuse {
         fee1 = (liquidity * (feeGrowthInside1)) / (1 << 128);
     }
 
+    /**
+     * @dev Internal function to get the position data for a given token ID.
+     * @param tokenId The ID of the token.
+     * @return position The position data.
+     */
     function getPositionData(
         uint256 tokenId
     ) internal view returns (INonfungiblePositionManagerRamses.Position memory position) {

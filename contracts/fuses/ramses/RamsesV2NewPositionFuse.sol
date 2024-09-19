@@ -10,13 +10,13 @@ import {INonfungiblePositionManagerRamses, IRamsesV2Pool, IRamsesV2Factory} from
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PositionValue} from "./ext/PositionValue.sol";
 
-/// @notice Data for entering new position in Uniswap V3
+/// @notice Data for entering new position in Ramses V2
 struct RamsesV2NewPositionFuseEnterData {
     /// @notice The address of the token0 for a specific pool
     address token0;
     /// @notice The address of the token1 for a specific pool
     address token1;
-    /// @notice The fee associated with the pool Uniswap V3 pool, 0,05%, 0,3% or 1%
+    /// @notice The fee associated with the pool Ramses V2 pool
     uint24 fee;
     /// @notice The lower end of the tick range for the position
     int24 tickLower;
@@ -42,11 +42,24 @@ struct RamsesV2NewPositionFuseExitData {
     uint256[] tokenIds;
 }
 
-/// @title Fuse responsible for create new Uniswap V3 positions.
-/// @dev Associated with fuse balance UniswapV3Balance.
+/**
+ * @title RamsesV2NewPositionFuse
+ * @dev Contract for creating and managing new liquidity positions in the Ramses V2 system.
+ */
 contract RamsesV2NewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
+    /// @notice Event emitted when a new position is created
+    /// @param version The address of the contract version
+    /// @param tokenId The ID of the token
+    /// @param liquidity The amount of liquidity added
+    /// @param amount0 The amount of token0 added
+    /// @param amount1 The amount of token1 added
+    /// @param token0 The address of token0
+    /// @param token1 The address of token1
+    /// @param fee The fee associated with the pool
+    /// @param tickLower The lower end of the tick range for the position
+    /// @param tickUpper The higher end of the tick range for the position
     event RamsesV2NewPositionFuseEnter(
         address version,
         uint256 tokenId,
@@ -59,21 +72,35 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
         int24 tickLower,
         int24 tickUpper
     );
+    /// @notice Event emitted when a position is closed
+    /// @param version The address of the contract version
+    /// @param tokenId The ID of the token
+    event RamsesV2NewPositionFuseExit(address version, uint256 tokenId);
 
-    event RamsesV2NewPositionFuseExit(address version, uint256 tokenIds);
-
+    /// @notice Error thrown when unsupported tokens are used
+    /// @param token0 The address of token0
+    /// @param token1 The address of token1
     error RamsesV2NewPositionFuseUnsupportedToken(address token0, address token1);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
 
+    /**
+     * @dev Constructor for the RamsesV2NewPositionFuse contract
+     * @param marketId_ The ID of the market
+     * @param nonfungiblePositionManager_ The address of the non-fungible position manager
+     */
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
+    /**
+     * @notice Function to create a new liquidity position
+     * @param data_ The data containing the parameters for creating a new position
+     */
     function enter(RamsesV2NewPositionFuseEnterData calldata data_) public {
         if (
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
@@ -127,6 +154,10 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
         );
     }
 
+    /**
+     * @notice Function to close liquidity positions
+     * @param closePositions The data containing the token IDs of the positions to close
+     */
     function exit(RamsesV2NewPositionFuseExitData calldata closePositions) public {
         FuseStorageLib.RamsesV2TokenIds storage tokensIds = FuseStorageLib.getRamsesV2TokenIds();
 
