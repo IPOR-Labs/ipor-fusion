@@ -8,7 +8,6 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManagerRamses, IRamsesV2Pool, IRamsesV2Factory} from "./ext/INonfungiblePositionManagerRamses.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
-import {PositionValue} from "./ext/PositionValue.sol";
 
 /// @notice Data for entering new position in Ramses V2
 struct RamsesV2NewPositionFuseEnterData {
@@ -165,10 +164,6 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
         uint256 tokenIndex;
 
         for (uint256 i; i < len; i++) {
-            if (!_canExit(closePositions.tokenIds[i])) {
-                continue;
-            }
-
             INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
 
             tokenIndex = tokensIds.indexes[closePositions.tokenIds[i]];
@@ -179,24 +174,5 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
 
             emit RamsesV2NewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
         }
-    }
-
-    function _canExit(uint256 tokenId) private view returns (bool) {
-        (, , address token0, address token1, uint24 fee, , , , , , , ) = INonfungiblePositionManagerRamses(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).positions(tokenId);
-
-        address factory = INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).factory();
-
-        (uint160 sqrtPriceX96, , , , , , ) = IRamsesV2Pool(IRamsesV2Factory(factory).getPool(token0, token1, fee))
-            .slot0();
-
-        (uint256 amount0, uint256 amount1) = PositionValue.total(
-            INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER),
-            tokenId,
-            sqrtPriceX96
-        );
-
-        return amount0 < IERC20Metadata(token0).decimals() / 2 && amount1 < IERC20Metadata(token1).decimals() / 2;
     }
 }
