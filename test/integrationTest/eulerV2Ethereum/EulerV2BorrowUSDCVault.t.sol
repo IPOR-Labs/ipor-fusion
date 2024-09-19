@@ -8,7 +8,7 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contract
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {EulerV2BorrowFuse, EulerV2BorrowFuseEnterData, EulerV2BorrowFuseExitData} from "../../../contracts/fuses/euler_v2/EulerV2BorrowFuse.sol";
-import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
+import {EulerV2BalanceFuse} from "../../../contracts/fuses/euler_v2/EulerV2BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IEVC} from "../../../node_modules/ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
@@ -79,7 +79,7 @@ contract EulerV2BorrowUSDCVault is BorrowTest {
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse eulerV2Balances = new ERC4626BalanceFuse(getMarketId());
+        EulerV2BalanceFuse eulerV2Balances = new EulerV2BalanceFuse(getMarketId(), address(EVC));
 
         balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(getMarketId(), address(eulerV2Balances));

@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IBorrowing, IEVault} from "./ext/IEVault.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IEVC} from "../../../node_modules/ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
+import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 
 /// @notice Structure for entering (borrow) Euler V2 vaults
 struct EulerV2BorrowFuseEnterData {
