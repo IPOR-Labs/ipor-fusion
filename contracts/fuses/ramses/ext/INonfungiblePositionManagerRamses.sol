@@ -112,7 +112,6 @@ interface INonfungiblePositionManagerRamses {
     /// @param tokenId The ID of the token that is being burned
     function burn(uint256 tokenId) external payable;
 
-
     function getReward(uint256 tokenId, address[] calldata tokens) external;
 }
 

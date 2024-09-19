@@ -70,7 +70,7 @@ contract RamsesClaimFuse {
 
         uint256 balanceAfter;
         uint256 rewardToTransfer;
-        address rewardsClaimManager =  PlasmaVaultLib.getRewardsClaimManagerAddress();
+        address rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
 
         for (uint256 i; i < tokenRewards.length; ++i) {
             balanceAfter = IERC20(tokenRewards[i]).balanceOf(plasmaVault);
