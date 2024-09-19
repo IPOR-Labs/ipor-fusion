@@ -1,8 +1,8 @@
 {
-  "name": "IPOR_Fusion",
+  "name": "ipor-fusion",
   "engines": {
-    "npm": "10.2.4",
-    "node": "20.11.1"
+    "npm": "10.8.2",
+    "node": "20.17.0"
   },
   "devDependencies": {
     "dotenv": "16.1.3",
