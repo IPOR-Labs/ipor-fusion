@@ -6,6 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IChildLiquidityGauge} from "../../fuses/curve_gauge/ext/IChildLiquidityGauge.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 
 contract CurveGaugeTokenClaimFuse {
     using SafeERC20 for IERC20;
@@ -17,8 +18,6 @@ contract CurveGaugeTokenClaimFuse {
         uint256[] rewardsTokenBalances,
         address rewardsClaimManager
     );
-
-    error CurveGaugeTokenClaimFuseRewardsClaimManagerZeroAddress(address version);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -44,7 +43,7 @@ contract CurveGaugeTokenClaimFuse {
         uint256[] memory rewardsTokenBalances;
 
         if (rewardsClaimManager == address(0)) {
-            revert CurveGaugeTokenClaimFuseRewardsClaimManagerZeroAddress(VERSION);
+            revert Errors.WrongAddress();
         }
 
         for (uint256 i; i < len; ++i) {
@@ -65,6 +64,7 @@ contract CurveGaugeTokenClaimFuse {
             }
             if (totalClaimable > 0) {
                 IChildLiquidityGauge(curveGauge).claim_rewards(address(this), address(this));
+                totalClaimable = 0;
             }
             for (uint256 j; j < rewardCount; ++j) {
                 if (rewardsTokenBalances[j] > 0) {
