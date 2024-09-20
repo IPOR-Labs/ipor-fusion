@@ -5,8 +5,8 @@ import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigL
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/spark/SparkSupplyFuse.sol";
-import {MorphoBlueSupplyFuseEnterData, MorphoBlueSupplyFuseExitData} from "../../contracts/fuses/morpho_blue/MorphoBlueSupplyFuse.sol";
+import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
 import {AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
@@ -46,7 +46,7 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256))", data));
     }
 
-    function enterMorphoSupply(MorphoBlueSupplyFuseEnterData memory data) external {
+    function enterMorphoSupply(MorphoSupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((bytes32,uint256))", data));
     }
 
@@ -74,7 +74,7 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
     }
 
-    function exitMorphoSupply(MorphoBlueSupplyFuseExitData memory data) external {
+    function exitMorphoSupply(MorphoSupplyFuseExitData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((bytes32,uint256))", data));
     }
 

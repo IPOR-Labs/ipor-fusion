@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IFuseCommon} from "../IFuseCommon.sol";
+import {IFuseCommon} from "../../../IFuseCommon.sol";
 
 import {ISavingsDai} from "./ext/ISavingsDai.sol";
 
