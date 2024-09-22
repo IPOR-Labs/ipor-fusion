@@ -38,11 +38,12 @@ library IporFusionMarkets {
 
     /// @dev Compound V3 market USDT
     uint256 public constant COMPOUND_V3_USDT = 13;
-    /// @dev Compound V3 market DAI
-    uint256 public constant COMPOUND_V3_DAI = 14;
 
     /// @dev Morpho market
-    uint256 public constant MORPHO = 15;
+    uint256 public constant MORPHO = 14;
+
+    /// @dev Spark market
+    uint256 public constant SPARK = 15;
 
     /// @dev Curve market
     uint256 public constant CURVE_POOL = 16;

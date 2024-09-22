@@ -5,12 +5,13 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IFuseCommon} from "../../../IFuseCommon.sol";
+import {IFuseInstantWithdraw} from "../../../IFuseInstantWithdraw.sol";
 
 import {ISavingsDai} from "./ext/ISavingsDai.sol";
 
 /// @notice Structure for entering (supply) to the Spark protocol
 struct SparkSupplyFuseEnterData {
-    /// @dev amount od DAI to supply
+    /// @dev amount of DAI to supply
     uint256 amount;
 }
 
@@ -21,7 +22,7 @@ struct SparkSupplyFuseExitData {
 }
 
 /// @title Fuse Spark Supply protocol responsible for supplying and withdrawing assets from the Spark protocol
-contract SparkSupplyFuse is IFuseCommon {
+contract SparkSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for ERC20;
 
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -50,6 +51,15 @@ contract SparkSupplyFuse is IFuseCommon {
     }
 
     function exit(SparkSupplyFuseExitData calldata data) external {
+        _exit(data);
+    }
+
+    /// @dev params[0] - amount in underlying asset
+    function instantWithdraw(bytes32[] calldata params_) external override {
+        _exit(SparkSupplyFuseExitData({amount: uint256(params_[0])}));
+    }
+
+    function _exit(SparkSupplyFuseExitData memory data) private {
         if (data.amount == 0) {
             return;
         }
