@@ -38,6 +38,7 @@ library PlasmaVaultLib {
     event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
     event RewardsClaimManagerAddressChanged(address newRewardsClaimManagerAddress);
     event DependencyBalanceGraphChanged(uint256 marketId, uint256[] newDependenceGraph);
+    event WithdrawManagerChanged(address newWithdrawManager);
 
     /// @notice Gets the total assets in the vault for all markets
     /// @return The total assets in the vault for all markets, represented in decimals of the underlying asset
@@ -281,5 +282,11 @@ library PlasmaVaultLib {
     /// @return true if the execution is started
     function isExecutionStarted() internal view returns (bool) {
         return PlasmaVaultStorageLib.getExecutionState().value == 1;
+    }
+
+    function updateWithdrawManager(address newWithdrawManager_) internal {
+        PlasmaVaultStorageLib.getWithdrawManager().manager = newWithdrawManager_;
+
+        emit WithdrawManagerChanged(newWithdrawManager_);
     }
 }

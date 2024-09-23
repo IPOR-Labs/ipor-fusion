@@ -74,7 +74,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                     feeConfig: _setupFeeConfig(),
                     accessManager: _accessManager,
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max
+                    totalSupplyCap: type(uint256).max,
+                    withdrawManager: address(0)
                 })
             )
         );
@@ -106,7 +107,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: _claimRewardsManager
+                rewardsClaimManager: _claimRewardsManager,
+                withdrawManager: address(0)
             })
         });
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 struct WithdrawRequest {
     /// @dev The amount of the request, in underlying token decimals
@@ -29,19 +29,19 @@ library WithdrawManagerStorageLib {
 
     event WithdrawWindowLengthUpdated(uint256 withdrawWindowLength);
     event WithdrawRequestUpdated(address account, uint256 amount, uint32 endWithdrawWindow);
+    event ReleaseFoundsUpdated(uint256 releaseFounds);
 
     error WithdrawWindowLengthCannotBeZero();
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.withdrawWindowLength")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant WITHDRAW_WINDOW_LENGTH =
-        0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc00; // TODO: change this
+        0x396fcc76a9b5b2fd5e6b074a9e52f50f355590ed8495194e4303f1c99aee5900;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.withdrawRequests")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant WITHDRAW_REQUESTS = 0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc11; // TODO: change this
+    bytes32 private constant WITHDRAW_REQUESTS = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.lastReleaseFounds")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant LAST_RELEASE_FOUNDS =
-    0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc22; // TODO: change this
+    bytes32 private constant LAST_RELEASE_FOUNDS = 0x515911132aa14e230ad5245b1622bd7ca9c33d320ff7e4eb38ef95aeffc9eb00;
 
     function _getWithdrawWindowLength() private view returns (WithdrawWindow storage withdrawWindow) {
         assembly {
@@ -82,7 +82,7 @@ library WithdrawManagerStorageLib {
 
     function updateWithdrawRequest(uint256 amount_) internal {
         uint256 withdrawWindowLength = getWithdrawWindowLength();
-        WithdrawRequest memory request =  WithdrawRequest({
+        WithdrawRequest memory request = WithdrawRequest({
             amount: amount_.toUint128(),
             endWithdrawWindow: block.timestamp.toUint32() + withdrawWindowLength.toUint32()
         });
@@ -92,8 +92,18 @@ library WithdrawManagerStorageLib {
         emit WithdrawRequestUpdated(msg.sender, amount_, request.endWithdrawWindow);
     }
 
+    function deleteWithdrawRequest(address account_) internal {
+        delete _getWithdrawRequests().requests[account_];
+        emit WithdrawRequestUpdated(msg.sender, 0, 0);
+    }
+
+    function getReleaseFounds() internal view returns (uint256) {
+        return _getReleaseFounds().lastReleaseFounds;
+    }
+
     function releaseFounds() internal {
         ReleaseFounds storage releaseFounds = _getReleaseFounds();
         releaseFounds.lastReleaseFounds = block.timestamp;
+        emit ReleaseFoundsUpdated(block.timestamp);
     }
 }

@@ -83,7 +83,8 @@ contract PlasmaVaultCallbackHandler is Test {
                     feeConfig,
                     _accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );
@@ -188,7 +189,8 @@ contract PlasmaVaultCallbackHandler is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(this)
+                rewardsClaimManager: address(this),
+                withdrawManager: address(0)
             })
         });
 
