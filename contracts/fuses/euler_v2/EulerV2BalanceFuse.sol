@@ -9,7 +9,7 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
-import {IERC4626, IBorrowing} from "./ext/IEVault.sol";
+import {IERC4626, IBorrowing, IGovernance} from "./ext/IEVault.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 
 /// @title Fuse for Euler V2 vaults responsible for calculating the balance of the Plasma Vault in Euler V2 vaults based on preconfigured market substrates
@@ -26,7 +26,8 @@ contract EulerV2BalanceFuse is IMarketBalanceFuse {
         EVC = IEVC(eulerV2EVC_);
     }
 
-    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    /// @return The balance of the Plasma Vault associated with Fuse Balance marketId in USD, represented in 8 decimals
+    /// @dev The balance is calculated as the sum of the balance of the underlying assets in the vaults minus the debt in the vaults
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory vaults = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -42,7 +43,7 @@ contract EulerV2BalanceFuse is IMarketBalanceFuse {
         address vault;
         address underlyingAsset;
         uint256 underlyingAssetDecimals;
-        uint256 price; // @dev price represented in 8 decimals
+        uint256 price; // @dev price represented in 8 decimals (USD is quote asset)
         uint256 priceDecimals;
 
         for (uint256 i; i < len; i++) {
@@ -55,19 +56,25 @@ contract EulerV2BalanceFuse is IMarketBalanceFuse {
                 revert Errors.UnsupportedQuoteCurrencyFromOracle();
             }
 
-            balanceInLoop =
-                IporMath.convertToWadInt(
-                    int256(IERC4626(vault).convertToAssets(ERC20(vault).balanceOf(address(this)))) * int256(price),
-                    ERC20(underlyingAsset).decimals() + priceDecimals
-                ) -
-                IporMath.convertToWadInt(
+            balanceInLoop = IporMath.convertToWadInt(
+                int256(IERC4626(vault).convertToAssets(ERC20(vault).balanceOf(address(this)))) * int256(price),
+                ERC20(underlyingAsset).decimals() + priceDecimals
+            );
+
+            if (isBorrowingAllowed(vault)) {
+                balanceInLoop -= IporMath.convertToWadInt(
                     int256(IBorrowing(vault).debtOf(address(this))) * int256(price),
                     ERC20(underlyingAsset).decimals() + priceDecimals
                 );
+            }
 
             netBalance += balanceInLoop;
         }
 
         return netBalance.toUint256();
+    }
+
+    function isBorrowingAllowed(address _vault) internal view returns (bool) {
+        return IGovernance(_vault).interestRateModel() != address(0);
     }
 }
