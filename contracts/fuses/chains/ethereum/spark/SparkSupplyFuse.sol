@@ -13,7 +13,7 @@ import {IporMath} from "../../../../libraries/math/IporMath.sol";
 
 /// @notice Structure for entering (supply) to the Spark protocol
 struct SparkSupplyFuseEnterData {
-    /// @dev amount of DAI to supply
+    /// @dev amount of DAI to supply / deposit
     uint256 amount;
 }
 
@@ -33,7 +33,7 @@ contract SparkSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
-    event SparkSupplyFuseEnter(address version, uint256 amount);
+    event SparkSupplyFuseEnter(address version, uint256 amount, uint256 shares);
     event SparkSupplyFuseExit(address version, uint256 amount);
     event SparkSupplyFuseExitFailed(address version, uint256 amount);
 
@@ -47,9 +47,9 @@ contract SparkSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
         ERC20(DAI).forceApprove(SDAI, data.amount);
-        ISavingsDai(SDAI).deposit(data.amount, address(this));
+        uint256 shares = ISavingsDai(SDAI).deposit(data.amount, address(this));
 
-        emit SparkSupplyFuseEnter(VERSION, data.amount);
+        emit SparkSupplyFuseEnter(VERSION, data.amount, shares);
     }
 
     function exit(SparkSupplyFuseExitData calldata data) external {
@@ -66,7 +66,7 @@ contract SparkSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        uint256 finalAmount = IporMath.min(data_.amount, ERC20(SDAI).balanceOf(address(this)));
+        uint256 finalAmount = IporMath.min(data_.amount, ISavingsDai(SDAI).maxWithdraw(address(this)));
 
         if (finalAmount == 0) {
             return;
