@@ -34,7 +34,7 @@ contract SparkSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     uint256 public immutable MARKET_ID;
 
     event SparkSupplyFuseEnter(address version, uint256 amount, uint256 shares);
-    event SparkSupplyFuseExit(address version, uint256 amount);
+    event SparkSupplyFuseExit(address version, uint256 amount, uint256 shares);
     event SparkSupplyFuseExitFailed(address version, uint256 amount);
 
     constructor(uint256 marketIdInput) {
@@ -72,8 +72,11 @@ contract SparkSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        ISavingsDai(SDAI).withdraw(finalAmount, address(this), address(this));
-
-        emit SparkSupplyFuseExit(VERSION, data_.amount);
+        try ISavingsDai(SDAI).withdraw(finalAmount, address(this), address(this)) returns (uint256 shares) {
+            emit SparkSupplyFuseExit(VERSION, data_.amount, shares);
+        } catch {
+            /// @dev if withdraw failed, continue with the next step
+            emit SparkSupplyFuseExitFailed(VERSION, finalAmount);
+        }
     }
 }
