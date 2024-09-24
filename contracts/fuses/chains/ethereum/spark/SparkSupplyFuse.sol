@@ -9,6 +9,8 @@ import {IFuseInstantWithdraw} from "../../../IFuseInstantWithdraw.sol";
 
 import {ISavingsDai} from "./ext/ISavingsDai.sol";
 
+import {IporMath} from "../../../../libraries/math/IporMath.sol";
+
 /// @notice Structure for entering (supply) to the Spark protocol
 struct SparkSupplyFuseEnterData {
     /// @dev amount of DAI to supply
@@ -59,13 +61,19 @@ contract SparkSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         _exit(SparkSupplyFuseExitData({amount: uint256(params_[0])}));
     }
 
-    function _exit(SparkSupplyFuseExitData memory data) private {
-        if (data.amount == 0) {
+    function _exit(SparkSupplyFuseExitData memory data_) private {
+        if (data_.amount == 0) {
             return;
         }
 
-        ISavingsDai(SDAI).withdraw(data.amount, address(this), address(this));
+        uint256 finalAmount = IporMath.min(data_.amount, ERC20(SDAI).balanceOf(address(this)));
 
-        emit SparkSupplyFuseExit(VERSION, data.amount);
+        if (finalAmount == 0) {
+            return;
+        }
+
+        ISavingsDai(SDAI).withdraw(finalAmount, address(this), address(this));
+
+        emit SparkSupplyFuseExit(VERSION, data_.amount);
     }
 }
