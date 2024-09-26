@@ -168,7 +168,6 @@ contract PlasmaVault is
             initData_.feeConfig.managementFeeInPercentage
         );
 
-        PlasmaVaultLib.updateManagementFeeData();
     }
 
     fallback(bytes calldata) external returns (bytes memory) {
@@ -479,13 +478,13 @@ contract PlasmaVault is
 
         uint256 unrealizedFeeInUnderlying = getUnrealizedManagementFee();
 
-        if (unrealizedFeeInUnderlying == 0) {
-            return;
-        }
-
         PlasmaVaultLib.updateManagementFeeData();
 
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
+
+        if (unrealizedFeeInShares == 0) {
+            return;
+        }
 
         /// @dev minting is an act of management fee realization
         /// @dev total supply cap validation is disabled for fee minting
