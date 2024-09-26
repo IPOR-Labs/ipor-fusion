@@ -168,6 +168,7 @@ contract PlasmaVault is
             initData_.feeConfig.managementFeeInPercentage
         );
 
+        PlasmaVaultLib.updateManagementFeeData();
     }
 
     fallback(bytes calldata) external returns (bytes memory) {
