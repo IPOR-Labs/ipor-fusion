@@ -1686,6 +1686,115 @@ contract PlasmaVaultFeeTest is Test {
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
+    function testShouldNotAccruedManagementFeeWhenRedeemInTheSameBlock() public {
+        //given
+        performanceFeeInPercentage = 0;
+        managementFeeInPercentage = 500;
+
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alpha = address(0x1);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+        address[] memory fuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfig(
+                    performanceFeeManager,
+                    performanceFeeInPercentage,
+                    managementFeeManager,
+                    managementFeeInPercentage
+                ),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+        setupRoles(plasmaVault, accessManager);
+
+        amount = 10_000 * 1e6;
+
+        vm.warp(block.timestamp);
+
+        //user one
+        vm.prank(0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa);
+        ERC20(USDC).transfer(address(userOne), 50 * amount);
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), 50 * amount);
+        vm.prank(userOne);
+
+        //when scenario
+
+        /// @dev move time
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 managementFeeAfter365DaysBeforeFirstDeposit = plasmaVault.getUnrealizedManagementFee();
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+        uint256 managementFeeImmediatelyAfterFirstDeposit = plasmaVault.getUnrealizedManagementFee();
+
+        /// @dev move time
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 managementFeeAfter365DaysBeforeSecondDeposit = plasmaVault.getUnrealizedManagementFee();
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+        uint256 managementFeeImmediatelyAfterSecondDeposit = plasmaVault.getUnrealizedManagementFee();
+
+        /// @dev move time
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 managementFeeAfter365DayBeforeMaxRedeem = plasmaVault.getUnrealizedManagementFee();
+        vm.startPrank(userOne);
+        plasmaVault.redeem(plasmaVault.maxRedeem(userOne), userOne, userOne);
+        vm.stopPrank();
+        vm.startPrank(managementFeeManager);
+        plasmaVault.redeem(plasmaVault.maxRedeem(managementFeeManager), managementFeeManager, managementFeeManager);
+        vm.stopPrank();
+        uint256 managementFeeImmediatelyAfterMaxRedeem = plasmaVault.getUnrealizedManagementFee();
+
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 managementFeeAfter365daysBeforeThirdDeposit = plasmaVault.getUnrealizedManagementFee();
+        vm.prank(userOne);
+        plasmaVault.deposit(5 * amount, userOne);
+        uint256 managementFeeImmediatelyAfterThirdDeposit = plasmaVault.getUnrealizedManagementFee();
+
+        uint256 managementFeeAfter365BeforeFourDeposit = plasmaVault.getUnrealizedManagementFee();
+        vm.prank(userOne);
+        plasmaVault.deposit(10 * amount, userOne);
+        uint256 managementFeeImmediatelyAfterFourDeposit = plasmaVault.getUnrealizedManagementFee();
+
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 managementFeeAfter365DaysAfterFourDeposit = plasmaVault.getUnrealizedManagementFee();
+
+        //then
+        assertEq(managementFeeAfter365DaysBeforeFirstDeposit, 0, "managementFeeAfter365DaysBeforeFirstDeposit");
+        assertEq(managementFeeImmediatelyAfterFirstDeposit, 0, "managementFeeImmediatelyAfterFirstDeposit");
+        assertEq(managementFeeAfter365DaysBeforeSecondDeposit, 500000000, "managementFeeAfter365DaysBeforeSecondDeposit");
+        assertEq(managementFeeImmediatelyAfterSecondDeposit, 0, "managementFeeImmediatelyAfterSecondDeposit");
+        assertEq(managementFeeAfter365DayBeforeMaxRedeem, 2 * 500000000, "managementFeeAfter365DayBeforeMaxRedeem");
+        assertEq(managementFeeImmediatelyAfterMaxRedeem, 0, "managementFeeImmediatelyAfterMaxRedeem");
+        assertEq(managementFeeAfter365daysBeforeThirdDeposit, 0, "managementFeeAfter365daysBeforeThirdDeposit");
+        assertEq(managementFeeImmediatelyAfterThirdDeposit, 0, "managementFeeImmediatelyAfterThirdDeposit");
+        assertEq(managementFeeAfter365BeforeFourDeposit, 0, "managementFeeAfter365BeforeFourDeposit");
+        assertEq(managementFeeImmediatelyAfterFourDeposit, 0, "managementFeeImmediatelyAfterFourDeposit");
+        assertEq(managementFeeAfter365DaysAfterFourDeposit, 7500000000, "managementFeeAfter365DaysAfterFourDeposit");
+
+    }
+
     function createAccessManager(
         UsersToRoles memory usersToRoles,
         uint256 redemptionDelay_
