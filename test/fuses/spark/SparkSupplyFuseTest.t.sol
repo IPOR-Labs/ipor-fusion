@@ -8,9 +8,9 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {SDaiPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/SDaiPriceFeedEthereum.sol";
 
-import {SparkBalanceFuse} from "../../../contracts/fuses/spark/SparkBalanceFuse.sol";
-import {SparkSupplyFuse, SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../../contracts/fuses/spark/SparkSupplyFuse.sol";
-import {ISavingsDai} from "../../../contracts/fuses/spark/ext/ISavingsDai.sol";
+import {SparkBalanceFuse} from "../../../contracts/fuses/chains/ethereum/spark/SparkBalanceFuse.sol";
+import {SparkSupplyFuse, SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {ISavingsDai} from "../../../contracts/fuses/chains/ethereum/spark/ext/ISavingsDai.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract SparkSupplyFuseTest is Test {

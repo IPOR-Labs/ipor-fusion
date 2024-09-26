@@ -7,8 +7,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {IMorpho} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {MorphoBlueSupplyWithCallBackDataFuse, MorphoBlueSupplyFuseEnterData} from "../../contracts/fuses/morpho_blue/MorphoBlueSupplyWithCallBackDataFuse.sol";
-import {MorphoBlueBalanceFuse} from "../../contracts/fuses/morpho_blue/MorphoBlueBalanceFuse.sol";
+import {MorphoSupplyWithCallBackDataFuse, MorphoSupplyFuseEnterData} from "../../contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol";
+import {MorphoBalanceFuse} from "../../contracts/fuses/morpho/MorphoBalanceFuse.sol";
 import {MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -39,16 +39,16 @@ contract PlasmaVaultCallbackHandler is Test {
     address private constant _USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     IMorpho private constant _MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
     // sDAI/DAI
-    uint256 private constant _MORPHO_BLUE_MARKET_ID = 3;
+    uint256 private constant _MORPHO_MARKET_ID = 3;
     bytes32 private constant _MARKET_ID_BYTES32 = 0xb1eac1c0f3ad13fb45b01beac8458c055c903b1bff8cb882346635996a774f77;
 
     PriceOracleMiddleware private _priceOracleMiddlewareProxy;
-    MorphoBlueBalanceFuse private _morphoBlueBalanceFuse;
+    MorphoBalanceFuse private _morphoBalanceFuse;
 
     address private _accessManager;
     address private _plasmaVault;
     AaveV3SupplyFuse private _supplyFuseAaveV3;
-    MorphoBlueSupplyWithCallBackDataFuse private _morphoBlueFuse;
+    MorphoSupplyWithCallBackDataFuse private _morphoFuse;
     CompoundV3SupplyFuse private _supplyFuseCompoundV3;
 
     function setUp() public {
@@ -102,21 +102,21 @@ contract PlasmaVaultCallbackHandler is Test {
     }
 
     function _setupFuses() private returns (address[] memory fuses) {
-        _morphoBlueFuse = new MorphoBlueSupplyWithCallBackDataFuse(_MORPHO_BLUE_MARKET_ID);
+        _morphoFuse = new MorphoSupplyWithCallBackDataFuse(_MORPHO_MARKET_ID);
         _supplyFuseAaveV3 = new AaveV3SupplyFuse(_AAVE_V3_MARKET_ID, _AAVE_POOL, _ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3);
         _supplyFuseCompoundV3 = new CompoundV3SupplyFuse(_COMPOUND_V3_MARKET_ID, _COMET_V3_USDC);
 
         fuses = new address[](3);
-        fuses[0] = address(_morphoBlueFuse);
+        fuses[0] = address(_morphoFuse);
         fuses[1] = address(_supplyFuseAaveV3);
         fuses[2] = address(_supplyFuseCompoundV3);
     }
 
     function _setupMarketConfigs() private pure returns (MarketSubstratesConfig[] memory marketConfigs) {
         marketConfigs = new MarketSubstratesConfig[](3);
-        bytes32[] memory morphoBlue = new bytes32[](1);
-        morphoBlue[0] = _MARKET_ID_BYTES32;
-        marketConfigs[0] = MarketSubstratesConfig(_MORPHO_BLUE_MARKET_ID, morphoBlue);
+        bytes32[] memory morpho = new bytes32[](1);
+        morpho[0] = _MARKET_ID_BYTES32;
+        marketConfigs[0] = MarketSubstratesConfig(_MORPHO_MARKET_ID, morpho);
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
@@ -127,10 +127,7 @@ contract PlasmaVaultCallbackHandler is Test {
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         balanceFuses = new MarketBalanceFuseConfig[](3);
 
-        balanceFuses[0] = MarketBalanceFuseConfig(
-            _MORPHO_BLUE_MARKET_ID,
-            address(new MorphoBlueBalanceFuse(_MORPHO_BLUE_MARKET_ID))
-        );
+        balanceFuses[0] = MarketBalanceFuseConfig(_MORPHO_MARKET_ID, address(new MorphoBalanceFuse(_MORPHO_MARKET_ID)));
         balanceFuses[1] = MarketBalanceFuseConfig(
             _AAVE_V3_MARKET_ID,
             address(
@@ -197,7 +194,7 @@ contract PlasmaVaultCallbackHandler is Test {
         accessManager.initialize(initializationData);
     }
 
-    function testShouldDepositToAaveACompoundAfterDepositToMorphoBlue() public {
+    function testShouldDepositToAaveACompoundAfterDepositToMorpho() public {
         //given
         address userOne = address(this);
         uint256 amount = 100_000e18;
@@ -231,11 +228,11 @@ contract PlasmaVaultCallbackHandler is Test {
 
         FuseAction[] memory morphoCalls = new FuseAction[](1);
         morphoCalls[0] = FuseAction(
-            address(_morphoBlueFuse),
+            address(_morphoFuse),
             abi.encodeWithSignature(
                 "enter((bytes32,uint256,bytes))",
-                MorphoBlueSupplyFuseEnterData({
-                    morphoBlueMarketId: _MARKET_ID_BYTES32,
+                MorphoSupplyFuseEnterData({
+                    morphoMarketId: _MARKET_ID_BYTES32,
                     amount: 100e18,
                     callbackData: callbackCallsBytes
                 })
@@ -244,7 +241,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
         uint256 aaveMarketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(_AAVE_V3_MARKET_ID);
         uint256 compoundMarketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(_COMPOUND_V3_MARKET_ID);
-        uint256 morphoMarketCompoundBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(_MORPHO_BLUE_MARKET_ID);
+        uint256 morphoMarketCompoundBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(_MORPHO_MARKET_ID);
 
         //when
         PlasmaVault(_plasmaVault).execute(morphoCalls);
@@ -253,7 +250,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
         uint256 aaveMarketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(_AAVE_V3_MARKET_ID);
         uint256 compoundMarketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(_COMPOUND_V3_MARKET_ID);
-        uint256 morphoMarketCompoundAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(_MORPHO_BLUE_MARKET_ID);
+        uint256 morphoMarketCompoundAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(_MORPHO_MARKET_ID);
 
         assertEq(aaveMarketBalanceBefore, 0, "aaveMarketBalanceBefore");
         assertGt(aaveMarketBalanceAfter, 0, "aaveMarketBalanceAfter");

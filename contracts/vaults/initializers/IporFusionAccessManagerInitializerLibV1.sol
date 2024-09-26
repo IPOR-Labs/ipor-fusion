@@ -83,7 +83,8 @@ library IporFusionAccessManagerInitializerLibV1 {
                 data_.transferRewardsManagers.length +
                 data_.whitelist.length +
                 data_.configInstantWithdrawalFusesManagers.length +
-                (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1)
+                (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +
+                1 /// @dev Plasma Vault address.
         );
         uint256 index;
 
@@ -203,6 +204,13 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             ++index;
         }
+
+        accountToRoles[index] = AccountToRole({
+            roleId: Roles.PLASMA_VAULT_ROLE,
+            account: data_.plasmaVaultAddress.plasmaVault,
+            executionDelay: 0
+        });
+        ++index;
 
         return accountToRoles;
     }

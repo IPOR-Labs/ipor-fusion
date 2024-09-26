@@ -212,6 +212,16 @@ contract PlasmaVault is
         _addPerformanceFee(totalAssetsBefore);
     }
 
+    function updateMarketsBalances(uint256[] calldata marketIds_) external returns (uint256) {
+        if (marketIds_.length == 0) {
+            return totalAssets();
+        }
+        uint256 totalAssetsBefore = totalAssets();
+        _updateMarketsBalances(marketIds_);
+        _addPerformanceFee(totalAssetsBefore);
+        return totalAssets();
+    }
+
     function decimals() public view virtual override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
         return super.decimals();
     }
@@ -351,7 +361,7 @@ contract PlasmaVault is
     }
 
     /// @notice Returns the total assets in the vault
-    /// @dev value not take into account runtime accrued interest in the markets, and NOT take into account runtime accrued management fee
+    /// @dev value not take into account runtime accrued interest in the markets, and NOT take into account runtime accrued performance fee
     /// @return total assets in the vault, represented in underlying token decimals
     function totalAssets() public view virtual override returns (uint256) {
         uint256 grossTotalAssets = _getGrossTotalAssets();
@@ -360,7 +370,7 @@ contract PlasmaVault is
         if (unrealizedManagementFee >= grossTotalAssets) {
             return 0;
         } else {
-            return grossTotalAssets - _getUnrealizedManagementFee(grossTotalAssets);
+            return grossTotalAssets - unrealizedManagementFee;
         }
     }
 
@@ -479,13 +489,13 @@ contract PlasmaVault is
 
         uint256 unrealizedFeeInUnderlying = getUnrealizedManagementFee();
 
-        if (unrealizedFeeInUnderlying == 0) {
-            return;
-        }
-
         PlasmaVaultLib.updateManagementFeeData();
 
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
+
+        if (unrealizedFeeInShares == 0) {
+            return;
+        }
 
         /// @dev minting is an act of management fee realization
         /// @dev total supply cap validation is disabled for fee minting
