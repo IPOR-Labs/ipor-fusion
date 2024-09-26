@@ -21,7 +21,7 @@ import {IAavePriceOracle} from "../../contracts/fuses/aave_v3/ext/IAavePriceOrac
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {IComet} from "../../contracts/fuses/compound_v3/ext/IComet.sol";
 
-contract MorphoFlashLoanFuseTest is Test {
+contract PlasmaVaultUpdateMarketsBalances is Test {
     address private constant _ATOMIST = address(1111111);
     address private constant _ALPHA = address(2222222);
     address private constant _USER = address(12121212);
