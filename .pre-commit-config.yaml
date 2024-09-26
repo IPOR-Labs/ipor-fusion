@@ -18,11 +18,6 @@ repos:
         entry: npm run solhint:test
         always_run: true
         language: system
-      - id: solhint-script
-        name: solhint-script
-        entry: npm run solhint:script
-        always_run: true
-        language: system
 exclude: |
   (?x)^(
       package-lock.json|
