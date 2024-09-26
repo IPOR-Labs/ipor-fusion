@@ -212,6 +212,16 @@ contract PlasmaVault is
         _addPerformanceFee(totalAssetsBefore);
     }
 
+    function updateMarketsBalances(uint256[] calldata marketIds_) external returns (uint256) {
+        if (marketIds_.length == 0) {
+            return totalAssets();
+        }
+        uint256 totalAssetsBefore = totalAssets();
+        _updateMarketsBalances(marketIds_);
+        _addPerformanceFee(totalAssetsBefore);
+        return totalAssets();
+    }
+
     function decimals() public view virtual override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
         return super.decimals();
     }
