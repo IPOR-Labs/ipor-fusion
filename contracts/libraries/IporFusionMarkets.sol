@@ -7,8 +7,8 @@ library IporFusionMarkets {
     /// @dev AAVE V3 market
     uint256 public constant AAVE_V3 = 1;
 
-    /// @dev Compound V3 market
-    uint256 public constant COMPOUND_V3 = 2;
+    /// @dev Compound V3 market USDC
+    uint256 public constant COMPOUND_V3_USDC = 2;
 
     /// @dev Gearbox V3 market
     uint256 public constant GEARBOX_POOL_V3 = 3;
@@ -36,10 +36,19 @@ library IporFusionMarkets {
     /// @dev universal token swapper, one need add dependence graph with balance of ERC20_VAULT_BALANCE
     uint256 public constant UNIVERSAL_TOKEN_SWAPPER = 12;
 
+    /// @dev Compound V3 market USDT
+    uint256 public constant COMPOUND_V3_USDT = 13;
+
+    /// @dev Morpho market
+    uint256 public constant MORPHO = 14;
+
+    /// @dev Spark market
+    uint256 public constant SPARK = 15;
+
     /// @dev Curve market
-    uint256 public constant CURVE_POOL = 13;
-    uint256 public constant CURVE_LP_GAUGE = 14;
+    uint256 public constant CURVE_POOL = 16;
+    uint256 public constant CURVE_LP_GAUGE = 17;
 
     /// @dev Morpho flash loan market
-    uint256 public constant MORPHO_FLASH_LOAN = 15;
+    uint256 public constant MORPHO_FLASH_LOAN = 18;
 }

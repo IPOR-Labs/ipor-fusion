@@ -15,9 +15,9 @@ import {MorphoStorageLib} from "@morpho-org/morpho-blue/src/libraries/periphery/
 import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
-/// @title Fuse Morpho Blue Balance protocol responsible for calculating the balance of the Plasma Vault in the Morpho Blue protocol based on preconfigured market substrates
-/// @dev Substrates in this fuse are the Morpho Blue Market IDs that are used in the Morpho Blue protocol for a given MARKET_ID
-contract MorphoBlueBalanceFuse is IMarketBalanceFuse {
+/// @title Fuse Morpho Balance protocol responsible for calculating the balance of the Plasma Vault in the Morpho protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the Morpho Market IDs that are used in the Morpho protocol for a given MARKET_ID
+contract MorphoBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using SafeCast for int256;
     using MorphoBalancesLib for IMorpho;

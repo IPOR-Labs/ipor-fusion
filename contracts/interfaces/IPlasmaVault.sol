@@ -16,6 +16,16 @@ interface IPlasmaVault {
     /// @return The total assets in the market represented in underlying token decimals
     function totalAssetsInMarket(uint256 marketId_) external view returns (uint256);
 
+    /**
+     * @notice Updates the balances of the specified markets.
+     * @param marketIds_ The array of market IDs to update balances for.
+     * @return The total assets in the Plasma Vault after updating the market balances.
+     * @dev If the `marketIds_` array is empty, it returns the total assets without updating any market balances.
+     *      This function first records the total assets before updating the market balances, then updates the balances,
+     *      adds the performance fee based on the assets before the update, and finally returns the new total assets.
+     */
+    function updateMarketsBalances(uint256[] calldata marketIds_) external returns (uint256);
+
     /// @notice Gets unrealized management fee
     /// @return The unrealized management fee represented in underlying token decimals
     function getUnrealizedManagementFee() external view returns (uint256);

@@ -11,7 +11,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {MorphoFlashLoanFuse, MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho_blue/MorphoFlashLoanFuse.sol";
+import {MorphoFlashLoanFuse, MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 import {MockInnerBalance} from "./MockInnerBalance.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
