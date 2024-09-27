@@ -21,6 +21,14 @@ interface IComet {
     function supply(address asset, uint256 amount) external;
 
     /**
+     * @notice Supply an amount of asset to dst
+     * @param dst The address which will hold the balance
+     * @param asset The asset to supply
+     * @param amount The quantity to supply
+     */
+    function supplyTo(address dst, address asset, uint256 amount) external;
+
+    /**
      * @notice Withdraw an amount of asset from the protocol
      * @param asset The asset to withdraw
      * @param amount The quantity to withdraw
