@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
+import "forge-std/console2.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
@@ -1686,7 +1687,7 @@ contract PlasmaVaultFeeTest is Test {
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
-    function testShouldNotAccruedManagementFeeWhenRedeemInTheSameBlock() public {
+    function testShouldNotAccruedManagementFeeWhenDepositWhenVaultIsEmpty() public {
         //given
         performanceFeeInPercentage = 0;
         managementFeeInPercentage = 500;
@@ -1696,9 +1697,6 @@ contract PlasmaVaultFeeTest is Test {
         underlyingToken = USDC;
         alpha = address(0x1);
 
-        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
-        address[] memory fuses = new address[](0);
-        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVault plasmaVault = new PlasmaVault(
@@ -1707,9 +1705,9 @@ contract PlasmaVaultFeeTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
                 FeeConfig(
                     performanceFeeManager,
                     performanceFeeInPercentage,
@@ -1727,12 +1725,11 @@ contract PlasmaVaultFeeTest is Test {
 
         vm.warp(block.timestamp);
 
-        //user one
+        /// @dev user one
         vm.prank(0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa);
         ERC20(USDC).transfer(address(userOne), 50 * amount);
         vm.prank(userOne);
         ERC20(USDC).approve(address(plasmaVault), 50 * amount);
-        vm.prank(userOne);
 
         //when scenario
 
@@ -1792,6 +1789,106 @@ contract PlasmaVaultFeeTest is Test {
         assertEq(managementFeeAfter365BeforeFourDeposit, 0, "managementFeeAfter365BeforeFourDeposit");
         assertEq(managementFeeImmediatelyAfterFourDeposit, 0, "managementFeeImmediatelyAfterFourDeposit");
         assertEq(managementFeeAfter365DaysAfterFourDeposit, 7500000000, "managementFeeAfter365DaysAfterFourDeposit");
+
+    }
+
+    function testShouldNotInfluenceManagementFeeOnOtherDepositors() public {
+        //given
+        performanceFeeInPercentage = 0;
+        managementFeeInPercentage = 500;
+
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alpha = address(0x1);
+
+        address receiverOne = address(0x1111);
+        address receiverTwo = address(0x2222);
+
+
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                new MarketSubstratesConfig[](0),
+                new address[](0),
+                new MarketBalanceFuseConfig[](0),
+                FeeConfig(
+                    performanceFeeManager,
+                    performanceFeeInPercentage,
+                    managementFeeManager,
+                    managementFeeInPercentage
+                ),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager);
+
+        amount = 100_000 * 1e6;
+
+        vm.warp(block.timestamp);
+
+        /// @dev user one
+        vm.prank(0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa);
+        ERC20(USDC).transfer(address(userOne), 5 * amount);
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), 5 * amount);
+
+        /// @dev user two
+        vm.prank(0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa);
+        ERC20(USDC).transfer(address(userTwo), 5 * amount);
+        vm.prank(userTwo);
+        ERC20(USDC).approve(address(plasmaVault), 5 * amount);
+
+        /// @dev user managementFeeManager
+        vm.prank(0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa);
+        ERC20(USDC).transfer(address(managementFeeManager), 5 * amount);
+        vm.prank(managementFeeManager);
+        ERC20(USDC).approve(address(plasmaVault), 5 * amount);
+
+        // when scenario
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        vm.warp(block.timestamp + 365 days);
+
+        vm.startPrank(userOne);
+        plasmaVault.redeem(plasmaVault.maxRedeem(userOne), receiverOne, userOne);
+        vm.stopPrank();
+
+        uint256 usdcBalanceOfReceiverOne = ERC20(USDC).balanceOf(receiverOne);
+
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        vm.prank(userTwo);
+        plasmaVault.deposit(amount, userTwo);
+
+        /// @dev scenario when managementFeeManager have more shares
+        vm.prank(managementFeeManager);
+        plasmaVault.deposit(amount, managementFeeManager);
+
+
+        vm.warp(block.timestamp + 365 days);
+
+        vm.startPrank(userTwo);
+        plasmaVault.redeem(plasmaVault.maxRedeem(userTwo), receiverTwo, userTwo);
+        vm.stopPrank();
+
+        uint256 usdcBalanceOfReceiverTwo = ERC20(USDC).balanceOf(receiverTwo);
+
+        //then
+        assertEq(usdcBalanceOfReceiverOne, usdcBalanceOfReceiverTwo, "usdcBalanceOfReceiverOne = usdcBalanceOfReceiverTwo");
 
     }
 
