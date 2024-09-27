@@ -15,25 +15,25 @@ import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParam
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 
-/// @notice Structure for entering (supply) to the Morpho Blue protocol
-struct MorphoBlueSupplyFuseEnterData {
+/// @notice Structure for entering (supply) to the Morpho protocol
+struct MorphoSupplyFuseEnterData {
     // vault address
-    bytes32 morphoBlueMarketId;
+    bytes32 morphoMarketId;
     // max amount to supply
     uint256 amount;
 }
 
-/// @notice Structure for exiting (withdraw) from the Morpho Blue protocol
-struct MorphoBlueSupplyFuseExitData {
+/// @notice Structure for exiting (withdraw) from the Morpho protocol
+struct MorphoSupplyFuseExitData {
     // vault address
-    bytes32 morphoBlueMarketId;
+    bytes32 morphoMarketId;
     // max amount to supply
     uint256 amount;
 }
 
-/// @title Fuse Morpho Blue Supply protocol responsible for supplying and withdrawing assets from the Morpho Blue protocol based on preconfigured market substrates
-/// @dev Substrates in this fuse are the Morpho Blue Market IDs that are used in the Morpho Blue protocol for a given MARKET_ID
-contract MorphoBlueSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
+/// @title Fuse Morpho Supply protocol responsible for supplying and withdrawing assets from the Morpho protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the Morpho Market IDs that are used in the Morpho protocol for a given MARKET_ID
+contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
     using MorphoBalancesLib for IMorpho;
@@ -43,11 +43,11 @@ contract MorphoBlueSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
 
-    event MorphoBlueSupplyFuseEnter(address version, address asset, bytes32 market, uint256 amount);
-    event MorphoBlueSupplyFuseExit(address version, address asset, bytes32 market, uint256 amount);
-    event MorphoBlueSupplyFuseExitFailed(address version, address asset, bytes32 market);
+    event MorphoSupplyFuseEnter(address version, address asset, bytes32 market, uint256 amount);
+    event MorphoSupplyFuseExit(address version, address asset, bytes32 market, uint256 amount);
+    event MorphoSupplyFuseExitFailed(address version, address asset, bytes32 market);
 
-    error MorphoBlueSupplyFuseUnsupportedMarket(string action, bytes32 morphoBlueMarketId);
+    error MorphoSupplyFuseUnsupportedMarket(string action, bytes32 morphoMarketId);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -57,25 +57,25 @@ contract MorphoBlueSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    function enter(MorphoBlueSupplyFuseEnterData memory data_) external {
+    function enter(MorphoSupplyFuseEnterData memory data_) external {
         if (data_.amount == 0) {
             return;
         }
 
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoBlueMarketId)) {
-            revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data_.morphoBlueMarketId);
+        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoMarketId)) {
+            revert MorphoSupplyFuseUnsupportedMarket("enter", data_.morphoMarketId);
         }
 
-        MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoBlueMarketId));
+        MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoMarketId));
 
         ERC20(marketParams.loanToken).forceApprove(address(MORPHO), data_.amount);
 
         (uint256 assetsSupplied, ) = MORPHO.supply(marketParams, data_.amount, 0, address(this), bytes(""));
 
-        emit MorphoBlueSupplyFuseEnter(VERSION, marketParams.loanToken, data_.morphoBlueMarketId, assetsSupplied);
+        emit MorphoSupplyFuseEnter(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsSupplied);
     }
 
-    function exit(MorphoBlueSupplyFuseExitData calldata data_) external {
+    function exit(MorphoSupplyFuseExitData calldata data_) external {
         _exit(data_);
     }
 
@@ -85,19 +85,19 @@ contract MorphoBlueSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         bytes32 morphoMarketId = params_[1];
 
-        _exit(MorphoBlueSupplyFuseExitData(morphoMarketId, amount));
+        _exit(MorphoSupplyFuseExitData(morphoMarketId, amount));
     }
 
-    function _exit(MorphoBlueSupplyFuseExitData memory data_) internal {
+    function _exit(MorphoSupplyFuseExitData memory data_) internal {
         if (data_.amount == 0) {
             return;
         }
 
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoBlueMarketId)) {
-            revert MorphoBlueSupplyFuseUnsupportedMarket("enter", data_.morphoBlueMarketId);
+        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoMarketId)) {
+            revert MorphoSupplyFuseUnsupportedMarket("enter", data_.morphoMarketId);
         }
 
-        MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoBlueMarketId));
+        MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoMarketId));
         Id id = marketParams.id();
 
         MORPHO.accrueInterest(marketParams);
@@ -122,30 +122,20 @@ contract MorphoBlueSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 uint256 assetsWithdrawn,
                 uint256 sharesWithdrawn
             ) {
-                emit MorphoBlueSupplyFuseExit(
-                    VERSION,
-                    marketParams.loanToken,
-                    data_.morphoBlueMarketId,
-                    assetsWithdrawn
-                );
+                emit MorphoSupplyFuseExit(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsWithdrawn);
             } catch {
                 /// @dev if withdraw failed, continue with the next step
-                emit MorphoBlueSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoBlueMarketId);
+                emit MorphoSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoMarketId);
             }
         } else {
             try MORPHO.withdraw(marketParams, data_.amount, 0, address(this), address(this)) returns (
                 uint256 assetsWithdrawn,
                 uint256 sharesWithdrawn
             ) {
-                emit MorphoBlueSupplyFuseExit(
-                    VERSION,
-                    marketParams.loanToken,
-                    data_.morphoBlueMarketId,
-                    assetsWithdrawn
-                );
+                emit MorphoSupplyFuseExit(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsWithdrawn);
             } catch {
                 /// @dev if withdraw failed, continue with the next step
-                emit MorphoBlueSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoBlueMarketId);
+                emit MorphoSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoMarketId);
             }
         }
     }

@@ -92,7 +92,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
 
         bytes32[] memory assetsCompound = new bytes32[](1);
         assetsCompound[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        marketConfigs[3] = MarketSubstratesConfig(IporFusionMarkets.COMPOUND_V3, assetsCompound);
+        marketConfigs[3] = MarketSubstratesConfig(IporFusionMarkets.COMPOUND_V3_USDC, assetsCompound);
     }
 
     function setupFuses() public override {
@@ -126,8 +126,8 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         balanceFuses[2] = MarketBalanceFuseConfig(IporFusionMarkets.AAVE_V3, address(aaveFuseBalance));
 
         balanceFuses[3] = MarketBalanceFuseConfig(
-            IporFusionMarkets.COMPOUND_V3,
-            address(new CompoundV3BalanceFuse(IporFusionMarkets.COMPOUND_V3, COMET))
+            IporFusionMarkets.COMPOUND_V3_USDC,
+            address(new CompoundV3BalanceFuse(IporFusionMarkets.COMPOUND_V3_USDC, COMET))
         );
     }
 
@@ -559,7 +559,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         dependenceGearboxFarmDToken[0] = IporFusionMarkets.AAVE_V3;
 
         uint256[] memory dependenceAave = new uint256[](1);
-        dependenceAave[0] = IporFusionMarkets.COMPOUND_V3;
+        dependenceAave[0] = IporFusionMarkets.COMPOUND_V3_USDC;
 
         uint256[][] memory dependenceMarkets = new uint256[][](3);
         dependenceMarkets[0] = dependenceGearboxDToken;
@@ -573,7 +573,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         expectedMarketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
         expectedMarketIds[1] = IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3;
         expectedMarketIds[2] = IporFusionMarkets.AAVE_V3;
-        expectedMarketIds[3] = IporFusionMarkets.COMPOUND_V3;
+        expectedMarketIds[3] = IporFusionMarkets.COMPOUND_V3_USDC;
 
         // when
         vm.prank(alpha);
@@ -617,7 +617,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         dependenceGearboxDToken[1] = IporFusionMarkets.AAVE_V3;
 
         uint256[] memory dependenceAave = new uint256[](1);
-        dependenceAave[0] = IporFusionMarkets.COMPOUND_V3;
+        dependenceAave[0] = IporFusionMarkets.COMPOUND_V3_USDC;
 
         uint256[][] memory dependenceMarkets = new uint256[][](2);
         dependenceMarkets[0] = dependenceGearboxDToken;
@@ -630,7 +630,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         expectedMarketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
         expectedMarketIds[1] = IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3;
         expectedMarketIds[2] = IporFusionMarkets.AAVE_V3;
-        expectedMarketIds[3] = IporFusionMarkets.COMPOUND_V3;
+        expectedMarketIds[3] = IporFusionMarkets.COMPOUND_V3_USDC;
 
         // when
         vm.prank(alpha);
@@ -674,7 +674,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         dependenceGearboxDToken[1] = IporFusionMarkets.AAVE_V3;
 
         uint256[] memory dependenceAave = new uint256[](2);
-        dependenceAave[0] = IporFusionMarkets.COMPOUND_V3;
+        dependenceAave[0] = IporFusionMarkets.COMPOUND_V3_USDC;
         dependenceAave[1] = IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3;
 
         uint256[][] memory dependenceMarkets = new uint256[][](2);
@@ -688,7 +688,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         expectedMarketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
         expectedMarketIds[1] = IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3;
         expectedMarketIds[2] = IporFusionMarkets.AAVE_V3;
-        expectedMarketIds[3] = IporFusionMarkets.COMPOUND_V3;
+        expectedMarketIds[3] = IporFusionMarkets.COMPOUND_V3_USDC;
 
         // when
         vm.prank(alpha);
