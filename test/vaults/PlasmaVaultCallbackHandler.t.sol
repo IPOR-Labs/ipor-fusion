@@ -127,10 +127,7 @@ contract PlasmaVaultCallbackHandler is Test {
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         balanceFuses = new MarketBalanceFuseConfig[](3);
 
-        balanceFuses[0] = MarketBalanceFuseConfig(
-            _MORPHO_MARKET_ID,
-            address(new MorphoBalanceFuse(_MORPHO_MARKET_ID))
-        );
+        balanceFuses[0] = MarketBalanceFuseConfig(_MORPHO_MARKET_ID, address(new MorphoBalanceFuse(_MORPHO_MARKET_ID)));
         balanceFuses[1] = MarketBalanceFuseConfig(
             _AAVE_V3_MARKET_ID,
             address(

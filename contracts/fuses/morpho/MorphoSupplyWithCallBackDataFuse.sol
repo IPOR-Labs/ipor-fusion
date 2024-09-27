@@ -123,12 +123,7 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
                 uint256 assetsWithdrawn,
                 uint256 sharesWithdrawn
             ) {
-                emit MorphoSupplyFuseExit(
-                    VERSION,
-                    marketParams.loanToken,
-                    data_.morphoMarketId,
-                    assetsWithdrawn
-                );
+                emit MorphoSupplyFuseExit(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsWithdrawn);
             } catch {
                 /// @dev if withdraw failed, continue with the next step
                 emit MorphoSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoMarketId);
@@ -138,12 +133,7 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
                 uint256 assetsWithdrawn,
                 uint256 sharesWithdrawn
             ) {
-                emit MorphoSupplyFuseExit(
-                    VERSION,
-                    marketParams.loanToken,
-                    data_.morphoMarketId,
-                    assetsWithdrawn
-                );
+                emit MorphoSupplyFuseExit(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsWithdrawn);
             } catch {
                 /// @dev if withdraw failed, continue with the next step
                 emit MorphoSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoMarketId);

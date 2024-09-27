@@ -1779,7 +1779,11 @@ contract PlasmaVaultFeeTest is Test {
         //then
         assertEq(managementFeeAfter365DaysBeforeFirstDeposit, 0, "managementFeeAfter365DaysBeforeFirstDeposit");
         assertEq(managementFeeImmediatelyAfterFirstDeposit, 0, "managementFeeImmediatelyAfterFirstDeposit");
-        assertEq(managementFeeAfter365DaysBeforeSecondDeposit, 500000000, "managementFeeAfter365DaysBeforeSecondDeposit");
+        assertEq(
+            managementFeeAfter365DaysBeforeSecondDeposit,
+            500000000,
+            "managementFeeAfter365DaysBeforeSecondDeposit"
+        );
         assertEq(managementFeeImmediatelyAfterSecondDeposit, 0, "managementFeeImmediatelyAfterSecondDeposit");
         assertEq(managementFeeAfter365DayBeforeMaxRedeem, 2 * 500000000, "managementFeeAfter365DayBeforeMaxRedeem");
         assertEq(managementFeeImmediatelyAfterMaxRedeem, 0, "managementFeeImmediatelyAfterMaxRedeem");
@@ -1788,7 +1792,6 @@ contract PlasmaVaultFeeTest is Test {
         assertEq(managementFeeAfter365BeforeFourDeposit, 0, "managementFeeAfter365BeforeFourDeposit");
         assertEq(managementFeeImmediatelyAfterFourDeposit, 0, "managementFeeImmediatelyAfterFourDeposit");
         assertEq(managementFeeAfter365DaysAfterFourDeposit, 7500000000, "managementFeeAfter365DaysAfterFourDeposit");
-
     }
 
     function testShouldNotInfluenceManagementFeeOnOtherDepositors() public {
@@ -1803,7 +1806,6 @@ contract PlasmaVaultFeeTest is Test {
 
         address receiverOne = address(0x1111);
         address receiverTwo = address(0x2222);
-
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
@@ -1877,7 +1879,6 @@ contract PlasmaVaultFeeTest is Test {
         vm.prank(managementFeeManager);
         plasmaVault.deposit(amount, managementFeeManager);
 
-
         vm.warp(block.timestamp + 365 days);
 
         vm.startPrank(userTwo);
@@ -1887,8 +1888,11 @@ contract PlasmaVaultFeeTest is Test {
         uint256 usdcBalanceOfReceiverTwo = ERC20(USDC).balanceOf(receiverTwo);
 
         //then
-        assertEq(usdcBalanceOfReceiverOne, usdcBalanceOfReceiverTwo, "usdcBalanceOfReceiverOne = usdcBalanceOfReceiverTwo");
-
+        assertEq(
+            usdcBalanceOfReceiverOne,
+            usdcBalanceOfReceiverTwo,
+            "usdcBalanceOfReceiverOne = usdcBalanceOfReceiverTwo"
+        );
     }
 
     function createAccessManager(
