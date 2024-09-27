@@ -62,9 +62,7 @@ contract MorphoSupplyFuseTest is Test {
         vaultMock.grantMarketSubstrates(fuse.MARKET_ID(), marketIds);
 
         // when
-        vaultMock.enterMorphoSupply(
-            MorphoSupplyFuseEnterData({morphoMarketId: marketIdBytes32, amount: amount})
-        );
+        vaultMock.enterMorphoSupply(MorphoSupplyFuseEnterData({morphoMarketId: marketIdBytes32, amount: amount}));
 
         // then
         uint256 balanceAfter = ERC20(DAI).balanceOf(address(vaultMock));
@@ -75,10 +73,7 @@ contract MorphoSupplyFuseTest is Test {
         assertEq(balanceFromBalanceFuseBefore, uint256(0), "balance should be 0");
 
         assertEq(balanceAfter + amount, balanceBefore, "vault balance should be decreased by amount");
-        assertTrue(
-            balanceOnMorphoAfter > balanceOnMorphoBefore,
-            "collateral balance should be increased by amount"
-        );
+        assertTrue(balanceOnMorphoAfter > balanceOnMorphoBefore, "collateral balance should be increased by amount");
     }
 
     function testShouldBeAbleToWithdrawDaiToMorpho() external {
@@ -100,9 +95,7 @@ contract MorphoSupplyFuseTest is Test {
         marketIds[0] = marketIdBytes32;
         vaultMock.grantMarketSubstrates(fuse.MARKET_ID(), marketIds);
 
-        vaultMock.enterMorphoSupply(
-            MorphoSupplyFuseEnterData({morphoMarketId: marketIdBytes32, amount: amount})
-        );
+        vaultMock.enterMorphoSupply(MorphoSupplyFuseEnterData({morphoMarketId: marketIdBytes32, amount: amount}));
 
         uint256 balanceBefore = ERC20(DAI).balanceOf(address(vaultMock));
         uint256 balanceOnMorphoBefore = MORPHO.expectedSupplyAssets(marketParams, address(vaultMock));

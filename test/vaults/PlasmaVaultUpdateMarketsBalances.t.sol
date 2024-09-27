@@ -112,7 +112,10 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
 
         marketConfigs[0] = MarketSubstratesConfig({marketId: IporFusionMarkets.AAVE_V3, substrates: substrates});
 
-        marketConfigs[1] = MarketSubstratesConfig({marketId: IporFusionMarkets.COMPOUND_V3_USDC, substrates: substrates});
+        marketConfigs[1] = MarketSubstratesConfig({
+            marketId: IporFusionMarkets.COMPOUND_V3_USDC,
+            substrates: substrates
+        });
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
@@ -219,7 +222,9 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         uint256 newCompoundFunds = 700e6;
 
         uint256 balanceAaveBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
-        uint256 balanceCompoundBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.COMPOUND_V3_USDC);
+        uint256 balanceCompoundBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.COMPOUND_V3_USDC
+        );
         uint256 totalAssetsBefore = PlasmaVault(_plasmaVault).totalAssets();
 
         vm.startPrank(_USER);
@@ -238,7 +243,9 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
 
         // then
         uint256 balanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
-        uint256 balanceCompoundAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.COMPOUND_V3_USDC);
+        uint256 balanceCompoundAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.COMPOUND_V3_USDC
+        );
         uint256 totalAssetsAfter = PlasmaVault(_plasmaVault).totalAssets();
 
         assertApproxEqAbs(balanceAaveBefore, _SUPPLY_AAVE, 1e6, "balanceAaveBefore should be equal to 1_000e6");
@@ -277,7 +284,9 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         uint256 newCompoundFunds = 700e6;
 
         uint256 balanceAaveBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
-        uint256 balanceCompoundBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.COMPOUND_V3_USDC);
+        uint256 balanceCompoundBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.COMPOUND_V3_USDC
+        );
         uint256 totalAssetsBefore = PlasmaVault(_plasmaVault).totalAssets();
 
         vm.startPrank(_USER);
@@ -296,7 +305,9 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
 
         // then
         uint256 balanceAaveAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
-        uint256 balanceCompoundAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.COMPOUND_V3_USDC);
+        uint256 balanceCompoundAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.COMPOUND_V3_USDC
+        );
         uint256 totalAssetsAfter = PlasmaVault(_plasmaVault).totalAssets();
 
         assertApproxEqAbs(balanceAaveBefore, _SUPPLY_AAVE, 1e6, "balanceAaveBefore should be equal to 1_000e6");
@@ -335,7 +346,9 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         uint256 newCompoundFunds = 700e6;
 
         uint256 balanceAaveBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
-        uint256 balanceCompoundBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.COMPOUND_V3_USDC);
+        uint256 balanceCompoundBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.COMPOUND_V3_USDC
+        );
         uint256 totalAssetsBefore = PlasmaVault(_plasmaVault).totalAssets();
 
         vm.startPrank(_USER);
@@ -355,7 +368,9 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
 
         // then
         uint256 balanceAaveAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
-        uint256 balanceCompoundAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.COMPOUND_V3_USDC);
+        uint256 balanceCompoundAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.COMPOUND_V3_USDC
+        );
         uint256 totalAssetsAfter = PlasmaVault(_plasmaVault).totalAssets();
 
         assertApproxEqAbs(balanceAaveBefore, _SUPPLY_AAVE, 1e6, "balanceAaveBefore should be equal to 1_000e6");
