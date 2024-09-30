@@ -24,6 +24,7 @@ import {CallbackHandlerMorpho} from "../../contracts/callback_handlers/CallbackH
 
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {IporFeeFactory} from "../../contracts/managers/fee/IporFeeFactory.sol";
 
 contract PlasmaVaultCallbackHandler is Test {
     address private constant _AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
@@ -127,10 +128,7 @@ contract PlasmaVaultCallbackHandler is Test {
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         balanceFuses = new MarketBalanceFuseConfig[](3);
 
-        balanceFuses[0] = MarketBalanceFuseConfig(
-            _MORPHO_MARKET_ID,
-            address(new MorphoBalanceFuse(_MORPHO_MARKET_ID))
-        );
+        balanceFuses[0] = MarketBalanceFuseConfig(_MORPHO_MARKET_ID, address(new MorphoBalanceFuse(_MORPHO_MARKET_ID)));
         balanceFuses[1] = MarketBalanceFuseConfig(
             _AAVE_V3_MARKET_ID,
             address(
@@ -148,13 +146,8 @@ contract PlasmaVaultCallbackHandler is Test {
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())));
     }
 
     function _createAccessManager() private {

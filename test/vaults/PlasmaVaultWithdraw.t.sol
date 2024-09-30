@@ -18,6 +18,7 @@ import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {IporFeeFactory} from "../../contracts/managers/fee/IporFeeFactory.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -290,7 +291,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -396,7 +397,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 2000, address(0x555), 200),
+                //                FeeConfig(address(0x777), 2000, address(0x555), 200),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 sharesAmount
@@ -506,7 +508,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -622,7 +624,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -726,7 +728,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -857,7 +859,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1018,7 +1020,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1172,7 +1174,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1318,7 +1320,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1432,7 +1434,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1563,7 +1565,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(plasmaVaultBase),
                 type(uint256).max
@@ -1715,7 +1717,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1766,7 +1768,7 @@ contract PlasmaVaultWithdrawTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max

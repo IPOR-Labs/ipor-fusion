@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
@@ -16,6 +17,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {IporFeeFactory} from "../../contracts/managers/fee/IporFeeFactory.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -124,7 +126,13 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig(
+                    0,
+                    0,
+                    managementFeeInPercentage,
+                    performanceFeeInPercentage,
+                    address(address(new IporFeeFactory()))
+                ),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -135,6 +143,9 @@ contract PlasmaVaultFeeTest is Test {
         FuseAction[] memory calls = new FuseAction[](2);
 
         amount = 100 * 1e6;
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
 
         /// @dev user one deposit
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -259,7 +270,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -390,7 +401,13 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig(
+                    0,
+                    0,
+                    managementFeeInPercentage,
+                    performanceFeeInPercentage,
+                    address(address(new IporFeeFactory()))
+                ),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -399,6 +416,9 @@ contract PlasmaVaultFeeTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -531,7 +551,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -672,7 +692,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -813,7 +833,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -953,7 +973,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig(0, 0, 0, performanceFeeInPercentage, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -962,6 +982,9 @@ contract PlasmaVaultFeeTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -1075,7 +1098,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1197,10 +1220,11 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(
-                    performanceFeeManager,
+                    0,
+                    0,
+                    managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
+                    address(address(new IporFeeFactory()))
                 ),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
@@ -1211,6 +1235,8 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
@@ -1294,10 +1320,11 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(
-                    performanceFeeManager,
+                    0,
+                    0,
+                    managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
+                    address(address(new IporFeeFactory()))
                 ),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
@@ -1308,6 +1335,9 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
         sharesAmount = 100 * 10 ** plasmaVault.decimals();
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
 
         vm.warp(block.timestamp);
 
@@ -1400,12 +1430,13 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(
-                    performanceFeeManager,
-                    performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
-                ),
+                //                FeeConfig(
+                //                    performanceFeeManager,
+                //                    performanceFeeInPercentage,
+                //                    managementFeeManager,
+                //                    managementFeeInPercentage
+                //                ),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1500,12 +1531,13 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(
-                    performanceFeeManager,
-                    performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
-                ),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                //                FeeConfig(
+                //                    performanceFeeManager,
+                //                    performanceFeeInPercentage,
+                //                    managementFeeManager,
+                //                    managementFeeInPercentage
+                //                ),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1598,10 +1630,11 @@ contract PlasmaVaultFeeTest is Test {
                 fuses,
                 balanceFuses,
                 FeeConfig(
-                    performanceFeeManager,
+                    0,
+                    0,
+                    managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
+                    address(address(new IporFeeFactory()))
                 ),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
@@ -1611,6 +1644,9 @@ contract PlasmaVaultFeeTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
 
         vm.warp(block.timestamp);
 

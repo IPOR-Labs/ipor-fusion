@@ -24,6 +24,7 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVa
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
+import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
 
 contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -574,13 +575,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         );
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())));
     }
 
     function _addClaimFuseToClaimRewardsManager() private {

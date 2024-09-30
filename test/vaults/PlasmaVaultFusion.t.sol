@@ -21,6 +21,7 @@ import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig,
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {IporFeeFactory} from "../../contracts/managers/fee/IporFeeFactory.sol";
 
 // solhint-disable-next-line max-states-count
 contract PlasmaVaultErc20FusionTest is Test {
@@ -115,7 +116,7 @@ contract PlasmaVaultErc20FusionTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max

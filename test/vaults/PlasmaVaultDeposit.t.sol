@@ -19,6 +19,7 @@ import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {IporFeeFactory} from "../../contracts/managers/fee/IporFeeFactory.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -226,7 +227,7 @@ contract PlasmaVaultDepositTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 totalSupplyCap
@@ -280,7 +281,7 @@ contract PlasmaVaultDepositTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(address(0x777), 0, address(0x555), 0),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max

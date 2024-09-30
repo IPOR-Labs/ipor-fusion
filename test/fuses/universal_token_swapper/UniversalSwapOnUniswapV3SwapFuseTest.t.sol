@@ -19,6 +19,7 @@ import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
 import {SwapExecutor} from "contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
 
 contract UniversalSwapOnUniswapV3SwapFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -196,13 +197,8 @@ contract UniversalSwapOnUniswapV3SwapFuseTest is Test {
         assertGt(plasmaVaultUsdtBalanceAfter, 0, "plasmaVaultUsdtBalanceAfter");
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig_) {
-        feeConfig_ = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
+        feeConfig_ = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()));
     }
 
     function _createAccessManager() private returns (address accessManager_) {

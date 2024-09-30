@@ -6,6 +6,7 @@ import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig,
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
 
 abstract contract TestVaultSetup is TestStorage {
     function initPlasmaVault() public {
@@ -76,13 +77,8 @@ abstract contract TestVaultSetup is TestStorage {
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault
-    function setupFeeConfig() public view virtual returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function setupFeeConfig() public virtual returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()));
     }
 
     function createAccessManager() private {
