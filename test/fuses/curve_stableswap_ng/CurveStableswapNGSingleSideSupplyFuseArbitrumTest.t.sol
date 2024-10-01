@@ -117,7 +117,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -199,7 +200,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -269,7 +271,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -336,7 +339,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -401,7 +405,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -469,7 +474,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -575,7 +581,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -675,7 +682,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -762,7 +770,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -851,7 +860,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 

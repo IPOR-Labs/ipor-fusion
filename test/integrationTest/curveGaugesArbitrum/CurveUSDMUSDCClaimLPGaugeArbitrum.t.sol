@@ -534,7 +534,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(instances.accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                totalSupplyCap: type(uint256).max
+                totalSupplyCap: type(uint256).max,
+                withdrawManager: address(0)
             })
         );
     }
@@ -609,7 +610,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(instances.plasmaVault),
                 accessManager: address(instances.accessManager),
-                rewardsClaimManager: address(instances.rewardsClaimManager)
+                rewardsClaimManager: address(instances.rewardsClaimManager),
+                withdrawManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
