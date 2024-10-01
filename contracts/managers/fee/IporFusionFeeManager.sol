@@ -67,7 +67,7 @@ contract IporFusionFeeManager is AccessManaged {
     }
 
     function initialize() external {
-        if(initialized != 0) {
+        if (initialized != 0) {
             revert AlreadyInitialized();
         }
 
@@ -76,10 +76,8 @@ contract IporFusionFeeManager is AccessManaged {
         IporFeeAccount(MANAGEMENT_FEE_ACCOUNT).approveFeeManager(PLASMA_VAULT);
     }
 
-
     function harvestManagementFee() public onlyInitialized {
-
-        if(feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
+        if (feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
             revert InvalidFeeRecipientAddress();
         }
 
@@ -104,8 +102,7 @@ contract IporFusionFeeManager is AccessManaged {
     }
 
     function harvestPerformanceFee() public onlyInitialized {
-
-        if(feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
+        if (feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
             revert InvalidFeeRecipientAddress();
         }
 

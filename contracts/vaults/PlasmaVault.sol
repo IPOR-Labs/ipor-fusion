@@ -82,7 +82,7 @@ struct FeeConfig {
     uint256 atomistManagementFee;
     uint256 atomistPerformanceFee;
     address feeFactory;
-    address  feeRecipientAddress;
+    address feeRecipientAddress;
     address daoFeeRecipientAddress;
 }
 

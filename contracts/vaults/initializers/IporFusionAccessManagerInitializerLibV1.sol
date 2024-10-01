@@ -110,11 +110,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.dao.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.DAO_ROLE,
-                account: data_.dao[i],
-                executionDelay: 0
-            });
+            accountToRoles[index] = AccountToRole({roleId: Roles.DAO_ROLE, account: data_.dao[i], executionDelay: 0});
             ++index;
         }
 
