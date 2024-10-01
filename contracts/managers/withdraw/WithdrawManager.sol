@@ -7,9 +7,9 @@ import {WithdrawRequest} from "./WithdrawManagerStorageLib.sol";
 
 struct WithdrawRequestInfo {
     uint256 amount;
-    uint256 endWithdrawWindow;
+    uint256 endWithdrawWindowTimestamp;
     bool canWithdraw;
-    uint256 withdrawWindowLength;
+    uint256 withdrawWindowInSeconds;
 }
 /**
  * @title WithdrawManager
@@ -75,9 +75,9 @@ contract WithdrawManager is AccessManagedUpgradeable {
         return
             WithdrawRequestInfo({
                 amount: request.amount,
-                endWithdrawWindow: request.endWithdrawWindowTimestamp,
+                endWithdrawWindowTimestamp: request.endWithdrawWindowTimestamp,
                 canWithdraw: _canWithdraw(request.endWithdrawWindowTimestamp, withdrawWindow, releaseFundsTimestamp),
-                withdrawWindowLength: withdrawWindow
+                withdrawWindowInSeconds: withdrawWindow
             });
     }
 

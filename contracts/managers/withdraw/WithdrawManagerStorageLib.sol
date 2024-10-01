@@ -33,16 +33,16 @@ library WithdrawManagerStorageLib {
 
     error WithdrawWindowLengthCannotBeZero();
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.withdrawWindowLength")) - 1)) & ~bytes32(uint256(0xff)); TODO update
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.withdrawWindowInSeconds")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant WITHDRAW_WINDOW_IN_SECONDS =
-        0x396fcc76a9b5b2fd5e6b074a9e52f50f355590ed8495194e4303f1c99aee5900;
+        0xc98a13e0ed3915d36fc042835990f5c6fbf2b2570bd63878dcd560ca2b767c00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.withdrawRequests")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant WITHDRAW_REQUESTS = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f00;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.lastReleaseFunds")) - 1)) & ~bytes32(uint256(0xff)); TODO update
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.lastReleaseFudsTimestamp")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant LAST_RELEASE_FUNDS_TIMESTAMP =
-        0x515911132aa14e230ad5245b1622bd7ca9c33d320ff7e4eb38ef95aeffc9eb00;
+        0x6603575a0b471dee79b9613aa260e2a8f3515603a898fdc76d6849fcd1ac7800;
 
     function _getWithdrawWindowLength() private view returns (WithdrawWindow storage withdrawWindow) {
         assembly {
