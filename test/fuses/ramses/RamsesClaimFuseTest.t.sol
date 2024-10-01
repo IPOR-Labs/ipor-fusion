@@ -95,7 +95,8 @@ contract RamsesClaimFuseTest is Test {
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );
@@ -381,7 +382,8 @@ contract RamsesClaimFuseTest is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: _claimRewardsManager
+                rewardsClaimManager: _claimRewardsManager,
+                withdrawManager: address(0)
             })
         });
 
