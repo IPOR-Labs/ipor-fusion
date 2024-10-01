@@ -139,7 +139,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
     }
 
     function _createFuse() private returns (address[] memory) {
@@ -175,6 +175,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         whitelist[0] = _USER;
 
         DataForInitialization memory data = DataForInitialization({
+            dao: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -190,7 +191,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0)
+                rewardsClaimManager: address(0),
+                feeManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

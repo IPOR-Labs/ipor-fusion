@@ -116,7 +116,7 @@ contract PlasmaVaultErc20FusionTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max

@@ -561,7 +561,7 @@ contract IporPlasmaVaultRolesTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())), address(0), address(0)),
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max

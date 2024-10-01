@@ -147,7 +147,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
     /// @dev Setup default  fee configuration for the PlasmaVault
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private {
@@ -166,6 +166,7 @@ contract PlasmaVaultCallbackHandler is Test {
         initAddress[0] = address(this);
 
         DataForInitialization memory data = DataForInitialization({
+            dao: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -181,7 +182,8 @@ contract PlasmaVaultCallbackHandler is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(this)
+                rewardsClaimManager: address(this),
+                feeManager: address(0)
             })
         });
 

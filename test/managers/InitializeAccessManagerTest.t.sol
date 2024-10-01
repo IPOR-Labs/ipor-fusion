@@ -60,7 +60,7 @@ contract InitializeAccessManagerTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -111,7 +111,8 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.ADMIN_ROLE &&
                 initData.adminRoles[i].roleId != Roles.GUARDIAN_ROLE &&
                 initData.adminRoles[i].roleId != Roles.PUBLIC_ROLE &&
-                initData.adminRoles[i].roleId != Roles.OWNER_ROLE
+                initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
+                initData.adminRoles[i].roleId != Roles.DAO_ROLE
             ) {
                 assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }
@@ -164,7 +165,8 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.PUBLIC_ROLE &&
                 initData.adminRoles[i].roleId != Roles.CLAIM_REWARDS_ROLE &&
                 initData.adminRoles[i].roleId != Roles.TRANSFER_REWARDS_ROLE &&
-                initData.adminRoles[i].roleId != Roles.OWNER_ROLE
+                initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
+                initData.adminRoles[i].roleId != Roles.DAO_ROLE
             ) {
                 assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }

@@ -201,7 +201,7 @@ contract UniswapV2SwapFuseTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
-        feeConfig_ = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()));
+        feeConfig_ = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private returns (address accessManager_) {

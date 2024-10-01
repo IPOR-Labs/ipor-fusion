@@ -91,6 +91,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         initAddress[0] = admin;
 
         DataForInitialization memory data = DataForInitialization({
+            dao: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -106,7 +107,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: _claimRewardsManager
+                rewardsClaimManager: _claimRewardsManager,
+                feeManager: address(0)
             })
         });
 
@@ -160,7 +162,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {

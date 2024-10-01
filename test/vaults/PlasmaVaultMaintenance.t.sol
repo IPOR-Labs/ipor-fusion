@@ -76,7 +76,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -115,7 +115,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -162,7 +162,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -199,7 +199,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -236,7 +236,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -270,7 +270,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -306,7 +306,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -353,7 +353,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -397,7 +397,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -440,7 +440,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -486,7 +486,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -529,7 +529,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -587,7 +587,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -634,7 +634,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -682,7 +682,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -728,7 +728,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -791,7 +791,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -900,7 +900,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -962,7 +962,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1045,7 +1045,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1128,7 +1128,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1182,7 +1182,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1244,7 +1244,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 supplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1305,7 +1305,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1372,7 +1372,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1426,7 +1426,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1475,7 +1475,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1531,7 +1531,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1587,7 +1587,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1666,7 +1666,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1707,7 +1707,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1753,7 +1753,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1802,7 +1802,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory()))),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1846,7 +1846,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1890,7 +1890,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1939,7 +1939,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -1980,7 +1980,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2026,7 +2026,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2074,7 +2074,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2164,7 +2164,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2266,7 +2266,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2358,7 +2358,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2452,7 +2452,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2558,7 +2558,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2655,7 +2655,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2713,7 +2713,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2787,7 +2787,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2844,7 +2844,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2900,7 +2900,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -2960,7 +2960,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -3011,7 +3011,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -3046,7 +3046,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -3107,7 +3107,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max
@@ -3156,7 +3156,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory())),
+                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max

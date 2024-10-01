@@ -576,7 +576,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())), address(0), address(0));
     }
 
     function _addClaimFuseToClaimRewardsManager() private {
@@ -590,6 +590,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         initAddress[0] = admin;
 
         DataForInitialization memory data = DataForInitialization({
+            dao: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -605,7 +606,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(instances.plasmaVault),
                 accessManager: address(instances.accessManager),
-                rewardsClaimManager: address(instances.rewardsClaimManager)
+                rewardsClaimManager: address(instances.rewardsClaimManager),
+                feeManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

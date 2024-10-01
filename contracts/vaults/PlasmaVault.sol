@@ -82,6 +82,8 @@ struct FeeConfig {
     uint256 atomistManagementFee;
     uint256 atomistPerformanceFee;
     address feeFactory;
+    address  feeRecipientAddress;
+    address daoFeeRecipientAddress;
 }
 
 /// @title Main contract of the Plasma Vault in ERC4626 standard - responsible for managing assets and shares by the Alphas via Fuses.
@@ -165,7 +167,9 @@ contract PlasmaVault is
                 atomistManagementFee: initData_.feeConfig.atomistManagementFee,
                 atomistPerformanceFee: initData_.feeConfig.atomistPerformanceFee,
                 initialAuthority: initData_.accessManager,
-                plasmaVault: address(this)
+                plasmaVault: address(this),
+                feeRecipientAddress: initData_.feeConfig.feeRecipientAddress,
+                daoFeeRecipientAddress: initData_.feeConfig.daoFeeRecipientAddress
             })
         );
 
@@ -217,9 +221,6 @@ contract PlasmaVault is
     }
 
     function updateMarketsBalances(uint256[] calldata marketIds_) external returns (uint256) {
-        if (marketIds_.length == 0) {
-            return totalAssets();
-        }
         uint256 totalAssetsBefore = totalAssets();
         _updateMarketsBalances(marketIds_);
         _addPerformanceFee(totalAssetsBefore);
@@ -581,6 +582,11 @@ contract PlasmaVault is
         DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
+
+        if (markets_.length == 0) {
+            return;
+        }
+
         uint256[] memory markets = _checkBalanceFusesDependencies(markets_);
         uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals

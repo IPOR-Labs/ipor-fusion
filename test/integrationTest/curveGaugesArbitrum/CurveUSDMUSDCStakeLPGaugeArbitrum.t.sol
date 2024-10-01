@@ -812,7 +812,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())), address(0), address(0));
     }
 
     function _setupPlasmaVault() private {
@@ -868,6 +868,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         initAddress[0] = admin;
 
         DataForInitialization memory data = DataForInitialization({
+            dao: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -883,7 +884,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(plasmaVault),
                 accessManager: address(accessManager),
-                rewardsClaimManager: address(rewardsClaimManager)
+                rewardsClaimManager: address(rewardsClaimManager),
+                feeManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

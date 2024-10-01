@@ -78,7 +78,7 @@ abstract contract TestVaultSetup is TestStorage {
 
     /// @dev Setup default  fee configuration for the PlasmaVault
     function setupFeeConfig() public virtual returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
     }
 
     function createAccessManager() private {

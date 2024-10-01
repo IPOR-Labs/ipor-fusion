@@ -18,6 +18,8 @@ struct FeeManagerInitData {
     uint256 atomistPerformanceFee;
     address initialAuthority;
     address plasmaVault;
+    address feeRecipientAddress;
+    address daoFeeRecipientAddress;
 }
 
 contract IporFusionFeeManager is AccessManaged {
@@ -28,6 +30,8 @@ contract IporFusionFeeManager is AccessManaged {
 
     error NotInitialized();
     error InvalidAddress();
+    error AlreadyInitialized();
+    error InvalidFeeRecipientAddress();
 
     address public immutable PERFORMANCE_FEE_ACCOUNT;
     address public immutable MANAGEMENT_FEE_ACCOUNT;
@@ -36,9 +40,9 @@ contract IporFusionFeeManager is AccessManaged {
     /// @notice DAO_PERFORMANCE_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
     uint256 public immutable DAO_PERFORMANCE_FEE;
 
-    address public immutable PLASMA_VAULT; // TODO change to immutable
-    address public harvestAddress; // ???
-    address public daoHarvestAddress;
+    address public immutable PLASMA_VAULT;
+    address public feeRecipientAddress;
+    address public daoFeeRecipientAddress;
 
     uint256 public performanceFee;
     uint256 public managementFee;
@@ -56,18 +60,29 @@ contract IporFusionFeeManager is AccessManaged {
         performanceFee = initData_.atomistPerformanceFee + DAO_PERFORMANCE_FEE;
         managementFee = initData_.atomistManagementFee + DAO_MANAGEMENT_FEE;
 
+        feeRecipientAddress = initData_.feeRecipientAddress;
+        daoFeeRecipientAddress = initData_.daoFeeRecipientAddress;
+
         PLASMA_VAULT = initData_.plasmaVault;
     }
 
     function initialize() external {
-        // TODO only one time
-        // todo check if can be execute in constructor
+        if(initialized != 0) {
+            revert AlreadyInitialized();
+        }
+
         initialized = 1;
         IporFeeAccount(PERFORMANCE_FEE_ACCOUNT).approveFeeManager(PLASMA_VAULT);
         IporFeeAccount(MANAGEMENT_FEE_ACCOUNT).approveFeeManager(PLASMA_VAULT);
     }
 
+
     function harvestManagementFee() public onlyInitialized {
+
+        if(feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
+            revert InvalidFeeRecipientAddress();
+        }
+
         uint256 balance = IERC4626(PLASMA_VAULT).balanceOf(MANAGEMENT_FEE_ACCOUNT);
 
         if (balance == 0) {
@@ -81,14 +96,19 @@ contract IporFusionFeeManager is AccessManaged {
 
         uint256 transferAmountToDao = Math.mulDiv(balance, percentToTransferToDao, numberOfDecimals);
 
-        IERC4626(PLASMA_VAULT).transfer(daoHarvestAddress, transferAmountToDao);
-        emit HarvestManagementFee(daoHarvestAddress, transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, daoFeeRecipientAddress, transferAmountToDao);
+        emit HarvestManagementFee(daoFeeRecipientAddress, transferAmountToDao);
 
-        IERC4626(PLASMA_VAULT).transfer(harvestAddress, balance - transferAmountToDao);
-        emit HarvestManagementFee(harvestAddress, balance - transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, feeRecipientAddress, balance - transferAmountToDao);
+        emit HarvestManagementFee(feeRecipientAddress, balance - transferAmountToDao);
     }
 
     function harvestPerformanceFee() public onlyInitialized {
+
+        if(feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
+            revert InvalidFeeRecipientAddress();
+        }
+
         uint256 balance = IERC4626(PLASMA_VAULT).balanceOf(PERFORMANCE_FEE_ACCOUNT);
 
         if (balance == 0) {
@@ -102,11 +122,11 @@ contract IporFusionFeeManager is AccessManaged {
 
         uint256 transferAmountToDao = Math.mulDiv(balance, percentToTransferToDao, numberOfDecimals);
 
-        IERC4626(PLASMA_VAULT).transfer(daoHarvestAddress, transferAmountToDao);
-        emit HarvestPerformanceFee(daoHarvestAddress, transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transfer(daoFeeRecipientAddress, transferAmountToDao);
+        emit HarvestPerformanceFee(daoFeeRecipientAddress, transferAmountToDao);
 
-        IERC4626(PLASMA_VAULT).transfer(harvestAddress, balance - transferAmountToDao);
-        emit HarvestPerformanceFee(harvestAddress, balance - transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transfer(feeRecipientAddress, balance - transferAmountToDao);
+        emit HarvestPerformanceFee(feeRecipientAddress, balance - transferAmountToDao);
     }
 
     function updatePerformanceFee(uint256 performanceFee_) external restricted {
@@ -132,21 +152,21 @@ contract IporFusionFeeManager is AccessManaged {
     }
 
     // todo add role atomist role to function
-    function setHarvestAddress(address harvestAddress_) external restricted {
+    function setFeeRecipientAddress(address harvestAddress_) external restricted {
         if (harvestAddress_ == address(0)) {
             revert InvalidAddress();
         }
 
-        harvestAddress = harvestAddress_;
+        feeRecipientAddress = harvestAddress_;
     }
 
     // todo add dao role to function
-    function setDaoHarvestAddress(address daoHarvestAddress_) external restricted {
+    function setDaoFeeRecipientAddress(address daoHarvestAddress_) external restricted {
         if (daoHarvestAddress_ == address(0)) {
             revert InvalidAddress();
         }
 
-        daoHarvestAddress = daoHarvestAddress_;
+        daoFeeRecipientAddress = daoHarvestAddress_;
     }
 
     modifier onlyInitialized() {

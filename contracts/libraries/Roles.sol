@@ -20,6 +20,10 @@ library Roles {
     /// @dev Managed only on bootstrap, this value could not be change after initialization
     uint64 public constant PLASMA_VAULT_ROLE = 3;
 
+    /// @notice Technical role to limited access to method only from the PlasmaVault contract
+    /// @dev Managed only on bootstrap, this value could not be change after initialization
+    uint64 public constant DAO_ROLE = 4;
+
     /// @notice Account with this role has rights to manage the PlasmaVault. It recommended to use MultiSig contract for this role.
     /// @dev Managed by Owner
     uint64 public constant ATOMIST_ROLE = 100;
