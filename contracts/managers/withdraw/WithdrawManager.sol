@@ -26,7 +26,7 @@ contract WithdrawManager is AccessManagedUpgradeable {
 
     /**
      * @notice Checks if the account can withdraw the specified amount and updates the withdraw request.
-     * @dev This function can only be executed by `plasmaVault`.
+     * @dev This function can only be executed by `plasmaVault` with role PLASMA_VAULT_ROLE.
      * @param account_ The address of the account to check.
      * @param amount_ The amount to check for withdrawal.
      * @return bool True if the account can withdraw the specified amount, false otherwise.

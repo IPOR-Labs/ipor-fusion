@@ -173,7 +173,7 @@ contract PlasmaVault is
         );
 
         PlasmaVaultLib.updateManagementFeeData();
-        // If the address is zero, it means that scheduled withdrawals are turned off.
+        /// @dev If the address is zero, it means that scheduled withdrawals are turned off.
         PlasmaVaultLib.updateWithdrawManager(initData_.withdrawManager);
     }
 
