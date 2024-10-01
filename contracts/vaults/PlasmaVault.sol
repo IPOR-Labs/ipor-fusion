@@ -754,7 +754,6 @@ contract PlasmaVault is
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
             uint256 amount = _extractAmountFromWithdrawAndRedeem();
             if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
-                //                console2.log("WithdrawManager");
                 revert WithdrawIsNotAllowed(caller_, amount);
             }
         } else if (withdrawManager != address(0) && this.redeem.selector == sig) {
