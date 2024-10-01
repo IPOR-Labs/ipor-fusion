@@ -293,7 +293,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -399,7 +400,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 2000, address(0x555), 200),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                sharesAmount
+                sharesAmount,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -509,7 +511,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -625,7 +628,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -729,7 +733,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -860,7 +865,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1021,7 +1027,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1175,7 +1182,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1321,7 +1329,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1435,7 +1444,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1566,7 +1576,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(plasmaVaultBase),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1718,7 +1729,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1769,7 +1781,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfig(address(0x777), 0, address(0x555), 0),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
