@@ -284,6 +284,7 @@ library PlasmaVaultLib {
         return PlasmaVaultStorageLib.getExecutionState().value == 1;
     }
 
+    /// @notice Updates the Withdraw Manager address. If the address is zero, it means that scheduled withdrawals are turned off.
     function updateWithdrawManager(address newWithdrawManager_) internal {
         PlasmaVaultStorageLib.getWithdrawManager().manager = newWithdrawManager_;
 

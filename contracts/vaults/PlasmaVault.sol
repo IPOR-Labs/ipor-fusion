@@ -112,7 +112,7 @@ contract PlasmaVault is
     error NoAssetsToDeposit();
     error UnsupportedFuse();
     error UnsupportedMethod();
-    error NotRequestedAmount(address caller, uint256 requested);
+    error WithdrawIsNotAllowed(address caller, uint256 requested);
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -173,6 +173,7 @@ contract PlasmaVault is
         );
 
         PlasmaVaultLib.updateManagementFeeData();
+        // If the address is zero, it means that scheduled withdrawals are turned off.
         PlasmaVaultLib.updateWithdrawManager(initData_.withdrawManager);
     }
 
@@ -749,19 +750,19 @@ contract PlasmaVault is
         uint32 delay;
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
-        if (this.withdraw.selector == sig && withdrawManager != address(0)) {
+        if (withdrawManager != address(0) && this.withdraw.selector == sig) {
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
             uint256 amount = _extractAmountFromWithdrawAndRedeem();
-            if (!WithdrawManager(withdrawManager).canWithdraw(caller_, amount)) {
+            if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
                 //                console2.log("WithdrawManager");
-                revert NotRequestedAmount(caller_, amount);
+                revert WithdrawIsNotAllowed(caller_, amount);
             }
-        } else if (this.redeem.selector == sig && withdrawManager != address(0)) {
+        } else if (withdrawManager != address(0) && this.redeem.selector == sig) {
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
             uint256 amount = convertToAssets(_extractAmountFromWithdrawAndRedeem());
 
-            if (!WithdrawManager(withdrawManager).canWithdraw(caller_, amount)) {
-                revert NotRequestedAmount(caller_, amount);
+            if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
+                revert WithdrawIsNotAllowed(caller_, amount);
             }
         } else if (
             this.deposit.selector == sig ||

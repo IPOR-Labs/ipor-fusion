@@ -61,7 +61,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 12;
     uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER = 33;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 8;
-    uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 4;
+    uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 3;
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
     /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
@@ -526,13 +526,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.withdrawManager,
                 roleId: Roles.ALPHA_ROLE,
-                functionSelector: WithdrawManager.releaseFounds.selector,
-                minimalExecutionDelay: 0
-            });
-            rolesToFunction[_next(iterator)] = RoleToFunction({
-                target: plasmaVaultAddress_.withdrawManager,
-                roleId: Roles.PUBLIC_ROLE,
-                functionSelector: WithdrawManager.releaseFounds.selector,
+                functionSelector: WithdrawManager.releaseFunds.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
@@ -544,7 +538,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.withdrawManager,
                 roleId: Roles.PLASMA_VAULT_ROLE,
-                functionSelector: WithdrawManager.canWithdraw.selector,
+                functionSelector: WithdrawManager.canWithdrawAndUpdate.selector,
                 minimalExecutionDelay: 0
             });
         }
