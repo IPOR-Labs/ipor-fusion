@@ -63,7 +63,8 @@ contract InitializeAccessManagerTest is Test {
                 FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         vm.stopPrank();

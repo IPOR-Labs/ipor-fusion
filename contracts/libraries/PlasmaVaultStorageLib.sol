@@ -76,6 +76,9 @@ library PlasmaVaultStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.callbackHandler")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant CALLBACK_HANDLER = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e00;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.WithdrawManager")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant WITHDRAW_MANAGER = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e11;
+
     /// @dev Value taken from ERC20VotesUpgradeable contract, don't change it!
     /// @custom:storage-location erc7201:openzeppelin.storage.ERC4626
     struct ERC4626Storage {
@@ -183,6 +186,11 @@ library PlasmaVaultStorageLib {
     /// @custom:storage-location erc7201:io.ipor.executeRunning
     struct ExecuteState {
         uint256 value;
+    }
+
+    /// @custom:storage-location erc7201:io.ipor.WithdrawManager
+    struct WithdrawManager {
+        address manager;
     }
 
     /// @dev limit is percentage of total assets in the market in 18 decimals, 1e18 is 100%
@@ -331,6 +339,14 @@ library PlasmaVaultStorageLib {
     function getMarketsLimits() internal pure returns (MarketLimits storage marketLimits) {
         assembly {
             marketLimits.slot := MARKET_LIMITS
+        }
+    }
+
+    /// @notice Gets the WithdrawManager storage pointer
+    /// @return withdrawManager storage pointer
+    function getWithdrawManager() internal pure returns (WithdrawManager storage withdrawManager) {
+        assembly {
+            withdrawManager.slot := WITHDRAW_MANAGER
         }
     }
 }

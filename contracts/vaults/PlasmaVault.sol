@@ -30,6 +30,7 @@ import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {FeeManagerData, IporFeeFactory} from "../managers/fee/IporFeeFactory.sol";
 import {FeeManagerInitData} from "../managers/fee/IporFusionFeeManager.sol";
+import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 
 /// @notice PlasmaVaultInitData is a struct that represents a configuration of a Plasma Vault during construction
 struct PlasmaVaultInitData {
@@ -55,6 +56,8 @@ struct PlasmaVaultInitData {
     address plasmaVaultBase;
     /// @notice totalSupplyCap is a initial total supply cap of the Plasma Vault, represented in underlying token decimals
     uint256 totalSupplyCap;
+    // @notice Address of the Withdraw Manager contract
+    address withdrawManager;
 }
 
 /// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
@@ -110,6 +113,7 @@ contract PlasmaVault is
     error NoAssetsToDeposit();
     error UnsupportedFuse();
     error UnsupportedMethod();
+    error WithdrawIsNotAllowed(address caller, uint256 requested);
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -177,6 +181,8 @@ contract PlasmaVault is
         PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
 
         PlasmaVaultLib.updateManagementFeeData();
+        /// @dev If the address is zero, it means that scheduled withdrawals are turned off.
+        PlasmaVaultLib.updateWithdrawManager(initData_.withdrawManager);
     }
 
     fallback(bytes calldata) external returns (bytes memory) {
@@ -221,6 +227,9 @@ contract PlasmaVault is
     }
 
     function updateMarketsBalances(uint256[] calldata marketIds_) external returns (uint256) {
+        if (marketIds_.length == 0) {
+            return totalAssets();
+        }
         uint256 totalAssetsBefore = totalAssets();
         _updateMarketsBalances(marketIds_);
         _addPerformanceFee(totalAssetsBefore);
@@ -582,11 +591,6 @@ contract PlasmaVault is
         DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-
-        if (markets_.length == 0) {
-            return;
-        }
-
         uint256[] memory markets = _checkBalanceFusesDependencies(markets_);
         uint256 marketsLength = markets.length;
         /// @dev USD price is represented in 8 decimals
@@ -752,12 +756,27 @@ contract PlasmaVault is
         bytes4 sig = bytes4(data_[0:4]);
         bool immediate;
         uint32 delay;
-        if (
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+
+        if (withdrawManager != address(0) && this.withdraw.selector == sig) {
+            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
+            uint256 amount = _extractAmountFromWithdrawAndRedeem();
+            if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
+                revert WithdrawIsNotAllowed(caller_, amount);
+            }
+        } else if (withdrawManager != address(0) && this.redeem.selector == sig) {
+            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
+            uint256 amount = convertToAssets(_extractAmountFromWithdrawAndRedeem());
+
+            if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
+                revert WithdrawIsNotAllowed(caller_, amount);
+            }
+        } else if (
             this.deposit.selector == sig ||
             this.mint.selector == sig ||
-            this.withdraw.selector == sig ||
+            this.depositWithPermit.selector == sig ||
             this.redeem.selector == sig ||
-            this.depositWithPermit.selector == sig
+            this.withdraw.selector == sig
         ) {
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
         } else {
@@ -773,6 +792,11 @@ contract PlasmaVault is
                 revert AccessManagedUnauthorized(caller_);
             }
         }
+    }
+
+    function _extractAmountFromWithdrawAndRedeem() private returns (uint256) {
+        (uint256 amount, , ) = abi.decode(_msgData()[4:], (uint256, address, address));
+        return amount;
     }
 
     function _update(address from_, address to_, uint256 value_) internal virtual override {

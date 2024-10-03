@@ -62,7 +62,8 @@ contract UniswapV2SwapFuseTest is Test {
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );

@@ -9,6 +9,7 @@ import {Roles} from "../../libraries/Roles.sol";
 import {RewardsClaimManager} from "../../managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
 import {IporFusionFeeManager} from "../../managers/fee/IporFusionFeeManager.sol";
+import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
 
 /// @notice Plasma Vault address struct.
 struct PlasmaVaultAddress {
@@ -18,6 +19,8 @@ struct PlasmaVaultAddress {
     address accessManager;
     /// @notice Address of the Rewards Claim Manager.
     address rewardsClaimManager;
+    /// @notice Address of the Withdraw Manager.
+    address withdrawManager;
     /// @notice Address of the Fee Manager.
     address feeManager;
 }
@@ -63,7 +66,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 13;
     uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER = 33;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 8;
-    uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 4;
+    uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 3;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 4;
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
@@ -281,6 +284,7 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         uint256 length = ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER;
         length += plasmaVaultAddress_.rewardsClaimManager == address(0) ? 0 : ROLES_TO_FUNCTION_CLAIM_MANAGER;
+        length += plasmaVaultAddress_.withdrawManager == address(0) ? 0 : ROLES_TO_FUNCTION_WITHDRAW_MANAGER;
         length += plasmaVaultAddress_.feeManager == address(0) ? 0 : ROLES_TO_FUNCTION_FEE_MANAGER;
 
         rolesToFunction = new RoleToFunction[](length);
@@ -544,6 +548,27 @@ library IporFusionAccessManagerInitializerLibV1 {
                 target: plasmaVaultAddress_.rewardsClaimManager,
                 roleId: Roles.PUBLIC_ROLE,
                 functionSelector: RewardsClaimManager.transferVestedTokensToVault.selector,
+                minimalExecutionDelay: 0
+            });
+        }
+
+        if (plasmaVaultAddress_.withdrawManager != address(0)) {
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.withdrawManager,
+                roleId: Roles.ALPHA_ROLE,
+                functionSelector: WithdrawManager.releaseFunds.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.withdrawManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: WithdrawManager.updateWithdrawWindow.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.withdrawManager,
+                roleId: Roles.PLASMA_VAULT_ROLE,
+                functionSelector: WithdrawManager.canWithdrawAndUpdate.selector,
                 minimalExecutionDelay: 0
             });
         }

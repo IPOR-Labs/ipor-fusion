@@ -33,7 +33,8 @@ abstract contract TestVaultSetup is TestStorage {
                     feeConfig,
                     accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );
@@ -67,7 +68,8 @@ abstract contract TestVaultSetup is TestStorage {
                     feeConfig,
                     accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );

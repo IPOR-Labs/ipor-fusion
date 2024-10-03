@@ -79,7 +79,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -118,7 +119,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -165,7 +167,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -202,7 +205,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -239,7 +243,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -273,7 +278,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -309,7 +315,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -356,7 +363,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -400,7 +408,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -443,7 +452,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -489,7 +499,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -532,7 +543,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -590,7 +602,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -637,7 +650,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -685,7 +699,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -731,7 +746,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -794,7 +810,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -903,7 +920,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -965,7 +983,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1048,7 +1067,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1131,7 +1151,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1185,7 +1206,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1247,7 +1269,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1308,7 +1331,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1375,7 +1399,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1429,7 +1454,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1478,7 +1504,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1534,7 +1561,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1590,7 +1618,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1669,7 +1698,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1710,7 +1740,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1756,7 +1787,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1805,7 +1837,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1849,7 +1882,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1893,7 +1927,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1942,7 +1977,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -1983,7 +2019,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2029,7 +2066,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2077,7 +2115,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2167,7 +2206,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2269,7 +2309,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2361,7 +2402,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2455,7 +2497,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2561,7 +2604,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2658,7 +2702,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2716,7 +2761,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2790,7 +2836,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2847,7 +2894,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2903,7 +2951,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -2963,7 +3012,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -3014,7 +3064,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -3049,7 +3100,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -3110,7 +3162,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 
@@ -3159,7 +3212,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 

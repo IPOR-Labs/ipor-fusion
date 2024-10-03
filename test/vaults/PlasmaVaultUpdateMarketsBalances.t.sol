@@ -99,7 +99,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                     feeConfig: _setupFeeConfig(),
                     accessManager: address(_accessManager),
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max
+                    totalSupplyCap: type(uint256).max,
+                    withdrawManager: address(0)
                 })
             )
         );
@@ -192,6 +193,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
+                withdrawManager: address(0),
                 feeManager: address(0)
             })
         });
