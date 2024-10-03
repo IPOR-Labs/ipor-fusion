@@ -4,9 +4,12 @@ pragma solidity 0.8.26;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/// @title IporFeeAccount
+/// @notice Contract responsible for managing fee approvals for the Ipor protocol
 contract IporFeeAccount {
     using SafeERC20 for IERC20;
 
+    /// @notice Error thrown when a non-fee manager tries to approve
     error OnlyFeeManagerCanApprove();
 
     address public immutable FEE_MANAGER;
@@ -15,6 +18,8 @@ contract IporFeeAccount {
         FEE_MANAGER = feeManager_;
     }
 
+    /// @notice Approves the fee manager to spend tokens on behalf of the contract
+    /// @param plasmaVault Address of the plasma vault token
     function approveFeeManager(address plasmaVault) external {
         if (msg.sender != FEE_MANAGER) {
             revert OnlyFeeManagerCanApprove();

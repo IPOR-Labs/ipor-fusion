@@ -78,14 +78,21 @@ struct MarketSubstratesConfig {
     bytes32[] substrates;
 }
 
-/// @notice FeeConfig is a struct that represents a configuration of performance and management fees used during Plasma Vault construction
+/// @notice FeeConfig is a struct that represents the configuration of fees in the Plasma Vault
 struct FeeConfig {
+    /// @notice The management fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 daoManagementFee;
+    /// @notice The performance fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 daoPerformanceFee;
+    /// @notice The management fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 atomistManagementFee;
+    /// @notice The performance fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 atomistPerformanceFee;
+    /// @notice The address of the fee factory
     address feeFactory;
+    /// @notice The address of the fee recipient
     address feeRecipientAddress;
+    /// @notice The address of the DAO fee recipient
     address daoFeeRecipientAddress;
 }
 

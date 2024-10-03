@@ -7,10 +7,15 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IporFeeAccount} from "./IporFeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 
-struct InitializationData {
-    address plasmaVault;
-}
-
+/// @notice Struct containing initialization data for the fee manager
+/// @param daoManagementFee Management fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @param daoPerformanceFee Performance fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @param atomistManagementFee Management fee percentage for the atomist (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @param atomistPerformanceFee Performance fee percentage for the atomist (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @param initialAuthority Address of the initial authority
+/// @param plasmaVault Address of the plasma vault
+/// @param feeRecipientAddress Address of the fee recipient
+/// @param daoFeeRecipientAddress Address of the DAO fee recipient
 struct FeeManagerInitData {
     uint256 daoManagementFee;
     uint256 daoPerformanceFee;
@@ -22,6 +27,9 @@ struct FeeManagerInitData {
     address daoFeeRecipientAddress;
 }
 
+/// @title IporFusionFeeManager
+/// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
+/// @dev Inherits from AccessManaged for access control.
 contract IporFusionFeeManager is AccessManaged {
     event HarvestManagementFee(address reciver, uint256 amount);
     event HarvestPerformanceFee(address reciver, uint256 amount);
@@ -76,6 +84,11 @@ contract IporFusionFeeManager is AccessManaged {
         IporFeeAccount(MANAGEMENT_FEE_ACCOUNT).approveFeeManager(PLASMA_VAULT);
     }
 
+    /// @notice Harvests the management fee and transfers it to the respective recipient addresses.
+    /// @dev This function can only be called if the contract is initialized.
+    /// It checks if the fee recipient addresses are valid and then calculates the amount to be transferred to the DAO
+    /// and the remaining amount to the fee recipient. The function emits events for each transfer.
+    /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
     function harvestManagementFee() public onlyInitialized {
         if (feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
             revert InvalidFeeRecipientAddress();
@@ -101,6 +114,11 @@ contract IporFusionFeeManager is AccessManaged {
         emit HarvestManagementFee(feeRecipientAddress, balance - transferAmountToDao);
     }
 
+    /// @notice Harvests the performance fee and transfers it to the respective recipient addresses.
+    /// @dev This function can only be called if the contract is initialized.
+    /// It checks if the fee recipient addresses are valid and then calculates the amount to be transferred to the DAO
+    /// and the remaining amount to the fee recipient. The function emits events for each transfer.
+    /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
     function harvestPerformanceFee() public onlyInitialized {
         if (feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
             revert InvalidFeeRecipientAddress();
@@ -130,6 +148,10 @@ contract IporFusionFeeManager is AccessManaged {
         emit HarvestPerformanceFee(feeRecipientAddress, balance - transferAmountToDao);
     }
 
+    /**
+     * @notice Updates the performance fee and reconfigures it in the PlasmaVaultGovernance contract.
+     * @param performanceFee_ The new performance fee to be added to the DAO performance fee.
+     */
     function updatePerformanceFee(uint256 performanceFee_) external restricted {
         harvestPerformanceFee();
 
@@ -141,6 +163,8 @@ contract IporFusionFeeManager is AccessManaged {
         emit PerformanceFeeUpdated(newPerformanceFee);
     }
 
+    /// @notice Updates the management fee and reconfigures it in the PlasmaVaultGovernance contract.
+    /// @param managementFee_ The new management fee to be added to the DAO management fee.
     function updateManagementFee(uint256 managementFee_) external restricted {
         harvestManagementFee();
 
@@ -152,6 +176,12 @@ contract IporFusionFeeManager is AccessManaged {
         emit ManagementFeeUpdated(newManagementFee);
     }
 
+    /**
+     * @notice Sets the address of the fee recipient.
+     * @dev This function can only be called by an authorized account (ATOMIST_ROLE).
+     * @param harvestAddress_ The address to set as the fee recipient.
+     * @custom:error InvalidAddress Thrown if the provided address is the zero address.
+     */
     function setFeeRecipientAddress(address harvestAddress_) external restricted {
         if (harvestAddress_ == address(0)) {
             revert InvalidAddress();
@@ -160,6 +190,12 @@ contract IporFusionFeeManager is AccessManaged {
         feeRecipientAddress = harvestAddress_;
     }
 
+    /**
+     * @notice Sets the address of the DAO fee recipient.
+     * @dev This function can only be called by an authorized account (DAO_ROLE).
+     * @param daoHarvestAddress_ The address to set as the DAO fee recipient.
+     * @custom:error InvalidAddress Thrown if the provided address is the zero address.
+     */
     function setDaoFeeRecipientAddress(address daoHarvestAddress_) external restricted {
         if (daoHarvestAddress_ == address(0)) {
             revert InvalidAddress();
