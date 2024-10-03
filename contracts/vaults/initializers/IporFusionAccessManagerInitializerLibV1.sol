@@ -96,6 +96,7 @@ library IporFusionAccessManagerInitializerLibV1 {
                 data_.whitelist.length +
                 data_.configInstantWithdrawalFusesManagers.length +
                 (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +
+                (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 2) +
                 1 // Plasma Vault
         );
         uint256 index;
@@ -227,6 +228,21 @@ library IporFusionAccessManagerInitializerLibV1 {
             executionDelay: 0
         });
         ++index;
+
+        if (data_.plasmaVaultAddress.feeManager != address(0)) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE,
+                account: data_.plasmaVaultAddress.feeManager,
+                executionDelay: 0
+            });
+            ++index;
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE,
+                account: data_.plasmaVaultAddress.feeManager,
+                executionDelay: 0
+            });
+            ++index;
+        }
 
         return accountToRoles;
     }

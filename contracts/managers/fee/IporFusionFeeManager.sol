@@ -119,10 +119,14 @@ contract IporFusionFeeManager is AccessManaged {
 
         uint256 transferAmountToDao = Math.mulDiv(balance, percentToTransferToDao, numberOfDecimals);
 
-        IERC4626(PLASMA_VAULT).transfer(daoFeeRecipientAddress, transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transferFrom(PERFORMANCE_FEE_ACCOUNT, daoFeeRecipientAddress, transferAmountToDao);
         emit HarvestPerformanceFee(daoFeeRecipientAddress, transferAmountToDao);
 
-        IERC4626(PLASMA_VAULT).transfer(feeRecipientAddress, balance - transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transferFrom(
+            PERFORMANCE_FEE_ACCOUNT,
+            feeRecipientAddress,
+            balance - transferAmountToDao
+        );
         emit HarvestPerformanceFee(feeRecipientAddress, balance - transferAmountToDao);
     }
 
@@ -148,7 +152,6 @@ contract IporFusionFeeManager is AccessManaged {
         emit ManagementFeeUpdated(newManagementFee);
     }
 
-    // todo add role atomist role to function
     function setFeeRecipientAddress(address harvestAddress_) external restricted {
         if (harvestAddress_ == address(0)) {
             revert InvalidAddress();
@@ -157,7 +160,6 @@ contract IporFusionFeeManager is AccessManaged {
         feeRecipientAddress = harvestAddress_;
     }
 
-    // todo add dao role to function
     function setDaoFeeRecipientAddress(address daoHarvestAddress_) external restricted {
         if (daoHarvestAddress_ == address(0)) {
             revert InvalidAddress();

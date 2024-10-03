@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -19,6 +19,7 @@ import {IporFeeAccount} from "../../contracts/managers/fee/IporFeeAccount.sol";
 
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 
 import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
@@ -175,8 +176,8 @@ contract FeeManagerTest is Test {
             whitelist: whitelist,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: initAddress,
-            managementFeeManagers: initAddress,
+            performanceFeeManagers: new address[](0),
+            managementFeeManagers: new address[](0),
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
@@ -184,7 +185,8 @@ contract FeeManagerTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                feeManager: PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager
+                feeManager: IporFeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager)
+                    .FEE_MANAGER()
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
@@ -211,9 +213,6 @@ contract FeeManagerTest is Test {
         //then
 
         uint256 balanceAfter = PlasmaVault(_plasmaVault).balanceOf(managementAccount);
-
-        console2.log("balanceBefore", balanceBefore);
-        console2.log("balanceAfter", balanceAfter);
 
         assertEq(balanceBefore, 0, "balanceBefore should be 0");
         assertEq(balanceAfter, 48767123200, "balanceAfter should be 48767123200");
@@ -257,7 +256,6 @@ contract FeeManagerTest is Test {
     function testShouldHaveShearsOnPerformanceFeeAccount() external {
         //given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
 
         vm.startPrank(_USER);
         ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
@@ -277,11 +275,292 @@ contract FeeManagerTest is Test {
         //then
         uint256 balanceAfter = PlasmaVault(_plasmaVault).balanceOf(performanceAccount);
 
-        console2.log("balanceBefore", balanceBefore);
-        console2.log("balanceAfter", balanceAfter);
-
         assertEq(balanceBefore, 0, "balanceBefore should be 0");
         assertEq(balanceAfter, 68199104783, "balanceAfter should be 68199104783");
+    }
+
+    function testShouldHarvestPerformance() external {
+        //given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
+        AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
+        vm.stopPrank();
+
+        feeManager.initialize();
+
+        vm.warp(block.timestamp + 356 days);
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.AAVE_V3;
+        PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
+
+        uint256 balancePerformanceAccountBefore = PlasmaVault(_plasmaVault).balanceOf(performanceAccount);
+        uint256 balanceFeeRecipientBefore = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_ADDRESS);
+        uint256 balanceDaoFeeRecipientBefore = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT_ADDRESS);
+
+        //when
+        feeManager.harvestPerformanceFee();
+
+        //then
+        uint256 balancePerformanceAccountAfter = PlasmaVault(_plasmaVault).balanceOf(performanceAccount);
+        uint256 balanceFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_ADDRESS);
+        uint256 balanceDaoFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT_ADDRESS);
+
+        assertEq(balancePerformanceAccountBefore, 68199104783, "balancePerformanceAccountBefore should be 68199104783");
+        assertEq(balancePerformanceAccountAfter, 0, "balancePerformanceAccountAfter should be 0");
+
+        assertEq(balanceFeeRecipientBefore, 0, "balanceFeeRecipientBefore should be 0");
+        assertEq(balanceFeeRecipientAfter, 34099552392, "balanceFeeRecipientAfter should be 34099552392");
+
+        assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
+        assertEq(balanceDaoFeeRecipientAfter, 34099552391, "balanceDaoFeeRecipientAfter should be 34099552392");
+    }
+
+    function testShouldNotHarvestManagementFeeWhenNotInitialize() external {
+        // given
+        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(managementAccount).FEE_MANAGER());
+
+        bytes memory error = abi.encodeWithSignature("NotInitialized()");
+
+        // when
+        vm.expectRevert(error);
+        feeManager.harvestManagementFee();
+    }
+
+    function testShouldNotHarvestPerformanceFeeWhenNotInitialize() external {
+        // given
+        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(managementAccount).FEE_MANAGER());
+
+        bytes memory error = abi.encodeWithSignature("NotInitialized()");
+
+        // when
+        vm.expectRevert(error);
+        feeManager.harvestPerformanceFee();
+    }
+
+    function testShouldNotUpdatePerformanceFeeWhenNotAtomist() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        feeManager.updatePerformanceFee(500);
+        vm.stopPrank();
+    }
+
+    function testShouldUpdatePerformanceFeeWhenAtomist() external {
+        // given
+        PlasmaVaultStorageLib.PerformanceFeeData memory feeDataOnPlasmaVaultBefore = PlasmaVaultGovernance(_plasmaVault)
+            .getPerformanceFeeData();
+        IporFusionFeeManager feeManager = IporFusionFeeManager(
+            IporFeeAccount(feeDataOnPlasmaVaultBefore.feeManager).FEE_MANAGER()
+        );
+
+        uint256 performanceFeeBefore = feeManager.performanceFee();
+
+        feeManager.initialize();
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updatePerformanceFee(500);
+        vm.stopPrank();
+
+        // then
+        PlasmaVaultStorageLib.PerformanceFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
+            .getPerformanceFeeData();
+
+        uint256 performanceFeeAfter = feeManager.performanceFee();
+
+        assertEq(performanceFeeBefore, 2000, "performanceFeeBefore should be 2000");
+        assertEq(performanceFeeAfter, 1500, "performanceFeeAfter should be 1500");
+
+        assertEq(
+            feeDataOnPlasmaVaultBefore.feeInPercentage,
+            2000,
+            "feeDataOnPlasmaVaultBefore.feeInPercentage should be 2000"
+        );
+        assertEq(
+            feeDataOnPlasmaVaultAfter.feeInPercentage,
+            1500,
+            "feeDataOnPlasmaVaultAfter.feeInPercentage should be 1500"
+        );
+    }
+
+    function testShouldUpdateManagementFeeWhenAtomist() external {
+        // given
+        PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultBefore = PlasmaVaultGovernance(_plasmaVault)
+            .getManagementFeeData();
+        IporFusionFeeManager feeManager = IporFusionFeeManager(
+            IporFeeAccount(feeDataOnPlasmaVaultBefore.feeManager).FEE_MANAGER()
+        );
+
+        uint256 managementFeeBefore = feeManager.managementFee();
+
+        feeManager.initialize();
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updateManagementFee(50);
+        vm.stopPrank();
+
+        // then
+        PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
+            .getManagementFeeData();
+
+        uint256 managementFeeAfter = feeManager.managementFee();
+
+        assertEq(managementFeeBefore, 500, "managementFeeBefore should be 500");
+        assertEq(managementFeeAfter, 350, "managementFeeAfter should be 350");
+
+        assertEq(
+            feeDataOnPlasmaVaultBefore.feeInPercentage,
+            500,
+            "feeDataOnPlasmaVaultBefore.feeInPercentage should be 500"
+        );
+        assertEq(
+            feeDataOnPlasmaVaultAfter.feeInPercentage,
+            350,
+            "feeDataOnPlasmaVaultAfter.feeInPercentage should be 350"
+        );
+    }
+
+    function testShouldNotUpdateManagementFeeWhenNotAtomist() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        feeManager.updateManagementFee(500);
+        vm.stopPrank();
+    }
+
+    function testShouldNotSetFeeRecipientAddressWhenNotAtomist() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        feeManager.setFeeRecipientAddress(_USER);
+        vm.stopPrank();
+    }
+
+    function testShouldNotSetFeeRecipientAddressWhenZeroAddress() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("InvalidAddress()");
+
+        // when
+        vm.startPrank(_ATOMIST);
+        vm.expectRevert(error);
+        feeManager.setFeeRecipientAddress(address(0));
+        vm.stopPrank();
+    }
+
+    function testShouldSetFeeRecipientAddress() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        address feeRecipientBefore = feeManager.feeRecipientAddress();
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.setFeeRecipientAddress(_USER);
+        vm.stopPrank();
+
+        // then
+
+        address feeRecipientAfter = feeManager.feeRecipientAddress();
+
+        assertEq(feeRecipientBefore, _FEE_RECIPIENT_ADDRESS, "feeRecipientBefore should be _FEE_RECIPIENT_ADDRESS");
+        assertEq(feeRecipientAfter, _USER, "feeRecipientAfter should be _USER");
+    }
+
+    function testShouldNotsetDaoFeeRecipientAddressWhenNotDAO() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        feeManager.setDaoFeeRecipientAddress(_USER);
+        vm.stopPrank();
+    }
+
+    function testShouldNotSetDaoFeeRecipientAddressWhenZeroAddress() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("InvalidAddress()");
+
+        // when
+        vm.startPrank(_DAO);
+        vm.expectRevert(error);
+        feeManager.setDaoFeeRecipientAddress(address(0));
+        vm.stopPrank();
+    }
+
+    function testShouldSetDaoFeeRecipientAddress() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
+        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        address feeRecipientBefore = feeManager.daoFeeRecipientAddress();
+
+        // when
+        vm.startPrank(_DAO);
+        feeManager.setDaoFeeRecipientAddress(_USER);
+        vm.stopPrank();
+
+        // then
+
+        address feeRecipientAfter = feeManager.daoFeeRecipientAddress();
+
+        assertEq(
+            feeRecipientBefore,
+            _DAO_FEE_RECIPIENT_ADDRESS,
+            "feeRecipientBefore should be _DAO_FEE_RECIPIENT_ADDRESS"
+        );
+        assertEq(feeRecipientAfter, _USER, "feeRecipientAfter should be _USER");
     }
 
     function testTT() public {
