@@ -169,7 +169,7 @@ contract FeeManagerTest is Test {
         dao[0] = _DAO;
 
         DataForInitialization memory data = DataForInitialization({
-            dao: dao,
+            iporDaos: dao,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -369,7 +369,7 @@ contract FeeManagerTest is Test {
             IporFeeAccount(feeDataOnPlasmaVaultBefore.feeManager).FEE_MANAGER()
         );
 
-        uint256 performanceFeeBefore = feeManager.performanceFee();
+        uint256 performanceFeeBefore = feeManager.plasmaVaultPerformanceFee();
 
         feeManager.initialize();
 
@@ -382,7 +382,7 @@ contract FeeManagerTest is Test {
         PlasmaVaultStorageLib.PerformanceFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
             .getPerformanceFeeData();
 
-        uint256 performanceFeeAfter = feeManager.performanceFee();
+        uint256 performanceFeeAfter = feeManager.plasmaVaultPerformanceFee();
 
         assertEq(performanceFeeBefore, 2000, "performanceFeeBefore should be 2000");
         assertEq(performanceFeeAfter, 1500, "performanceFeeAfter should be 1500");
@@ -407,7 +407,7 @@ contract FeeManagerTest is Test {
             IporFeeAccount(feeDataOnPlasmaVaultBefore.feeManager).FEE_MANAGER()
         );
 
-        uint256 managementFeeBefore = feeManager.managementFee();
+        uint256 managementFeeBefore = feeManager.plasmaVaultManagementFee();
 
         feeManager.initialize();
 
@@ -420,7 +420,7 @@ contract FeeManagerTest is Test {
         PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
             .getManagementFeeData();
 
-        uint256 managementFeeAfter = feeManager.managementFee();
+        uint256 managementFeeAfter = feeManager.plasmaVaultManagementFee();
 
         assertEq(managementFeeBefore, 500, "managementFeeBefore should be 500");
         assertEq(managementFeeAfter, 350, "managementFeeAfter should be 350");
@@ -476,7 +476,7 @@ contract FeeManagerTest is Test {
 
         feeManager.initialize();
 
-        bytes memory error = abi.encodeWithSignature("InvalidAddress()");
+        bytes memory error = abi.encodeWithSignature("WrongAddress()");
 
         // when
         vm.startPrank(_ATOMIST);
@@ -519,7 +519,7 @@ contract FeeManagerTest is Test {
         // when
         vm.startPrank(_USER);
         vm.expectRevert(error);
-        feeManager.setDaoFeeRecipientAddress(_USER);
+        feeManager.setIporDaoFeeRecipientAddress(_USER);
         vm.stopPrank();
     }
 
@@ -530,12 +530,12 @@ contract FeeManagerTest is Test {
 
         feeManager.initialize();
 
-        bytes memory error = abi.encodeWithSignature("InvalidAddress()");
+        bytes memory error = abi.encodeWithSignature("WrongAddress()");
 
         // when
         vm.startPrank(_DAO);
         vm.expectRevert(error);
-        feeManager.setDaoFeeRecipientAddress(address(0));
+        feeManager.setIporDaoFeeRecipientAddress(address(0));
         vm.stopPrank();
     }
 
@@ -546,16 +546,16 @@ contract FeeManagerTest is Test {
 
         feeManager.initialize();
 
-        address feeRecipientBefore = feeManager.daoFeeRecipientAddress();
+        address feeRecipientBefore = feeManager.iporDaoFeeRecipientAddress();
 
         // when
         vm.startPrank(_DAO);
-        feeManager.setDaoFeeRecipientAddress(_USER);
+        feeManager.setIporDaoFeeRecipientAddress(_USER);
         vm.stopPrank();
 
         // then
 
-        address feeRecipientAfter = feeManager.daoFeeRecipientAddress();
+        address feeRecipientAfter = feeManager.iporDaoFeeRecipientAddress();
 
         assertEq(
             feeRecipientBefore,

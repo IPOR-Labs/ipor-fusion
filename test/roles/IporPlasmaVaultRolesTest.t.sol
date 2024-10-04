@@ -102,11 +102,11 @@ contract IporPlasmaVaultRolesTest is Test {
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
@@ -447,11 +447,15 @@ contract IporPlasmaVaultRolesTest is Test {
             PlasmaVaultGovernance.setRewardsClaimManagerAddress.selector
         );
         (bool isMember, uint32 executionDelay) = _accessManager.hasRole(
-            Roles.REWARDS_CLAIM_MANAGER_ROLE,
+            Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
             address(_rewardsClaimManager)
         );
 
-        assertEq(roleId, Roles.REWARDS_CLAIM_MANAGER_ROLE, "Role id should be equal to rewards claim manager role");
+        assertEq(
+            roleId,
+            Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
+            "Role id should be equal to rewards claim manager role"
+        );
         assertTrue(isMember, "Rewards claim manager should be a member of rewards claim manager role");
         assertEq(executionDelay, 0, "Execution delay should be 0");
     }

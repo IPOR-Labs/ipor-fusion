@@ -113,7 +113,7 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.GUARDIAN_ROLE &&
                 initData.adminRoles[i].roleId != Roles.PUBLIC_ROLE &&
                 initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
-                initData.adminRoles[i].roleId != Roles.DAO_ROLE
+                initData.adminRoles[i].roleId != Roles.TECH_IPOR_DAO_ROLE
             ) {
                 assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }
@@ -167,7 +167,7 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.CLAIM_REWARDS_ROLE &&
                 initData.adminRoles[i].roleId != Roles.TRANSFER_REWARDS_ROLE &&
                 initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
-                initData.adminRoles[i].roleId != Roles.DAO_ROLE
+                initData.adminRoles[i].roleId != Roles.TECH_IPOR_DAO_ROLE
             ) {
                 assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }

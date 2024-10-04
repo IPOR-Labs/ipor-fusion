@@ -18,9 +18,9 @@ contract IporFeeAccount {
         FEE_MANAGER = feeManager_;
     }
 
-    /// @notice Approves the fee manager to spend tokens on behalf of the contract
+    /// @notice Max approves the fee manager to spend tokens on behalf of the contract
     /// @param plasmaVault Address of the plasma vault token
-    function approveFeeManager(address plasmaVault) external {
+    function approveMaxForFeeManager(address plasmaVault) external {
         if (msg.sender != FEE_MANAGER) {
             revert OnlyFeeManagerCanApprove();
         }

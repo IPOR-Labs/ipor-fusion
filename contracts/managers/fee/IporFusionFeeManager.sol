@@ -6,54 +6,57 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IporFeeAccount} from "./IporFeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 
 /// @notice Struct containing initialization data for the fee manager
-/// @param daoManagementFee Management fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
-/// @param daoPerformanceFee Performance fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @param iporDaoManagementFee Management fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @param iporDaoPerformanceFee Performance fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
 /// @param atomistManagementFee Management fee percentage for the atomist (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
 /// @param atomistPerformanceFee Performance fee percentage for the atomist (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
 /// @param initialAuthority Address of the initial authority
 /// @param plasmaVault Address of the plasma vault
 /// @param feeRecipientAddress Address of the fee recipient
-/// @param daoFeeRecipientAddress Address of the DAO fee recipient
+/// @param iporDaoFeeRecipientAddress Address of the DAO fee recipient
 struct FeeManagerInitData {
-    uint256 daoManagementFee;
-    uint256 daoPerformanceFee;
+    uint256 iporDaoManagementFee;
+    uint256 iporDaoPerformanceFee;
     uint256 atomistManagementFee;
     uint256 atomistPerformanceFee;
     address initialAuthority;
     address plasmaVault;
     address feeRecipientAddress;
-    address daoFeeRecipientAddress;
+    address iporDaoFeeRecipientAddress;
 }
 
 /// @title IporFusionFeeManager
 /// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
 /// @dev Inherits from AccessManaged for access control.
 contract IporFusionFeeManager is AccessManaged {
-    event HarvestManagementFee(address reciver, uint256 amount);
-    event HarvestPerformanceFee(address reciver, uint256 amount);
+    event HarvestManagementFee(address receiver, uint256 amount);
+    event HarvestPerformanceFee(address receiver, uint256 amount);
     event PerformanceFeeUpdated(uint256 newPerformanceFee);
     event ManagementFeeUpdated(uint256 newManagementFee);
 
     error NotInitialized();
-    error InvalidAddress();
     error AlreadyInitialized();
     error InvalidFeeRecipientAddress();
 
     address public immutable PERFORMANCE_FEE_ACCOUNT;
     address public immutable MANAGEMENT_FEE_ACCOUNT;
-    /// @notice DAO_MANAGEMENT_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    uint256 public immutable DAO_MANAGEMENT_FEE;
-    /// @notice DAO_PERFORMANCE_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    uint256 public immutable DAO_PERFORMANCE_FEE;
+    /// @notice IPOR_DAO_MANAGEMENT_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    uint256 public immutable IPOR_DAO_MANAGEMENT_FEE;
+    /// @notice IPOR_DAO_PERFORMANCE_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    uint256 public immutable IPOR_DAO_PERFORMANCE_FEE;
 
     address public immutable PLASMA_VAULT;
-    address public feeRecipientAddress;
-    address public daoFeeRecipientAddress;
 
-    uint256 public performanceFee;
-    uint256 public managementFee;
+    address public feeRecipientAddress;
+    address public iporDaoFeeRecipientAddress;
+
+    /// @notice plasmaVaultPerformanceFee is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    uint256 public plasmaVaultPerformanceFee;
+    /// @notice plasmaVaultManagementFee is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    uint256 public plasmaVaultManagementFee;
 
     /// @notice The flag indicating whether the contract is initialized, if it is, the value is greater than 0
     uint256 public initialized;
@@ -62,14 +65,14 @@ contract IporFusionFeeManager is AccessManaged {
         PERFORMANCE_FEE_ACCOUNT = address(new IporFeeAccount(address(this)));
         MANAGEMENT_FEE_ACCOUNT = address(new IporFeeAccount(address(this)));
 
-        DAO_MANAGEMENT_FEE = initData_.daoManagementFee;
-        DAO_PERFORMANCE_FEE = initData_.daoPerformanceFee;
+        IPOR_DAO_MANAGEMENT_FEE = initData_.iporDaoManagementFee;
+        IPOR_DAO_PERFORMANCE_FEE = initData_.iporDaoPerformanceFee;
 
-        performanceFee = initData_.atomistPerformanceFee + DAO_PERFORMANCE_FEE;
-        managementFee = initData_.atomistManagementFee + DAO_MANAGEMENT_FEE;
+        plasmaVaultPerformanceFee = initData_.atomistPerformanceFee + IPOR_DAO_PERFORMANCE_FEE;
+        plasmaVaultManagementFee = initData_.atomistManagementFee + IPOR_DAO_MANAGEMENT_FEE;
 
         feeRecipientAddress = initData_.feeRecipientAddress;
-        daoFeeRecipientAddress = initData_.daoFeeRecipientAddress;
+        iporDaoFeeRecipientAddress = initData_.iporDaoFeeRecipientAddress;
 
         PLASMA_VAULT = initData_.plasmaVault;
     }
@@ -80,8 +83,8 @@ contract IporFusionFeeManager is AccessManaged {
         }
 
         initialized = 1;
-        IporFeeAccount(PERFORMANCE_FEE_ACCOUNT).approveFeeManager(PLASMA_VAULT);
-        IporFeeAccount(MANAGEMENT_FEE_ACCOUNT).approveFeeManager(PLASMA_VAULT);
+        IporFeeAccount(PERFORMANCE_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
+        IporFeeAccount(MANAGEMENT_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
     }
 
     /// @notice Harvests the management fee and transfers it to the respective recipient addresses.
@@ -90,7 +93,7 @@ contract IporFusionFeeManager is AccessManaged {
     /// and the remaining amount to the fee recipient. The function emits events for each transfer.
     /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
     function harvestManagementFee() public onlyInitialized {
-        if (feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
+        if (feeRecipientAddress == address(0) || iporDaoFeeRecipientAddress == address(0)) {
             revert InvalidFeeRecipientAddress();
         }
 
@@ -103,12 +106,12 @@ contract IporFusionFeeManager is AccessManaged {
         uint256 decimals = IERC4626(PLASMA_VAULT).decimals();
         uint256 numberOfDecimals = 10 ** (decimals);
 
-        uint256 percentToTransferToDao = (DAO_MANAGEMENT_FEE * numberOfDecimals) / managementFee;
+        uint256 percentageToTransferToDao = (IPOR_DAO_MANAGEMENT_FEE * numberOfDecimals) / plasmaVaultManagementFee;
 
-        uint256 transferAmountToDao = Math.mulDiv(balance, percentToTransferToDao, numberOfDecimals);
+        uint256 transferAmountToDao = Math.mulDiv(balance, percentageToTransferToDao, numberOfDecimals);
 
-        IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, daoFeeRecipientAddress, transferAmountToDao);
-        emit HarvestManagementFee(daoFeeRecipientAddress, transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, iporDaoFeeRecipientAddress, transferAmountToDao);
+        emit HarvestManagementFee(iporDaoFeeRecipientAddress, transferAmountToDao);
 
         IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, feeRecipientAddress, balance - transferAmountToDao);
         emit HarvestManagementFee(feeRecipientAddress, balance - transferAmountToDao);
@@ -120,7 +123,7 @@ contract IporFusionFeeManager is AccessManaged {
     /// and the remaining amount to the fee recipient. The function emits events for each transfer.
     /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
     function harvestPerformanceFee() public onlyInitialized {
-        if (feeRecipientAddress == address(0) || daoFeeRecipientAddress == address(0)) {
+        if (feeRecipientAddress == address(0) || iporDaoFeeRecipientAddress == address(0)) {
             revert InvalidFeeRecipientAddress();
         }
 
@@ -133,12 +136,12 @@ contract IporFusionFeeManager is AccessManaged {
         uint256 decimals = IERC4626(PLASMA_VAULT).decimals();
         uint256 numberOfDecimals = 10 ** (decimals);
 
-        uint256 percentToTransferToDao = (DAO_PERFORMANCE_FEE * numberOfDecimals) / performanceFee;
+        uint256 percentToTransferToDao = (IPOR_DAO_PERFORMANCE_FEE * numberOfDecimals) / plasmaVaultPerformanceFee;
 
         uint256 transferAmountToDao = Math.mulDiv(balance, percentToTransferToDao, numberOfDecimals);
 
-        IERC4626(PLASMA_VAULT).transferFrom(PERFORMANCE_FEE_ACCOUNT, daoFeeRecipientAddress, transferAmountToDao);
-        emit HarvestPerformanceFee(daoFeeRecipientAddress, transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transferFrom(PERFORMANCE_FEE_ACCOUNT, iporDaoFeeRecipientAddress, transferAmountToDao);
+        emit HarvestPerformanceFee(iporDaoFeeRecipientAddress, transferAmountToDao);
 
         IERC4626(PLASMA_VAULT).transferFrom(
             PERFORMANCE_FEE_ACCOUNT,
@@ -155,10 +158,10 @@ contract IporFusionFeeManager is AccessManaged {
     function updatePerformanceFee(uint256 performanceFee_) external restricted {
         harvestPerformanceFee();
 
-        uint256 newPerformanceFee = performanceFee_ + DAO_PERFORMANCE_FEE;
+        uint256 newPerformanceFee = performanceFee_ + IPOR_DAO_PERFORMANCE_FEE;
 
         PlasmaVaultGovernance(PLASMA_VAULT).configurePerformanceFee(PERFORMANCE_FEE_ACCOUNT, newPerformanceFee);
-        performanceFee = newPerformanceFee;
+        plasmaVaultPerformanceFee = newPerformanceFee;
 
         emit PerformanceFeeUpdated(newPerformanceFee);
     }
@@ -168,10 +171,10 @@ contract IporFusionFeeManager is AccessManaged {
     function updateManagementFee(uint256 managementFee_) external restricted {
         harvestManagementFee();
 
-        uint256 newManagementFee = managementFee_ + DAO_MANAGEMENT_FEE;
+        uint256 newManagementFee = managementFee_ + IPOR_DAO_MANAGEMENT_FEE;
 
         PlasmaVaultGovernance(PLASMA_VAULT).configureManagementFee(MANAGEMENT_FEE_ACCOUNT, newManagementFee);
-        managementFee = newManagementFee;
+        plasmaVaultManagementFee = newManagementFee;
 
         emit ManagementFeeUpdated(newManagementFee);
     }
@@ -179,29 +182,29 @@ contract IporFusionFeeManager is AccessManaged {
     /**
      * @notice Sets the address of the fee recipient.
      * @dev This function can only be called by an authorized account (ATOMIST_ROLE).
-     * @param harvestAddress_ The address to set as the fee recipient.
-     * @custom:error InvalidAddress Thrown if the provided address is the zero address.
+     * @param feeRecipientAddress_ The address to set as the fee recipient.
+     * @custom:error WrongAddress Thrown if the provided address is the zero address.
      */
-    function setFeeRecipientAddress(address harvestAddress_) external restricted {
-        if (harvestAddress_ == address(0)) {
-            revert InvalidAddress();
+    function setFeeRecipientAddress(address feeRecipientAddress_) external restricted {
+        if (feeRecipientAddress_ == address(0)) {
+            revert Errors.WrongAddress();
         }
 
-        feeRecipientAddress = harvestAddress_;
+        feeRecipientAddress = feeRecipientAddress_;
     }
 
     /**
      * @notice Sets the address of the DAO fee recipient.
-     * @dev This function can only be called by an authorized account (DAO_ROLE).
-     * @param daoHarvestAddress_ The address to set as the DAO fee recipient.
+     * @dev This function can only be called by an authorized account (TECH_IPOR_DAO_ROLE).
+     * @param iporDaoFeeRecipientAddress_ The address to set as the DAO fee recipient.
      * @custom:error InvalidAddress Thrown if the provided address is the zero address.
      */
-    function setDaoFeeRecipientAddress(address daoHarvestAddress_) external restricted {
-        if (daoHarvestAddress_ == address(0)) {
-            revert InvalidAddress();
+    function setIporDaoFeeRecipientAddress(address iporDaoFeeRecipientAddress_) external restricted {
+        if (iporDaoFeeRecipientAddress_ == address(0)) {
+            revert Errors.WrongAddress();
         }
 
-        daoFeeRecipientAddress = daoHarvestAddress_;
+        iporDaoFeeRecipientAddress = iporDaoFeeRecipientAddress_;
     }
 
     modifier onlyInitialized() {

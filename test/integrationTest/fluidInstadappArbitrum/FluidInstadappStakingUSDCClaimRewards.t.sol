@@ -93,7 +93,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
         initAddress[0] = admin;
 
         DataForInitialization memory data = DataForInitialization({
-            dao: initAddress,
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,

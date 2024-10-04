@@ -34,8 +34,8 @@ contract IporFeeFactory {
                 plasmaVault: feeManager.PLASMA_VAULT(),
                 performanceFeeAccount: feeManager.PERFORMANCE_FEE_ACCOUNT(),
                 managementFeeAccount: feeManager.MANAGEMENT_FEE_ACCOUNT(),
-                managementFee: feeManager.managementFee(),
-                performanceFee: feeManager.performanceFee()
+                managementFee: feeManager.plasmaVaultManagementFee(),
+                performanceFee: feeManager.plasmaVaultPerformanceFee()
             });
     }
 }

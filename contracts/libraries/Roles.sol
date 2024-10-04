@@ -16,13 +16,14 @@ library Roles {
     /// @dev Managed by the Owner
     uint64 public constant GUARDIAN_ROLE = 2;
 
+    //TODO Change to TECH_PLASMA_VAULT_ROLE and update confluence.
     /// @notice Technical role to limited access to method only from the PlasmaVault contract
     /// @dev Managed only on bootstrap, this value could not be change after initialization
-    uint64 public constant PLASMA_VAULT_ROLE = 3;
+    uint64 public constant TECH_PLASMA_VAULT_ROLE = 3;
 
     /// @notice Technical role to limited access to method only from the PlasmaVault contract
     /// @dev Managed only on bootstrap, this value could not be change after initialization
-    uint64 public constant DAO_ROLE = 4;
+    uint64 public constant TECH_IPOR_DAO_ROLE = 4;
 
     /// @notice Account with this role has rights to manage the PlasmaVault. It recommended to use MultiSig contract for this role.
     /// @dev Managed by Owner
@@ -48,9 +49,10 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant CLAIM_REWARDS_ROLE = 600;
 
+    //TODO TECH_REWARDS_CLAIM_MANAGER_ROLE
     /// @notice Technical role for the RewardsClaimManager contract. Account with this role has rights to claim rewards from the PlasmaVault
     /// @dev Could be assigned only on bootstrap, this value could not be change after initialization
-    uint64 public constant REWARDS_CLAIM_MANAGER_ROLE = 601;
+    uint64 public constant TECH_REWARDS_CLAIM_MANAGER_ROLE = 601;
 
     /// @notice Account with this role has rights to transfer rewards from the PlasmaVault to the RewardsClaimManager
     /// @dev Managed by the Atomist
