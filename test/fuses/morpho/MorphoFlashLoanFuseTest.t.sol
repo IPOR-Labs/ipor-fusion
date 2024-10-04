@@ -64,7 +64,8 @@ contract MorphoFlashLoanFuseTest is Test {
                     feeConfig: _setupFeeConfig(),
                     accessManager: address(_accessManager),
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max
+                    totalSupplyCap: type(uint256).max,
+                    withdrawManager: address(0)
                 })
             )
         );
@@ -145,7 +146,8 @@ contract MorphoFlashLoanFuseTest is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0)
+                rewardsClaimManager: address(0),
+                withdrawManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
@@ -162,8 +164,8 @@ contract MorphoFlashLoanFuseTest is Test {
 
         MorphoFlashLoanFuseEnterData memory dataFlashLoan = MorphoFlashLoanFuseEnterData({
             token: _DAI,
-            amount: 100e18,
-            callbackData: abi.encode(callbackCalls)
+            tokenAmount: 100e18,
+            callbackFuseActionsData: abi.encode(callbackCalls)
         });
 
         FuseAction[] memory morphoFlashCalls = new FuseAction[](1);
@@ -186,8 +188,8 @@ contract MorphoFlashLoanFuseTest is Test {
 
         MorphoFlashLoanFuseEnterData memory dataFlashLoan = MorphoFlashLoanFuseEnterData({
             token: _DAI,
-            amount: 100e18,
-            callbackData: abi.encode(callbackCalls)
+            tokenAmount: 100e18,
+            callbackFuseActionsData: abi.encode(callbackCalls)
         });
 
         FuseAction[] memory morphoFlashCalls = new FuseAction[](1);
@@ -224,8 +226,8 @@ contract MorphoFlashLoanFuseTest is Test {
 
         MorphoFlashLoanFuseEnterData memory dataFlashLoan = MorphoFlashLoanFuseEnterData({
             token: _USDT,
-            amount: 100e6,
-            callbackData: abi.encode(callbackCalls)
+            tokenAmount: 100e6,
+            callbackFuseActionsData: abi.encode(callbackCalls)
         });
 
         FuseAction[] memory morphoFlashCalls = new FuseAction[](1);

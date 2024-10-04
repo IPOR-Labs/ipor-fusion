@@ -563,7 +563,8 @@ contract IporPlasmaVaultRolesTest is Test {
                 FeeConfig(_data.performanceFeeManagers[0], 0, _data.managementFeeManagers[0], 0),
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         vm.stopPrank();

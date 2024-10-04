@@ -83,7 +83,8 @@ contract PlasmaVaultCallbackHandler is Test {
                     feeConfig,
                     _accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );
@@ -185,7 +186,8 @@ contract PlasmaVaultCallbackHandler is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(this)
+                rewardsClaimManager: address(this),
+                withdrawManager: address(0)
             })
         });
 
@@ -233,8 +235,8 @@ contract PlasmaVaultCallbackHandler is Test {
                 "enter((bytes32,uint256,bytes))",
                 MorphoSupplyFuseEnterData({
                     morphoMarketId: _MARKET_ID_BYTES32,
-                    amount: 100e18,
-                    callbackData: callbackCallsBytes
+                    maxTokenAmount: 100e18,
+                    callbackFuseActionsData: callbackCallsBytes
                 })
             )
         );

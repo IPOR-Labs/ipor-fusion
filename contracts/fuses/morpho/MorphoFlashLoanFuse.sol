@@ -8,11 +8,14 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IMorpho} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 
+/// @dev Struct to hold data for entering a Morpho Flash Loan Fuse
 struct MorphoFlashLoanFuseEnterData {
+    /// @dev The address of the token to be used in the flash loan
     address token;
-    uint256 amount;
-    // @dev Callback data to be passed to the flash loan callback. This data should encoded  FuseAction[] array.
-    bytes callbackData;
+    /// @dev The amount of the token to be used in the flash loan
+    uint256 tokenAmount;
+    /// @dev Callback data to be passed to the flash loan callback. This data should be an encoded FuseAction[] array.
+    bytes callbackFuseActionsData;
 }
 
 /// @title Morpho Flash Loan Fuse
@@ -34,7 +37,7 @@ contract MorphoFlashLoanFuse is IFuseCommon {
     }
 
     function enter(MorphoFlashLoanFuseEnterData calldata data_) external {
-        if (data_.amount == 0) {
+        if (data_.tokenAmount == 0) {
             return;
         }
 
@@ -42,12 +45,12 @@ contract MorphoFlashLoanFuse is IFuseCommon {
             revert MorphoFlashLoanFuseUnsupportedToken(data_.token);
         }
 
-        ERC20(data_.token).forceApprove(address(MORPHO), data_.amount);
+        ERC20(data_.token).forceApprove(address(MORPHO), data_.tokenAmount);
 
-        MORPHO.flashLoan(data_.token, data_.amount, data_.callbackData);
+        MORPHO.flashLoan(data_.token, data_.tokenAmount, data_.callbackFuseActionsData);
 
         ERC20(data_.token).forceApprove(address(MORPHO), 0);
 
-        emit MorphoFlashLoanFuseEvent(VERSION, data_.token, data_.amount);
+        emit MorphoFlashLoanFuseEvent(VERSION, data_.token, data_.tokenAmount);
     }
 }
