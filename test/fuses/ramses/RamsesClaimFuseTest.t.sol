@@ -22,6 +22,8 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {RamsesClaimFuse} from "../../../contracts/rewards_fuses/ramses/RamsesClaimFuse.sol";
 import {IporFusionAccessManagerInitializerLibV1, PlasmaVaultAddress, InitializationData} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {DataForInitialization} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
+import {IporFeeAccount} from "../../../contracts/managers/fee/IporFeeAccount.sol";
 
 interface IGAUGE {
     function rewards(uint256 index) external view returns (address);
@@ -190,13 +192,8 @@ contract RamsesClaimFuseTest is Test {
         assertEq(xRemBalanceAfter, 0, "xRemBalanceAfter");
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig_) {
-        feeConfig_ = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private returns (address accessManager_) {
@@ -367,6 +364,7 @@ contract RamsesClaimFuseTest is Test {
         whitelist[1] = _userOne;
 
         DataForInitialization memory data = DataForInitialization({
+            dao: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -383,7 +381,9 @@ contract RamsesClaimFuseTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
-                withdrawManager: address(0)
+                withdrawManager: address(0),
+                feeManager: IporFeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager)
+                    .FEE_MANAGER()
             })
         });
 
