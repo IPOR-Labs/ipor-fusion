@@ -5,7 +5,7 @@ import {ICometRewards} from "./ICometRewards.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
 /// @title CompoundV3ClaimFuse
-/// @notice This contract handles the claiming of rewards from Compound V3.
+/// @notice This contract handles the claiming of rewards from Compound V3, all comets.
 /// @dev Uses PlasmaVaultLib for accessing the rewards claim manager address.
 contract CompoundV3ClaimFuse {
     address public immutable VERSION;
@@ -36,12 +36,7 @@ contract CompoundV3ClaimFuse {
             revert ClaimManagerZeroAddress();
         }
 
-        ICometRewards(COMET_REWARDS).claimTo(
-            comet_,
-            address(this),
-            PlasmaVaultLib.getRewardsClaimManagerAddress(),
-            true
-        );
+        ICometRewards(COMET_REWARDS).claimTo(comet_, address(this), claimManager, true);
 
         emit CompoundV3ClaimFuseRewardsClaimed(VERSION, comet_, claimManager);
     }
