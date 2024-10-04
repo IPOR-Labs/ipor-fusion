@@ -160,7 +160,7 @@ contract RamsesClaimFuseTest is Test {
         tokenIds[0] = tokenId;
 
         address[][] memory tokenRewards = new address[][](1);
-        tokenRewards[0] = new address[](3);
+        tokenRewards[0] = new address[](2);
         tokenRewards[0][0] = rem;
         tokenRewards[0][1] = xRem;
 
