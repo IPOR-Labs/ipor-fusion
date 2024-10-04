@@ -277,7 +277,6 @@ library IporFusionAccessManagerInitializerLibV1 {
             adminRoleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE
         });
         adminRoles_[11] = AdminRole({roleId: Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
-        // TODO Add description do confluence
         adminRoles_[12] = AdminRole({roleId: Roles.TECH_IPOR_DAO_ROLE, adminRoleId: Roles.TECH_IPOR_DAO_ROLE});
         return adminRoles_;
     }
