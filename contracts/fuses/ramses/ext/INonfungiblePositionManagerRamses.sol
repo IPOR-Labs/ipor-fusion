@@ -1,7 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-interface INonfungiblePositionManager {
+interface INonfungiblePositionManagerRamses {
+    struct Position {
+        uint96 nonce;
+        address operator;
+        address token0;
+        address token1;
+        uint24 fee;
+        int24 tickLower;
+        int24 tickUpper;
+        uint128 liquidity;
+        uint256 feeGrowthInside0Last;
+        uint256 feeGrowthInside1Last;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
+    }
+
     struct MintParams {
         address token0;
         address token1;
@@ -14,6 +29,7 @@ interface INonfungiblePositionManager {
         uint256 amount1Min;
         address recipient;
         uint256 deadline;
+        uint256 veRamTokenId;
     }
 
     function mint(
@@ -95,16 +111,40 @@ interface INonfungiblePositionManager {
     /// must be collected first.
     /// @param tokenId The ID of the token that is being burned
     function burn(uint256 tokenId) external payable;
+
+    function getReward(uint256 tokenId, address[] calldata tokens) external;
 }
 
-interface IUniswapV3Factory {
+interface IRamsesV2Factory {
     function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool);
 }
 
-interface IUniswapV3Pool {
+interface IRamsesV2Pool {
     function feeGrowthGlobal0X128() external view returns (uint256);
 
     function feeGrowthGlobal1X128() external view returns (uint256);
+
+    /// @notice Returns the information about a position by the position's key
+    /// @param key The position's key is a hash of a preimage composed by the owner, tickLower and tickUpper
+    /// @return _liquidity The amount of liquidity in the position,
+    /// Returns feeGrowthInside0LastX128 fee growth of token0 inside the tick range as of the last mint/burn/poke,
+    /// Returns feeGrowthInside1LastX128 fee growth of token1 inside the tick range as of the last mint/burn/poke,
+    /// Returns tokensOwed0 the computed amount of token0 owed to the position as of the last mint/burn/poke,
+    /// Returns tokensOwed1 the computed amount of token1 owed to the position as of the last mint/burn/poke
+    /// Returns attachedVeRamId the veRam tokenId attached to the position
+    function positions(
+        bytes32 key
+    )
+        external
+        view
+        returns (
+            uint128 _liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1,
+            uint256 attachedVeRamId
+        );
 
     /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas
     /// when accessed externally.
