@@ -19,8 +19,6 @@ import {PositionKey} from "./ext/PositionKey.sol";
  * @dev Fuse balance for Ramses V2 positions. This contract calculates the balance of a given market by summing up the value of all positions.
  */
 contract RamsesV2Balance is IMarketBalanceFuse {
-    bytes32 internal constant POOL_INIT_CODE_HASH = 0x1565b129f2d1790f12d45301b9b084335626f0c92410bc43130763b69971135d;
-
     uint256 public immutable MARKET_ID;
     // @dev Manage NFTs representing liquidity positions
     address public immutable NONFUNGIBLE_POSITION_MANAGER;

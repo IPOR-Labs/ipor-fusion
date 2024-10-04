@@ -122,7 +122,7 @@ contract RamsesClaimFuseTest is Test {
         ERC20(USDT).transfer(_plasmaVault, 10_000e6);
     }
 
-    function testShouldOpenNewPosition() external {
+    function testShouldClaimRewards() external {
         // given
         address rem = 0xAAA6C1E32C55A7Bfa8066A6FAE9b42650F262418;
         address xRem = 0xAAA1eE8DC1864AE49185C368e8c64Dd780a50Fb7;
@@ -160,7 +160,7 @@ contract RamsesClaimFuseTest is Test {
         tokenIds[0] = tokenId;
 
         address[][] memory tokenRewards = new address[][](1);
-        tokenRewards[0] = new address[](2);
+        tokenRewards[0] = new address[](3);
         tokenRewards[0][0] = rem;
         tokenRewards[0][1] = xRem;
 

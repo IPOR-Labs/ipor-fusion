@@ -13,6 +13,8 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 contract RamsesClaimFuse {
     using SafeERC20 for IERC20;
 
+    error RamsesClaimFuseRewardsClaimManagerNotSet();
+
     address public immutable VERSION;
     /// @notice Address of the non-fungible position manager
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
@@ -59,10 +61,11 @@ contract RamsesClaimFuse {
 
     function _claim(uint256 tokenId, address[] memory tokenRewards) internal {
         address plasmaVault = address(this);
+        uint256 len = tokenRewards.length;
 
-        uint256[] memory balancesBefore = new uint256[](tokenRewards.length);
+        uint256[] memory balancesBefore = new uint256[](len);
 
-        for (uint256 i; i < tokenRewards.length; ++i) {
+        for (uint256 i; i < len; ++i) {
             balancesBefore[i] = IERC20(tokenRewards[i]).balanceOf(plasmaVault);
         }
 
@@ -72,7 +75,11 @@ contract RamsesClaimFuse {
         uint256 rewardToTransfer;
         address rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
 
-        for (uint256 i; i < tokenRewards.length; ++i) {
+        if (rewardsClaimManager == address(0)) {
+            revert RamsesClaimFuseRewardsClaimManagerNotSet();
+        }
+
+        for (uint256 i; i < len; ++i) {
             balanceAfter = IERC20(tokenRewards[i]).balanceOf(plasmaVault);
             rewardToTransfer = balanceAfter - balancesBefore[i];
             if (rewardToTransfer > 0) {
