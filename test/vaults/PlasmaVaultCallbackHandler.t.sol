@@ -235,8 +235,8 @@ contract PlasmaVaultCallbackHandler is Test {
                 "enter((bytes32,uint256,bytes))",
                 MorphoSupplyFuseEnterData({
                     morphoMarketId: _MARKET_ID_BYTES32,
-                    amount: 100e18,
-                    callbackData: callbackCallsBytes
+                    maxTokenAmount: 100e18,
+                    callbackFuseActionsData: callbackCallsBytes
                 })
             )
         );

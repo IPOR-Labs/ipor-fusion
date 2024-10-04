@@ -16,12 +16,12 @@ import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoL
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 
 struct MorphoSupplyFuseEnterData {
-    // vault address
+    /// @dev  vault address
     bytes32 morphoMarketId;
-    // max amount to supply
-    uint256 amount;
-    // Data to be passed to the callback and execute inside the execute function
-    bytes callbackData;
+    /// @dev  max amount to supply
+    uint256 maxTokenAmount;
+    /// @dev  Data to be passed to the callback and execute inside the execute function
+    bytes callbackFuseActionsData;
 }
 
 struct MorphoSupplyFuseExitData {
@@ -59,7 +59,7 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     function enter(MorphoSupplyFuseEnterData memory data_) external {
-        if (data_.amount == 0) {
+        if (data_.maxTokenAmount == 0) {
             return;
         }
 
@@ -69,9 +69,15 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
 
         MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoMarketId));
 
-        ERC20(marketParams.loanToken).forceApprove(address(MORPHO), data_.amount);
+        ERC20(marketParams.loanToken).forceApprove(address(MORPHO), data_.maxTokenAmount);
 
-        (uint256 assetsSupplied, ) = MORPHO.supply(marketParams, data_.amount, 0, address(this), data_.callbackData);
+        (uint256 assetsSupplied, ) = MORPHO.supply(
+            marketParams,
+            data_.maxTokenAmount,
+            0,
+            address(this),
+            data_.callbackFuseActionsData
+        );
 
         emit MorphoSupplyFuseEnter(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsSupplied);
     }
