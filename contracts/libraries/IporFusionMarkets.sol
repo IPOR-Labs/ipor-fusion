@@ -50,4 +50,7 @@ library IporFusionMarkets {
     uint256 public constant CURVE_LP_GAUGE = 17;
 
     uint256 public constant RAMSES_V2_POSITIONS = 18;
+
+    /// @dev Morpho flash loan market
+    uint256 public constant MORPHO_FLASH_LOAN = 19;
 }
