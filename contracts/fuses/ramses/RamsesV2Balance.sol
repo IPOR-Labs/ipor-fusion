@@ -77,15 +77,17 @@ contract RamsesV2Balance is IMarketBalanceFuse {
 
     /**
      * @dev Internal function to get the amounts for a given position.
+     * This function calculates the amounts of token0 and token1 for a given liquidity position in the Ramses V2 pool.
+     * It takes into account the current price, the position's liquidity, and any fees owed to the position.
      * @param tokenId The ID of the token.
-     * @return token0t The address of token0.
-     * @return token1t The address of token1.
+     * @return token0 The address of token0.
+     * @return token1 The address of token1.
      * @return amount0 The amount of token0.
      * @return amount1 The amount of token1.
      */
     function getAmountsForPosition(
         uint256 tokenId
-    ) internal view returns (address token0t, address token1t, uint256 amount0, uint256 amount1) {
+    ) internal view returns (address token0, address token1, uint256 amount0, uint256 amount1) {
         INonfungiblePositionManagerRamses.Position memory position = getPositionData(tokenId);
 
         IRamsesV2Pool pool = IRamsesV2Pool(
@@ -119,8 +121,8 @@ contract RamsesV2Balance is IMarketBalanceFuse {
 
         amount0 += (fee0 + position.tokensOwed0);
         amount1 += (fee1 + position.tokensOwed1);
-        token0t = position.token0;
-        token1t = position.token1;
+        token0 = position.token0;
+        token1 = position.token1;
     }
 
     /**
