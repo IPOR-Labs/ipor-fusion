@@ -18,7 +18,7 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
-import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
+import {FeeFactory} from "../../../contracts/managers/fee/FeeFactory.sol";
 
 contract UniswapV2SwapFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -202,7 +202,7 @@ contract UniswapV2SwapFuseTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
-        feeConfig_ = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
+        feeConfig_ = FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private returns (address accessManager_) {

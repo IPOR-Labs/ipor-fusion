@@ -12,10 +12,10 @@ import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMid
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {IporFeeFactory} from "../../contracts/managers/fee/IporFeeFactory.sol";
+import {FeeFactory} from "../../contracts/managers/fee/FeeFactory.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {IporFusionFeeManager} from "../../contracts/managers/fee/IporFusionFeeManager.sol";
-import {IporFeeAccount} from "../../contracts/managers/fee/IporFeeAccount.sol";
+import {FusionFeeManager} from "../../contracts/managers/fee/FusionFeeManager.sol";
+import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -131,7 +131,7 @@ contract FeeManagerTest is Test {
             DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
             MANAGEMENT_FEE_IN_PERCENTAGE,
             PERFORMANCE_FEE_IN_PERCENTAGE,
-            address(new IporFeeFactory()),
+            address(new FeeFactory()),
             _FEE_RECIPIENT_ADDRESS,
             _DAO_FEE_RECIPIENT_ADDRESS
         );
@@ -187,7 +187,7 @@ contract FeeManagerTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
-                feeManager: IporFeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager)
+                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager)
                     .FEE_MANAGER()
             })
         });
@@ -223,7 +223,7 @@ contract FeeManagerTest is Test {
     function testShouldHarvestManagementFee() external {
         //given
         address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(managementAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(managementAccount).FEE_MANAGER());
 
         vm.warp(block.timestamp + 356 days);
         vm.startPrank(_USER);
@@ -284,7 +284,7 @@ contract FeeManagerTest is Test {
     function testShouldHarvestPerformance() external {
         //given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
         vm.startPrank(_USER);
         ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
@@ -324,7 +324,7 @@ contract FeeManagerTest is Test {
     function testShouldNotHarvestManagementFeeWhenNotInitialize() external {
         // given
         address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(managementAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(managementAccount).FEE_MANAGER());
 
         bytes memory error = abi.encodeWithSignature("NotInitialized()");
 
@@ -336,7 +336,7 @@ contract FeeManagerTest is Test {
     function testShouldNotHarvestPerformanceFeeWhenNotInitialize() external {
         // given
         address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(managementAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(managementAccount).FEE_MANAGER());
 
         bytes memory error = abi.encodeWithSignature("NotInitialized()");
 
@@ -348,7 +348,7 @@ contract FeeManagerTest is Test {
     function testShouldNotUpdatePerformanceFeeWhenNotAtomist() external {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
         feeManager.initialize();
 
@@ -365,9 +365,7 @@ contract FeeManagerTest is Test {
         // given
         PlasmaVaultStorageLib.PerformanceFeeData memory feeDataOnPlasmaVaultBefore = PlasmaVaultGovernance(_plasmaVault)
             .getPerformanceFeeData();
-        IporFusionFeeManager feeManager = IporFusionFeeManager(
-            IporFeeAccount(feeDataOnPlasmaVaultBefore.feeManager).FEE_MANAGER()
-        );
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeManager).FEE_MANAGER());
 
         uint256 performanceFeeBefore = feeManager.plasmaVaultPerformanceFee();
 
@@ -403,9 +401,7 @@ contract FeeManagerTest is Test {
         // given
         PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultBefore = PlasmaVaultGovernance(_plasmaVault)
             .getManagementFeeData();
-        IporFusionFeeManager feeManager = IporFusionFeeManager(
-            IporFeeAccount(feeDataOnPlasmaVaultBefore.feeManager).FEE_MANAGER()
-        );
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeManager).FEE_MANAGER());
 
         uint256 managementFeeBefore = feeManager.plasmaVaultManagementFee();
 
@@ -440,7 +436,7 @@ contract FeeManagerTest is Test {
     function testShouldNotUpdateManagementFeeWhenNotAtomist() external {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
         feeManager.initialize();
 
@@ -456,7 +452,7 @@ contract FeeManagerTest is Test {
     function testShouldNotSetFeeRecipientAddressWhenNotAtomist() external {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
         feeManager.initialize();
 
@@ -472,7 +468,7 @@ contract FeeManagerTest is Test {
     function testShouldNotSetFeeRecipientAddressWhenZeroAddress() external {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
         feeManager.initialize();
 
@@ -488,7 +484,7 @@ contract FeeManagerTest is Test {
     function testShouldSetFeeRecipientAddress() external {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
         feeManager.initialize();
 
@@ -510,7 +506,7 @@ contract FeeManagerTest is Test {
     function testShouldNotsetDaoFeeRecipientAddressWhenNotDAO() external {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
         feeManager.initialize();
 
@@ -526,7 +522,7 @@ contract FeeManagerTest is Test {
     function testShouldNotSetDaoFeeRecipientAddressWhenZeroAddress() external {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
         feeManager.initialize();
 
@@ -542,7 +538,7 @@ contract FeeManagerTest is Test {
     function testShouldSetDaoFeeRecipientAddress() external {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager;
-        IporFusionFeeManager feeManager = IporFusionFeeManager(IporFeeAccount(performanceAccount).FEE_MANAGER());
+        FusionFeeManager feeManager = FusionFeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
         feeManager.initialize();
 

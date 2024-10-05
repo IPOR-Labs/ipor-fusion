@@ -22,7 +22,7 @@ import {IFluidLendingStakingRewards} from "../../../contracts/fuses/fluid_instad
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
 import {FluidInstadappClaimFuse} from "../../../contracts/rewards_fuses/fluid_instadapp/FluidInstadappClaimFuse.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
-import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
+import {FeeFactory} from "../../../contracts/managers/fee/FeeFactory.sol";
 
 contract FluidInstadappStakingUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -165,7 +165,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0));
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {

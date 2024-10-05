@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IporFeeAccount} from "./IporFeeAccount.sol";
+import {FeeAccount} from "./FeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 
@@ -28,10 +28,10 @@ struct FeeManagerInitData {
     address iporDaoFeeRecipientAddress;
 }
 
-/// @title IporFusionFeeManager
+/// @title FusionFeeManager
 /// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
 /// @dev Inherits from AccessManaged for access control.
-contract IporFusionFeeManager is AccessManaged {
+contract FusionFeeManager is AccessManaged {
     event HarvestManagementFee(address receiver, uint256 amount);
     event HarvestPerformanceFee(address receiver, uint256 amount);
     event PerformanceFeeUpdated(uint256 newPerformanceFee);
@@ -62,8 +62,8 @@ contract IporFusionFeeManager is AccessManaged {
     uint256 public initialized;
 
     constructor(FeeManagerInitData memory initData_) AccessManaged(initData_.initialAuthority) {
-        PERFORMANCE_FEE_ACCOUNT = address(new IporFeeAccount(address(this)));
-        MANAGEMENT_FEE_ACCOUNT = address(new IporFeeAccount(address(this)));
+        PERFORMANCE_FEE_ACCOUNT = address(new FeeAccount(address(this)));
+        MANAGEMENT_FEE_ACCOUNT = address(new FeeAccount(address(this)));
 
         IPOR_DAO_MANAGEMENT_FEE = initData_.iporDaoManagementFee;
         IPOR_DAO_PERFORMANCE_FEE = initData_.iporDaoPerformanceFee;
@@ -83,8 +83,8 @@ contract IporFusionFeeManager is AccessManaged {
         }
 
         initialized = 1;
-        IporFeeAccount(PERFORMANCE_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
-        IporFeeAccount(MANAGEMENT_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
+        FeeAccount(PERFORMANCE_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
+        FeeAccount(MANAGEMENT_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
     }
 
     /// @notice Harvests the management fee and transfers it to the respective recipient addresses.

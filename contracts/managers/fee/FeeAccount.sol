@@ -4,9 +4,9 @@ pragma solidity 0.8.26;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @title IporFeeAccount
+/// @title FeeAccount
 /// @notice Contract responsible for managing fee approvals for the Ipor protocol
-contract IporFeeAccount {
+contract FeeAccount {
     using SafeERC20 for IERC20;
 
     /// @notice Error thrown when a non-fee manager tries to approve

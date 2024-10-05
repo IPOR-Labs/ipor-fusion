@@ -22,8 +22,8 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {RamsesClaimFuse} from "../../../contracts/rewards_fuses/ramses/RamsesClaimFuse.sol";
 import {IporFusionAccessManagerInitializerLibV1, PlasmaVaultAddress, InitializationData} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {DataForInitialization} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
-import {IporFeeAccount} from "../../../contracts/managers/fee/IporFeeAccount.sol";
+import {FeeFactory} from "../../../contracts/managers/fee/FeeFactory.sol";
+import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 
 interface IGAUGE {
     function rewards(uint256 index) external view returns (address);
@@ -193,7 +193,7 @@ contract RamsesClaimFuseTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private returns (address accessManager_) {
@@ -382,7 +382,7 @@ contract RamsesClaimFuseTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
                 withdrawManager: address(0),
-                feeManager: IporFeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager)
+                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager)
                     .FEE_MANAGER()
             })
         });

@@ -11,7 +11,7 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "..
 import {InitializationData} from "../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
-import {IporFeeFactory} from "../../contracts/managers/fee/IporFeeFactory.sol";
+import {FeeFactory} from "../../contracts/managers/fee/FeeFactory.sol";
 
 contract InitializeAccessManagerTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -60,7 +60,7 @@ contract InitializeAccessManagerTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(address(new FeeFactory())), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -113,7 +113,7 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.GUARDIAN_ROLE &&
                 initData.adminRoles[i].roleId != Roles.PUBLIC_ROLE &&
                 initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
-                initData.adminRoles[i].roleId != Roles.TECH_IPOR_DAO_ROLE
+                initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE
             ) {
                 assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }
@@ -167,7 +167,7 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.CLAIM_REWARDS_ROLE &&
                 initData.adminRoles[i].roleId != Roles.TRANSFER_REWARDS_ROLE &&
                 initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
-                initData.adminRoles[i].roleId != Roles.TECH_IPOR_DAO_ROLE
+                initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE
             ) {
                 assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }

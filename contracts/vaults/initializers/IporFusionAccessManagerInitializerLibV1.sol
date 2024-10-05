@@ -8,7 +8,7 @@ import {PlasmaVaultGovernance} from "../PlasmaVaultGovernance.sol";
 import {Roles} from "../../libraries/Roles.sol";
 import {RewardsClaimManager} from "../../managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
-import {IporFusionFeeManager} from "../../managers/fee/IporFusionFeeManager.sol";
+import {FusionFeeManager} from "../../managers/fee/FusionFeeManager.sol";
 import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
 
 /// @notice Plasma Vault address struct.
@@ -115,7 +115,7 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         for (uint256 i; i < data_.iporDaos.length; ++i) {
             accountToRoles[index] = AccountToRole({
-                roleId: Roles.TECH_IPOR_DAO_ROLE,
+                roleId: Roles.IPOR_DAO_ROLE,
                 account: data_.iporDaos[i],
                 executionDelay: 0
             });
@@ -277,7 +277,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             adminRoleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE
         });
         adminRoles_[11] = AdminRole({roleId: Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
-        adminRoles_[12] = AdminRole({roleId: Roles.TECH_IPOR_DAO_ROLE, adminRoleId: Roles.TECH_IPOR_DAO_ROLE});
+        adminRoles_[12] = AdminRole({roleId: Roles.IPOR_DAO_ROLE, adminRoleId: Roles.IPOR_DAO_ROLE});
         return adminRoles_;
     }
 
@@ -581,25 +581,25 @@ library IporFusionAccessManagerInitializerLibV1 {
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.ATOMIST_ROLE,
-                functionSelector: IporFusionFeeManager.updatePerformanceFee.selector,
+                functionSelector: FusionFeeManager.updatePerformanceFee.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.ATOMIST_ROLE,
-                functionSelector: IporFusionFeeManager.updateManagementFee.selector,
+                functionSelector: FusionFeeManager.updateManagementFee.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.ATOMIST_ROLE,
-                functionSelector: IporFusionFeeManager.setFeeRecipientAddress.selector,
+                functionSelector: FusionFeeManager.setFeeRecipientAddress.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
-                roleId: Roles.TECH_IPOR_DAO_ROLE,
-                functionSelector: IporFusionFeeManager.setIporDaoFeeRecipientAddress.selector,
+                roleId: Roles.IPOR_DAO_ROLE,
+                functionSelector: FusionFeeManager.setIporDaoFeeRecipientAddress.selector,
                 minimalExecutionDelay: 0
             });
         }

@@ -16,7 +16,7 @@ import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
-import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
+import {FeeFactory} from "../../../contracts/managers/fee/FeeFactory.sol";
 
 contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     struct PlasmaVaultState {
@@ -115,7 +115,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -198,7 +198,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -269,7 +269,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -337,7 +337,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -403,7 +403,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -472,7 +472,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -579,7 +579,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -680,7 +680,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -768,7 +768,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -858,7 +858,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,

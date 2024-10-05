@@ -21,7 +21,7 @@ import {SwapExecutor} from "contracts/fuses/universal_token_swapper/SwapExecutor
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {MockDexActionEthereum} from "./MockDexActionEthereum.sol";
 
-import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
+import {FeeFactory} from "../../../contracts/managers/fee/FeeFactory.sol";
 
 contract UniversalSwapOnMockDexTest is Test {
     using SafeERC20 for ERC20;
@@ -219,7 +219,7 @@ contract UniversalSwapOnMockDexTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
-        feeConfig_ = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
+        feeConfig_ = FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private returns (address accessManager_) {

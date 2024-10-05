@@ -20,7 +20,7 @@ import {RamsesV2ModifyPositionFuse, RamsesV2ModifyPositionFuseEnterData, RamsesV
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {RamsesV2CollectFuse, RamsesV2CollectFuseEnterData} from "../../../contracts/fuses/ramses/RamsesV2CollectFuse.sol";
-import {IporFeeFactory} from "../../../contracts/managers/fee/IporFeeFactory.sol";
+import {FeeFactory} from "../../../contracts/managers/fee/FeeFactory.sol";
 
 contract RamsesV2PositionFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -598,7 +598,7 @@ contract RamsesV2PositionFuseTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new IporFeeFactory()), address(0), address(0));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private returns (address accessManager_) {

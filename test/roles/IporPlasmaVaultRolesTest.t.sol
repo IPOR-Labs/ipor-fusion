@@ -18,7 +18,7 @@ import {IporFusionAccessManagerInitializerLibV1} from "../../contracts/vaults/in
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
-import {IporFeeFactory} from "../../contracts/managers/fee/IporFeeFactory.sol";
+import {FeeFactory} from "../../contracts/managers/fee/FeeFactory.sol";
 
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -565,7 +565,7 @@ contract IporPlasmaVaultRolesTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new IporFeeFactory())), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(address(new FeeFactory())), address(0), address(0)),
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
