@@ -41,8 +41,9 @@ library PlasmaVaultConfigLib {
     function grantMarketSubstrates(uint256 marketId_, bytes32[] memory substrates_) internal {
         PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId_);
 
-        bytes32[] memory list = new bytes32[](substrates_.length);
+        _revokeMarketSubstrates(marketSubstrates);
 
+        bytes32[] memory list = new bytes32[](substrates_.length);
         for (uint256 i; i < substrates_.length; ++i) {
             marketSubstrates.substrateAllowances[substrates_[i]] = 1;
             list[i] = substrates_[i];
@@ -60,6 +61,8 @@ library PlasmaVaultConfigLib {
     function grantSubstratesAsAssetsToMarket(uint256 marketId_, address[] calldata substratesAsAssets_) internal {
         PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates = _getMarketSubstrates(marketId_);
 
+        _revokeMarketSubstrates(marketSubstrates);
+
         bytes32[] memory list = new bytes32[](substratesAsAssets_.length);
 
         for (uint256 i; i < substratesAsAssets_.length; ++i) {
@@ -70,6 +73,13 @@ library PlasmaVaultConfigLib {
         marketSubstrates.substrates = list;
 
         emit MarketSubstratesGranted(marketId_, list);
+    }
+
+    function _revokeMarketSubstrates(PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates) private {
+        uint256 length = marketSubstrates.substrates.length;
+        for (uint256 i; i < length; ++i) {
+            marketSubstrates.substrateAllowances[marketSubstrates.substrates[i]] = 0;
+        }
     }
 
     /// @notice Converts the substrate as bytes32 to value address
