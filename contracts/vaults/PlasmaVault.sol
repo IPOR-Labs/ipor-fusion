@@ -29,7 +29,7 @@ import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {FeeManagerData, FeeFactory} from "../managers/fee/FeeFactory.sol";
-import {FeeManagerInitData} from "../managers/fee/FusionFeeManager.sol";
+import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 
 /// @notice PlasmaVaultInitData is a struct that represents a configuration of a Plasma Vault during construction

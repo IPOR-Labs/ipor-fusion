@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {FusionFeeManager, FeeManagerInitData} from "./FusionFeeManager.sol";
+import {FeeManager, FeeManagerInitData} from "./FeeManager.sol";
 
 /// @notice Struct containing data related to the fee manager
 /// @param feeManager Address of the fee manager
@@ -20,13 +20,13 @@ struct FeeManagerData {
 }
 
 /// @title FeeFactory
-/// @notice Factory contract for deploying FusionFeeManager instances
+/// @notice Factory contract for deploying FeeManager instances
 contract FeeFactory {
-    /// @notice Deploys a new FusionFeeManager contract
+    /// @notice Deploys a new FeeManager contract
     /// @param initData Initialization data for the fee manager
     /// @return FeeManagerData containing addresses and fee information of the deployed fee manager
     function deployFeeManager(FeeManagerInitData memory initData) external returns (FeeManagerData memory) {
-        FusionFeeManager feeManager = new FusionFeeManager(initData);
+        FeeManager feeManager = new FeeManager(initData);
 
         return
             FeeManagerData({

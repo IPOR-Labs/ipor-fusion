@@ -8,7 +8,7 @@ import {PlasmaVaultGovernance} from "../PlasmaVaultGovernance.sol";
 import {Roles} from "../../libraries/Roles.sol";
 import {RewardsClaimManager} from "../../managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
-import {FusionFeeManager} from "../../managers/fee/FusionFeeManager.sol";
+import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
 
 /// @notice Plasma Vault address struct.
@@ -581,25 +581,25 @@ library IporFusionAccessManagerInitializerLibV1 {
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.ATOMIST_ROLE,
-                functionSelector: FusionFeeManager.updatePerformanceFee.selector,
+                functionSelector: FeeManager.updatePerformanceFee.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.ATOMIST_ROLE,
-                functionSelector: FusionFeeManager.updateManagementFee.selector,
+                functionSelector: FeeManager.updateManagementFee.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.ATOMIST_ROLE,
-                functionSelector: FusionFeeManager.setFeeRecipientAddress.selector,
+                functionSelector: FeeManager.setFeeRecipientAddress.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.IPOR_DAO_ROLE,
-                functionSelector: FusionFeeManager.setIporDaoFeeRecipientAddress.selector,
+                functionSelector: FeeManager.setIporDaoFeeRecipientAddress.selector,
                 minimalExecutionDelay: 0
             });
         }

@@ -28,10 +28,10 @@ struct FeeManagerInitData {
     address iporDaoFeeRecipientAddress;
 }
 
-/// @title FusionFeeManager
+/// @title FeeManager
 /// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
 /// @dev Inherits from AccessManaged for access control.
-contract FusionFeeManager is AccessManaged {
+contract FeeManager is AccessManaged {
     event HarvestManagementFee(address receiver, uint256 amount);
     event HarvestPerformanceFee(address receiver, uint256 amount);
     event PerformanceFeeUpdated(uint256 newPerformanceFee);
