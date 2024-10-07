@@ -382,7 +382,7 @@ contract RamsesClaimFuseTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
                 withdrawManager: address(0),
-                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager)
+                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER()
             })
         });

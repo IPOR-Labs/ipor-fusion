@@ -181,7 +181,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         // then
         PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
             .getPerformanceFeeData();
-        assertEq(feeData.feeManager, address(0x555));
+        assertEq(feeData.feeAccount, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
 
@@ -219,7 +219,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         // then
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
             .getManagementFeeData();
-        assertEq(feeData.feeManager, address(0x555));
+        assertEq(feeData.feeAccount, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
 
@@ -337,7 +337,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         // then
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
             .getManagementFeeData();
-        assertEq(feeData.feeManager, address(0x555));
+        assertEq(feeData.feeAccount, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
 
@@ -474,7 +474,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         // then
         PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
             .getPerformanceFeeData();
-        assertEq(feeData.feeManager, address(0x555));
+        assertEq(feeData.feeAccount, address(0x555));
         assertEq(feeData.feeInPercentage, 55);
     }
 
