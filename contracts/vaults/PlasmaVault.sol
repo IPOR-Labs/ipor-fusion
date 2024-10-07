@@ -28,6 +28,8 @@ import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../lib
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
+import {FeeManagerData, FeeManagerFactory} from "../managers/fee/FeeManagerFactory.sol";
+import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 
 /// @notice PlasmaVaultInitData is a struct that represents a configuration of a Plasma Vault during construction
@@ -76,16 +78,22 @@ struct MarketSubstratesConfig {
     bytes32[] substrates;
 }
 
-/// @notice FeeConfig is a struct that represents a configuration of performance and management fees used during Plasma Vault construction
+/// @notice FeeConfig is a struct that represents the configuration of fees in the Plasma Vault
 struct FeeConfig {
-    /// @notice performanceFeeManager is a address of the performance fee manager
-    address performanceFeeManager;
-    /// @notice performanceFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    uint256 performanceFeeInPercentage;
-    /// @notice managementFeeManager is a address of the management fee manager
-    address managementFeeManager;
-    /// @notice managementFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    uint256 managementFeeInPercentage;
+    /// @notice The management fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    uint256 iporDaoManagementFee;
+    /// @notice The performance fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    uint256 iporDaoPerformanceFee;
+    /// @notice The management fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    uint256 atomistManagementFee;
+    /// @notice The performance fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    uint256 atomistPerformanceFee;
+    /// @notice The address of the fee factory
+    address feeFactory;
+    /// @notice The address of the fee recipient
+    address feeRecipientAddress;
+    /// @notice The address of the DAO fee recipient
+    address iporDaoFeeRecipientAddress;
 }
 
 /// @title Main contract of the Plasma Vault in ERC4626 standard - responsible for managing assets and shares by the Alphas via Fuses.
@@ -163,14 +171,21 @@ contract PlasmaVault is
             );
         }
 
-        PlasmaVaultLib.configurePerformanceFee(
-            initData_.feeConfig.performanceFeeManager,
-            initData_.feeConfig.performanceFeeInPercentage
+        FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
+            FeeManagerInitData({
+                iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
+                iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
+                atomistManagementFee: initData_.feeConfig.atomistManagementFee,
+                atomistPerformanceFee: initData_.feeConfig.atomistPerformanceFee,
+                initialAuthority: initData_.accessManager,
+                plasmaVault: address(this),
+                feeRecipientAddress: initData_.feeConfig.feeRecipientAddress,
+                iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress
+            })
         );
-        PlasmaVaultLib.configureManagementFee(
-            initData_.feeConfig.managementFeeManager,
-            initData_.feeConfig.managementFeeInPercentage
-        );
+
+        PlasmaVaultLib.configurePerformanceFee(feeManagerData.performanceFeeAccount, feeManagerData.performanceFee);
+        PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
 
         PlasmaVaultLib.updateManagementFeeData();
         /// @dev If the address is zero, it means that scheduled withdrawals are turned off.

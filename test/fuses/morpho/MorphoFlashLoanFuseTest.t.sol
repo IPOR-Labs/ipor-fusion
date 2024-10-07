@@ -17,6 +17,8 @@ import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 
 contract MorphoFlashLoanFuseTest is Test {
     address private constant _MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
@@ -91,13 +93,8 @@ contract MorphoFlashLoanFuseTest is Test {
         });
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
     }
 
     function _createFuse() private returns (address[] memory) {
@@ -131,6 +128,7 @@ contract MorphoFlashLoanFuseTest is Test {
         whitelist[0] = _USER;
 
         DataForInitialization memory data = DataForInitialization({
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -147,7 +145,9 @@ contract MorphoFlashLoanFuseTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: address(0)
+                withdrawManager: address(0),
+                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeManager)
+                    .FEE_MANAGER()
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

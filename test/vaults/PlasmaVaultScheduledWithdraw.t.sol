@@ -11,9 +11,8 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 contract PlasmaVaultScheduledWithdraw is Test {
     address private constant _ATOMIST = address(1111111);
     address private constant _ALPHA = address(2222222);
@@ -73,13 +72,8 @@ contract PlasmaVaultScheduledWithdraw is Test {
         balanceFuses = new MarketBalanceFuseConfig[](0);
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private {
@@ -108,6 +102,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         whitelist[0] = _USER;
 
         DataForInitialization memory data = DataForInitialization({
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -124,7 +119,8 @@ contract PlasmaVaultScheduledWithdraw is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: _withdrawManager
+                withdrawManager: _withdrawManager,
+                feeManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

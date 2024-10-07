@@ -20,6 +20,7 @@ import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {IComet} from "../../contracts/fuses/compound_v3/ext/IComet.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract PlasmaVaultUpdateMarketsBalances is Test {
     address private constant _ATOMIST = address(1111111);
@@ -138,13 +139,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         });
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
     }
 
     function _createFuse() private returns (address[] memory) {
@@ -180,6 +176,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         whitelist[0] = _USER;
 
         DataForInitialization memory data = DataForInitialization({
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -196,7 +193,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: address(0)
+                withdrawManager: address(0),
+                feeManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

@@ -24,6 +24,7 @@ import {InitializationData} from "../../../contracts/managers/access/IporFusionA
 import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/chains/arbitrum/USDMPriceFeedArbitrum.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -810,13 +811,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         );
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new FeeManagerFactory())), address(0), address(0));
     }
 
     function _setupPlasmaVault() private {
@@ -873,6 +869,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         initAddress[0] = admin;
 
         DataForInitialization memory data = DataForInitialization({
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -889,7 +886,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 plasmaVault: address(plasmaVault),
                 accessManager: address(accessManager),
                 rewardsClaimManager: address(rewardsClaimManager),
-                withdrawManager: address(0)
+                withdrawManager: address(0),
+                feeManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

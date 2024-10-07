@@ -24,6 +24,7 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVa
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -575,13 +576,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         );
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new FeeManagerFactory())), address(0), address(0));
     }
 
     function _addClaimFuseToClaimRewardsManager() private {
@@ -595,6 +591,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         initAddress[0] = admin;
 
         DataForInitialization memory data = DataForInitialization({
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -611,7 +608,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 plasmaVault: address(instances.plasmaVault),
                 accessManager: address(instances.accessManager),
                 rewardsClaimManager: address(instances.rewardsClaimManager),
-                withdrawManager: address(0)
+                withdrawManager: address(0),
+                feeManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

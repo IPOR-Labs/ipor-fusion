@@ -18,6 +18,7 @@ import {IporFusionAccessManagerInitializerLibV1} from "../../contracts/vaults/in
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -101,11 +102,11 @@ contract IporPlasmaVaultRolesTest is Test {
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
@@ -446,11 +447,15 @@ contract IporPlasmaVaultRolesTest is Test {
             PlasmaVaultGovernance.setRewardsClaimManagerAddress.selector
         );
         (bool isMember, uint32 executionDelay) = _accessManager.hasRole(
-            Roles.REWARDS_CLAIM_MANAGER_ROLE,
+            Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
             address(_rewardsClaimManager)
         );
 
-        assertEq(roleId, Roles.REWARDS_CLAIM_MANAGER_ROLE, "Role id should be equal to rewards claim manager role");
+        assertEq(
+            roleId,
+            Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
+            "Role id should be equal to rewards claim manager role"
+        );
         assertTrue(isMember, "Rewards claim manager should be a member of rewards claim manager role");
         assertEq(executionDelay, 0, "Execution delay should be 0");
     }
@@ -560,7 +565,7 @@ contract IporPlasmaVaultRolesTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(_data.performanceFeeManagers[0], 0, _data.managementFeeManagers[0], 0),
+                FeeConfig(0, 0, 0, 0, address(address(new FeeManagerFactory())), address(0), address(0)),
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,

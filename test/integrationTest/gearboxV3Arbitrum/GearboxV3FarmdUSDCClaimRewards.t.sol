@@ -21,6 +21,7 @@ import {InitializationData} from "../../../contracts/managers/access/IporFusionA
 import {GearboxV3FarmDTokenClaimFuse} from "../../../contracts/rewards_fuses/gearbox_v3/GearboxV3FarmDTokenClaimFuse.sol";
 import {IFarmingPool} from "../../../contracts/fuses/gearbox_v3/ext/IFarmingPool.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract GearboxV3FarmdUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -91,6 +92,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         initAddress[0] = admin;
 
         DataForInitialization memory data = DataForInitialization({
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -107,7 +109,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
-                withdrawManager: address(0)
+                withdrawManager: address(0),
+                feeManager: address(0)
             })
         });
 
@@ -160,13 +163,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         vm.stopPrank();
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
