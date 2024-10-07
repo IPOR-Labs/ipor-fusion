@@ -17,7 +17,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
-import {FeeFactory} from "../../contracts/managers/fee/FeeFactory.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -131,7 +131,7 @@ contract PlasmaVaultFeeTest is Test {
                     0,
                     managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    address(new FeeFactory()),
+                    address(new FeeManagerFactory()),
                     address(0),
                     address(0)
                 ),
@@ -273,7 +273,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -410,7 +410,7 @@ contract PlasmaVaultFeeTest is Test {
                     0,
                     managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    address(new FeeFactory()),
+                    address(new FeeManagerFactory()),
                     address(0),
                     address(0)
                 ),
@@ -558,7 +558,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -700,7 +700,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -842,7 +842,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -983,7 +983,15 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, performanceFeeInPercentage, address(new FeeFactory()), address(0), address(0)),
+                FeeConfig(
+                    0,
+                    0,
+                    0,
+                    performanceFeeInPercentage,
+                    address(new FeeManagerFactory()),
+                    address(0),
+                    address(0)
+                ),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1109,7 +1117,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1236,7 +1244,7 @@ contract PlasmaVaultFeeTest is Test {
                     0,
                     managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    address(new FeeFactory()),
+                    address(new FeeManagerFactory()),
                     address(0),
                     address(0)
                 ),
@@ -1339,7 +1347,7 @@ contract PlasmaVaultFeeTest is Test {
                     0,
                     managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    address(new FeeFactory()),
+                    address(new FeeManagerFactory()),
                     address(0),
                     address(0)
                 ),
@@ -1448,7 +1456,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1544,7 +1552,7 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeFactory()), address(0), address(0)),
+                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1642,7 +1650,7 @@ contract PlasmaVaultFeeTest is Test {
                     0,
                     managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    address(new FeeFactory()),
+                    address(new FeeManagerFactory()),
                     address(0),
                     address(0)
                 ),
@@ -1759,7 +1767,7 @@ contract PlasmaVaultFeeTest is Test {
                     0,
                     managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    address(new FeeFactory()),
+                    address(new FeeManagerFactory()),
                     address(0),
                     address(0)
                 ),
@@ -1877,7 +1885,7 @@ contract PlasmaVaultFeeTest is Test {
                     0,
                     managementFeeInPercentage,
                     performanceFeeInPercentage,
-                    address(new FeeFactory()),
+                    address(new FeeManagerFactory()),
                     address(0),
                     address(0)
                 ),

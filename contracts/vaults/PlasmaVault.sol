@@ -28,7 +28,7 @@ import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../lib
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
-import {FeeManagerData, FeeFactory} from "../managers/fee/FeeFactory.sol";
+import {FeeManagerData, FeeManagerFactory} from "../managers/fee/FeeManagerFactory.sol";
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 
@@ -171,7 +171,7 @@ contract PlasmaVault is
             );
         }
 
-        FeeManagerData memory feeManagerData = FeeFactory(initData_.feeConfig.feeFactory).deployFeeManager(
+        FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
             FeeManagerInitData({
                 iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
                 iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,

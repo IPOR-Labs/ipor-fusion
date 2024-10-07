@@ -19,9 +19,9 @@ struct FeeManagerData {
     uint256 performanceFee;
 }
 
-/// @title FeeFactory
+/// @title FeeManagerFactory
 /// @notice Factory contract for deploying FeeManager instances
-contract FeeFactory {
+contract FeeManagerFactory {
     /// @notice Deploys a new FeeManager contract
     /// @param initData Initialization data for the fee manager
     /// @return FeeManagerData containing addresses and fee information of the deployed fee manager

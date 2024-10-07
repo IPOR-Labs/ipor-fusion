@@ -12,7 +12,7 @@ import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMid
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {FeeFactory} from "../../contracts/managers/fee/FeeFactory.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
@@ -131,7 +131,7 @@ contract FeeManagerTest is Test {
             DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
             MANAGEMENT_FEE_IN_PERCENTAGE,
             PERFORMANCE_FEE_IN_PERCENTAGE,
-            address(new FeeFactory()),
+            address(new FeeManagerFactory()),
             _FEE_RECIPIENT_ADDRESS,
             _DAO_FEE_RECIPIENT_ADDRESS
         );

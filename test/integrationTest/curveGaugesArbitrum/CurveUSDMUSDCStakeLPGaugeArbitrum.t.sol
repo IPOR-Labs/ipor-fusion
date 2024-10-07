@@ -24,7 +24,7 @@ import {InitializationData} from "../../../contracts/managers/access/IporFusionA
 import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/chains/arbitrum/USDMPriceFeedArbitrum.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
-import {FeeFactory} from "../../../contracts/managers/fee/FeeFactory.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -812,7 +812,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new FeeFactory())), address(0), address(0));
+        feeConfig = FeeConfig(0, 0, 0, 0, address(address(new FeeManagerFactory())), address(0), address(0));
     }
 
     function _setupPlasmaVault() private {
