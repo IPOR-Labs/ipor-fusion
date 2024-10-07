@@ -97,6 +97,10 @@ contract FeeManager is AccessManaged {
             revert InvalidFeeRecipientAddress();
         }
 
+        if (plasmaVaultManagementFee == 0) {
+            return;
+        }
+
         uint256 balance = IERC4626(PLASMA_VAULT).balanceOf(MANAGEMENT_FEE_ACCOUNT);
 
         if (balance == 0) {
@@ -113,7 +117,17 @@ contract FeeManager is AccessManaged {
         IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, iporDaoFeeRecipientAddress, transferAmountToDao);
         emit HarvestManagementFee(iporDaoFeeRecipientAddress, transferAmountToDao);
 
-        IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, feeRecipientAddress, balance - transferAmountToDao);
+        if (balance <= transferAmountToDao) {
+            return;
+        }
+
+        uint256 transferAmount = balance - transferAmountToDao;
+
+        if (transferAmount == 0) {
+            return;
+        }
+
+        IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, feeRecipientAddress, transferAmount);
         emit HarvestManagementFee(feeRecipientAddress, balance - transferAmountToDao);
     }
 
@@ -125,6 +139,10 @@ contract FeeManager is AccessManaged {
     function harvestPerformanceFee() public onlyInitialized {
         if (feeRecipientAddress == address(0) || iporDaoFeeRecipientAddress == address(0)) {
             revert InvalidFeeRecipientAddress();
+        }
+
+        if (plasmaVaultPerformanceFee == 0) {
+            return;
         }
 
         uint256 balance = IERC4626(PLASMA_VAULT).balanceOf(PERFORMANCE_FEE_ACCOUNT);
@@ -142,6 +160,16 @@ contract FeeManager is AccessManaged {
 
         IERC4626(PLASMA_VAULT).transferFrom(PERFORMANCE_FEE_ACCOUNT, iporDaoFeeRecipientAddress, transferAmountToDao);
         emit HarvestPerformanceFee(iporDaoFeeRecipientAddress, transferAmountToDao);
+
+        if (balance <= transferAmountToDao) {
+            return;
+        }
+
+        uint256 transferAmount = balance - transferAmountToDao;
+
+        if (transferAmount == 0) {
+            return;
+        }
 
         IERC4626(PLASMA_VAULT).transferFrom(
             PERFORMANCE_FEE_ACCOUNT,
