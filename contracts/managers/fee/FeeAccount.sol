@@ -12,6 +12,7 @@ contract FeeAccount {
     /// @notice Error thrown when a non-fee manager tries to approve
     error OnlyFeeManagerCanApprove();
 
+    /// @notice Address of the Fee Manager contract
     address public immutable FEE_MANAGER;
 
     constructor(address feeManager_) {

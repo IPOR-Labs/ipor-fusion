@@ -147,8 +147,8 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         /// @dev user one deposit
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -424,8 +424,8 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -1002,8 +1002,8 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -1258,8 +1258,8 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
@@ -1362,8 +1362,8 @@ contract PlasmaVaultFeeTest is Test {
         amount = 100 * 1e6;
         sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         vm.warp(block.timestamp);
 
@@ -1664,8 +1664,8 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeManager;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         vm.warp(block.timestamp);
 
@@ -1811,7 +1811,7 @@ contract PlasmaVaultFeeTest is Test {
         vm.warp(block.timestamp + 365 days);
 
         //solhint-disable-next-line
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeManager;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         uint256 managementFeeAfter365DayBeforeMaxRedeem = plasmaVault.getUnrealizedManagementFee();
         vm.startPrank(userOne);

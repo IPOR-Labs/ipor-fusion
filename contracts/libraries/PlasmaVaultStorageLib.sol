@@ -167,13 +167,13 @@ library PlasmaVaultStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.PlasmaVaultPerformanceFeeData
     struct PerformanceFeeData {
-        address feeManager;
+        address feeAccount;
         uint16 feeInPercentage;
     }
 
     /// @custom:storage-location erc7201:io.ipor.PlasmaVaultManagementFeeData
     struct ManagementFeeData {
-        address feeManager;
+        address feeAccount;
         uint16 feeInPercentage;
         uint32 lastUpdateTimestamp;
     }
