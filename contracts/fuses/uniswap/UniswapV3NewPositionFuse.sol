@@ -135,6 +135,8 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
                 continue;
             }
 
+            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
+
             tokenIndex = tokensIds.indexes[closePositions.tokenIds[i]];
             if (tokenIndex != len - 1) {
                 tokensIds.tokenIds[tokenIndex] = tokensIds.tokenIds[len - 1];

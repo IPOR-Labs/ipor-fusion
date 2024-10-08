@@ -24,6 +24,7 @@ import {CallbackHandlerMorpho} from "../../contracts/callback_handlers/CallbackH
 
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract PlasmaVaultCallbackHandler is Test {
     address private constant _AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
@@ -83,7 +84,8 @@ contract PlasmaVaultCallbackHandler is Test {
                     feeConfig,
                     _accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );
@@ -145,13 +147,8 @@ contract PlasmaVaultCallbackHandler is Test {
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private {
@@ -170,6 +167,7 @@ contract PlasmaVaultCallbackHandler is Test {
         initAddress[0] = address(this);
 
         DataForInitialization memory data = DataForInitialization({
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -185,7 +183,9 @@ contract PlasmaVaultCallbackHandler is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(this)
+                rewardsClaimManager: address(this),
+                withdrawManager: address(0),
+                feeManager: address(0)
             })
         });
 
@@ -233,8 +233,8 @@ contract PlasmaVaultCallbackHandler is Test {
                 "enter((bytes32,uint256,bytes))",
                 MorphoSupplyFuseEnterData({
                     morphoMarketId: _MARKET_ID_BYTES32,
-                    amount: 100e18,
-                    callbackData: callbackCallsBytes
+                    maxTokenAmount: 100e18,
+                    callbackFuseActionsData: callbackCallsBytes
                 })
             )
         );

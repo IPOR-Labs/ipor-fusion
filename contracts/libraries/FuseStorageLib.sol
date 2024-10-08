@@ -13,6 +13,10 @@ library FuseStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.UniswapV3TokenIds")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant UNISWAP_V3_TOKEN_IDS = 0x3651659bd419f7c37743f3e14a337c9f9d1cfc4d650d91508f44d1acbe960f00;
 
+    /// @notice This memory is designed to use with Ramses V2 fuses
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.RamsesV2TokenIds")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant RAMSES_V2_TOKEN_IDS = 0x1a3831a406f27d4d5d820158b29ce95a1e8e840bf416921917aa388e2461b700;
+
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
         /// @dev fuse address => If index = 0 - is not granted, otherwise - granted
@@ -27,6 +31,12 @@ library FuseStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.UniswapV3TokenIds
     struct UniswapV3TokenIds {
+        uint256[] tokenIds;
+        mapping(uint256 tokenId => uint256 index) indexes;
+    }
+
+    /// @custom:storage-location erc7201:io.ipor.RamsesV2TokenIds
+    struct RamsesV2TokenIds {
         uint256[] tokenIds;
         mapping(uint256 tokenId => uint256 index) indexes;
     }
@@ -49,6 +59,12 @@ library FuseStorageLib {
     function getUniswapV3TokenIds() internal pure returns (UniswapV3TokenIds storage uniswapV3TokenIds) {
         assembly {
             uniswapV3TokenIds.slot := UNISWAP_V3_TOKEN_IDS
+        }
+    }
+    /// @notice Gets the UniswapV3TokenIds storage pointer
+    function getRamsesV2TokenIds() internal pure returns (RamsesV2TokenIds storage ramsesV2TokenIds) {
+        assembly {
+            ramsesV2TokenIds.slot := RAMSES_V2_TOKEN_IDS
         }
     }
 }

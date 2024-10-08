@@ -34,10 +34,11 @@ library PlasmaVaultLib {
 
     event InstantWithdrawalFusesConfigured(InstantWithdrawalFusesParamsStruct[] fuses);
     event PriceOracleMiddlewareChanged(address newPriceOracleMiddleware);
-    event PerformanceFeeDataConfigured(address feeManager, uint256 feeInPercentage);
-    event ManagementFeeDataConfigured(address feeManager, uint256 feeInPercentage);
+    event PerformanceFeeDataConfigured(address feeAccount, uint256 feeInPercentage);
+    event ManagementFeeDataConfigured(address feeAccount, uint256 feeInPercentage);
     event RewardsClaimManagerAddressChanged(address newRewardsClaimManagerAddress);
     event DependencyBalanceGraphChanged(uint256 marketId, uint256[] newDependenceGraph);
+    event WithdrawManagerChanged(address newWithdrawManager);
 
     /// @notice Gets the total assets in the vault for all markets
     /// @return The total assets in the vault for all markets, represented in decimals of the underlying asset
@@ -105,10 +106,10 @@ library PlasmaVaultLib {
     }
 
     /// @notice Configures the management fee data like the fee manager and the fee in percentage
-    /// @param feeManager_ The address of the fee manager responsible for managing the management fee
+    /// @param feeAccount_ The address of the fee manager responsible for managing the management fee
     /// @param feeInPercentage_ The fee in percentage, represented in 2 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
-    function configureManagementFee(address feeManager_, uint256 feeInPercentage_) internal {
-        if (feeManager_ == address(0)) {
+    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) internal {
+        if (feeAccount_ == address(0)) {
             revert Errors.WrongAddress();
         }
         if (feeInPercentage_ > MANAGEMENT_MAX_FEE_IN_PERCENTAGE) {
@@ -118,10 +119,10 @@ library PlasmaVaultLib {
         PlasmaVaultStorageLib.ManagementFeeData storage managementFeeData = PlasmaVaultStorageLib
             .getManagementFeeData();
 
-        managementFeeData.feeManager = feeManager_;
+        managementFeeData.feeAccount = feeAccount_;
         managementFeeData.feeInPercentage = feeInPercentage_.toUint16();
 
-        emit ManagementFeeDataConfigured(feeManager_, feeInPercentage_);
+        emit ManagementFeeDataConfigured(feeAccount_, feeInPercentage_);
     }
 
     /// @notice Gets the performance fee data
@@ -136,10 +137,10 @@ library PlasmaVaultLib {
     }
 
     /// @notice Configures the performance fee data like the fee manager and the fee in percentage
-    /// @param feeManager_ The address of the fee manager responsible for managing the performance fee
+    /// @param feeAccount_ The address of the fee manager responsible for managing the performance fee
     /// @param feeInPercentage_ The fee in percentage, represented in 2 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
-    function configurePerformanceFee(address feeManager_, uint256 feeInPercentage_) internal {
-        if (feeManager_ == address(0)) {
+    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) internal {
+        if (feeAccount_ == address(0)) {
             revert Errors.WrongAddress();
         }
         if (feeInPercentage_ > PERFORMANCE_MAX_FEE_IN_PERCENTAGE) {
@@ -149,10 +150,10 @@ library PlasmaVaultLib {
         PlasmaVaultStorageLib.PerformanceFeeData storage performanceFeeData = PlasmaVaultStorageLib
             .getPerformanceFeeData();
 
-        performanceFeeData.feeManager = feeManager_;
+        performanceFeeData.feeAccount = feeAccount_;
         performanceFeeData.feeInPercentage = feeInPercentage_.toUint16();
 
-        emit PerformanceFeeDataConfigured(feeManager_, feeInPercentage_);
+        emit PerformanceFeeDataConfigured(feeAccount_, feeInPercentage_);
     }
 
     /// @notice Updates the management fee data with the current timestamp
@@ -281,5 +282,12 @@ library PlasmaVaultLib {
     /// @return true if the execution is started
     function isExecutionStarted() internal view returns (bool) {
         return PlasmaVaultStorageLib.getExecutionState().value == 1;
+    }
+
+    /// @notice Updates the Withdraw Manager address. If the address is zero, it means that scheduled withdrawals are turned off.
+    function updateWithdrawManager(address newWithdrawManager_) internal {
+        PlasmaVaultStorageLib.getWithdrawManager().manager = newWithdrawManager_;
+
+        emit WithdrawManagerChanged(newWithdrawManager_);
     }
 }

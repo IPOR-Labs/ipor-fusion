@@ -77,7 +77,7 @@ library RoleLib {
         IporFusionAccessManager accessManager_
     ) public {
         vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.grantRole(Roles.PLASMA_VAULT_ROLE, plasmaVault_, 0);
+        accessManager_.grantRole(Roles.TECH_PLASMA_VAULT_ROLE, plasmaVault_, 0);
 
         bytes4[] memory performanceFeeSig = new bytes4[](1);
         performanceFeeSig[0] = PlasmaVaultGovernance.configurePerformanceFee.selector;
@@ -118,7 +118,7 @@ library RoleLib {
         plasmaVaultRoles[2] = IporFusionAccessManager.setMinimalExecutionDelaysForRoles.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setTargetFunctionRole(address(accessManager_), plasmaVaultRoles, Roles.PLASMA_VAULT_ROLE);
+        accessManager_.setTargetFunctionRole(address(accessManager_), plasmaVaultRoles, Roles.TECH_PLASMA_VAULT_ROLE);
 
         bytes4[] memory guardianSig = new bytes4[](1);
         guardianSig[0] = IporFusionAccessManager.updateTargetClosed.selector;

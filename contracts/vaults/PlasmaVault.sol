@@ -28,6 +28,9 @@ import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../lib
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
+import {FeeManagerData, FeeManagerFactory} from "../managers/fee/FeeManagerFactory.sol";
+import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
+import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 
 /// @notice PlasmaVaultInitData is a struct that represents a configuration of a Plasma Vault during construction
 struct PlasmaVaultInitData {
@@ -53,6 +56,8 @@ struct PlasmaVaultInitData {
     address plasmaVaultBase;
     /// @notice totalSupplyCap is a initial total supply cap of the Plasma Vault, represented in underlying token decimals
     uint256 totalSupplyCap;
+    // @notice Address of the Withdraw Manager contract
+    address withdrawManager;
 }
 
 /// @notice MarketBalanceFuseConfig is a struct that represents a configuration of a balance fuse for a specific market
@@ -73,16 +78,22 @@ struct MarketSubstratesConfig {
     bytes32[] substrates;
 }
 
-/// @notice FeeConfig is a struct that represents a configuration of performance and management fees used during Plasma Vault construction
+/// @notice FeeConfig is a struct that represents the configuration of fees in the Plasma Vault
 struct FeeConfig {
-    /// @notice performanceFeeManager is a address of the performance fee manager
-    address performanceFeeManager;
-    /// @notice performanceFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    uint256 performanceFeeInPercentage;
-    /// @notice managementFeeManager is a address of the management fee manager
-    address managementFeeManager;
-    /// @notice managementFeeInPercentageInput is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    uint256 managementFeeInPercentage;
+    /// @notice The management fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    uint256 iporDaoManagementFee;
+    /// @notice The performance fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    uint256 iporDaoPerformanceFee;
+    /// @notice The management fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    uint256 atomistManagementFee;
+    /// @notice The performance fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    uint256 atomistPerformanceFee;
+    /// @notice The address of the fee factory
+    address feeFactory;
+    /// @notice The address of the fee recipient
+    address feeRecipientAddress;
+    /// @notice The address of the DAO fee recipient
+    address iporDaoFeeRecipientAddress;
 }
 
 /// @title Main contract of the Plasma Vault in ERC4626 standard - responsible for managing assets and shares by the Alphas via Fuses.
@@ -109,6 +120,7 @@ contract PlasmaVault is
     error NoAssetsToDeposit();
     error UnsupportedFuse();
     error UnsupportedMethod();
+    error WithdrawIsNotAllowed(address caller, uint256 requested);
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -159,16 +171,25 @@ contract PlasmaVault is
             );
         }
 
-        PlasmaVaultLib.configurePerformanceFee(
-            initData_.feeConfig.performanceFeeManager,
-            initData_.feeConfig.performanceFeeInPercentage
-        );
-        PlasmaVaultLib.configureManagementFee(
-            initData_.feeConfig.managementFeeManager,
-            initData_.feeConfig.managementFeeInPercentage
+        FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
+            FeeManagerInitData({
+                iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
+                iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
+                atomistManagementFee: initData_.feeConfig.atomistManagementFee,
+                atomistPerformanceFee: initData_.feeConfig.atomistPerformanceFee,
+                initialAuthority: initData_.accessManager,
+                plasmaVault: address(this),
+                feeRecipientAddress: initData_.feeConfig.feeRecipientAddress,
+                iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress
+            })
         );
 
+        PlasmaVaultLib.configurePerformanceFee(feeManagerData.performanceFeeAccount, feeManagerData.performanceFee);
+        PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
+
         PlasmaVaultLib.updateManagementFeeData();
+        /// @dev If the address is zero, it means that scheduled withdrawals are turned off.
+        PlasmaVaultLib.updateWithdrawManager(initData_.withdrawManager);
     }
 
     fallback(bytes calldata) external returns (bytes memory) {
@@ -478,7 +499,7 @@ contract PlasmaVault is
         /// @dev total supply cap validation is disabled for fee minting
         PlasmaVaultLib.setTotalSupplyCapValidation(1);
 
-        _mint(feeData.feeManager, convertToShares(fee));
+        _mint(feeData.feeAccount, convertToShares(fee));
 
         /// @dev total supply cap validation is enabled when fee minting is finished
         PlasmaVaultLib.setTotalSupplyCapValidation(0);
@@ -501,7 +522,7 @@ contract PlasmaVault is
         /// @dev total supply cap validation is disabled for fee minting
         PlasmaVaultLib.setTotalSupplyCapValidation(1);
 
-        _mint(feeData.feeManager, unrealizedFeeInShares);
+        _mint(feeData.feeAccount, unrealizedFeeInShares);
 
         /// @dev total supply cap validation is enabled when fee minting is finished
         PlasmaVaultLib.setTotalSupplyCapValidation(0);
@@ -742,12 +763,27 @@ contract PlasmaVault is
         bytes4 sig = bytes4(data_[0:4]);
         bool immediate;
         uint32 delay;
-        if (
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+
+        if (withdrawManager != address(0) && this.withdraw.selector == sig) {
+            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
+            uint256 amount = _extractAmountFromWithdrawAndRedeem();
+            if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
+                revert WithdrawIsNotAllowed(caller_, amount);
+            }
+        } else if (withdrawManager != address(0) && this.redeem.selector == sig) {
+            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
+            uint256 amount = convertToAssets(_extractAmountFromWithdrawAndRedeem());
+
+            if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
+                revert WithdrawIsNotAllowed(caller_, amount);
+            }
+        } else if (
             this.deposit.selector == sig ||
             this.mint.selector == sig ||
-            this.withdraw.selector == sig ||
+            this.depositWithPermit.selector == sig ||
             this.redeem.selector == sig ||
-            this.depositWithPermit.selector == sig
+            this.withdraw.selector == sig
         ) {
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
         } else {
@@ -763,6 +799,11 @@ contract PlasmaVault is
                 revert AccessManagedUnauthorized(caller_);
             }
         }
+    }
+
+    function _extractAmountFromWithdrawAndRedeem() private returns (uint256) {
+        (uint256 amount, , ) = abi.decode(_msgData()[4:], (uint256, address, address));
+        return amount;
     }
 
     function _update(address from_, address to_, uint256 value_) internal virtual override {

@@ -21,6 +21,8 @@ import {SwapExecutor} from "contracts/fuses/universal_token_swapper/SwapExecutor
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {MockDexActionEthereum} from "./MockDexActionEthereum.sol";
 
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+
 contract UniversalSwapOnMockDexTest is Test {
     using SafeERC20 for ERC20;
 
@@ -71,7 +73,8 @@ contract UniversalSwapOnMockDexTest is Test {
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );
@@ -215,13 +218,8 @@ contract UniversalSwapOnMockDexTest is Test {
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig_) {
-        feeConfig_ = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
+        feeConfig_ = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private returns (address accessManager_) {

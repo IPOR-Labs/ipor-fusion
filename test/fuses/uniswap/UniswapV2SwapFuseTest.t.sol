@@ -8,6 +8,7 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contract
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 
 import {UniswapV2SwapFuse, UniswapV2SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV2SwapFuse.sol";
 
@@ -18,6 +19,7 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract UniswapV2SwapFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -61,7 +63,8 @@ contract UniswapV2SwapFuseTest is Test {
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );
@@ -161,6 +164,50 @@ contract UniswapV2SwapFuseTest is Test {
         assertGt(plasmaVaultUsdtBalanceAfter, 0, "plasmaVaultUsdtBalanceAfter");
     }
 
+    function testShouldNotBeAbleSwapWhenDAIWasRemovedFromSubstrates() external {
+        // given
+
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        address[] memory path = new address[](3);
+        path[0] = USDC;
+        path[1] = DAI;
+        path[2] = USDT;
+
+        UniswapV2SwapFuseEnterData memory enterData = UniswapV2SwapFuseEnterData({
+            tokenInAmount: depositAmount,
+            path: path,
+            minOutAmount: 0
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_uniswapV2SwapFuse),
+            abi.encodeWithSignature("enter((uint256,address[],uint256))", enterData)
+        );
+
+        bytes32[] memory uniswapTokens = new bytes32[](2);
+        uniswapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+        uniswapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(USDT);
+
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_SWAP_V2, uniswapTokens);
+
+        bytes memory error = abi.encodeWithSignature("UniswapV2SwapFuseUnsupportedToken(address)", DAI);
+
+        //when
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
     function testShouldRevertWhenUnsupportedToken() external {
         // given
 
@@ -199,13 +246,8 @@ contract UniswapV2SwapFuseTest is Test {
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig_) {
-        feeConfig_ = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
+        feeConfig_ = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
     }
 
     function _createAccessManager() private returns (address accessManager_) {
