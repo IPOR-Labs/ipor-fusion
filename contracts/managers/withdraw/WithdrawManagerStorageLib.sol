@@ -58,7 +58,7 @@ library WithdrawManagerStorageLib {
 
     function _getReleaseFunds() private view returns (ReleaseFunds storage releaseFunds_) {
         assembly {
-            releaseFunds.slot := LAST_RELEASE_FUNDS_TIMESTAMP
+            releaseFunds_.slot := LAST_RELEASE_FUNDS_TIMESTAMP
         }
     }
 
