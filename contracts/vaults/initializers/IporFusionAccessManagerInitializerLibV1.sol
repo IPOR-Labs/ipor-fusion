@@ -43,10 +43,6 @@ struct DataForInitialization {
     address[] guardians;
     /// @notice Array of addresses of the Fuse Managers (Roles.FUSE_MANAGER_ROLE)
     address[] fuseManagers;
-    /// @notice Array of addresses of the Performance Fee Managers (Roles.PERFORMANCE_FEE_MANAGER_ROLE)
-    address[] performanceFeeManagers;
-    /// @notice Array of addresses of the Management Fee Managers (Roles.MANAGEMENT_FEE_MANAGER_ROLE)
-    address[] managementFeeManagers;
     /// @notice Array of addresses of the Claim Rewards Managers (Roles.CLAIM_REWARDS_ROLE)
     address[] claimRewards;
     /// @notice Array of addresses of the Transfer Rewards Managers (Roles.TRANSFER_REWARDS_ROLE)
@@ -92,8 +88,6 @@ library IporFusionAccessManagerInitializerLibV1 {
                 data_.atomists.length +
                 data_.alphas.length +
                 data_.fuseManagers.length +
-                data_.performanceFeeManagers.length +
-                data_.managementFeeManagers.length +
                 data_.claimRewards.length +
                 data_.transferRewardsManagers.length +
                 data_.whitelist.length +
@@ -176,24 +170,6 @@ library IporFusionAccessManagerInitializerLibV1 {
             ++index;
         }
 
-        for (uint256 i; i < data_.performanceFeeManagers.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE,
-                account: data_.performanceFeeManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.managementFeeManagers.length; ++i) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE,
-                account: data_.managementFeeManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
         for (uint256 i; i < data_.claimRewards.length; ++i) {
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.CLAIM_REWARDS_ROLE,
@@ -238,13 +214,13 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         if (data_.plasmaVaultAddress.feeManager != address(0)) {
             accountToRoles[index] = AccountToRole({
-                roleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE,
+                roleId: Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE,
                 account: data_.plasmaVaultAddress.feeManager,
                 executionDelay: 0
             });
             ++index;
             accountToRoles[index] = AccountToRole({
-                roleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE,
+                roleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
                 account: data_.plasmaVaultAddress.feeManager,
                 executionDelay: 0
             });
@@ -269,12 +245,12 @@ library IporFusionAccessManagerInitializerLibV1 {
         adminRoles_[7] = AdminRole({roleId: Roles.CLAIM_REWARDS_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
         adminRoles_[8] = AdminRole({roleId: Roles.FUSE_MANAGER_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
         adminRoles_[9] = AdminRole({
-            roleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE,
-            adminRoleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE
+            roleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
+            adminRoleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE
         });
         adminRoles_[10] = AdminRole({
-            roleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE,
-            adminRoleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE
+            roleId: Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE,
+            adminRoleId: Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE
         });
         adminRoles_[11] = AdminRole({roleId: Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         adminRoles_[12] = AdminRole({roleId: Roles.IPOR_DAO_ROLE, adminRoleId: Roles.IPOR_DAO_ROLE});
@@ -370,13 +346,13 @@ library IporFusionAccessManagerInitializerLibV1 {
         });
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.MANAGEMENT_FEE_MANAGER_ROLE,
+            roleId: Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.configureManagementFee.selector,
             minimalExecutionDelay: 0
         });
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.PERFORMANCE_FEE_MANAGER_ROLE,
+            roleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.configurePerformanceFee.selector,
             minimalExecutionDelay: 0
         });

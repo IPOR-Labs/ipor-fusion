@@ -100,8 +100,6 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
             whitelist: initAddress,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: initAddress,
-            managementFeeManagers: initAddress,
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,

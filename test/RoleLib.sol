@@ -31,9 +31,9 @@ library RoleLib {
         vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(Roles.ALPHA_ROLE, Roles.ATOMIST_ROLE);
         vm.prank(usersWithRoles.superAdmin);
-        accessManager.setRoleAdmin(Roles.PERFORMANCE_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
+        accessManager.setRoleAdmin(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
         vm.prank(usersWithRoles.superAdmin);
-        accessManager.setRoleAdmin(Roles.MANAGEMENT_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
+        accessManager.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
 
         vm.prank(usersWithRoles.superAdmin);
         accessManager.grantRole(Roles.ATOMIST_ROLE, usersWithRoles.atomist, 0);
@@ -52,7 +52,7 @@ library RoleLib {
         for (uint256 i; i < usersWithRoles.performanceFeeManagers.length; i++) {
             vm.prank(usersWithRoles.atomist);
             accessManager.grantRole(
-                Roles.PERFORMANCE_FEE_MANAGER_ROLE,
+                Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
                 usersWithRoles.performanceFeeManagers[i],
                 usersWithRoles.feeTimelock
             );
@@ -61,7 +61,7 @@ library RoleLib {
         for (uint256 i; i < usersWithRoles.managementFeeManagers.length; i++) {
             vm.prank(usersWithRoles.atomist);
             accessManager.grantRole(
-                Roles.MANAGEMENT_FEE_MANAGER_ROLE,
+                Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE,
                 usersWithRoles.managementFeeManagers[i],
                 usersWithRoles.feeTimelock
             );
@@ -83,13 +83,13 @@ library RoleLib {
         performanceFeeSig[0] = PlasmaVaultGovernance.configurePerformanceFee.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setTargetFunctionRole(plasmaVault_, performanceFeeSig, Roles.PERFORMANCE_FEE_MANAGER_ROLE);
+        accessManager_.setTargetFunctionRole(plasmaVault_, performanceFeeSig, Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE);
 
         bytes4[] memory managementFeeSig = new bytes4[](1);
         managementFeeSig[0] = PlasmaVaultGovernance.configureManagementFee.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setTargetFunctionRole(plasmaVault_, managementFeeSig, Roles.MANAGEMENT_FEE_MANAGER_ROLE);
+        accessManager_.setTargetFunctionRole(plasmaVault_, managementFeeSig, Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE);
 
         bytes4[] memory alphaSig = new bytes4[](1);
         alphaSig[0] = PlasmaVault.execute.selector;

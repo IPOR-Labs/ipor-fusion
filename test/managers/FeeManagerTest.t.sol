@@ -177,8 +177,6 @@ contract FeeManagerTest is Test {
             whitelist: whitelist,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: new address[](0),
-            managementFeeManagers: new address[](0),
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
