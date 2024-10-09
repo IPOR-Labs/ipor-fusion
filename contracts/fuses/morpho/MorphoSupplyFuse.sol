@@ -41,7 +41,7 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SharesMathLib for uint256;
     using MarketParamsLib for MarketParams;
 
-    IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
+    IMorpho public immutable MORPHO;
 
     event MorphoSupplyFuseEnter(address version, address asset, bytes32 market, uint256 amount);
     event MorphoSupplyFuseExit(address version, address asset, bytes32 market, uint256 amount);
@@ -52,9 +52,10 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
-    constructor(uint256 marketId_) {
+    constructor(uint256 marketId_, address morpho_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
+        MORPHO = IMorpho(morpho_);
     }
 
     function enter(MorphoSupplyFuseEnterData memory data_) external {
@@ -94,7 +95,7 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
 
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoMarketId)) {
-            revert MorphoSupplyFuseUnsupportedMarket("enter", data_.morphoMarketId);
+            revert MorphoSupplyFuseUnsupportedMarket("exit", data_.morphoMarketId);
         }
 
         MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoMarketId));

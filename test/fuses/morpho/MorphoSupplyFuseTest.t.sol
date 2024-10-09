@@ -43,7 +43,7 @@ contract MorphoSupplyFuseTest is Test {
         Id marketId = Id.wrap(marketIdBytes32);
 
         MorphoBalanceFuse balanceFuse = new MorphoBalanceFuse(1);
-        MorphoSupplyFuse fuse = new MorphoSupplyFuse(1);
+        MorphoSupplyFuse fuse = new MorphoSupplyFuse(1, 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
         vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
@@ -81,7 +81,7 @@ contract MorphoSupplyFuseTest is Test {
         // sDAI/DAI
         bytes32 marketIdBytes32 = 0xb1eac1c0f3ad13fb45b01beac8458c055c903b1bff8cb882346635996a774f77;
         Id marketId = Id.wrap(marketIdBytes32);
-        MorphoSupplyFuse fuse = new MorphoSupplyFuse(1);
+        MorphoSupplyFuse fuse = new MorphoSupplyFuse(1, 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0));
         vaultMock.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
 
