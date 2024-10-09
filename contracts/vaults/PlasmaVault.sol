@@ -499,7 +499,7 @@ contract PlasmaVault is
         /// @dev total supply cap validation is disabled for fee minting
         PlasmaVaultLib.setTotalSupplyCapValidation(1);
 
-        _mint(feeData.feeManager, convertToShares(fee));
+        _mint(feeData.feeAccount, convertToShares(fee));
 
         /// @dev total supply cap validation is enabled when fee minting is finished
         PlasmaVaultLib.setTotalSupplyCapValidation(0);
@@ -522,7 +522,7 @@ contract PlasmaVault is
         /// @dev total supply cap validation is disabled for fee minting
         PlasmaVaultLib.setTotalSupplyCapValidation(1);
 
-        _mint(feeData.feeManager, unrealizedFeeInShares);
+        _mint(feeData.feeAccount, unrealizedFeeInShares);
 
         /// @dev total supply cap validation is enabled when fee minting is finished
         PlasmaVaultLib.setTotalSupplyCapValidation(0);
