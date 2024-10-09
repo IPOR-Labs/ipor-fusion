@@ -16,7 +16,7 @@ remappings = [
 ]
 optimizer_runs = 3000
 ignored_error_codes = [5667, 9302, 2462, 5574, 8760]
-evm_version = "shanghai"
+evm_version = "cancun"
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 
 [profile.arbitrum]
