@@ -28,12 +28,18 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
     constructor(address initialAuthority_, address plasmaVault_) AccessManaged(initialAuthority_) {
         UNDERLYING_TOKEN = PlasmaVault(plasmaVault_).asset();
         PLASMA_VAULT = plasmaVault_;
+
+        RewardsClaimManagersStorageLib.setupVestingTime(1);
     }
 
     function balanceOf() public view returns (uint256) {
         VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
 
-        if (data.updateBalanceTimestamp == 0 || data.vestingTime == 0) {
+        if (data.vestingTime == 0) {
+            return IERC20(UNDERLYING_TOKEN).balanceOf(address(this));
+        }
+
+        if (data.updateBalanceTimestamp == 0) {
             return 0;
         }
 
