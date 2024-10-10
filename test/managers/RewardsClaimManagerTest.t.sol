@@ -355,4 +355,41 @@ contract RewardsClaimManagerTest is Test {
         assertEq(vestedBalanceBefore, 1_000e18, "Vested balance before should be 1_000e18");
         assertEq(vestedBalanceAfter, 1_000e18, "Vested balance after should be 1_000e18");
     }
+
+    function testShouldIncreaseVestingBalanceAfterTransferWhenVestingTimesSetupToZero() public {
+        // given
+        vm.warp(1000 days);
+        vm.prank(_userOne);
+        _rewardsClaimManager.setupVestingTime(0);
+
+        uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
+
+        // when
+        vm.prank(_userOne);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
+
+        // then
+        uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
+
+        assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
+        assertEq(vestedBalanceAfter, 1_000e18, "Vested balance before should be 1_000e18");
+    }
+
+    function testShouldDontIncreaseVestingBalanceAfterTransferWhenDefaultValue() public {
+        // given
+        vm.warp(1000 days);
+        vm.prank(_userOne);
+
+        uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
+
+        // when
+        vm.prank(_userOne);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
+
+        // then
+        uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
+
+        assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
+        assertEq(vestedBalanceAfter, 0, "Vested balance before should be 0");
+    }
 }
