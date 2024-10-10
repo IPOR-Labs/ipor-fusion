@@ -56,9 +56,9 @@ library WithdrawManagerStorageLib {
         }
     }
 
-    function _getReleaseFunds() private view returns (ReleaseFunds storage releaseFunds) {
+    function _getReleaseFunds() private view returns (ReleaseFunds storage releaseFundsResult) {
         assembly {
-            releaseFunds.slot := LAST_RELEASE_FUNDS_TIMESTAMP
+            releaseFundsResult.slot := LAST_RELEASE_FUNDS_TIMESTAMP
         }
     }
 
@@ -103,8 +103,8 @@ library WithdrawManagerStorageLib {
     }
 
     function releaseFunds() internal {
-        ReleaseFunds storage releaseFunds = _getReleaseFunds();
-        releaseFunds.lastReleaseFundsTimestamp = block.timestamp;
+        ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
+        releaseFundsLocal.lastReleaseFundsTimestamp = block.timestamp;
         emit ReleaseFundsUpdated(block.timestamp);
     }
 }

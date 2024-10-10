@@ -869,6 +869,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         initAddress[0] = admin;
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
             iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
@@ -877,8 +878,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             whitelist: initAddress,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: initAddress,
-            managementFeeManagers: initAddress,
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,

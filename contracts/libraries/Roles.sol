@@ -36,13 +36,13 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant FUSE_MANAGER_ROLE = 300;
 
-    /// @notice Account with this role has rights to manage the performance fee, define the performance fee rate and manage the performance fee recipient
+    /// @notice Technical role for the FeeManager. Account with this role has rights to manage the performance fee, define the performance fee rate and manage the performance fee recipient
     /// @dev Managed by itself the Performance Fee Manager
-    uint64 public constant PERFORMANCE_FEE_MANAGER_ROLE = 400;
+    uint64 public constant TECH_PERFORMANCE_FEE_MANAGER_ROLE = 400;
 
-    /// @notice Account with this role has rights to manage the management fee, define the management fee rate and manage the management fee recipient
+    /// @notice Technical role for the FeeManager. Account with this role has rights to manage the management fee, define the management fee rate and manage the management fee recipient
     /// @dev Managed by itself the Management Fee Manager
-    uint64 public constant MANAGEMENT_FEE_MANAGER_ROLE = 500;
+    uint64 public constant TECH_MANAGEMENT_FEE_MANAGER_ROLE = 500;
 
     /// @notice Account with this role has rights to claim rewards from the PlasmaVault using and interacting with the RewardsClaimManager contract
     /// @dev Managed by the Atomist

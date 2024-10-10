@@ -167,6 +167,7 @@ contract PlasmaVaultCallbackHandler is Test {
         initAddress[0] = address(this);
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
             iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
@@ -175,8 +176,6 @@ contract PlasmaVaultCallbackHandler is Test {
             whitelist: initAddress,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: initAddress,
-            managementFeeManagers: initAddress,
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,

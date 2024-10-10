@@ -53,4 +53,19 @@ library IporFusionMarkets {
 
     /// @dev Morpho flash loan market
     uint256 public constant MORPHO_FLASH_LOAN = 19;
+
+    /// @dev Market 1 for ERC4626 Vault
+    uint256 public constant ERC4626_0001 = 100_001;
+
+    /// @dev Market 2 for ERC4626 Vault
+    uint256 public constant ERC4626_0002 = 100_002;
+
+    /// @dev Market 3 for ERC4626 Vault
+    uint256 public constant ERC4626_0003 = 100_003;
+
+    /// @dev Market 4 for ERC4626 Vault
+    uint256 public constant ERC4626_0004 = 100_004;
+
+    /// @dev Market 5 for ERC4626 Vault
+    uint256 public constant ERC4626_0005 = 100_005;
 }
