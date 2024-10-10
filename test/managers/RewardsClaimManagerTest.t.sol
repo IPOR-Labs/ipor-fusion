@@ -228,6 +228,25 @@ contract RewardsClaimManagerTest is Test {
         assertEq(isSupportedAfter, true, "Fuse should be supported after");
     }
 
+    function testShouldBeAbleToGetRewardFuses() external {
+        //given
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(0x4444);
+
+        address[] memory rewardFusesBefore = _rewardsClaimManager.getRewardsFuses();
+
+        //when
+        vm.prank(_userOne);
+        _rewardsClaimManager.addRewardFuses(fuses);
+
+        //then
+        address[] memory rewardFusesAfter = _rewardsClaimManager.getRewardsFuses();
+
+        assertEq(rewardFusesBefore.length, 0, "Fuses should be empty before");
+        assertEq(rewardFusesAfter.length, 1, "Fuses should be 1 after");
+        assertEq(rewardFusesAfter[0], address(0x4444), "Fuses should be 0x4444 after");
+    }
+
     function testShouldRevertWhenUserDontHaveRoleToAddRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
