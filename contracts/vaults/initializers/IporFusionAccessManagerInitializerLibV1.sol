@@ -27,6 +27,9 @@ struct PlasmaVaultAddress {
 
 /// @notice Data for the initialization of the IPOR Fusion Plasma Vault, contain accounts involved in interactions with the Plasma Vault.
 struct DataForInitialization {
+    /// @notice Flag to determine if the Plasma Vault is public. If Plasma Vault is public then deposit and mint functions are available for everyone.
+    /// @dev Notice! PUBLIC Plasma Vaults cannot be converted to PRIVATE Vault, but PRIVATE Vault can be converted to PUBLIC.
+    bool isPublic;
     /// @notice Array of addresses of the DAO (Roles.TECH_IPOR_DAO_ROLE)
     address[] iporDaos;
     /// @notice Array of addresses of the Admins (Roles.ADMIN_ROLE)
@@ -71,7 +74,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         DataForInitialization memory data_
     ) internal returns (InitializationData memory) {
         InitializationData memory initializeData;
-        initializeData.roleToFunctions = _generateRoleToFunction(data_.plasmaVaultAddress);
+        initializeData.roleToFunctions = _generateRoleToFunction(data_.isPublic, data_.plasmaVaultAddress);
         initializeData.adminRoles = _generateAdminRoles();
         initializeData.accountToRoles = _generateAccountToRoles(data_);
         return initializeData;
@@ -258,9 +261,12 @@ library IporFusionAccessManagerInitializerLibV1 {
     }
 
     function _generateRoleToFunction(
+        bool isPublic_,
         PlasmaVaultAddress memory plasmaVaultAddress_
     ) private returns (RoleToFunction[] memory rolesToFunction) {
         Iterator memory iterator;
+
+        uint64 depositAndMintWithPermitRole = isPublic_ ? Roles.PUBLIC_ROLE : Roles.WHITELIST_ROLE;
 
         uint256 length = ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER;
         length += plasmaVaultAddress_.rewardsClaimManager == address(0) ? 0 : ROLES_TO_FUNCTION_CLAIM_MANAGER;
@@ -275,16 +281,25 @@ library IporFusionAccessManagerInitializerLibV1 {
             functionSelector: PlasmaVault.execute.selector,
             minimalExecutionDelay: 0
         });
+
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.WHITELIST_ROLE,
+            roleId: depositAndMintWithPermitRole,
             functionSelector: PlasmaVault.deposit.selector,
             minimalExecutionDelay: 0
         });
+
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.WHITELIST_ROLE,
+            roleId: depositAndMintWithPermitRole,
             functionSelector: PlasmaVault.mint.selector,
+            minimalExecutionDelay: 0
+        });
+
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.plasmaVault,
+            roleId: depositAndMintWithPermitRole,
+            functionSelector: PlasmaVault.depositWithPermit.selector,
             minimalExecutionDelay: 0
         });
 
@@ -404,13 +419,6 @@ library IporFusionAccessManagerInitializerLibV1 {
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.ATOMIST_ROLE,
             functionSelector: PlasmaVaultGovernance.setTotalSupplyCap.selector,
-            minimalExecutionDelay: 0
-        });
-
-        rolesToFunction[_next(iterator)] = RoleToFunction({
-            target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.WHITELIST_ROLE,
-            functionSelector: PlasmaVault.depositWithPermit.selector,
             minimalExecutionDelay: 0
         });
 

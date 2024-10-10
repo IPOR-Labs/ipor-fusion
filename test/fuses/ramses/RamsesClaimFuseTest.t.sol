@@ -364,6 +364,7 @@ contract RamsesClaimFuseTest is Test {
         whitelist[1] = _userOne;
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
             iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
