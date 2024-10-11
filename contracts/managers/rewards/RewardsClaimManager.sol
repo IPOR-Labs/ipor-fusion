@@ -67,6 +67,10 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
         return RewardsClaimManagersStorageLib.getVestingData();
     }
 
+    function getRewardsFuses() external view returns (address[] memory) {
+        return FusesLib.getFusesArray();
+    }
+
     function transfer(address asset_, address to_, uint256 amount_) external restricted {
         if (asset_ == UNDERLYING_TOKEN) {
             revert UnableToTransferUnderlyingToken();
