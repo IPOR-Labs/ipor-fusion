@@ -225,8 +225,6 @@ contract InitializeAccessManagerTest is Test {
         data.whitelist = _generateAddresses(100_000, 10);
         data.guardians = _generateAddresses(1_000_000, 10);
         data.fuseManagers = _generateAddresses(10_000_000, 10);
-        data.performanceFeeManagers = _generateAddresses(100_000_000, 10);
-        data.managementFeeManagers = _generateAddresses(1_000_000_000, 10);
         data.claimRewards = _generateAddresses(10_000_000_000, 10);
         data.transferRewardsManagers = _generateAddresses(100_000_000_000, 10);
         data.configInstantWithdrawalFusesManagers = _generateAddresses(1_000_000_000_000, 10);

@@ -90,11 +90,11 @@ contract IporPlasmaVaultRolesTest is Test {
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.PERFORMANCE_FEE_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.MANAGEMENT_FEE_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
@@ -240,48 +240,6 @@ contract IporPlasmaVaultRolesTest is Test {
         vm.prank(_deployer);
         vm.expectRevert(error);
         _accessManager.labelRole(Roles.ADMIN_ROLE, "ADMIN_ROLE");
-    }
-
-    function testShouldBeAbleToCancelScheduledOpByGuardianForManagementFeeManagerRole() external {
-        //given
-        address user = vm.rememberKey(1234);
-
-        vm.prank(_data.managementFeeManagers[0]);
-        _accessManager.grantRole(Roles.MANAGEMENT_FEE_MANAGER_ROLE, user, 10000);
-
-        address target = address(_plasmaVault);
-        bytes memory data = abi.encodeWithSignature("configureManagementFee(address,uint256)", address(0x555), 55);
-
-        vm.prank(user);
-        (, uint32 nonceSchedule) = _accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
-
-        //when
-        vm.prank(_data.guardians[0]);
-        uint32 nonceCancel = _accessManager.cancel(user, target, data);
-
-        //then
-        assertEq(nonceSchedule, nonceCancel, "Nonce should be equal");
-    }
-
-    function testShouldBeAbleToCancelScheduledOpByGuardianForPerformanceFeeManagerRole() external {
-        //given
-        address user = vm.rememberKey(1234);
-
-        vm.prank(_data.performanceFeeManagers[0]);
-        _accessManager.grantRole(Roles.PERFORMANCE_FEE_MANAGER_ROLE, user, 10000);
-
-        address target = address(_plasmaVault);
-        bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x555), 55);
-
-        vm.prank(user);
-        (, uint32 nonceSchedule) = _accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
-
-        //when
-        vm.prank(_data.guardians[0]);
-        uint32 nonceCancel = _accessManager.cancel(user, target, data);
-
-        //then
-        assertEq(nonceSchedule, nonceCancel, "Nonce should be equal");
     }
 
     function testShouldBeAbleToCancelScheduledOpByGuardianForAtomistRole() external {
@@ -496,10 +454,6 @@ contract IporPlasmaVaultRolesTest is Test {
         _data.guardians[0] = vm.rememberKey(6);
         _data.fuseManagers = new address[](1);
         _data.fuseManagers[0] = vm.rememberKey(7);
-        _data.performanceFeeManagers = new address[](1);
-        _data.performanceFeeManagers[0] = vm.rememberKey(8);
-        _data.managementFeeManagers = new address[](1);
-        _data.managementFeeManagers[0] = vm.rememberKey(9);
         _data.claimRewards = new address[](1);
         _data.claimRewards[0] = vm.rememberKey(10);
         _data.transferRewardsManagers = new address[](1);

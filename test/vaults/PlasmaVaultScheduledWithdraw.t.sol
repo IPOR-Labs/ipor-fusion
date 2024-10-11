@@ -102,6 +102,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         whitelist[0] = _USER;
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
             iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
@@ -110,8 +111,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
             whitelist: whitelist,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: initAddress,
-            managementFeeManagers: initAddress,
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
