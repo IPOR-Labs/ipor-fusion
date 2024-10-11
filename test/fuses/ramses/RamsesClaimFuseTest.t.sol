@@ -364,6 +364,7 @@ contract RamsesClaimFuseTest is Test {
         whitelist[1] = _userOne;
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
             iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
@@ -372,8 +373,6 @@ contract RamsesClaimFuseTest is Test {
             whitelist: whitelist,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: initAddress,
-            managementFeeManagers: initAddress,
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
