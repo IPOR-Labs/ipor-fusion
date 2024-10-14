@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @dev Data structure for entering a Morpho borrow fuse.
 struct MorphoBorrowFuseEnterData {
@@ -23,9 +23,9 @@ struct MorphoBorrowFuseEnterData {
 struct MorphoBorrowFuseExitData {
     /// @dev The ID of the Morpho market.
     bytes32 morphoMarketId;
-    /// @dev The amount to repay.
+    /// @dev The amount to repay in borrow asset decimals .
     uint256 amountToRepay;
-    /// @dev The shares to repay.
+    /// @dev The shares to repay in morpho decimals.
     uint256 sharesToRepay;
 }
 

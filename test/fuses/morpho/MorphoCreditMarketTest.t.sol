@@ -41,6 +41,7 @@ contract MorphoCreditMarketTest is Test {
     bytes32 private constant _MORPHO_MARKET_ID = 0xd0e50cdac92fe2172043f5e0c36532c6369d24947e40968f34a5e8819ca9ec5d;
 
     address private constant _ETH_USD_CHAINLINK = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address private constant _CHAINLINK_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
     uint256 private _errorDelta = 1e3;
 
     address private _plasmaVault;
@@ -113,7 +114,7 @@ contract MorphoCreditMarketTest is Test {
     }
 
     function _createPriceOracle() private returns (address) {
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
+        PriceOracleMiddleware implementation = new PriceOracleMiddleware(_CHAINLINK_REGISTRY);
         PriceOracleMiddleware priceOracle = PriceOracleMiddleware(
             address(
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))

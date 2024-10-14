@@ -13,18 +13,20 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 struct MorphoCollateralFuseEnterData {
     // vault address
     bytes32 morphoMarketId;
-    // max amount to supply
-    uint256 amount;
+    // max amount to supply (in collateral token decimals)
+    uint256 collateralAmount;
 }
 
 /// @notice Structure for exiting (withdrawCollateral) from the Morpho protocol
 struct MorphoCollateralFuseExitData {
     // vault address
     bytes32 morphoMarketId;
-    // max amount to supply
-    uint256 maxAmount;
+    // max amount to supply (in collateral token decimals)`
+    uint256 maxCollateralAmount;
 }
 
+/// @title MorphoCollateralFuse
+/// @notice This contract allows users to supply and withdraw collateral to/from the Morpho protocol.
 contract MorphoCollateralFuse is IFuseCommon {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
@@ -45,7 +47,7 @@ contract MorphoCollateralFuse is IFuseCommon {
     }
 
     function enter(MorphoCollateralFuseEnterData memory data_) external {
-        if (data_.amount == 0) {
+        if (data_.collateralAmount == 0) {
             return;
         }
 
@@ -57,7 +59,9 @@ contract MorphoCollateralFuse is IFuseCommon {
 
         uint256 collateralTokenBalance = ERC20(marketParams.collateralToken).balanceOf(address(this));
 
-        uint256 transferAmount = data_.amount <= collateralTokenBalance ? data_.amount : collateralTokenBalance;
+        uint256 transferAmount = data_.collateralAmount <= collateralTokenBalance
+            ? data_.collateralAmount
+            : collateralTokenBalance;
 
         ERC20(marketParams.collateralToken).forceApprove(address(MORPHO), transferAmount);
 
@@ -67,7 +71,7 @@ contract MorphoCollateralFuse is IFuseCommon {
     }
 
     function exit(MorphoCollateralFuseExitData calldata data_) external {
-        if (data_.maxAmount == 0) {
+        if (data_.maxCollateralAmount == 0) {
             return;
         }
 
@@ -77,8 +81,13 @@ contract MorphoCollateralFuse is IFuseCommon {
 
         MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoMarketId));
 
-        MORPHO.withdrawCollateral(marketParams, data_.maxAmount, address(this), address(this));
+        MORPHO.withdrawCollateral(marketParams, data_.maxCollateralAmount, address(this), address(this));
 
-        emit MorphoCollateralFuseExit(VERSION, marketParams.collateralToken, data_.morphoMarketId, data_.maxAmount);
+        emit MorphoCollateralFuseExit(
+            VERSION,
+            marketParams.collateralToken,
+            data_.morphoMarketId,
+            data_.maxCollateralAmount
+        );
     }
 }
