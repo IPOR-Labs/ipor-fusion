@@ -192,6 +192,7 @@ contract MorphoCreditMarketTest is Test {
         dao[0] = address(this);
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
             iporDaos: dao,
             admins: initAddress,
             owners: initAddress,
@@ -200,8 +201,6 @@ contract MorphoCreditMarketTest is Test {
             whitelist: whitelist,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: new address[](0),
-            managementFeeManagers: new address[](0),
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
