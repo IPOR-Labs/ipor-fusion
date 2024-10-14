@@ -8,7 +8,7 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
+import {Erc4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 import {TestAccountSetup} from "../../integrationTest/supplyFuseTemplate/TestAccountSetup.sol";
@@ -94,7 +94,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse gearboxV3Balances = new ERC4626BalanceFuse(IporFusionMarkets.GEARBOX_POOL_V3);
+        Erc4626BalanceFuse gearboxV3Balances = new Erc4626BalanceFuse(IporFusionMarkets.GEARBOX_POOL_V3);
 
         ERC20BalanceFuse erc20BalanceArbitrum = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
 

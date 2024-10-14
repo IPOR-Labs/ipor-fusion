@@ -12,7 +12,7 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
 /// @title Generic fuse for ERC4626 vaults responsible for calculating the balance of the Plasma Vault in the ERC4626 vaults based on preconfigured market substrates
 /// @dev Substrates in this fuse are the assets that are used in the ERC4626 vaults for a given MARKET_ID
-contract ERC4626BalanceFuse is IMarketBalanceFuse {
+contract Erc4626BalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
     uint256 public immutable MARKET_ID;

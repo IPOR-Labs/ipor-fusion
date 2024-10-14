@@ -83,4 +83,8 @@ interface IRewardsClaimManager {
     /// to the designated Plasma Vault. It ensures that only the vested portion of the underlying tokens
     /// is transferred.
     function transferVestedTokensToVault() external;
+
+    /// @notice Retrieves the list of reward fuses.
+    /// @return An array of addresses representing the reward fuses.
+    function getRewardsFuses() external view returns (address[] memory);
 }
