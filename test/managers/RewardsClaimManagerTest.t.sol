@@ -228,6 +228,25 @@ contract RewardsClaimManagerTest is Test {
         assertEq(isSupportedAfter, true, "Fuse should be supported after");
     }
 
+    function testShouldBeAbleToGetRewardFuses() external {
+        //given
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(0x4444);
+
+        address[] memory rewardFusesBefore = _rewardsClaimManager.getRewardsFuses();
+
+        //when
+        vm.prank(_userOne);
+        _rewardsClaimManager.addRewardFuses(fuses);
+
+        //then
+        address[] memory rewardFusesAfter = _rewardsClaimManager.getRewardsFuses();
+
+        assertEq(rewardFusesBefore.length, 0, "Fuses should be empty before");
+        assertEq(rewardFusesAfter.length, 1, "Fuses should be 1 after");
+        assertEq(rewardFusesAfter[0], address(0x4444), "Fuses should be 0x4444 after");
+    }
+
     function testShouldRevertWhenUserDontHaveRoleToAddRewardFuses() external {
         //given
         address[] memory fuses = new address[](1);
@@ -354,5 +373,42 @@ contract RewardsClaimManagerTest is Test {
 
         assertEq(vestedBalanceBefore, 1_000e18, "Vested balance before should be 1_000e18");
         assertEq(vestedBalanceAfter, 1_000e18, "Vested balance after should be 1_000e18");
+    }
+
+    function testShouldIncreaseVestingBalanceAfterTransferWhenVestingTimesSetupToZero() public {
+        // given
+        vm.warp(1000 days);
+        vm.prank(_userOne);
+        _rewardsClaimManager.setupVestingTime(0);
+
+        uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
+
+        // when
+        vm.prank(_userOne);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
+
+        // then
+        uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
+
+        assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
+        assertEq(vestedBalanceAfter, 1_000e18, "Vested balance before should be 1_000e18");
+    }
+
+    function testShouldDontIncreaseVestingBalanceAfterTransferWhenDefaultValue() public {
+        // given
+        vm.warp(1000 days);
+        vm.prank(_userOne);
+
+        uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
+
+        // when
+        vm.prank(_userOne);
+        ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
+
+        // then
+        uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
+
+        assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
+        assertEq(vestedBalanceAfter, 0, "Vested balance before should be 0");
     }
 }

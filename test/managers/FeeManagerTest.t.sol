@@ -169,6 +169,7 @@ contract FeeManagerTest is Test {
         dao[0] = _DAO;
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
             iporDaos: dao,
             admins: initAddress,
             owners: initAddress,
@@ -177,8 +178,6 @@ contract FeeManagerTest is Test {
             whitelist: whitelist,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: new address[](0),
-            managementFeeManagers: new address[](0),
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,

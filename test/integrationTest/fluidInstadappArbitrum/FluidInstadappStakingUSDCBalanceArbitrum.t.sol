@@ -8,7 +8,7 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {ERC4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
+import {Erc4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {FluidInstadappStakingSupplyFuseExitData, FluidInstadappStakingSupplyFuseEnterData, FluidInstadappStakingSupplyFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol";
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
@@ -101,7 +101,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        ERC4626BalanceFuse erc4626BalanceFuse = new ERC4626BalanceFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
+        Erc4626BalanceFuse erc4626BalanceFuse = new Erc4626BalanceFuse(IporFusionMarkets.FLUID_INSTADAPP_POOL);
 
         FluidInstadappStakingBalanceFuse fluidInstadappStakingBalance = new FluidInstadappStakingBalanceFuse(
             IporFusionMarkets.FLUID_INSTADAPP_STAKING
