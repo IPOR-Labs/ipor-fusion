@@ -25,15 +25,15 @@ contract WstETHPriceFeedEthereum is IPriceFeed {
         }
     }
 
-    function decimals() external view override returns (uint8) {
+    function decimals() external pure override returns (uint8) {
         return _decimals();
     }
 
     function latestRoundData()
-        external
-        view
-        override
-        returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
+    external
+    view
+    override
+    returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
         (, int256 answer, , , ) = AggregatorV3Interface(ST_ETH_CHAINLINK_FEED).latestRoundData();
 
@@ -42,7 +42,7 @@ contract WstETHPriceFeedEthereum is IPriceFeed {
         return (uint80(0), Math.mulDiv(answer.toUint256(), stEthRatio, 1e18).toInt256(), 0, 0, 0);
     }
 
-    function _decimals() internal view returns (uint8) {
+    function _decimals() internal pure returns (uint8) {
         return 8;
     }
 }
