@@ -5,7 +5,6 @@ import {Test} from "forge-std/Test.sol";
 import {AssetChainlinkPriceFeed} from "../../../contracts/price_oracle/price_feed/AssetChainlinkPriceFeed.sol";
 
 contract ETHXAssetChainlinkPriceFeedArbitrumTest is Test {
-
     address public constant ETH_X = 0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7;
     address public constant ETH_X_ETH_CHAINLINKG_FEED = 0x1f5C0C2CD2e9Ad1eE475660AF0bBa27aE7d87f5e;
     address public constant ETH_USD_CHAINLINKG_FEED = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
@@ -16,7 +15,11 @@ contract ETHXAssetChainlinkPriceFeedArbitrumTest is Test {
 
     function testShouldReturnPrice() external {
         // given
-        AssetChainlinkPriceFeed priceFeed = new AssetChainlinkPriceFeed(ETH_X, ETH_X_ETH_CHAINLINKG_FEED, ETH_USD_CHAINLINKG_FEED);
+        AssetChainlinkPriceFeed priceFeed = new AssetChainlinkPriceFeed(
+            ETH_X,
+            ETH_X_ETH_CHAINLINKG_FEED,
+            ETH_USD_CHAINLINKG_FEED
+        );
 
         // when
         (, int256 price, , , ) = priceFeed.latestRoundData();

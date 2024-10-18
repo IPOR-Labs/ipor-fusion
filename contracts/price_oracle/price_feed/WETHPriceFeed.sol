@@ -7,7 +7,6 @@ import {IPriceFeed} from "./IPriceFeed.sol";
 
 /// @title Price feed for WETH  in USD in 8 decimals
 contract WETHPriceFeed is IPriceFeed {
-
     /// @dev  Price Oracle for pair ETH USD in Chainlink
     /// @dev Arbitrum 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612
     /// @dev Ethereum 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
@@ -25,7 +24,6 @@ contract WETHPriceFeed is IPriceFeed {
         if (_decimals() != AggregatorV3Interface(ETH_USD_CHAINLINK_FEED).decimals()) {
             revert Errors.WrongDecimals();
         }
-
     }
 
     function decimals() external view override returns (uint8) {
@@ -33,13 +31,12 @@ contract WETHPriceFeed is IPriceFeed {
     }
 
     function latestRoundData()
-    external
-    view
-    override
-    returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
+        external
+        view
+        override
+        returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
-
-        (, int256 answer, , ,) = AggregatorV3Interface(ETH_USD_CHAINLINK_FEED).latestRoundData();
+        (, int256 answer, , , ) = AggregatorV3Interface(ETH_USD_CHAINLINK_FEED).latestRoundData();
 
         /// @dev wETH/ETH ratio is 1:1
         return (uint80(0), answer, 0, 0, 0);

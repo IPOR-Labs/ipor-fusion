@@ -6,7 +6,6 @@ import {AggregatorV3Interface} from "../../../contracts/price_oracle/ext/Aggrega
 import {WETHPriceFeed} from "../../../contracts/price_oracle/price_feed/WETHPriceFeed.sol";
 
 contract WETHPriceFeedArbitrumTest is Test {
-
     address public constant ETH_CHAINLINK_FEED = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
 
     function setUp() public {
@@ -17,7 +16,7 @@ contract WETHPriceFeedArbitrumTest is Test {
         // given
         WETHPriceFeed priceFeed = new WETHPriceFeed(ETH_CHAINLINK_FEED);
 
-        (, int256 ethPrice, , ,) = AggregatorV3Interface(ETH_CHAINLINK_FEED).latestRoundData();
+        (, int256 ethPrice, , , ) = AggregatorV3Interface(ETH_CHAINLINK_FEED).latestRoundData();
 
         // when
         (, int256 wETHprice, , , ) = priceFeed.latestRoundData();

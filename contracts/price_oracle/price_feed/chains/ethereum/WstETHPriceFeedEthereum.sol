@@ -30,10 +30,10 @@ contract WstETHPriceFeedEthereum is IPriceFeed {
     }
 
     function latestRoundData()
-    external
-    view
-    override
-    returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
+        external
+        view
+        override
+        returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
         (, int256 answer, , , ) = AggregatorV3Interface(ST_ETH_CHAINLINK_FEED).latestRoundData();
 

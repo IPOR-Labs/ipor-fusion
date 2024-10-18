@@ -4,7 +4,6 @@ pragma solidity 0.8.26;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "../ext/AggregatorV3Interface.sol";
-import {IWstETH} from "./ext/IWstETH.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IPriceFeed} from "./IPriceFeed.sol";
 
@@ -47,15 +46,21 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
     }
 
     function latestRoundData()
-    external
-    view
-    override
-    returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
+        external
+        view
+        override
+        returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
-        (, int256 ethPriceInUsd, , ,) = AggregatorV3Interface(ETH_USD_CHAINLINK_FEED).latestRoundData();
-        (, int256 assetPriceInEth, , ,) = AggregatorV3Interface(ASSET_ETH_CHAINLINK_FEED).latestRoundData();
+        (, int256 ethPriceInUsd, , , ) = AggregatorV3Interface(ETH_USD_CHAINLINK_FEED).latestRoundData();
+        (, int256 assetPriceInEth, , , ) = AggregatorV3Interface(ASSET_ETH_CHAINLINK_FEED).latestRoundData();
 
-        return (uint80(0), Math.mulDiv(ethPriceInUsd.toUint256(), assetPriceInEth.toUint256(), PRICE_DENOMINATOR).toInt256(), 0, 0, 0);
+        return (
+            uint80(0),
+            Math.mulDiv(ethPriceInUsd.toUint256(), assetPriceInEth.toUint256(), PRICE_DENOMINATOR).toInt256(),
+            0,
+            0,
+            0
+        );
     }
 
     function _decimals() internal pure returns (uint8) {
