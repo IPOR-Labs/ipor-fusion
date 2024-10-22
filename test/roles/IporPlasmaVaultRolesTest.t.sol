@@ -43,6 +43,25 @@ contract IporPlasmaVaultRolesTest is Test {
         _initializeAccessManager();
     }
 
+    function testShouldAtomistGrantMarketSubstrates() external  {
+        // given
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        //when
+        vm.startPrank(_data.atomists[0]);
+        IPlasmaVaultGovernance(address(_plasmaVault)).grantMarketSubstrates(IporFusionMarkets.AAVE_V3, substrates);
+        vm.stopPrank();
+
+        //then
+        assertEq(
+            IPlasmaVaultGovernance(address(_plasmaVault)).getMarketSubstrates(IporFusionMarkets.AAVE_V3)[0],
+            substrates[0],
+            "Market substrates should be equal"
+        );
+
+    }
+
     function testDeployerShouldNotBeAdminAfterInitialization() external view {
         // then
         (bool isMember, ) = _accessManager.hasRole(Roles.ADMIN_ROLE, _deployer);
