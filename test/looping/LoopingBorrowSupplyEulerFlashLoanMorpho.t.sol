@@ -11,10 +11,10 @@ import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMid
 import {WstETHPriceFeedEthereum} from "../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {EulerFuseLib, EulerSubstrate} from "../../contracts/fuses/euler/EulerFuseLib.sol";
-import {EulerV2SupplyFuse, EulerV2SupplyFuseEnterData} from "../../contracts/fuses/euler/EulerV2SupplyFuse.sol";
+import {EulerV2SupplyFuse, EulerV2SupplyFuseEnterData, EulerV2SupplyFuseExitData} from "../../contracts/fuses/euler/EulerV2SupplyFuse.sol";
 import {EulerV2CollateralFuse, EulerV2CollateralFuseEnterData} from "../../contracts/fuses/euler/EulerV2CollateralFuse.sol";
 import {EulerV2ControllerFuse, EulerV2ControllerFuseEnterData} from "../../contracts/fuses/euler/EulerV2ControllerFuse.sol";
-import {EulerV2BorrowFuse, EulerV2BorrowFuseEnterData} from "../../contracts/fuses/euler/EulerV2BorrowFuse.sol";
+import {EulerV2BorrowFuse, EulerV2BorrowFuseEnterData, EulerV2BorrowFuseExitData} from "../../contracts/fuses/euler/EulerV2BorrowFuse.sol";
 import {EulerV2BalanceFuse} from "../../contracts/fuses/euler/EulerV2BalanceFuse.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -587,6 +587,179 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
             IBorrowing(EULER_VAULT_PRIME_USDC).debtOf(_subAccountOneAddress),
             26360e6,
             "after: debt of usdc on euler vault should be 26360e6"
+        );
+    }
+
+    function testCreateDebtPositionAndRepay() external {
+        // Step 1: Create the debt position (similar to the existing test)
+        uint256 wethDepositAmount = 20e18;
+        uint256 swapAmount = 2636e6 * 10;
+        uint256 borrowAmount = 2636e6 * 10;
+
+        // Setup Euler market
+        FuseAction[] memory setupEulerMarket = new FuseAction[](2);
+        setupEulerMarket[0] = FuseAction({
+            fuse: _eulerCollateralFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2CollateralFuseEnterData({eulerVault: EULER_VAULT_WETH, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+        setupEulerMarket[1] = FuseAction({
+            fuse: _eulerControllerFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2ControllerFuseEnterData({eulerVault: EULER_VAULT_PRIME_USDC, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(setupEulerMarket);
+        vm.stopPrank();
+
+        // Create debt position
+        FuseAction[] memory createDebtActions = new FuseAction[](3);
+        createDebtActions[0] = FuseAction({
+            fuse: _eulerSupplyFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,bytes1))",
+                EulerV2SupplyFuseEnterData({
+                    eulerVault: EULER_VAULT_WETH,
+                    maxAmount: wethDepositAmount,
+                    subAccount: _SUB_ACCOUNT_BYTE_ONE
+                })
+            )
+        });
+        createDebtActions[1] = FuseAction({
+            fuse: _eulerBorrowFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,bytes1))",
+                EulerV2BorrowFuseEnterData({
+                    eulerVault: EULER_VAULT_PRIME_USDC,
+                    maxAmount: borrowAmount,
+                    subAccount: _SUB_ACCOUNT_BYTE_ONE
+                })
+            )
+        });
+        createDebtActions[2] = FuseAction(
+            address(_uniswapV3SwapFuse),
+            abi.encodeWithSignature(
+                "enter((uint256,uint256,bytes))",
+                UniswapV3SwapFuseEnterData({
+                    tokenInAmount: swapAmount,
+                    path: abi.encodePacked(_USDC, uint24(500), _W_ETH),
+                    minOutAmount: 0
+                })
+            )
+        );
+
+        MorphoFlashLoanFuseEnterData memory createDebtFlashLoan = MorphoFlashLoanFuseEnterData({
+            token: _W_ETH,
+            tokenAmount: 10e18,
+            callbackFuseActionsData: abi.encode(createDebtActions)
+        });
+
+        FuseAction[] memory createDebtFlashLoanAction = new FuseAction[](1);
+        createDebtFlashLoanAction[0] = FuseAction(
+            address(_morphoFlashLoanFuse),
+            abi.encodeWithSignature("enter((address,uint256,bytes))", createDebtFlashLoan)
+        );
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(createDebtFlashLoanAction);
+        vm.stopPrank();
+
+        // Verify debt position
+        assertEq(
+            ERC4626(EULER_VAULT_WETH).convertToAssets(ERC4626(EULER_VAULT_WETH).balanceOf(_subAccountOneAddress)),
+            20e18,
+            "WETH balance in Euler vault should be 20e18"
+        );
+        assertEq(
+            IBorrowing(EULER_VAULT_PRIME_USDC).debtOf(_subAccountOneAddress),
+            26360e6,
+            "USDC debt in Euler vault should be 26360e6"
+        );
+
+        // Step 2: Repay the debt
+        uint256 repayAmount = 26360e6;
+        uint256 withdrawAmount = 20e18;
+        uint256 swapAmount2 = 10e18;
+
+        FuseAction[] memory repayDebtActions = new FuseAction[](4);
+        repayDebtActions[0] = FuseAction({
+            fuse: _eulerBorrowFuse,
+            data: abi.encodeWithSignature(
+                "exit((address,uint256,bytes1))",
+                EulerV2BorrowFuseExitData({
+                    eulerVault: EULER_VAULT_PRIME_USDC,
+                    maxAmount: repayAmount,
+                    subAccount: _SUB_ACCOUNT_BYTE_ONE
+                })
+            )
+        });
+        repayDebtActions[1] = FuseAction({
+            fuse: _eulerSupplyFuse,
+            data: abi.encodeWithSignature(
+                "exit((address,uint256,bytes1))",
+                EulerV2SupplyFuseExitData({
+                    eulerVault: EULER_VAULT_WETH,
+                    maxAmount: withdrawAmount,
+                    subAccount: _SUB_ACCOUNT_BYTE_ONE
+                })
+            )
+        });
+        repayDebtActions[2] = FuseAction(
+            address(_uniswapV3SwapFuse),
+            abi.encodeWithSignature(
+                "enter((uint256,uint256,bytes))",
+                UniswapV3SwapFuseEnterData({
+                    tokenInAmount: swapAmount2,
+                    path: abi.encodePacked(_W_ETH, uint24(500), _USDC),
+                    minOutAmount: 0
+                })
+            )
+        );
+        // Add buffer for potential slippage and fees
+        repayDebtActions[3] = FuseAction({
+            fuse: _eulerSupplyFuse,
+            data: abi.encodeWithSignature(
+                "exit((address,uint256,bytes1))",
+                EulerV2SupplyFuseEnterData({
+                    eulerVault: EULER_VAULT_WETH,
+                    maxAmount: 1e18,
+                    subAccount: _SUB_ACCOUNT_BYTE_ONE
+                })
+            )
+        });
+
+        MorphoFlashLoanFuseEnterData memory repayDebtFlashLoan = MorphoFlashLoanFuseEnterData({
+            token: _USDC,
+            tokenAmount: repayAmount + 10e6,
+            callbackFuseActionsData: abi.encode(repayDebtActions)
+        });
+
+        FuseAction[] memory repayDebtFlashLoanAction = new FuseAction[](1);
+        repayDebtFlashLoanAction[0] = FuseAction(
+            address(_morphoFlashLoanFuse),
+            abi.encodeWithSignature("enter((address,uint256,bytes))", repayDebtFlashLoan)
+        );
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(repayDebtFlashLoanAction);
+        vm.stopPrank();
+
+        // Verify debt is repaid
+        assertApproxEqAbs(
+            ERC4626(EULER_VAULT_WETH).convertToAssets(ERC4626(EULER_VAULT_WETH).balanceOf(_subAccountOneAddress)),
+            0,
+            1e15,
+            "WETH balance in Euler vault should be close to 0"
+        );
+        assertEq(
+            IBorrowing(EULER_VAULT_PRIME_USDC).debtOf(_subAccountOneAddress),
+            0,
+            "USDC debt in Euler vault should be 0"
         );
     }
 }

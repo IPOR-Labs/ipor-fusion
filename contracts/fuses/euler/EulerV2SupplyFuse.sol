@@ -96,7 +96,9 @@ contract EulerV2SupplyFuse is IFuseCommon {
 
         uint256 finalVaultAssetAmount = IporMath.min(
             data_.maxAmount,
-            ERC4626Upgradeable(data_.eulerVault).maxWithdraw(subAccount)
+            ERC4626Upgradeable(data_.eulerVault).convertToAssets(
+                ERC4626Upgradeable(data_.eulerVault).balanceOf(subAccount)
+            )
         );
 
         if (finalVaultAssetAmount == 0) {
