@@ -54,7 +54,7 @@ contract EulerV2SupplyFuse is IFuseCommon {
         if (data_.maxAmount == 0) {
             return;
         }
-        if (!EulerFuseLib.canSupply(data_.eulerVault, data_.subAccount, MARKET_ID)) {
+        if (!EulerFuseLib.canSupply(MARKET_ID, data_.eulerVault, data_.subAccount)) {
             revert EulerV2SupplyFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
         }
 

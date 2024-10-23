@@ -8,20 +8,21 @@ import {IBorrowing} from "./ext/IBorrowing.sol";
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 
 /// @notice Data structure for entering the Euler V2 Borrow Fuse
 /// @param eulerVault The address of the Euler vault
-/// @param maxAmount The maximum amount to borrow
+/// @param assetAmount The amount to borrow, denominated in the underlying asset of the Euler vault
 /// @param subAccount The sub-account identifier
 struct EulerV2BorrowFuseEnterData {
     address eulerVault;
-    uint256 maxAmount;
+    uint256 assetAmount;
     bytes1 subAccount;
 }
 
 /// @notice Data structure for exiting the Euler V2 Borrow Fuse
 /// @param eulerVault The address of the Euler vault
-/// @param maxAmount The maximum amount to repay
+/// @param maxAmount The amount to repay, denominated in the underlying asset of the Euler vault
 /// @param subAccount The sub-account identifier
 struct EulerV2BorrowFuseExitData {
     address eulerVault;
@@ -44,6 +45,9 @@ contract EulerV2BorrowFuse is IFuseCommon {
     IEVC public immutable EVC;
 
     constructor(uint256 marketId_, address eulerV2EVC_) {
+        if (eulerV2EVC_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
         VERSION = address(this);
         MARKET_ID = marketId_;
         EVC = IEVC(eulerV2EVC_);
@@ -52,10 +56,10 @@ contract EulerV2BorrowFuse is IFuseCommon {
     /// @notice Enters the Euler V2 Borrow Fuse with the specified parameters
     /// @param data_ The data structure containing the parameters for entering the Euler V2 Borrow Fuse
     function enter(EulerV2BorrowFuseEnterData memory data_) external {
-        if (data_.maxAmount == 0) {
+        if (data_.assetAmount == 0) {
             return;
         }
-        if (!EulerFuseLib.canBorrow(data_.eulerVault, data_.subAccount, MARKET_ID)) {
+        if (!EulerFuseLib.canBorrow(MARKET_ID, data_.eulerVault, data_.subAccount)) {
             revert EulerV2BorrowFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
         }
 
@@ -63,7 +67,11 @@ contract EulerV2BorrowFuse is IFuseCommon {
 
         address subAccount = EulerFuseLib.generateSubAccountAddress(plasmaVault, data_.subAccount);
 
-        bytes memory borrowCalldata = abi.encodeWithSelector(IBorrowing.borrow.selector, data_.maxAmount, plasmaVault);
+        bytes memory borrowCalldata = abi.encodeWithSelector(
+            IBorrowing.borrow.selector,
+            data_.assetAmount,
+            plasmaVault
+        );
 
         /* solhint-disable avoid-low-level-calls */
         uint256 borrowedAmount = abi.decode(EVC.call(data_.eulerVault, subAccount, 0, borrowCalldata), (uint256));
@@ -78,7 +86,7 @@ contract EulerV2BorrowFuse is IFuseCommon {
         if (data_.maxAmount == 0) {
             return;
         }
-        if (!EulerFuseLib.canBorrow(data_.eulerVault, data_.subAccount, MARKET_ID)) {
+        if (!EulerFuseLib.canBorrow(MARKET_ID, data_.eulerVault, data_.subAccount)) {
             revert EulerV2BorrowFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
         }
 

@@ -39,10 +39,10 @@ contract EulerV2CollateralFuse is IFuseCommon {
         EVC = IEVC(eulerV2EVC_);
     }
 
-    /// @notice Enters the Euler V2 Collateral Fuse with the specified parameters
-    /// @param data_ The data structure containing the parameters for entering the Euler V2 Collateral Fuse
+    /// @notice Enters the Euler V2 Collateral Fuse with the specified parameters, enabling collateral for the given vault and sub-account
+    /// @param data_ The data structure containing the parameters for entering the Euler V2 Collateral Fuse and enabling collateral
     function enter(EulerV2CollateralFuseEnterData memory data_) external {
-        if (!EulerFuseLib.canCollateral(data_.eulerVault, data_.subAccount, MARKET_ID)) {
+        if (!EulerFuseLib.canCollateral(MARKET_ID, data_.eulerVault, data_.subAccount)) {
             revert EulerV2CollateralFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
         }
 
@@ -52,9 +52,8 @@ contract EulerV2CollateralFuse is IFuseCommon {
 
         emit EulerV2EnableCollateralFuse(VERSION, data_.eulerVault, subAccount);
     }
-
-    /// @notice Exits the Euler V2 Collateral Fuse with the specified parameters
-    /// @param data_ The data structure containing the parameters for exiting the Euler V2 Collateral Fuse
+    /// @notice Exits the Euler V2 Collateral Fuse with the specified parameters, disabling collateral for the given vault and sub-account
+    /// @param data_ The data structure containing the parameters for exiting the Euler V2 Collateral Fuse and disabling collateral
     function exit(EulerV2CollateralFuseExitData memory data_) external {
         address subAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
 

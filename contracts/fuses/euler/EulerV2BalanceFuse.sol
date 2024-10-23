@@ -25,6 +25,9 @@ contract EulerV2BalanceFuse is IMarketBalanceFuse {
     IEVC public immutable EVC;
 
     constructor(uint256 marketId_, address eulerV2EVC_) {
+        if (eulerV2EVC_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
         MARKET_ID = marketId_;
         EVC = IEVC(eulerV2EVC_);
     }
@@ -56,7 +59,6 @@ contract EulerV2BalanceFuse is IMarketBalanceFuse {
             substrate = EulerFuseLib.bytes32ToSubstrate(substrates[i]);
 
             eulerVaultAsset = ERC4626(substrate.eulerVault).asset();
-            eulerVaultAssetDecimals = IERC20Metadata(eulerVaultAsset).decimals();
 
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(eulerVaultAsset);
 

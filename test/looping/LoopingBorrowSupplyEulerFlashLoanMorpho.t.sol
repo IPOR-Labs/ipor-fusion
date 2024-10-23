@@ -508,7 +508,7 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                 "enter((address,uint256,bytes1))",
                 EulerV2BorrowFuseEnterData({
                     eulerVault: EULER_VAULT_PRIME_USDC,
-                    maxAmount: borrowAmount,
+                    assetAmount: borrowAmount,
                     subAccount: _SUB_ACCOUNT_BYTE_ONE
                 })
             )
@@ -636,7 +636,7 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                 "enter((address,uint256,bytes1))",
                 EulerV2BorrowFuseEnterData({
                     eulerVault: EULER_VAULT_PRIME_USDC,
-                    maxAmount: borrowAmount,
+                    assetAmount: borrowAmount,
                     subAccount: _SUB_ACCOUNT_BYTE_ONE
                 })
             )

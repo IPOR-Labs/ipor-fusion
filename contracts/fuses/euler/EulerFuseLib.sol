@@ -49,13 +49,15 @@ library EulerFuseLib {
     /// @param subAccount The sub-account identifier
     /// @param marketId The market identifier
     /// @return True if the vault and sub-account can supply assets in the market, false otherwise
-    function canSupply(address vault, bytes1 subAccount, uint256 marketId) internal view returns (bool) {
+    function canSupply(uint256 marketId, address vault, bytes1 subAccount) internal view returns (bool) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(marketId);
 
         uint256 len = substrates.length;
 
+        EulerSubstrate memory substrate;
+
         for (uint256 i = 0; i < len; i++) {
-            EulerSubstrate memory substrate = bytes32ToSubstrate(substrates[i]);
+            substrate = bytes32ToSubstrate(substrates[i]);
             if (substrate.eulerVault == vault && substrate.subAccounts == subAccount) {
                 return true;
             }
@@ -68,12 +70,13 @@ library EulerFuseLib {
     /// @param subAccount The sub-account identifier
     /// @param marketId The market identifier
     /// @return True if the vault and sub-account can be used as collateral in the market, false otherwise
-    function canCollateral(address vault, bytes1 subAccount, uint256 marketId) internal view returns (bool) {
+    function canCollateral(uint256 marketId, address vault, bytes1 subAccount) internal view returns (bool) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(marketId);
         uint256 len = substrates.length;
 
+        EulerSubstrate memory substrate;
         for (uint256 i = 0; i < len; i++) {
-            EulerSubstrate memory substrate = bytes32ToSubstrate(substrates[i]);
+            substrate = bytes32ToSubstrate(substrates[i]);
             if (substrate.eulerVault == vault && substrate.subAccounts == subAccount && substrate.isCollateral) {
                 return true;
             }
@@ -86,12 +89,14 @@ library EulerFuseLib {
     /// @param subAccount The sub-account identifier
     /// @param marketId The market identifier
     /// @return True if the vault and sub-account can borrow assets in the market, false otherwise
-    function canBorrow(address vault, bytes1 subAccount, uint256 marketId) internal view returns (bool) {
+    function canBorrow(uint256 marketId, address vault, bytes1 subAccount) internal view returns (bool) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(marketId);
         uint256 len = substrates.length;
 
+        EulerSubstrate memory substrate;
+
         for (uint256 i = 0; i < len; i++) {
-            EulerSubstrate memory substrate = bytes32ToSubstrate(substrates[i]);
+            substrate = bytes32ToSubstrate(substrates[i]);
             if (substrate.eulerVault == vault && substrate.subAccounts == subAccount && substrate.canBorrow) {
                 return true;
             }
@@ -101,10 +106,10 @@ library EulerFuseLib {
 
     /// @notice Generates a sub-account address for a given plasma vault and sub-account identifier
     /// @param plasmaVault The address of the plasma vault
-    /// @param accountId The sub-account identifier
-    function generateSubAccountAddress(address plasmaVault, bytes1 accountId) internal pure returns (address) {
+    /// @param subAccountId The sub-account identifier
+    function generateSubAccountAddress(address plasmaVault, bytes1 subAccountId) internal pure returns (address) {
         bytes memory plasmaBytes = abi.encodePacked(plasmaVault);
-        plasmaBytes[19] = accountId;
+        plasmaBytes[19] = subAccountId;
         return address(uint160(bytes20(plasmaBytes)));
     }
 }
