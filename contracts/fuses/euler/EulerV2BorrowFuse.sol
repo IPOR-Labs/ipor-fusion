@@ -26,7 +26,7 @@ struct EulerV2BorrowFuseEnterData {
 /// @param subAccount The sub-account identifier
 struct EulerV2BorrowFuseExitData {
     address eulerVault;
-    uint256 maxAmount;
+    uint256 maxAssetAmount;
     bytes1 subAccount;
 }
 
@@ -83,7 +83,7 @@ contract EulerV2BorrowFuse is IFuseCommon {
     /// @notice Exits the Euler V2 Borrow Fuse with the specified parameters
     /// @param data_ The data structure containing the parameters for exiting the Euler V2 Borrow Fuse
     function exit(EulerV2BorrowFuseExitData memory data_) external {
-        if (data_.maxAmount == 0) {
+        if (data_.maxAssetAmount == 0) {
             return;
         }
         if (!EulerFuseLib.canBorrow(MARKET_ID, data_.eulerVault, data_.subAccount)) {
@@ -104,7 +104,7 @@ contract EulerV2BorrowFuse is IFuseCommon {
                 data_.eulerVault,
                 plasmaVault,
                 0,
-                abi.encodeWithSelector(IBorrowing.repay.selector, data_.maxAmount, subAccount)
+                abi.encodeWithSelector(IBorrowing.repay.selector, data_.maxAssetAmount, subAccount)
             ),
             (uint256)
         );

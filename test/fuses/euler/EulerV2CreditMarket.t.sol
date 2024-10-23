@@ -1071,7 +1071,7 @@ contract EulerCreditMarketTest is Test {
                 "exit((address,uint256,bytes1))",
                 EulerV2BorrowFuseExitData({
                     eulerVault: EULER_VAULT_PRIME_USDC,
-                    maxAmount: borrowAmount,
+                    maxAssetAmount: borrowAmount,
                     subAccount: _SUB_ACCOUNT_BYTE_ONE
                 })
             )

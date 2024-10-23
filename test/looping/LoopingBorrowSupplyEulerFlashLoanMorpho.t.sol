@@ -693,7 +693,7 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                 "exit((address,uint256,bytes1))",
                 EulerV2BorrowFuseExitData({
                     eulerVault: EULER_VAULT_PRIME_USDC,
-                    maxAmount: repayAmount,
+                    maxAssetAmount: repayAmount,
                     subAccount: _SUB_ACCOUNT_BYTE_ONE
                 })
             )
