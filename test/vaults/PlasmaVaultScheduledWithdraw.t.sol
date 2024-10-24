@@ -289,6 +289,62 @@ contract PlasmaVaultScheduledWithdraw is Test {
         );
     }
 
+    function testShouldNOTBeAbleToRedeemBecauseNoExecutionReleaseFunds() external {
+        // given
+        uint256 withdrawAmount = 1_000e6;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 hours);
+
+        vm.warp(block.timestamp + 10 hours);
+
+        uint256 balanceBefore = ERC20(_USDC).balanceOf(_USER);
+
+        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
+
+        vm.startPrank(_USER);
+        //then
+        vm.expectRevert(error);
+        // when
+        PlasmaVault(_plasmaVault).redeem(withdrawAmount * 100, _USER, _USER);
+        vm.stopPrank();
+
+    }
+
+    function testShouldNOTBeAbleToWithdrawBecauseNoExecutionReleaseFunds() external {
+        // given
+        uint256 withdrawAmount = 1_000e6;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 hours);
+
+        vm.warp(block.timestamp + 10 hours);
+
+        uint256 balanceBefore = ERC20(_USDC).balanceOf(_USER);
+
+        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
+
+        vm.startPrank(_USER);
+        //then
+        vm.expectRevert(error);
+        // when
+        PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
+        vm.stopPrank();
+
+    }
+
     function testShouldNotBeAbleToRedeemWhenWithdrawWindowFinish() external {
         // given
         uint256 withdrawAmount = 1_000e6;
@@ -316,6 +372,31 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.stopPrank();
     }
 
+    function testShouldNotBeAbleToRedeemWhenWithdrawWindowFinishAndReleaseFundAfterWithdrawWindow() external {
+        // given
+        uint256 withdrawAmount = 1_000e6;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 days + 1 hours);
+
+        vm.prank(_ALPHA);
+        WithdrawManager(_withdrawManager).releaseFunds();
+
+        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).redeem(withdrawAmount * 100, _USER, _USER);
+        vm.stopPrank();
+    }
+
     function testShouldNotBeAbleToWithdrawWhenWithdrawWindowFinish() external {
         // given
         uint256 withdrawAmount = 1_000e6;
@@ -333,6 +414,31 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).releaseFunds();
 
         vm.warp(block.timestamp + 24 hours);
+
+        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
+        vm.stopPrank();
+    }
+
+    function testShouldNotBeAbleToWithdrawWhenWithdrawWindowFinishAndReleaseFundsAfterRequestWindow() external {
+        // given
+        uint256 withdrawAmount = 1_000e6;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 days + 1 hours);
+
+        vm.prank(_ALPHA);
+        WithdrawManager(_withdrawManager).releaseFunds();
 
         bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
 
