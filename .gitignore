@@ -16,3 +16,7 @@
 
 ### macOS system files ###
 .DS_Store
+
+### Cursor ###
+.cursorignore
+ai_context
