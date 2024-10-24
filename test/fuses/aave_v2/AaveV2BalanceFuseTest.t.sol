@@ -10,7 +10,7 @@ import {AaveLendingPoolV2} from "../../../contracts/fuses/aave_v2/ext/AaveLendin
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 import {AaveV2BalanceFuse} from "../../../contracts/fuses/aave_v2/AaveV2BalanceFuse.sol";
 
-contract AaveV3BalanceFuseTest is Test {
+contract AaveV2BalanceFuseTest is Test {
     struct SupportedToken {
         address token;
         string name;

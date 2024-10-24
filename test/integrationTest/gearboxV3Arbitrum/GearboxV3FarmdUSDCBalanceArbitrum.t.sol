@@ -35,7 +35,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
     address public constant PRICE_ORACLE_MIDDLEWARE_USD = 0x85a3Ee1688eE8D320eDF4024fB67734Fa8492cF4;
 
     address public constant AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
-    address public constant AAVE_POOL_DATA_PROVIDER = 0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654;
+    address public constant ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb;
     address public constant AAVE_PRICE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
 
     address public constant COMET = 0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf;
@@ -98,7 +98,10 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
     function setupFuses() public override {
         gearboxV3DTokenFuse = new Erc4626SupplyFuse(IporFusionMarkets.GEARBOX_POOL_V3);
         gearboxV3FarmSupplyFuse = new GearboxV3FarmSupplyFuse(IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3);
-        AaveV3SupplyFuse fuseAave = new AaveV3SupplyFuse(IporFusionMarkets.AAVE_V3, AAVE_POOL, AAVE_POOL_DATA_PROVIDER);
+        AaveV3SupplyFuse fuseAave = new AaveV3SupplyFuse(
+            IporFusionMarkets.AAVE_V3,
+            ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
+        );
 
         fuses = new address[](3);
         fuses[0] = address(gearboxV3DTokenFuse);
@@ -113,7 +116,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
             IporFusionMarkets.GEARBOX_FARM_DTOKEN_V3
         );
 
-        aaveFuseBalance = new AaveV3BalanceFuse(IporFusionMarkets.AAVE_V3, AAVE_PRICE_ORACLE, AAVE_POOL_DATA_PROVIDER);
+        aaveFuseBalance = new AaveV3BalanceFuse(IporFusionMarkets.AAVE_V3, ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         balanceFuses = new MarketBalanceFuseConfig[](4);
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.GEARBOX_POOL_V3, address(gearboxV3Balances));

@@ -24,7 +24,7 @@ contract AaveV3BalanceFuseTest is Test {
     IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0x54586bE62E3c3580375aE3723C145253060Ca0C2);
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
-    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
 
     SupportedToken private activeTokens;
 
@@ -32,11 +32,7 @@ contract AaveV3BalanceFuseTest is Test {
         // given
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19508857);
 
-        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
-            1,
-            address(AAVE_PRICE_ORACLE),
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
+        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(1, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(aaveV3Balances));
 
@@ -69,11 +65,7 @@ contract AaveV3BalanceFuseTest is Test {
     function testShouldDecreaseBalanceWhenBorrowVariable() external iterateSupportedTokens {
         // given
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19508857);
-        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
-            1,
-            address(AAVE_PRICE_ORACLE),
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
+        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(1, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(aaveV3Balances));
 

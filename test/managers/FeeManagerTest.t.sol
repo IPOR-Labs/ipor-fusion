@@ -22,8 +22,6 @@ import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigL
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 
 import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
-import {IAavePriceOracle} from "../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
-import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 
@@ -39,10 +37,8 @@ contract FeeManagerTest is Test {
     address private constant _USDC_HOLDER = 0x47c031236e19d024b42f8AE6780E44A573170703;
 
     IPool public constant AAVE_POOL = IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD);
-    IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7);
-    IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
-        IAavePoolDataProvider(0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654);
-    address public constant ARBITRUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654;
+
+    address public constant ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb;
 
     uint256 private constant PERFORMANCE_FEE_IN_PERCENTAGE = 1000;
     uint256 private constant DAO_PERFORMANCE_FEE_IN_PERCENTAGE = 1000;
@@ -95,9 +91,7 @@ contract FeeManagerTest is Test {
 
     function _createFuse() private returns (address[] memory) {
         address[] memory fuses = new address[](1);
-        fuses[0] = address(
-            new AaveV3SupplyFuse(IporFusionMarkets.AAVE_V3, address(AAVE_POOL), address(AAVE_POOL_DATA_PROVIDER))
-        );
+        fuses[0] = address(new AaveV3SupplyFuse(IporFusionMarkets.AAVE_V3, ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER));
         _aaveFuse = fuses[0];
         return fuses;
     }
@@ -115,13 +109,7 @@ contract FeeManagerTest is Test {
 
         balanceFuses[0] = MarketBalanceFuseConfig({
             marketId: IporFusionMarkets.AAVE_V3,
-            fuse: address(
-                new AaveV3BalanceFuse(
-                    IporFusionMarkets.AAVE_V3,
-                    address(AAVE_PRICE_ORACLE),
-                    address(AAVE_POOL_DATA_PROVIDER)
-                )
-            )
+            fuse: address(new AaveV3BalanceFuse(IporFusionMarkets.AAVE_V3, ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER))
         });
     }
 

@@ -28,7 +28,8 @@ import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.
 
 contract PlasmaVaultCallbackHandler is Test {
     address private constant _AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
-    address private constant _ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
 
     address private constant _AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     uint256 private constant _AAVE_V3_MARKET_ID = 1;
@@ -105,7 +106,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
     function _setupFuses() private returns (address[] memory fuses) {
         _morphoFuse = new MorphoSupplyWithCallBackDataFuse(_MORPHO_MARKET_ID);
-        _supplyFuseAaveV3 = new AaveV3SupplyFuse(_AAVE_V3_MARKET_ID, _AAVE_POOL, _ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3);
+        _supplyFuseAaveV3 = new AaveV3SupplyFuse(_AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         _supplyFuseCompoundV3 = new CompoundV3SupplyFuse(_COMPOUND_V3_MARKET_ID, _COMET_V3_USDC);
 
         fuses = new address[](3);
@@ -132,13 +133,7 @@ contract PlasmaVaultCallbackHandler is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(_MORPHO_MARKET_ID, address(new MorphoBalanceFuse(_MORPHO_MARKET_ID)));
         balanceFuses[1] = MarketBalanceFuseConfig(
             _AAVE_V3_MARKET_ID,
-            address(
-                new AaveV3BalanceFuse(
-                    _AAVE_V3_MARKET_ID,
-                    _AAVE_PRICE_ORACLE_MAINNET,
-                    _ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-                )
-            )
+            address(new AaveV3BalanceFuse(_AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER))
         );
         balanceFuses[2] = MarketBalanceFuseConfig(
             _COMPOUND_V3_MARKET_ID,

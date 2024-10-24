@@ -24,7 +24,8 @@ contract AaveV3BalanceFuseArbitrumTest is Test {
     IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7);
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654);
-    address public constant ARBITRUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654;
+
+    address public constant ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb;
 
     SupportedToken private activeTokens;
 
@@ -32,11 +33,7 @@ contract AaveV3BalanceFuseArbitrumTest is Test {
         // given
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
 
-        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
-            1,
-            address(AAVE_PRICE_ORACLE),
-            ARBITRUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
+        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(1, ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(aaveV3Balances));
 
@@ -68,11 +65,7 @@ contract AaveV3BalanceFuseArbitrumTest is Test {
     function testShouldDecreaseBalanceWhenBorrowVariable() external iterateSupportedTokens {
         // given
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
-        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
-            1,
-            address(AAVE_PRICE_ORACLE),
-            ARBITRUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
+        AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(1, ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(aaveV3Balances));
 
