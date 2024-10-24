@@ -924,7 +924,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -953,7 +953,7 @@ contract PlasmaVaultWithdrawTest is Test {
     }
 
     function testShouldNotInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFailsUsedDoesntHaveEnoughShares()
-    public
+        public
     {
         /// @dev scenario:
         /// - userOne deposit 200, userTwo deposit 200,
@@ -1085,7 +1085,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -1238,7 +1238,7 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.stopPrank();
 
         address aTokenAddress;
-        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -1358,7 +1358,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -1470,7 +1470,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -1625,7 +1625,7 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.stopPrank();
 
         address aTokenAddress;
-        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 

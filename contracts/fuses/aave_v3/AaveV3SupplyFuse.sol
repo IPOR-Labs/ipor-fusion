@@ -68,12 +68,9 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             revert AaveV3SupplyFuseUnsupportedAsset("enter", data_.asset);
         }
 
-        IPool aavePool =  IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool());
+        IPool aavePool = IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool());
 
-        ERC20(data_.asset).forceApprove(
-            address(aavePool),
-            data_.amount
-        );
+        ERC20(data_.asset).forceApprove(address(aavePool), data_.amount);
 
         aavePool.supply(data_.asset, data_.amount, address(this), 0);
 
@@ -116,7 +113,7 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        IPool aavePool =  IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool());
+        IPool aavePool = IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool());
 
         try aavePool.withdraw(data.asset, finalAmount, address(this)) returns (uint256 withdrawnAmount) {
             emit AaveV3SupplyFuseExit(VERSION, data.asset, withdrawnAmount);
