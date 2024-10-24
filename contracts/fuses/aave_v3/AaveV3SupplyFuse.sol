@@ -8,6 +8,7 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IPool} from "./ext/IPool.sol";
+import {IPoolAddressesProvider} from "./ext/IPoolAddressesProvider.sol";
 import {IAavePoolDataProvider} from "./ext/IAavePoolDataProvider.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
@@ -37,8 +38,7 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
-    IPool public immutable AAVE_POOL;
-    address public immutable AAVE_POOL_DATA_PROVIDER_V3;
+    address public immutable AAVE_V3_POOL_ADDRESSES_PROVIDER;
 
     event AaveV3SupplyFuseEnter(address version, address asset, uint256 amount, uint256 userEModeCategoryId);
     event AaveV3SupplyFuseExit(address version, address asset, uint256 amount);
@@ -46,18 +46,17 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     error AaveV3SupplyFuseUnsupportedAsset(string action, address asset);
 
-    constructor(uint256 marketId_, address aavePool_, address aavePoolDataProviderV3_) {
+    constructor(uint256 marketId_, address aaveV3PoolAddressesProvider_) {
         if (marketId_ == 0) {
             revert Errors.WrongValue();
         }
-        if (aavePool_ == address(0) || aavePoolDataProviderV3_ == address(0)) {
+        if (aaveV3PoolAddressesProvider_ == address(0)) {
             revert Errors.WrongAddress();
         }
 
         VERSION = address(this);
         MARKET_ID = marketId_;
-        AAVE_POOL = IPool(aavePool_);
-        AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3_;
+        AAVE_V3_POOL_ADDRESSES_PROVIDER = aaveV3PoolAddressesProvider_;
     }
 
     function enter(AaveV3SupplyFuseEnterData memory data_) external {
@@ -69,12 +68,17 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             revert AaveV3SupplyFuseUnsupportedAsset("enter", data_.asset);
         }
 
-        ERC20(data_.asset).forceApprove(address(AAVE_POOL), data_.amount);
+        IPool aavePool =  IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool());
 
-        AAVE_POOL.supply(data_.asset, data_.amount, address(this), 0);
+        ERC20(data_.asset).forceApprove(
+            address(aavePool),
+            data_.amount
+        );
+
+        aavePool.supply(data_.asset, data_.amount, address(this), 0);
 
         if (data_.userEModeCategoryId <= type(uint8).max) {
-            AAVE_POOL.setUserEMode(data_.userEModeCategoryId.toUint8());
+            aavePool.setUserEMode(data_.userEModeCategoryId.toUint8());
         }
 
         emit AaveV3SupplyFuseEnter(VERSION, data_.asset, data_.amount, data_.userEModeCategoryId);
@@ -102,9 +106,9 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             revert AaveV3SupplyFuseUnsupportedAsset("exit", data.asset);
         }
 
-        (address aTokenAddress, , ) = IAavePoolDataProvider(AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
-            data.asset
-        );
+        (address aTokenAddress, , ) = IAavePoolDataProvider(
+            IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPoolDataProvider()
+        ).getReserveTokensAddresses(data.asset);
 
         uint256 finalAmount = IporMath.min(ERC20(aTokenAddress).balanceOf(address(this)), data.amount);
 
@@ -112,7 +116,9 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        try AAVE_POOL.withdraw(data.asset, finalAmount, address(this)) returns (uint256 withdrawnAmount) {
+        IPool aavePool =  IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool());
+
+        try aavePool.withdraw(data.asset, finalAmount, address(this)) returns (uint256 withdrawnAmount) {
             emit AaveV3SupplyFuseExit(VERSION, data.asset, withdrawnAmount);
         } catch {
             /// @dev if withdraw failed, continue with the next step

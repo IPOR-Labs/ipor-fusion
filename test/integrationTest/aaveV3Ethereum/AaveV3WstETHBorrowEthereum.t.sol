@@ -20,7 +20,7 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
     address private constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address private constant CHAINLINK_ETH = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
-    address public constant AAVE_POOL_DATA_PROVIDER = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
     address public constant AAVE_PRICE_ORACLE = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
 
     uint256 internal depositAmount = 2e18;
@@ -76,8 +76,8 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
     }
 
     function setupFuses() public override {
-        AaveV3SupplyFuse fuseSupplyLoc = new AaveV3SupplyFuse(getMarketId(), AAVE_POOL, AAVE_POOL_DATA_PROVIDER);
-        AaveV3BorrowFuse fuseBorrowLoc = new AaveV3BorrowFuse(getMarketId(), AAVE_POOL);
+        AaveV3SupplyFuse fuseSupplyLoc = new AaveV3SupplyFuse(getMarketId(), ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
+        AaveV3BorrowFuse fuseBorrowLoc = new AaveV3BorrowFuse(getMarketId(), ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         fuses = new address[](2);
         fuses[0] = address(fuseSupplyLoc);
         fuses[1] = address(fuseBorrowLoc);
@@ -86,8 +86,7 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
             getMarketId(),
-            AAVE_PRICE_ORACLE,
-            AAVE_POOL_DATA_PROVIDER
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         balanceFuses = new MarketBalanceFuseConfig[](1);
@@ -97,8 +96,7 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
     function setupBalanceFusesWithErc20Balance() public returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
             getMarketId(),
-            AAVE_PRICE_ORACLE,
-            AAVE_POOL_DATA_PROVIDER
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         ERC20BalanceFuse erc20Balances = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);

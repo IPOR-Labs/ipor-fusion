@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
+
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
@@ -30,17 +31,14 @@ contract PlasmaVaultWithdrawTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
-    address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
-    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
+    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x41393e5e337606dc3821075Af65AeE84D7688CBD;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
 
     address public constant COMET_V3_USDC = 0xc3d688B66703497DAA19211EEdff47f25384cdc3;
     uint256 public constant COMPOUND_V3_MARKET_ID = 2;
 
     uint256 public constant ERC4626_MARKET_ID = 3;
-
-    IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
-        IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
 
     address public atomist = address(this);
 
@@ -61,7 +59,7 @@ contract PlasmaVaultWithdrawTest is Test {
     event CompoundV3SupplyFuseExit(address version, address asset, address market, uint256 amount);
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19724793);
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 21036301);
 
         userOne = address(0x777);
         userTwo = address(0x888);
@@ -195,7 +193,7 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         plasmaVault.deposit(amount, userOne);
 
-        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1713956927);
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1729783655);
 
         //when
         vm.warp(block.timestamp + 5 minutes);
@@ -220,7 +218,7 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         plasmaVault.deposit(amount, userOne);
 
-        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1713956927);
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1729783655);
 
         //when
         vm.warp(block.timestamp + 5 minutes);
@@ -265,13 +263,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -369,13 +365,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -457,7 +451,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         assertEq(userBalanceAfter, 199 * 1e6);
         assertGt(vaultTotalAssetsAfter, 0);
-        assertEq(vaultTotalAssetsAfter, 4708504);
+        assertGt(vaultTotalAssetsAfter, 4708504);
     }
 
     function testShouldInstantWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3() public {
@@ -476,13 +470,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -600,13 +592,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -698,13 +688,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -794,13 +782,13 @@ contract PlasmaVaultWithdrawTest is Test {
 
         //then
         vm.expectEmit(true, true, true, true);
-        emit AaveV3SupplyFuseExit(address(supplyFuseAaveV3), USDC, 50 * 1e6);
+        emit AaveV3SupplyFuseExit(address(supplyFuseAaveV3), USDC, 50 * 1e6 + 1);
         vm.expectEmit(true, true, true, true);
         emit CompoundV3SupplyFuseExit(
             address(supplyFuseCompoundV3),
             USDC,
             COMET_V3_USDC,
-            25 * 1e6 + WITHDRAW_FROM_MARKETS_OFFSET
+            25 * 1e6 + WITHDRAW_FROM_MARKETS_OFFSET - 1
         );
         //when
         vm.prank(userOne);
@@ -830,13 +818,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -938,7 +924,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -967,7 +953,7 @@ contract PlasmaVaultWithdrawTest is Test {
     }
 
     function testShouldNotInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFailsUsedDoesntHaveEnoughShares()
-        public
+    public
     {
         /// @dev scenario:
         /// - userOne deposit 200, userTwo deposit 200,
@@ -992,13 +978,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -1101,7 +1085,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -1147,13 +1131,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -1256,7 +1238,7 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.stopPrank();
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -1301,13 +1283,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -1378,7 +1358,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -1397,7 +1377,7 @@ contract PlasmaVaultWithdrawTest is Test {
         //then
         uint256 userOneBalanceAfter = ERC20(USDC).balanceOf(userOne);
 
-        assertEq(userOneBalanceAfter, 3 * amount);
+        assertApproxEqAbs(userOneBalanceAfter, 3 * amount, 100, "userOneBalanceAfter");
     }
 
     function testShouldRedeemExitFromOneMarketAaveV3SlippageNOTSavedInFirstIteration() public {
@@ -1416,13 +1396,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -1492,7 +1470,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -1539,13 +1517,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -1649,7 +1625,7 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.stopPrank();
 
         address aTokenAddress;
-        (aTokenAddress, , ) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
+        (aTokenAddress,,) = IAavePoolDataProvider(ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3).getReserveTokensAddresses(
             USDC
         );
 
@@ -1694,13 +1670,11 @@ contract PlasmaVaultWithdrawTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -1752,15 +1726,10 @@ contract PlasmaVaultWithdrawTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
-            AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);

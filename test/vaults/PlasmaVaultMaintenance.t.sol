@@ -29,6 +29,7 @@ contract PlasmaVaultMaintenanceTest is Test {
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 
     uint256 public constant AAVE_V3_MARKET_ID = 1;
@@ -577,8 +578,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](0);
@@ -628,8 +628,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](0);
@@ -678,7 +677,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](1);
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1));
         fuses[0] = address(fuse);
 
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
@@ -720,8 +719,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
@@ -786,8 +784,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -819,8 +816,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
@@ -895,8 +891,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -962,8 +957,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory initialSupplyFuses = new address[](0);
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
@@ -990,11 +984,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
-            AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -1046,8 +1036,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address[] memory initialSupplyFuses = new address[](0);
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
@@ -1074,11 +1063,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
-            AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -1131,7 +1116,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
 
         address[] memory fuses = new address[](1);
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1), address(0x1));
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, address(0x1));
         fuses[0] = address(fuse);
 
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
@@ -1177,8 +1162,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
@@ -1240,8 +1224,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
@@ -1303,8 +1286,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
@@ -1371,8 +1353,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);

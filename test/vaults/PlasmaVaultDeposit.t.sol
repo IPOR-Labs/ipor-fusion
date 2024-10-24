@@ -26,7 +26,8 @@ contract PlasmaVaultDepositTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
-    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
@@ -194,13 +195,11 @@ contract PlasmaVaultDepositTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -256,15 +255,10 @@ contract PlasmaVaultDepositTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
-            AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-        );
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
