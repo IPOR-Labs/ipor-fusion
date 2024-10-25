@@ -28,7 +28,8 @@ contract PlasmaVaultErc20FusionTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
-    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
 
     address public constant COMET_V3_USDC = 0xc3d688B66703497DAA19211EEdff47f25384cdc3;
@@ -90,13 +91,11 @@ contract PlasmaVaultErc20FusionTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);

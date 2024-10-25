@@ -4,8 +4,10 @@ pragma solidity 0.8.26;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IPool} from "./ext/IPool.sol";
+import {IPoolAddressesProvider} from "./ext/IPoolAddressesProvider.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 /// @notice Structure for entering (borrow) to the Aave V3 protocol
@@ -36,7 +38,7 @@ contract AaveV3BorrowFuse is IFuseCommon {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
-    IPool public immutable AAVE_POOL;
+    address public immutable AAVE_V3_POOL_ADDRESSES_PROVIDER;
 
     event AaveV3BorrowFuseEnter(address version, address asset, uint256 amount, uint256 interestRateMode);
 
@@ -45,10 +47,13 @@ contract AaveV3BorrowFuse is IFuseCommon {
 
     error AaveV3BorrowFuseUnsupportedAsset(string action, address asset);
 
-    constructor(uint256 marketId_, address aavePool_) {
+    constructor(uint256 marketId_, address aaveV3PoolAddressesProvider_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
-        AAVE_POOL = IPool(aavePool_);
+        if (aaveV3PoolAddressesProvider_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        AAVE_V3_POOL_ADDRESSES_PROVIDER = aaveV3PoolAddressesProvider_;
     }
 
     function enter(AaveV3BorrowFuseEnterData memory data_) external {
@@ -60,7 +65,13 @@ contract AaveV3BorrowFuse is IFuseCommon {
             revert AaveV3BorrowFuseUnsupportedAsset("enter", data_.asset);
         }
 
-        AAVE_POOL.borrow(data_.asset, data_.amount, INTEREST_RATE_MODE, 0, address(this));
+        IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool()).borrow(
+            data_.asset,
+            data_.amount,
+            INTEREST_RATE_MODE,
+            0,
+            address(this)
+        );
 
         emit AaveV3BorrowFuseEnter(VERSION, data_.asset, data_.amount, INTEREST_RATE_MODE);
     }
@@ -74,9 +85,11 @@ contract AaveV3BorrowFuse is IFuseCommon {
             revert AaveV3BorrowFuseUnsupportedAsset("exit", data_.asset);
         }
 
-        ERC20(data_.asset).forceApprove(address(AAVE_POOL), data_.amount);
+        address aavePool = IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool();
 
-        uint256 repaidAmount = AAVE_POOL.repay(data_.asset, data_.amount, INTEREST_RATE_MODE, address(this));
+        ERC20(data_.asset).forceApprove(aavePool, data_.amount);
+
+        uint256 repaidAmount = IPool(aavePool).repay(data_.asset, data_.amount, INTEREST_RATE_MODE, address(this));
 
         emit AaveV3BorrowFuseExit(VERSION, data_.asset, repaidAmount, INTEREST_RATE_MODE);
     }
