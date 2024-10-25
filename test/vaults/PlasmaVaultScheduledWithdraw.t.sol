@@ -304,8 +304,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         vm.warp(block.timestamp + 10 hours);
 
-        uint256 balanceBefore = ERC20(_USDC).balanceOf(_USER);
-
         bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
 
         vm.startPrank(_USER);
