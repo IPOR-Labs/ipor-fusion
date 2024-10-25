@@ -33,8 +33,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
     address public constant FLUID_LENDING_STAKING_REWARDS = 0x48f89d731C5e3b5BeE8235162FC2C639Ba62DB7d;
 
     address public constant AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
-    address public constant AAVE_POOL_DATA_PROVIDER = 0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654;
-    address public constant AAVE_PRICE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
+    address public constant ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb;
 
     FluidInstadappStakingSupplyFuse public fluidInstadappStakingSupplyFuse;
     Erc4626SupplyFuse public erc4626SupplyFuse;
@@ -92,7 +91,10 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         fluidInstadappStakingSupplyFuse = new FluidInstadappStakingSupplyFuse(
             IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
-        AaveV3SupplyFuse fuseAave = new AaveV3SupplyFuse(IporFusionMarkets.AAVE_V3, AAVE_POOL, AAVE_POOL_DATA_PROVIDER);
+        AaveV3SupplyFuse fuseAave = new AaveV3SupplyFuse(
+            IporFusionMarkets.AAVE_V3,
+            ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
+        );
 
         fuses = new address[](3);
         fuses[0] = address(erc4626SupplyFuse);
@@ -107,7 +109,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
             IporFusionMarkets.FLUID_INSTADAPP_STAKING
         );
 
-        aaveFuseBalance = new AaveV3BalanceFuse(IporFusionMarkets.AAVE_V3, AAVE_PRICE_ORACLE, AAVE_POOL_DATA_PROVIDER);
+        aaveFuseBalance = new AaveV3BalanceFuse(IporFusionMarkets.AAVE_V3, ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         balanceFuses = new MarketBalanceFuseConfig[](3);
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.FLUID_INSTADAPP_POOL, address(erc4626BalanceFuse));

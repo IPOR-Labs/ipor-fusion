@@ -21,7 +21,7 @@ contract AaveV3SupplyFuseTest is Test {
     IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0x54586bE62E3c3580375aE3723C145253060Ca0C2);
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
-
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
     SupportedToken private activeTokens;
 
     function setUp() public {
@@ -30,7 +30,7 @@ contract AaveV3SupplyFuseTest is Test {
 
     function testShouldBeAbleToSupplyAaveV3() external iterateSupportedTokens {
         // given
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, address(AAVE_POOL), address(AAVE_POOL_DATA_PROVIDER));
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -74,7 +74,7 @@ contract AaveV3SupplyFuseTest is Test {
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
         uint256 dustOnAToken = 10;
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, address(AAVE_POOL), address(AAVE_POOL_DATA_PROVIDER));
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
