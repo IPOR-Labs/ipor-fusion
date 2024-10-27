@@ -27,7 +27,9 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
     /// @param assetXAssetYChainlinkFeed_ Chainlink feed for ASSET/ETH in a specific network
     /// @param assetYUsdChainlinkFeed_ Chainlink feed for ETH/USD in a specific network
     constructor(address assetX_, address assetXAssetYChainlinkFeed_, address assetYUsdChainlinkFeed_) {
-        if (assetX_ == address(0) || assetXAssetYChainlinkFeed_ == address(0) || assetYUsdChainlinkFeed_ == address(0)) {
+        if (
+            assetX_ == address(0) || assetXAssetYChainlinkFeed_ == address(0) || assetYUsdChainlinkFeed_ == address(0)
+        ) {
             revert Errors.WrongAddress();
         }
 
@@ -46,10 +48,10 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
     }
 
     function latestRoundData()
-    external
-    view
-    override
-    returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
+        external
+        view
+        override
+        returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
         (, int256 assetYPriceInUsd, , , ) = AggregatorV3Interface(ASSET_Y_USD_CHAINLINK_FEED).latestRoundData();
         (, int256 assetXPriceInAssetY, , , ) = AggregatorV3Interface(ASSET_X_ASSET_Y_CHAINLINK_FEED).latestRoundData();
