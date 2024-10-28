@@ -86,9 +86,10 @@ contract WithdrawManager is AccessManagedUpgradeable {
         uint256 withdrawWindow,
         uint256 releaseFundsTimestamp
     ) private view returns (bool) {
+        /// @dev endWithdrawWindowTimestamp - withdrawWindow = moment when user did request for withdraw
         return
             block.timestamp >= endWithdrawWindowTimestamp - withdrawWindow &&
             block.timestamp <= endWithdrawWindowTimestamp &&
-            block.timestamp >= releaseFundsTimestamp;
+            endWithdrawWindowTimestamp - withdrawWindow < releaseFundsTimestamp;
     }
 }

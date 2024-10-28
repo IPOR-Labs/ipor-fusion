@@ -24,7 +24,7 @@ contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant CHAINLINK_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
     address public constant AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
-    address public constant AAVE_POOL_DATA_PROVIDER = 0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654;
+    address public constant ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb;
     address public constant AAVE_PRICE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
 
     address private _deployer = vm.rememberKey(1);
@@ -511,14 +511,12 @@ contract IporPlasmaVaultRolesTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             IporFusionMarkets.AAVE_V3,
-            AAVE_PRICE_ORACLE,
-            AAVE_POOL_DATA_PROVIDER
+            ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
             IporFusionMarkets.AAVE_V3,
-            AAVE_POOL,
-            AAVE_POOL_DATA_PROVIDER
+            ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
