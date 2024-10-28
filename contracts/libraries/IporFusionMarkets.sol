@@ -51,7 +51,7 @@ library IporFusionMarkets {
 
     uint256 public constant RAMSES_V2_POSITIONS = 18;
 
-    /// @dev Morpho flash loan market
+    /// @dev Morpho flash loan market, one need add dependence graph with balance of ERC20_VAULT_BALANCE
     uint256 public constant MORPHO_FLASH_LOAN = 19;
 
     /// @dev Market 1 for ERC4626 Vault

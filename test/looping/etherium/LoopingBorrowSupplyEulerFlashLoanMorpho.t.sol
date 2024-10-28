@@ -7,40 +7,40 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 
-import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {WstETHPriceFeedEthereum} from "../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
-import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../contracts/vaults/PlasmaVault.sol";
-import {EulerFuseLib, EulerSubstrate} from "../../contracts/fuses/euler/EulerFuseLib.sol";
-import {EulerV2SupplyFuse, EulerV2SupplyFuseEnterData, EulerV2SupplyFuseExitData} from "../../contracts/fuses/euler/EulerV2SupplyFuse.sol";
-import {EulerV2CollateralFuse, EulerV2CollateralFuseEnterData} from "../../contracts/fuses/euler/EulerV2CollateralFuse.sol";
-import {EulerV2ControllerFuse, EulerV2ControllerFuseEnterData} from "../../contracts/fuses/euler/EulerV2ControllerFuse.sol";
-import {EulerV2BorrowFuse, EulerV2BorrowFuseEnterData, EulerV2BorrowFuseExitData} from "../../contracts/fuses/euler/EulerV2BorrowFuse.sol";
-import {EulerV2BalanceFuse} from "../../contracts/fuses/euler/EulerV2BalanceFuse.sol";
-import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
-import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {WstETHPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
+import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
+import {EulerFuseLib, EulerSubstrate} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
+import {EulerV2SupplyFuse, EulerV2SupplyFuseEnterData, EulerV2SupplyFuseExitData} from "../../../contracts/fuses/euler/EulerV2SupplyFuse.sol";
+import {EulerV2CollateralFuse, EulerV2CollateralFuseEnterData} from "../../../contracts/fuses/euler/EulerV2CollateralFuse.sol";
+import {EulerV2ControllerFuse, EulerV2ControllerFuseEnterData} from "../../../contracts/fuses/euler/EulerV2ControllerFuse.sol";
+import {EulerV2BorrowFuse, EulerV2BorrowFuseEnterData, EulerV2BorrowFuseExitData} from "../../../contracts/fuses/euler/EulerV2BorrowFuse.sol";
+import {EulerV2BalanceFuse} from "../../../contracts/fuses/euler/EulerV2BalanceFuse.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
-import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
-import {IBorrowing} from "../../contracts/fuses/euler/ext/IBorrowing.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
+import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
 
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 import {IWETH9} from "./IWETH9.sol";
 import {IstETH} from "./IstETH.sol";
 import {IToken} from "./IToken.sol";
 
-import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
-import {MorphoFlashLoanFuse} from "../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
-import {MorphoFlashLoanFuseEnterData} from "../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
-import {CallbackHandlerMorpho} from "../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+import {MorphoFlashLoanFuse} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
+import {MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
+import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
 
-import {UniswapV3SwapFuse} from "../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
-import {UniswapV3SwapFuseEnterData} from "../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
+import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
+import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 
 struct VaultBalance {
     uint256 eulerPrimeUsdc;

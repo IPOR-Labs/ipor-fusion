@@ -65,6 +65,7 @@ contract MorphoBalanceFuse is IMarketBalanceFuse {
 
             balance += _convertToUsd(priceOracleMiddleware, marketParams.collateralToken, totalCollateralAssets)
                 .toInt256();
+
             if (totalSupplyAssets > totalBorrowAssets) {
                 balance += _convertToUsd(
                     priceOracleMiddleware,
@@ -79,7 +80,6 @@ contract MorphoBalanceFuse is IMarketBalanceFuse {
                 ).toInt256();
             }
         }
-
         return balance.toUint256();
     }
 
@@ -90,6 +90,7 @@ contract MorphoBalanceFuse is IMarketBalanceFuse {
     ) internal view returns (uint256) {
         if (amount_ == 0) return 0;
         (uint256 price, uint256 decimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(asset_);
+
         return IporMath.convertToWad(amount_ * price, ERC20(asset_).decimals() + decimals);
     }
 }
