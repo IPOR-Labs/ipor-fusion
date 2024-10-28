@@ -14,7 +14,7 @@ import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib
 import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParamsLib.sol";
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
-
+import {CallbackData} from "../../libraries/CallbackHandlerLib.sol";
 struct MorphoSupplyFuseEnterData {
     /// @dev  vault address
     bytes32 morphoMarketId;
@@ -76,7 +76,14 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
             data_.maxTokenAmount,
             0,
             address(this),
-            data_.callbackFuseActionsData
+            abi.encode(
+                CallbackData({
+                    asset: marketParams.loanToken,
+                    addressToapprove: address(MORPHO),
+                    amountToApprove: data_.maxTokenAmount,
+                    actionData: data_.callbackFuseActionsData
+                })
+            )
         );
 
         emit MorphoSupplyFuseEnter(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsSupplied);

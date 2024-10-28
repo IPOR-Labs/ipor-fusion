@@ -43,7 +43,7 @@ contract IporPlasmaVaultRolesTest is Test {
         _initializeAccessManager();
     }
 
-    function testShouldAtomistGrantMarketSubstrates() external  {
+    function testShouldAtomistGrantMarketSubstrates() external {
         // given
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
@@ -59,7 +59,6 @@ contract IporPlasmaVaultRolesTest is Test {
             substrates[0],
             "Market substrates should be equal"
         );
-
     }
 
     function testDeployerShouldNotBeAdminAfterInitialization() external view {

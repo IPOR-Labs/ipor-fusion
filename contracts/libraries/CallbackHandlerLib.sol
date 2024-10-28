@@ -6,6 +6,15 @@ import {FuseAction} from "../interfaces/IPlasmaVault.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+struct CallbackData {
+    address asset;
+    address addressToapprove;
+    uint256 amountToApprove;
+    bytes actionData;
+}
+
 /// @title Callback Handler Library responsible for handling callbacks in the Plasma Vault
 library CallbackHandlerLib {
     using Address for address;
@@ -29,8 +38,10 @@ library CallbackHandlerLib {
         if (data.length == 0) {
             return;
         }
-        FuseAction[] memory calls = abi.decode(data, (FuseAction[]));
-        PlasmaVault(address(this)).executeInternal(calls);
+        CallbackData memory calls = abi.decode(data, (CallbackData));
+        PlasmaVault(address(this)).executeInternal(abi.decode(calls.actionData, (FuseAction[])));
+
+        ERC20(calls.asset).approve(calls.addressToapprove, calls.amountToApprove);
     }
 
     /// @notice Updates the callback handler for the contract

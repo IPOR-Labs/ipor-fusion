@@ -7,6 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IMorpho} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
+import {CallbackData} from "../../libraries/CallbackHandlerLib.sol";
 
 /// @dev Struct to hold data for entering a Morpho Flash Loan Fuse
 struct MorphoFlashLoanFuseEnterData {
@@ -47,7 +48,14 @@ contract MorphoFlashLoanFuse is IFuseCommon {
 
         ERC20(data_.token).forceApprove(address(MORPHO), data_.tokenAmount);
 
-        MORPHO.flashLoan(data_.token, data_.tokenAmount, data_.callbackFuseActionsData);
+        CallbackData memory callbackData = CallbackData({
+            asset: data_.token,
+            addressToapprove: address(MORPHO),
+            amountToApprove: data_.tokenAmount,
+            actionData: data_.callbackFuseActionsData
+        });
+
+        MORPHO.flashLoan(data_.token, data_.tokenAmount, abi.encode(callbackData));
 
         ERC20(data_.token).forceApprove(address(MORPHO), 0);
 
