@@ -312,7 +312,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
         // when
         PlasmaVault(_plasmaVault).redeem(withdrawAmount * 100, _USER, _USER);
         vm.stopPrank();
-
     }
 
     function testShouldNOTBeAbleToWithdrawBecauseNoExecutionReleaseFunds() external {
@@ -326,11 +325,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).request(withdrawAmount);
         vm.stopPrank();
 
-        vm.warp(block.timestamp + 1 hours);
-
         vm.warp(block.timestamp + 10 hours);
-
-        uint256 balanceBefore = ERC20(_USDC).balanceOf(_USER);
 
         bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
 
@@ -340,7 +335,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
         // when
         PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
         vm.stopPrank();
-
     }
 
     function testShouldNotBeAbleToRedeemWhenWithdrawWindowFinish() external {
