@@ -79,7 +79,7 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
             abi.encode(
                 CallbackData({
                     asset: marketParams.loanToken,
-                    addressToapprove: address(MORPHO),
+                    addressToApprove: address(MORPHO),
                     amountToApprove: data_.maxTokenAmount,
                     actionData: data_.callbackFuseActionsData
                 })

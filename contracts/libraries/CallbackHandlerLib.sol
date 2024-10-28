@@ -10,7 +10,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 struct CallbackData {
     address asset;
-    address addressToapprove;
+    address addressToApprove;
     uint256 amountToApprove;
     bytes actionData;
 }
@@ -41,7 +41,7 @@ library CallbackHandlerLib {
         CallbackData memory calls = abi.decode(data, (CallbackData));
         PlasmaVault(address(this)).executeInternal(abi.decode(calls.actionData, (FuseAction[])));
 
-        ERC20(calls.asset).approve(calls.addressToapprove, calls.amountToApprove);
+        ERC20(calls.asset).approve(calls.addressToApprove, calls.amountToApprove);
     }
 
     /// @notice Updates the callback handler for the contract

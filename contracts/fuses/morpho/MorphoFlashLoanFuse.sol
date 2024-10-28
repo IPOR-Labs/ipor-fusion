@@ -48,14 +48,18 @@ contract MorphoFlashLoanFuse is IFuseCommon {
 
         ERC20(data_.token).forceApprove(address(MORPHO), data_.tokenAmount);
 
-        CallbackData memory callbackData = CallbackData({
-            asset: data_.token,
-            addressToapprove: address(MORPHO),
-            amountToApprove: data_.tokenAmount,
-            actionData: data_.callbackFuseActionsData
-        });
-
-        MORPHO.flashLoan(data_.token, data_.tokenAmount, abi.encode(callbackData));
+        MORPHO.flashLoan(
+            data_.token,
+            data_.tokenAmount,
+            abi.encode(
+                CallbackData({
+                    asset: data_.token,
+                    addressToApprove: address(MORPHO),
+                    amountToApprove: data_.tokenAmount,
+                    actionData: data_.callbackFuseActionsData
+                })
+            )
+        );
 
         ERC20(data_.token).forceApprove(address(MORPHO), 0);
 
