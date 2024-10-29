@@ -17,7 +17,6 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
-import {AssetChainlinkPriceFeed} from "../../../contracts/price_oracle/price_feed/AssetChainlinkPriceFeed.sol";
 
 import {MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 
@@ -50,21 +49,22 @@ struct PlasmaVaultBalancesAfter {
     uint256 wethBalanceAfter;
 }
 
-contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
+contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
     using MorphoBalancesLib for IMorpho;
 
     address private constant _WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+    address private constant _USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private constant _WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    bytes32 private constant _MORPHO_WETH_WBTC_MARKET_ID =
-        0x138eec0e4a1937eb92ebc70043ed539661dd7ed5a89fb92a720b341650288a40;
+    address private constant _WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+
     address private constant _MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
 
     address private constant _PRICE_ORACLE_MIDDLEWARE = 0xB7018C15279E0f5990613cc00A91b6032066f2f7;
     address private constant _UNIVERSAL_ROUTER_UNISWAP = 0xEf1c6E67703c7BD7107eed8303Fbe6EC2554BF6B;
 
-    address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
-    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
-    address public constant AAVE_PRICE_ORACLE = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant AAVE_POOL = 0x4e033931ad43597d96D6bcc25c280717730B58B1;
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0xcfBf336fe147D643B9Cb705648500e101504B16d;
+    address public constant AAVE_PRICE_ORACLE = 0xE3C061981870C0C7b1f3C4F4bB36B95f1F260BE6;
 
     // Role Addresses
     address private constant _DAO = address(1111111);
@@ -93,8 +93,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
     function setUp() public {
         // Fork mainnet
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 21069542);
-        address wbtcPriceFeed = deployWBTCPriceFeed();
-        addWBTCPriceFeedToMiddleware(wbtcPriceFeed);
+        addWBTCPriceFeedToMiddleware();
         deployMinimalPlasmaVaultForWBTC();
         setupInitialRoles();
         _addErc20BalanceFuseAndSubstrate();
@@ -102,15 +101,15 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         _addUniswapV3FuseToPlasmaVault();
         _addAaveFusesToPlasmaVault();
         _setupDependenceBalance();
-        _provideWBTCToUser();
+        _provideUSDCToUser();
     }
 
     function _addAaveFusesToPlasmaVault() private {
         _aaveSupplyFuse = address(
-            new AaveV3SupplyFuse(IporFusionMarkets.AAVE_V3, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER)
+            new AaveV3SupplyFuse(IporFusionMarkets.AAVE_V3_LIDO, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER)
         );
         _aaveBorrowFuse = address(
-            new AaveV3BorrowFuse(IporFusionMarkets.AAVE_V3, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER)
+            new AaveV3BorrowFuse(IporFusionMarkets.AAVE_V3_LIDO, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER)
         );
 
         address[] memory fuses = new address[](2);
@@ -122,27 +121,28 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         vm.stopPrank();
 
         address aaveBalanceFuse = address(
-            new AaveV3BalanceFuse(IporFusionMarkets.AAVE_V3, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER)
+            new AaveV3BalanceFuse(IporFusionMarkets.AAVE_V3_LIDO, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER)
         );
 
         address[] memory balanceFuses = new address[](1);
         balanceFuses[0] = aaveBalanceFuse;
 
         vm.startPrank(_FUSE_MANAGER);
-        PlasmaVaultGovernance(_plasmaVault).addBalanceFuse(IporFusionMarkets.AAVE_V3, aaveBalanceFuse);
+        PlasmaVaultGovernance(_plasmaVault).addBalanceFuse(IporFusionMarkets.AAVE_V3_LIDO, aaveBalanceFuse);
         vm.stopPrank();
 
-        bytes32[] memory assets = new bytes32[](2);
-        assets[0] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
+        bytes32[] memory assets = new bytes32[](3);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
         assets[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
+        assets[2] = PlasmaVaultConfigLib.addressToBytes32(_WST_ETH);
 
         vm.startPrank(_ATOMIST);
-        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.AAVE_V3, assets);
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.AAVE_V3_LIDO, assets);
         vm.stopPrank();
 
         // Add balance dependence for AaveV3 market
         uint256[] memory markets = new uint256[](1);
-        markets[0] = IporFusionMarkets.AAVE_V3;
+        markets[0] = IporFusionMarkets.AAVE_V3_LIDO;
         uint256[][] memory dependencies = new uint256[][](1);
         dependencies[0] = new uint256[](1);
         dependencies[0][0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
@@ -168,9 +168,9 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
 
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
-            assetName: "WBTC Plasma Vault",
-            assetSymbol: "WBTC-PV",
-            underlyingToken: _WBTC,
+            assetName: "USDC Plasma Vault",
+            assetSymbol: "USDC-PV",
+            underlyingToken: _USDC,
             priceOracleMiddleware: _PRICE_ORACLE_MIDDLEWARE,
             marketSubstratesConfigs: new MarketSubstratesConfig[](0),
             fuses: new address[](0),
@@ -189,27 +189,15 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         return _plasmaVault;
     }
 
-    function deployWBTCPriceFeed() private returns (address) {
-        address wbtc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-        address wbtcEthFeed = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
-        address ethUsdFeed = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
-
-        _wbtcPriceFeed = address(new AssetChainlinkPriceFeed(wbtc, wbtcEthFeed, ethUsdFeed));
-
-        return address(_wbtcPriceFeed);
-    }
-
-    function addWBTCPriceFeedToMiddleware(address priceFeed) private {
+    function addWBTCPriceFeedToMiddleware() private {
         address priceOracleMiddleware = 0xB7018C15279E0f5990613cc00A91b6032066f2f7;
         address priceOracleMiddlewareOwner = 0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569;
 
         vm.startPrank(priceOracleMiddlewareOwner);
-        address[] memory assets = new address[](2);
-        assets[0] = _WBTC;
-        assets[1] = _WETH;
-        address[] memory sources = new address[](2);
-        sources[0] = priceFeed;
-        sources[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+        address[] memory assets = new address[](1);
+        assets[0] = _WETH;
+        address[] memory sources = new address[](1);
+        sources[0] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         PriceOracleMiddleware(priceOracleMiddleware).setAssetsPricesSources(assets, sources);
         vm.stopPrank();
     }
@@ -297,9 +285,10 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         vm.stopPrank();
 
         // Grant market substrates for Morpho Flash Loan (only WBTC and WETH)
-        bytes32[] memory morphoTokens = new bytes32[](2);
+        bytes32[] memory morphoTokens = new bytes32[](3);
         morphoTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
-        morphoTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
+        morphoTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
+        morphoTokens[2] = PlasmaVaultConfigLib.addressToBytes32(_WST_ETH);
 
         vm.startPrank(_ATOMIST);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO_FLASH_LOAN, morphoTokens);
@@ -332,9 +321,10 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         vm.stopPrank();
 
         // Grant market substrates for Uniswap V3 Swap (WBTC, WETH)
-        bytes32[] memory uniswapTokens = new bytes32[](2);
-        uniswapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
+        bytes32[] memory uniswapTokens = new bytes32[](3);
+        uniswapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
         uniswapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
+        uniswapTokens[2] = PlasmaVaultConfigLib.addressToBytes32(_WST_ETH);
 
         vm.startPrank(_ATOMIST);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_SWAP_V3, uniswapTokens);
@@ -382,7 +372,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
 
         // Add WBTC and WETH as substrates for ERC20_VAULT_BALANCE market
         bytes32[] memory substrates = new bytes32[](2);
-        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
+        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
         vm.startPrank(_ATOMIST);
@@ -390,11 +380,11 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         vm.stopPrank();
     }
 
-    function _provideWBTCToUser() private {
-        uint256 amountToProvide = 15 * 1e8; // 10 WBTC (WBTC has 8 decimals)
+    function _provideUSDCToUser() private {
+        uint256 amountToProvide = 50_000e6; // 50,000 USDC
 
-        // Use deal to provide WBTC to _USER
-        deal(_WBTC, _USER, amountToProvide);
+        // Use deal to provide USDC to _USER
+        deal(_USDC, _USER, amountToProvide);
 
         // Log the balance
     }
@@ -403,31 +393,20 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
     //********************                              TESTS                                       ********************
     //******************************************************************************************************************
 
-    function testShouldFlashLoanWethOnMorphoSupplyWethBorrowUsdcOnEulerSwapOnUniswap() external {
-        /// Test steps
-        /// - User deposit 15 WBTC to plasma vault
-        /// - Alpha swap 5 WBTC to WETH
-        /// Looping flow:
-        /// 1. flash loan 10 WBTC from Morpho
-        /// 2. supply 20 WBTC to Morpho market
-        /// 3. borrow ???? WETH
-        /// 4. swap 2???? WETH to WBTC on Uniswap
-        /// 5. repay 10 WBTC to Morpho
-
-        // Deposit 15 WBTC into PlasmaVault
-        uint256 depositWbtcAmount = 15 * 1e8; // 15 WBTC (WBTC has 8 decimals)
+    function testShouldFlashLoanWstEthOnMorphoSupplyWstEthBorrowWETHOnAaveLidoSwapOnUniswap() external {
+        uint256 depositUsdcAmount = 30_000e6; // 30,000 USDC
 
         vm.startPrank(_USER);
-        ERC20(_WBTC).approve(_plasmaVault, depositWbtcAmount);
-        PlasmaVault(_plasmaVault).deposit(depositWbtcAmount, _USER);
+        ERC20(_USDC).approve(_plasmaVault, depositUsdcAmount);
+        PlasmaVault(_plasmaVault).deposit(depositUsdcAmount, _USER);
         vm.stopPrank();
 
         // Alpha swap 5 WBTC to WETH
-        uint256 swapAmount = 5 * 1e8; // 5 WBTC
+        uint256 swapAmount = 30_000 * 1e6; // 30,000 USDC
 
         UniswapV3SwapFuseEnterData memory swapData = UniswapV3SwapFuseEnterData({
             tokenInAmount: swapAmount,
-            path: abi.encodePacked(_WBTC, uint24(3000), _WETH),
+            path: abi.encodePacked(_USDC, uint24(500), _WETH, uint24(100), _WST_ETH),
             minOutAmount: 0 // Set to 0 for this example, but in production should use a reasonable slippage tolerance
         });
 
@@ -445,22 +424,22 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
 
         // 1. Provide 20 WETH as collateral to Morpho market
         AaveV3SupplyFuseEnterData memory collateralData = AaveV3SupplyFuseEnterData({
-            asset: _WBTC,
-            amount: 20 * 1e8, // 20 WBtc
+            asset: _WST_ETH,
+            amount: 18e18, // 18 WETH
             userEModeCategoryId: 300
         });
 
         // 2. Borrow 200 WETH from Morpho
         AaveV3BorrowFuseEnterData memory borrowData = AaveV3BorrowFuseEnterData({
             asset: _WETH,
-            amount: 300 * 1e18 // 300 WETH
+            amount: 11e18 // 5 wstETH
         });
 
         // 3. Swap 200 WETH to WBTC on Uniswap
         UniswapV3SwapFuseEnterData memory swapBackData = UniswapV3SwapFuseEnterData({
-            tokenInAmount: 300 * 1e18, // 300 WETH
-            path: abi.encodePacked(_WETH, uint24(3000), _WBTC),
-            minOutAmount: 0 // Set to 0 for this example, but in production should use a reasonable slippage tolerance
+            tokenInAmount: 11e18, // 30,000 USDC
+            path: abi.encodePacked(_WETH, uint24(100), _WST_ETH),
+            minOutAmount: 9e18 // Set to 0 for this example, but in production should use a reasonable slippage tolerance
         });
 
         FuseAction[] memory actions = new FuseAction[](3);
@@ -477,10 +456,10 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
             data: abi.encodeWithSignature("enter((uint256,uint256,bytes))", swapBackData)
         });
 
-        // Create MorphoFlashLoanFuseEnterData for 10 WBTC flash loan
+        // Create MorphoFlashLoanFuseEnterData for 9 WETH flash loan
         MorphoFlashLoanFuseEnterData memory flashLoanData = MorphoFlashLoanFuseEnterData({
-            token: _WBTC,
-            tokenAmount: 10 * 1e8, // 10 WBTC (WBTC has 8 decimals)
+            token: _WST_ETH,
+            tokenAmount: 9e18, // 9 WETH
             callbackFuseActionsData: abi.encode(actions)
         });
 
@@ -491,9 +470,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
             data: abi.encodeWithSignature("enter((address,uint256,bytes))", flashLoanData)
         });
 
-        uint256 balanceInAaveV3Before = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
-
-        uint256 wbtcBalanceBefore = ERC20(_WBTC).balanceOf(_plasmaVault);
+        uint256 wstEthBalanceBefore = ERC20(_WST_ETH).balanceOf(_plasmaVault);
         uint256 wethBalanceBefore = ERC20(_WETH).balanceOf(_plasmaVault);
 
         // Execute the flash loan action
@@ -501,44 +478,37 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         PlasmaVault(_plasmaVault).execute(flashLoanAction);
         vm.stopPrank();
 
-        // Log final balances after flash loan
-        uint256 balanceInAaveV3After = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
+        // // Log final balances after flash loan
 
-        uint256 wbtcBalanceAfter = ERC20(_WBTC).balanceOf(_plasmaVault);
+        uint256 wstEthBalanceAfter = ERC20(_WST_ETH).balanceOf(_plasmaVault);
         uint256 wethBalanceAfter = ERC20(_WETH).balanceOf(_plasmaVault);
 
-        uint256 debtToken = ERC20(0xeA51d7853EEFb32b6ee06b1C12E6dcCA88Be0fFE).balanceOf(_plasmaVault); // dWETH
-        uint256 totalCollateralAssets = PlasmaVault(0x5Ee5bf7ae06D1Be5997A1A72006FE6C607eC6DE8).balanceOf(_plasmaVault); //aWBTC
+        assertApproxEqAbs(wstEthBalanceBefore, 9684827711063416020, _ERROR_TOLERANCE, "wstEthBalanceBefore");
+        assertApproxEqAbs(wstEthBalanceAfter, 984097134195296848, _ERROR_TOLERANCE, "wstEthBalanceAfter");
 
-        assertApproxEqAbs(balanceInAaveV3Before, 0, _ERROR_TOLERANCE, "balanceInAaveV3Before");
-        assertApproxEqAbs(balanceInAaveV3After, 890598528, _ERROR_TOLERANCE, "balanceInAaveV3After");
+        assertApproxEqAbs(wethBalanceBefore, 0, _ERROR_TOLERANCE, "wethBalanceBefore");
+        assertApproxEqAbs(wethBalanceAfter, 0, _ERROR_TOLERANCE, "wethBalanceAfter");
 
-        assertApproxEqAbs(wbtcBalanceBefore, 10e8, _ERROR_TOLERANCE, "wbtcBalanceBefore");
-        assertApproxEqAbs(wbtcBalanceAfter, 101653168, _ERROR_TOLERANCE, "wbtcBalanceAfter");
+        uint256 debtToken = ERC20(0x91b7d78BF92db564221f6B5AeE744D1727d1Dd1e).balanceOf(_plasmaVault); // dWETH
 
-        assertApproxEqAbs(wethBalanceBefore, 134885142670831652064, _ERROR_TOLERANCE, "wethBalanceBefore");
-        assertApproxEqAbs(wethBalanceAfter, 134885142670831652064, _ERROR_TOLERANCE, "wethBalanceAfter");
-
-        assertApproxEqAbs(debtToken, 300e18, _ERROR_TOLERANCE, "debtToken");
-        assertApproxEqAbs(totalCollateralAssets, 2000000000, _ERROR_TOLERANCE, "totalCollateralAssets");
+        assertApproxEqAbs(debtToken, 11e18, _ERROR_TOLERANCE, "debtToken");
     }
 
-    function testShouldFlashLoanWethOnMorphoSupplyWethBorrowUsdcOnEulerSwapOnUniswapAndRepay() external {
-        // First part - same as testShouldFlashLoanWethOnMorphoSupplyWethBorrowUsdcOnEulerSwapOnUniswap
-        uint256 depositWbtcAmount = 15 * 1e8;
+    function testShouldFlashLoanWstEthOnMorphoSupplyWstEthBorrowWETHOnAaveLidoSwapOnUniswapAndRepay() external {
+        uint256 depositUsdcAmount = 30_000e6; // 30,000 USDC
 
         vm.startPrank(_USER);
-        ERC20(_WBTC).approve(_plasmaVault, depositWbtcAmount);
-        PlasmaVault(_plasmaVault).deposit(depositWbtcAmount, _USER);
+        ERC20(_USDC).approve(_plasmaVault, depositUsdcAmount);
+        PlasmaVault(_plasmaVault).deposit(depositUsdcAmount, _USER);
         vm.stopPrank();
 
         // Alpha swap 5 WBTC to WETH
-        uint256 swapAmount = 5 * 1e8;
+        uint256 swapAmount = 30_000 * 1e6; // 30,000 USDC
 
         UniswapV3SwapFuseEnterData memory swapData = UniswapV3SwapFuseEnterData({
             tokenInAmount: swapAmount,
-            path: abi.encodePacked(_WBTC, uint24(3000), _WETH),
-            minOutAmount: 0
+            path: abi.encodePacked(_USDC, uint24(500), _WETH, uint24(100), _WST_ETH),
+            minOutAmount: 0 // Set to 0 for this example, but in production should use a reasonable slippage tolerance
         });
 
         FuseAction[] memory swapActions = new FuseAction[](1);
@@ -551,24 +521,26 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         PlasmaVault(_plasmaVault).execute(swapActions);
         vm.stopPrank();
 
+        // Prepare action fuses for Morpho and Uniswap operations
+
         // 1. Provide 20 WETH as collateral to Morpho market
         AaveV3SupplyFuseEnterData memory collateralData = AaveV3SupplyFuseEnterData({
-            asset: _WBTC,
-            amount: 20 * 1e8, // 20 WBtc
+            asset: _WST_ETH,
+            amount: 18e18, // 18 WETH
             userEModeCategoryId: 300
         });
 
         // 2. Borrow 200 WETH from Morpho
         AaveV3BorrowFuseEnterData memory borrowData = AaveV3BorrowFuseEnterData({
             asset: _WETH,
-            amount: 300 * 1e18 // 300 WETH
+            amount: 11e18 // 5 wstETH
         });
 
         // 3. Swap 200 WETH to WBTC on Uniswap
         UniswapV3SwapFuseEnterData memory swapBackData = UniswapV3SwapFuseEnterData({
-            tokenInAmount: 300 * 1e18, // 300 WETH
-            path: abi.encodePacked(_WETH, uint24(3000), _WBTC),
-            minOutAmount: 0 // Set to 0 for this example, but in production should use a reasonable slippage tolerance
+            tokenInAmount: 11e18, // 30,000 USDC
+            path: abi.encodePacked(_WETH, uint24(100), _WST_ETH),
+            minOutAmount: 9e18 // Set to 0 for this example, but in production should use a reasonable slippage tolerance
         });
 
         FuseAction[] memory actions = new FuseAction[](3);
@@ -585,18 +557,21 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
             data: abi.encodeWithSignature("enter((uint256,uint256,bytes))", swapBackData)
         });
 
+        // Create MorphoFlashLoanFuseEnterData for 9 WETH flash loan
         MorphoFlashLoanFuseEnterData memory flashLoanData = MorphoFlashLoanFuseEnterData({
-            token: _WBTC,
-            tokenAmount: 10 * 1e8,
+            token: _WST_ETH,
+            tokenAmount: 9e18, // 9 WETH
             callbackFuseActionsData: abi.encode(actions)
         });
 
+        // Create FuseAction for Morpho flash loan
         FuseAction[] memory flashLoanAction = new FuseAction[](1);
         flashLoanAction[0] = FuseAction({
             fuse: _morphoFlashLoanFuse,
             data: abi.encodeWithSignature("enter((address,uint256,bytes))", flashLoanData)
         });
 
+        // Execute the flash loan action
         vm.startPrank(_ALPHA);
         PlasmaVault(_plasmaVault).execute(flashLoanAction);
         vm.stopPrank();
@@ -604,26 +579,26 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         // Second part - repay debt and withdraw using flash loan
         // Create repay actions
 
-        uint256 debtTokenBalanceBefore = ERC20(0xeA51d7853EEFb32b6ee06b1C12E6dcCA88Be0fFE).balanceOf(_plasmaVault); // dWETH
+        uint256 debtTokenBalanceBefore = ERC20(0x91b7d78BF92db564221f6B5AeE744D1727d1Dd1e).balanceOf(_plasmaVault); // dWETH
 
         AaveV3BorrowFuseExitData memory repayData = AaveV3BorrowFuseExitData({
             asset: _WETH,
             amount: debtTokenBalanceBefore
         });
 
-        uint256 totalCollateralAssetsBefore = PlasmaVault(0x5Ee5bf7ae06D1Be5997A1A72006FE6C607eC6DE8).balanceOf(
+        uint256 totalCollateralAssetsBefore = PlasmaVault(0xC035a7cf15375cE2706766804551791aD035E0C2).balanceOf(
             _plasmaVault
-        ); //aWBTC
+        ); //aWST_ETH
 
         AaveV3SupplyFuseExitData memory withdrawData = AaveV3SupplyFuseExitData({
-            asset: _WBTC,
+            asset: _WST_ETH,
             amount: totalCollateralAssetsBefore
         });
 
-        // Swap WBTC back to WETH to repay loan
+        // Swap WST_ETH back to WETH to repay loan
         UniswapV3SwapFuseEnterData memory swapToRepayData = UniswapV3SwapFuseEnterData({
-            tokenInAmount: 20 * 1e8,
-            path: abi.encodePacked(_WBTC, uint24(3000), _WETH),
+            tokenInAmount: totalCollateralAssetsBefore,
+            path: abi.encodePacked(_WST_ETH, uint24(100), _WETH),
             minOutAmount: 0
         });
 
@@ -643,7 +618,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
 
         MorphoFlashLoanFuseEnterData memory repayFlashLoanData = MorphoFlashLoanFuseEnterData({
             token: _WETH,
-            tokenAmount: 300 * 1e18,
+            tokenAmount: 11e18,
             callbackFuseActionsData: abi.encode(repayActions)
         });
 
@@ -661,17 +636,16 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         vm.stopPrank();
 
         // then
-
         uint256 totalCollateralAssetsAfter = PlasmaVault(0x5Ee5bf7ae06D1Be5997A1A72006FE6C607eC6DE8).balanceOf(
             _plasmaVault
-        ); //aWBTC
+        ); //aWST_ETH
 
-        uint256 debtTokenBalanceAfter = ERC20(0xeA51d7853EEFb32b6ee06b1C12E6dcCA88Be0fFE).balanceOf(_plasmaVault); // dWETH
+        uint256 debtTokenBalanceAfter = ERC20(0x91b7d78BF92db564221f6B5AeE744D1727d1Dd1e).balanceOf(_plasmaVault); // dWETH
         assertApproxEqAbs(debtTokenBalanceAfter, 0, _ERROR_TOLERANCE, "debtTokenBalanceAfter");
         assertApproxEqAbs(totalCollateralAssetsAfter, 0, _ERROR_TOLERANCE, "totalCollateralAssetsAfter");
-        assertApproxEqAbs(debtTokenBalanceBefore, 300e18, _ERROR_TOLERANCE, "debtTokenBalanceBefore");
+        assertApproxEqAbs(debtTokenBalanceBefore, 11e18, _ERROR_TOLERANCE, "debtTokenBalanceBefore");
 
-        assertApproxEqAbs(PlasmaVault(_plasmaVault).totalAssets(), 1483705643, _ERROR_TOLERANCE, "totalAssetsAfter");
-        assertApproxEqAbs(totalAssetsBefore, 1491057615, _ERROR_TOLERANCE, "totalAssetsBefore");
+        assertApproxEqAbs(PlasmaVault(_plasmaVault).totalAssets(), 26965848915, _ERROR_TOLERANCE, "totalAssetsAfter");
+        assertApproxEqAbs(totalAssetsBefore, 26989314656, _ERROR_TOLERANCE, "totalAssetsBefore");
     }
 }
