@@ -423,8 +423,6 @@ contract PlasmaVault is
         uint256 marketIndex;
         uint256 fuseMarketId;
 
-        uint256 totalAssetsBefore = totalAssets();
-
         for (uint256 i; i < callsCount; ++i) {
             if (!FusesLib.isFuseSupported(calls_[i].fuse)) {
                 revert UnsupportedFuse();
@@ -440,8 +438,6 @@ contract PlasmaVault is
             calls_[i].fuse.functionDelegateCall(calls_[i].data);
         }
         _updateMarketsBalances(markets);
-
-        _addPerformanceFee(totalAssetsBefore);
     }
 
     function getUniqueElements(uint256[] memory inputArray) private pure returns (uint256[] memory) {

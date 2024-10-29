@@ -1,35 +1,36 @@
 name: CD
 
 on:
-  push:
-    branches:
-      - main
-      - develop
+    push:
+        branches:
+            - main
+            - develop
 
 jobs:
-  notify:
-    uses: ./.github/workflows/notify-slack.yml
-    secrets:
-      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+    notify:
+        uses: ./.github/workflows/notify-slack.yml
+        secrets:
+            SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
-  build:
-    needs: notify
-    uses: ./.github/workflows/smart-contracts-build.yml
-    secrets:
-      ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
-      ARBITRUM_PROVIDER_URL: ${{ secrets.ARBITRUM_PROVIDER_URL }}
-    with:
-      sizes-enabled: false
-      sizes-options: '--skip test --skip script'
+    build:
+        needs: notify
+        uses: ./.github/workflows/smart-contracts-build.yml
+        secrets:
+            ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
+            ARBITRUM_PROVIDER_URL: ${{ secrets.ARBITRUM_PROVIDER_URL }}
+            BASE_PROVIDER_URL: ${{ secrets.BASE_PROVIDER_URL }}
+        with:
+            sizes-enabled: false
+            sizes-options: "--skip test --skip script"
 
-  report:
-    if: ${{ always() }}
-    needs:
-      - notify
-      - build
-    uses: ./.github/workflows/report-slack.yml
-    secrets:
-      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-    with:
-      success: ${{ needs.build.result == 'success' }}
-      slack-status-msg-id: ${{ needs.notify.outputs.slack-status-msg-id }}
+    report:
+        if: ${{ always() }}
+        needs:
+            - notify
+            - build
+        uses: ./.github/workflows/report-slack.yml
+        secrets:
+            SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+            success: ${{ needs.build.result == 'success' }}
+            slack-status-msg-id: ${{ needs.notify.outputs.slack-status-msg-id }}
