@@ -74,10 +74,6 @@ contract MoonwellSupplyFuseBaseTest is Test {
         vm.stopPrank();
     }
 
-    function testTest() public {
-        assertTrue(true);
-    }
-
     function testSupply500USDC() public {
         // Setup
         uint256 supplyAmount = 500e6; // 500 USDC

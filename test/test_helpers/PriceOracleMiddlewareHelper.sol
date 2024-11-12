@@ -3,6 +3,8 @@ pragma solidity 0.8.26;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {AssetChainlinkPriceFeed} from "../../contracts/price_oracle/price_feed/AssetChainlinkPriceFeed.sol";
+import {TestAddresses} from "./TestAddresses.sol";
 
 /// @title PriceOracleMiddlewareHelper
 /// @notice Helper library for deploying and configuring PriceOracleMiddleware in tests
@@ -54,5 +56,20 @@ library PriceOracleMiddlewareHelper {
         address[] memory sources = new address[](1);
         sources[0] = source_;
         priceOracleMiddleware_.setAssetsPricesSources(assets, sources);
+    }
+
+    function deployWstEthPriceFeedOnBase() internal returns (address) {
+        // Deploy AssetChainlinkPriceFeed for wstETH using:
+        // - wstETH as asset
+        // - CHAINLINK_WSTETH_TO_ETH_PRICE for wstETH/ETH price feed
+        // - CHAINLINK_ETH_PRICE for ETH/USD price feed
+        return
+            address(
+                new AssetChainlinkPriceFeed(
+                    TestAddresses.WSTETH,
+                    TestAddresses.CHAINLINK_WSTETH_TO_ETH_PRICE,
+                    TestAddresses.CHAINLINK_ETH_PRICE
+                )
+            );
     }
 }

@@ -3,14 +3,12 @@ pragma solidity 0.8.26;
 
 interface MComptroller {
     /// @notice Enters multiple markets (enables them as collateral)
-    /// @param user The address of the account to modify
     /// @param mTokens The list of markets to enter
     /// @return uint[] Returns array of error codes (0=success, otherwise a failure)
-    function enterMarkets(address user, address[] calldata mTokens) external returns (uint256[] memory);
+    function enterMarkets(address[] calldata mTokens) external returns (uint256[] memory);
 
     /// @notice Exits a market (disables it as collateral)
-    /// @param user The address of the account to modify
     /// @param mToken The market to exit
     /// @return uint Returns error code (0=success, otherwise a failure)
-    function exitMarket(address user, address mToken) external returns (uint256);
+    function exitMarket(address mToken) external returns (uint256);
 }

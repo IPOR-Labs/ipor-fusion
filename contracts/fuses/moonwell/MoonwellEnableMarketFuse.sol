@@ -49,7 +49,7 @@ contract MoonwellEnableMarketFuse is IFuseCommon {
         }
 
         // Enter the markets
-        uint256[] memory errors = COMPTROLLER.enterMarkets(address(this), data_.mTokens);
+        uint256[] memory errors = COMPTROLLER.enterMarkets(data_.mTokens);
 
         // Check if any errors occurred
         bool hasError;
@@ -82,7 +82,7 @@ contract MoonwellEnableMarketFuse is IFuseCommon {
                 revert MoonwellEnableMarketFuseUnsupportedMToken(mToken);
             }
 
-            uint256 error = COMPTROLLER.exitMarket(address(this), mToken);
+            uint256 error = COMPTROLLER.exitMarket(mToken);
 
             if (error == 0) {
                 emit MoonwellMarketDisabled(VERSION, mToken);

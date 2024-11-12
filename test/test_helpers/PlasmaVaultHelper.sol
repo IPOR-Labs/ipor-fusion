@@ -78,4 +78,22 @@ library PlasmaVaultHelper {
     function addressOf(PlasmaVault plasmaVault_) internal view returns (address) {
         return address(plasmaVault_);
     }
+
+    /// @notice Adds dependency balance graph for a single market
+    /// @param plasmaVault_ The plasma vault instance
+    /// @param marketId_ The market ID
+    /// @param dependencies_ Array of dependencies for the market
+    function addDependencyBalanceGraphs(
+        PlasmaVault plasmaVault_,
+        uint256 marketId_,
+        uint256[] memory dependencies_
+    ) internal {
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = marketId_;
+
+        uint256[][] memory allDependencies = new uint256[][](1);
+        allDependencies[0] = dependencies_;
+
+        PlasmaVaultGovernance(address(plasmaVault_)).updateDependencyBalanceGraphs(marketIds, allDependencies);
+    }
 }
