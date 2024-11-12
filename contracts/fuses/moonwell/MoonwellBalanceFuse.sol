@@ -11,14 +11,16 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
-/// @dev Fuse for Moonwell protocol responsible for calculating the balance of the user in the Moonwell protocol
-/// based on preconfigured market substrates
-/// @dev Substrates in this fuse are the mTokens that are used in the Moonwell protocol for a given MARKET_ID
+/// @title MoonwellBalanceFuse
+/// @notice Fuse for calculating user balances in the Moonwell protocol
+/// @dev Calculates net balance by taking supplied assets minus borrowed assets
+/// @dev Substrates in this fuse are the mTokens used in the Moonwell protocol for a given MARKET_ID
 contract MoonwellBalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
     using SafeCast for uint256;
     using Address for address;
 
+    /// @notice Market ID this fuse is associated with
     uint256 public immutable MARKET_ID;
 
     error MoonwellBalanceFuseInvalidPrice();
@@ -27,7 +29,8 @@ contract MoonwellBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
     }
 
-    /// @return The balance of the given input plasmaVault_ in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    /// @notice Gets the total balance in USD for this contract in the Moonwell protocol
+    /// @return The balance in USD with 18 decimals
     function balanceOf() external override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         return _calculateBalance(assetsRaw, address(this));

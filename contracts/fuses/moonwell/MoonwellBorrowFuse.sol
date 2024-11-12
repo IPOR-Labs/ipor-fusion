@@ -6,18 +6,30 @@ import {MErc20} from "./ext/MErc20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/// @notice Data for borrowing assets from Moonwell
+/// @param asset Asset to borrow
+/// @param amount Amount to borrow
 struct MoonwellBorrowFuseEnterData {
-    address asset; // asset to borrow
-    uint256 amount; // amount to borrow
+    address asset;
+    uint256 amount;
 }
 
+/// @notice Data for repaying borrowed assets to Moonwell
+/// @param asset Asset to repay
+/// @param amount Amount to repay
 struct MoonwellBorrowFuseExitData {
-    address asset; // asset to repay
-    uint256 amount; // amount to repay
+    address asset;
+    uint256 amount;
 }
 
+/// @title MoonwellBorrowFuse
+/// @notice Fuse for borrowing and repaying assets in the Moonwell protocol
+/// @dev Handles borrowing assets from Moonwell markets and repaying borrowed positions
 contract MoonwellBorrowFuse is IFuseCommon {
+    /// @notice Version of this contract for tracking
     address public immutable VERSION;
+
+    /// @notice Market ID this fuse is associated with
     uint256 public immutable MARKET_ID;
 
     event MoonwellBorrowEntered(address version, address asset, address market, uint256 amount);
@@ -33,6 +45,8 @@ contract MoonwellBorrowFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
+    /// @notice Borrow assets from Moonwell
+    /// @param data_ Struct containing asset and amount to borrow
     function enter(MoonwellBorrowFuseEnterData memory data_) external {
         if (data_.amount == 0) return;
 
@@ -45,6 +59,8 @@ contract MoonwellBorrowFuse is IFuseCommon {
         emit MoonwellBorrowEntered(VERSION, data_.asset, address(mToken), data_.amount);
     }
 
+    /// @notice Repay borrowed assets to Moonwell
+    /// @param data_ Struct containing asset and amount to repay
     function exit(MoonwellBorrowFuseExitData memory data_) external {
         if (data_.amount == 0) return;
 
@@ -59,6 +75,10 @@ contract MoonwellBorrowFuse is IFuseCommon {
         emit MoonwellBorrowExited(VERSION, data_.asset, address(mToken), data_.amount);
     }
 
+    /// @dev Gets the mToken address for a given asset
+    /// @param marketId_ Market ID to check
+    /// @param asset_ Underlying asset address
+    /// @return Address of the corresponding mToken
     function _getMToken(uint256 marketId_, address asset_) internal view returns (address) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(marketId_);
         uint256 len = assetsRaw.length;

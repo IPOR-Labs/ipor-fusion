@@ -9,27 +9,34 @@ import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {MErc20} from "./ext/MErc20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @notice Data for supplying assets to Moonwell
+/// @param asset Asset address to supply
+/// @param amount Amount of asset to supply
 struct MoonwellSupplyFuseEnterData {
-    /// @notice asset address to supply
     address asset;
-    /// @notice asset amount to supply
     uint256 amount;
 }
 
+/// @notice Data for withdrawing assets from Moonwell
+/// @param asset Asset address to withdraw
+/// @param amount Amount of asset to withdraw
 struct MoonwellSupplyFuseExitData {
-    /// @notice asset address to withdraw
     address asset;
-    /// @notice asset amount to withdraw
     uint256 amount;
 }
 
-/// @dev Fuse for Moonwell protocol responsible for supplying and withdrawing assets from the Moonwell protocol based on preconfigured market substrates
-/// @dev Substrates in this fuse are the mTokens that are used in the Moonwell for given asset
+/// @title MoonwellSupplyFuse
+/// @notice Fuse for supplying and withdrawing assets in the Moonwell protocol
+/// @dev Handles supplying assets to Moonwell markets and withdrawing supplied positions
+/// @dev Substrates in this fuse are the mTokens used in Moonwell for given assets
 contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
+    /// @notice Version of this contract for tracking
     address public immutable VERSION;
+
+    /// @notice Market ID this fuse is associated with
     uint256 public immutable MARKET_ID;
 
     event MoonwellSupplyEnterFuse(address version, address asset, address market, uint256 amount);
@@ -44,6 +51,8 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
+    /// @notice Supply assets to Moonwell
+    /// @param data_ Struct containing asset and amount to supply
     function enter(MoonwellSupplyFuseEnterData memory data_) external {
         if (data_.amount == 0) {
             return;
@@ -51,21 +60,33 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         MErc20 mToken = MErc20(_getMToken(MARKET_ID, data_.asset));
 
-        ERC20(data_.asset).forceApprove(address(mToken), data_.amount);
+        uint256 balance = ERC20(data_.asset).balanceOf(address(this));
+        uint256 amount = data_.amount > balance ? balance : data_.amount;
 
-        uint256 mintResult = mToken.mint(data_.amount);
+        if (amount == 0) {
+            return;
+        }
+        uint256 transferAmount = amount;
+
+        ERC20(data_.asset).forceApprove(address(mToken), transferAmount);
+
+        uint256 mintResult = mToken.mint(transferAmount);
         if (mintResult != 0) {
             revert MoonwellSupplyFuseMintFailed();
         }
 
-        emit MoonwellSupplyEnterFuse(VERSION, data_.asset, address(mToken), data_.amount);
+        emit MoonwellSupplyEnterFuse(VERSION, data_.asset, address(mToken), transferAmount);
     }
 
+    /// @notice Withdraw assets from Moonwell
+    /// @param data_ Struct containing asset and amount to withdraw
     function exit(MoonwellSupplyFuseExitData calldata data_) external {
         _exit(data_);
     }
 
+    /// @notice Handle instant withdrawals
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
+    /// @param params_ Array of parameters for withdrawal
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
@@ -73,6 +94,8 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         _exit(MoonwellSupplyFuseExitData(asset, amount));
     }
 
+    /// @dev Internal function to handle withdrawals
+    /// @param data_ Struct containing withdrawal parameters
     function _exit(MoonwellSupplyFuseExitData memory data_) internal {
         if (data_.amount == 0) {
             return;
@@ -99,6 +122,10 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
     }
 
+    /// @dev Gets the mToken address for a given asset
+    /// @param marketId_ Market ID to check
+    /// @param asset_ Underlying asset address
+    /// @return Address of the corresponding mToken
     function _getMToken(uint256 marketId_, address asset_) internal view returns (address) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(marketId_);
         uint256 len = assetsRaw.length;

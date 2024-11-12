@@ -9,17 +9,24 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {MultiRewardDistributor} from "../../fuses/moonwell/ext/MultiRewardDistributor.sol";
 
 /// @notice Data structure for claiming rewards from Moonwell markets
+/// @param mTokens List of mToken addresses to claim rewards from
 struct MoonwellClaimFuseData {
-    /// @notice List of mToken addresses to claim rewards from
     address[] mTokens;
 }
 
-/// @dev Fuse for claiming rewards from Moonwell protocol
+/// @title MoonwellClaimFuse
+/// @notice Fuse for claiming rewards from the Moonwell protocol
+/// @dev Handles claiming and distributing rewards from Moonwell markets to the rewards claim manager
 contract MoonwellClaimFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
+    /// @notice Version of this contract for tracking
     address public immutable VERSION;
+
+    /// @notice Market ID this fuse is associated with
     uint256 public immutable MARKET_ID;
+
+    /// @notice Moonwell Comptroller contract reference
     MComptroller public immutable COMPTROLLER;
 
     event MoonwellClaimFuseRewardsClaimed(
@@ -39,7 +46,7 @@ contract MoonwellClaimFuse is IFuseCommon {
         COMPTROLLER = MComptroller(comptroller_);
     }
 
-    /// @notice Claims rewards from specified mTokens
+    /// @notice Claims rewards from specified mTokens and transfers them to the rewards claim manager
     /// @param data_ Struct containing array of mToken addresses to claim from
     function claim(MoonwellClaimFuseData calldata data_) external {
         uint256 len = data_.mTokens.length;
@@ -65,6 +72,10 @@ contract MoonwellClaimFuse is IFuseCommon {
         }
     }
 
+    /// @dev Internal function to claim rewards for a specific mToken
+    /// @param mToken_ The mToken address to claim rewards from
+    /// @param rewardDistributor_ Address of the Moonwell reward distributor
+    /// @param rewardsClaimManager_ Address where claimed rewards will be sent
     function _claim(address mToken_, address rewardDistributor_, address rewardsClaimManager_) internal {
         MultiRewardDistributor distributor = MultiRewardDistributor(rewardDistributor_);
         address plasmaVault = address(this);
@@ -81,15 +92,18 @@ contract MoonwellClaimFuse is IFuseCommon {
         uint256[] memory balanceBefore = new uint256[](len);
         address[] memory rewardTokens = new address[](len);
 
+        // Store initial balances of reward tokens
         for (uint256 i; i < len; ++i) {
             rewardTokens[i] = rewardConfig[i].emissionToken;
             balanceBefore[i] = IERC20(rewardTokens[i]).balanceOf(plasmaVault);
         }
 
+        // Claim rewards through Comptroller
         address[] memory mTokens = new address[](1);
         mTokens[0] = mToken_;
         COMPTROLLER.claimReward(plasmaVault, mTokens);
 
+        // Transfer claimed rewards to rewards claim manager
         for (uint256 i; i < rewardConfig.length; ++i) {
             uint256 balanceAfter = IERC20(rewardTokens[i]).balanceOf(plasmaVault);
             uint256 claimed = balanceAfter - balanceBefore[i];
