@@ -96,4 +96,8 @@ library PlasmaVaultHelper {
 
         PlasmaVaultGovernance(address(plasmaVault_)).updateDependencyBalanceGraphs(marketIds, allDependencies);
     }
+
+    function addRewardsClaimManager(PlasmaVault plasmaVault_, address rewardsClaimManager_) internal {
+        PlasmaVaultGovernance(address(plasmaVault_)).setRewardsClaimManagerAddress(rewardsClaimManager_);
+    }
 }

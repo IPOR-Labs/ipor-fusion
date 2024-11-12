@@ -90,7 +90,7 @@ library IporFusionAccessManagerHelper {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(plasmaVault_),
                 accessManager: address(accessManager_),
-                rewardsClaimManager: address(0),
+                rewardsClaimManager: PlasmaVaultGovernance(address(plasmaVault_)).getRewardsClaimManagerAddress(),
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(address(plasmaVault_)).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER()

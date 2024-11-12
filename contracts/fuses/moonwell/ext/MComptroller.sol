@@ -11,4 +11,8 @@ interface MComptroller {
     /// @param mToken The market to exit
     /// @return uint Returns error code (0=success, otherwise a failure)
     function exitMarket(address mToken) external returns (uint256);
+
+    function claimReward(address holder, address[] memory mTokens) external;
+
+    function rewardDistributor() external view returns (address);
 }
