@@ -54,6 +54,9 @@ library IporFusionMarkets {
     /// @dev Morpho flash loan market, one need add dependence graph with balance of ERC20_VAULT_BALANCE
     uint256 public constant MORPHO_FLASH_LOAN = 19;
 
+    /// @dev Moonwell market
+    uint256 public constant MOONWELL = 20;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
