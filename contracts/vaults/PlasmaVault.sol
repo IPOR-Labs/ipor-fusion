@@ -129,14 +129,14 @@ contract PlasmaVault is
 
     constructor() {
         /// TODO: remove this after testing when full factory is deployed
-        _disableInitializers();
+        // _disableInitializers();
     }
 
     function initialize(PlasmaVaultInitData calldata initData_) external initializer {
         super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
         super.__ERC4626_init(IERC20(initData_.underlyingToken));
-        // __ReentrancyGuard_init();
-        // __AccessManaged_init(initData_.accessManager);
+        __ReentrancyGuard_init();
+        __AccessManaged_init(initData_.accessManager);
 
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
 

@@ -8,7 +8,7 @@ import {PlasmaVaultDeployData, FeeConfig, MarketSubstratesConfig, BalanceFuseCon
 contract PlasmaVaultDeployer {
     /// @dev Implementation addresses for all components
     address public immutable plasmaVaultImplementation;
-address public immutable accessManagerImplementation;
+    address public immutable accessManagerImplementation;
     address public immutable withdrawManagerImplementation;
     address public immutable rewardsManagerImplementation;
     address public immutable feeManagerImplementation;

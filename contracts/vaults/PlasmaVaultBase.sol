@@ -25,7 +25,7 @@ contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20Votes
         string memory assetName_,
         address accessManager_,
         uint256 totalSupplyCap_
-    ) external override initializer {
+    ) external override  {
         super.__ERC20Votes_init();
         super.__ERC20Permit_init(assetName_);
         super.__AccessManaged_init(accessManager_);
