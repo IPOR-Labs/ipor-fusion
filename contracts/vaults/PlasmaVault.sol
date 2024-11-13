@@ -125,13 +125,22 @@ contract PlasmaVault is
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
-    address public immutable PLASMA_VAULT_BASE;
+    address public PLASMA_VAULT_BASE;
 
-    constructor(PlasmaVaultInitData memory initData_) ERC20Upgradeable() ERC4626Upgradeable() initializer {
+    constructor() {
+        /// TODO: remove this after testing when full factory is deployed
+        _disableInitializers();
+    }
+
+    function initialize(PlasmaVaultInitData calldata initData_) external initializer {
         super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
         super.__ERC4626_init(IERC20(initData_.underlyingToken));
+        // __ReentrancyGuard_init();
+        // __AccessManaged_init(initData_.accessManager);
 
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
+
+        // Initialize base functionality
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSelector(
                 IPlasmaVaultBase.init.selector,
@@ -141,20 +150,20 @@ contract PlasmaVault is
             )
         );
 
+        // Validate and set price oracle
         IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(initData_.priceOracleMiddleware);
-
         if (priceOracleMiddleware.QUOTE_CURRENCY() != USD) {
             revert Errors.UnsupportedQuoteCurrencyFromOracle();
         }
-
         PlasmaVaultLib.setPriceOracleMiddleware(initData_.priceOracleMiddleware);
 
+        // Add fuses
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSelector(PlasmaVaultGovernance.addFuses.selector, initData_.fuses)
         );
 
+        // Add balance fuses
         for (uint256 i; i < initData_.balanceFuses.length; ++i) {
-            // @dev in the moment of construction deployer has rights to add balance fuses
             PLASMA_VAULT_BASE.functionDelegateCall(
                 abi.encodeWithSelector(
                     IPlasmaVaultGovernance.addBalanceFuse.selector,
@@ -164,6 +173,7 @@ contract PlasmaVault is
             );
         }
 
+        // Configure market substrates
         for (uint256 i; i < initData_.marketSubstratesConfigs.length; ++i) {
             PlasmaVaultConfigLib.grantMarketSubstrates(
                 initData_.marketSubstratesConfigs[i].marketId,
@@ -171,6 +181,7 @@ contract PlasmaVault is
             );
         }
 
+        // Deploy and configure fee manager
         FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
             FeeManagerInitData({
                 iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
@@ -184,13 +195,16 @@ contract PlasmaVault is
             })
         );
 
+        // Configure fees
         PlasmaVaultLib.configurePerformanceFee(feeManagerData.performanceFeeAccount, feeManagerData.performanceFee);
         PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
-
         PlasmaVaultLib.updateManagementFeeData();
-        /// @dev If the address is zero, it means that scheduled withdrawals are turned off.
+
+        // Set withdraw manager
         PlasmaVaultLib.updateWithdrawManager(initData_.withdrawManager);
     }
+
+    
 
     fallback(bytes calldata) external returns (bytes memory) {
         if (PlasmaVaultLib.isExecutionStarted()) {

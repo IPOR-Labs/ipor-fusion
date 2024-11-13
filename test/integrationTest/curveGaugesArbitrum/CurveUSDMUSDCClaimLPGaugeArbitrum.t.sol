@@ -523,7 +523,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _createPlasmaVault() private {
-        instances.plasmaVault = new PlasmaVault(
+        instances.plasmaVault = new PlasmaVault();
+        instances.plasmaVault.initialize(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",

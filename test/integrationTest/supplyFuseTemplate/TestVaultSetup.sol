@@ -20,10 +20,10 @@ abstract contract TestVaultSetup is TestStorage {
         createAccessManager();
 
         vm.startPrank(accounts[0]);
-        plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
+        plasmaVault = address(new PlasmaVault());
+        PlasmaVault(plasmaVault).initialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
                     "TPLASMA",
                     asset,
                     priceOracle,
@@ -35,7 +35,6 @@ abstract contract TestVaultSetup is TestStorage {
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
                     address(0)
-                )
             )
         );
         vm.stopPrank();
@@ -56,9 +55,11 @@ abstract contract TestVaultSetup is TestStorage {
 
         vm.startPrank(accounts[0]);
         plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
+                new PlasmaVault()
+        );
+        PlasmaVault(plasmaVault).initialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
                     "TPLASMA",
                     asset,
                     priceOracle,
@@ -70,7 +71,6 @@ abstract contract TestVaultSetup is TestStorage {
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
                     address(0)
-                )
             )
         );
         vm.stopPrank();

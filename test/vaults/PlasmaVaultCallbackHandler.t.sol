@@ -72,22 +72,21 @@ contract PlasmaVaultCallbackHandler is Test {
 
         _createAccessManager();
 
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
-                    "TPLASMA",
-                    _DAI,
-                    address(_priceOracleMiddlewareProxy),
-                    marketConfigs,
-                    _setupFuses(),
-                    balanceFuses,
-                    feeConfig,
-                    _accessManager,
-                    address(new PlasmaVaultBase()),
-                    type(uint256).max,
-                    address(0)
-                )
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).initialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
+                "TPLASMA",
+                _DAI,
+                address(_priceOracleMiddlewareProxy),
+                marketConfigs,
+                _setupFuses(),
+                balanceFuses,
+                feeConfig,
+                _accessManager,
+                address(new PlasmaVaultBase()),
+                type(uint256).max,
+                address(0)
             )
         );
 

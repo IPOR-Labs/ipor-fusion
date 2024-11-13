@@ -68,23 +68,22 @@ contract FeeManagerTest is Test {
 
     function _createPlasmaVault() private {
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).initialize(
                 PlasmaVaultInitData({
-                    assetName: "PLASMA VAULT",
-                    assetSymbol: "PLASMA",
-                    underlyingToken: _USDC,
-                    priceOracleMiddleware: _priceOracle,
-                    marketSubstratesConfigs: _setupMarketConfigs(),
-                    fuses: _createFuse(),
-                    balanceFuses: _setupBalanceFuses(),
-                    feeConfig: _setupFeeConfig(),
-                    accessManager: address(_accessManager),
-                    plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max,
-                    withdrawManager: address(0)
-                })
-            )
+                assetName: "PLASMA VAULT",
+                assetSymbol: "PLASMA",
+                underlyingToken: _USDC,
+                priceOracleMiddleware: _priceOracle,
+                marketSubstratesConfigs: _setupMarketConfigs(),
+                fuses: _createFuse(),
+                balanceFuses: _setupBalanceFuses(),
+                feeConfig: _setupFeeConfig(),
+                accessManager: address(_accessManager),
+                plasmaVaultBase: address(new PlasmaVaultBase()),
+                totalSupplyCap: type(uint256).max,
+                withdrawManager: address(0)
+            })
         );
         vm.stopPrank();
     }

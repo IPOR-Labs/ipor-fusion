@@ -66,10 +66,10 @@ contract UniswapV3PositionFuseTest is Test {
         );
 
         // plasma vault
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).initialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
                     "pvUSDC",
                     USDC,
                     _priceOracle,
@@ -81,7 +81,6 @@ contract UniswapV3PositionFuseTest is Test {
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
                     address(0)
-                )
             )
         );
         _setupRoles();

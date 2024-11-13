@@ -62,10 +62,10 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     function _createPlasmaVault() private {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData({
-                    assetName: "TEST PLASMA VAULT",
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).initialize(
+            PlasmaVaultInitData({
+                assetName: "TEST PLASMA VAULT",
                     assetSymbol: "TPLASMA",
                     underlyingToken: USDC,
                     priceOracleMiddleware: _priceOracleMiddlewareProxy,
@@ -77,8 +77,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     totalSupplyCap: type(uint256).max,
                     withdrawManager: address(0)
-                })
-            )
+            })
         );
     }
 

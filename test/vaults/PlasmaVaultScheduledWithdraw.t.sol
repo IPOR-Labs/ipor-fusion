@@ -43,8 +43,8 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
     function _createPlasmaVault() private {
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
+        _plasmaVault = address(new PlasmaVault());
+            PlasmaVault(_plasmaVault).initialize(
                 PlasmaVaultInitData({
                     assetName: "PLASMA VAULT",
                     assetSymbol: "PLASMA",
@@ -59,8 +59,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
                     totalSupplyCap: type(uint256).max,
                     withdrawManager: _withdrawManager
                 })
-            )
-        );
+            );
         vm.stopPrank();
     }
 

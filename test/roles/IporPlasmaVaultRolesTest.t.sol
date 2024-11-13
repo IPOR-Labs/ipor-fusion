@@ -526,7 +526,8 @@ contract IporPlasmaVaultRolesTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.AAVE_V3, address(balanceFuse));
         _accessManager = new IporFusionAccessManager(_deployer, 0);
 
-        _plasmaVault = new PlasmaVault(
+        _plasmaVault = new PlasmaVault();
+        _plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

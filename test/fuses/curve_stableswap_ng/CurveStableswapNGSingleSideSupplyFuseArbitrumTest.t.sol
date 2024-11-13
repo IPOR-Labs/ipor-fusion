@@ -106,7 +106,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -189,7 +190,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -260,7 +262,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(DAI).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -328,7 +331,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -394,7 +398,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 0;
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -463,7 +468,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -570,7 +576,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -671,7 +678,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -759,7 +767,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -849,7 +858,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",

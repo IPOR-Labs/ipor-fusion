@@ -51,7 +51,8 @@ contract InitializeAccessManagerTest is Test {
         accessManager = new IporFusionAccessManager(admin, 0);
 
         vm.startPrank(admin);
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",

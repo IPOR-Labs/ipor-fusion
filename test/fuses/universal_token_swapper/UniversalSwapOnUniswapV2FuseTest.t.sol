@@ -54,9 +54,9 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         );
 
         // plasma vault
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).initialize(
+            PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "pvUSDC",
                     USDC,
@@ -69,7 +69,6 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
                     address(0)
-                )
             )
         );
         _setupRoles();

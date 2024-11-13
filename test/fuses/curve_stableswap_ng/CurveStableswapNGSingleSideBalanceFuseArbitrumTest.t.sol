@@ -96,7 +96,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -205,7 +206,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).initialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",

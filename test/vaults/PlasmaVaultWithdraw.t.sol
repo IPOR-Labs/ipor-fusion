@@ -44,13 +44,15 @@ contract PlasmaVaultWithdrawTest is Test {
 
     string public assetName;
     string public assetSymbol;
-    address public underlyingToken;
+    
     address public alpha;
     uint256 public amount;
     uint256 public sharesAmount;
 
     address public userOne;
     address public userTwo;
+
+    address public underlyingToken;
 
     PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
@@ -278,7 +280,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -383,7 +386,8 @@ contract PlasmaVaultWithdrawTest is Test {
         amount = 200 * 1e6;
         sharesAmount = 200 * 10 ** (6 + PlasmaVaultLib.DECIMALS_OFFSET);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -492,7 +496,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -607,7 +612,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -710,7 +716,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -840,7 +847,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1000,7 +1008,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1153,7 +1162,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1298,7 +1308,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1411,7 +1422,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1541,7 +1553,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         PlasmaVaultBase plasmaVaultBase = new PlasmaVaultBase();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1657,9 +1670,9 @@ contract PlasmaVaultWithdrawTest is Test {
     }
 
     function _preparePlasmaVaultUsdc() public returns (PlasmaVault) {
-        string memory assetName = "IPOR Fusion USDC";
-        string memory assetSymbol = "ipfUSDC";
-        address underlyingToken = USDC;
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1692,7 +1705,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1739,7 +1753,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, redemptionDelay);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

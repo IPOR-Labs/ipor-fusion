@@ -53,10 +53,10 @@ contract MorphoFlashLoanFuseTest is Test {
 
     function _createPlasmaVault() private {
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData({
-                    assetName: "PLASMA VAULT",
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).initialize(
+            PlasmaVaultInitData({
+                assetName: "PLASMA VAULT",
                     assetSymbol: "PLASMA",
                     underlyingToken: _USDC,
                     priceOracleMiddleware: _priceOracle,
@@ -68,8 +68,7 @@ contract MorphoFlashLoanFuseTest is Test {
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     totalSupplyCap: type(uint256).max,
                     withdrawManager: address(0)
-                })
-            )
+            })
         );
         vm.stopPrank();
     }

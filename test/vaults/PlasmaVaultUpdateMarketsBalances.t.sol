@@ -87,8 +87,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
 
     function _createPlasmaVault() private {
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).initialize(
                 PlasmaVaultInitData({
                     assetName: "PLASMA VAULT",
                     assetSymbol: "PLASMA",
@@ -103,8 +103,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                     totalSupplyCap: type(uint256).max,
                     withdrawManager: address(0)
                 })
-            )
-        );
+            );
         vm.stopPrank();
     }
 

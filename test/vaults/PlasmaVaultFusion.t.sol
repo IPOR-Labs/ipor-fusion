@@ -106,7 +106,8 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         accessManager = createAccessManager(usersToRoles, 0);
 
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

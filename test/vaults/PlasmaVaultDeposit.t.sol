@@ -48,6 +48,11 @@ contract PlasmaVaultDepositTest is Test {
     uint256 public sharesAmount;
     address public userOne;
 
+    string public assetName;
+    address public underlyingToken;
+
+    address[] alphas;
+
     PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
 
@@ -181,8 +186,8 @@ contract PlasmaVaultDepositTest is Test {
     }
 
     function _preparePlasmaVaultUsdc(uint256 totalSupplyCap) public returns (PlasmaVault) {
-        address underlyingToken = USDC;
-        address[] memory alphas = new address[](1);
+        underlyingToken = USDC;
+        alphas = new address[](1);
 
         alphas[0] = address(0x1);
 
@@ -217,7 +222,8 @@ contract PlasmaVaultDepositTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 "IPOR Fusion USDC",
                 "ipfUSDC",
@@ -239,7 +245,7 @@ contract PlasmaVaultDepositTest is Test {
     }
 
     function _preparePlasmaVaultDai() public returns (PlasmaVault) {
-        string memory assetName = "IPOR Fusion DAI";
+        assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
         address[] memory alphas = new address[](1);
@@ -267,7 +273,8 @@ contract PlasmaVaultDepositTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

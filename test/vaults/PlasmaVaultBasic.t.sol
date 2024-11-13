@@ -91,7 +91,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -171,7 +172,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -250,7 +252,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -342,7 +345,8 @@ contract PlasmaVaultBasicTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -427,7 +431,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -535,7 +540,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -632,7 +638,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -729,7 +736,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -842,7 +850,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -927,7 +936,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
@@ -1020,7 +1030,8 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        plasmaVault.initialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
