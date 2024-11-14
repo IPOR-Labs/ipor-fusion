@@ -57,6 +57,9 @@ library IporFusionMarkets {
     /// @dev AAVE V3 lido market
     uint256 public constant AAVE_V3_LIDO = 20;
 
+    /// @dev Moonwell market
+    uint256 public constant MOONWELL = 21;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
