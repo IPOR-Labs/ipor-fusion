@@ -18,7 +18,7 @@ struct MoonwellEnableMarketFuseExitData {
 }
 
 /// @title MoonwellEnableMarketFuse
-/// @notice Fuse for enabling and disabling markets as collateral in the Moonwell protocol
+/// @notice Fuse for enabling and disabling markets(mTokens) as collateral in the Moonwell protocol
 /// @dev Manages which markets can be used as collateral for borrowing
 contract MoonwellEnableMarketFuse is IFuseCommon {
     /// @notice Version of this contract for tracking
@@ -52,9 +52,11 @@ contract MoonwellEnableMarketFuse is IFuseCommon {
             revert MoonwellEnableMarketFuseEmptyArray();
         }
 
+        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+
         // Validate all mTokens
         for (uint256 i; i < len; ++i) {
-            if (!_isSupportedMToken(MARKET_ID, data_.mTokens[i])) {
+            if (!_isSupportedMToken(assetsRaw, data_.mTokens[i])) {
                 revert MoonwellEnableMarketFuseUnsupportedMToken(data_.mTokens[i]);
             }
         }
@@ -87,11 +89,12 @@ contract MoonwellEnableMarketFuse is IFuseCommon {
             revert MoonwellEnableMarketFuseEmptyArray();
         }
 
+        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         // Exit each market individually
         for (uint256 i; i < len; ++i) {
             address mToken = data_.mTokens[i];
 
-            if (!_isSupportedMToken(MARKET_ID, mToken)) {
+            if (!_isSupportedMToken(assetsRaw, mToken)) {
                 revert MoonwellEnableMarketFuseUnsupportedMToken(mToken);
             }
 
@@ -106,17 +109,16 @@ contract MoonwellEnableMarketFuse is IFuseCommon {
     }
 
     /// @dev Checks if an mToken is supported for the given market ID
-    /// @param marketId_ Market ID to check
+    /// @param assetsRaw_ array of substrate addresses
     /// @param mToken_ mToken address to validate
     /// @return bool True if mToken is supported, false otherwise
-    function _isSupportedMToken(uint256 marketId_, address mToken_) internal view returns (bool) {
-        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(marketId_);
-        uint256 len = assetsRaw.length;
+    function _isSupportedMToken(bytes32[] memory assetsRaw_, address mToken_) internal view returns (bool) {
+        uint256 len = assetsRaw_.length;
         if (len == 0) {
             return false;
         }
         for (uint256 i; i < len; ++i) {
-            if (PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]) == mToken_) {
+            if (PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw_[i]) == mToken_) {
                 return true;
             }
         }

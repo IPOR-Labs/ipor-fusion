@@ -8,6 +8,7 @@ import {IFuseCommon} from "../IFuse.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {MErc20} from "./ext/MErc20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {MoonwellHelperLib} from "./MoonwellHelperLib.sol";
 
 /// @notice Data for supplying assets to Moonwell
 /// @param asset Asset address to supply
@@ -32,6 +33,7 @@ struct MoonwellSupplyFuseExitData {
 contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
+    using MoonwellHelperLib for uint256;
 
     /// @notice Version of this contract for tracking
     address public immutable VERSION;
@@ -43,7 +45,6 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     event MoonwellSupplyExitFuse(address version, address asset, address market, uint256 amount);
     event MoonwellSupplyExitFailed(address version, address asset, address market, uint256 amount);
 
-    error MoonwellSupplyFuseUnsupportedAsset(address asset);
     error MoonwellSupplyFuseMintFailed();
 
     constructor(uint256 marketId_) {
@@ -58,24 +59,24 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        MErc20 mToken = MErc20(_getMToken(MARKET_ID, data_.asset));
+        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        MErc20 mToken = MErc20(MoonwellHelperLib.getMToken(assetsRaw, data_.asset));
 
         uint256 balance = ERC20(data_.asset).balanceOf(address(this));
-        uint256 amount = data_.amount > balance ? balance : data_.amount;
+        uint256 finalAmount = data_.amount > balance ? balance : data_.amount;
 
-        if (amount == 0) {
+        if (finalAmount == 0) {
             return;
         }
-        uint256 transferAmount = amount;
 
-        ERC20(data_.asset).forceApprove(address(mToken), transferAmount);
+        ERC20(data_.asset).forceApprove(address(mToken), finalAmount);
 
-        uint256 mintResult = mToken.mint(transferAmount);
+        uint256 mintResult = mToken.mint(finalAmount);
         if (mintResult != 0) {
             revert MoonwellSupplyFuseMintFailed();
         }
 
-        emit MoonwellSupplyEnterFuse(VERSION, data_.asset, address(mToken), transferAmount);
+        emit MoonwellSupplyEnterFuse(VERSION, data_.asset, address(mToken), finalAmount);
     }
 
     /// @notice Withdraw assets from Moonwell
@@ -101,7 +102,8 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        MErc20 mToken = MErc20(_getMToken(MARKET_ID, data_.asset));
+        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        MErc20 mToken = MErc20(MoonwellHelperLib.getMToken(assetsRaw, data_.asset));
 
         uint256 balance = mToken.balanceOfUnderlying(address(this));
         uint256 amountToWithdraw = data_.amount > balance ? balance : data_.amount;
@@ -120,25 +122,5 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             /// @dev if withdraw failed, continue with the next step
             emit MoonwellSupplyExitFailed(VERSION, data_.asset, address(mToken), amountToWithdraw);
         }
-    }
-
-    /// @dev Gets the mToken address for a given asset
-    /// @param marketId_ Market ID to check
-    /// @param asset_ Underlying asset address
-    /// @return Address of the corresponding mToken
-    function _getMToken(uint256 marketId_, address asset_) internal view returns (address) {
-        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(marketId_);
-        uint256 len = assetsRaw.length;
-        if (len == 0) {
-            revert MoonwellSupplyFuseUnsupportedAsset(asset_);
-        }
-        address mToken;
-        for (uint256 i; i < len; ++i) {
-            mToken = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
-            if (MErc20(mToken).underlying() == asset_) {
-                return mToken;
-            }
-        }
-        revert MoonwellSupplyFuseUnsupportedAsset(asset_);
     }
 }

@@ -103,10 +103,11 @@ contract MoonwellClaimFuse is IFuseCommon {
         mTokens[0] = mToken_;
         COMPTROLLER.claimReward(plasmaVault, mTokens);
 
+        uint256 claimed;
+        uint256 rewardConfigLen = rewardConfig.length;
         // Transfer claimed rewards to rewards claim manager
-        for (uint256 i; i < rewardConfig.length; ++i) {
-            uint256 balanceAfter = IERC20(rewardTokens[i]).balanceOf(plasmaVault);
-            uint256 claimed = balanceAfter - balanceBefore[i];
+        for (uint256 i; i < rewardConfigLen; ++i) {
+            claimed = IERC20(rewardTokens[i]).balanceOf(plasmaVault) - balanceBefore[i];
 
             if (claimed > 0) {
                 IERC20(rewardTokens[i]).safeTransfer(rewardsClaimManager_, claimed);
