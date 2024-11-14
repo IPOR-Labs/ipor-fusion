@@ -6,7 +6,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
-import {MoonwellSupplyFuse} from "../../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {PriceOracleMiddlewareHelper} from "../../test_helpers/PriceOracleMiddlewareHelper.sol";
@@ -14,6 +13,7 @@ import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccess
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {MoonwellHelper, MoonWellAddresses} from "../../test_helpers/MoonwellHelper.sol";
 import {MoonwellSupplyFuseEnterData, MoonwellSupplyFuseExitData} from "../../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
+import {MoonwellHelperLib} from "../../../contracts/fuses/moonwell/MoonwellHelperLib.sol";
 
 contract MoonwellSupplyFuseBaseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
@@ -371,7 +371,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
 
         // Execute supply through PlasmaVault - should revert
         vm.prank(TestAddresses.ALPHA);
-        vm.expectRevert(abi.encodeWithSelector(MoonwellSupplyFuse.MoonwellSupplyFuseUnsupportedAsset.selector, _DAI));
+        vm.expectRevert(abi.encodeWithSelector(MoonwellHelperLib.MoonwellSupplyFuseUnsupportedAsset.selector, _DAI));
         _plasmaVault.execute(actions);
     }
 }
