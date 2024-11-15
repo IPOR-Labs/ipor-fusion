@@ -66,9 +66,9 @@ library PriceOracleMiddlewareHelper {
         return
             address(
                 new AssetChainlinkPriceFeed(
-                    TestAddresses.WSTETH,
-                    TestAddresses.CHAINLINK_WSTETH_TO_ETH_PRICE,
-                    TestAddresses.CHAINLINK_ETH_PRICE
+                    TestAddresses.BASE_WSTETH,
+                    TestAddresses.BASE_CHAINLINK_WSTETH_TO_ETH_PRICE,
+                    TestAddresses.BASE_CHAINLINK_ETH_PRICE
                 )
             );
     }

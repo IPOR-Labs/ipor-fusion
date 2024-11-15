@@ -21,8 +21,7 @@ contract MoonwellClaimFuseBaseTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
     using IporFusionAccessManagerHelper for IporFusionAccessManager;
 
-    address private constant _DAI = TestAddresses.DAI;
-    address private constant _UNDERLYING_TOKEN = TestAddresses.USDC;
+    address private constant _UNDERLYING_TOKEN = TestAddresses.BASE_USDC;
     string private constant _UNDERLYING_TOKEN_NAME = "USDC";
     address private constant _USER = TestAddresses.USER;
     uint256 private constant ERROR_DELTA = 100;
@@ -64,12 +63,12 @@ contract MoonwellClaimFuseBaseTest is Test {
         _accessManager.setupInitRoles(_plasmaVault);
 
         address[] memory mTokens = new address[](1);
-        mTokens[0] = TestAddresses.M_USDC;
+        mTokens[0] = TestAddresses.BASE_M_USDC;
 
         _moonwellAddresses = MoonwellHelper.addSupplyToMarket(_plasmaVault, mTokens, vm);
 
         vm.startPrank(TestAddresses.ATOMIST);
-        _priceOracleMiddleware.addSource(TestAddresses.USDC, TestAddresses.CHAINLINK_USDC_PRICE);
+        _priceOracleMiddleware.addSource(TestAddresses.BASE_USDC, TestAddresses.BASE_CHAINLINK_USDC_PRICE);
         vm.stopPrank();
 
         deal(_UNDERLYING_TOKEN, _USER, 1000e6);
@@ -85,7 +84,7 @@ contract MoonwellClaimFuseBaseTest is Test {
     }
 
     function _addClaimFuses() internal {
-        _claimFuse = new MoonwellClaimFuse(IporFusionMarkets.MOONWELL, TestAddresses.MOONWELL_COMPTROLLER);
+        _claimFuse = new MoonwellClaimFuse(IporFusionMarkets.MOONWELL, TestAddresses.BASE_MOONWELL_COMPTROLLER);
         address[] memory fuses = new address[](1);
         fuses[0] = address(_claimFuse);
         _rewardsClaimManager.addRewardFuses(fuses);
@@ -117,7 +116,7 @@ contract MoonwellClaimFuseBaseTest is Test {
         vm.warp(block.timestamp + 100 days);
 
         address[] memory mTokens = new address[](1);
-        mTokens[0] = TestAddresses.M_USDC;
+        mTokens[0] = TestAddresses.BASE_M_USDC;
 
         FuseAction[] memory claimActions = new FuseAction[](1);
         claimActions[0] = FuseAction({

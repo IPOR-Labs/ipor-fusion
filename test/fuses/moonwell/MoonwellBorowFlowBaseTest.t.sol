@@ -22,7 +22,7 @@ contract MoonwellBorowFlowBaseTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
     using IporFusionAccessManagerHelper for IporFusionAccessManager;
 
-    address private constant _UNDERLYING_TOKEN = TestAddresses.WSTETH;
+    address private constant _UNDERLYING_TOKEN = TestAddresses.BASE_WSTETH;
     string private constant _UNDERLYING_TOKEN_NAME = "WSTETH";
     address private constant _USER = TestAddresses.USER;
     uint256 private constant ERROR_DELTA = 100;
@@ -59,25 +59,25 @@ contract MoonwellBorowFlowBaseTest is Test {
         _accessManager.setupInitRoles(_plasmaVault);
 
         address[] memory mTokens = new address[](3);
-        mTokens[0] = TestAddresses.M_WSTETH;
-        mTokens[1] = TestAddresses.M_CBBTC;
-        mTokens[2] = TestAddresses.M_CBETH;
+        mTokens[0] = TestAddresses.BASE_M_WSTETH;
+        mTokens[1] = TestAddresses.BASE_M_CBBTC;
+        mTokens[2] = TestAddresses.BASE_M_CBETH;
 
         vm.stopPrank();
         // Use addFullMarket instead of addSupplyToMarket
         _moonwellAddresses = MoonwellHelper.addFullMarket(
             _plasmaVault,
             mTokens,
-            TestAddresses.MOONWELL_COMPTROLLER,
+            TestAddresses.BASE_MOONWELL_COMPTROLLER,
             vm
         );
 
         // Deploy and add wstETH price feed
         vm.startPrank(TestAddresses.ATOMIST);
         address wstEthPriceFeed = PriceOracleMiddlewareHelper.deployWstEthPriceFeedOnBase();
-        _priceOracleMiddleware.addSource(TestAddresses.WSTETH, wstEthPriceFeed);
-        _priceOracleMiddleware.addSource(TestAddresses.CBBTC, TestAddresses.CHAINLINK_CBBTC_PRICE);
-        _priceOracleMiddleware.addSource(TestAddresses.CBETH, TestAddresses.CHAINLINK_CBETH_PRICE);
+        _priceOracleMiddleware.addSource(TestAddresses.BASE_WSTETH, wstEthPriceFeed);
+        _priceOracleMiddleware.addSource(TestAddresses.BASE_CBBTC, TestAddresses.BASE_CHAINLINK_CBBTC_PRICE);
+        _priceOracleMiddleware.addSource(TestAddresses.BASE_CBETH, TestAddresses.BASE_CHAINLINK_CBETH_PRICE);
         vm.stopPrank();
 
         deal(_UNDERLYING_TOKEN, _USER, 100e18); // Note: wstETH uses 18 decimals
@@ -96,13 +96,13 @@ contract MoonwellBorowFlowBaseTest is Test {
         // Setup supply action - 50 wstETH
         uint256 supplyAmount = 50e18;
         MoonwellSupplyFuseEnterData memory supplyData = MoonwellSupplyFuseEnterData({
-            asset: TestAddresses.WSTETH,
+            asset: TestAddresses.BASE_WSTETH,
             amount: supplyAmount
         });
 
         // Setup enable market action
         address[] memory marketsToEnable = new address[](1);
-        marketsToEnable[0] = TestAddresses.M_WSTETH;
+        marketsToEnable[0] = TestAddresses.BASE_M_WSTETH;
         MoonwellEnableMarketFuseEnterData memory enableData = MoonwellEnableMarketFuseEnterData({
             mTokens: marketsToEnable
         });
@@ -110,7 +110,7 @@ contract MoonwellBorowFlowBaseTest is Test {
         // Setup borrow action - 1 cbETH
         uint256 borrowAmount = 1e18;
         MoonwellBorrowFuseEnterData memory borrowData = MoonwellBorrowFuseEnterData({
-            asset: TestAddresses.CBETH,
+            asset: TestAddresses.BASE_CBETH,
             amount: borrowAmount
         });
 
@@ -138,8 +138,8 @@ contract MoonwellBorowFlowBaseTest is Test {
         // Initial balance checks
         uint256 initialMoonwellBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
         uint256 initialErc20Balance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
-        uint256 initialWstEthBalance = IERC20(TestAddresses.WSTETH).balanceOf(address(_plasmaVault));
-        uint256 initialCbEthBalance = IERC20(TestAddresses.CBETH).balanceOf(address(_plasmaVault));
+        uint256 initialWstEthBalance = IERC20(TestAddresses.BASE_WSTETH).balanceOf(address(_plasmaVault));
+        uint256 initialCbEthBalance = IERC20(TestAddresses.BASE_CBETH).balanceOf(address(_plasmaVault));
 
         // Execute all actions
         vm.startPrank(TestAddresses.ALPHA);
@@ -149,8 +149,8 @@ contract MoonwellBorowFlowBaseTest is Test {
         // Final balance checks
         uint256 finalMoonwellBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
         uint256 finalErc20Balance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
-        uint256 finalWstEthBalance = IERC20(TestAddresses.WSTETH).balanceOf(address(_plasmaVault));
-        uint256 finalCbEthBalance = IERC20(TestAddresses.CBETH).balanceOf(address(_plasmaVault));
+        uint256 finalWstEthBalance = IERC20(TestAddresses.BASE_WSTETH).balanceOf(address(_plasmaVault));
+        uint256 finalCbEthBalance = IERC20(TestAddresses.BASE_CBETH).balanceOf(address(_plasmaVault));
 
         // Assert initial balances
         assertEq(initialMoonwellBalance, 0, "Initial Moonwell balance should be 0");
@@ -208,8 +208,8 @@ contract MoonwellBorowFlowBaseTest is Test {
     function _getPositionState() private view returns (PositionState memory state) {
         state.moonwellBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
         state.erc20Balance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
-        state.wstEthBalance = IERC20(TestAddresses.WSTETH).balanceOf(address(_plasmaVault));
-        state.cbEthBalance = IERC20(TestAddresses.CBETH).balanceOf(address(_plasmaVault));
+        state.wstEthBalance = IERC20(TestAddresses.BASE_WSTETH).balanceOf(address(_plasmaVault));
+        state.cbEthBalance = IERC20(TestAddresses.BASE_CBETH).balanceOf(address(_plasmaVault));
         return state;
     }
 
@@ -247,13 +247,13 @@ contract MoonwellBorowFlowBaseTest is Test {
     function _createClosePositionActions(uint256 borrowAmount) private view returns (FuseAction[] memory) {
         // Setup repay action
         MoonwellBorrowFuseExitData memory repayData = MoonwellBorrowFuseExitData({
-            asset: TestAddresses.CBETH,
+            asset: TestAddresses.BASE_CBETH,
             amount: borrowAmount
         });
 
         // Setup exit market action
         address[] memory marketsToExit = new address[](1);
-        marketsToExit[0] = TestAddresses.M_WSTETH;
+        marketsToExit[0] = TestAddresses.BASE_M_WSTETH;
         MoonwellEnableMarketFuseExitData memory exitMarketData = MoonwellEnableMarketFuseExitData({
             mTokens: marketsToExit
         });
@@ -279,20 +279,20 @@ contract MoonwellBorowFlowBaseTest is Test {
     ) internal view returns (FuseAction[] memory) {
         // Supply data
         MoonwellSupplyFuseEnterData memory supplyData = MoonwellSupplyFuseEnterData({
-            asset: TestAddresses.WSTETH,
+            asset: TestAddresses.BASE_WSTETH,
             amount: supplyAmount
         });
 
         // Enable market data
         address[] memory marketsToEnable = new address[](1);
-        marketsToEnable[0] = TestAddresses.M_WSTETH;
+        marketsToEnable[0] = TestAddresses.BASE_M_WSTETH;
         MoonwellEnableMarketFuseEnterData memory enableData = MoonwellEnableMarketFuseEnterData({
             mTokens: marketsToEnable
         });
 
         // Borrow data
         MoonwellBorrowFuseEnterData memory borrowData = MoonwellBorrowFuseEnterData({
-            asset: TestAddresses.CBETH,
+            asset: TestAddresses.BASE_CBETH,
             amount: borrowAmount
         });
 

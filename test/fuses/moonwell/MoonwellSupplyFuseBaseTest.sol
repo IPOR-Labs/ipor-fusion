@@ -20,8 +20,8 @@ contract MoonwellSupplyFuseBaseTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
     using IporFusionAccessManagerHelper for IporFusionAccessManager;
 
-    address private constant _DAI = TestAddresses.DAI;
-    address private constant _UNDERLYING_TOKEN = TestAddresses.USDC;
+    address private constant _DAI = TestAddresses.BASE_DAI;
+    address private constant _UNDERLYING_TOKEN = TestAddresses.BASE_USDC;
     string private constant _UNDERLYING_TOKEN_NAME = "USDC";
     address private constant _USER = TestAddresses.USER;
     uint256 private constant ERROR_DELTA = 100;
@@ -58,12 +58,12 @@ contract MoonwellSupplyFuseBaseTest is Test {
         _accessManager.setupInitRoles(_plasmaVault);
 
         address[] memory mTokens = new address[](1);
-        mTokens[0] = TestAddresses.M_USDC;
+        mTokens[0] = TestAddresses.BASE_M_USDC;
 
         _moonwellAddresses = MoonwellHelper.addSupplyToMarket(_plasmaVault, mTokens, vm);
 
         vm.startPrank(TestAddresses.ATOMIST);
-        _priceOracleMiddleware.addSource(TestAddresses.USDC, TestAddresses.CHAINLINK_USDC_PRICE);
+        _priceOracleMiddleware.addSource(TestAddresses.BASE_USDC, TestAddresses.BASE_CHAINLINK_USDC_PRICE);
         vm.stopPrank();
 
         deal(_UNDERLYING_TOKEN, _USER, 1000e6);
@@ -99,7 +99,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
         _plasmaVault.execute(actions);
 
         // Verify supply
-        uint256 mUsdcBalance = IERC20(TestAddresses.M_USDC).balanceOf(address(_plasmaVault));
+        uint256 mUsdcBalance = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
         uint256 totalAssetAfter = _plasmaVault.totalAssets();
         uint256 balanceInMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
 
@@ -114,7 +114,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
         uint256 firstSupplyAmount = 200e6;
 
         MoonwellSupplyFuseEnterData memory firstEnterData = MoonwellSupplyFuseEnterData({
-            asset: TestAddresses.USDC,
+            asset: TestAddresses.BASE_USDC,
             amount: firstSupplyAmount
         });
 
@@ -132,7 +132,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
         _plasmaVault.execute(firstActions);
 
         // Verify first supply
-        uint256 mUsdcBalanceAfterFirst = IERC20(TestAddresses.M_USDC).balanceOf(address(_plasmaVault));
+        uint256 mUsdcBalanceAfterFirst = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
         uint256 balanceInMarketAfterFirst = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
 
         assertApproxEqAbs(balanceInMarketBefore, 0, ERROR_DELTA, "Initial balance in market should be 0");
@@ -148,7 +148,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
         uint256 secondSupplyAmount = 400e6;
 
         MoonwellSupplyFuseEnterData memory secondEnterData = MoonwellSupplyFuseEnterData({
-            asset: TestAddresses.USDC,
+            asset: TestAddresses.BASE_USDC,
             amount: secondSupplyAmount
         });
 
@@ -163,7 +163,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
         _plasmaVault.execute(secondActions);
 
         // Final verifications
-        uint256 mUsdcBalanceAfterSecond = IERC20(TestAddresses.M_USDC).balanceOf(address(_plasmaVault));
+        uint256 mUsdcBalanceAfterSecond = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
         uint256 totalAssetAfter = _plasmaVault.totalAssets();
         uint256 balanceInMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
         uint256 totalSupplied = firstSupplyAmount + secondSupplyAmount;
@@ -198,7 +198,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
 
         // Prepare supply action
         MoonwellSupplyFuseEnterData memory enterData = MoonwellSupplyFuseEnterData({
-            asset: TestAddresses.USDC,
+            asset: TestAddresses.BASE_USDC,
             amount: supplyAmount
         });
 
@@ -216,7 +216,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
         _plasmaVault.execute(supplyActions);
 
         // Verify supply
-        uint256 mUsdcBalanceAfterSupply = IERC20(TestAddresses.M_USDC).balanceOf(address(_plasmaVault));
+        uint256 mUsdcBalanceAfterSupply = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
         uint256 balanceInMarketAfterSupply = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
 
         assertApproxEqAbs(balanceInMarketBefore, 0, ERROR_DELTA, "Initial balance in market should be 0");
@@ -232,7 +232,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
 
         // Prepare withdrawal action
         MoonwellSupplyFuseExitData memory exitData = MoonwellSupplyFuseExitData({
-            asset: TestAddresses.USDC,
+            asset: TestAddresses.BASE_USDC,
             amount: withdrawAmount
         });
 
@@ -247,7 +247,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
         _plasmaVault.execute(withdrawActions);
 
         // Final verifications
-        uint256 mUsdcBalanceAfterWithdraw = IERC20(TestAddresses.M_USDC).balanceOf(address(_plasmaVault));
+        uint256 mUsdcBalanceAfterWithdraw = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
         uint256 totalAssetAfter = _plasmaVault.totalAssets();
         uint256 balanceInMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
         uint256 remainingAmount = supplyAmount - withdrawAmount;
@@ -287,7 +287,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
 
         // Verify supply
         uint256 balanceInMarketAfterSupply = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
-        uint256 mUsdcBalanceAfterSupply = IERC20(TestAddresses.M_USDC).balanceOf(address(_plasmaVault));
+        uint256 mUsdcBalanceAfterSupply = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
 
         assertApproxEqAbs(balanceInMarketBefore, 0, ERROR_DELTA, "Initial balance should be 0");
         assertApproxEqAbs(balanceInMarketAfterSupply, supplyAmount, ERROR_DELTA, "Should be 600 USDC after supply");
@@ -297,7 +297,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
         _executeWithdraw(firstWithdrawAmount);
 
         uint256 balanceAfterFirst = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
-        uint256 mUsdcBalanceAfterFirst = IERC20(TestAddresses.M_USDC).balanceOf(address(_plasmaVault));
+        uint256 mUsdcBalanceAfterFirst = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
 
         // Second withdrawal - 400 USDC
         uint256 secondWithdrawAmount = 400e6;
@@ -305,7 +305,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
 
         // Final checks
         uint256 finalBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
-        uint256 finalMUsdcBalance = IERC20(TestAddresses.M_USDC).balanceOf(address(_plasmaVault));
+        uint256 finalMUsdcBalance = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
         uint256 totalAssetAfter = _plasmaVault.totalAssets();
 
         // Assertions
@@ -325,7 +325,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
     // Helper functions to reduce stack usage
     function _executeSupply(uint256 amount) internal {
         MoonwellSupplyFuseEnterData memory enterData = MoonwellSupplyFuseEnterData({
-            asset: TestAddresses.USDC,
+            asset: TestAddresses.BASE_USDC,
             amount: amount
         });
 
@@ -341,7 +341,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
 
     function _executeWithdraw(uint256 amount) internal {
         MoonwellSupplyFuseExitData memory exitData = MoonwellSupplyFuseExitData({
-            asset: TestAddresses.USDC,
+            asset: TestAddresses.BASE_USDC,
             amount: amount
         });
 
