@@ -38,50 +38,51 @@ contract PendleMarketsBalanceFuse is IMarketBalanceFuse {
 
     /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
     function balanceOf() external view override returns (uint256) {
-        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        // bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
-        return balanceOf(substrates, address(this));
-    }
-
-    function balanceOf(bytes32[] memory substrates_, address plasmaVault_) internal view returns (uint256) {
-        uint256 len = substrates_.length;
-
-        if (len == 0) {
-            return 0;
-        }
-        IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
-            PlasmaVaultLib.getPriceOracleMiddleware()
-        );
-
-        // PendleMarketV3 marketAddress;
-        // address asset;
-        // uint8 assetDecimals;
-
-        // IStandardizedYield syToken;
-        // IPPrincipalToken ptToken;
-        // IPYieldToken ytToken;
-        // uint256 price;
-        // uint256 decimals;
-
-        // TokensBalances memory tokensBalances;
-        // uint256 exchangeRate;
-
-        // for (uint256 i; i < len; ++i) {
-        //     marketAddress = PendleMarketV3(PlasmaVaultConfigLib.bytes32ToAddress(substrates_[i]));
-        //     (syToken, ptToken, ytToken) = marketAddress.readTokens();
-        //     (, asset, assetDecimals) = syToken.assetInfo();
-        //     (price, decimals) = priceOracleMiddleware.getAssetPrice(asset);
-        //     exchangeRate = syToken.exchangeRate();
-        //     tokensBalances.syTokenBalance = syToken.balanceOf(plasmaVault_);
-        //     tokensBalances.ptTokenBalance = ptToken.balanceOf(plasmaVault_);
-        //     tokensBalances.ytTokenBalance = ytToken.balanceOf(plasmaVault_);
-
-        //     tokensBalances.syTokenInAssetBalance = SYUtils.syToAsset(exchangeRate, tokensBalances.ytTokenBalance);
-        //     tokensBalances.ptTokenInAssetBalance = 0;
-        // }
-
+        // return balanceOf(substrates, address(this));
         return 0;
     }
+
+    // function balanceOf(bytes32[] memory substrates_, address plasmaVault_) internal view returns (uint256) {
+    // uint256 len = substrates_.length;
+
+    // if (len == 0) {
+    //     return 0;
+    // }
+    // IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
+    //     PlasmaVaultLib.getPriceOracleMiddleware()
+    // );
+
+    // PendleMarketV3 marketAddress;
+    // address asset;
+    // uint8 assetDecimals;
+
+    // IStandardizedYield syToken;
+    // IPPrincipalToken ptToken;
+    // IPYieldToken ytToken;
+    // uint256 price;
+    // uint256 decimals;
+
+    // TokensBalances memory tokensBalances;
+    // uint256 exchangeRate;
+
+    // for (uint256 i; i < len; ++i) {
+    //     marketAddress = PendleMarketV3(PlasmaVaultConfigLib.bytes32ToAddress(substrates_[i]));
+    //     (syToken, ptToken, ytToken) = marketAddress.readTokens();
+    //     (, asset, assetDecimals) = syToken.assetInfo();
+    //     (price, decimals) = priceOracleMiddleware.getAssetPrice(asset);
+    //     exchangeRate = syToken.exchangeRate();
+    //     tokensBalances.syTokenBalance = syToken.balanceOf(plasmaVault_);
+    //     tokensBalances.ptTokenBalance = ptToken.balanceOf(plasmaVault_);
+    //     tokensBalances.ytTokenBalance = ytToken.balanceOf(plasmaVault_);
+
+    //     tokensBalances.syTokenInAssetBalance = SYUtils.syToAsset(exchangeRate, tokensBalances.ytTokenBalance);
+    //     tokensBalances.ptTokenInAssetBalance = 0;
+    // }
+
+    //     return 0;
+    // }
 
     function _convertToUsd(
         address priceOracleMiddleware_,
