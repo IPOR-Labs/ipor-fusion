@@ -47,7 +47,8 @@ contract FeeManager is AccessManaged {
     address public immutable MANAGEMENT_FEE_ACCOUNT;
     /// @notice IPOR_DAO_MANAGEMENT_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%. It is the management fee percentage for the IPOR DAO.
     uint256 public immutable IPOR_DAO_MANAGEMENT_FEE;
-    /// @notice IPOR_DAO_PERFORMANCE_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%. It is the performance fee percentage for the IPOR DAO.
+    /// @notice IPOR_DAO_PERFORMANCE_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%. It is the performance fee percentage for the DAO.
+    uint256 public immutable IPOR_DAO_PERFORMANCE_FEE;
 
     address public immutable PLASMA_VAULT;
 
