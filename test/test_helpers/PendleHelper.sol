@@ -7,7 +7,6 @@ import {PlasmaVaultHelper} from "./PlasmaVaultHelper.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {TestAddresses} from "./TestAddresses.sol";
 
-import {PendleLiquidityFuse} from "../../contracts/fuses/pendle/PendleLiquidityFuse.sol";
 import {PendleSwapPTFuse} from "../../contracts/fuses/pendle/PendleSwapPTFuse.sol";
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
@@ -17,7 +16,6 @@ import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMid
 import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 struct PendleAddresses {
-    address liquidityFuse;
     address swapPTFuse;
     address marketsBalanceFuse;
 }
@@ -45,7 +43,6 @@ library PendleHelper {
         vm_.stopPrank();
 
         vm_.startPrank(TestAddresses.FUSE_MANAGER);
-        pendleAddresses.liquidityFuse = _addLiquidityFuse(plasmaVault_);
         pendleAddresses.swapPTFuse = _addSwapPTFuse(plasmaVault_);
         vm_.stopPrank();
 
@@ -91,19 +88,6 @@ library PendleHelper {
 
         plasmaVault_.addSubstratesToMarket(IporFusionMarkets.PENDLE, substrates);
         plasmaVault_.addSubstratesToMarket(IporFusionMarkets.ERC20_VAULT_BALANCE, erc20Substrates);
-    }
-
-    function _addLiquidityFuse(PlasmaVault plasmaVault_) private returns (address liquidityFuse) {
-        PendleLiquidityFuse pendleLiquidityFuse = new PendleLiquidityFuse(
-            IporFusionMarkets.PENDLE,
-            TestAddresses.ARBITRUM_PENDLE_ROUTER
-        );
-
-        address[] memory fuses = new address[](1);
-        fuses[0] = address(pendleLiquidityFuse);
-        plasmaVault_.addFusesToVault(fuses);
-
-        return address(pendleLiquidityFuse);
     }
 
     function _addSwapPTFuse(PlasmaVault plasmaVault_) private returns (address swapPTFuse) {
