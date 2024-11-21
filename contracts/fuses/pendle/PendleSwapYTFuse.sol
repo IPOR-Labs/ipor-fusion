@@ -8,11 +8,9 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IPActionSwapYTV3} from "@pendle/core-v2/contracts/interfaces/IPActionSwapYTV3.sol";
 import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
+import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandardizedYield.sol";
 
 import {TokenInput, TokenOutput, ApproxParams, LimitOrderData} from "@pendle/core-v2/contracts/interfaces/IPAllActionTypeV3.sol";
-import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandardizedYield.sol";
-import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
-import {IPYieldToken} from "@pendle/core-v2/contracts/interfaces/IPYieldToken.sol";
 import {FillOrderParams} from "@pendle/core-v2/contracts/interfaces/IPAllActionTypeV3.sol";
 
 /// @notice Structure for entering (swap token for YT) to the Pendle protocol

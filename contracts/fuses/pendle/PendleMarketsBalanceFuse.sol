@@ -6,14 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
-import {PendleMarketV3} from "@pendle/core-v2/contracts/core/Market/v3/PendleMarketV3.sol";
-import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandardizedYield.sol";
-import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
-import {IPYieldToken} from "@pendle/core-v2/contracts/interfaces/IPYieldToken.sol";
-import {SYUtils} from "@pendle/core-v2/contracts/core/StandardizedYield/SYUtils.sol";
 struct TokensBalances {
     uint256 syTokenBalance;
     uint256 syTokenInAssetBalance;

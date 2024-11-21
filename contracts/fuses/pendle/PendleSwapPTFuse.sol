@@ -12,7 +12,6 @@ import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 import {TokenInput, TokenOutput, ApproxParams, LimitOrderData} from "@pendle/core-v2/contracts/interfaces/IPAllActionTypeV3.sol";
 import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandardizedYield.sol";
 import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
-import {IPYieldToken} from "@pendle/core-v2/contracts/interfaces/IPYieldToken.sol";
 import {FillOrderParams} from "@pendle/core-v2/contracts/interfaces/IPAllActionTypeV3.sol";
 
 /// @notice Structure for entering (swap token for PT) to the Pendle protocol
@@ -38,7 +37,7 @@ struct PendleSwapPTFuseExitData {
 }
 
 /// @title Fuse Pendle Swap PT protocol responsible for swapping tokens for PT and PT for tokens in Pendle markets
-contract PendelSwapPTFuse is IFuseCommon {
+contract PendleSwapPTFuse is IFuseCommon {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
@@ -111,11 +110,11 @@ contract PendelSwapPTFuse is IFuseCommon {
             revert PendleSwapPTFuseInvalidMarketId();
         }
 
-        (IStandardizedYield sy, , ) = IPMarket(data_.market).readTokens();
+        (IStandardizedYield sy, IPPrincipalToken pt, ) = IPMarket(data_.market).readTokens();
 
         if (!sy.isValidTokenOut(data_.output.tokenOut)) revert PendleSwapPTFuseInvalidTokenOut();
 
-        ERC20(data_.output.tokenOut).forceApprove(address(ROUTER), type(uint256).max);
+        ERC20(address(pt)).forceApprove(address(ROUTER), type(uint256).max);
 
         (uint256 netTokenOut, uint256 netSyFee, uint256 netSyInterm) = ROUTER.swapExactPtForToken(
             address(this),
@@ -131,7 +130,7 @@ contract PendelSwapPTFuse is IFuseCommon {
             })
         );
 
-        ERC20(data_.output.tokenOut).forceApprove(address(ROUTER), 0);
+        ERC20(address(pt)).forceApprove(address(ROUTER), 0);
 
         emit PendleSwapPTFuseExit(VERSION, data_.market, netTokenOut, netSyFee, netSyInterm);
     }

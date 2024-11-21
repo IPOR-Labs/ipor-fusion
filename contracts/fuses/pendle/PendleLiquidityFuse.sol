@@ -11,8 +11,6 @@ import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 
 import {TokenInput, TokenOutput, ApproxParams, LimitOrderData} from "@pendle/core-v2/contracts/interfaces/IPAllActionTypeV3.sol";
 import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandardizedYield.sol";
-import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
-import {IPYieldToken} from "@pendle/core-v2/contracts/interfaces/IPYieldToken.sol";
 import {FillOrderParams} from "@pendle/core-v2/contracts/interfaces/IPAllActionTypeV3.sol";
 
 /// @notice Structure for entering (add liquidity) to the Pendle protocol
@@ -115,6 +113,8 @@ contract PendleLiquidityFuse is IFuseCommon {
 
         if (!sy.isValidTokenOut(data_.output.tokenOut)) revert PendleLiquidityFuseInvalidTokenOut();
 
+        ERC20(data_.market).forceApprove(address(ROUTER), type(uint256).max);
+
         (uint256 netTokenOut, uint256 netSyFee, uint256 netSyInterm) = ROUTER.removeLiquiditySingleToken(
             address(this),
             data_.market,
@@ -128,6 +128,8 @@ contract PendleLiquidityFuse is IFuseCommon {
                 optData: bytes("")
             })
         );
+
+        ERC20(data_.market).forceApprove(address(ROUTER), 0);
 
         emit PendleLiquidityFuseExit(VERSION, data_.market, netTokenOut, netSyFee, netSyInterm);
     }
