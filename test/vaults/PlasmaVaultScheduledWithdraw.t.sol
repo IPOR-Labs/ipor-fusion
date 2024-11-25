@@ -237,7 +237,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds();
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1);
 
         vm.warp(block.timestamp + 10 hours);
 
@@ -270,7 +270,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds();
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1);
 
         vm.warp(block.timestamp + 10 hours);
 
@@ -351,7 +351,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds();
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1);
 
         vm.warp(block.timestamp + 24 hours);
 
@@ -378,7 +378,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 days + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds();
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1);
 
         bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
 
@@ -403,7 +403,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds();
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1);
 
         vm.warp(block.timestamp + 24 hours);
 
@@ -430,7 +430,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 days + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds();
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1);
 
         bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
 
@@ -455,7 +455,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds();
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1);
 
         vm.warp(block.timestamp + 24 hours);
 
@@ -486,7 +486,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds();
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1);
 
         vm.warp(block.timestamp + 24 hours);
 
@@ -501,5 +501,26 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.expectRevert(error);
         PlasmaVault(_plasmaVault).withdraw(withdrawAmount + 1, _USER, _USER);
         vm.stopPrank();
+    }
+
+    function testShouldRevertWhenReleaseFundsWithCurrentBlockTimestamp() external {
+        // given
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidTimestamp(uint256)", block.timestamp);
+
+        // when
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(error);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenReleaseFundsWithTimestampInFuture() external {
+        // given
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidTimestamp(uint256)", block.timestamp + 1);
+
+        // when
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(error);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp + 1);
     }
 }
