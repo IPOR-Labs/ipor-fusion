@@ -16,6 +16,8 @@ struct WithdrawRequestInfo {
  * @dev Manages withdrawal requests and their processing, ensuring that withdrawals are only allowed within specified windows and conditions.
  */
 contract WithdrawManager is AccessManagedUpgradeable {
+    error WithdrawManager_InvalidTimestamp(uint256 timestamp_);
+
     constructor(address accessManager_) {
         initialize(accessManager_);
     }
@@ -56,8 +58,27 @@ contract WithdrawManager is AccessManagedUpgradeable {
         WithdrawManagerStorageLib.updateWithdrawRequest(msg.sender, amount_);
     }
 
-    function releaseFunds() external restricted {
-        WithdrawManagerStorageLib.releaseFunds();
+    /**
+     * @notice Updates the release funds timestamp to allow withdrawals after this point
+     * @dev This function can only be executed by accounts with the required role (restricted)
+     * @param timestamp_ The timestamp to set as the release funds timestamp
+     * @dev Reverts if the provided timestamp is in the future
+     */
+
+    function releaseFunds(uint256 timestamp_) external restricted {
+        if (timestamp_ < block.timestamp) {
+            WithdrawManagerStorageLib.releaseFunds(timestamp_);
+        } else {
+            revert WithdrawManager_InvalidTimestamp(timestamp_);
+        }
+    }
+    /**
+     * @notice Gets the last timestamp when funds were released for withdrawals
+     * @dev This function can be called by anyone to check when funds were last released
+     * @return uint256 The timestamp of the last funds release
+     */
+    function getLastReleaseFundsTimestamp() external view returns (uint256) {
+        return WithdrawManagerStorageLib.getLastReleaseFundsTimestamp();
     }
 
     function updateWithdrawWindow(uint256 window_) external restricted {
