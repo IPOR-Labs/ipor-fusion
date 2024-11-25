@@ -16,7 +16,7 @@ struct WithdrawRequestInfo {
  * @dev Manages withdrawal requests and their processing, ensuring that withdrawals are only allowed within specified windows and conditions.
  */
 contract WithdrawManager is AccessManagedUpgradeable {
-    error WithdrawManager_InvalidTimestamp(uint256 timestamp_);
+    error WithdrawManagerInvalidTimestamp(uint256 timestamp_);
 
     constructor(address accessManager_) {
         initialize(accessManager_);
@@ -69,7 +69,7 @@ contract WithdrawManager is AccessManagedUpgradeable {
         if (timestamp_ < block.timestamp) {
             WithdrawManagerStorageLib.releaseFunds(timestamp_);
         } else {
-            revert WithdrawManager_InvalidTimestamp(timestamp_);
+            revert WithdrawManagerInvalidTimestamp(timestamp_);
         }
     }
     /**

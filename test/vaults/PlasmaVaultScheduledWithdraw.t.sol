@@ -505,7 +505,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
     function testShouldRevertWhenReleaseFundsWithCurrentBlockTimestamp() external {
         // given
-        bytes memory error = abi.encodeWithSignature("WithdrawManager_InvalidTimestamp(uint256)", block.timestamp);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidTimestamp(uint256)", block.timestamp);
 
         // when
         vm.startPrank(_ALPHA);
@@ -516,7 +516,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
     function testShouldRevertWhenReleaseFundsWithTimestampInFuture() external {
         // given
-        bytes memory error = abi.encodeWithSignature("WithdrawManager_InvalidTimestamp(uint256)", block.timestamp + 1);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidTimestamp(uint256)", block.timestamp + 1);
 
         // when
         vm.startPrank(_ALPHA);
