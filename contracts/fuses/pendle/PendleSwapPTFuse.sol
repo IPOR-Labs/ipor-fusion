@@ -14,33 +14,42 @@ import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandard
 import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
 import {FillOrderParams} from "@pendle/core-v2/contracts/interfaces/IPAllActionTypeV3.sol";
 
-/// @notice Structure for entering (swap token for PT) to the Pendle protocol
+/// @notice Data for entering (swap token for PT) to the Pendle protocol
+/// @param market Market address to swap in
+/// @param minPtOut Minimum PT tokens to receive
+/// @param guessPtOut Approximation parameters for guessing PT output
+/// @param input Token input parameters for the swap
 struct PendleSwapPTFuseEnterData {
-    // market address
     address market;
-    // minimum PT tokens to receive
     uint256 minPtOut;
-    // approximation parameters for guessing PT output
     ApproxParams guessPtOut;
-    // token input parameters
     TokenInput input;
 }
 
-/// @notice Structure for exiting (swap PT for token) from the Pendle protocol
+/// @notice Data for exiting (swap PT for token) from the Pendle protocol
+/// @param market Market address to swap in
+/// @param exactPtIn Exact amount of PT to swap
+/// @param output Token output parameters for the swap
 struct PendleSwapPTFuseExitData {
-    // market address
     address market;
-    // exact amount of PT to swap
     uint256 exactPtIn;
-    // token output parameters
     TokenOutput output;
 }
 
-/// @title Fuse Pendle Swap PT protocol responsible for swapping tokens for PT and PT for tokens in Pendle markets
+/// @title PendleSwapPTFuse
+/// @notice Fuse for swapping between tokens and Principal Tokens (PT) in the Pendle protocol
+/// @dev Handles swapping underlying tokens for PT tokens and vice versa using Pendle markets
+/// @dev Substrates in this fuse are the Pendle market addresses
 contract PendleSwapPTFuse is IFuseCommon {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
+    /// @notice Emitted when entering a position by swapping tokens for PT
+    /// @param version Address of this contract version
+    /// @param market Address of the Pendle market
+    /// @param netPtOut Amount of PT tokens received
+    /// @param netSyFee Fee paid in standardized yield tokens
+    /// @param netSyInterm Intermediate standardized yield token amount
     event PendleSwapPTFuseEnter(
         address version,
         address market,
@@ -49,6 +58,12 @@ contract PendleSwapPTFuse is IFuseCommon {
         uint256 netSyInterm
     );
 
+    /// @notice Emitted when exiting a position by swapping PT for tokens
+    /// @param version Address of this contract version
+    /// @param market Address of the Pendle market
+    /// @param netTokenOut Amount of tokens received
+    /// @param netSyFee Fee paid in standardized yield tokens
+    /// @param netSyInterm Intermediate standardized yield token amount
     event PendleSwapPTFuseExit(
         address version,
         address market,
@@ -57,15 +72,25 @@ contract PendleSwapPTFuse is IFuseCommon {
         uint256 netSyInterm
     );
 
+    /// @notice Error thrown when an invalid market ID is provided
     error PendleSwapPTFuseInvalidMarketId();
+    /// @notice Error thrown when an invalid router address is provided
     error PendleSwapPTFuseInvalidRouter();
+    /// @notice Error thrown when an invalid token input is provided
     error PendleSwapPTFuseInvalidTokenIn();
+    /// @notice Error thrown when an invalid token output is provided
     error PendleSwapPTFuseInvalidTokenOut();
 
+    /// @notice Version of this contract for tracking
     address public immutable VERSION;
+    /// @notice Market ID this fuse is associated with
     uint256 public immutable MARKET_ID;
+    /// @notice Pendle router contract used for swaps
     IPActionSwapPTV3 public immutable ROUTER;
 
+    /// @notice Initializes the fuse with market ID and router address
+    /// @param marketId_ Market ID for this fuse
+    /// @param router_ Address of the Pendle router contract
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
         if (marketId_ == 0) revert PendleSwapPTFuseInvalidMarketId();
@@ -75,6 +100,8 @@ contract PendleSwapPTFuse is IFuseCommon {
         ROUTER = IPActionSwapPTV3(router_);
     }
 
+    /// @notice Swaps tokens for PT in a Pendle market
+    /// @param data_ Struct containing swap parameters
     function enter(PendleSwapPTFuseEnterData memory data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.market)) {
             revert PendleSwapPTFuseInvalidMarketId();
@@ -105,6 +132,8 @@ contract PendleSwapPTFuse is IFuseCommon {
         emit PendleSwapPTFuseEnter(VERSION, data_.market, netPtOut, netSyFee, netSyInterm);
     }
 
+    /// @notice Swaps PT for tokens in a Pendle market
+    /// @param data_ Struct containing swap parameters
     function exit(PendleSwapPTFuseExitData calldata data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.market)) {
             revert PendleSwapPTFuseInvalidMarketId();
