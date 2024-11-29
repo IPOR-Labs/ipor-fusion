@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
-import {Test, console2 as console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -13,30 +13,25 @@ import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigL
 import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 
 import {MorphoSupplyFuse} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
-import {MorphoCollateralFuse, MorphoCollateralFuseEnterData, MorphoCollateralFuseExitData} from "../../contracts/fuses/morpho/MorphoCollateralFuse.sol";
-import {MorphoBorrowFuse, MorphoBorrowFuseEnterData, MorphoBorrowFuseExitData} from "../../contracts/fuses/morpho/MorphoBorrowFuse.sol";
+import {MorphoCollateralFuse} from "../../contracts/fuses/morpho/MorphoCollateralFuse.sol";
+import {MorphoBorrowFuse} from "../../contracts/fuses/morpho/MorphoBorrowFuse.sol";
 import {MorphoBalanceFuse} from "../../contracts/fuses/morpho/MorphoBalanceFuse.sol";
-import {MorphoFlashLoanFuseEnterData} from "../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 import {MorphoFlashLoanFuse} from "../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
-import {MorphoFlashLoanFuseEnterData} from "../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
-import {MorphoStorageLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoStorageLib.sol";
-import {Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {CallbackHandlerMorpho} from "../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
-import {IMorpho, Position} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
+import {IMorpho} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {UniswapV3SwapFuse} from "../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
-import {UniswapV3SwapFuseEnterData} from "../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 
 import {ReadBalanceFuses} from "../../contracts/universal_reader/ReadBalanceFuses.sol";
 import {UniversalReader, ReadResult} from "../../contracts/universal_reader/UniversalReader.sol";
@@ -394,7 +389,7 @@ contract UniversalReaderTest is Test {
     //********************                              TESTS                                       ********************
     //******************************************************************************************************************
 
-    function test_StaticRead_ShouldReturnCorrectBalanceFuses() external {
+    function testStaticReadShouldReturnCorrectBalanceFuses() external {
         // When
         ReadResult memory readResult = UniversalReader(address(_plasmaVault)).staticRead(
             _readBalanceFuses,
@@ -411,7 +406,7 @@ contract UniversalReaderTest is Test {
         assertEq(balanceFuses[3], 0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9);
     }
 
-    function test_RevertWhen_UnauthorizedCallerTriesToRead() external {
+    function testRevertWhenUnauthorizedCallerTriesToRead() external {
         // Expect the transaction to revert with UnauthorizedCaller error
         vm.expectRevert(abi.encodeWithSignature("UnauthorizedCaller()"));
 
@@ -422,7 +417,7 @@ contract UniversalReaderTest is Test {
         );
     }
 
-    function test_RevertWhen_StateChangeAttemptedDuringStaticCall() external {
+    function testRevertWhenStateChangeAttemptedDuringStaticCall() external {
         address updateWithdrawManager = address(new UpdateWithdrawManager());
         vm.expectRevert(abi.encodeWithSignature("FailedInnerCall()"));
 
@@ -432,7 +427,7 @@ contract UniversalReaderTest is Test {
         );
     }
 
-    function test_StaticRead_ShouldReturnCorrectErc20BalanceFuse() external {
+    function testStaticReadShouldReturnCorrectErc20BalanceFuse() external {
         // Given
         deal(_WETH, _USER, 10 ether);
 
