@@ -62,6 +62,10 @@ library PlasmaVaultHelper {
         return IporFusionAccessManager(PlasmaVault(plasmaVault_).authority());
     }
 
+    function priceOracleMiddlewareOf(PlasmaVault plasmaVault_) internal view returns (address) {
+        return PlasmaVaultGovernance(address(plasmaVault_)).getPriceOracleMiddleware();
+    }
+
     function addSubstratesToMarket(PlasmaVault plasmaVault_, uint256 marketId_, bytes32[] memory substrates_) internal {
         // Grant market substrates
         PlasmaVaultGovernance(address(plasmaVault_)).grantMarketSubstrates(marketId_, substrates_);

@@ -72,4 +72,8 @@ library PriceOracleMiddlewareHelper {
                 )
             );
     }
+
+    function getArbitrumPriceOracleMiddleware() internal returns (PriceOracleMiddleware) {
+        return PriceOracleMiddleware(0xF9d7F359875E21b3A74BEd7Db40348f5393AF758);
+    }
 }
