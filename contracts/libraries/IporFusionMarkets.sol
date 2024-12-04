@@ -48,4 +48,33 @@ library IporFusionMarkets {
     /// @dev Curve market
     uint256 public constant CURVE_POOL = 16;
     uint256 public constant CURVE_LP_GAUGE = 17;
+
+    uint256 public constant RAMSES_V2_POSITIONS = 18;
+
+    /// @dev Morpho flash loan market, one need add dependence graph with balance of ERC20_VAULT_BALANCE
+    uint256 public constant MORPHO_FLASH_LOAN = 19;
+
+    /// @dev AAVE V3 lido market
+    uint256 public constant AAVE_V3_LIDO = 20;
+
+    /// @dev Moonwell market
+    uint256 public constant MOONWELL = 21;
+
+    /// @dev Morpho rewards market
+    uint256 public constant MORPHO_REWARDS = 22;
+
+    /// @dev Market 1 for ERC4626 Vault
+    uint256 public constant ERC4626_0001 = 100_001;
+
+    /// @dev Market 2 for ERC4626 Vault
+    uint256 public constant ERC4626_0002 = 100_002;
+
+    /// @dev Market 3 for ERC4626 Vault
+    uint256 public constant ERC4626_0003 = 100_003;
+
+    /// @dev Market 4 for ERC4626 Vault
+    uint256 public constant ERC4626_0004 = 100_004;
+
+    /// @dev Market 5 for ERC4626 Vault
+    uint256 public constant ERC4626_0005 = 100_005;
 }

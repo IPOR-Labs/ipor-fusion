@@ -37,7 +37,7 @@ contract USDMPriceFeedArbitrum is IPriceFeed {
         PRICE_DENOMINATOR = 10 ** (CHRONICLE_DECIMALS - _decimals());
     }
 
-    function decimals() external view override returns (uint8) {
+    function decimals() external pure override returns (uint8) {
         return _decimals();
     }
 
@@ -62,7 +62,7 @@ contract USDMPriceFeedArbitrum is IPriceFeed {
         return (uint80(0), USDMPriceUSD.toInt256(), 0, 0, 0);
     }
 
-    function _decimals() internal view returns (uint8) {
+    function _decimals() internal pure returns (uint8) {
         return 8;
     }
 }

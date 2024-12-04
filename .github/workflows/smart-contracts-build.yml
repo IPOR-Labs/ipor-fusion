@@ -7,6 +7,8 @@ on:
                 required: true
             ARBITRUM_PROVIDER_URL:
                 required: true
+            BASE_PROVIDER_URL:
+                required: true
 
         inputs:
             node-version:
@@ -118,6 +120,7 @@ jobs:
               env:
                   ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
                   ARBITRUM_PROVIDER_URL: ${{ secrets.ARBITRUM_PROVIDER_URL }}
+                  BASE_PROVIDER_URL: ${{ secrets.BASE_PROVIDER_URL }}
               run: |
                   forge test ${{ inputs.test-options }} -vvv --ffi
               id: test

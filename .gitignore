@@ -16,3 +16,6 @@
 
 ### macOS system files ###
 .DS_Store
+
+### AI context ###
+ai_context

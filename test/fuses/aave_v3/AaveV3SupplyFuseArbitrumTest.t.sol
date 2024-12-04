@@ -19,17 +19,17 @@ contract AaveV3SupplyFuseArbitrumTest is Test {
     IPool public constant AAVE_POOL = IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD);
     IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7);
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
-        IAavePoolDataProvider(0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654);
-
+        IAavePoolDataProvider(0x7F23D86Ee20D869112572136221e173428DD740B);
+    address public constant ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb;
     SupportedToken private activeTokens;
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 202220653);
+        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 267197808);
     }
 
     function testShouldBeAbleToSupply() external iterateSupportedTokens {
         // given
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, address(AAVE_POOL), address(AAVE_POOL_DATA_PROVIDER));
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -63,7 +63,7 @@ contract AaveV3SupplyFuseArbitrumTest is Test {
             ERC20(aTokenAddress).balanceOf(address(vaultMock)) >= amount,
             "aToken balance should be increased by amount"
         );
-        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken balance should be 0");
+        assertEq(stableDebtTokenAddress, address(0), "stableDebtTokenAddress");
         assertEq(
             ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)),
             0,
@@ -74,7 +74,7 @@ contract AaveV3SupplyFuseArbitrumTest is Test {
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
         uint256 dustOnAToken = 10;
-        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, address(AAVE_POOL), address(AAVE_POOL_DATA_PROVIDER));
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
 
         uint256 decimals = ERC20(activeTokens.asset).decimals();
@@ -115,7 +115,7 @@ contract AaveV3SupplyFuseArbitrumTest is Test {
             ERC20(aTokenAddress).balanceOf(address(vaultMock)) >= enterAmount - exitAmount - dustOnAToken,
             "aToken balance should be decreased by amount"
         );
-        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken balance should be 0");
+        assertEq(stableDebtTokenAddress, address(0), "stableDebtTokenAddress");
         assertEq(
             ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)),
             0,

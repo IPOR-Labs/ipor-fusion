@@ -18,7 +18,11 @@ library Roles {
 
     /// @notice Technical role to limited access to method only from the PlasmaVault contract
     /// @dev Managed only on bootstrap, this value could not be change after initialization
-    uint64 public constant PLASMA_VAULT_ROLE = 3;
+    uint64 public constant TECH_PLASMA_VAULT_ROLE = 3;
+
+    /// @notice Technical role to limited access to method only from the PlasmaVault contract
+    /// @dev Managed only on bootstrap, this value could not be change after initialization
+    uint64 public constant IPOR_DAO_ROLE = 4;
 
     /// @notice Account with this role has rights to manage the PlasmaVault. It recommended to use MultiSig contract for this role.
     /// @dev Managed by Owner
@@ -32,13 +36,13 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant FUSE_MANAGER_ROLE = 300;
 
-    /// @notice Account with this role has rights to manage the performance fee, define the performance fee rate and manage the performance fee recipient
+    /// @notice Technical role for the FeeManager. Account with this role has rights to manage the performance fee, define the performance fee rate and manage the performance fee recipient
     /// @dev Managed by itself the Performance Fee Manager
-    uint64 public constant PERFORMANCE_FEE_MANAGER_ROLE = 400;
+    uint64 public constant TECH_PERFORMANCE_FEE_MANAGER_ROLE = 400;
 
-    /// @notice Account with this role has rights to manage the management fee, define the management fee rate and manage the management fee recipient
+    /// @notice Technical role for the FeeManager. Account with this role has rights to manage the management fee, define the management fee rate and manage the management fee recipient
     /// @dev Managed by itself the Management Fee Manager
-    uint64 public constant MANAGEMENT_FEE_MANAGER_ROLE = 500;
+    uint64 public constant TECH_MANAGEMENT_FEE_MANAGER_ROLE = 500;
 
     /// @notice Account with this role has rights to claim rewards from the PlasmaVault using and interacting with the RewardsClaimManager contract
     /// @dev Managed by the Atomist
@@ -46,7 +50,7 @@ library Roles {
 
     /// @notice Technical role for the RewardsClaimManager contract. Account with this role has rights to claim rewards from the PlasmaVault
     /// @dev Could be assigned only on bootstrap, this value could not be change after initialization
-    uint64 public constant REWARDS_CLAIM_MANAGER_ROLE = 601;
+    uint64 public constant TECH_REWARDS_CLAIM_MANAGER_ROLE = 601;
 
     /// @notice Account with this role has rights to transfer rewards from the PlasmaVault to the RewardsClaimManager
     /// @dev Managed by the Atomist

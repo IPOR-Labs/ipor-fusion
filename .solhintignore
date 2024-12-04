@@ -6,4 +6,5 @@ foundry.toml
 .solhint.json
 smart-contracts-build.yml
 contracts/fuses/uniswap/ext/
+contracts/fuses/ramses/ext/
 

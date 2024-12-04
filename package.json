@@ -1,30 +1,31 @@
 {
-  "name": "ipor-fusion",
-  "engines": {
-    "npm": "10.8.2",
-    "node": "20.17.0"
-  },
-  "devDependencies": {
-    "dotenv": "16.4.5",
-    "npm-run-all": "^4.1.5",
-    "prettier": "3.3.3",
-    "prettier-plugin-solidity": "1.4.1",
-    "solhint": "5.0.3"
-  },
-  "scripts": {
-    "solhint:contract": "./node_modules/.bin/solhint 'contracts/**/*.sol'",
-    "solhint:test": "./node_modules/.bin/solhint 'test/**/*.sol'",
-    "solhint:all": "npm-run-all --parallel solhint:contract solhint:test",
-    "prettier:contracts": "./node_modules/.bin/prettier --write 'contracts/**/*.sol'",
-    "prettier:test": "./node_modules/.bin/prettier --write 'test/**/*.sol'",
-    "prettier:all": "npm-run-all --parallel prettier:contracts prettier:test"
-  },
-  "dependencies": {
-    "@chainlink/contracts": "^1.2.0",
-    "@morpho-org/morpho-blue": "^1.0.0",
-    "@openzeppelin/contracts": "5.0.2",
-    "@openzeppelin/contracts-upgradeable": "5.0.2",
-    "@uniswap/v3-core": "^1.0.1",
-    "@uniswap/v3-periphery": "^1.4.4"
-  }
+    "name": "ipor-fusion",
+    "engines": {
+        "npm": "10.8.2",
+        "node": "20.17.0"
+    },
+    "devDependencies": {
+        "dotenv": "16.4.5",
+        "npm-run-all": "^4.1.5",
+        "prettier": "3.3.3",
+        "prettier-plugin-solidity": "1.4.1",
+        "solhint": "5.0.3"
+    },
+    "scripts": {
+        "solhint:contract": "./node_modules/.bin/solhint 'contracts/**/*.sol'",
+        "solhint:test": "./node_modules/.bin/solhint 'test/**/*.sol'",
+        "solhint:all": "npm-run-all --parallel solhint:contract solhint:test",
+        "prettier:contracts": "./node_modules/.bin/prettier --write 'contracts/**/*.sol'",
+        "prettier:test": "./node_modules/.bin/prettier --write 'test/**/*.sol'",
+        "prettier:all": "npm-run-all --parallel prettier:contracts prettier:test"
+    },
+    "dependencies": {
+        "@chainlink/contracts": "^1.2.0",
+        "@morpho-org/morpho-blue": "^1.0.0",
+        "@openzeppelin/contracts": "5.0.2",
+        "@openzeppelin/contracts-upgradeable": "5.0.2",
+        "@uniswap/v3-core": "^1.0.1",
+        "@uniswap/v3-periphery": "^1.4.4",
+        "ethereum-vault-connector": "github:euler-xyz/ethereum-vault-connector"
+    }
 }

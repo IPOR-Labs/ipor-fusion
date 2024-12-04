@@ -153,12 +153,12 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 
-    function configurePerformanceFee(address feeManager_, uint256 feeInPercentage_) external override restricted {
-        PlasmaVaultLib.configurePerformanceFee(feeManager_, feeInPercentage_);
+    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external override restricted {
+        PlasmaVaultLib.configurePerformanceFee(feeAccount_, feeInPercentage_);
     }
 
-    function configureManagementFee(address feeManager_, uint256 feeInPercentage_) external override restricted {
-        PlasmaVaultLib.configureManagementFee(feeManager_, feeInPercentage_);
+    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external override restricted {
+        PlasmaVaultLib.configureManagementFee(feeAccount_, feeInPercentage_);
     }
 
     function setRewardsClaimManagerAddress(address rewardsClaimManagerAddress_) public override restricted {
