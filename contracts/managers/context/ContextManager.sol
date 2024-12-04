@@ -3,14 +3,30 @@ pragma solidity 0.8.26;
 
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {ContextManagerStorageLib} from "./ContextManagerStorageLib.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {IContextClient} from "./IContextClient.sol";
+
+struct ExecuteData {
+    address[] addrs;
+    bytes[] data;
+}
 
 /// @title ContextManager contract responsible for managing context data
 contract ContextManager is AccessManagedUpgradeable {
+    using Address for address;
+
     /// @notice Emitted when an address is added to approved list
     event AddressApproved(address indexed addr);
 
     /// @notice Emitted when an address is removed from approved list
     event AddressRemoved(address indexed addr);
+
+    /// @notice Custom errors
+    error AddressNotApproved(address addr);
+    error LengthMismatch();
+
+    /// @notice Emitted when a call is executed within context
+    event ContextCall(address indexed target, bytes data, bytes result);
 
     constructor(address initialAuthority, address[] memory approvedAddresses) {
         super.__AccessManaged_init_unchained(initialAuthority);
@@ -53,6 +69,38 @@ contract ContextManager is AccessManagedUpgradeable {
             unchecked {
                 ++i;
             }
+        }
+    }
+
+    /// @notice Executes multiple calls to approved addresses
+    /// @param executeData Struct containing arrays of target addresses and call data
+    /// @return results Array of results from each call
+    function runWithContext(ExecuteData calldata executeData) external returns (bytes[] memory results) {
+        uint256 length = executeData.addrs.length;
+        // Check arrays length match
+        if (executeData.addrs.length != length) {
+            revert LengthMismatch();
+        }
+
+        results = new bytes[](length);
+
+        for (uint256 i; i < length; ++i) {
+            address target = executeData.addrs[i];
+            bytes calldata data = executeData.data[i];
+
+            // Check if address is approved
+            if (!ContextManagerStorageLib.isApproved(target)) {
+                revert AddressNotApproved(target);
+            }
+
+            IContextClient(target).setupContext(msg.sender);
+
+            // Execute call
+            results[i] = target.functionCall(data);
+
+            IContextClient(target).clearContext();
+
+            emit ContextCall(target, data, results[i]);
         }
     }
 }
