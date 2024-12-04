@@ -78,6 +78,8 @@ contract MoonwellBorrowFuse is IFuseCommon {
             revert MoonwellBorrowFuseRepayFailed();
         }
 
+        IERC20(data_.asset).forceApprove(address(mToken), 0);
+
         emit MoonwellBorrowExited(VERSION, data_.asset, address(mToken), data_.amount);
     }
 }
