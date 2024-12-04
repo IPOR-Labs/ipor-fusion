@@ -26,7 +26,7 @@ abstract contract UniversalReader {
      * @return result The decoded result data
      * @dev Uses delegatecall to execute the read operation in the context of this contract
      */
-    function staticRead(address target, bytes memory data) external view returns (ReadResult memory result) {
+    function read(address target, bytes memory data) external view returns (ReadResult memory result) {
         if (target == address(0)) revert ZeroAddress();
 
         bytes memory returnData = address(this).functionStaticCall(

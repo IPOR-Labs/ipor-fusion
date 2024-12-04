@@ -389,11 +389,11 @@ contract UniversalReaderTest is Test {
     //********************                              TESTS                                       ********************
     //******************************************************************************************************************
 
-    function testStaticReadShouldReturnCorrectBalanceFuses() external {
+    function testReadShouldReturnCorrectBalanceFuses() external {
         // When
-        ReadResult memory readResult = UniversalReader(address(_plasmaVault)).staticRead(
+        ReadResult memory readResult = UniversalReader(address(_plasmaVault)).read(
             _readBalanceFuses,
-            abi.encodeWithSignature("getBalanceFuses()")
+            abi.encodeWithSignature("getBalanceFusesForActiveFuses()")
         );
 
         // Then
@@ -421,13 +421,13 @@ contract UniversalReaderTest is Test {
         address updateWithdrawManager = address(new UpdateWithdrawManager());
         vm.expectRevert(abi.encodeWithSignature("FailedInnerCall()"));
 
-        UniversalReader(address(_plasmaVault)).staticRead(
+        UniversalReader(address(_plasmaVault)).read(
             updateWithdrawManager,
             abi.encodeWithSignature("updateWithdrawManager(address)", address(this))
         );
     }
 
-    function testStaticReadShouldReturnCorrectErc20BalanceFuse() external {
+    function testReadShouldReturnCorrectErc20BalanceFuse() external {
         // Given
         deal(_WETH, _USER, 10 ether);
 
@@ -436,7 +436,7 @@ contract UniversalReaderTest is Test {
         vm.stopPrank();
 
         // When
-        ReadResult memory readResult = UniversalReader(address(_plasmaVault)).staticRead(
+        ReadResult memory readResult = UniversalReader(address(_plasmaVault)).read(
             _erc20BalanceFuse,
             abi.encodeWithSignature("balanceOf()")
         );

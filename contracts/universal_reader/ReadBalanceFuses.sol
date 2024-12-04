@@ -25,8 +25,8 @@ contract ReadBalanceFuses {
      * @notice Reads all balance fuses for a list of market IDs
      * @return addresses Array of balance fuse addresses corresponding to the market IDs
      */
-    function getBalanceFuses() external view returns (address[] memory addresses) {
-        uint256[] memory marketIds = getMarketIds();
+    function getBalanceFusesForActiveFuses() external view returns (address[] memory addresses) {
+        uint256[] memory marketIds = getAllBalanceMarketIdsForActiveFuses();
         uint256 marketIdsLength = marketIds.length;
 
         if (marketIds.length == 0) {
@@ -48,7 +48,7 @@ contract ReadBalanceFuses {
      * @dev This function uses the DependencyBalanceGraph to find all markets
      * @return marketIds Array of unique market IDs
      */
-    function getMarketIds() public view returns (uint256[] memory) {
+    function getAllBalanceMarketIdsForActiveFuses() public view returns (uint256[] memory) {
         address[] memory fuses = FusesLib.getFusesArray();
 
         uint256 fusesLength = fuses.length;
@@ -61,17 +61,18 @@ contract ReadBalanceFuses {
         }
         marketIds[fusesLength] = IporFusionMarkets.ERC20_VAULT_BALANCE;
 
-        uint256 uniqeMarkets = 0;
+        uint256 uniqueMarkets = 0;
         uint256[] memory marketIdsUnique = new uint256[](fusesLength + 1);
 
+        uint256 marketId;
         for (uint256 i; i < fusesLength + 1; ++i) {
-            uint256 marketId = marketIds[i];
+            marketId = marketIds[i];
             if (!marketIdInArray(marketIdsUnique, marketId)) {
-                marketIdsUnique[uniqeMarkets] = marketId;
-                uniqeMarkets++;
+                marketIdsUnique[uniqueMarkets] = marketId;
+                uniqueMarkets++;
             }
         }
-        return reduceSizeOfArray(marketIdsUnique, uniqeMarkets);
+        return reduceSizeOfArray(marketIdsUnique, uniqueMarkets);
     }
 
     function reduceSizeOfArray(uint256[] memory array, uint256 newSize) internal pure returns (uint256[] memory) {
