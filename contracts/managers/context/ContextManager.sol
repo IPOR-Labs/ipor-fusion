@@ -1,14 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {ContextManagerStorageLib} from "./ContextManagerStorageLib.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IContextClient} from "./IContextClient.sol";
 
 struct ExecuteData {
     address[] addrs;
     bytes[] data;
+}
+
+struct ContextDataWithSender {
+    address sender;
+    uint256 expirationTime;
+    uint256 nonce;
+    address target;
+    bytes data;
+    /// @notice signature of data (expirationTime, nonce, target, data)
+    bytes signature;
 }
 
 /// @title ContextManager contract responsible for managing context data
@@ -27,6 +38,11 @@ contract ContextManager is AccessManagedUpgradeable {
 
     /// @notice Emitted when a call is executed within context
     event ContextCall(address indexed target, bytes data, bytes result);
+
+    // Add error for expired signature
+    error SignatureExpired();
+    error InvalidSignature();
+    error NonceTooLow();
 
     constructor(address initialAuthority, address[] memory approvedAddresses) {
         super.__AccessManaged_init_unchained(initialAuthority);
@@ -102,5 +118,69 @@ contract ContextManager is AccessManagedUpgradeable {
 
             emit ContextCall(target, data, results[i]);
         }
+    }
+
+    /// @notice Executes multiple calls to approved addresses with signature verification
+    /// @param contextDataArray Array of context data containing signatures and call data
+    /// @return results Array of results from each call
+    function runWithContextAndSignature(
+        ContextDataWithSender[] calldata contextDataArray
+    ) external returns (bytes[] memory results) {
+        uint256 length = contextDataArray.length;
+        results = new bytes[](length);
+
+        ContextDataWithSender calldata contextData;
+        for (uint256 i; i < length; ++i) {
+            contextData = contextDataArray[i];
+
+            // Check if signature has expired
+            if (block.timestamp > contextData.expirationTime) {
+                revert SignatureExpired();
+            }
+
+            // Verify signature
+            if (!_verifySignature(contextData)) {
+                revert InvalidSignature();
+            }
+
+            // Verify and update nonce
+            ContextManagerStorageLib.verifyAndUpdateNonce(contextData.sender, contextData.nonce);
+
+            // Check if target address is approved
+            if (!ContextManagerStorageLib.isApproved(contextData.target)) {
+                revert AddressNotApproved(contextData.target);
+            }
+
+            IContextClient(contextData.target).setupContext(contextData.sender);
+
+            // Execute call
+            results[i] = contextData.target.functionCall(contextData.data);
+
+            IContextClient(contextData.target).clearContext();
+
+            emit ContextCall(contextData.target, contextData.data, results[i]);
+        }
+    }
+
+    function _verifySignature(ContextDataWithSender memory contextData) internal view returns (bool) {
+        return
+            ECDSA.recover(
+                keccak256(
+                    abi.encodePacked(
+                        contextData.expirationTime,
+                        contextData.nonce,
+                        contextData.target,
+                        contextData.data
+                    )
+                ),
+                contextData.signature
+            ) == contextData.sender;
+    }
+
+    /// @notice Gets the current nonce for a specific address
+    /// @param addr The address to get the nonce for
+    /// @return Current nonce value for the address
+    function getNonce(address addr) external view returns (uint256) {
+        return ContextManagerStorageLib.getNonce(addr);
     }
 }

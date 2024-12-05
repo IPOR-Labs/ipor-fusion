@@ -4,9 +4,17 @@ pragma solidity 0.8.26;
 library ContextManagerStorageLib {
     /// @dev Custom error for inconsistent storage state
     error InconsistentStorageState();
+    error NonceTooLow();
+    error AddressNotApproved(address addr);
+
+    /// @notice Emitted when the nonce is updated
+    event NonceUpdated(address indexed addr, uint256 newNonce);
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.context.manager.approved.addresses")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant APPROVED_ADDRESSES = 0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc00; // todo check if this is correct
+    bytes32 private constant APPROVED_ADDRESSES = 0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.context.manager.nonces")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant NONCES_SLOT = 0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbab100;
 
     struct ApprovedAddresses {
         /// @dev key is the address, value is 1 if the address is granted, otherwise - 0
@@ -15,9 +23,19 @@ library ContextManagerStorageLib {
         address[] addresses;
     }
 
+    struct Nonces {
+        mapping(address => uint256) addressToNonce;
+    }
+
     function _getApprovedAddresses() private pure returns (ApprovedAddresses storage $) {
         assembly {
             $.slot := APPROVED_ADDRESSES
+        }
+    }
+
+    function _getNonces() private pure returns (Nonces storage $) {
+        assembly {
+            $.slot := NONCES_SLOT
         }
     }
 
@@ -92,5 +110,25 @@ library ContextManagerStorageLib {
     function isApproved(address addr) internal view returns (bool) {
         ApprovedAddresses storage $ = _getApprovedAddresses();
         return $.addressGranted[addr] == 1;
+    }
+
+    /// @notice Gets the current nonce value for a specific address
+    /// @param addr The address to get the nonce for
+    /// @return Current nonce value for the address
+    function getNonce(address addr) internal view returns (uint256) {
+        Nonces storage $ = _getNonces();
+        return $.addressToNonce[addr];
+    }
+
+    /// @notice Increments the nonce for a specific address and returns the new value
+    /// @param addr The address to increment the nonce for
+    /// @return New nonce value after increment
+    function verifyAndUpdateNonce(address addr, uint256 newNonce) internal returns (uint256) {
+        Nonces storage $ = _getNonces();
+        if ($.addressToNonce[addr] >= newNonce) {
+            revert NonceTooLow();
+        }
+        $.addressToNonce[addr] = newNonce;
+        emit NonceUpdated(addr, newNonce);
     }
 }
