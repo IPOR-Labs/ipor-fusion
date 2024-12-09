@@ -7,6 +7,8 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {TestAddresses} from "./TestAddresses.sol";
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
+import {console2} from "forge-std/console2.sol";
 
 /// @title IporFusionAccessManagerHelper
 /// @notice Helper library for setting up roles in IporFusionAccessManager
@@ -72,7 +74,11 @@ library IporFusionAccessManagerHelper {
         IporFusionAccessManager accessManager_,
         PlasmaVault plasmaVault_,
         RoleAddresses memory roles_
-    ) internal {
+    ) internal returns (ContextManager contextManager) {
+        address[] memory approvedAddresses = new address[](1);
+        approvedAddresses[0] = address(plasmaVault_);
+        contextManager = new ContextManager(address(accessManager_), approvedAddresses);
+
         // Prepare initialization data
         DataForInitialization memory data = DataForInitialization({
             isPublic: true,
@@ -94,7 +100,7 @@ library IporFusionAccessManagerHelper {
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(address(plasmaVault_)).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0)
+                contextManager: address(contextManager)
             })
         });
 
@@ -108,7 +114,10 @@ library IporFusionAccessManagerHelper {
     /// @notice Sets up initial roles with default addresses
     /// @param accessManager_ The access manager to initialize
     /// @param plasmaVault_ The plasma vault to set up roles for
-    function setupInitRoles(IporFusionAccessManager accessManager_, PlasmaVault plasmaVault_) internal {
-        setupInitRoles(accessManager_, plasmaVault_, createDefaultRoleAddresses());
+    function setupInitRoles(
+        IporFusionAccessManager accessManager_,
+        PlasmaVault plasmaVault_
+    ) internal returns (ContextManager contextManager) {
+        return setupInitRoles(accessManager_, plasmaVault_, createDefaultRoleAddresses());
     }
 }

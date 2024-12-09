@@ -442,34 +442,6 @@ contract PlasmaVault is
         _updateMarketsBalances(markets);
     }
 
-    function getUniqueElements(uint256[] memory inputArray) private pure returns (uint256[] memory) {
-        uint256[] memory tempArray = new uint256[](inputArray.length);
-        uint256 count = 0;
-
-        for (uint256 i = 0; i < inputArray.length; i++) {
-            if (inputArray[i] != 0 && !contains(tempArray, inputArray[i], count)) {
-                tempArray[count] = inputArray[i];
-                count++;
-            }
-        }
-
-        uint256[] memory uniqueArray = new uint256[](count);
-        for (uint256 i = 0; i < count; i++) {
-            uniqueArray[i] = tempArray[i];
-        }
-
-        return uniqueArray;
-    }
-
-    function contains(uint256[] memory array, uint256 element, uint256 count) private pure returns (bool) {
-        for (uint256 i = 0; i < count; i++) {
-            if (array[i] == element) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {
         if (assets_ == 0) {
             revert NoAssetsToDeposit();
@@ -800,13 +772,7 @@ contract PlasmaVault is
     }
 
     function _msgSender() internal view override returns (address) {
-        console2.log("PlasmaVault _msgSender: ", ContextClientStorageLib.getSenderFromContext());
         return ContextClientStorageLib.getSenderFromContext();
-    }
-
-    function _extractAmountFromWithdrawAndRedeem() private view returns (uint256) {
-        (uint256 amount, , ) = abi.decode(_msgData()[4:], (uint256, address, address));
-        return amount;
     }
 
     function _update(address from_, address to_, uint256 value_) internal virtual override {
@@ -817,5 +783,38 @@ contract PlasmaVault is
 
     function _decimalsOffset() internal view virtual override returns (uint8) {
         return PlasmaVaultLib.DECIMALS_OFFSET;
+    }
+
+    function _extractAmountFromWithdrawAndRedeem() private view returns (uint256) {
+        (uint256 amount, , ) = abi.decode(_msgData()[4:], (uint256, address, address));
+        return amount;
+    }
+
+    function contains(uint256[] memory array, uint256 element, uint256 count) private pure returns (bool) {
+        for (uint256 i = 0; i < count; i++) {
+            if (array[i] == element) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getUniqueElements(uint256[] memory inputArray) private pure returns (uint256[] memory) {
+        uint256[] memory tempArray = new uint256[](inputArray.length);
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < inputArray.length; i++) {
+            if (inputArray[i] != 0 && !contains(tempArray, inputArray[i], count)) {
+                tempArray[count] = inputArray[i];
+                count++;
+            }
+        }
+
+        uint256[] memory uniqueArray = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            uniqueArray[i] = tempArray[i];
+        }
+
+        return uniqueArray;
     }
 }

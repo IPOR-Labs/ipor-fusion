@@ -12,7 +12,7 @@ import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
 import {ContextClient} from "../../managers/context/ContextClient.sol";
 import {ContextManager} from "../../managers/context/ContextManager.sol";
-
+import {console2} from "forge-std/console2.sol";
 /// @notice Plasma Vault address struct.
 struct PlasmaVaultAddress {
     /// @notice Address of the Plasma Vault.
@@ -632,14 +632,14 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
 
             rolesToFunction[_next(iterator)] = RoleToFunction({
-                target: plasmaVaultAddress_.contextManager,
+                target: plasmaVaultAddress_.plasmaVault,
                 roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
                 functionSelector: ContextClient.setupContext.selector,
                 minimalExecutionDelay: 0
             });
 
             rolesToFunction[_next(iterator)] = RoleToFunction({
-                target: plasmaVaultAddress_.contextManager,
+                target: plasmaVaultAddress_.plasmaVault,
                 roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
                 functionSelector: ContextClient.clearContext.selector,
                 minimalExecutionDelay: 0

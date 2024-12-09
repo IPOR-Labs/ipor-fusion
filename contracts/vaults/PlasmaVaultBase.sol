@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {ERC20VotesUpgradeable} from "./ERC20VotesUpgradeable.sol";
@@ -85,7 +87,35 @@ contract PlasmaVaultBase is
     }
 
     function _msgSender() internal view override returns (address) {
-        console2.log("PlasmaVaultBase _msgSender: ", getSenderFromContext());
         return getSenderFromContext();
+    }
+
+    /**
+     * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
+     * is less than 4 bytes long.
+     */
+    function _checkCanCall(address caller_, bytes calldata data_) internal override {
+        bytes4 sig = bytes4(data_[0:4]);
+        // @dev for context manager 87ef0b87 - setupContext, db99bddd - clearContext
+        if (sig == bytes4(0x87ef0b87) || sig == bytes4(0xdb99bddd)) {
+            caller_ = msg.sender;
+        }
+
+        AccessManagedStorage storage $ = _getAccessManagedStorage();
+        (bool immediate, uint32 delay) = AuthorityUtils.canCallWithDelay(
+            authority(),
+            caller_,
+            address(this),
+            bytes4(data_[0:4])
+        );
+        if (!immediate) {
+            if (delay > 0) {
+                $._consumingSchedule = true;
+                IAccessManager(authority()).consumeScheduledOp(caller_, data_);
+                $._consumingSchedule = false;
+            } else {
+                revert AccessManagedUnauthorized(caller_);
+            }
+        }
     }
 }

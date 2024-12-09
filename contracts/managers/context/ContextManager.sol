@@ -35,16 +35,16 @@ contract ContextManager is AccessManagedUpgradeable {
     /// @notice Custom errors
     error AddressNotApproved(address addr);
     error LengthMismatch();
-
-    /// @notice Emitted when a call is executed within context
-    event ContextCall(address indexed target, bytes data, bytes result);
-
+    error EmptyArrayNotAllowed();
     // Add error for expired signature
     error SignatureExpired();
     error InvalidSignature();
     error NonceTooLow();
 
-    constructor(address initialAuthority, address[] memory approvedAddresses) {
+    /// @notice Emitted when a call is executed within context
+    event ContextCall(address indexed target, bytes data, bytes result);
+
+    constructor(address initialAuthority, address[] memory approvedAddresses) initializer {
         super.__AccessManaged_init_unchained(initialAuthority);
         for (uint256 i; i < approvedAddresses.length; ++i) {
             ContextManagerStorageLib.addApprovedAddress(approvedAddresses[i]);
@@ -57,6 +57,10 @@ contract ContextManager is AccessManagedUpgradeable {
     /// @return approvedCount Number of newly approved addresses (excluding already approved ones)
     function addApprovedAddresses(address[] calldata addrs) external restricted returns (uint256 approvedCount) {
         uint256 length = addrs.length;
+
+        if (length == 0) {
+            revert EmptyArrayNotAllowed();
+        }
         for (uint256 i; i < length; ) {
             if (ContextManagerStorageLib.addApprovedAddress(addrs[i])) {
                 emit AddressApproved(addrs[i]);
@@ -160,6 +164,14 @@ contract ContextManager is AccessManagedUpgradeable {
 
             emit ContextCall(contextData.target, contextData.data, results[i]);
         }
+    }
+
+    function isApproved(address addr) external view returns (bool) {
+        return ContextManagerStorageLib.isApproved(addr);
+    }
+
+    function getApprovedAddressesList() external view returns (address[] memory) {
+        return ContextManagerStorageLib.getApprovedAddressesList();
     }
 
     function _verifySignature(ContextDataWithSender memory contextData) internal view returns (bool) {
