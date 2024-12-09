@@ -110,7 +110,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
                 withdrawManager: address(0),
-                feeManager: address(0)
+                feeManager: address(0),
+                contextManager: address(0)
             })
         });
 

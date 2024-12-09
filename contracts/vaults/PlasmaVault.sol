@@ -31,6 +31,8 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {FeeManagerData, FeeManagerFactory} from "../managers/fee/FeeManagerFactory.sol";
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
+import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
+import {console2} from "forge-std/console2.sol";
 
 /// @notice PlasmaVaultInitData is a struct that represents a configuration of a Plasma Vault during construction
 struct PlasmaVaultInitData {
@@ -797,7 +799,12 @@ contract PlasmaVault is
         }
     }
 
-    function _extractAmountFromWithdrawAndRedeem() private returns (uint256) {
+    function _msgSender() internal view override returns (address) {
+        console2.log("PlasmaVault _msgSender: ", ContextClientStorageLib.getSenderFromContext());
+        return ContextClientStorageLib.getSenderFromContext();
+    }
+
+    function _extractAmountFromWithdrawAndRedeem() private view returns (uint256) {
         (uint256 amount, , ) = abi.decode(_msgData()[4:], (uint256, address, address));
         return amount;
     }

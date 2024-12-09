@@ -886,7 +886,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 accessManager: address(accessManager),
                 rewardsClaimManager: address(rewardsClaimManager),
                 withdrawManager: address(0),
-                feeManager: address(0)
+                feeManager: address(0),
+                contextManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

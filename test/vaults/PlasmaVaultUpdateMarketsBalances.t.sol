@@ -186,7 +186,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
-                feeManager: address(0)
+                feeManager: address(0),
+                contextManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

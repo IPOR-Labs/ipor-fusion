@@ -8,9 +8,18 @@ import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {ERC20VotesUpgradeable} from "./ERC20VotesUpgradeable.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
+import {ContextClient} from "../managers/context/ContextClient.sol";
+
+import {console2} from "forge-std/console2.sol";
 
 /// @title Stateless extension of PlasmaVault with ERC20 Votes, ERC20 Permit. Used in the context of Plasma Vault (only by delegatecall).
-contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20VotesUpgradeable, PlasmaVaultGovernance {
+contract PlasmaVaultBase is
+    IPlasmaVaultBase,
+    ERC20PermitUpgradeable,
+    ERC20VotesUpgradeable,
+    PlasmaVaultGovernance,
+    ContextClient
+{
     /**
      * @dev Total supply cap has been exceeded.
      */
@@ -73,5 +82,10 @@ contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20Votes
         }
 
         _transferVotingUnits(from_, to_, value_);
+    }
+
+    function _msgSender() internal view override returns (address) {
+        console2.log("PlasmaVaultBase _msgSender: ", getSenderFromContext());
+        return getSenderFromContext();
     }
 }

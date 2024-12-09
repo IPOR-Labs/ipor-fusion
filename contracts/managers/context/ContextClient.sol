@@ -38,4 +38,8 @@ abstract contract ContextClient is IContextClient, AccessManagedUpgradeable {
         // Clear the context
         ContextClientStorageLib.clearContextStorage();
     }
+
+    function getSenderFromContext() internal view returns (address) {
+        return ContextClientStorageLib.getSenderFromContext();
+    }
 }

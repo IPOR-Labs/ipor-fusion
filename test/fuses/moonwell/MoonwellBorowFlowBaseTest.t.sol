@@ -88,10 +88,6 @@ contract MoonwellBorowFlowBaseTest is Test {
         vm.stopPrank();
     }
 
-    function testTest() public {
-        assertTrue(true);
-    }
-
     function testSupplyWstEthEnableMarketAndBorrowCbEth() public {
         // Setup supply action - 50 wstETH
         uint256 supplyAmount = 50e18;

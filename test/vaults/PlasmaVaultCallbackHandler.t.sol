@@ -179,7 +179,8 @@ contract PlasmaVaultCallbackHandler is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: address(this),
                 withdrawManager: address(0),
-                feeManager: address(0)
+                feeManager: address(0),
+                contextManager: address(0)
             })
         });
 

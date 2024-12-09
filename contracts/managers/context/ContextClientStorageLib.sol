@@ -21,14 +21,12 @@ library ContextClientStorageLib {
     function setContextSender(address sender) internal {
         ContextStorage storage $ = _getContextStorage();
         $.contextSender = sender;
-        $.isContextSet = true;
     }
 
     /// @notice Clears the context
     function clearContextStorage() internal {
         ContextStorage storage $ = _getContextStorage();
         $.contextSender = address(0);
-        $.isContextSet = false;
     }
 
     /// @notice Gets the current context sender
@@ -48,7 +46,7 @@ library ContextClientStorageLib {
     function getSenderFromContext() internal view returns (address) {
         address sender = getContextSender();
         if (sender == address(0)) {
-            revert msg.sender;
+            return msg.sender;
         }
         return sender;
     }
