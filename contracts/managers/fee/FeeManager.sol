@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
+import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {FeeAccount} from "./FeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
+import {FeeManagerStorageLib, FeeManagerStorage} from "./FeeManagerStorageLib.sol";
+import {ContextClient} from "../context/ContextClient.sol";
+
+import {console2} from "forge-std/console2.sol";
 
 /// @notice Struct containing initialization data for the fee manager
 /// @param iporDaoManagementFee Management fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
@@ -31,7 +37,7 @@ struct FeeManagerInitData {
 /// @title FeeManager
 /// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
 /// @dev Inherits from AccessManaged for access control.
-contract FeeManager is AccessManaged {
+contract FeeManager is AccessManagedUpgradeable, ContextClient {
     event HarvestManagementFee(address receiver, uint256 amount);
     event HarvestPerformanceFee(address receiver, uint256 amount);
     event PerformanceFeeUpdated(uint256 newPerformanceFee);
@@ -40,6 +46,10 @@ contract FeeManager is AccessManaged {
     error NotInitialized();
     error AlreadyInitialized();
     error InvalidFeeRecipientAddress();
+
+    function getFeeConfig() external view returns (FeeManagerStorage memory) {
+        return FeeManagerStorageLib.getFeeConfig();
+    }
 
     /// @notice PERFORMANCE_FEE_ACCOUNT is the address of the performance fee account where the performance fee is collected before being transferred to the IPOR DAO and the Fee Recipient by the harvestPerformanceFee function
     address public immutable PERFORMANCE_FEE_ACCOUNT;
@@ -52,39 +62,27 @@ contract FeeManager is AccessManaged {
 
     address public immutable PLASMA_VAULT;
 
-    address public feeRecipientAddress;
-    address public iporDaoFeeRecipientAddress;
+    uint64 private constant INITIALIZED_VERSION = 10;
 
-    /// @notice plasmaVaultPerformanceFee is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%. It is the sum of the atomist performance fee and the DAO performance fee
-    uint256 public plasmaVaultPerformanceFee;
-    /// @notice plasmaVaultManagementFee is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%. It is the sum of the atomist management fee and the DAO management fee
-    uint256 public plasmaVaultManagementFee;
+    constructor(FeeManagerInitData memory initData_) initializer {
+        super.__AccessManaged_init_unchained(initData_.initialAuthority);
 
-    /// @notice The flag indicating whether the contract is initialized, if it is, the value is greater than 0
-    uint256 public initialized;
-
-    constructor(FeeManagerInitData memory initData_) AccessManaged(initData_.initialAuthority) {
         PERFORMANCE_FEE_ACCOUNT = address(new FeeAccount(address(this)));
         MANAGEMENT_FEE_ACCOUNT = address(new FeeAccount(address(this)));
 
         IPOR_DAO_MANAGEMENT_FEE = initData_.iporDaoManagementFee;
         IPOR_DAO_PERFORMANCE_FEE = initData_.iporDaoPerformanceFee;
 
-        plasmaVaultPerformanceFee = initData_.atomistPerformanceFee + IPOR_DAO_PERFORMANCE_FEE;
-        plasmaVaultManagementFee = initData_.atomistManagementFee + IPOR_DAO_MANAGEMENT_FEE;
+        FeeManagerStorageLib.setPlasmaVaultPerformanceFee(initData_.atomistPerformanceFee + IPOR_DAO_PERFORMANCE_FEE);
+        FeeManagerStorageLib.setPlasmaVaultManagementFee(initData_.atomistManagementFee + IPOR_DAO_MANAGEMENT_FEE);
 
-        feeRecipientAddress = initData_.feeRecipientAddress;
-        iporDaoFeeRecipientAddress = initData_.iporDaoFeeRecipientAddress;
+        FeeManagerStorageLib.setFeeRecipientAddress(initData_.feeRecipientAddress);
+        FeeManagerStorageLib.setIporDaoFeeRecipientAddress(initData_.iporDaoFeeRecipientAddress);
 
         PLASMA_VAULT = initData_.plasmaVault;
     }
 
-    function initialize() external {
-        if (initialized != 0) {
-            revert AlreadyInitialized();
-        }
-
-        initialized = 1;
+    function initialize() external reinitializer(INITIALIZED_VERSION) {
         FeeAccount(PERFORMANCE_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
         FeeAccount(MANAGEMENT_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
     }
@@ -95,11 +93,14 @@ contract FeeManager is AccessManaged {
     /// and the remaining amount to the fee recipient. The function emits events for each transfer.
     /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
     function harvestManagementFee() public onlyInitialized {
-        if (feeRecipientAddress == address(0) || iporDaoFeeRecipientAddress == address(0)) {
+        if (
+            FeeManagerStorageLib.getFeeRecipientAddress() == address(0) ||
+            FeeManagerStorageLib.getIporDaoFeeRecipientAddress() == address(0)
+        ) {
             revert InvalidFeeRecipientAddress();
         }
 
-        if (plasmaVaultManagementFee == 0) {
+        if (FeeManagerStorageLib.getPlasmaVaultManagementFee() == 0) {
             return;
         }
 
@@ -112,12 +113,17 @@ contract FeeManager is AccessManaged {
         uint256 decimals = IERC4626(PLASMA_VAULT).decimals();
         uint256 numberOfDecimals = 10 ** (decimals);
 
-        uint256 percentageToTransferToDao = (IPOR_DAO_MANAGEMENT_FEE * numberOfDecimals) / plasmaVaultManagementFee;
+        uint256 percentageToTransferToDao = (IPOR_DAO_MANAGEMENT_FEE * numberOfDecimals) /
+            FeeManagerStorageLib.getPlasmaVaultManagementFee();
 
         uint256 transferAmountToDao = Math.mulDiv(balance, percentageToTransferToDao, numberOfDecimals);
 
-        IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, iporDaoFeeRecipientAddress, transferAmountToDao);
-        emit HarvestManagementFee(iporDaoFeeRecipientAddress, transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transferFrom(
+            MANAGEMENT_FEE_ACCOUNT,
+            FeeManagerStorageLib.getIporDaoFeeRecipientAddress(),
+            transferAmountToDao
+        );
+        emit HarvestManagementFee(FeeManagerStorageLib.getIporDaoFeeRecipientAddress(), transferAmountToDao);
 
         if (balance <= transferAmountToDao) {
             return;
@@ -129,8 +135,12 @@ contract FeeManager is AccessManaged {
             return;
         }
 
-        IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, feeRecipientAddress, transferAmount);
-        emit HarvestManagementFee(feeRecipientAddress, balance - transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transferFrom(
+            MANAGEMENT_FEE_ACCOUNT,
+            FeeManagerStorageLib.getFeeRecipientAddress(),
+            transferAmount
+        );
+        emit HarvestManagementFee(FeeManagerStorageLib.getFeeRecipientAddress(), balance - transferAmountToDao);
     }
 
     /// @notice Harvests the performance fee and transfers it to the respective recipient addresses.
@@ -139,11 +149,14 @@ contract FeeManager is AccessManaged {
     /// and the remaining amount to the fee recipient. The function emits events for each transfer.
     /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
     function harvestPerformanceFee() public onlyInitialized {
-        if (feeRecipientAddress == address(0) || iporDaoFeeRecipientAddress == address(0)) {
+        if (
+            FeeManagerStorageLib.getFeeRecipientAddress() == address(0) ||
+            FeeManagerStorageLib.getIporDaoFeeRecipientAddress() == address(0)
+        ) {
             revert InvalidFeeRecipientAddress();
         }
 
-        if (plasmaVaultPerformanceFee == 0) {
+        if (FeeManagerStorageLib.getPlasmaVaultPerformanceFee() == 0) {
             return;
         }
 
@@ -156,12 +169,17 @@ contract FeeManager is AccessManaged {
         uint256 decimals = IERC4626(PLASMA_VAULT).decimals();
         uint256 numberOfDecimals = 10 ** (decimals);
 
-        uint256 percentToTransferToDao = (IPOR_DAO_PERFORMANCE_FEE * numberOfDecimals) / plasmaVaultPerformanceFee;
+        uint256 percentToTransferToDao = (IPOR_DAO_PERFORMANCE_FEE * numberOfDecimals) /
+            FeeManagerStorageLib.getPlasmaVaultPerformanceFee();
 
         uint256 transferAmountToDao = Math.mulDiv(balance, percentToTransferToDao, numberOfDecimals);
 
-        IERC4626(PLASMA_VAULT).transferFrom(PERFORMANCE_FEE_ACCOUNT, iporDaoFeeRecipientAddress, transferAmountToDao);
-        emit HarvestPerformanceFee(iporDaoFeeRecipientAddress, transferAmountToDao);
+        IERC4626(PLASMA_VAULT).transferFrom(
+            PERFORMANCE_FEE_ACCOUNT,
+            FeeManagerStorageLib.getIporDaoFeeRecipientAddress(),
+            transferAmountToDao
+        );
+        emit HarvestPerformanceFee(FeeManagerStorageLib.getIporDaoFeeRecipientAddress(), transferAmountToDao);
 
         if (balance <= transferAmountToDao) {
             return;
@@ -175,10 +193,10 @@ contract FeeManager is AccessManaged {
 
         IERC4626(PLASMA_VAULT).transferFrom(
             PERFORMANCE_FEE_ACCOUNT,
-            feeRecipientAddress,
+            FeeManagerStorageLib.getFeeRecipientAddress(),
             balance - transferAmountToDao
         );
-        emit HarvestPerformanceFee(feeRecipientAddress, balance - transferAmountToDao);
+        emit HarvestPerformanceFee(FeeManagerStorageLib.getFeeRecipientAddress(), balance - transferAmountToDao);
     }
 
     /**
@@ -191,7 +209,7 @@ contract FeeManager is AccessManaged {
         uint256 newPerformanceFee = performanceFee_ + IPOR_DAO_PERFORMANCE_FEE;
 
         PlasmaVaultGovernance(PLASMA_VAULT).configurePerformanceFee(PERFORMANCE_FEE_ACCOUNT, newPerformanceFee);
-        plasmaVaultPerformanceFee = newPerformanceFee;
+        FeeManagerStorageLib.setPlasmaVaultPerformanceFee(newPerformanceFee);
 
         emit PerformanceFeeUpdated(newPerformanceFee);
     }
@@ -204,7 +222,7 @@ contract FeeManager is AccessManaged {
         uint256 newManagementFee = managementFee_ + IPOR_DAO_MANAGEMENT_FEE;
 
         PlasmaVaultGovernance(PLASMA_VAULT).configureManagementFee(MANAGEMENT_FEE_ACCOUNT, newManagementFee);
-        plasmaVaultManagementFee = newManagementFee;
+        FeeManagerStorageLib.setPlasmaVaultManagementFee(newManagementFee);
 
         emit ManagementFeeUpdated(newManagementFee);
     }
@@ -220,12 +238,12 @@ contract FeeManager is AccessManaged {
             revert Errors.WrongAddress();
         }
 
-        feeRecipientAddress = feeRecipientAddress_;
+        FeeManagerStorageLib.setFeeRecipientAddress(feeRecipientAddress_);
     }
 
     /**
      * @notice Sets the address of the DAO fee recipient.
-     * @dev This function can only be called by an authorized account (TECH_IPOR_DAO_ROLE).
+     * @dev This function can only be called by an authorized account (IPOR_DAO_ROLE).
      * @param iporDaoFeeRecipientAddress_ The address to set as the DAO fee recipient.
      * @custom:error InvalidAddress Thrown if the provided address is the zero address.
      */
@@ -234,13 +252,46 @@ contract FeeManager is AccessManaged {
             revert Errors.WrongAddress();
         }
 
-        iporDaoFeeRecipientAddress = iporDaoFeeRecipientAddress_;
+        FeeManagerStorageLib.setIporDaoFeeRecipientAddress(iporDaoFeeRecipientAddress_);
     }
 
     modifier onlyInitialized() {
-        if (initialized == 0) {
+        if (_getInitializedVersion() != INITIALIZED_VERSION) {
             revert NotInitialized();
         }
         _;
+    }
+
+    function _msgSender() internal view override returns (address) {
+        return getSenderFromContext();
+    }
+
+    /**
+     * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
+     * is less than 4 bytes long.
+     */
+    function _checkCanCall(address caller_, bytes calldata data_) internal override {
+        bytes4 sig = bytes4(data_[0:4]);
+        // @dev for context manager 87ef0b87 - setupContext, db99bddd - clearContext
+        if (sig == bytes4(0x87ef0b87) || sig == bytes4(0xdb99bddd)) {
+            caller_ = msg.sender;
+        }
+
+        AccessManagedStorage storage $ = _getAccessManagedStorage();
+        (bool immediate, uint32 delay) = AuthorityUtils.canCallWithDelay(
+            authority(),
+            caller_,
+            address(this),
+            bytes4(data_[0:4])
+        );
+        if (!immediate) {
+            if (delay > 0) {
+                $._consumingSchedule = true;
+                IAccessManager(authority()).consumeScheduledOp(caller_, data_);
+                $._consumingSchedule = false;
+            } else {
+                revert AccessManagedUnauthorized(caller_);
+            }
+        }
     }
 }

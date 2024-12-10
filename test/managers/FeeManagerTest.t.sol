@@ -409,7 +409,7 @@ contract FeeManagerTest is Test {
             .getPerformanceFeeData();
         FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
 
-        uint256 performanceFeeBefore = feeManager.plasmaVaultPerformanceFee();
+        uint256 performanceFeeBefore = feeManager.getFeeConfig().plasmaVaultPerformanceFee;
 
         feeManager.initialize();
 
@@ -422,7 +422,7 @@ contract FeeManagerTest is Test {
         PlasmaVaultStorageLib.PerformanceFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
             .getPerformanceFeeData();
 
-        uint256 performanceFeeAfter = feeManager.plasmaVaultPerformanceFee();
+        uint256 performanceFeeAfter = feeManager.getFeeConfig().plasmaVaultPerformanceFee;
 
         assertEq(performanceFeeBefore, 2000, "performanceFeeBefore should be 2000");
         assertEq(performanceFeeAfter, 1500, "performanceFeeAfter should be 1500");
@@ -445,7 +445,7 @@ contract FeeManagerTest is Test {
             .getManagementFeeData();
         FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
 
-        uint256 managementFeeBefore = feeManager.plasmaVaultManagementFee();
+        uint256 managementFeeBefore = feeManager.getFeeConfig().plasmaVaultManagementFee;
 
         feeManager.initialize();
 
@@ -458,7 +458,7 @@ contract FeeManagerTest is Test {
         PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
             .getManagementFeeData();
 
-        uint256 managementFeeAfter = feeManager.plasmaVaultManagementFee();
+        uint256 managementFeeAfter = feeManager.getFeeConfig().plasmaVaultManagementFee;
 
         assertEq(managementFeeBefore, 500, "managementFeeBefore should be 500");
         assertEq(managementFeeAfter, 350, "managementFeeAfter should be 350");
@@ -586,7 +586,7 @@ contract FeeManagerTest is Test {
 
         feeManager.initialize();
 
-        address feeRecipientBefore = feeManager.feeRecipientAddress();
+        address feeRecipientBefore = feeManager.getFeeConfig().feeRecipientAddress;
 
         // when
         vm.startPrank(_ATOMIST);
@@ -595,7 +595,7 @@ contract FeeManagerTest is Test {
 
         // then
 
-        address feeRecipientAfter = feeManager.feeRecipientAddress();
+        address feeRecipientAfter = feeManager.getFeeConfig().feeRecipientAddress;
 
         assertEq(feeRecipientBefore, _FEE_RECIPIENT_ADDRESS, "feeRecipientBefore should be _FEE_RECIPIENT_ADDRESS");
         assertEq(feeRecipientAfter, _USER, "feeRecipientAfter should be _USER");
@@ -640,7 +640,7 @@ contract FeeManagerTest is Test {
 
         feeManager.initialize();
 
-        address feeRecipientBefore = feeManager.iporDaoFeeRecipientAddress();
+        address feeRecipientBefore = feeManager.getFeeConfig().iporDaoFeeRecipientAddress;
 
         // when
         vm.startPrank(_DAO);
@@ -649,7 +649,7 @@ contract FeeManagerTest is Test {
 
         // then
 
-        address feeRecipientAfter = feeManager.iporDaoFeeRecipientAddress();
+        address feeRecipientAfter = feeManager.getFeeConfig().iporDaoFeeRecipientAddress;
 
         assertEq(
             feeRecipientBefore,

@@ -17,7 +17,8 @@ library TestAddresses {
     address public constant CLAIM_REWARDS = address(7777777);
     address public constant TRANSFER_REWARDS_MANAGER = address(8888888);
     address public constant CONFIG_INSTANT_WITHDRAWAL_FUSES_MANAGER = address(9999999);
-
+    address public constant FEE_RECIPIENT_ADDRESS = address(98989898);
+    address public constant IPOR_DAO_FEE_RECIPIENT_ADDRESS = address(6363636363);
     // Protocol Addresses - Base Network
     address public constant BASE_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address public constant BASE_DAI = 0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb;

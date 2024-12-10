@@ -71,7 +71,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 3;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 4;
-    uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function
+    uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
     /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
@@ -640,6 +640,20 @@ library IporFusionAccessManagerInitializerLibV1 {
 
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.plasmaVault,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.clearContext.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.feeManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.setupContext.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
                 functionSelector: ContextClient.clearContext.selector,
                 minimalExecutionDelay: 0

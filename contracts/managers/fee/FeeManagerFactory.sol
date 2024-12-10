@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {FeeManager, FeeManagerInitData} from "./FeeManager.sol";
+import {FeeManagerStorage} from "./FeeManagerStorageLib.sol";
 
 /// @notice Struct containing data related to the fee manager
 /// @param feeManager Address of the fee manager
@@ -27,6 +28,7 @@ contract FeeManagerFactory {
     /// @return FeeManagerData containing addresses and fee information of the deployed fee manager
     function deployFeeManager(FeeManagerInitData memory initData) external returns (FeeManagerData memory) {
         FeeManager feeManager = new FeeManager(initData);
+        FeeManagerStorage memory feeConfig = feeManager.getFeeConfig();
 
         return
             FeeManagerData({
@@ -34,8 +36,8 @@ contract FeeManagerFactory {
                 plasmaVault: feeManager.PLASMA_VAULT(),
                 performanceFeeAccount: feeManager.PERFORMANCE_FEE_ACCOUNT(),
                 managementFeeAccount: feeManager.MANAGEMENT_FEE_ACCOUNT(),
-                managementFee: feeManager.plasmaVaultManagementFee(),
-                performanceFee: feeManager.plasmaVaultPerformanceFee()
+                managementFee: feeConfig.plasmaVaultManagementFee,
+                performanceFee: feeConfig.plasmaVaultPerformanceFee
             });
     }
 }

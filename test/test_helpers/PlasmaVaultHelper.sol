@@ -7,6 +7,7 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {MarketSubstratesConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {TestAddresses} from "./TestAddresses.sol";
 
 struct DeployMinimalPlasmaVaultParams {
     address underlyingToken;
@@ -32,8 +33,8 @@ library PlasmaVaultHelper {
             atomistManagementFee: 0,
             atomistPerformanceFee: 0,
             feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: address(0),
-            iporDaoFeeRecipientAddress: address(0)
+            feeRecipientAddress: TestAddresses.FEE_RECIPIENT_ADDRESS,
+            iporDaoFeeRecipientAddress: TestAddresses.IPOR_DAO_FEE_RECIPIENT_ADDRESS
         });
 
         // Deploy access manager
