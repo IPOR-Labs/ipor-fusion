@@ -2,19 +2,21 @@
 pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
+import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {FusesLib} from "../../libraries/FusesLib.sol";
 import {FuseAction} from "../../vaults/PlasmaVault.sol";
 import {RewardsClaimManagersStorageLib, VestingData} from "./RewardsClaimManagersStorageLib.sol";
 import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
 import {IRewardsClaimManager} from "../../interfaces/IRewardsClaimManager.sol";
+import {ContextClient} from "../context/ContextClient.sol";
 
 /// @title RewardsClaimManager contract responsible for managing rewards claiming from the Plasma Vault
-contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
+contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IRewardsClaimManager {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
@@ -25,7 +27,9 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
 
     event AmountWithdrawn(uint256 amount);
 
-    constructor(address initialAuthority_, address plasmaVault_) AccessManaged(initialAuthority_) {
+    constructor(address initialAuthority_, address plasmaVault_) initializer {
+        super.__AccessManaged_init_unchained(initialAuthority_);
+
         UNDERLYING_TOKEN = PlasmaVault(plasmaVault_).asset();
         PLASMA_VAULT = plasmaVault_;
 
@@ -128,5 +132,38 @@ contract RewardsClaimManager is AccessManaged, IRewardsClaimManager {
 
     function setupVestingTime(uint256 vestingTime_) external restricted {
         RewardsClaimManagersStorageLib.setupVestingTime(vestingTime_);
+    }
+
+    function _msgSender() internal view override returns (address) {
+        return getSenderFromContext();
+    }
+
+    /**
+     * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
+     * is less than 4 bytes long.
+     */
+    function _checkCanCall(address caller_, bytes calldata data_) internal override {
+        bytes4 sig = bytes4(data_[0:4]);
+        // @dev for context manager 87ef0b87 - setupContext, db99bddd - clearContext
+        if (sig == bytes4(0x87ef0b87) || sig == bytes4(0xdb99bddd)) {
+            caller_ = msg.sender;
+        }
+
+        AccessManagedStorage storage $ = _getAccessManagedStorage();
+        (bool immediate, uint32 delay) = AuthorityUtils.canCallWithDelay(
+            authority(),
+            caller_,
+            address(this),
+            bytes4(data_[0:4])
+        );
+        if (!immediate) {
+            if (delay > 0) {
+                $._consumingSchedule = true;
+                IAccessManager(authority()).consumeScheduledOp(caller_, data_);
+                $._consumingSchedule = false;
+            } else {
+                revert AccessManagedUnauthorized(caller_);
+            }
+        }
     }
 }
