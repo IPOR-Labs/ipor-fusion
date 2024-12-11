@@ -102,9 +102,9 @@ library WithdrawManagerStorageLib {
         return _getReleaseFunds().lastReleaseFundsTimestamp;
     }
 
-    function releaseFunds() internal {
+    function releaseFunds(uint256 timestamp_) internal {
         ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
-        releaseFundsLocal.lastReleaseFundsTimestamp = block.timestamp;
-        emit ReleaseFundsUpdated(block.timestamp);
+        releaseFundsLocal.lastReleaseFundsTimestamp = timestamp_;
+        emit ReleaseFundsUpdated(timestamp_);
     }
 }

@@ -41,11 +41,13 @@ contract FeeManager is AccessManaged {
     error AlreadyInitialized();
     error InvalidFeeRecipientAddress();
 
+    /// @notice PERFORMANCE_FEE_ACCOUNT is the address of the performance fee account where the performance fee is collected before being transferred to the IPOR DAO and the Fee Recipient by the harvestPerformanceFee function
     address public immutable PERFORMANCE_FEE_ACCOUNT;
+    /// @notice MANAGEMENT_FEE_ACCOUNT is the address of the management fee account where the management fee is collected before being transferred to the IPOR DAO and the Fee Recipient by the harvestManagementFee function
     address public immutable MANAGEMENT_FEE_ACCOUNT;
-    /// @notice IPOR_DAO_MANAGEMENT_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    /// @notice IPOR_DAO_MANAGEMENT_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%. It is the management fee percentage for the IPOR DAO.
     uint256 public immutable IPOR_DAO_MANAGEMENT_FEE;
-    /// @notice IPOR_DAO_PERFORMANCE_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    /// @notice IPOR_DAO_PERFORMANCE_FEE is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%. It is the performance fee percentage for the DAO.
     uint256 public immutable IPOR_DAO_PERFORMANCE_FEE;
 
     address public immutable PLASMA_VAULT;
@@ -53,9 +55,9 @@ contract FeeManager is AccessManaged {
     address public feeRecipientAddress;
     address public iporDaoFeeRecipientAddress;
 
-    /// @notice plasmaVaultPerformanceFee is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    /// @notice plasmaVaultPerformanceFee is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%. It is the sum of the atomist performance fee and the DAO performance fee
     uint256 public plasmaVaultPerformanceFee;
-    /// @notice plasmaVaultManagementFee is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    /// @notice plasmaVaultManagementFee is in percentage with 2 decimals, example 10000 is 100%, 100 is 1%. It is the sum of the atomist management fee and the DAO management fee
     uint256 public plasmaVaultManagementFee;
 
     /// @notice The flag indicating whether the contract is initialized, if it is, the value is greater than 0

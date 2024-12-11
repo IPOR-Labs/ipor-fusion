@@ -31,7 +31,7 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {FeeManagerData, FeeManagerFactory} from "../managers/fee/FeeManagerFactory.sol";
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
-
+import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 /// @notice PlasmaVaultInitData is a struct that represents a configuration of a Plasma Vault during construction
 struct PlasmaVaultInitData {
     /// @notice assetName is a name of the asset shares in Plasma Vault
@@ -102,6 +102,7 @@ contract PlasmaVault is
     ERC4626Upgradeable,
     ReentrancyGuardUpgradeable,
     AccessManagedUpgradeable,
+    UniversalReader,
     IPlasmaVault
 {
     using Address for address;
