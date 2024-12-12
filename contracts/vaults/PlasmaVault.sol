@@ -174,12 +174,14 @@ contract PlasmaVault is
 
         FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
             FeeManagerInitData({
+                initialAuthority: initData_.accessManager,
+                plasmaVault: address(this),
                 iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
                 iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
                 atomistManagementFee: initData_.feeConfig.atomistManagementFee,
                 atomistPerformanceFee: initData_.feeConfig.atomistPerformanceFee,
-                initialAuthority: initData_.accessManager,
-                plasmaVault: address(this),
+                
+                
                 feeRecipientAddress: initData_.feeConfig.feeRecipientAddress,
                 iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress
             })
