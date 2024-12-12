@@ -11,10 +11,10 @@ library ContextManagerStorageLib {
     event NonceUpdated(address indexed addr, uint256 newNonce);
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.context.manager.approved.addresses")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant APPROVED_ADDRESSES = 0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc00;
+    bytes32 private constant APPROVED_ADDRESSES = 0xcd52b1eda56201f4a7653cae301594a261618d67f76e8e1d5e26f1bb9f772a00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.context.manager.nonces")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant NONCES_SLOT = 0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbab100;
+    bytes32 private constant NONCES_SLOT = 0x0409b94a090b90a18fc2f85ddcc3023733517210eae8ad3941f503bbcf96a600;
 
     struct ApprovedAddresses {
         /// @dev key is the address, value is 1 if the address is granted, otherwise - 0

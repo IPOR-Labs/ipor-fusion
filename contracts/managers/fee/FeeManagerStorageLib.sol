@@ -10,7 +10,7 @@ struct FeeManagerStorage {
 
 library FeeManagerStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.storage")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant STORAGE_SLOT = 0x5a7c8692a29c4479a56e6edcb3f8c3f9e9e6e4e3d2c1b0a9f8e7d6c5b4a39300;
+    bytes32 private constant STORAGE_SLOT = 0x6b6e11a2184881fb60b9dd5717029d54bff22805620d5aac5728fb19c945a900;
 
     function _storage() private pure returns (FeeManagerStorage storage $) {
         assembly {
