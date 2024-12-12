@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, RecipientFees} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -29,11 +29,9 @@ library PlasmaVaultHelper {
         FeeConfig memory feeConfig = FeeConfig({
             iporDaoManagementFee: 0,
             iporDaoPerformanceFee: 0,
-            atomistManagementFee: 0,
-            atomistPerformanceFee: 0,
             feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: address(0),
-            iporDaoFeeRecipientAddress: address(0)
+            iporDaoFeeRecipientAddress: address(0),
+            recipients: new RecipientFees[](0)
         });
 
         // Deploy access manager

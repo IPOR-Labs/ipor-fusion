@@ -6,7 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
-import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData, RecipientFees} from "../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
@@ -60,7 +60,13 @@ contract InitializeAccessManagerTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new FeeManagerFactory())), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,

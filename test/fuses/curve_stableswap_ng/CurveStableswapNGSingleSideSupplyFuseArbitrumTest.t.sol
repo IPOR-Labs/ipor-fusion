@@ -15,7 +15,7 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/chains/arbitrum/USDMPriceFeedArbitrum.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
-import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, RecipientFees} from "../../../contracts/vaults/PlasmaVault.sol";
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
@@ -115,7 +115,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -198,7 +204,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -269,7 +281,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -337,7 +355,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -403,7 +427,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -472,7 +502,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -579,7 +615,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -680,7 +722,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -768,7 +816,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -858,7 +912,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,

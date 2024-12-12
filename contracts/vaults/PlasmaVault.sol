@@ -78,22 +78,28 @@ struct MarketSubstratesConfig {
     bytes32[] substrates;
 }
 
+/// @notice Struct containing the fees for a recipient
+/// @param recipient The address of the recipient
+/// @param managementFee The management fee percentage for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @param performanceFee The performance fee percentage for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+struct RecipientFees {
+    address recipient;
+    uint256 managementFee;
+    uint256 performanceFee;
+}
+
 /// @notice FeeConfig is a struct that represents the configuration of fees in the Plasma Vault
 struct FeeConfig {
     /// @notice The management fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 iporDaoManagementFee;
     /// @notice The performance fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 iporDaoPerformanceFee;
-    /// @notice The management fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
-    uint256 atomistManagementFee;
-    /// @notice The performance fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
-    uint256 atomistPerformanceFee;
     /// @notice The address of the fee factory
     address feeFactory;
-    /// @notice The address of the fee recipient
-    address feeRecipientAddress;
     /// @notice The address of the DAO fee recipient
     address iporDaoFeeRecipientAddress;
+    /// @notice The list of recipients and their fees (management and performance fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    RecipientFees[] recipients;
 }
 
 /// @title Main contract of the Plasma Vault in ERC4626 standard - responsible for managing assets and shares by the Alphas via Fuses.
@@ -178,12 +184,8 @@ contract PlasmaVault is
                 plasmaVault: address(this),
                 iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
                 iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
-                atomistManagementFee: initData_.feeConfig.atomistManagementFee,
-                atomistPerformanceFee: initData_.feeConfig.atomistPerformanceFee,
-                
-                
-                feeRecipientAddress: initData_.feeConfig.feeRecipientAddress,
-                iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress
+                iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress,
+                recipients: initData_.feeConfig.recipients
             })
         );
 

@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, RecipientFees} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -116,7 +116,6 @@ contract FeeManagerTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-
         RecipientFees[] memory recipients = new RecipientFees[](1);
         recipients[0] = RecipientFees({
             recipient: _FEE_RECIPIENT_1,
@@ -124,28 +123,15 @@ contract FeeManagerTest is Test {
             performanceFee: PERFORMANCE_FEE_IN_PERCENTAGE
         });
 
-        FeeManagerInitData memory initData = FeeManagerInitData({
-            initialAuthority: _ATOMIST,
-            plasmaVault: address(0), // Will be set after vault creation
-            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
-            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
-            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
-            recipients: recipients
-        });
-
         address feeManagerFactory = address(new FeeManagerFactory());
 
         feeConfig = FeeConfig({
             iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE + MANAGEMENT_FEE_IN_PERCENTAGE,
             iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE + PERFORMANCE_FEE_IN_PERCENTAGE,
-            atomistManagementFee: MANAGEMENT_FEE_IN_PERCENTAGE,
-            atomistPerformanceFee: PERFORMANCE_FEE_IN_PERCENTAGE,
-            feeManagerFactory: feeManagerFactory,
-            feeRecipientAddress: _FEE_RECIPIENT_1,
-            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT
-            }
-        );
-        
+            feeFactory: feeManagerFactory,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipients: recipients
+        });
     }
 
     function _createAccessManager() private {
@@ -253,7 +239,7 @@ contract FeeManagerTest is Test {
 
         vm.startPrank(_ATOMIST);
         feeManager.addFeeRecipient(_FEE_RECIPIENT_2, 100, 500);
-        
+
         // when
         feeManager.removeFeeRecipient(_FEE_RECIPIENT_1);
         vm.stopPrank();
@@ -732,11 +718,7 @@ contract FeeManagerTest is Test {
 
         address feeRecipientAfter = feeManager.iporDaoFeeRecipientAddress();
 
-        assertEq(
-            feeRecipientBefore,
-            _DAO_FEE_RECIPIENT,
-            "feeRecipientBefore should be _DAO_FEE_RECIPIENT"
-        );
+        assertEq(feeRecipientBefore, _DAO_FEE_RECIPIENT, "feeRecipientBefore should be _DAO_FEE_RECIPIENT");
         assertEq(feeRecipientAfter, _USER, "feeRecipientAfter should be _USER");
     }
 }

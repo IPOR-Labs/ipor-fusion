@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {PlasmaVault, FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData, RecipientFees} from "./../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
 import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
@@ -105,7 +105,13 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new FeeManagerFactory())), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(address(new FeeManagerFactory())),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -214,7 +220,13 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new FeeManagerFactory())), address(0), address(0)),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(address(new FeeManagerFactory())),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipients: new RecipientFees[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,

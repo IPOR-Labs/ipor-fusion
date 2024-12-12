@@ -4,19 +4,10 @@ pragma solidity 0.8.26;
 import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 import {FeeAccount} from "./FeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
-
-/// @notice Struct containing the fees for a recipient
-/// @param recipient The address of the recipient
-/// @param managementFee The management fee percentage for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
-/// @param performanceFee The performance fee percentage for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)    
-struct RecipientFees {
-    address recipient;
-    uint256 managementFee;
-    uint256 performanceFee;
-}
+import {RecipientFees} from "../../vaults/PlasmaVault.sol";
 
 /// @notice Struct containing initialization data for the fee manager
 /// @param iporDaoManagementFee Management fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
@@ -38,9 +29,10 @@ struct FeeManagerInitData {
 
 /// @title FeeManager
 /// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
+/// Total performance fee percentage is the sum of all recipients performance fees + DAO performance fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+/// Total management fee percentage is the sum of all recipients management fees + DAO management fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
 /// @dev Inherits from AccessManaged for access control.
 contract FeeManager is AccessManaged {
-    
     event HarvestManagementFee(address receiver, uint256 amount);
     event HarvestPerformanceFee(address receiver, uint256 amount);
     event PerformanceFeeUpdated(uint256 newPerformanceFee);
@@ -62,35 +54,35 @@ contract FeeManager is AccessManaged {
 
     /// @notice Account where performance fees are collected before distribution to recipients and DAO
     address public immutable PERFORMANCE_FEE_ACCOUNT;
-    
+
     /// @notice Account where management fees are collected before distribution to recipients and DAO
     address public immutable MANAGEMENT_FEE_ACCOUNT;
-    
+
     /// @notice Management fee percentage for IPOR DAO (10000 = 100%, 100 = 1%)
     uint256 public immutable IPOR_DAO_MANAGEMENT_FEE;
-    
+
     /// @notice Performance fee percentage for IPOR DAO (10000 = 100%, 100 = 1%)
     uint256 public immutable IPOR_DAO_PERFORMANCE_FEE;
 
     /// @notice Initialization status (0 = uninitialized, 1 = initialized)
     uint256 public initialized;
-    
+
     /// @notice Address that receives the IPOR DAO portion of fees based on IPOR_DAO_MANAGEMENT_FEE and IPOR_DAO_PERFORMANCE_FEE values
     address public iporDaoFeeRecipientAddress;
 
     /// @notice List of addresses that receive fee distributions based on recipientManagementFees and recipientPerformanceFees values
     address[] public feeRecipientAddresses;
-    
+
     /// @notice Maps recipient addresses to their management fee percentages
     mapping(address recipient => uint256 managementFee) public recipientManagementFees;
-    
-    /// @notice Maps recipient addresses to their performance fee percentages
+
+    /// @notice Maps recipient addresses to their performance fee percentages, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
     mapping(address recipient => uint256 performanceFee) public recipientPerformanceFees;
 
-    /// @notice Total performance fee percentage (sum of all recipients performance fees + DAO performance fees)
+    /// @notice Total performance fee percentage (sum of all recipients performance fees + DAO performance fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
     uint256 public plasmaVaultPerformanceFee;
-    
-    /// @notice Total management fee percentage (sum of all recipients management fees + DAO management  fees)
+
+    /// @notice Total management fee percentage (sum of all recipients management fees + DAO management  fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
     uint256 public plasmaVaultManagementFee;
 
     constructor(FeeManagerInitData memory initData_) AccessManaged(initData_.initialAuthority) {
@@ -103,21 +95,24 @@ contract FeeManager is AccessManaged {
         IPOR_DAO_PERFORMANCE_FEE = initData_.iporDaoPerformanceFee;
 
         iporDaoFeeRecipientAddress = initData_.iporDaoFeeRecipientAddress;
-        
-        if (initData_.feeRecipientAddresses.length == 0) {
+
+        if (initData_.recipients.length == 0) {
             revert EmptyFeeRecipients();
         }
-        
-        feeRecipientAddresses = initData_.feeRecipientAddresses;
-        
+
+        address[] memory recipients = new address[](initData_.recipients.length);
+
         for (uint256 i = 0; i < initData_.recipients.length; i++) {
+            recipients[i] = initData_.recipients[i].recipient;
             recipientManagementFees[initData_.recipients[i].recipient] = initData_.recipients[i].managementFee;
             recipientPerformanceFees[initData_.recipients[i].recipient] = initData_.recipients[i].performanceFee;
         }
 
+        feeRecipientAddresses = recipients;
+
         uint256 totalManagementFee = IPOR_DAO_MANAGEMENT_FEE;
         uint256 totalPerformanceFee = IPOR_DAO_PERFORMANCE_FEE;
-        
+
         for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
             totalManagementFee += recipientManagementFees[feeRecipientAddresses[i]];
             totalPerformanceFee += recipientPerformanceFees[feeRecipientAddresses[i]];
@@ -127,7 +122,6 @@ contract FeeManager is AccessManaged {
         /// @dev Values stored in FeeManager have to be equal to the values stored in PlasmaVault
         plasmaVaultPerformanceFee = totalPerformanceFee;
         plasmaVaultManagementFee = totalManagementFee;
-
     }
 
     function initialize() external {
@@ -184,9 +178,10 @@ contract FeeManager is AccessManaged {
 
         for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
             address recipient = feeRecipientAddresses[i];
-            uint256 recipientPercentage = (recipientManagementFees[recipient] * numberOfDecimals) / plasmaVaultManagementFee;
+            uint256 recipientPercentage = (recipientManagementFees[recipient] * numberOfDecimals) /
+                plasmaVaultManagementFee;
             uint256 recipientShare = Math.mulDiv(remainingBalance, recipientPercentage, numberOfDecimals);
-            
+
             if (recipientShare > 0) {
                 IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, recipient, recipientShare);
                 emit HarvestManagementFee(recipient, recipientShare);
@@ -233,9 +228,10 @@ contract FeeManager is AccessManaged {
 
         for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
             address recipient = feeRecipientAddresses[i];
-            uint256 recipientPercentage = (recipientPerformanceFees[recipient] * numberOfDecimals) / plasmaVaultPerformanceFee;
+            uint256 recipientPercentage = (recipientPerformanceFees[recipient] * numberOfDecimals) /
+                plasmaVaultPerformanceFee;
             uint256 recipientShare = Math.mulDiv(remainingBalance, recipientPercentage, numberOfDecimals);
-            
+
             if (recipientShare > 0) {
                 IERC4626(PLASMA_VAULT).transferFrom(PERFORMANCE_FEE_ACCOUNT, recipient, recipientShare);
                 emit HarvestPerformanceFee(recipient, recipientShare);
@@ -305,18 +301,18 @@ contract FeeManager is AccessManaged {
         feeRecipientAddresses.push(recipient);
         recipientManagementFees[recipient] = managementFee_;
         recipientPerformanceFees[recipient] = performanceFee_;
-        
+
         // Update total fees
         uint256 newManagementFee = plasmaVaultManagementFee + managementFee_;
         uint256 newPerformanceFee = plasmaVaultPerformanceFee + performanceFee_;
-        
+
         // Configure new fees in plasma vault
         PlasmaVaultGovernance(PLASMA_VAULT).configureManagementFee(MANAGEMENT_FEE_ACCOUNT, newManagementFee);
         PlasmaVaultGovernance(PLASMA_VAULT).configurePerformanceFee(PERFORMANCE_FEE_ACCOUNT, newPerformanceFee);
-        
+
         plasmaVaultManagementFee = newManagementFee;
         plasmaVaultPerformanceFee = newPerformanceFee;
-        
+
         emit FeeRecipientAdded(recipient);
         emit RecipientFeeUpdated(recipient, managementFee_, performanceFee_);
         emit ManagementFeeUpdated(newManagementFee);
@@ -335,10 +331,10 @@ contract FeeManager is AccessManaged {
         if (feeRecipientAddresses.length == 1) {
             revert EmptyFeeRecipients();
         }
-        
+
         uint256 recipientIndex;
         bool found;
-        
+
         for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
             if (feeRecipientAddresses[i] == recipient) {
                 recipientIndex = i;
@@ -377,7 +373,7 @@ contract FeeManager is AccessManaged {
         uint256 performanceFee_
     ) external restricted {
         if (recipient == address(0)) revert Errors.WrongAddress();
-        
+
         bool isValidRecipient = false;
         for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
             if (feeRecipientAddresses[i] == recipient) {
@@ -397,7 +393,7 @@ contract FeeManager is AccessManaged {
         // Recalculate total fees
         uint256 totalManagementFee = IPOR_DAO_MANAGEMENT_FEE;
         uint256 totalPerformanceFee = IPOR_DAO_PERFORMANCE_FEE;
-        
+
         for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
             totalManagementFee += recipientManagementFees[feeRecipientAddresses[i]];
             totalPerformanceFee += recipientPerformanceFees[feeRecipientAddresses[i]];
