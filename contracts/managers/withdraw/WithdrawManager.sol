@@ -58,7 +58,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     }
 
     function request(uint256 amount_) external {
-        WithdrawManagerStorageLib.updateWithdrawRequest(msg.sender, amount_);
+        WithdrawManagerStorageLib.updateWithdrawRequest(_msgSender(), amount_);
     }
 
     /**

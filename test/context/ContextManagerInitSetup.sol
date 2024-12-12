@@ -18,6 +18,7 @@ import {MoonwellEnableMarketFuseEnterData, MoonwellEnableMarketFuseExitData} fro
 import {MoonwellBorrowFuseEnterData, MoonwellBorrowFuseExitData} from "../../contracts/fuses/moonwell/MoonwellBorrowFuse.sol";
 import {MoonWellAddresses} from "../test_helpers/MoonwellHelper.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 
 abstract contract ContextManagerInitSetup is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
@@ -34,8 +35,17 @@ abstract contract ContextManagerInitSetup is Test {
     IporFusionAccessManager internal _accessManager;
     MoonWellAddresses internal _moonwellAddresses;
     ContextManager internal _contextManager;
+    WithdrawManager internal _withdrawManager;
 
     function initSetup() internal {
+        setup(false);
+    }
+
+    function setupWithdrawManager() internal {
+        setup(true);
+    }
+
+    function setup(bool withWithdrawManager) internal {
         // Fork Base network
         vm.createSelectFork(vm.envString("BASE_PROVIDER_URL"), 22136992);
 
@@ -56,10 +66,17 @@ abstract contract ContextManagerInitSetup is Test {
         });
 
         vm.startPrank(TestAddresses.ATOMIST);
-        _plasmaVault = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
+
+        address withdrawManager;
+
+        (_plasmaVault, withdrawManager) = withWithdrawManager
+            ? PlasmaVaultHelper.deployMinimalPlasmaVaultWithWithdrawManager(params)
+            : PlasmaVaultHelper.deployMinimalPlasmaVault(params);
+
+        _withdrawManager = WithdrawManager(withdrawManager);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _contextManager = _accessManager.setupInitRoles(_plasmaVault);
+        _contextManager = _accessManager.setupInitRoles(_plasmaVault, withdrawManager);
 
         address[] memory mTokens = new address[](3);
         mTokens[0] = TestAddresses.BASE_M_WSTETH;

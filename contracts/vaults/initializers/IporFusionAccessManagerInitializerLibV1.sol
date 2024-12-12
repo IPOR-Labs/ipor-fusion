@@ -658,7 +658,7 @@ library IporFusionAccessManagerInitializerLibV1 {
                 functionSelector: ContextClient.clearContext.selector,
                 minimalExecutionDelay: 0
             });
-
+            console2.log("WithdrawManager", plasmaVaultAddress_.withdrawManager);
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.withdrawManager,
                 roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,

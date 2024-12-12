@@ -53,10 +53,10 @@ contract MoonwellBorowFlowBaseTest is Test {
         });
 
         vm.startPrank(TestAddresses.ATOMIST);
-        _plasmaVault = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
+        (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault);
+        _accessManager.setupInitRoles(_plasmaVault, address(0));
 
         address[] memory mTokens = new address[](3);
         mTokens[0] = TestAddresses.BASE_M_WSTETH;

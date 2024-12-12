@@ -73,7 +73,8 @@ library IporFusionAccessManagerHelper {
     function setupInitRoles(
         IporFusionAccessManager accessManager_,
         PlasmaVault plasmaVault_,
-        RoleAddresses memory roles_
+        RoleAddresses memory roles_,
+        address withdrawManager_
     ) internal returns (ContextManager contextManager) {
         address[] memory approvedAddresses = new address[](1);
         approvedAddresses[0] = address(plasmaVault_);
@@ -97,7 +98,7 @@ library IporFusionAccessManagerHelper {
                 plasmaVault: address(plasmaVault_),
                 accessManager: address(accessManager_),
                 rewardsClaimManager: PlasmaVaultGovernance(address(plasmaVault_)).getRewardsClaimManagerAddress(),
-                withdrawManager: address(0),
+                withdrawManager: withdrawManager_,
                 feeManager: FeeAccount(PlasmaVaultGovernance(address(plasmaVault_)).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
                 contextManager: address(contextManager)
@@ -116,8 +117,9 @@ library IporFusionAccessManagerHelper {
     /// @param plasmaVault_ The plasma vault to set up roles for
     function setupInitRoles(
         IporFusionAccessManager accessManager_,
-        PlasmaVault plasmaVault_
+        PlasmaVault plasmaVault_,
+        address withdrawManager_
     ) internal returns (ContextManager contextManager) {
-        return setupInitRoles(accessManager_, plasmaVault_, createDefaultRoleAddresses());
+        return setupInitRoles(accessManager_, plasmaVault_, createDefaultRoleAddresses(), withdrawManager_);
     }
 }
