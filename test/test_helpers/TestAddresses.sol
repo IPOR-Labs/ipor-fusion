@@ -48,4 +48,9 @@ library TestAddresses {
     address public constant BASE_M_CBBTC = 0xF877ACaFA28c19b96727966690b2f44d35aD5976;
     address public constant BASE_M_WSTETH = 0x627Fe393Bc6EdDA28e99AE648fD6fF362514304b;
     address public constant BASE_M_CBETH = 0x3bf93770f2d4a794c3d9EBEfBAeBAE2a8f09A5E5;
+
+    // Protocol Addresses - Arbitrum Network
+    address public constant ARB_WST_ETH = 0x5979D7b546E38E414F7E9822514be443A4800529;
+    address public constant ARBITRUM_PENDLE_ROUTER = 0x888888888889758F76e7103c6CbF23ABbF58F946;
+    address public constant ARBITRUM_PENDLE_ORACLE = 0x9a9Fa8338dd5E5B2188006f1Cd2Ef26d921650C2;
 }

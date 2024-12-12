@@ -13,7 +13,8 @@ remappings = [
     'ds-test/=lib/forge-std/lib/ds-test/src/',
     'forge-std/=lib/forge-std/src/',
     'foundry-random=lib/foundry-random/src/',
-    "@ethereum-vault-connector/=node_modules/ethereum-vault-connector/"
+    "@ethereum-vault-connector/=node_modules/ethereum-vault-connector/",
+    "@pendle/core-v2/=node_modules/@pendle/core-v2/"
 ]
 optimizer_runs = 3000
 ignored_error_codes = [5667, 9302, 2462, 5574, 8760]
