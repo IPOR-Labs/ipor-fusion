@@ -174,7 +174,7 @@ contract ContextManager is AccessManagedUpgradeable {
         return ContextManagerStorageLib.getApprovedAddressesList();
     }
 
-    function _verifySignature(ContextDataWithSender memory contextData) internal view returns (bool) {
+    function _verifySignature(ContextDataWithSender memory contextData) internal pure returns (bool) {
         return
             ECDSA.recover(
                 keccak256(

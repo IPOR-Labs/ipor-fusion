@@ -15,6 +15,7 @@ import {MoonWellAddresses} from "../test_helpers/MoonwellHelper.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {ContextDataWithSender} from "../../contracts/managers/context/ContextManager.sol";
 
 abstract contract ContextManagerInitSetup is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
@@ -106,5 +107,35 @@ abstract contract ContextManagerInitSetup is Test {
         IERC20(_UNDERLYING_TOKEN).approve(address(_plasmaVault), 100e18);
         _plasmaVault.deposit(100e18, _USER);
         vm.stopPrank();
+    }
+
+    function preperateDataWithSignature(
+        uint256 privateKey,
+        uint256 expirationTime,
+        uint256 nonce,
+        address target,
+        bytes memory data
+    ) internal view returns (ContextDataWithSender memory) {
+        return
+            ContextDataWithSender({
+                expirationTime: expirationTime,
+                nonce: nonce,
+                target: target,
+                data: data,
+                signature: sign(privateKey, expirationTime, nonce, target, data),
+                sender: vm.addr(privateKey)
+            });
+    }
+
+    function sign(
+        uint256 privateKey,
+        uint256 expirationTime,
+        uint256 nonce,
+        address target,
+        bytes memory data
+    ) private view returns (bytes memory) {
+        bytes32 digest = keccak256(abi.encodePacked(expirationTime, nonce, target, data));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+        return abi.encodePacked(r, s, v);
     }
 }

@@ -6,12 +6,20 @@ pragma solidity 0.8.26;
 /// @dev Contains constant addresses used across tests
 library TestAddresses {
     // Role Addresses
-    address public constant DAO = address(1111111);
+    // anvil address 0
+    address public constant DAO = address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+    uint256 public constant DAO_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
     address public constant OWNER = address(2222222);
     address public constant ADMIN = address(3333333);
-    address public constant ATOMIST = address(4444444);
-    address public constant ALPHA = address(5555555);
-    address public constant USER = address(6666666);
+    // anvil address 2
+    address public constant ATOMIST = address(0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC);
+    uint256 public constant ATOMIST_PRIVATE_KEY = 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a;
+    // anvil address 1
+    address public constant ALPHA = address(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
+    uint256 public constant ALPHA_PRIVATE_KEY = 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d;
+    // anvil address 3
+    address public constant USER = address(0x90F79bf6EB2c4f870365E785982E1f101E93b906);
+    uint256 public constant USER_PRIVATE_KEY = 0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6;
     address public constant GUARDIAN = address(7777777);
     address public constant FUSE_MANAGER = address(8888888);
     address public constant CLAIM_REWARDS = address(7777777);
