@@ -104,7 +104,7 @@ contract ContextManagerWithSignatureRewardsClaimManagerTest is Test, ContextMana
         removeDataWithSignatures[0] = preperateDataWithSignature(
             TestAddresses.FUSE_MANAGER_PRIVATE_KEY,
             block.timestamp + 1000,
-            block.number,
+            block.number + 1,
             address(_rewardsClaimManager),
             abi.encodeWithSignature("removeRewardFuses(address[])", fuses)
         );
