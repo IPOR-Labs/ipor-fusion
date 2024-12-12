@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {ContextManagerInitSetup} from "./ContextManagerInitSetup.sol";
 import {TestAddresses} from "../test_helpers/TestAddresses.sol";
-import {ExecuteData} from "../../contracts/managers/context/ContextManager.sol";
 import {IERC20} from "../../lib/forge-std/src/interfaces/IERC20.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
