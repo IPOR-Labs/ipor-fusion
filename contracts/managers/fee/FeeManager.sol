@@ -96,26 +96,24 @@ contract FeeManager is AccessManaged {
 
         iporDaoFeeRecipientAddress = initData_.iporDaoFeeRecipientAddress;
 
-        if (initData_.recipients.length == 0) {
-            revert EmptyFeeRecipients();
-        }
-
-        address[] memory recipients = new address[](initData_.recipients.length);
-
-        for (uint256 i = 0; i < initData_.recipients.length; i++) {
-            recipients[i] = initData_.recipients[i].recipient;
-            recipientManagementFees[initData_.recipients[i].recipient] = initData_.recipients[i].managementFee;
-            recipientPerformanceFees[initData_.recipients[i].recipient] = initData_.recipients[i].performanceFee;
-        }
-
-        feeRecipientAddresses = recipients;
-
         uint256 totalManagementFee = IPOR_DAO_MANAGEMENT_FEE;
         uint256 totalPerformanceFee = IPOR_DAO_PERFORMANCE_FEE;
 
-        for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
-            totalManagementFee += recipientManagementFees[feeRecipientAddresses[i]];
-            totalPerformanceFee += recipientPerformanceFees[feeRecipientAddresses[i]];
+        if (initData_.recipients.length > 0) {
+            address[] memory recipients = new address[](initData_.recipients.length);    
+
+            for (uint256 i = 0; i < initData_.recipients.length; i++) {
+                recipients[i] = initData_.recipients[i].recipient;
+                recipientManagementFees[initData_.recipients[i].recipient] = initData_.recipients[i].managementFee;
+                recipientPerformanceFees[initData_.recipients[i].recipient] = initData_.recipients[i].performanceFee;
+                feeRecipientAddresses = recipients;
+            }
+
+            for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
+                totalManagementFee += recipientManagementFees[feeRecipientAddresses[i]];
+                totalPerformanceFee += recipientPerformanceFees[feeRecipientAddresses[i]];
+            }
+        
         }
 
         /// @dev Plasma Vault fees are the sum of all recipients fees + DAO fee, respectively for performance and management fees.
