@@ -658,7 +658,7 @@ library IporFusionAccessManagerInitializerLibV1 {
                 functionSelector: ContextClient.clearContext.selector,
                 minimalExecutionDelay: 0
             });
-            console2.log("WithdrawManager", plasmaVaultAddress_.withdrawManager);
+
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.withdrawManager,
                 roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
@@ -668,6 +668,19 @@ library IporFusionAccessManagerInitializerLibV1 {
 
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.withdrawManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.clearContext.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.rewardsClaimManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.setupContext.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.rewardsClaimManager,
                 roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
                 functionSelector: ContextClient.clearContext.selector,
                 minimalExecutionDelay: 0

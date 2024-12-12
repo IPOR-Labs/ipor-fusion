@@ -19,6 +19,7 @@ import {MoonwellBorrowFuseEnterData, MoonwellBorrowFuseExitData} from "../../con
 import {MoonWellAddresses} from "../test_helpers/MoonwellHelper.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 
 abstract contract ContextManagerInitSetup is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
@@ -36,6 +37,7 @@ abstract contract ContextManagerInitSetup is Test {
     MoonWellAddresses internal _moonwellAddresses;
     ContextManager internal _contextManager;
     WithdrawManager internal _withdrawManager;
+    RewardsClaimManager internal _rewardsClaimManager;
 
     function initSetup() internal {
         setup(false);
@@ -76,6 +78,9 @@ abstract contract ContextManagerInitSetup is Test {
         _withdrawManager = WithdrawManager(withdrawManager);
 
         _accessManager = _plasmaVault.accessManagerOf();
+        _rewardsClaimManager = new RewardsClaimManager(address(_accessManager), address(_plasmaVault));
+        _plasmaVault.addRewardsClaimManager(address(_rewardsClaimManager));
+
         _contextManager = _accessManager.setupInitRoles(_plasmaVault, withdrawManager);
 
         address[] memory mTokens = new address[](3);
