@@ -1,25 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ContextManagerInitSetup} from "./ContextManagerInitSetup.sol";
 import {TestAddresses} from "../test_helpers/TestAddresses.sol";
-import {ExecuteData, ContextDataWithSender} from "../../contracts/managers/context/ContextManager.sol";
+import {ExecuteData} from "../../contracts/managers/context/ContextManager.sol";
 import {IERC20} from "../../lib/forge-std/src/interfaces/IERC20.sol";
 import {FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
-import {MoonwellSupplyFuseEnterData, MoonwellSupplyFuse} from "../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
-import {IPlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {PlasmaVaultLib, InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {IPriceOracleMiddleware} from "../../contracts/price_oracle/IPriceOracleMiddleware.sol";
-import {Errors} from "../../contracts/libraries/errors/Errors.sol";
-import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
-import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
-import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {MoonwellClaimFuse} from "../../contracts/rewards_fuses/moonwell/MoonwellClaimFuse.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
-import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {MoonwellClaimFuseData} from "../../contracts/rewards_fuses/moonwell/MoonwellClaimFuse.sol";
+import {MoonwellSupplyFuseEnterData} from "../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
 
 contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup {
     // Test events
@@ -153,9 +144,6 @@ contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup 
     }
 
     function testClaimRewards() public {
-        address rewordsToken0 = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
-        address rewordsToken1 = 0xA88594D404727625A9437C3f886C7643872296AE;
-
         // Setup - supply to Moonwell first
         uint256 supplyAmount = 500e6; // 500 USDC
 
@@ -208,8 +196,6 @@ contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup 
         // Prepare context data
         address[] memory targetsClaim = new address[](1);
         targetsClaim[0] = address(_rewardsClaimManager);
-
-        FuseAction[] memory actionsClaim = new FuseAction[](1);
 
         bytes[] memory dataClaim = new bytes[](1);
         dataClaim[0] = abi.encodeWithSignature("claimRewards((address,bytes)[])", claimActions);

@@ -32,7 +32,6 @@ import {FeeManagerData, FeeManagerFactory} from "../managers/fee/FeeManagerFacto
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @notice PlasmaVaultInitData is a struct that represents a configuration of a Plasma Vault during construction
 struct PlasmaVaultInitData {

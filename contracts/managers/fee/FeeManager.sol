@@ -12,8 +12,6 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {FeeManagerStorageLib, FeeManagerStorage} from "./FeeManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
 
-import {console2} from "forge-std/console2.sol";
-
 /// @notice Struct containing initialization data for the fee manager
 /// @param iporDaoManagementFee Management fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
 /// @param iporDaoPerformanceFee Performance fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)

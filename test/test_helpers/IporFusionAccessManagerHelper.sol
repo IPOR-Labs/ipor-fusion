@@ -8,7 +8,6 @@ import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {TestAddresses} from "./TestAddresses.sol";
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title IporFusionAccessManagerHelper
 /// @notice Helper library for setting up roles in IporFusionAccessManager

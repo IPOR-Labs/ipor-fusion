@@ -12,8 +12,6 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {ContextClient} from "../managers/context/ContextClient.sol";
 
-import {console2} from "forge-std/console2.sol";
-
 /// @title Stateless extension of PlasmaVault with ERC20 Votes, ERC20 Permit. Used in the context of Plasma Vault (only by delegatecall).
 contract PlasmaVaultBase is
     IPlasmaVaultBase,

@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ContextManagerInitSetup} from "./ContextManagerInitSetup.sol";
 import {TestAddresses} from "../test_helpers/TestAddresses.sol";
-import {ExecuteData, ContextDataWithSender} from "../../contracts/managers/context/ContextManager.sol";
+import {ExecuteData} from "../../contracts/managers/context/ContextManager.sol";
 import {IERC20} from "../../lib/forge-std/src/interfaces/IERC20.sol";
 import {FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {MoonwellSupplyFuseEnterData, MoonwellSupplyFuse} from "../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {PlasmaVaultLib, InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {IPriceOracleMiddleware} from "../../contracts/price_oracle/IPriceOracleMiddleware.sol";
-import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 
 contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
     // Test events

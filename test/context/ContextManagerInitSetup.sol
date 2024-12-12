@@ -2,20 +2,15 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {console2} from "forge-std/console2.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {PlasmaVault, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../test_helpers/PlasmaVaultHelper.sol";
 import {TestAddresses} from "../test_helpers/TestAddresses.sol";
-import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {PriceOracleMiddlewareHelper} from "../test_helpers/PriceOracleMiddlewareHelper.sol";
 import {IporFusionAccessManagerHelper} from "../test_helpers/IporFusionAccessManagerHelper.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {MoonwellHelper} from "../test_helpers/MoonwellHelper.sol";
-import {MoonwellSupplyFuseEnterData} from "../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
-import {MoonwellEnableMarketFuseEnterData, MoonwellEnableMarketFuseExitData} from "../../contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol";
-import {MoonwellBorrowFuseEnterData, MoonwellBorrowFuseExitData} from "../../contracts/fuses/moonwell/MoonwellBorrowFuse.sol";
 import {MoonWellAddresses} from "../test_helpers/MoonwellHelper.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";

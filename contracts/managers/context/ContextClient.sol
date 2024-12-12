@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import "./IContextClient.sol";
-import "./ContextClientStorageLib.sol";
+import {IContextClient} from "./IContextClient.sol";
+import {ContextClientStorageLib} from "./ContextClientStorageLib.sol";
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 
 /// @title ContextClient
