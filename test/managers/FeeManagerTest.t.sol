@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, RecipientFee} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -23,6 +23,7 @@ import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorag
 import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
@@ -31,7 +32,7 @@ contract FeeManagerTest is Test {
     address private constant _USER = address(12121212);
     address private constant _FEE_RECIPIENT_1 = address(5555);
     address private constant _FEE_RECIPIENT_2 = address(5556);
-    address private constant _DAO_FEE_RECIPIENT = address(6666);
+    address private constant _DAO_FEE_RECIPIENT = address(7777);
 
     address private constant _USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant _USDC_HOLDER = 0x47c031236e19d024b42f8AE6780E44A573170703;
@@ -254,7 +255,7 @@ contract FeeManagerTest is Test {
     //     feeManager.feeRecipientAddresses(1); // Should revert as array length is now 1
     // }
 
-    function testShouldHaveShearsOnManagementFeeAccount() external {
+    function testShouldHaveSharesOnManagementFeeAccount() external {
         //given
         address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
 
@@ -368,13 +369,13 @@ contract FeeManagerTest is Test {
         uint256 balanceDaoFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
         assertEq(balancePerformanceAccountBefore, 68199104783, "balancePerformanceAccountBefore should be 68199104783");
-        assertEq(balancePerformanceAccountAfter, 0, "balancePerformanceAccountAfter should be 0");
+        assertApproxEqAbs(balancePerformanceAccountAfter, 0, 100, "balancePerformanceAccountAfter should be 0");
 
         assertEq(balanceFeeRecipientBefore, 0, "balanceFeeRecipientBefore should be 0");
-        assertEq(balanceFeeRecipientAfter, 34099552392, "balanceFeeRecipientAfter should be 34099552392");
+        assertEq(balanceFeeRecipientAfter, 34099552391, "balanceFeeRecipientAfter should be 34099552391");
 
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
-        assertEq(balanceDaoFeeRecipientAfter, 34099552391, "balanceDaoFeeRecipientAfter should be 34099552392");
+        assertEq(balanceDaoFeeRecipientAfter, 34099552391, "balanceDaoFeeRecipientAfter should be 34099552391");
     }
 
     function testShouldHarvestPerformanceWhenAtomistSetZero() external {

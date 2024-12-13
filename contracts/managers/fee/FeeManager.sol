@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
-
 import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -203,7 +202,8 @@ contract FeeManager is AccessManaged {
             recipientPercentage =
                 (managementFeeRecipientData.recipientFees[recipient] * numberOfDecimals) /
                 plasmaVaultManagementFee;
-            recipientShare = Math.mulDiv(remainingBalance, recipientPercentage, numberOfDecimals);
+
+            recipientShare = Math.mulDiv(managementFeeBalance, recipientPercentage, numberOfDecimals);
 
             if (recipientShare > 0) {
                 if (remainingBalance < recipientShare) {
@@ -277,7 +277,7 @@ contract FeeManager is AccessManaged {
             recipientPercentage =
                 (performanceFeeRecipientData.recipientFees[recipient] * numberOfDecimals) /
                 plasmaVaultPerformanceFee;
-            recipientShare = Math.mulDiv(remainingBalance, recipientPercentage, numberOfDecimals);
+            recipientShare = Math.mulDiv(performanceFeeBalance, recipientPercentage, numberOfDecimals);
 
             if (recipientShare > 0) {
                 if (remainingBalance < recipientShare) {
