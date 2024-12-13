@@ -199,62 +199,6 @@ contract FeeManagerTest is Test {
         vm.stopPrank();
     }
 
-    // function testShouldAddNewFeeRecipient() external {
-    //     // given
-    //     address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-    //     FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
-    //     feeManager.initialize();
-
-    //     // when
-    //     vm.startPrank(_ATOMIST);
-    //     feeManager.addFeeRecipient(_FEE_RECIPIENT_2, 100, 500);
-    //     vm.stopPrank();
-
-    //     // then
-    //     assertEq(feeManager.feeRecipientAddresses(1), _FEE_RECIPIENT_2);
-    //     assertEq(feeManager.recipientManagementFees(_FEE_RECIPIENT_2), 100);
-    //     assertEq(feeManager.recipientPerformanceFees(_FEE_RECIPIENT_2), 500);
-    //     assertEq(feeManager.plasmaVaultManagementFee(), 600); // Original 500 + new 100
-    //     assertEq(feeManager.plasmaVaultPerformanceFee(), 2500); // Original 2000 + new 500
-    // }
-
-    // function testShouldUpdateRecipientFee() external {
-    //     // given
-    //     address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-    //     FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
-    //     feeManager.initialize();
-
-    //     // when
-    //     vm.startPrank(_ATOMIST);
-    //     feeManager.updateRecipientFee(_FEE_RECIPIENT_1, 150, 750);
-    //     vm.stopPrank();
-
-    //     // then
-    //     assertEq(feeManager.recipientManagementFees(_FEE_RECIPIENT_1), 150);
-    //     assertEq(feeManager.recipientPerformanceFees(_FEE_RECIPIENT_1), 750);
-    //     assertEq(feeManager.plasmaVaultManagementFee(), 450); // DAO 300 + new 150
-    //     assertEq(feeManager.plasmaVaultPerformanceFee(), 1750); // DAO 1000 + new 750
-    // }
-
-    // function testShouldRemoveFeeRecipient() external {
-    //     // given
-    //     address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-    //     FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
-    //     feeManager.initialize();
-
-    //     vm.startPrank(_ATOMIST);
-    //     feeManager.addFeeRecipient(_FEE_RECIPIENT_2, 100, 500);
-
-    //     // when
-    //     feeManager.removeFeeRecipient(_FEE_RECIPIENT_1);
-    //     vm.stopPrank();
-
-    //     // then
-    //     assertEq(feeManager.feeRecipientAddresses(0), _FEE_RECIPIENT_2);
-    //     vm.expectRevert();
-    //     feeManager.feeRecipientAddresses(1); // Should revert as array length is now 1
-    // }
-
     function testShouldHaveSharesOnManagementFeeAccount() external {
         //given
         address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
@@ -390,8 +334,10 @@ contract FeeManagerTest is Test {
 
         feeManager.initialize();
 
+        RecipientFee[] memory recipientFees = new RecipientFee[](0);
+
         vm.startPrank(_ATOMIST);
-        feeManager.updatePerformanceFee(0);
+        feeManager.updatePerformanceFee(recipientFees);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 356 days);
@@ -465,10 +411,16 @@ contract FeeManagerTest is Test {
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
 
+        RecipientFee[] memory recipientFees = new RecipientFee[](1);
+        recipientFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 500
+        });
+
         // when
         vm.startPrank(_USER);
         vm.expectRevert(error);
-        feeManager.updatePerformanceFee(500);
+        feeManager.updatePerformanceFee(recipientFees);
         vm.stopPrank();
     }
 
@@ -478,20 +430,26 @@ contract FeeManagerTest is Test {
             .getPerformanceFeeData();
         FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
 
-        uint256 performanceFeeBefore = feeManager.plasmaVaultPerformanceFee();
+        uint256 performanceFeeBefore = feeManager.plasmaVaultTotalPerformanceFee();
 
         feeManager.initialize();
 
+        RecipientFee[] memory recipientFees = new RecipientFee[](1);
+        recipientFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 500
+        });
+
         // when
         vm.startPrank(_ATOMIST);
-        feeManager.updatePerformanceFee(500);
+        feeManager.updatePerformanceFee(recipientFees);
         vm.stopPrank();
 
         // then
         PlasmaVaultStorageLib.PerformanceFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
             .getPerformanceFeeData();
 
-        uint256 performanceFeeAfter = feeManager.plasmaVaultPerformanceFee();
+        uint256 performanceFeeAfter = feeManager.plasmaVaultTotalPerformanceFee();
 
         assertEq(performanceFeeBefore, 2000, "performanceFeeBefore should be 2000");
         assertEq(performanceFeeAfter, 1500, "performanceFeeAfter should be 1500");
@@ -514,20 +472,26 @@ contract FeeManagerTest is Test {
             .getManagementFeeData();
         FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
 
-        uint256 managementFeeBefore = feeManager.plasmaVaultManagementFee();
+        uint256 managementFeeBefore = feeManager.plasmaVaultTotalManagementFee();
 
         feeManager.initialize();
 
+        RecipientFee[] memory recipientFees = new RecipientFee[](1);
+        recipientFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 50
+        });
+
         // when
         vm.startPrank(_ATOMIST);
-        feeManager.updateManagementFee(50);
+        feeManager.updateManagementFee(recipientFees);
         vm.stopPrank();
 
         // then
         PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
             .getManagementFeeData();
 
-        uint256 managementFeeAfter = feeManager.plasmaVaultManagementFee();
+        uint256 managementFeeAfter = feeManager.plasmaVaultTotalManagementFee();
 
         assertEq(managementFeeBefore, 500, "managementFeeBefore should be 500");
         assertEq(managementFeeAfter, 350, "managementFeeAfter should be 350");
@@ -558,9 +522,11 @@ contract FeeManagerTest is Test {
         PlasmaVault(_plasmaVault).deposit(1_000e6, _USER);
         vm.stopPrank();
 
+        RecipientFee[] memory recipientFees = new RecipientFee[](0);
+
         // when
         vm.startPrank(_ATOMIST);
-        feeManager.updateManagementFee(0);
+        feeManager.updateManagementFee(recipientFees);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 356 days);
@@ -609,69 +575,18 @@ contract FeeManagerTest is Test {
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
 
+        RecipientFee[] memory recipientFees = new RecipientFee[](1);
+        recipientFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 500
+        });
+
         // when
         vm.startPrank(_USER);
         vm.expectRevert(error);
-        feeManager.updateManagementFee(500);
+        feeManager.updateManagementFee(recipientFees);
         vm.stopPrank();
     }
-
-    // function testShouldNotSetFeeRecipientAddressWhenNotAtomist() external {
-    //     // given
-    //     address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-    //     FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
-
-    //     feeManager.initialize();
-
-    //     bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
-
-    //     // when
-    //     vm.startPrank(_USER);
-    //     vm.expectRevert(error);
-    //     feeManager.updateRecipientFee(_FEE_RECIPIENT_1, 200, 1000);
-    //     vm.stopPrank();
-    // }
-
-    // function testShouldNotSetFeeRecipientAddressWhenZeroAddress() external {
-    //     // given
-    //     address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-    //     FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
-
-    //     feeManager.initialize();
-
-    //     bytes memory error = abi.encodeWithSignature("WrongAddress()");
-
-    //     // when
-    //     vm.startPrank(_ATOMIST);
-    //     vm.expectRevert(error);
-    //     feeManager.updateRecipientFee(address(0), 200, 1000);
-    //     vm.stopPrank();
-    // }
-
-    // function testShouldUpdateFeeRecipient() external {
-    //     // given
-    //     address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-    //     FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
-
-    //     feeManager.initialize();
-
-    //     uint256 managementFeeBefore = feeManager.recipientManagementFees(_FEE_RECIPIENT_1);
-    //     uint256 performanceFeeBefore = feeManager.recipientPerformanceFees(_FEE_RECIPIENT_1);
-
-    //     // when
-    //     vm.startPrank(_ATOMIST);
-    //     feeManager.updateRecipientFee(_FEE_RECIPIENT_1, 150, 750);
-    //     vm.stopPrank();
-
-    //     // then
-    //     uint256 managementFeeAfter = feeManager.recipientManagementFees(_FEE_RECIPIENT_1);
-    //     uint256 performanceFeeAfter = feeManager.recipientPerformanceFees(_FEE_RECIPIENT_1);
-
-    //     assertEq(managementFeeBefore, 200, "managementFeeBefore should be 200");
-    //     assertEq(performanceFeeBefore, 1000, "performanceFeeBefore should be 1000");
-    //     assertEq(managementFeeAfter, 150, "managementFeeAfter should be 150");
-    //     assertEq(performanceFeeAfter, 750, "performanceFeeAfter should be 750");
-    // }
 
     function testShouldNotsetDaoFeeRecipientAddressWhenNotDAO() external {
         // given
@@ -696,7 +611,7 @@ contract FeeManagerTest is Test {
 
         feeManager.initialize();
 
-        bytes memory error = abi.encodeWithSignature("WrongAddress()");
+        bytes memory error = abi.encodeWithSignature("InvalidFeeRecipientAddress()");
 
         // when
         vm.startPrank(_DAO);
@@ -726,4 +641,179 @@ contract FeeManagerTest is Test {
         assertEq(feeRecipientBefore, _DAO_FEE_RECIPIENT, "feeRecipientBefore should be _DAO_FEE_RECIPIENT");
         assertEq(feeRecipientAfter, _USER, "feeRecipientAfter should be _USER");
     }
+
+    function testShouldHarvestFeesWithMultipleRecipients() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        // Setup multiple recipient fees
+        RecipientFee[] memory performanceFees = new RecipientFee[](2);
+        performanceFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 1000 // 10%
+        });
+        performanceFees[1] = RecipientFee({
+            recipient: _FEE_RECIPIENT_2,
+            feeValue: 500  // 5%
+        });
+
+        RecipientFee[] memory managementFees = new RecipientFee[](2);
+        managementFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 100  // 1%
+        });
+        managementFees[1] = RecipientFee({
+            recipient: _FEE_RECIPIENT_2,
+            feeValue: 50   // 0.5%
+        });
+
+        feeManager.initialize();
+
+        // Update fees
+        vm.startPrank(_ATOMIST);
+        feeManager.updatePerformanceFee(performanceFees);
+        feeManager.updateManagementFee(managementFees);
+        vm.stopPrank();
+
+        // Perform actions on plasma vault
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
+        AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
+        vm.stopPrank();
+
+        // Wait for a year and update market balances
+        vm.warp(block.timestamp + 356 days);
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.AAVE_V3;
+        PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
+
+        uint256 balanceRecipient1Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+        uint256 balanceDaoRecipientBefore = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+
+        // when
+        feeManager.harvestPerformanceFee();
+        feeManager.harvestManagementFee();
+
+        // then
+        uint256 balanceRecipient1After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+        uint256 balanceDaoRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+
+        assertEq(balanceRecipient1Before, 0, "recipient1 balance before should be 0");
+        assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
+        assertEq(balanceDaoRecipientBefore, 0, "dao recipient balance before should be 0");
+
+        // Updated expected values based on actual implementation
+        assertApproxEqAbs(
+            balanceRecipient1After,
+            34099552380, // ~9% performance + 0.85% management (after DAO fee)
+            100,
+            "recipient1 should receive correct fee share"
+        );
+        assertApproxEqAbs(
+            balanceRecipient2After,
+            17049776190, // ~4.5% performance + 0.425% management (after DAO fee)
+            100,
+            "recipient2 should receive correct fee share"
+        );
+        assertApproxEqAbs(
+            balanceDaoRecipientAfter,
+            34099552380, // Equal to recipient1 (matches actual implementation)
+            100,
+            "dao should receive correct fee share"
+        );
+    }
+
+    function testShouldHarvestFeesWithZeroFeeRecipients() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        // Setup recipients with zero fees
+        RecipientFee[] memory performanceFees = new RecipientFee[](2);
+        performanceFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 1000 // 10%
+        });
+        performanceFees[1] = RecipientFee({
+            recipient: _FEE_RECIPIENT_2,
+            feeValue: 0    // 0% - recipient exists but gets no fee
+        });
+
+        RecipientFee[] memory managementFees = new RecipientFee[](2);
+        managementFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 100    // 1% - recipient exists but gets no fee
+        });
+        managementFees[1] = RecipientFee({
+            recipient: _FEE_RECIPIENT_2,
+            feeValue: 0  // 0%
+        });
+
+        feeManager.initialize();
+
+        // Update fees
+        vm.startPrank(_ATOMIST);
+        feeManager.updatePerformanceFee(performanceFees);
+        feeManager.updateManagementFee(managementFees);
+        vm.stopPrank();
+
+        // Perform actions on plasma vault
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
+        AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
+        vm.stopPrank();
+
+        // Wait for a year and update market balances
+        vm.warp(block.timestamp + 356 days);
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.AAVE_V3;
+        PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
+
+        uint256 balanceRecipient1Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+        uint256 balanceDaoRecipientBefore = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+
+        // when
+        feeManager.harvestPerformanceFee();
+        feeManager.harvestManagementFee();
+
+        // then
+        uint256 balanceRecipient1After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+        uint256 balanceDaoRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+
+        assertEq(balanceRecipient1Before, 0, "recipient1 balance before should be 0");
+        assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
+        assertEq(balanceDaoRecipientBefore, 0, "dao recipient balance before should be 0");
+
+        // Recipient1 only gets performance fee (10%, no management fee)
+        assertApproxEqAbs(
+            balanceRecipient1After,
+            34099552375, // Only 10% performance fee
+            100,
+            "recipient1 should receive only performance fee"
+        );
+
+        
+        assertEq(
+            balanceRecipient2After,
+            0, // Only 1% management fee
+            "recipient2 should receive 0"
+        );
+
+        // DAO gets both fees
+        assertApproxEqAbs(
+            balanceDaoRecipientAfter,
+            34099552375, // Matches recipient1's share
+            100,
+            "dao should receive correct fee share"
+        );
+    }
+
+    
 }

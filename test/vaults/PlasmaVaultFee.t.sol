@@ -1309,10 +1309,7 @@ contract PlasmaVaultFeeTest is Test {
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
-
-        // 100 000000 !=
-        // 95 238095
-
+        
         performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
         managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
         //user one
