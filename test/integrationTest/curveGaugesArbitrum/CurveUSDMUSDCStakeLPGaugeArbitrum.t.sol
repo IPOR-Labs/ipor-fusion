@@ -10,7 +10,7 @@ import {CurveChildLiquidityGaugeSupplyFuse, CurveChildLiquidityGaugeSupplyFuseEn
 import {CurveChildLiquidityGaugeBalanceFuse} from "../../../contracts/fuses/curve_gauge/CurveChildLiquidityGaugeBalanceFuse.sol";
 import {IChildLiquidityGauge} from "../../../contracts/fuses/curve_gauge/ext/IChildLiquidityGauge.sol";
 import {ICurveStableswapNG} from "../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {PlasmaVault, FeeConfig, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData, RecipientFees} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -24,7 +24,7 @@ import {InitializationData} from "../../../contracts/managers/access/IporFusionA
 import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/chains/arbitrum/USDMPriceFeedArbitrum.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -812,13 +812,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            iporDaoFeeRecipientAddress: address(0),
-            recipients: new RecipientFees[](0)
-        });
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _setupPlasmaVault() private {

@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData, RecipientFees} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
@@ -19,7 +19,7 @@ import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -226,13 +226,7 @@ contract PlasmaVaultDepositTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 totalSupplyCap,
@@ -282,13 +276,7 @@ contract PlasmaVaultDepositTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,

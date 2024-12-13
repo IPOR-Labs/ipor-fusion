@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData, RecipientFees} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVaultConfigLib} from "./../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
@@ -20,7 +20,7 @@ import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -77,13 +77,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -123,13 +117,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -177,13 +165,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -221,13 +203,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -265,13 +241,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -306,13 +276,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -349,13 +313,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -403,13 +361,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -454,13 +406,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -504,13 +450,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -557,13 +497,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -607,13 +541,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -671,13 +599,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -724,13 +646,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -779,13 +695,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -831,13 +741,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -900,13 +804,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1014,13 +912,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1082,13 +974,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1167,13 +1053,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1253,13 +1133,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1313,13 +1187,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1381,13 +1249,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 supplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1448,13 +1310,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1521,13 +1377,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1582,13 +1432,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1638,13 +1482,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1701,13 +1539,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1764,13 +1596,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1850,13 +1676,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1898,13 +1718,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -1951,13 +1765,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2007,13 +1815,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2058,13 +1860,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2109,13 +1905,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2165,13 +1955,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2213,13 +1997,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2266,13 +2044,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2321,13 +2093,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2418,13 +2184,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2527,13 +2287,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2626,13 +2380,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2727,13 +2475,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2840,13 +2582,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -2944,13 +2680,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -3009,13 +2739,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -3090,13 +2814,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -3154,13 +2872,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -3217,13 +2929,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -3284,13 +2990,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -3342,13 +3042,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -3384,13 +3078,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -3452,13 +3140,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -3508,13 +3190,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 marketConfigs,
                 initialSupplyFuses,
                 balanceFuses,
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0),
-                    recipients: new RecipientFees[](0)
-                }),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,

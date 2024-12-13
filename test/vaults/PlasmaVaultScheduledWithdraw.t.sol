@@ -5,14 +5,14 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, RecipientFees} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 contract PlasmaVaultScheduledWithdraw is Test {
     address private constant _ATOMIST = address(1111111);
     address private constant _ALPHA = address(2222222);
@@ -73,13 +73,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            iporDaoFeeRecipientAddress: address(0),
-            recipients: new RecipientFees[](0)
-        });
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createAccessManager() private {

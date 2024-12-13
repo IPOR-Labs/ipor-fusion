@@ -20,8 +20,7 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction, RecipientFees} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -41,6 +40,8 @@ import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/Callba
 
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
+
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 struct VaultBalance {
     uint256 eulerPrimeUsdc;
@@ -227,13 +228,7 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            iporDaoFeeRecipientAddress: address(0),
-            recipients: new RecipientFees[](0)
-        });
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createAccessManager() private returns (address accessManager_) {

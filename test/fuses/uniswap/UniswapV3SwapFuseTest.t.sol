@@ -7,7 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData, RecipientFees} from "../../../contracts/vaults/PlasmaVault.sol";
+import {FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 import {UniswapV3SwapFuse, UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
@@ -18,7 +18,8 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 contract UniswapV3SwapFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -194,13 +195,7 @@ contract UniswapV3SwapFuseTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
-        feeConfig_ = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            iporDaoFeeRecipientAddress: address(0),
-            recipients: new RecipientFees[](0)
-        });
+        feeConfig_ = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createAccessManager() private returns (address accessManager_) {

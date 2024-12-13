@@ -11,7 +11,7 @@ import {CurveChildLiquidityGaugeBalanceFuse} from "../../../contracts/fuses/curv
 import {CurveGaugeTokenClaimFuse} from "../../../contracts/rewards_fuses/curve_gauges/CurveGaugeTokenClaimFuse.sol";
 import {IChildLiquidityGauge} from "../../../contracts/fuses/curve_gauge/ext/IChildLiquidityGauge.sol";
 import {ICurveStableswapNG} from "../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {PlasmaVault, FeeConfig, FuseAction, PlasmaVault, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData, RecipientFees} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, FuseAction, PlasmaVault, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
@@ -24,7 +24,7 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVa
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -577,13 +577,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            iporDaoFeeRecipientAddress: address(0),
-            recipients: new RecipientFees[](0)
-        });
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _addClaimFuseToClaimRewardsManager() private {

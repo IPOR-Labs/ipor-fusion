@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData, RecipientFees} from "../../../contracts/vaults/PlasmaVault.sol";
+import {FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
@@ -22,8 +22,9 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {RamsesClaimFuse} from "../../../contracts/rewards_fuses/ramses/RamsesClaimFuse.sol";
 import {IporFusionAccessManagerInitializerLibV1, PlasmaVaultAddress, InitializationData} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {DataForInitialization} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
+
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 interface IGAUGE {
     function rewards(uint256 index) external view returns (address);
@@ -193,13 +194,7 @@ contract RamsesClaimFuseTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            iporDaoFeeRecipientAddress: address(0),
-            recipients: new RecipientFees[](0)
-        });
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createAccessManager() private returns (address accessManager_) {

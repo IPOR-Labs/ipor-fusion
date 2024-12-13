@@ -7,24 +7,29 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {FeeAccount} from "./FeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
-import {RecipientFees} from "../../vaults/PlasmaVault.sol";
+import {RecipientFee} from "../../vaults/PlasmaVault.sol";
 
 /// @notice Struct containing initialization data for the fee manager
-/// @param iporDaoManagementFee Management fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
-/// @param iporDaoPerformanceFee Performance fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
-/// @param atomistManagementFee Management fee percentage for the atomist (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
-/// @param atomistPerformanceFee Performance fee percentage for the atomist (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
 /// @param initialAuthority Address of the initial authority
 /// @param plasmaVault Address of the plasma vault
-/// @param feeRecipientAddresses Addresses of the fee recipients
+/// @param iporDaoManagementFee Management fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @param iporDaoPerformanceFee Performance fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
 /// @param iporDaoFeeRecipientAddress Address of the DAO fee recipient
+/// @param recipientManagementFees Array of recipient management fees
+/// @param recipientPerformanceFees Array of recipient performance fees
 struct FeeManagerInitData {
     address initialAuthority;
     address plasmaVault;
     uint256 iporDaoManagementFee;
     uint256 iporDaoPerformanceFee;
     address iporDaoFeeRecipientAddress;
-    RecipientFees[] recipients;
+    RecipientFee[] recipientManagementFees;
+    RecipientFee[] recipientPerformanceFees;
+}
+
+struct FeeRecipientData {
+    mapping(address recipient => uint256 feeValue) recipientFees;
+    address[] recipientAddresses;
 }
 
 /// @title FeeManager
@@ -70,14 +75,9 @@ contract FeeManager is AccessManaged {
     /// @notice Address that receives the IPOR DAO portion of fees based on IPOR_DAO_MANAGEMENT_FEE and IPOR_DAO_PERFORMANCE_FEE values
     address public iporDaoFeeRecipientAddress;
 
-    /// @notice List of addresses that receive fee distributions based on recipientManagementFees and recipientPerformanceFees values
-    address[] public feeRecipientAddresses;
+    FeeRecipientData private managementFeeRecipientData;
 
-    /// @notice Maps recipient addresses to their management fee percentages
-    mapping(address recipient => uint256 managementFee) public recipientManagementFees;
-
-    /// @notice Maps recipient addresses to their performance fee percentages, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    mapping(address recipient => uint256 performanceFee) public recipientPerformanceFees;
+    FeeRecipientData private performanceFeeRecipientData;
 
     /// @notice Total performance fee percentage (sum of all recipients performance fees + DAO performance fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
     uint256 public plasmaVaultPerformanceFee;
@@ -99,21 +99,32 @@ contract FeeManager is AccessManaged {
         uint256 totalManagementFee = IPOR_DAO_MANAGEMENT_FEE;
         uint256 totalPerformanceFee = IPOR_DAO_PERFORMANCE_FEE;
 
-        if (initData_.recipients.length > 0) {
-            address[] memory recipients = new address[](initData_.recipients.length);    
+        if (initData_.recipientManagementFees.length > 0) {
+            address[] memory managementFeeRecipientAddresses = new address[](initData_.recipientManagementFees.length);
 
-            for (uint256 i = 0; i < initData_.recipients.length; i++) {
-                recipients[i] = initData_.recipients[i].recipient;
-                recipientManagementFees[initData_.recipients[i].recipient] = initData_.recipients[i].managementFee;
-                recipientPerformanceFees[initData_.recipients[i].recipient] = initData_.recipients[i].performanceFee;
-                feeRecipientAddresses = recipients;
+            for (uint256 i = 0; i < initData_.recipientManagementFees.length; i++) {
+                managementFeeRecipientAddresses[i] = initData_.recipientManagementFees[i].recipient;
+                totalManagementFee += initData_.recipientManagementFees[i].feeValue;
+                managementFeeRecipientData.recipientFees[initData_.recipientManagementFees[i].recipient] = initData_
+                    .recipientManagementFees[i]
+                    .feeValue;
             }
+            managementFeeRecipientData.recipientAddresses = managementFeeRecipientAddresses;
+        }
 
-            for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
-                totalManagementFee += recipientManagementFees[feeRecipientAddresses[i]];
-                totalPerformanceFee += recipientPerformanceFees[feeRecipientAddresses[i]];
+        if (initData_.recipientPerformanceFees.length > 0) {
+            address[] memory performanceFeeRecipientAddresses = new address[](
+                initData_.recipientPerformanceFees.length
+            );
+
+            for (uint256 i = 0; i < initData_.recipientPerformanceFees.length; i++) {
+                performanceFeeRecipientAddresses[i] = initData_.recipientPerformanceFees[i].recipient;
+                totalPerformanceFee += initData_.recipientPerformanceFees[i].feeValue;
+                performanceFeeRecipientData.recipientFees[initData_.recipientPerformanceFees[i].recipient] = initData_
+                    .recipientPerformanceFees[i]
+                    .feeValue;
             }
-        
+            performanceFeeRecipientData.recipientAddresses = performanceFeeRecipientAddresses;
         }
 
         /// @dev Plasma Vault fees are the sum of all recipients fees + DAO fee, respectively for performance and management fees.
@@ -144,17 +155,19 @@ contract FeeManager is AccessManaged {
     /// and the remaining amount to the fee recipient. The function emits events for each transfer.
     /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
     function harvestManagementFee() public onlyInitialized {
-        if (feeRecipientAddresses.length == 0 || iporDaoFeeRecipientAddress == address(0)) {
+        if (iporDaoFeeRecipientAddress == address(0)) {
             revert InvalidFeeRecipientAddress();
         }
 
         if (plasmaVaultManagementFee == 0) {
+            /// @dev If the management fee is 0, no fees are collected
             return;
         }
 
-        uint256 balance = IERC4626(PLASMA_VAULT).balanceOf(MANAGEMENT_FEE_ACCOUNT);
+        uint256 managementFeeBalance = IERC4626(PLASMA_VAULT).balanceOf(MANAGEMENT_FEE_ACCOUNT);
 
-        if (balance == 0) {
+        if (managementFeeBalance == 0) {
+            /// @dev If the balance is 0, no fees are collected
             return;
         }
 
@@ -163,24 +176,42 @@ contract FeeManager is AccessManaged {
 
         uint256 percentageToTransferToDao = (IPOR_DAO_MANAGEMENT_FEE * numberOfDecimals) / plasmaVaultManagementFee;
 
-        uint256 transferAmountToDao = Math.mulDiv(balance, percentageToTransferToDao, numberOfDecimals);
+        uint256 transferAmountToDao = Math.mulDiv(managementFeeBalance, percentageToTransferToDao, numberOfDecimals);
 
         IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, iporDaoFeeRecipientAddress, transferAmountToDao);
+
         emit HarvestManagementFee(iporDaoFeeRecipientAddress, transferAmountToDao);
 
-        if (balance <= transferAmountToDao) {
+        if (managementFeeBalance <= transferAmountToDao) {
             return;
         }
 
-        uint256 remainingBalance = balance - transferAmountToDao;
+        uint256 remainingBalance = managementFeeBalance - transferAmountToDao;
+
+        if (remainingBalance == 0) {
+            return;
+        }
+
+        address[] memory feeRecipientAddresses = managementFeeRecipientData.recipientAddresses;
+
+        address recipient;
+        uint256 recipientShare;
+        uint256 recipientPercentage;
 
         for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
-            address recipient = feeRecipientAddresses[i];
-            uint256 recipientPercentage = (recipientManagementFees[recipient] * numberOfDecimals) /
+            recipient = feeRecipientAddresses[i];
+            recipientPercentage =
+                (managementFeeRecipientData.recipientFees[recipient] * numberOfDecimals) /
                 plasmaVaultManagementFee;
-            uint256 recipientShare = Math.mulDiv(remainingBalance, recipientPercentage, numberOfDecimals);
+            recipientShare = Math.mulDiv(remainingBalance, recipientPercentage, numberOfDecimals);
 
             if (recipientShare > 0) {
+                if (remainingBalance < recipientShare) {
+                    recipientShare = remainingBalance;
+                }
+
+                remainingBalance -= recipientShare;
+
                 IERC4626(PLASMA_VAULT).transferFrom(MANAGEMENT_FEE_ACCOUNT, recipient, recipientShare);
                 emit HarvestManagementFee(recipient, recipientShare);
             }
@@ -193,17 +224,19 @@ contract FeeManager is AccessManaged {
     /// and the remaining amount to the fee recipient. The function emits events for each transfer.
     /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
     function harvestPerformanceFee() public onlyInitialized {
-        if (feeRecipientAddresses.length == 0 || iporDaoFeeRecipientAddress == address(0)) {
+        if (iporDaoFeeRecipientAddress == address(0)) {
             revert InvalidFeeRecipientAddress();
         }
 
         if (plasmaVaultPerformanceFee == 0) {
+            /// @dev If the performance fee is 0, no fees are collected
             return;
         }
 
-        uint256 balance = IERC4626(PLASMA_VAULT).balanceOf(PERFORMANCE_FEE_ACCOUNT);
+        uint256 performanceFeeBalance = IERC4626(PLASMA_VAULT).balanceOf(PERFORMANCE_FEE_ACCOUNT);
 
-        if (balance == 0) {
+        if (performanceFeeBalance == 0) {
+            /// @dev If the balance is 0, no fees are collected
             return;
         }
 
@@ -212,25 +245,47 @@ contract FeeManager is AccessManaged {
 
         uint256 percentToTransferToDao = (IPOR_DAO_PERFORMANCE_FEE * numberOfDecimals) / plasmaVaultPerformanceFee;
 
-        uint256 transferAmountToDao = Math.mulDiv(balance, percentToTransferToDao, numberOfDecimals);
+        uint256 transferAmountToDao = Math.mulDiv(performanceFeeBalance, percentToTransferToDao, numberOfDecimals);
 
-        IERC4626(PLASMA_VAULT).transferFrom(PERFORMANCE_FEE_ACCOUNT, iporDaoFeeRecipientAddress, transferAmountToDao);
+        if (transferAmountToDao > 0) {
+            IERC4626(PLASMA_VAULT).transferFrom(
+                PERFORMANCE_FEE_ACCOUNT,
+                iporDaoFeeRecipientAddress,
+                transferAmountToDao
+            );
+            emit HarvestPerformanceFee(iporDaoFeeRecipientAddress, transferAmountToDao);
+        }
 
-        emit HarvestPerformanceFee(iporDaoFeeRecipientAddress, transferAmountToDao);
-
-        if (balance <= transferAmountToDao) {
+        if (performanceFeeBalance <= transferAmountToDao) {
             return;
         }
 
-        uint256 remainingBalance = balance - transferAmountToDao;
+        uint256 remainingBalance = performanceFeeBalance - transferAmountToDao;
 
-        for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
-            address recipient = feeRecipientAddresses[i];
-            uint256 recipientPercentage = (recipientPerformanceFees[recipient] * numberOfDecimals) /
+        if (remainingBalance == 0) {
+            return;
+        }
+
+        address[] memory feeRecipientAddresses = performanceFeeRecipientData.recipientAddresses;
+
+        address recipient;
+        uint256 recipientShare;
+        uint256 recipientPercentage;
+
+        for (uint256 i = 0; i < feeRecipientAddresses.length && remainingBalance > 0; i++) {
+            recipient = feeRecipientAddresses[i];
+            recipientPercentage =
+                (performanceFeeRecipientData.recipientFees[recipient] * numberOfDecimals) /
                 plasmaVaultPerformanceFee;
-            uint256 recipientShare = Math.mulDiv(remainingBalance, recipientPercentage, numberOfDecimals);
+            recipientShare = Math.mulDiv(remainingBalance, recipientPercentage, numberOfDecimals);
 
             if (recipientShare > 0) {
+                if (remainingBalance < recipientShare) {
+                    recipientShare = remainingBalance;
+                }
+
+                remainingBalance -= recipientShare;
+
                 IERC4626(PLASMA_VAULT).transferFrom(PERFORMANCE_FEE_ACCOUNT, recipient, recipientShare);
                 emit HarvestPerformanceFee(recipient, recipientShare);
             }
@@ -279,140 +334,166 @@ contract FeeManager is AccessManaged {
         iporDaoFeeRecipientAddress = iporDaoFeeRecipientAddress_;
     }
 
-    /**
-     * @notice Adds a fee recipient.
-     * @dev This function can only be called by an authorized account (ATOMIST_ROLE).
-     * @param recipient The address to add as a fee recipient.
-     * @custom:error WrongAddress Thrown if the provided address is the zero address.
-     * @custom:error DuplicateFeeRecipient Thrown if the recipient is already added.
-     */
-    function addFeeRecipient(address recipient, uint256 managementFee_, uint256 performanceFee_) external restricted {
-        if (recipient == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
-            if (feeRecipientAddresses[i] == recipient) {
-                revert DuplicateFeeRecipient();
-            }
-        }
+    // /**
+    //  * @notice Adds a fee recipient.
+    //  * @dev This function can only be called by an authorized account (ATOMIST_ROLE).
+    //  * @param recipient The address to add as a fee recipient.
+    //  * @custom:error WrongAddress Thrown if the provided address is the zero address.
+    //  * @custom:error DuplicateFeeRecipient Thrown if the recipient is already added.
+    //  */
+    // function addFeeRecipient(address recipient, uint256 managementFee_, uint256 performanceFee_) external restricted {
+    //     if (recipient == address(0)) {
+    //         revert Errors.WrongAddress();
+    //     }
+    //     for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
+    //         if (feeRecipientAddresses[i] == recipient) {
+    //             revert DuplicateFeeRecipient();
+    //         }
+    //     }
 
-        feeRecipientAddresses.push(recipient);
-        recipientManagementFees[recipient] = managementFee_;
-        recipientPerformanceFees[recipient] = performanceFee_;
+    //     feeRecipientAddresses.push(recipient);
+    //     recipientManagementFees[recipient] = managementFee_;
+    //     recipientPerformanceFees[recipient] = performanceFee_;
 
-        // Update total fees
-        uint256 newManagementFee = plasmaVaultManagementFee + managementFee_;
-        uint256 newPerformanceFee = plasmaVaultPerformanceFee + performanceFee_;
+    //     // Update total fees
+    //     uint256 newManagementFee = plasmaVaultManagementFee + managementFee_;
+    //     uint256 newPerformanceFee = plasmaVaultPerformanceFee + performanceFee_;
 
-        // Configure new fees in plasma vault
-        PlasmaVaultGovernance(PLASMA_VAULT).configureManagementFee(MANAGEMENT_FEE_ACCOUNT, newManagementFee);
-        PlasmaVaultGovernance(PLASMA_VAULT).configurePerformanceFee(PERFORMANCE_FEE_ACCOUNT, newPerformanceFee);
+    //     // Configure new fees in plasma vault
+    //     PlasmaVaultGovernance(PLASMA_VAULT).configureManagementFee(MANAGEMENT_FEE_ACCOUNT, newManagementFee);
+    //     PlasmaVaultGovernance(PLASMA_VAULT).configurePerformanceFee(PERFORMANCE_FEE_ACCOUNT, newPerformanceFee);
 
-        plasmaVaultManagementFee = newManagementFee;
-        plasmaVaultPerformanceFee = newPerformanceFee;
+    //     plasmaVaultManagementFee = newManagementFee;
+    //     plasmaVaultPerformanceFee = newPerformanceFee;
 
-        emit FeeRecipientAdded(recipient);
-        emit RecipientFeeUpdated(recipient, managementFee_, performanceFee_);
-        emit ManagementFeeUpdated(newManagementFee);
-        emit PerformanceFeeUpdated(newPerformanceFee);
-    }
+    //     emit FeeRecipientAdded(recipient);
+    //     emit RecipientFeeUpdated(recipient, managementFee_, performanceFee_);
+    //     emit ManagementFeeUpdated(newManagementFee);
+    //     emit PerformanceFeeUpdated(newPerformanceFee);
+    // }
 
-    /**
-     * @notice Removes a fee recipient.
-     * @dev This function can only be called by an authorized account (ATOMIST_ROLE).
-     * @param recipient The address to remove as a fee recipient.
-     * @custom:error WrongAddress Thrown if the provided address is the zero address.
-     * @custom:error FeeRecipientNotFound Thrown if the recipient is not found.
-     * @custom:error EmptyFeeRecipients Thrown if there are no fee recipients left.
-     */
-    function removeFeeRecipient(address recipient) external restricted {
-        if (feeRecipientAddresses.length == 1) {
-            revert EmptyFeeRecipients();
-        }
+    // /**
+    //  * @notice Removes a fee recipient.
+    //  * @dev This function can only be called by an authorized account (ATOMIST_ROLE).
+    //  * @param recipient The address to remove as a fee recipient.
+    //  * @custom:error WrongAddress Thrown if the provided address is the zero address.
+    //  * @custom:error FeeRecipientNotFound Thrown if the recipient is not found.
+    //  * @custom:error EmptyFeeRecipients Thrown if there are no fee recipients left.
+    //  */
+    // function removeFeeRecipient(address recipient) external restricted {
+    //     if (feeRecipientAddresses.length == 1) {
+    //         revert EmptyFeeRecipients();
+    //     }
 
-        uint256 recipientIndex;
-        bool found;
+    //     uint256 recipientIndex;
+    //     bool found;
 
-        for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
-            if (feeRecipientAddresses[i] == recipient) {
-                recipientIndex = i;
-                found = true;
-                break;
-            }
-        }
+    //     for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
+    //         if (feeRecipientAddresses[i] == recipient) {
+    //             recipientIndex = i;
+    //             found = true;
+    //             break;
+    //         }
+    //     }
 
-        if (!found) {
-            revert FeeRecipientNotFound();
-        }
+    //     if (!found) {
+    //         revert FeeRecipientNotFound();
+    //     }
 
-        // Replace recipient with last element and remove last element
-        feeRecipientAddresses[recipientIndex] = feeRecipientAddresses[feeRecipientAddresses.length - 1];
-        feeRecipientAddresses.pop();
+    //     // Replace recipient with last element and remove last element
+    //     feeRecipientAddresses[recipientIndex] = feeRecipientAddresses[feeRecipientAddresses.length - 1];
+    //     feeRecipientAddresses.pop();
 
-        // Clean up the fee mappings
-        delete recipientManagementFees[recipient];
-        delete recipientPerformanceFees[recipient];
+    //     // Clean up the fee mappings
+    //     delete recipientManagementFees[recipient];
+    //     delete recipientPerformanceFees[recipient];
 
-        emit FeeRecipientRemoved(recipient);
-    }
+    //     emit FeeRecipientRemoved(recipient);
+    // }
 
-    /**
-     * @notice Updates individual recipient fees.
-     * @dev This function can only be called by an authorized account (ATOMIST_ROLE).
-     * @param recipient The address of the recipient to update fees for.
-     * @param managementFee_ The new management fee percentage for the recipient.
-     * @param performanceFee_ The new performance fee percentage for the recipient.
-     * @custom:error WrongAddress Thrown if the provided address is the zero address.
-     * @custom:error FeeRecipientNotFound Thrown if the recipient is not found.
-     */
-    function updateRecipientFees(
-        address recipient,
-        uint256 managementFee_,
-        uint256 performanceFee_
-    ) external restricted {
-        if (recipient == address(0)) revert Errors.WrongAddress();
+    // /**
+    //  * @notice Updates individual recipient fees.
+    //  * @dev This function can only be called by an authorized account (ATOMIST_ROLE).
+    //  * @param recipient The address of the recipient to update fees for.
+    //  * @param managementFee_ The new management fee percentage for the recipient.
+    //  * @param performanceFee_ The new performance fee percentage for the recipient.
+    //  * @custom:error WrongAddress Thrown if the provided address is the zero address.
+    //  * @custom:error FeeRecipientNotFound Thrown if the recipient is not found.
+    //  */
+    // // function updateRecipientFee(
+    //     address recipient,
+    //     uint256 managementFee_,
+    //     uint256 performanceFee_
+    // ) external restricted {
+    //     if (recipient == address(0)) revert Errors.WrongAddress();
 
-        bool isValidRecipient = false;
-        for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
-            if (feeRecipientAddresses[i] == recipient) {
-                isValidRecipient = true;
-                break;
-            }
-        }
-        if (!isValidRecipient) revert FeeRecipientNotFound();
+    //     bool isValidRecipient = false;
+    //     for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
+    //         if (feeRecipientAddresses[i] == recipient) {
+    //             isValidRecipient = true;
+    //             break;
+    //         }
+    //     }
+    //     if (!isValidRecipient) revert FeeRecipientNotFound();
 
-        // Harvest existing fees before updating
-        harvestManagementFee();
-        harvestPerformanceFee();
+    //     // Harvest existing fees before updating
+    //     harvestManagementFee();
+    //     harvestPerformanceFee();
 
-        recipientManagementFees[recipient] = managementFee_;
-        recipientPerformanceFees[recipient] = performanceFee_;
+    //     recipientManagementFees[recipient] = managementFee_;
+    //     recipientPerformanceFees[recipient] = performanceFee_;
 
-        // Recalculate total fees
-        uint256 totalManagementFee = IPOR_DAO_MANAGEMENT_FEE;
-        uint256 totalPerformanceFee = IPOR_DAO_PERFORMANCE_FEE;
+    //     // Recalculate total fees
+    //     uint256 totalManagementFee = IPOR_DAO_MANAGEMENT_FEE;
+    //     uint256 totalPerformanceFee = IPOR_DAO_PERFORMANCE_FEE;
 
-        for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
-            totalManagementFee += recipientManagementFees[feeRecipientAddresses[i]];
-            totalPerformanceFee += recipientPerformanceFees[feeRecipientAddresses[i]];
-        }
+    //     for (uint256 i = 0; i < feeRecipientAddresses.length; i++) {
+    //         totalManagementFee += recipientManagementFees[feeRecipientAddresses[i]];
+    //         totalPerformanceFee += recipientPerformanceFees[feeRecipientAddresses[i]];
+    //     }
 
-        // Update the plasma vault with new total fees
-        PlasmaVaultGovernance(PLASMA_VAULT).configureManagementFee(MANAGEMENT_FEE_ACCOUNT, totalManagementFee);
-        PlasmaVaultGovernance(PLASMA_VAULT).configurePerformanceFee(PERFORMANCE_FEE_ACCOUNT, totalPerformanceFee);
+    //     // Update the plasma vault with new total fees
+    //     PlasmaVaultGovernance(PLASMA_VAULT).configureManagementFee(MANAGEMENT_FEE_ACCOUNT, totalManagementFee);
+    //     PlasmaVaultGovernance(PLASMA_VAULT).configurePerformanceFee(PERFORMANCE_FEE_ACCOUNT, totalPerformanceFee);
 
-        plasmaVaultManagementFee = totalManagementFee;
-        plasmaVaultPerformanceFee = totalPerformanceFee;
+    //     plasmaVaultManagementFee = totalManagementFee;
+    //     plasmaVaultPerformanceFee = totalPerformanceFee;
 
-        emit RecipientFeeUpdated(recipient, managementFee_, performanceFee_);
-        emit ManagementFeeUpdated(totalManagementFee);
-        emit PerformanceFeeUpdated(totalPerformanceFee);
-    }
+    //     emit RecipientFeeUpdated(recipient, managementFee_, performanceFee_);
+    //     emit ManagementFeeUpdated(totalManagementFee);
+    //     emit PerformanceFeeUpdated(totalPerformanceFee);
+    // }
 
     modifier onlyInitialized() {
         if (initialized == 0) {
             revert NotInitialized();
         }
         _;
+    }
+
+    /// @notice Gets the management fee for a specific recipient
+    /// @param recipient The address of the recipient
+    /// @return The management fee value
+    function getManagementFee(address recipient) external view returns (uint256) {
+        return managementFeeRecipientData.recipientFees[recipient];
+    }
+
+    /// @notice Gets all management fee recipient addresses
+    /// @return Array of recipient addresses
+    function getManagementFeeRecipients() external view returns (address[] memory) {
+        return managementFeeRecipientData.recipientAddresses;
+    }
+
+    /// @notice Gets the performance fee for a specific recipient
+    /// @param recipient The address of the recipient
+    /// @return The performance fee value
+    function getPerformanceFee(address recipient) external view returns (uint256) {
+        return performanceFeeRecipientData.recipientFees[recipient];
+    }
+
+    /// @notice Gets all performance fee recipient addresses
+    /// @return Array of recipient addresses
+    function getPerformanceFeeRecipients() external view returns (address[] memory) {
+        return performanceFeeRecipientData.recipientAddresses;
     }
 }

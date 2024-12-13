@@ -80,26 +80,26 @@ struct MarketSubstratesConfig {
 
 /// @notice Struct containing the fees for a recipient
 /// @param recipient The address of the recipient
-/// @param managementFee The management fee percentage for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
-/// @param performanceFee The performance fee percentage for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
-struct RecipientFees {
+/// @param feeValue The fee value for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+struct RecipientFee {
     address recipient;
-    uint256 managementFee;
-    uint256 performanceFee;
+    uint256 feeValue;
 }
 
 /// @notice FeeConfig is a struct that represents the configuration of fees in the Plasma Vault
 struct FeeConfig {
+    /// @notice The address of the fee factory
+    address feeFactory;
     /// @notice The management fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 iporDaoManagementFee;
     /// @notice The performance fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 iporDaoPerformanceFee;
-    /// @notice The address of the fee factory
-    address feeFactory;
     /// @notice The address of the DAO fee recipient
     address iporDaoFeeRecipientAddress;
-    /// @notice The list of recipients and their fees (management and performance fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    RecipientFees[] recipients;
+    /// @notice The list of recipients and their fees (management fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    RecipientFee[] recipientManagementFees;
+    /// @notice The list of recipients and their fees (performance fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    RecipientFee[] recipientPerformanceFees;
 }
 
 /// @title Main contract of the Plasma Vault in ERC4626 standard - responsible for managing assets and shares by the Alphas via Fuses.
@@ -185,7 +185,8 @@ contract PlasmaVault is
                 iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
                 iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
                 iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress,
-                recipients: initData_.feeConfig.recipients
+                recipientManagementFees: initData_.feeConfig.recipientManagementFees,
+                recipientPerformanceFees: initData_.feeConfig.recipientPerformanceFees
             })
         );
 

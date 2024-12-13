@@ -5,7 +5,7 @@ import {Test, Vm} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, MarketSubstratesConfig, FuseAction, RecipientFees} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, MarketSubstratesConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -20,7 +20,7 @@ import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {IComet} from "../../contracts/fuses/compound_v3/ext/IComet.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 
 contract PlasmaVaultUpdateMarketsBalances is Test {
     address private constant _ATOMIST = address(1111111);
@@ -135,13 +135,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            iporDaoFeeRecipientAddress: address(0),
-            recipients: new RecipientFees[](0)
-        });
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createFuse() private returns (address[] memory) {
