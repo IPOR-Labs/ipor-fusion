@@ -4,6 +4,8 @@ pragma solidity ^0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {ContextManagerInitSetup} from "./ContextManagerInitSetup.sol";
 import {TestAddresses} from "../test_helpers/TestAddresses.sol";
+import {ContextManager, ContextDataWithSender} from "../../contracts/managers/context/ContextManager.sol";
+
 contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
     // Test events
     event AddressApproved(address indexed addr);
@@ -158,5 +160,149 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
         assertFalse(_contextManager.isApproved(removeAddresses[0]), "First address should be removed");
         assertFalse(_contextManager.isApproved(removeAddresses[1]), "Second address should be removed");
         assertFalse(_contextManager.isApproved(removeAddresses[2]), "Third address should not exist");
+    }
+
+    function testRevertWhenSenderNotMatchSignature() public {
+        // Create test data
+        address actualSigner = makeAddr("actual_signer");
+        uint256 signerPrivateKey = 0x1234; // Test private key
+        vm.deal(actualSigner, 100 ether);
+
+        // Create a mock approved target
+        address mockTarget = makeAddr("mock_target");
+        address[] memory approvedAddrs = new address[](1);
+        approvedAddrs[0] = mockTarget;
+
+        vm.prank(address(TestAddresses.ATOMIST));
+        _contextManager.addApprovedAddresses(approvedAddrs);
+
+        // Prepare context data
+        ContextDataWithSender[] memory contextDataArray = new ContextDataWithSender[](1);
+
+        bytes memory callData = abi.encodeWithSignature("someFunction()");
+        uint256 expirationTime = block.timestamp + 3600; // 1 hour from now
+        uint256 nonce = _contextManager.getNonce(actualSigner);
+
+        // Create message hash
+        bytes32 messageHash = keccak256(abi.encodePacked(expirationTime, nonce, mockTarget, callData));
+
+        // Sign message with actual signer's private key
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, messageHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        // Create context data with different sender than signer
+        contextDataArray[0] = ContextDataWithSender({
+            sender: makeAddr("different_sender"), // Different address than the signer
+            expirationTime: expirationTime,
+            nonce: nonce,
+            target: mockTarget,
+            data: callData,
+            signature: signature
+        });
+
+        // Expect revert with InvalidSignature
+        vm.expectRevert(abi.encodeWithSignature("InvalidSignature()"));
+
+        // Execute with different sender
+        _contextManager.runWithContextAndSignature(contextDataArray);
+    }
+
+    function testRevertWhenSignatureExpired() public {
+        // Create test data
+        address signer = makeAddr("signer");
+        uint256 signerPrivateKey = 0x1234;
+        vm.deal(signer, 100 ether);
+
+        // Create a mock approved target
+        address mockTarget = makeAddr("mock_target");
+        address[] memory approvedAddrs = new address[](1);
+        approvedAddrs[0] = mockTarget;
+
+        vm.prank(address(TestAddresses.ATOMIST));
+        _contextManager.addApprovedAddresses(approvedAddrs);
+
+        // Prepare context data
+        ContextDataWithSender[] memory contextDataArray = new ContextDataWithSender[](1);
+
+        bytes memory callData = abi.encodeWithSignature("someFunction()");
+        uint256 expirationTime = block.timestamp - 1; // Expired timestamp
+        uint256 nonce = _contextManager.getNonce(signer);
+
+        // Create message hash
+        bytes32 messageHash = keccak256(abi.encodePacked(expirationTime, nonce, mockTarget, callData));
+
+        // Sign message
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, messageHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        // Create context data
+        contextDataArray[0] = ContextDataWithSender({
+            sender: signer,
+            expirationTime: expirationTime,
+            nonce: nonce,
+            target: mockTarget,
+            data: callData,
+            signature: signature
+        });
+
+        // Expect revert with SignatureExpired
+        vm.expectRevert(abi.encodeWithSignature("SignatureExpired()"));
+
+        // Execute with expired signature
+        _contextManager.runWithContextAndSignature(contextDataArray);
+    }
+
+    function _createSignedContextData(
+        address signer,
+        uint256 signerPrivateKey,
+        address target,
+        uint256 expirationTime,
+        uint256 nonce
+    ) internal view returns (ContextDataWithSender memory contextData) {
+        bytes memory callData = abi.encodeWithSignature("someFunction()");
+        bytes32 messageHash = keccak256(abi.encodePacked(expirationTime, nonce, target, callData));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, messageHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        contextData = ContextDataWithSender({
+            sender: signer,
+            expirationTime: expirationTime,
+            nonce: nonce,
+            target: target,
+            data: callData,
+            signature: signature
+        });
+    }
+
+    function testRevertWhenNonceTooLow() public {
+        // Setup test data
+        uint256 signerPrivateKey = 0x1234;
+        address signer = vm.addr(signerPrivateKey);
+        address mockTarget = makeAddr("mock_target");
+
+        // Approve target
+        address[] memory approvedAddrs = new address[](1);
+        approvedAddrs[0] = mockTarget;
+        vm.prank(address(TestAddresses.ATOMIST));
+        _contextManager.addApprovedAddresses(approvedAddrs);
+
+        // Setup first transaction
+        uint256 expirationTime = block.timestamp + 3600;
+        uint256 currentNonce = _contextManager.getNonce(signer);
+
+        // Try to execute with the same nonce
+        ContextDataWithSender[] memory secondContextData = new ContextDataWithSender[](1);
+        secondContextData[0] = _createSignedContextData(
+            signer,
+            signerPrivateKey,
+            mockTarget,
+            expirationTime,
+            currentNonce // Using the old nonce
+        );
+
+        // Expect revert with NonceTooLow
+        vm.expectRevert(abi.encodeWithSignature("NonceTooLow()"));
+        _contextManager.runWithContextAndSignature(secondContextData);
     }
 }
