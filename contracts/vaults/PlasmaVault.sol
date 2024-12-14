@@ -793,7 +793,7 @@ contract PlasmaVault is
     }
 
     function contains(uint256[] memory array, uint256 element, uint256 count) private pure returns (bool) {
-        for (uint256 i = 0; i < count; i++) {
+        for (uint256 i; i < count; ++i) {
             if (array[i] == element) {
                 return true;
             }
@@ -805,7 +805,7 @@ contract PlasmaVault is
         uint256[] memory tempArray = new uint256[](inputArray.length);
         uint256 count = 0;
 
-        for (uint256 i = 0; i < inputArray.length; i++) {
+        for (uint256 i; i < inputArray.length; ++i) {
             if (inputArray[i] != 0 && !contains(tempArray, inputArray[i], count)) {
                 tempArray[count] = inputArray[i];
                 count++;
@@ -813,7 +813,7 @@ contract PlasmaVault is
         }
 
         uint256[] memory uniqueArray = new uint256[](count);
-        for (uint256 i = 0; i < count; i++) {
+        for (uint256 i; i < count; ++i) {
             uniqueArray[i] = tempArray[i];
         }
 

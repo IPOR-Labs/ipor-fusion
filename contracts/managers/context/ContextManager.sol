@@ -46,7 +46,8 @@ contract ContextManager is AccessManagedUpgradeable {
 
     constructor(address initialAuthority, address[] memory approvedAddresses) initializer {
         super.__AccessManaged_init_unchained(initialAuthority);
-        for (uint256 i; i < approvedAddresses.length; ++i) {
+        uint256 length = approvedAddresses.length;
+        for (uint256 i; i < length; ++i) {
             ContextManagerStorageLib.addApprovedAddress(approvedAddresses[i]);
             emit AddressApproved(approvedAddresses[i]);
         }

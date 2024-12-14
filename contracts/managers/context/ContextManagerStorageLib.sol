@@ -75,7 +75,7 @@ library ContextManagerStorageLib {
 
         // Remove from array by finding and replacing with last element
         uint256 length = $.addresses.length;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             if ($.addresses[i] == addr) {
                 // If not the last element, replace with the last one
                 if (i != length - 1) {
@@ -97,7 +97,7 @@ library ContextManagerStorageLib {
         uint256 length = $.addresses.length;
 
         address[] memory approvedAddresses = new address[](length);
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             approvedAddresses[i] = $.addresses[i];
         }
 
