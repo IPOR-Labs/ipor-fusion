@@ -99,15 +99,17 @@ contract ContextManager is AccessManagedUpgradeable {
     function runWithContext(ExecuteData calldata executeData) external returns (bytes[] memory results) {
         uint256 length = executeData.addrs.length;
         // Check arrays length match
-        if (executeData.addrs.length != length) {
+        if (executeData.data.length != length) {
             revert LengthMismatch();
         }
 
         results = new bytes[](length);
 
+        address target;
+        bytes calldata data;
         for (uint256 i; i < length; ++i) {
-            address target = executeData.addrs[i];
-            bytes calldata data = executeData.data[i];
+            target = executeData.addrs[i];
+            data = executeData.data[i];
 
             // Check if address is approved
             if (!ContextManagerStorageLib.isApproved(target)) {
