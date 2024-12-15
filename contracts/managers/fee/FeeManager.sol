@@ -25,7 +25,7 @@ struct FeeManagerInitData {
     RecipientFee[] recipientPerformanceFees;
 }
 
-/// @notice Struct containing data for a fee recipient
+/// @notice Struct containing data for a fee recipients
 /// @param recipientFees Mapping of recipient addresses to their respective fee values
 /// @param recipientAddresses Array of recipient addresses
 struct FeeRecipientData {
@@ -58,8 +58,13 @@ contract FeeManager is AccessManaged {
         uint256[] fees
     );
 
+    /// @notice Thrown when trying to call a function before initialization
     error NotInitialized();
+
+    /// @notice Thrown when trying to initialize an already initialized contract
     error AlreadyInitialized();
+
+    /// @notice Thrown when trying to set an invalid (zero) address as a fee recipient
     error InvalidFeeRecipientAddress();
 
 
@@ -151,6 +156,8 @@ contract FeeManager is AccessManaged {
         plasmaVaultTotalManagementFee = totalManagementFee;
     }
 
+    /// @notice Initializes the FeeManager contract by setting up fee account approvals
+    /// @dev Can only be called once. Sets up maximum approvals for both fee accounts to interact with the plasma vault
     function initialize() external {
         if (initialized != 0) {
             revert AlreadyInitialized();
@@ -161,7 +168,8 @@ contract FeeManager is AccessManaged {
         FeeAccount(MANAGEMENT_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
     }
 
-    /// @notice Harvests all fees and transfers them to the respective recipient addresses and the IPOR DAO.
+    /// @notice Harvests both management and performance fees by calling their respective harvest functions
+    /// @dev This is a convenience function that calls harvestManagementFee() and harvestPerformanceFee()
     function harvestAllFees() external onlyInitialized {
         harvestManagementFee();
         harvestPerformanceFee();
@@ -313,7 +321,8 @@ contract FeeManager is AccessManaged {
         iporDaoFeeRecipientAddress = iporDaoFeeRecipientAddress_;
     }
 
-    /// @notice Internal function to update fees for recipients
+    /// @notice Internal function to completely replace existing fee recipients with new ones
+    /// @dev This function will remove all existing recipients and their fees before setting up the new ones
     /// @param recipientFees Array of recipient fees containing address and new fee value
     /// @param feeData Storage reference to the fee recipient data
     /// @param daoFee The DAO fee percentage to include in total
