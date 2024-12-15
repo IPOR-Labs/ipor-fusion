@@ -116,10 +116,13 @@ contract FeeManager is AccessManaged {
         uint256 totalManagementFee = IPOR_DAO_MANAGEMENT_FEE;
         uint256 totalPerformanceFee = IPOR_DAO_PERFORMANCE_FEE;
 
-        if (initData_.recipientManagementFees.length > 0) {
-            address[] memory managementFeeRecipientAddresses = new address[](initData_.recipientManagementFees.length);
+        uint256 recipientManagementFeesLength = initData_.recipientManagementFees.length;
+        uint256 recipientPerformanceFeesLength = initData_.recipientPerformanceFees.length;
 
-            for (uint256 i = 0; i < initData_.recipientManagementFees.length; i++) {
+        if (recipientManagementFeesLength > 0) {
+            address[] memory managementFeeRecipientAddresses = new address[](recipientManagementFeesLength);
+
+            for (uint256 i; i < recipientManagementFeesLength; i++) {
                 managementFeeRecipientAddresses[i] = initData_.recipientManagementFees[i].recipient;
                 totalManagementFee += initData_.recipientManagementFees[i].feeValue;
                 _managementFeeRecipientData.recipientFees[initData_.recipientManagementFees[i].recipient] = initData_
@@ -129,12 +132,10 @@ contract FeeManager is AccessManaged {
             _managementFeeRecipientData.recipientAddresses = managementFeeRecipientAddresses;
         }
 
-        if (initData_.recipientPerformanceFees.length > 0) {
-            address[] memory performanceFeeRecipientAddresses = new address[](
-                initData_.recipientPerformanceFees.length
-            );
+        if (recipientPerformanceFeesLength > 0) {
+            address[] memory performanceFeeRecipientAddresses = new address[](recipientPerformanceFeesLength);
 
-            for (uint256 i = 0; i < initData_.recipientPerformanceFees.length; i++) {
+            for (uint256 i; i < recipientPerformanceFeesLength; i++) {
                 performanceFeeRecipientAddresses[i] = initData_.recipientPerformanceFees[i].recipient;
                 totalPerformanceFee += initData_.recipientPerformanceFees[i].feeValue;
                 _performanceFeeRecipientData.recipientFees[initData_.recipientPerformanceFees[i].recipient] = initData_
@@ -176,7 +177,9 @@ contract FeeManager is AccessManaged {
             revert InvalidFeeRecipientAddress();
         }
 
-        if (plasmaVaultTotalManagementFee == 0) {
+        uint256 totalManagementFee = plasmaVaultTotalManagementFee;
+
+        if (totalManagementFee == 0) {
             /// @dev If the management fee is 0, no fees are collected
             return;
         }
@@ -191,7 +194,7 @@ contract FeeManager is AccessManaged {
         uint256 remainingBalance = _transferDaoFee(
             MANAGEMENT_FEE_ACCOUNT,
             managementFeeBalance,
-            plasmaVaultTotalManagementFee,
+            totalManagementFee,
             IPOR_DAO_MANAGEMENT_FEE,
             FeeType.MANAGEMENT
         );
@@ -202,13 +205,15 @@ contract FeeManager is AccessManaged {
 
         address[] memory feeRecipientAddresses = _managementFeeRecipientData.recipientAddresses;
 
-        for (uint256 i = 0; i < feeRecipientAddresses.length && remainingBalance > 0; i++) {
+        uint256 feeRecipientAddressesLength = feeRecipientAddresses.length;
+
+        for (uint256 i; i < feeRecipientAddressesLength && remainingBalance > 0; i++) {
             remainingBalance = _transferRecipientFee(
                 feeRecipientAddresses[i],
                 remainingBalance,
                 managementFeeBalance,
                 _managementFeeRecipientData.recipientFees[feeRecipientAddresses[i]],
-                plasmaVaultTotalManagementFee,
+                totalManagementFee,
                 MANAGEMENT_FEE_ACCOUNT,
                 FeeType.MANAGEMENT
             );
@@ -225,7 +230,9 @@ contract FeeManager is AccessManaged {
             revert InvalidFeeRecipientAddress();
         }
 
-        if (plasmaVaultTotalPerformanceFee == 0) {
+        uint256 totalPerformanceFee = plasmaVaultTotalPerformanceFee;
+
+        if (totalPerformanceFee == 0) {
             /// @dev If the performance fee is 0, no fees are collected
             return;
         }
@@ -240,7 +247,7 @@ contract FeeManager is AccessManaged {
         uint256 remainingBalance = _transferDaoFee(
             PERFORMANCE_FEE_ACCOUNT,
             performanceFeeBalance,
-            plasmaVaultTotalPerformanceFee,
+            totalPerformanceFee,
             IPOR_DAO_PERFORMANCE_FEE,
             FeeType.PERFORMANCE
         );
@@ -251,13 +258,15 @@ contract FeeManager is AccessManaged {
 
         address[] memory feeRecipientAddresses = _performanceFeeRecipientData.recipientAddresses;
 
-        for (uint256 i = 0; i < feeRecipientAddresses.length && remainingBalance > 0; i++) {
+        uint256 feeRecipientAddressesLength = feeRecipientAddresses.length;
+
+        for (uint256 i; i < feeRecipientAddressesLength && remainingBalance > 0; i++) {
             remainingBalance = _transferRecipientFee(
                 feeRecipientAddresses[i],
                 remainingBalance,
                 performanceFeeBalance,
                 _performanceFeeRecipientData.recipientFees[feeRecipientAddresses[i]],
-                plasmaVaultTotalPerformanceFee,
+                totalPerformanceFee,
                 PERFORMANCE_FEE_ACCOUNT,
                 FeeType.PERFORMANCE
             );
@@ -320,7 +329,10 @@ contract FeeManager is AccessManaged {
         uint256 totalFee = daoFee;
     
         address[] memory oldRecipients = feeData.recipientAddresses;
-        for (uint256 i = 0; i < oldRecipients.length; i++) {
+
+        uint256 oldRecipientsLength = oldRecipients.length;
+
+        for (uint256 i; i < oldRecipientsLength; i++) {
             delete feeData.recipientFees[oldRecipients[i]];
         }
         
@@ -329,7 +341,9 @@ contract FeeManager is AccessManaged {
         address[] memory newRecipients = new address[](recipientFees.length);
         uint256[] memory newFees = new uint256[](recipientFees.length);
 
-        for (uint256 i = 0; i < recipientFees.length; i++) {
+        uint256 recipientFeesLength = recipientFees.length;
+
+        for (uint256 i; i < recipientFeesLength; i++) {
             if (recipientFees[i].recipient == address(0)) {
                 revert InvalidFeeRecipientAddress();
             }
