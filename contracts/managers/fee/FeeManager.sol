@@ -368,30 +368,38 @@ contract FeeManager is AccessManaged {
         }
     }
     
-    /// @notice Gets the management fee for a specific recipient
-    /// @param recipient The address of the recipient
-    /// @return The management fee value
-    function getManagementFee(address recipient) external view returns (uint256) {
-        return _managementFeeRecipientData.recipientFees[recipient];
+    /// @notice Gets all management fee recipients with their corresponding fee values
+    /// @return Array of RecipientFee structs containing recipient addresses and their fee values
+    function getManagementFeeRecipients() external view returns (RecipientFee[] memory) {
+        address[] memory recipients = _managementFeeRecipientData.recipientAddresses;
+        uint256 length = recipients.length;
+        RecipientFee[] memory recipientFees = new RecipientFee[](length);
+        
+        for (uint256 i; i < length; i++) {
+            recipientFees[i] = RecipientFee({
+                recipient: recipients[i],
+                feeValue: _managementFeeRecipientData.recipientFees[recipients[i]]
+            });
+        }
+        
+        return recipientFees;
     }
 
-    /// @notice Gets all management fee recipient addresses
-    /// @return Array of recipient addresses
-    function getManagementFeeRecipients() external view returns (address[] memory) {
-        return _managementFeeRecipientData.recipientAddresses;
-    }
-
-    /// @notice Gets the performance fee for a specific recipient
-    /// @param recipient The address of the recipient
-    /// @return The performance fee value
-    function getPerformanceFee(address recipient) external view returns (uint256) {
-        return _performanceFeeRecipientData.recipientFees[recipient];
-    }
-
-    /// @notice Gets all performance fee recipient addresses
-    /// @return Array of recipient addresses
-    function getPerformanceFeeRecipients() external view returns (address[] memory) {
-        return _performanceFeeRecipientData.recipientAddresses;
+    /// @notice Gets all performance fee recipients with their corresponding fee values
+    /// @return Array of RecipientFee structs containing recipient addresses and their fee values
+    function getPerformanceFeeRecipients() external view returns (RecipientFee[] memory) {
+        address[] memory recipients = _performanceFeeRecipientData.recipientAddresses;
+        uint256 length = recipients.length;
+        RecipientFee[] memory recipientFees = new RecipientFee[](length);
+        
+        for (uint256 i; i < length; i++) {
+            recipientFees[i] = RecipientFee({
+                recipient: recipients[i],
+                feeValue: _performanceFeeRecipientData.recipientFees[recipients[i]]
+            });
+        }
+        
+        return recipientFees;
     }
 
 
