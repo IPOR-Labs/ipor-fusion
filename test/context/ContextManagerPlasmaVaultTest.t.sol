@@ -35,7 +35,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _addresses[0] = address(_plasmaVault);
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IERC20.approve.selector, _USER, type(uint256).max);
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(_USER_2);
@@ -55,7 +55,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(_plasmaVault.deposit.selector, depositAmount, _USER_2);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 balanceBefore = _plasmaVault.balanceOf(_USER_2);
 
@@ -78,7 +78,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(_plasmaVault.mint.selector, mintAmount, _USER_2);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 balanceBefore = _plasmaVault.balanceOf(_USER_2);
 
@@ -102,7 +102,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(_plasmaVault.transfer.selector, recipient, transferAmount);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 senderBalanceBefore = _plasmaVault.balanceOf(_USER);
         uint256 recipientBalanceBefore = _plasmaVault.balanceOf(recipient);
@@ -144,7 +144,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(_plasmaVault.transferFrom.selector, _USER, recipient, transferAmount);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 ownerBalanceBefore = _plasmaVault.balanceOf(_USER);
         uint256 recipientBalanceBefore = _plasmaVault.balanceOf(recipient);
@@ -184,7 +184,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(_plasmaVault.withdraw.selector, withdrawAmount, recipient, _USER);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 ownerSharesBefore = _plasmaVault.balanceOf(_USER);
         uint256 recipientTokensBefore = IERC20(_UNDERLYING_TOKEN).balanceOf(recipient);
@@ -221,7 +221,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(_plasmaVault.redeem.selector, redeemAmount, recipient, _USER);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 ownerSharesBefore = _plasmaVault.balanceOf(_USER);
         uint256 recipientTokensBefore = IERC20(_UNDERLYING_TOKEN).balanceOf(recipient);
@@ -264,7 +264,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _addresses[0] = address(_plasmaVault);
         _data[0] = abi.encodeWithSelector(_plasmaVault.execute.selector, fuseActions);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 initialUSDCBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
 
@@ -291,7 +291,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.addBalanceFuse.selector, marketId, newFuse);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.FUSE_MANAGER);
@@ -314,7 +314,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.addBalanceFuse.selector, marketId, fuseToRemove);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         vm.startPrank(TestAddresses.FUSE_MANAGER);
         _contextManager.runWithContext(executeData);
@@ -328,7 +328,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
 
         // Now remove the balance fuse
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.removeBalanceFuse.selector, marketId, fuseToRemove);
-        executeData = ExecuteData({addrs: _addresses, data: _data});
+        executeData = ExecuteData({targets: _addresses, datas: _data});
 
         vm.startPrank(TestAddresses.FUSE_MANAGER);
         _contextManager.runWithContext(executeData);
@@ -355,7 +355,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.grantMarketSubstrates.selector, marketId, substrates);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.ATOMIST);
@@ -405,7 +405,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
             dependencies
         );
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.ATOMIST);
@@ -458,7 +458,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.configureInstantWithdrawalFuses.selector, fusesParams);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.CONFIG_INSTANT_WITHDRAWAL_FUSES_MANAGER);
@@ -502,7 +502,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.addFuses.selector, newFuses);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // Store initial fuses count
         address[] memory initialFuses = PlasmaVaultGovernance(address(_plasmaVault)).getFuses();
@@ -554,7 +554,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.addFuses.selector, newFuses);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         vm.startPrank(TestAddresses.FUSE_MANAGER);
         _contextManager.runWithContext(executeData);
@@ -575,7 +575,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
 
         // Now remove the fuses
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.removeFuses.selector, newFuses);
-        executeData = ExecuteData({addrs: _addresses, data: _data});
+        executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         _contextManager.runWithContext(executeData);
@@ -619,7 +619,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.setPriceOracleMiddleware.selector, newPriceOracle);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         address initialPriceOracle = PlasmaVaultGovernance(address(_plasmaVault)).getPriceOracleMiddleware();
 
@@ -645,7 +645,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.setupMarketsLimits.selector, marketLimits);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // Activate markets limits first (required for limits to work)
         vm.startPrank(TestAddresses.ATOMIST);
@@ -690,7 +690,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.activateMarketsLimits.selector);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.ATOMIST);
@@ -722,7 +722,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.deactivateMarketsLimits.selector);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.ATOMIST);
@@ -748,7 +748,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.updateCallbackHandler.selector, handler, sender, sig);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.ATOMIST);
@@ -771,7 +771,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.setTotalSupplyCap.selector, newCap);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 initialCap = PlasmaVaultGovernance(address(_plasmaVault)).getTotalSupplyCap();
 
@@ -794,7 +794,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.convertToPublicVault.selector);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.ATOMIST);
@@ -815,7 +815,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(IPlasmaVaultGovernance.enableTransferShares.selector);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.ATOMIST);
@@ -848,7 +848,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
             delays
         );
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(TestAddresses.OWNER);

@@ -58,7 +58,7 @@ contract PendleSwapPTFuseTest is Test {
         (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, address(0));
+        _accessManager.setupInitRoles(_plasmaVault, address(0), TestAddresses.ARBITRUM_CHAIN_ID);
         vm.stopPrank();
 
         address[] memory markets = new address[](1);

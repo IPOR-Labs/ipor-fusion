@@ -55,7 +55,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
         (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, address(0));
+        _accessManager.setupInitRoles(_plasmaVault, address(0), TestAddresses.BASE_CHAIN_ID);
 
         address[] memory mTokens = new address[](1);
         mTokens[0] = TestAddresses.BASE_M_USDC;

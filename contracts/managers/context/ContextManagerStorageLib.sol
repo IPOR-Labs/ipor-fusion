@@ -5,7 +5,6 @@ library ContextManagerStorageLib {
     /// @dev Custom error for inconsistent storage state
     error InconsistentStorageState();
     error NonceTooLow();
-    error AddressNotApproved(address addr);
 
     /// @notice Emitted when the nonce is updated
     event NonceUpdated(address indexed addr, uint256 newNonce);
@@ -25,18 +24,6 @@ library ContextManagerStorageLib {
 
     struct Nonces {
         mapping(address => uint256) addressToNonce;
-    }
-
-    function _getApprovedAddresses() private pure returns (ApprovedAddresses storage $) {
-        assembly {
-            $.slot := APPROVED_ADDRESSES
-        }
-    }
-
-    function _getNonces() private pure returns (Nonces storage $) {
-        assembly {
-            $.slot := NONCES_SLOT
-        }
     }
 
     /// @notice Adds an address to the approved addresses list if it's not already added
@@ -66,7 +53,7 @@ library ContextManagerStorageLib {
         ApprovedAddresses storage $ = _getApprovedAddresses();
 
         // Check if address is not granted
-        if ($.addressGranted[addr] == 0) {
+        if (addr == address(0) || $.addressGranted[addr] == 0) {
             return false;
         }
 
@@ -85,9 +72,6 @@ library ContextManagerStorageLib {
                 return true;
             }
         }
-
-        // Should never reach here if storage is consistent
-        revert InconsistentStorageState();
     }
 
     /// @notice Returns the list of all approved addresses
@@ -122,13 +106,24 @@ library ContextManagerStorageLib {
 
     /// @notice Increments the nonce for a specific address and returns the new value
     /// @param addr The address to increment the nonce for
-    /// @return New nonce value after increment
-    function verifyAndUpdateNonce(address addr, uint256 newNonce) internal returns (uint256) {
+    function verifyAndUpdateNonce(address addr, uint256 newNonce) internal {
         Nonces storage $ = _getNonces();
         if ($.addressToNonce[addr] >= newNonce) {
             revert NonceTooLow();
         }
         $.addressToNonce[addr] = newNonce;
         emit NonceUpdated(addr, newNonce);
+    }
+
+    function _getApprovedAddresses() private pure returns (ApprovedAddresses storage $) {
+        assembly {
+            $.slot := APPROVED_ADDRESSES
+        }
+    }
+
+    function _getNonces() private pure returns (Nonces storage $) {
+        assembly {
+            $.slot := NONCES_SLOT
+        }
     }
 }

@@ -70,4 +70,7 @@ library TestAddresses {
     address public constant ARB_WST_ETH = 0x5979D7b546E38E414F7E9822514be443A4800529;
     address public constant ARBITRUM_PENDLE_ROUTER = 0x888888888889758F76e7103c6CbF23ABbF58F946;
     address public constant ARBITRUM_PENDLE_ORACLE = 0x9a9Fa8338dd5E5B2188006f1Cd2Ef26d921650C2;
+
+    uint256 public constant ARBITRUM_CHAIN_ID = 42161;
+    uint256 public constant BASE_CHAIN_ID = 8453;
 }

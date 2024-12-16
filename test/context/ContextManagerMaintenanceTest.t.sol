@@ -260,7 +260,9 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
         uint256 nonce
     ) internal view returns (ContextDataWithSender memory contextData) {
         bytes memory callData = abi.encodeWithSignature("someFunction()");
-        bytes32 messageHash = keccak256(abi.encodePacked(expirationTime, nonce, target, callData));
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(expirationTime, nonce, TestAddresses.BASE_CHAIN_ID, target, callData)
+        );
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);

@@ -60,7 +60,7 @@ contract MoonwellClaimFuseBaseTest is Test {
         _rewardsClaimManager = new RewardsClaimManager(address(_accessManager), address(_plasmaVault));
         _plasmaVault.addRewardsClaimManager(address(_rewardsClaimManager));
 
-        _accessManager.setupInitRoles(_plasmaVault, address(0));
+        _accessManager.setupInitRoles(_plasmaVault, address(0), TestAddresses.BASE_CHAIN_ID);
 
         address[] memory mTokens = new address[](1);
         mTokens[0] = TestAddresses.BASE_M_USDC;

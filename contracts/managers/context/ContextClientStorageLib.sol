@@ -11,12 +11,6 @@ library ContextClientStorageLib {
         address contextSender;
     }
 
-    function _getContextStorage() private pure returns (ContextSenderStorage storage $) {
-        assembly {
-            $.slot := CONTEXT_SENDER_STORAGE_SLOT
-        }
-    }
-
     /// @notice Sets the context sender
     /// @param sender The address to set as context sender
     function setContextSender(address sender) internal {
@@ -50,5 +44,11 @@ library ContextClientStorageLib {
             return msg.sender;
         }
         return sender;
+    }
+
+    function _getContextStorage() private pure returns (ContextSenderStorage storage $) {
+        assembly {
+            $.slot := CONTEXT_SENDER_STORAGE_SLOT
+        }
     }
 }

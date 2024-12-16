@@ -45,7 +45,7 @@ contract ContextManagerWithdrawManagerTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(WithdrawManager.request.selector, withdrawAmount);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
         vm.startPrank(_USER_2);
@@ -68,7 +68,7 @@ contract ContextManagerWithdrawManagerTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(WithdrawManager.releaseFunds.selector, timestamp);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 initialReleaseFundsTimestamp = _withdrawManager.getLastReleaseFundsTimestamp();
 
@@ -93,7 +93,7 @@ contract ContextManagerWithdrawManagerTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(WithdrawManager.updateWithdrawWindow.selector, newWindow);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 initialWindow = _withdrawManager.getWithdrawWindow();
 

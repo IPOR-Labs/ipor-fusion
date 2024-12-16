@@ -51,7 +51,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(FeeManager.updatePerformanceFee.selector, newPerformanceFee);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 initialPerformanceFee = _feeManager.getFeeConfig().plasmaVaultPerformanceFee;
 
@@ -82,7 +82,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(FeeManager.updateManagementFee.selector, newManagementFee);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         uint256 initialManagementFee = _feeManager.getFeeConfig().plasmaVaultManagementFee;
 
@@ -109,7 +109,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(FeeManager.setFeeRecipientAddress.selector, newFeeRecipient);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         address initialFeeRecipient = _feeManager.getFeeConfig().feeRecipientAddress;
 
@@ -134,7 +134,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         _data = new bytes[](1);
         _data[0] = abi.encodeWithSelector(FeeManager.setIporDaoFeeRecipientAddress.selector, newDaoFeeRecipient);
 
-        ExecuteData memory executeData = ExecuteData({addrs: _addresses, data: _data});
+        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         address initialDaoFeeRecipient = _feeManager.getFeeConfig().iporDaoFeeRecipientAddress;
 

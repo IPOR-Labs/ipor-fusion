@@ -56,7 +56,7 @@ contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup 
 
         // Execute through context manager
         vm.prank(TestAddresses.FUSE_MANAGER);
-        _contextManager.runWithContext(ExecuteData({addrs: targets, data: data}));
+        _contextManager.runWithContext(ExecuteData({targets: targets, datas: data}));
 
         // Verify the fuse was added by checking if it's in the rewards fuses list
         address[] memory rewardFuses = _rewardsClaimManager.getRewardsFuses();
@@ -87,7 +87,7 @@ contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup 
 
         // Add the fuse first
         vm.prank(TestAddresses.FUSE_MANAGER);
-        _contextManager.runWithContext(ExecuteData({addrs: targets, data: data}));
+        _contextManager.runWithContext(ExecuteData({targets: targets, datas: data}));
 
         // Verify fuse was added
         address[] memory rewardFuses = _rewardsClaimManager.getRewardsFuses();
@@ -107,7 +107,7 @@ contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup 
 
         // Execute removal through context manager
         vm.prank(TestAddresses.FUSE_MANAGER);
-        _contextManager.runWithContext(ExecuteData({addrs: targets, data: data}));
+        _contextManager.runWithContext(ExecuteData({targets: targets, datas: data}));
 
         // Verify the fuse was removed
         address[] memory rewardFusesAfterRemoval = _rewardsClaimManager.getRewardsFuses();
@@ -136,7 +136,7 @@ contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup 
 
         // Execute through context manager
         vm.prank(TestAddresses.ATOMIST);
-        _contextManager.runWithContext(ExecuteData({addrs: targets, data: data}));
+        _contextManager.runWithContext(ExecuteData({targets: targets, datas: data}));
 
         // Verify the vesting time was updated
         uint32 updatedVestingTime = _rewardsClaimManager.getVestingData().vestingTime;
@@ -177,7 +177,7 @@ contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup 
         data[0] = addRewardFusesData;
 
         vm.prank(TestAddresses.FUSE_MANAGER);
-        _contextManager.runWithContext(ExecuteData({addrs: targets, data: data}));
+        _contextManager.runWithContext(ExecuteData({targets: targets, datas: data}));
 
         // Warp time to accumulate rewards
         vm.warp(block.timestamp + 100 days);
@@ -202,7 +202,7 @@ contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup 
 
         // Execute through context manager
         vm.prank(TestAddresses.CLAIM_REWARDS);
-        _contextManager.runWithContext(ExecuteData({addrs: targetsClaim, data: dataClaim}));
+        _contextManager.runWithContext(ExecuteData({targets: targetsClaim, datas: dataClaim}));
 
         // Test only if transaction execute without error
         assertTrue(true);

@@ -8,8 +8,8 @@ import {ContextManagerStorageLib} from "./ContextManagerStorageLib.sol";
 import {IContextClient} from "./IContextClient.sol";
 
 struct ExecuteData {
-    address[] addrs;
-    bytes[] data;
+    address[] targets;
+    bytes[] datas;
 }
 
 struct ContextDataWithSender {
@@ -18,7 +18,7 @@ struct ContextDataWithSender {
     uint256 nonce;
     address target;
     bytes data;
-    /// @notice signature of data (expirationTime, nonce, target, data)
+    /// @notice signature of data (uint256:expirationTime, uint256:nonce, uint256:chainId, address:target, bytes:data)
     bytes signature;
 }
 
@@ -36,21 +36,30 @@ contract ContextManager is AccessManagedUpgradeable {
     error AddressNotApproved(address addr);
     error LengthMismatch();
     error EmptyArrayNotAllowed();
+    error InvalidAuthority();
     // Add error for expired signature
     error SignatureExpired();
     error InvalidSignature();
     error NonceTooLow();
 
+    uint256 public immutable CHAIN_ID;
+
     /// @notice Emitted when a call is executed within context
     event ContextCall(address indexed target, bytes data, bytes result);
 
-    constructor(address initialAuthority, address[] memory approvedAddresses) initializer {
+    constructor(address initialAuthority, address[] memory approvedAddresses, uint256 _chainId) initializer {
+        if (initialAuthority == address(0)) {
+            revert InvalidAuthority();
+        }
+
         super.__AccessManaged_init_unchained(initialAuthority);
         uint256 length = approvedAddresses.length;
         for (uint256 i; i < length; ++i) {
             ContextManagerStorageLib.addApprovedAddress(approvedAddresses[i]);
             emit AddressApproved(approvedAddresses[i]);
         }
+
+        CHAIN_ID = _chainId;
     }
 
     /// @notice Adds multiple addresses to the approved addresses list
@@ -97,9 +106,9 @@ contract ContextManager is AccessManagedUpgradeable {
     /// @param executeData Struct containing arrays of target addresses and call data
     /// @return results Array of results from each call
     function runWithContext(ExecuteData calldata executeData) external returns (bytes[] memory results) {
-        uint256 length = executeData.addrs.length;
+        uint256 length = executeData.targets.length;
         // Check arrays length match
-        if (executeData.data.length != length) {
+        if (executeData.datas.length != length) {
             revert LengthMismatch();
         }
 
@@ -108,8 +117,8 @@ contract ContextManager is AccessManagedUpgradeable {
         address target;
         bytes calldata data;
         for (uint256 i; i < length; ++i) {
-            target = executeData.addrs[i];
-            data = executeData.data[i];
+            target = executeData.targets[i];
+            data = executeData.datas[i];
 
             // Check if address is approved
             if (!ContextManagerStorageLib.isApproved(target)) {
@@ -177,13 +186,14 @@ contract ContextManager is AccessManagedUpgradeable {
         return ContextManagerStorageLib.getApprovedAddressesList();
     }
 
-    function _verifySignature(ContextDataWithSender memory contextData) internal pure returns (bool) {
+    function _verifySignature(ContextDataWithSender memory contextData) internal view returns (bool) {
         return
             ECDSA.recover(
                 keccak256(
                     abi.encodePacked(
                         contextData.expirationTime,
                         contextData.nonce,
+                        CHAIN_ID,
                         contextData.target,
                         contextData.data
                     )
