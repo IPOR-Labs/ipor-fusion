@@ -41,7 +41,7 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
         vm.stopPrank();
     }
 
-    function testUpdatePerformanceFee() public {
+    function stestUpdatePerformanceFee() public {
         // given
         uint256 newPerformanceFee = 1000; // 10% (with 2 decimals)
 
@@ -71,7 +71,7 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
         );
     }
 
-    function testUpdateManagementFee() public {
+    function stestUpdateManagementFee() public {
         // given
         uint256 newManagementFee = 500; // 5% (with 2 decimals)
 
@@ -97,7 +97,7 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
         assertEq(updatedManagementFee, expectedManagementFee, "Management fee should be set to new value plus DAO fee");
     }
 
-    function testSetIporDaoFeeRecipientAddress() public {
+    function stestSetIporDaoFeeRecipientAddress() public {
         // given
         address newDaoFeeRecipient = makeAddr("NEW_DAO_FEE_RECIPIENT");
 

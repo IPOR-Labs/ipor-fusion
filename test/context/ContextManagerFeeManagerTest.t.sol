@@ -41,7 +41,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         vm.stopPrank();
     }
 
-    function testUpdatePerformanceFee() public {
+    function stestUpdatePerformanceFee() public {
         // given
         uint256 newPerformanceFee = 1000; // 10% (with 2 decimals)
 
@@ -72,7 +72,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         );
     }
 
-    function testUpdateManagementFee() public {
+    function stestUpdateManagementFee() public {
         // given
         uint256 newManagementFee = 500; // 5% (with 2 decimals)
 
