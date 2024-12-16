@@ -45,36 +45,47 @@ contract PtPriceFeed is IPriceFeed {
     // solhint-disable-next-line const-name-snakecase
     uint8 public constant override decimals = 8;
 
-    error PriceOracle_InvalidConfiguration();
+    error PriceOracleInvalidConfiguration();
+    error PriceOracleInvalidTwapWindow(uint32 provided, uint32 minimum);
+    error PriceOraclePendleOracleNotReady();
+    error PriceOracleZeroAddress();
+    error PriceOracleInvalidPrice();
 
     /// @notice Initializes the PT price feed
     /// @dev Verifies that:
     /// 1. TWAP window is sufficiently long (min 5 min, recommended 15 min)
     /// 2. Pendle oracle is active and has enough historical data
     /// 3. Price middleware supports the underlying asset from SY
-    /// @param _pendleOracle Address of the Pendle oracle
-    /// @param _pendleMarket Address of the Pendle market
-    /// @param _twapWindow Duration of TWAP window (recommended 15 minutes)
-    /// @param _priceMiddleware Address of price oracle middleware that must support the underlying asset
-    constructor(address _pendleOracle, address _pendleMarket, uint32 _twapWindow, address _priceMiddleware) {
-        // Verify that the TWAP window is sufficiently long.
-        if (_twapWindow < MIN_TWAP_WINDOW) revert PriceOracle_InvalidConfiguration();
-
-        // Verify that the observations buffer is adequately sized and populated.
-        // This confirms that the Pendle oracle is active and has enough historical data
-        (bool increaseCardinalityRequired, , bool oldestObservationSatisfied) = IPPYLpOracle(_pendleOracle)
-            .getOracleState(_pendleMarket, _twapWindow);
-        if (increaseCardinalityRequired || !oldestObservationSatisfied) {
-            revert PriceOracle_InvalidConfiguration();
+    /// @param pendleOracle_ Address of the Pendle oracle
+    /// @param pendleMarket_ Address of the Pendle market
+    /// @param twapWindow_ Duration of TWAP window (recommended 15 minutes)
+    /// @param priceMiddleware_ Address of price oracle middleware that must support the underlying asset
+    constructor(address pendleOracle_, address pendleMarket_, uint32 twapWindow_, address priceMiddleware_) {
+        if (twapWindow_ < MIN_TWAP_WINDOW) {
+            revert PriceOracleInvalidTwapWindow(twapWindow_, MIN_TWAP_WINDOW);
         }
 
-        (IStandardizedYield sy, , ) = IPMarket(_pendleMarket).readTokens();
+        if (pendleOracle_ == address(0) || pendleMarket_ == address(0) || priceMiddleware_ == address(0)) {
+            revert PriceOracleZeroAddress();
+        }
 
-        PENDLE_MARKET = _pendleMarket;
-        TWAP_WINDOW = _twapWindow;
-        PRICE_MIDDLEWARE = _priceMiddleware;
-        // Get asset info from SY - price middleware must support this asset
-        (, ASSET_ADDRESS, ASSET_DECIMALS) = sy.assetInfo();
+        (bool increaseCardinalityRequired, , bool oldestObservationSatisfied) = IPPYLpOracle(pendleOracle_)
+            .getOracleState(pendleMarket_, twapWindow_);
+
+        if (increaseCardinalityRequired || !oldestObservationSatisfied) {
+            revert PriceOraclePendleOracleNotReady();
+        }
+
+        (IStandardizedYield sy, , ) = IPMarket(pendleMarket_).readTokens();
+
+        // Cache SY info w jednym wywołaniu
+        (, address assetAddress, uint8 assetDecimals) = sy.assetInfo();
+
+        PENDLE_MARKET = pendleMarket_;
+        TWAP_WINDOW = twapWindow_;
+        PRICE_MIDDLEWARE = priceMiddleware_;
+        ASSET_ADDRESS = assetAddress;
+        ASSET_DECIMALS = assetDecimals;
     }
 
     /// @inheritdoc IPriceFeed
@@ -83,16 +94,41 @@ contract PtPriceFeed is IPriceFeed {
         view
         returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
-        // Get PT to asset rate in 18 decimals
-        uint256 unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), TWAP_WINDOW);
-        // Get price of underlying asset from middleware - must support the asset from SY.assetInfo()
-        (uint256 assetPrice, uint256 decimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(ASSET_ADDRESS);
+        // Cache TWAP_WINDOW aby uniknąć wielokrotnego odczytu ze storage
+        uint32 twapWindow = TWAP_WINDOW;
 
-        price = ((unitPrice * assetPrice) / 10 ** (FEED_DECIMALS + decimals - _decimals())).toInt256();
+        uint256 unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), twapWindow);
+
+        // Cache middleware price
+        (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(
+            ASSET_ADDRESS
+        );
+
+        // Optymalizacja obliczeń
+        uint256 scalingFactor = FEED_DECIMALS + priceDecimals - _decimals();
+        price = SafeCast.toInt256((unitPrice * assetPrice) / 10 ** scalingFactor);
+
+        if (price <= 0) {
+            revert PriceOracleInvalidPrice();
+        }
+
         time = block.timestamp;
     }
 
     function _decimals() internal view returns (uint8) {
         return 8;
+    }
+
+    /// @notice Returns the raw PT to asset rate without price adjustment
+    /// @return Rate in 18 decimals
+    function getPtToAssetRate() external view returns (uint256) {
+        return PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), TWAP_WINDOW);
+    }
+
+    /// @notice Returns the underlying asset price from middleware
+    /// @return price Asset price
+    /// @return decimals Price decimals
+    function getUnderlyingPrice() external view returns (uint256 price, uint256 decimals) {
+        return IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(ASSET_ADDRESS);
     }
 }
