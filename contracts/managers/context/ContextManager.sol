@@ -22,6 +22,17 @@ import {IContextClient} from "./IContextClient.sol";
  * - Approved address whitelist
  * - Role-based access control via AccessManagedUpgradeable
  *
+ * Role-based permissions:
+ * - ATOMIST_ROLE: Can add/remove approved addresses and manage context configuration
+ * - TECH_CONTEXT_MANAGER_ROLE: Technical role for context setup/cleanup operations
+ * - PUBLIC_ROLE: No special permissions, can only interact with public functions
+ *
+ * Function permissions:
+ * - addApprovedAddresses: Restricted to ATOMIST_ROLE
+ * - removeApprovedAddresses: Restricted to ATOMIST_ROLE
+ * - setupContext: Restricted to TECH_CONTEXT_MANAGER_ROLE
+ * - clearContext: Restricted to TECH_CONTEXT_MANAGER_ROLE
+ *
  * Key components:
  * - ExecuteData: Structure for batch execution
  * - ContextDataWithSender: Structure for signature-verified execution
@@ -142,6 +153,7 @@ contract ContextManager is AccessManagedUpgradeable {
      * @return approvedCount Number of newly approved addresses
      * @dev Only callable by restricted roles
      * @custom:security Validates addresses and prevents zero address additions
+     * @custom:access Restricted to ATOMIST_ROLE
      */
     function addApprovedAddresses(address[] calldata addrs) external restricted returns (uint256 approvedCount) {
         uint256 length = addrs.length;
@@ -169,6 +181,7 @@ contract ContextManager is AccessManagedUpgradeable {
      * @param addrs Array of addresses to be removed
      * @return removedCount Number of addresses actually removed
      * @dev Only callable by restricted roles
+     * @custom:access Restricted to ATOMIST_ROLE
      */
     function removeApprovedAddresses(address[] calldata addrs) external restricted returns (uint256 removedCount) {
         uint256 length = addrs.length;
@@ -194,6 +207,7 @@ contract ContextManager is AccessManagedUpgradeable {
      *   2. Executes the call
      *   3. Clears the context
      * @custom:security Ensures proper context isolation between calls
+     * @custom:access No role restrictions - callable by anyone
      */
     function runWithContext(ExecuteData calldata executeData) external returns (bytes[] memory results) {
         uint256 length = executeData.targets.length;
@@ -238,6 +252,7 @@ contract ContextManager is AccessManagedUpgradeable {
      *   3. Executes the call
      *   4. Clears the context
      * @custom:security Implements multiple security checks for signature-based execution
+     * @custom:access No role restrictions - callable by anyone with valid signatures
      */
     function runWithContextAndSignature(
         ContextDataWithSender[] calldata contextDataArray
@@ -333,6 +348,7 @@ contract ContextManager is AccessManagedUpgradeable {
      * - Target must be an approved address
      * - Context must be set up before and cleared after execution
      * @custom:security Ensures proper context setup and cleanup
+     * @custom:access Internal function - access controlled by public functions
      */
     function _executeWithinContext(address target, address sender, bytes calldata data) private returns (bytes memory) {
         // Check if target address is approved
