@@ -54,13 +54,13 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
             abi.encodeWithSelector(FeeManager.updatePerformanceFee.selector, newPerformanceFee)
         );
 
-        uint256 initialPerformanceFee = _feeManager.getFeeConfig().plasmaVaultPerformanceFee;
+        uint256 initialPerformanceFee = _feeManager.getTotalPerformanceFee();
 
         // when
         _contextManager.runWithContextAndSignature(dataWithSignatures);
 
         // then
-        uint256 updatedPerformanceFee = _feeManager.getFeeConfig().plasmaVaultPerformanceFee;
+        uint256 updatedPerformanceFee = _feeManager.getTotalPerformanceFee();
         uint256 expectedPerformanceFee = newPerformanceFee + _feeManager.IPOR_DAO_PERFORMANCE_FEE();
 
         assertNotEq(updatedPerformanceFee, initialPerformanceFee, "Performance fee should have changed");
@@ -84,41 +84,17 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
             abi.encodeWithSelector(FeeManager.updateManagementFee.selector, newManagementFee)
         );
 
-        uint256 initialManagementFee = _feeManager.getFeeConfig().plasmaVaultManagementFee;
+        uint256 initialManagementFee = _feeManager.getTotalManagementFee();
 
         // when
         _contextManager.runWithContextAndSignature(dataWithSignatures);
 
         // then
-        uint256 updatedManagementFee = _feeManager.getFeeConfig().plasmaVaultManagementFee;
+        uint256 updatedManagementFee = _feeManager.getTotalManagementFee();
         uint256 expectedManagementFee = newManagementFee + _feeManager.IPOR_DAO_MANAGEMENT_FEE();
 
         assertNotEq(updatedManagementFee, initialManagementFee, "Management fee should have changed");
         assertEq(updatedManagementFee, expectedManagementFee, "Management fee should be set to new value plus DAO fee");
-    }
-
-    function testSetFeeRecipientAddress() public {
-        // given
-        address newFeeRecipient = makeAddr("NEW_FEE_RECIPIENT");
-
-        ContextDataWithSender[] memory dataWithSignatures = new ContextDataWithSender[](1);
-        dataWithSignatures[0] = preperateDataWithSignature(
-            TestAddresses.ATOMIST_PRIVATE_KEY,
-            block.timestamp + 1000,
-            block.number,
-            address(_feeManager),
-            abi.encodeWithSelector(FeeManager.setFeeRecipientAddress.selector, newFeeRecipient)
-        );
-
-        address initialFeeRecipient = _feeManager.getFeeConfig().feeRecipientAddress;
-
-        // when
-        _contextManager.runWithContextAndSignature(dataWithSignatures);
-
-        // then
-        address updatedFeeRecipient = _feeManager.getFeeConfig().feeRecipientAddress;
-        assertNotEq(updatedFeeRecipient, initialFeeRecipient, "Fee recipient address should have changed");
-        assertEq(updatedFeeRecipient, newFeeRecipient, "Fee recipient address should be set to new value");
     }
 
     function testSetIporDaoFeeRecipientAddress() public {
@@ -134,13 +110,13 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
             abi.encodeWithSelector(FeeManager.setIporDaoFeeRecipientAddress.selector, newDaoFeeRecipient)
         );
 
-        address initialDaoFeeRecipient = _feeManager.getFeeConfig().iporDaoFeeRecipientAddress;
+        address initialDaoFeeRecipient = _feeManager.getIporDaoFeeRecipientAddress();
 
         // when
         _contextManager.runWithContextAndSignature(dataWithSignatures);
 
         // then
-        address updatedDaoFeeRecipient = _feeManager.getFeeConfig().iporDaoFeeRecipientAddress;
+        address updatedDaoFeeRecipient = _feeManager.getIporDaoFeeRecipientAddress();
         assertNotEq(updatedDaoFeeRecipient, initialDaoFeeRecipient, "DAO fee recipient address should have changed");
         assertEq(updatedDaoFeeRecipient, newDaoFeeRecipient, "DAO fee recipient address should be set to new value");
     }

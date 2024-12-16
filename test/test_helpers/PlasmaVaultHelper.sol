@@ -5,8 +5,8 @@ import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} fr
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {MarketSubstratesConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {FeeConfigHelper} from "./FeeConfigHelper.sol";
 import {TestAddresses} from "./TestAddresses.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 struct DeployMinimalPlasmaVaultParams {
@@ -27,15 +27,7 @@ library PlasmaVaultHelper {
         DeployMinimalPlasmaVaultParams memory params
     ) internal returns (PlasmaVault plasmaVault, address noAddress) {
         // Create fee configuration
-        FeeConfig memory feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            atomistManagementFee: 0,
-            atomistPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: TestAddresses.FEE_RECIPIENT_ADDRESS,
-            iporDaoFeeRecipientAddress: TestAddresses.IPOR_DAO_FEE_RECIPIENT_ADDRESS
-        });
+        FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         // Deploy access manager
         address accessManager = address(new IporFusionAccessManager(params.atomist, 0));
@@ -63,15 +55,7 @@ library PlasmaVaultHelper {
         DeployMinimalPlasmaVaultParams memory params
     ) internal returns (PlasmaVault plasmaVault, address withdrawManager) {
         // Create fee configuration
-        FeeConfig memory feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            atomistManagementFee: 0,
-            atomistPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: TestAddresses.FEE_RECIPIENT_ADDRESS,
-            iporDaoFeeRecipientAddress: TestAddresses.IPOR_DAO_FEE_RECIPIENT_ADDRESS
-        });
+        FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         // Deploy access manager
         address accessManager = address(new IporFusionAccessManager(params.atomist, 0));

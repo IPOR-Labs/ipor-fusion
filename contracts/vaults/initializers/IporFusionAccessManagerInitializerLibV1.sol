@@ -70,7 +70,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER = 34;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 3;
-    uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 4;
+    uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 3;
     uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
@@ -603,12 +603,7 @@ library IporFusionAccessManagerInitializerLibV1 {
                 functionSelector: FeeManager.updateManagementFee.selector,
                 minimalExecutionDelay: 0
             });
-            rolesToFunction[_next(iterator)] = RoleToFunction({
-                target: plasmaVaultAddress_.feeManager,
-                roleId: Roles.ATOMIST_ROLE,
-                functionSelector: FeeManager.setFeeRecipientAddress.selector,
-                minimalExecutionDelay: 0
-            });
+
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.IPOR_DAO_ROLE,

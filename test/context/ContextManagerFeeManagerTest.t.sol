@@ -53,7 +53,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
 
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
-        uint256 initialPerformanceFee = _feeManager.getFeeConfig().plasmaVaultPerformanceFee;
+        uint256 initialPerformanceFee = _feeManager.getTotalPerformanceFee();
 
         // when
         vm.startPrank(TestAddresses.ATOMIST);
@@ -61,7 +61,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         vm.stopPrank();
 
         // then
-        uint256 updatedPerformanceFee = _feeManager.getFeeConfig().plasmaVaultPerformanceFee;
+        uint256 updatedPerformanceFee = _feeManager.getTotalPerformanceFee();
         uint256 expectedPerformanceFee = newPerformanceFee + _feeManager.IPOR_DAO_PERFORMANCE_FEE();
 
         assertNotEq(updatedPerformanceFee, initialPerformanceFee, "Performance fee should have changed");
@@ -84,7 +84,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
 
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
-        uint256 initialManagementFee = _feeManager.getFeeConfig().plasmaVaultManagementFee;
+        uint256 initialManagementFee = _feeManager.getTotalManagementFee();
 
         // when
         vm.startPrank(TestAddresses.ATOMIST);
@@ -92,36 +92,11 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         vm.stopPrank();
 
         // then
-        uint256 updatedManagementFee = _feeManager.getFeeConfig().plasmaVaultManagementFee;
+        uint256 updatedManagementFee = _feeManager.getTotalManagementFee();
         uint256 expectedManagementFee = newManagementFee + _feeManager.IPOR_DAO_MANAGEMENT_FEE();
 
         assertNotEq(updatedManagementFee, initialManagementFee, "Management fee should have changed");
         assertEq(updatedManagementFee, expectedManagementFee, "Management fee should be set to new value plus DAO fee");
-    }
-
-    function testSetFeeRecipientAddress() public {
-        // given
-        address newFeeRecipient = makeAddr("NEW_FEE_RECIPIENT");
-
-        _addresses = new address[](1);
-        _addresses[0] = address(_feeManager);
-
-        _data = new bytes[](1);
-        _data[0] = abi.encodeWithSelector(FeeManager.setFeeRecipientAddress.selector, newFeeRecipient);
-
-        ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
-
-        address initialFeeRecipient = _feeManager.getFeeConfig().feeRecipientAddress;
-
-        // when
-        vm.startPrank(TestAddresses.ATOMIST);
-        _contextManager.runWithContext(executeData);
-        vm.stopPrank();
-
-        // then
-        address updatedFeeRecipient = _feeManager.getFeeConfig().feeRecipientAddress;
-        assertNotEq(updatedFeeRecipient, initialFeeRecipient, "Fee recipient address should have changed");
-        assertEq(updatedFeeRecipient, newFeeRecipient, "Fee recipient address should be set to new value");
     }
 
     function testSetIporDaoFeeRecipientAddress() public {
@@ -136,7 +111,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
 
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
-        address initialDaoFeeRecipient = _feeManager.getFeeConfig().iporDaoFeeRecipientAddress;
+        address initialDaoFeeRecipient = _feeManager.getIporDaoFeeRecipientAddress();
 
         // when
         vm.startPrank(TestAddresses.DAO);
@@ -144,7 +119,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         vm.stopPrank();
 
         // then
-        address updatedDaoFeeRecipient = _feeManager.getFeeConfig().iporDaoFeeRecipientAddress;
+        address updatedDaoFeeRecipient = _feeManager.getIporDaoFeeRecipientAddress();
         assertNotEq(updatedDaoFeeRecipient, initialDaoFeeRecipient, "DAO fee recipient address should have changed");
         assertEq(updatedDaoFeeRecipient, newDaoFeeRecipient, "DAO fee recipient address should be set to new value");
     }

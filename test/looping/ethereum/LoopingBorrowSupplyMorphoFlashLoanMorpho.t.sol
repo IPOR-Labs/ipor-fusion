@@ -12,7 +12,8 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {FeeConfig, RecipientFee} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -110,11 +111,10 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
         FeeConfig memory feeConfig = FeeConfig({
             iporDaoManagementFee: 0,
             iporDaoPerformanceFee: 0,
-            atomistManagementFee: 0,
-            atomistPerformanceFee: 0,
             feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: address(0),
-            iporDaoFeeRecipientAddress: address(0)
+            iporDaoFeeRecipientAddress: address(0),
+            recipientManagementFees: new RecipientFee[](0),
+            recipientPerformanceFees: new RecipientFee[](0)
         });
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
