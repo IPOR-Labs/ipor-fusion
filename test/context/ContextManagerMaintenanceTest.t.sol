@@ -8,8 +8,8 @@ import {ContextManager, ContextDataWithSender} from "../../contracts/managers/co
 
 contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
     // Test events
-    event AddressApproved(address indexed addr);
-    event AddressRemoved(address indexed addr);
+    event ApprovedAddressAdded(address indexed addr);
+    event ApprovedAddressRemoved(address indexed addr);
 
     function setUp() public {
         initSetup();
@@ -47,9 +47,9 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
 
         // Expect events for each address
         vm.expectEmit(true, false, false, false);
-        emit AddressApproved(addresses[0]);
+        emit ApprovedAddressAdded(addresses[0]);
         vm.expectEmit(true, false, false, false);
-        emit AddressApproved(addresses[1]);
+        emit ApprovedAddressAdded(addresses[1]);
 
         // Execute as protocol owner
         vm.prank(address(TestAddresses.ATOMIST));
@@ -89,9 +89,9 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
 
         // Expect events for each address removal
         vm.expectEmit(true, false, false, false);
-        emit AddressRemoved(addresses[0]);
+        emit ApprovedAddressRemoved(addresses[0]);
         vm.expectEmit(true, false, false, false);
-        emit AddressRemoved(addresses[1]);
+        emit ApprovedAddressRemoved(addresses[1]);
 
         // Execute removal as protocol owner
         vm.prank(address(TestAddresses.ATOMIST));
@@ -146,9 +146,9 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
 
         // Expect events only for the existing addresses
         vm.expectEmit(true, false, false, false);
-        emit AddressRemoved(removeAddresses[0]);
+        emit ApprovedAddressRemoved(removeAddresses[0]);
         vm.expectEmit(true, false, false, false);
-        emit AddressRemoved(removeAddresses[1]);
+        emit ApprovedAddressRemoved(removeAddresses[1]);
 
         vm.prank(address(TestAddresses.ATOMIST));
         uint256 removedCount = _contextManager.removeApprovedAddresses(removeAddresses);

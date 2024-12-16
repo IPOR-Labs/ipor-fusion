@@ -73,12 +73,11 @@ library IporFusionAccessManagerHelper {
         IporFusionAccessManager accessManager_,
         PlasmaVault plasmaVault_,
         RoleAddresses memory roles_,
-        address withdrawManager_,
-        uint256 chainId_
+        address withdrawManager_
     ) internal returns (ContextManager contextManager) {
         address[] memory approvedAddresses = new address[](1);
         approvedAddresses[0] = address(plasmaVault_);
-        contextManager = new ContextManager(address(accessManager_), approvedAddresses, chainId_);
+        contextManager = new ContextManager(address(accessManager_), approvedAddresses);
 
         // Prepare initialization data
         DataForInitialization memory data = DataForInitialization({
@@ -118,9 +117,8 @@ library IporFusionAccessManagerHelper {
     function setupInitRoles(
         IporFusionAccessManager accessManager_,
         PlasmaVault plasmaVault_,
-        address withdrawManager_,
-        uint256 chainId_
+        address withdrawManager_
     ) internal returns (ContextManager contextManager) {
-        return setupInitRoles(accessManager_, plasmaVault_, createDefaultRoleAddresses(), withdrawManager_, chainId_);
+        return setupInitRoles(accessManager_, plasmaVault_, createDefaultRoleAddresses(), withdrawManager_);
     }
 }
