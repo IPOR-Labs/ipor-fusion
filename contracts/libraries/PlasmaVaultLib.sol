@@ -106,8 +106,9 @@ library PlasmaVaultLib {
     }
 
     /// @notice Configures the management fee data like the fee manager and the fee in percentage
-    /// @param feeAccount_ The address of the fee manager responsible for managing the management fee
+    /// @param feeAccount_ The address of the technical Management Fee Account that will receive the management fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
     /// @param feeInPercentage_ The fee in percentage, represented in 2 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
+    /// @dev feeAccount_ can be also EOA address or MultiSig address, in this case it will receive the management fee directly
     function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) internal {
         if (feeAccount_ == address(0)) {
             revert Errors.WrongAddress();
@@ -137,8 +138,9 @@ library PlasmaVaultLib {
     }
 
     /// @notice Configures the performance fee data like the fee manager and the fee in percentage
-    /// @param feeAccount_ The address of the fee manager responsible for managing the performance fee
+    /// @param feeAccount_ The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
     /// @param feeInPercentage_ The fee in percentage, represented in 2 decimals, example: 100% = 10000, 1% = 100, 0.01% = 1
+    /// @dev feeAccount_ can be also EOA address or MultiSig address, in this case it will receive the performance fee directly
     function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) internal {
         if (feeAccount_ == address(0)) {
             revert Errors.WrongAddress();

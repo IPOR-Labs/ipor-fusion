@@ -34,8 +34,8 @@ contract FeeManagerFactory {
                 plasmaVault: feeManager.PLASMA_VAULT(),
                 performanceFeeAccount: feeManager.PERFORMANCE_FEE_ACCOUNT(),
                 managementFeeAccount: feeManager.MANAGEMENT_FEE_ACCOUNT(),
-                managementFee: feeManager.plasmaVaultManagementFee(),
-                performanceFee: feeManager.plasmaVaultPerformanceFee()
+                managementFee: feeManager.plasmaVaultTotalManagementFee(),
+                performanceFee: feeManager.plasmaVaultTotalPerformanceFee()
             });
     }
 }

@@ -78,22 +78,28 @@ struct MarketSubstratesConfig {
     bytes32[] substrates;
 }
 
+/// @notice Struct containing the fees for a recipient
+/// @param recipient The address of the recipient
+/// @param feeValue The fee value for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+struct RecipientFee {
+    address recipient;
+    uint256 feeValue;
+}
+
 /// @notice FeeConfig is a struct that represents the configuration of fees in the Plasma Vault
 struct FeeConfig {
+    /// @notice The address of the fee factory
+    address feeFactory;
     /// @notice The management fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 iporDaoManagementFee;
     /// @notice The performance fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
     uint256 iporDaoPerformanceFee;
-    /// @notice The management fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
-    uint256 atomistManagementFee;
-    /// @notice The performance fee for the Atomist (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
-    uint256 atomistPerformanceFee;
-    /// @notice The address of the fee factory
-    address feeFactory;
-    /// @notice The address of the fee recipient
-    address feeRecipientAddress;
     /// @notice The address of the DAO fee recipient
     address iporDaoFeeRecipientAddress;
+    /// @notice The list of recipients and their fees (management fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    RecipientFee[] recipientManagementFees;
+    /// @notice The list of recipients and their fees (performance fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    RecipientFee[] recipientPerformanceFees;
 }
 
 /// @title Main contract of the Plasma Vault in ERC4626 standard - responsible for managing assets and shares by the Alphas via Fuses.
@@ -174,14 +180,13 @@ contract PlasmaVault is
 
         FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
             FeeManagerInitData({
-                iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
-                iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
-                atomistManagementFee: initData_.feeConfig.atomistManagementFee,
-                atomistPerformanceFee: initData_.feeConfig.atomistPerformanceFee,
                 initialAuthority: initData_.accessManager,
                 plasmaVault: address(this),
-                feeRecipientAddress: initData_.feeConfig.feeRecipientAddress,
-                iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress
+                iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
+                iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
+                iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress,
+                recipientManagementFees: initData_.feeConfig.recipientManagementFees,
+                recipientPerformanceFees: initData_.feeConfig.recipientPerformanceFees
             })
         );
 

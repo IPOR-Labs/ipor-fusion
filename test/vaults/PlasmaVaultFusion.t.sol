@@ -17,11 +17,11 @@ import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMid
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 
 // solhint-disable-next-line max-states-count
 contract PlasmaVaultErc20FusionTest is Test {
@@ -115,7 +115,7 @@ contract PlasmaVaultErc20FusionTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(0, 0, 0, 0, address(address(new FeeManagerFactory())), address(0), address(0)),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,

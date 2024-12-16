@@ -6,14 +6,14 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {FuseAction, PlasmaVault, FeeConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
+import {FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {Erc4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
@@ -22,7 +22,7 @@ import {IFluidLendingStakingRewards} from "../../../contracts/fuses/fluid_instad
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
 import {FluidInstadappClaimFuse} from "../../../contracts/rewards_fuses/fluid_instadapp/FluidInstadappClaimFuse.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 contract FluidInstadappStakingUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -164,7 +164,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {

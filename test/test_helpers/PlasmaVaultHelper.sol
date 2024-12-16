@@ -5,8 +5,8 @@ import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} fr
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {MarketSubstratesConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {FeeConfigHelper} from "./FeeConfigHelper.sol";
 
 struct DeployMinimalPlasmaVaultParams {
     address underlyingToken;
@@ -26,15 +26,7 @@ library PlasmaVaultHelper {
         DeployMinimalPlasmaVaultParams memory params
     ) internal returns (PlasmaVault plasmaVault) {
         // Create fee configuration
-        FeeConfig memory feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            atomistManagementFee: 0,
-            atomistPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: address(0),
-            iporDaoFeeRecipientAddress: address(0)
-        });
+        FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         // Deploy access manager
         address accessManager = address(new IporFusionAccessManager(params.atomist, 0));

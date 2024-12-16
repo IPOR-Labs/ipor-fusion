@@ -12,7 +12,6 @@ import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -36,6 +35,8 @@ import {UniswapV3SwapFuse} from "../../contracts/fuses/uniswap/UniswapV3SwapFuse
 import {ReadBalanceFuses} from "../../contracts/universal_reader/ReadBalanceFuses.sol";
 import {UniversalReader, ReadResult} from "../../contracts/universal_reader/UniversalReader.sol";
 import {UpdateWithdrawManager} from "./UpdateWithdrawManager.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
+
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
     uint256 balanceErc20Before;
@@ -111,15 +112,7 @@ contract UniversalReaderTest is Test {
     function deployMinimalPlasmaVaultForUsdc() private returns (address) {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
 
-        FeeConfig memory feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            atomistManagementFee: 0,
-            atomistPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: address(0),
-            iporDaoFeeRecipientAddress: address(0)
-        });
+        FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
 

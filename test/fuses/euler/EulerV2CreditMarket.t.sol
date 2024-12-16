@@ -21,14 +21,13 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FuseAction, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
-
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 import {IWETH9} from "./IWETH9.sol";
@@ -188,7 +187,7 @@ contract EulerCreditMarketTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createAccessManager() private returns (address accessManager_) {
