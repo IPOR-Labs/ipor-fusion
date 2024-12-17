@@ -197,34 +197,4 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     function _msgSender() internal view override returns (address) {
         return getSenderFromContext();
     }
-
-    /// @notice Checks if a caller can execute a function
-    /// @param caller_ The address attempting to call the function
-    /// @param data_ The calldata of the function call
-    /// @dev Handles special cases for context management functions
-    /// @custom:access Internal
-    function _checkCanCall(address caller_, bytes calldata data_) internal override {
-        bytes4 sig = bytes4(data_[0:4]);
-        // @dev for context manager 87ef0b87 - setupContext, db99bddd - clearContext
-        if (sig == bytes4(0x87ef0b87) || sig == bytes4(0xdb99bddd)) {
-            caller_ = msg.sender;
-        }
-
-        AccessManagedStorage storage $ = _getAccessManagedStorage();
-        (bool immediate, uint32 delay) = AuthorityUtils.canCallWithDelay(
-            authority(),
-            caller_,
-            address(this),
-            bytes4(data_[0:4])
-        );
-        if (!immediate) {
-            if (delay > 0) {
-                $._consumingSchedule = true;
-                IAccessManager(authority()).consumeScheduledOp(caller_, data_);
-                $._consumingSchedule = false;
-            } else {
-                revert AccessManagedUnauthorized(caller_);
-            }
-        }
-    }
 }

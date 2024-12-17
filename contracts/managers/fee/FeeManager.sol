@@ -512,35 +512,6 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         return getSenderFromContext();
     }
 
-    /**
-     * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
-     * is less than 4 bytes long.
-     */
-    function _checkCanCall(address caller_, bytes calldata data_) internal override {
-        bytes4 sig = bytes4(data_[0:4]);
-        // @dev for context manager 87ef0b87 - setupContext, db99bddd - clearContext
-        if (sig == bytes4(0x87ef0b87) || sig == bytes4(0xdb99bddd)) {
-            caller_ = msg.sender;
-        }
-
-        AccessManagedStorage storage $ = _getAccessManagedStorage();
-        (bool immediate, uint32 delay) = AuthorityUtils.canCallWithDelay(
-            authority(),
-            caller_,
-            address(this),
-            bytes4(data_[0:4])
-        );
-        if (!immediate) {
-            if (delay > 0) {
-                $._consumingSchedule = true;
-                IAccessManager(authority()).consumeScheduledOp(caller_, data_);
-                $._consumingSchedule = false;
-            } else {
-                revert AccessManagedUnauthorized(caller_);
-            }
-        }
-    }
-
     modifier onlyInitialized() {
         if (_getInitializedVersion() != INITIALIZED_VERSION) {
             revert NotInitialized();
