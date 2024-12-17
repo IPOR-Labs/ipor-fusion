@@ -188,12 +188,10 @@ contract ContextManager is AccessManagedUpgradeable {
         }
 
         for (uint256 i; i < length; ++i) {
-            // Validate address
             if (addrs[i] == address(0)) {
                 revert InvalidAuthority();
             }
 
-            // addApprovedAddress returns true only if address was newly added
             if (ContextManagerStorageLib.addApprovedAddress(addrs[i])) {
                 unchecked {
                     ++approvedCount;
@@ -238,7 +236,6 @@ contract ContextManager is AccessManagedUpgradeable {
     function runWithContext(ExecuteData calldata executeData) external returns (bytes[] memory results) {
         uint256 length = executeData.targets.length;
 
-        // Validate array lengths and non-empty arrays
         if (length == 0) {
             revert EmptyArrayNotAllowed();
         }
@@ -252,12 +249,10 @@ contract ContextManager is AccessManagedUpgradeable {
         for (uint256 i; i < length; ++i) {
             address target = executeData.targets[i];
 
-            // Validate target address
             if (target == address(0)) {
                 revert InvalidAuthority();
             }
 
-            // Execute within context
             results[i] = _executeWithinContext(target, msg.sender, executeData.datas[i]);
         }
     }
@@ -285,7 +280,6 @@ contract ContextManager is AccessManagedUpgradeable {
     ) external returns (bytes[] memory results) {
         uint256 length = contextDataArray.length;
 
-        // Validate non-empty array
         if (length == 0) {
             revert EmptyArrayNotAllowed();
         }
@@ -296,20 +290,16 @@ contract ContextManager is AccessManagedUpgradeable {
         for (uint256 i; i < length; ++i) {
             contextData = contextDataArray[i];
 
-            // Check if signature has expired
             if (block.timestamp > contextData.expirationTime) {
                 revert SignatureExpired();
             }
 
-            // Verify signature
             if (!_verifySignature(contextData)) {
                 revert InvalidSignature();
             }
 
-            // Verify and update nonce
             ContextManagerStorageLib.verifyAndUpdateNonce(contextData.sender, contextData.nonce);
 
-            // Execute within context
             results[i] = _executeWithinContext(contextData.target, contextData.sender, contextData.data);
         }
     }
@@ -332,13 +322,10 @@ contract ContextManager is AccessManagedUpgradeable {
             revert AddressNotApproved(target);
         }
 
-        // Setup context before execution
         IContextClient(target).setupContext(sender);
 
-        // Execute call
         bytes memory result = target.functionCall(data);
 
-        // Clear context after execution
         IContextClient(target).clearContext();
 
         emit ContextCall(target, data, result);

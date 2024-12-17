@@ -50,10 +50,8 @@ abstract contract ContextClient is IContextClient, AccessManagedUpgradeable {
             revert ContextAlreadySet();
         }
 
-        // Store the context
         ContextClientStorageLib.setContextSender(sender);
 
-        // Emit event for better transparency
         emit ContextSet(sender);
     }
 
@@ -74,10 +72,8 @@ abstract contract ContextClient is IContextClient, AccessManagedUpgradeable {
             revert ContextNotSet();
         }
 
-        // Clear the context
         ContextClientStorageLib.clearContextStorage();
 
-        // Emit event for better transparency
         emit ContextCleared(currentSender);
     }
 
