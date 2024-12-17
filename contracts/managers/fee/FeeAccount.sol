@@ -30,14 +30,14 @@ contract FeeAccount {
 
     /// @notice Approves the fee manager to spend the maximum amount of vault tokens
     /// @dev Uses force approve to handle tokens that require approval to be set to 0 first
-    /// @param plasmaVault Address of the ERC20 vault token to approve
+    /// @param plasmaVault_ Address of the ERC20 vault token to approve
     /// @custom:access Only callable by the FEE_MANAGER address
     /// @custom:security Uses SafeERC20 for safe token operations
-    function approveMaxForFeeManager(address plasmaVault) external {
+    function approveMaxForFeeManager(address plasmaVault_) external {
         if (msg.sender != FEE_MANAGER) {
             revert OnlyFeeManagerCanApprove();
         }
 
-        IERC20(plasmaVault).forceApprove(FEE_MANAGER, type(uint256).max);
+        IERC20(plasmaVault_).forceApprove(FEE_MANAGER, type(uint256).max);
     }
 }

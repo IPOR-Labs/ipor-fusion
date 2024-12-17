@@ -93,21 +93,21 @@ contract UniswapV3SwapFuse is IFuseCommon {
         bytes memory memoryPath = data_.path;
         uint256 numberOfTokens;
 
-        if (hasMultiplePools(path)) {
+        if (_hasMultiplePools(path)) {
             numberOfTokens = ((path.length.toInt256() - ADDR_SIZE.toInt256()).toUint256() / NEXT_V3_POOL_OFFSET) + 1;
             tokens = new address[](numberOfTokens);
             for (uint256 i; i < numberOfTokens; ++i) {
-                tokens[i] = decodeFirstToken(path);
+                tokens[i] = _decodeFirstToken(path);
                 if (i != numberOfTokens - 1) {
-                    path = skipTokenAndFee(path);
+                    path = _skipTokenAndFee(path);
                 }
             }
         } else {
             numberOfTokens = 2;
             tokens = new address[](numberOfTokens);
-            tokens[0] = decodeFirstToken(path);
-            path = skipTokenAndFee(path);
-            tokens[1] = decodeFirstToken(path);
+            tokens[0] = _decodeFirstToken(path);
+            path = _skipTokenAndFee(path);
+            tokens[1] = _decodeFirstToken(path);
         }
 
         for (uint256 i; i < numberOfTokens; ++i) {
@@ -140,17 +140,17 @@ contract UniswapV3SwapFuse is IFuseCommon {
     /// @notice Returns true iff the path contains two or more pools
     /// @param path_ The encoded swap path
     /// @return True if path contains two or more pools, otherwise false
-    function hasMultiplePools(bytes calldata path_) private pure returns (bool) {
+    function _hasMultiplePools(bytes calldata path_) private pure returns (bool) {
         return path_.length >= MULTIPLE_V3_POOLS_MIN_LENGTH;
     }
 
-    function decodeFirstToken(bytes calldata path_) private pure returns (address tokenA) {
-        tokenA = toAddress(path_);
+    function _decodeFirstToken(bytes calldata path_) private pure returns (address tokenA) {
+        tokenA = _toAddress(path_);
     }
 
     /// @notice Skips a token + fee element
     /// @param path_ The swap path
-    function skipTokenAndFee(bytes calldata path_) private pure returns (bytes calldata) {
+    function _skipTokenAndFee(bytes calldata path_) private pure returns (bytes calldata) {
         return path_[NEXT_V3_POOL_OFFSET:];
     }
 
@@ -158,7 +158,7 @@ contract UniswapV3SwapFuse is IFuseCommon {
     /// @dev length and overflow checks must be carried out before calling
     /// @param bytes_ The input bytes string to slice
     /// @return _address The address starting at byte 0
-    function toAddress(bytes calldata bytes_) private pure returns (address _address) {
+    function _toAddress(bytes calldata bytes_) private pure returns (address _address) {
         if (bytes_.length < ADDR_SIZE) revert SliceOutOfBounds();
         assembly {
             _address := shr(96, calldataload(bytes_.offset))

@@ -28,12 +28,12 @@ library ContextClientStorageLib {
     /// @notice Sets the context sender address for the current transaction context
     /// @dev Should be called at the beginning of a context-dependent operation
     /// @dev Critical for maintaining caller context in complex vault operations
-    /// @param sender The address to set as the context sender
+    /// @param sender_ The address to set as the context sender
     /// @custom:security Only callable by authorized contracts in the system
     /// @custom:security-risk HIGH - Incorrect context setting can lead to unauthorized access
-    function setContextSender(address sender) internal {
+    function setContextSender(address sender_   ) internal {
         ContextSenderStorage storage $ = _getContextSenderStorage();
-        $.contextSender = sender;
+        $.contextSender = sender_;
     }
 
     /// @notice Clears the current context by setting the sender to address(0)

@@ -37,21 +37,21 @@ abstract contract ContextClient is IContextClient, AccessManagedUpgradeable {
 
     /**
      * @notice Sets up the context with the provided sender address
-     * @param sender The address to set as the context sender
+     * @param sender_ The address to set as the context sender
      * @dev Only callable by authorized contracts through the restricted modifier
      * @dev Uses ContextClientStorageLib for persistent storage
      * @custom:security Non-reentrant by design through single context restriction
      * @custom:access Restricted to TECH_CONTEXT_MANAGER_ROLE only
      * @custom:throws ContextAlreadySet if a context is currently active
      */
-    function setupContext(address sender) external override restricted {
+    function setupContext(address sender_) external override restricted {
         if (ContextClientStorageLib.isContextSenderSet()) {
             revert ContextAlreadySet();
         }
 
-        ContextClientStorageLib.setContextSender(sender);
+        ContextClientStorageLib.setContextSender(sender_);
 
-        emit ContextSet(sender);
+        emit ContextSet(sender_);
     }
 
     /**
@@ -81,7 +81,7 @@ abstract contract ContextClient is IContextClient, AccessManagedUpgradeable {
      * @custom:security Ensure proper access control in derived contracts
      * @custom:access Internal function - access controlled by inheriting contracts
      */
-    function getSenderFromContext() internal view returns (address) {
+    function _getSenderFromContext() internal view returns (address) {
         return ContextClientStorageLib.getSenderFromContext();
     }
     

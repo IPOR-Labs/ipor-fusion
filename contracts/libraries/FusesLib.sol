@@ -134,7 +134,7 @@ library FusesLib {
             (uint256)
         );
 
-        if (wadBalanceAmountInUSD > calculateAllowedDustInBalanceFuse()) {
+        if (wadBalanceAmountInUSD > _calculateAllowedDustInBalanceFuse()) {
             revert BalanceFuseNotReadyToRemove(marketId_, fuse_, wadBalanceAmountInUSD);
         }
 
@@ -143,7 +143,7 @@ library FusesLib {
         emit BalanceFuseRemoved(marketId_, fuse_);
     }
 
-    function calculateAllowedDustInBalanceFuse() private view returns (uint256) {
+    function _calculateAllowedDustInBalanceFuse() private view returns (uint256) {
         return 10 ** (PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals / 2);
     }
 }

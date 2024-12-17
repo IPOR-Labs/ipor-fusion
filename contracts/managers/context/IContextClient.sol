@@ -20,14 +20,14 @@ pragma solidity 0.8.26;
 interface IContextClient {
     /**
      * @notice Sets up a new context with the specified sender address
-     * @param sender The address to be set as the context sender
+     * @param sender_ The address to be set as the context sender
      * @dev Requirements:
      * - Must be called by an authorized contract
      * - No active context should exist when setting up new context
      * - Emits ContextSet event on successful setup
      * @custom:security Should implement access control to prevent unauthorized context manipulation
      */
-    function setupContext(address sender) external;
+    function setupContext(address sender_) external;
 
     /**
      * @notice Clears the current active context
@@ -41,17 +41,17 @@ interface IContextClient {
 
     /**
      * @notice Emitted when a new context is successfully set
-     * @param sender The address that was set as the context sender
+     * @param sender_ The address that was set as the context sender
      * @dev This event should be monitored for context tracking and auditing
      */
-    event ContextSet(address indexed sender);
+    event ContextSet(address indexed sender_);
 
     /**
      * @notice Emitted when an active context is cleared
-     * @param sender The address that was removed from the context
+     * @param sender_ The address that was removed from the context
      * @dev This event should be monitored to ensure proper context cleanup
      */
-    event ContextCleared(address indexed sender);
+    event ContextCleared(address indexed sender_);
 
     /**
      * @notice Expected errors that may be thrown by implementations

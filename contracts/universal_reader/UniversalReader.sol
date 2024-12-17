@@ -38,6 +38,17 @@ abstract contract UniversalReader {
     error UnauthorizedCaller();
 
     /**
+     * @dev Modifier that restricts function access to the contract itself
+     * @custom:access Internal
+     */
+    modifier onlyThis() {
+        if (msg.sender != address(this)) {
+            revert UnauthorizedCaller();
+        }
+        _;
+    }
+
+    /**
      * @notice Performs a secure read operation on a target contract
      * @dev Uses a two-step process to safely execute delegatecall:
      *      1. Validates target address
@@ -76,14 +87,5 @@ abstract contract UniversalReader {
         return result;
     }
 
-    /**
-     * @dev Modifier that restricts function access to the contract itself
-     * @custom:access Internal
-     */
-    modifier onlyThis() {
-        if (msg.sender != address(this)) {
-            revert UnauthorizedCaller();
-        }
-        _;
-    }
+    
 }

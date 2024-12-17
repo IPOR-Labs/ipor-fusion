@@ -193,6 +193,6 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// @notice Internal function to get the message sender from context
     /// @return The address of the message sender
     function _msgSender() internal view override returns (address) {
-        return getSenderFromContext();
+        return _getSenderFromContext();
     }
 }

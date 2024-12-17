@@ -77,9 +77,12 @@ library AssetDistributionProtectionLib {
         if (!isMarketsLimitsActivated()) {
             return;
         }
+        
         uint256 len = data_.marketsToCheck.length;
+        uint256 limit;
+
         for (uint256 i; i < len; ++i) {
-            uint256 limit = Math.mulDiv(
+            limit = Math.mulDiv(
                 PlasmaVaultStorageLib.getMarketsLimits().limitInPercentage[data_.marketsToCheck[i].marketId],
                 data_.totalBalanceInVault,
                 ONE_HUNDRED_PERCENT

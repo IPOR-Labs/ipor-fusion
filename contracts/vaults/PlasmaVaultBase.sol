@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
+import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {ERC20VotesUpgradeable} from "./ERC20VotesUpgradeable.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
@@ -28,11 +29,21 @@ contract PlasmaVaultBase is
      */
     error ERC20InvalidCap(uint256 cap);
 
+    /// @notice Initializes the PlasmaVaultBase contract
+    /// @param assetName_ The name of the asset
+    /// @param accessManager_ The address of the access manager contract
+    /// @param totalSupplyCap_ The maximum total supply cap for the vault
+    /// @dev Validates access manager address and total supply cap
+    /// @custom:access Only during initialization
     function init(
         string memory assetName_,
         address accessManager_,
         uint256 totalSupplyCap_
     ) external override initializer {
+        if (accessManager_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        
         super.__ERC20Votes_init();
         super.__ERC20Permit_init(assetName_);
         super.__AccessManaged_init(accessManager_);
@@ -85,6 +96,6 @@ contract PlasmaVaultBase is
     /// @notice Internal function to get the message sender from context
     /// @return The address of the message sender
     function _msgSender() internal view override returns (address) {
-        return getSenderFromContext();
+        return _getSenderFromContext();
     }
 }
