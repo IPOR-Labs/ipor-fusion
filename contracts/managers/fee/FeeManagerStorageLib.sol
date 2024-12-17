@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-// At the top of the file, add file-level documentation
-/// @title Fee Manager Storage Library
-/// @notice Library for managing fee-related storage in the IPOR Protocol's plasma vault system
-/// @dev Implements diamond storage pattern for fee management including performance, management, and DAO fees
-
 // Add custom error at the top level, before the structs
 error FeeManagerStorageLibZeroAddress();
 
@@ -37,6 +32,9 @@ struct FeeRecipientDataStorage {
     address[] recipientAddresses;
 }
 
+/// @title Fee Manager Storage Library
+/// @notice Library for managing fee-related storage in the IPOR Protocol's plasma vault system
+/// @dev Implements diamond storage pattern for fee management including performance, management, and DAO fees
 library FeeManagerStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.dao.fee.recipient.data.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant DAO_FEE_RECIPIENT_DATA_SLOT =
@@ -60,7 +58,7 @@ library FeeManagerStorageLib {
 
     /// @notice Retrieves management fee recipient data storage
     /// @dev Uses assembly to access diamond storage pattern slot
-    /// @return Storage pointer to FeeRecipientDataStorage
+    /// @return $ Storage pointer to FeeRecipientDataStorage
     function _managementFeeRecipientDataStorage() internal pure returns (FeeRecipientDataStorage storage $) {
         assembly {
             $.slot := MANAGEMENT_FEE_RECIPIENT_DATA_SLOT
@@ -69,7 +67,7 @@ library FeeManagerStorageLib {
 
     /// @notice Retrieves performance fee recipient data storage
     /// @dev Uses assembly to access diamond storage pattern slot
-    /// @return Storage pointer to FeeRecipientDataStorage
+    /// @return $ Storage pointer to FeeRecipientDataStorage
     function _performanceFeeRecipientDataStorage() internal pure returns (FeeRecipientDataStorage storage $) {
         assembly {
             $.slot := PERFORMANCE_FEE_RECIPIENT_DATA_SLOT
@@ -167,7 +165,6 @@ library FeeManagerStorageLib {
     /// @param recipientAddress The address to set as the IPOR DAO fee recipient
     /// @dev Emits IporDaoFeeRecipientAddressChanged event
     function setIporDaoFeeRecipientAddress(address recipientAddress) internal {
-        if (recipientAddress == address(0)) revert FeeManagerStorageLibZeroAddress();
         _daoFeeRecipientDataStorage().iporDaoFeeRecipientAddress = recipientAddress;
         emit IporDaoFeeRecipientAddressChanged(recipientAddress);
     }
