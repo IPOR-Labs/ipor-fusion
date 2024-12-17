@@ -2,13 +2,24 @@
 pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {FuseAction} from "../interfaces/IPlasmaVault.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+struct CallbackData {
+    address asset;
+    address addressToApprove;
+    uint256 amountToApprove;
+    bytes actionData;
+}
+
 /// @title Callback Handler Library responsible for handling callbacks in the Plasma Vault
 library CallbackHandlerLib {
     using Address for address;
+    using SafeERC20 for ERC20;
 
     event CallbackHandlerUpdated(address indexed handler, address indexed sender, bytes4 indexed sig);
 
@@ -29,8 +40,10 @@ library CallbackHandlerLib {
         if (data.length == 0) {
             return;
         }
-        FuseAction[] memory calls = abi.decode(data, (FuseAction[]));
-        PlasmaVault(address(this)).executeInternal(calls);
+        CallbackData memory calls = abi.decode(data, (CallbackData));
+        PlasmaVault(address(this)).executeInternal(abi.decode(calls.actionData, (FuseAction[])));
+
+        ERC20(calls.asset).forceApprove(calls.addressToApprove, calls.amountToApprove);
     }
 
     /// @notice Updates the callback handler for the contract

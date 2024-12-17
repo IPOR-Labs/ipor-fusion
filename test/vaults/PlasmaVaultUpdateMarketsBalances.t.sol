@@ -20,6 +20,7 @@ import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {IComet} from "../../contracts/fuses/compound_v3/ext/IComet.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract PlasmaVaultUpdateMarketsBalances is Test {
     address private constant _ATOMIST = address(1111111);
@@ -29,6 +30,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
     address private constant _USDC_HOLDER = 0x77EC2176824Df1145425EB51b3C88B9551847667;
 
     IPool public constant AAVE_POOL = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
     IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0x54586bE62E3c3580375aE3723C145253060Ca0C2);
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
@@ -98,7 +100,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                     feeConfig: _setupFeeConfig(),
                     accessManager: address(_accessManager),
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max
+                    totalSupplyCap: type(uint256).max,
+                    withdrawManager: address(0)
                 })
             )
         );
@@ -127,30 +130,17 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
 
         balanceFuses[1] = MarketBalanceFuseConfig({
             marketId: IporFusionMarkets.AAVE_V3,
-            fuse: address(
-                new AaveV3BalanceFuse(
-                    IporFusionMarkets.AAVE_V3,
-                    address(AAVE_PRICE_ORACLE),
-                    address(AAVE_POOL_DATA_PROVIDER)
-                )
-            )
+            fuse: address(new AaveV3BalanceFuse(IporFusionMarkets.AAVE_V3, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER))
         });
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
     }
 
     function _createFuse() private returns (address[] memory) {
         address[] memory fuses = new address[](2);
-        fuses[0] = address(
-            new AaveV3SupplyFuse(IporFusionMarkets.AAVE_V3, address(AAVE_POOL), address(AAVE_POOL_DATA_PROVIDER))
-        );
+        fuses[0] = address(new AaveV3SupplyFuse(IporFusionMarkets.AAVE_V3, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER));
         fuses[1] = address(new CompoundV3SupplyFuse(IporFusionMarkets.COMPOUND_V3_USDC, COMET_V3_USDC));
         _aaveFuse = fuses[0];
         _compoundFuse = fuses[1];
@@ -179,6 +169,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         whitelist[0] = _USER;
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -186,15 +178,15 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
             whitelist: whitelist,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: initAddress,
-            managementFeeManagers: initAddress,
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0)
+                rewardsClaimManager: address(0),
+                withdrawManager: address(0),
+                feeManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

@@ -122,14 +122,14 @@ interface IPlasmaVaultGovernance {
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external;
 
     /// @notice Configures the performance fee
-    /// @param feeManager_ The address of the fee manager
+    /// @param feeAccount_ The address of the fee manager
     /// @param feeInPercentage_ The fee in percentage represented in 18 decimals, example 1e18 is 100%, 1e17 is 10% etc.
-    function configurePerformanceFee(address feeManager_, uint256 feeInPercentage_) external;
+    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external;
 
     /// @notice Configures the management fee
-    /// @param feeManager_ The address of the fee manager
+    /// @param feeAccount_ The address of the fee manager
     /// @param feeInPercentage_ The fee in percentage represented in 18 decimals, example 1e18 is 100%, 1e17 is 10% etc.
-    function configureManagementFee(address feeManager_, uint256 feeInPercentage_) external;
+    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external;
 
     /// @notice Sets the Rewards Claim Manager address
     /// @param rewardsClaimManagerAddress_ The address of the Rewards Claim Manager

@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
+import {IPoolAddressesProvider} from "./ext/IPoolAddressesProvider.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IAavePriceOracle} from "./ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "./ext/IAavePoolDataProvider.sol";
@@ -20,20 +21,18 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
     uint256 private constant AAVE_ORACLE_BASE_CURRENCY_DECIMALS = 8;
 
     uint256 public immutable MARKET_ID;
-    address public immutable AAVE_PRICE_ORACLE;
-    address public immutable AAVE_POOL_DATA_PROVIDER_V3;
+    address public immutable AAVE_V3_POOL_ADDRESSES_PROVIDER;
 
-    constructor(uint256 marketId_, address aavePriceOracle_, address aavePoolDataProviderV3_) {
+    constructor(uint256 marketId_, address aaveV3PoolAddressesProvider_) {
         if (marketId_ == 0) {
             revert Errors.WrongValue();
         }
-        if (aavePriceOracle_ == address(0) || aavePoolDataProviderV3_ == address(0)) {
+        if (aaveV3PoolAddressesProvider_ == address(0)) {
             revert Errors.WrongAddress();
         }
 
         MARKET_ID = marketId_;
-        AAVE_PRICE_ORACLE = aavePriceOracle_;
-        AAVE_POOL_DATA_PROVIDER_V3 = aavePoolDataProviderV3_;
+        AAVE_V3_POOL_ADDRESSES_PROVIDER = aaveV3PoolAddressesProvider_;
     }
 
     function balanceOf() external view override returns (uint256) {
@@ -59,14 +58,15 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
             balanceInLoop = 0;
             asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             decimals = ERC20(asset).decimals();
-            price = IAavePriceOracle(AAVE_PRICE_ORACLE).getAssetPrice(asset);
+            price = IAavePriceOracle(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPriceOracle())
+                .getAssetPrice(asset);
 
             if (price == 0) {
                 revert Errors.UnsupportedQuoteCurrencyFromOracle();
             }
 
             (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(
-                AAVE_POOL_DATA_PROVIDER_V3
+                IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPoolDataProvider()
             ).getReserveTokensAddresses(asset);
 
             if (aTokenAddress != address(0)) {
