@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {FeeConfig, RecipientFee} from "../../contracts/vaults/PlasmaVault.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeManagerFactory, FeeConfig, RecipientFee} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 /// @title FeeConfigHelper
 /// @notice Helper library for creating fee configurations in tests

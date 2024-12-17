@@ -6,7 +6,6 @@ libs = ["node_modules", "lib"]
 fs_permissions = [{ access = "read-write", path = "./" }]
 libraries = []
 remappings = [
-    '@ensdomains/=node_modules/@ensdomains/',
     '@openzeppelin/=node_modules/@openzeppelin/',
     '@uniswap/v3-core/=node_modules/@uniswap/v3-core/',
     'eth-gas-reporter/=node_modules/eth-gas-reporter/',

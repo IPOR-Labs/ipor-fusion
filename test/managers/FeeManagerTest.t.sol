@@ -5,7 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, RecipientFee} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {FeeConfig, RecipientFee} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -189,7 +190,8 @@ contract FeeManagerTest is Test {
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER()
+                    .FEE_MANAGER(),
+                contextManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
@@ -412,10 +414,7 @@ contract FeeManagerTest is Test {
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
 
         RecipientFee[] memory recipientFees = new RecipientFee[](1);
-        recipientFees[0] = RecipientFee({
-            recipient: _FEE_RECIPIENT_1,
-            feeValue: 500
-        });
+        recipientFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 500});
 
         // when
         vm.startPrank(_USER);
@@ -430,15 +429,12 @@ contract FeeManagerTest is Test {
             .getPerformanceFeeData();
         FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
 
-        uint256 performanceFeeBefore = feeManager.plasmaVaultTotalPerformanceFee();
+        uint256 performanceFeeBefore = feeManager.getTotalPerformanceFee();
 
         feeManager.initialize();
 
         RecipientFee[] memory recipientFees = new RecipientFee[](1);
-        recipientFees[0] = RecipientFee({
-            recipient: _FEE_RECIPIENT_1,
-            feeValue: 500
-        });
+        recipientFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 500});
 
         // when
         vm.startPrank(_ATOMIST);
@@ -449,7 +445,7 @@ contract FeeManagerTest is Test {
         PlasmaVaultStorageLib.PerformanceFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
             .getPerformanceFeeData();
 
-        uint256 performanceFeeAfter = feeManager.plasmaVaultTotalPerformanceFee();
+        uint256 performanceFeeAfter = feeManager.getTotalPerformanceFee();
 
         assertEq(performanceFeeBefore, 2000, "performanceFeeBefore should be 2000");
         assertEq(performanceFeeAfter, 1500, "performanceFeeAfter should be 1500");
@@ -472,15 +468,12 @@ contract FeeManagerTest is Test {
             .getManagementFeeData();
         FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
 
-        uint256 managementFeeBefore = feeManager.plasmaVaultTotalManagementFee();
+        uint256 managementFeeBefore = feeManager.getTotalManagementFee();
 
         feeManager.initialize();
 
         RecipientFee[] memory recipientFees = new RecipientFee[](1);
-        recipientFees[0] = RecipientFee({
-            recipient: _FEE_RECIPIENT_1,
-            feeValue: 50
-        });
+        recipientFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 50});
 
         // when
         vm.startPrank(_ATOMIST);
@@ -491,7 +484,7 @@ contract FeeManagerTest is Test {
         PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
             .getManagementFeeData();
 
-        uint256 managementFeeAfter = feeManager.plasmaVaultTotalManagementFee();
+        uint256 managementFeeAfter = feeManager.getTotalManagementFee();
 
         assertEq(managementFeeBefore, 500, "managementFeeBefore should be 500");
         assertEq(managementFeeAfter, 350, "managementFeeAfter should be 350");
@@ -576,10 +569,7 @@ contract FeeManagerTest is Test {
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
 
         RecipientFee[] memory recipientFees = new RecipientFee[](1);
-        recipientFees[0] = RecipientFee({
-            recipient: _FEE_RECIPIENT_1,
-            feeValue: 500
-        });
+        recipientFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 500});
 
         // when
         vm.startPrank(_USER);
@@ -627,7 +617,7 @@ contract FeeManagerTest is Test {
 
         feeManager.initialize();
 
-        address feeRecipientBefore = feeManager.iporDaoFeeRecipientAddress();
+        address feeRecipientBefore = feeManager.getIporDaoFeeRecipientAddress();
 
         // when
         vm.startPrank(_DAO);
@@ -636,7 +626,7 @@ contract FeeManagerTest is Test {
 
         // then
 
-        address feeRecipientAfter = feeManager.iporDaoFeeRecipientAddress();
+        address feeRecipientAfter = feeManager.getIporDaoFeeRecipientAddress();
 
         assertEq(feeRecipientBefore, _DAO_FEE_RECIPIENT, "feeRecipientBefore should be _DAO_FEE_RECIPIENT");
         assertEq(feeRecipientAfter, _USER, "feeRecipientAfter should be _USER");
@@ -655,17 +645,17 @@ contract FeeManagerTest is Test {
         });
         performanceFees[1] = RecipientFee({
             recipient: _FEE_RECIPIENT_2,
-            feeValue: 500  // 5%
+            feeValue: 500 // 5%
         });
 
         RecipientFee[] memory managementFees = new RecipientFee[](2);
         managementFees[0] = RecipientFee({
             recipient: _FEE_RECIPIENT_1,
-            feeValue: 100  // 1%
+            feeValue: 100 // 1%
         });
         managementFees[1] = RecipientFee({
             recipient: _FEE_RECIPIENT_2,
-            feeValue: 50   // 0.5%
+            feeValue: 50 // 0.5%
         });
 
         feeManager.initialize();
@@ -740,17 +730,17 @@ contract FeeManagerTest is Test {
         });
         performanceFees[1] = RecipientFee({
             recipient: _FEE_RECIPIENT_2,
-            feeValue: 0    // 0% - recipient exists but gets no fee
+            feeValue: 0 // 0% - recipient exists but gets no fee
         });
 
         RecipientFee[] memory managementFees = new RecipientFee[](2);
         managementFees[0] = RecipientFee({
             recipient: _FEE_RECIPIENT_1,
-            feeValue: 100    // 1% - recipient exists but gets no fee
+            feeValue: 100 // 1% - recipient exists but gets no fee
         });
         managementFees[1] = RecipientFee({
             recipient: _FEE_RECIPIENT_2,
-            feeValue: 0  // 0%
+            feeValue: 0 // 0%
         });
 
         feeManager.initialize();
@@ -799,7 +789,6 @@ contract FeeManagerTest is Test {
             "recipient1 should receive only performance fee"
         );
 
-        
         assertEq(
             balanceRecipient2After,
             0, // Only 1% management fee
@@ -814,6 +803,4 @@ contract FeeManagerTest is Test {
             "dao should receive correct fee share"
         );
     }
-
-    
 }

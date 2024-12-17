@@ -3,14 +3,23 @@ pragma solidity ^0.8.20;
 
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {ERC20VotesUpgradeable} from "./ERC20VotesUpgradeable.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
+import {ContextClient} from "../managers/context/ContextClient.sol";
 
 /// @title Stateless extension of PlasmaVault with ERC20 Votes, ERC20 Permit. Used in the context of Plasma Vault (only by delegatecall).
-contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20VotesUpgradeable, PlasmaVaultGovernance {
+contract PlasmaVaultBase is
+    IPlasmaVaultBase,
+    ERC20PermitUpgradeable,
+    ERC20VotesUpgradeable,
+    PlasmaVaultGovernance,
+    ContextClient
+{
     /**
      * @dev Total supply cap has been exceeded.
      */
@@ -73,5 +82,9 @@ contract PlasmaVaultBase is IPlasmaVaultBase, ERC20PermitUpgradeable, ERC20Votes
         }
 
         _transferVotingUnits(from_, to_, value_);
+    }
+
+    function _msgSender() internal view override returns (address) {
+        return getSenderFromContext();
     }
 }

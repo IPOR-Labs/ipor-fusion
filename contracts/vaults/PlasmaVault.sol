@@ -28,10 +28,12 @@ import {AssetDistributionProtectionLib, DataToCheck, MarketToCheck} from "../lib
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
-import {FeeManagerData, FeeManagerFactory} from "../managers/fee/FeeManagerFactory.sol";
+import {FeeManagerData, FeeManagerFactory, FeeConfig, FeeConfig} from "../managers/fee/FeeManagerFactory.sol";
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
+import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
+
 /// @notice PlasmaVaultInitData is a struct that represents a configuration of a Plasma Vault during construction
 struct PlasmaVaultInitData {
     /// @notice assetName is a name of the asset shares in Plasma Vault
@@ -76,30 +78,6 @@ struct MarketSubstratesConfig {
     /// @notice substrates is a list of substrates for the market
     /// @dev it could be list of assets or sub markets in a specific protocol or any other ids required to calculate balance in the market (external protocol)
     bytes32[] substrates;
-}
-
-/// @notice Struct containing the fees for a recipient
-/// @param recipient The address of the recipient
-/// @param feeValue The fee value for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
-struct RecipientFee {
-    address recipient;
-    uint256 feeValue;
-}
-
-/// @notice FeeConfig is a struct that represents the configuration of fees in the Plasma Vault
-struct FeeConfig {
-    /// @notice The address of the fee factory
-    address feeFactory;
-    /// @notice The management fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
-    uint256 iporDaoManagementFee;
-    /// @notice The performance fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
-    uint256 iporDaoPerformanceFee;
-    /// @notice The address of the DAO fee recipient
-    address iporDaoFeeRecipientAddress;
-    /// @notice The list of recipients and their fees (management fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    RecipientFee[] recipientManagementFees;
-    /// @notice The list of recipients and their fees (performance fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-    RecipientFee[] recipientPerformanceFees;
 }
 
 /// @title Main contract of the Plasma Vault in ERC4626 standard - responsible for managing assets and shares by the Alphas via Fuses.
@@ -446,34 +424,6 @@ contract PlasmaVault is
         _updateMarketsBalances(markets);
     }
 
-    function getUniqueElements(uint256[] memory inputArray) private pure returns (uint256[] memory) {
-        uint256[] memory tempArray = new uint256[](inputArray.length);
-        uint256 count = 0;
-
-        for (uint256 i = 0; i < inputArray.length; i++) {
-            if (inputArray[i] != 0 && !contains(tempArray, inputArray[i], count)) {
-                tempArray[count] = inputArray[i];
-                count++;
-            }
-        }
-
-        uint256[] memory uniqueArray = new uint256[](count);
-        for (uint256 i = 0; i < count; i++) {
-            uniqueArray[i] = tempArray[i];
-        }
-
-        return uniqueArray;
-    }
-
-    function contains(uint256[] memory array, uint256 element, uint256 count) private pure returns (bool) {
-        for (uint256 i = 0; i < count; i++) {
-            if (array[i] == element) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {
         if (assets_ == 0) {
             revert NoAssetsToDeposit();
@@ -803,9 +753,8 @@ contract PlasmaVault is
         }
     }
 
-    function _extractAmountFromWithdrawAndRedeem() private returns (uint256) {
-        (uint256 amount, , ) = abi.decode(_msgData()[4:], (uint256, address, address));
-        return amount;
+    function _msgSender() internal view override returns (address) {
+        return ContextClientStorageLib.getSenderFromContext();
     }
 
     function _update(address from_, address to_, uint256 value_) internal virtual override {
@@ -816,5 +765,38 @@ contract PlasmaVault is
 
     function _decimalsOffset() internal view virtual override returns (uint8) {
         return PlasmaVaultLib.DECIMALS_OFFSET;
+    }
+
+    function _extractAmountFromWithdrawAndRedeem() private view returns (uint256) {
+        (uint256 amount, , ) = abi.decode(_msgData()[4:], (uint256, address, address));
+        return amount;
+    }
+
+    function contains(uint256[] memory array, uint256 element, uint256 count) private pure returns (bool) {
+        for (uint256 i; i < count; ++i) {
+            if (array[i] == element) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getUniqueElements(uint256[] memory inputArray) private pure returns (uint256[] memory) {
+        uint256[] memory tempArray = new uint256[](inputArray.length);
+        uint256 count = 0;
+
+        for (uint256 i; i < inputArray.length; ++i) {
+            if (inputArray[i] != 0 && !contains(tempArray, inputArray[i], count)) {
+                tempArray[count] = inputArray[i];
+                count++;
+            }
+        }
+
+        uint256[] memory uniqueArray = new uint256[](count);
+        for (uint256 i; i < count; ++i) {
+            uniqueArray[i] = tempArray[i];
+        }
+
+        return uniqueArray;
     }
 }
