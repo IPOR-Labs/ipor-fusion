@@ -4,8 +4,6 @@ pragma solidity 0.8.26;
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
-import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {FeeAccount} from "./FeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {RecipientFee} from "./FeeManagerFactory.sol";
@@ -44,7 +42,7 @@ enum FeeType {
     PERFORMANCE
 }
 
- /// @title FeeManager
+/// @title FeeManager
 /// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
 /// Total performance fee percentage is the sum of all recipients performance fees + DAO performance fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
 /// Total management fee percentage is the sum of all recipients management fees + DAO management fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
@@ -523,5 +521,4 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     function _msgSender() internal view override returns (address) {
         return _getSenderFromContext();
     }
-
 }

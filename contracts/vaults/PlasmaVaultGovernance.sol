@@ -233,7 +233,9 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// @dev Only callable by accounts with ATOMIST_ROLE
     /// @custom:access ATOMIST_ROLE restricted
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external override restricted {
-        IPriceOracleMiddleware oldPriceOracleMiddleware = IPriceOracleMiddleware(PlasmaVaultLib.getPriceOracleMiddleware());
+        IPriceOracleMiddleware oldPriceOracleMiddleware = IPriceOracleMiddleware(
+            PlasmaVaultLib.getPriceOracleMiddleware()
+        );
         IPriceOracleMiddleware newPriceOracleMiddleware = IPriceOracleMiddleware(priceOracleMiddleware_);
 
         if (

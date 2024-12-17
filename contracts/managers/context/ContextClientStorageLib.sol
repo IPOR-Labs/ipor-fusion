@@ -31,7 +31,7 @@ library ContextClientStorageLib {
     /// @param sender_ The address to set as the context sender
     /// @custom:security Only callable by authorized contracts in the system
     /// @custom:security-risk HIGH - Incorrect context setting can lead to unauthorized access
-    function setContextSender(address sender_   ) internal {
+    function setContextSender(address sender_) internal {
         ContextSenderStorage storage $ = _getContextSenderStorage();
         $.contextSender = sender_;
     }

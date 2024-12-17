@@ -670,7 +670,7 @@ contract PlasmaVault is
         for (i; i < lengthOfArr1; ++i) {
             result[i] = arr1_[i];
         }
-        
+
         for (uint256 j; i < lengthOfNewArray_; ++j) {
             result[i] = arr2_[j];
             ++i;

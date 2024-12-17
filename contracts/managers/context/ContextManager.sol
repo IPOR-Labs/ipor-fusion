@@ -317,7 +317,11 @@ contract ContextManager is AccessManagedUpgradeable {
      * @custom:security Ensures proper context setup and cleanup
      * @custom:access Internal function - access controlled by public functions
      */
-    function _executeWithinContext(address target_, address sender_, bytes calldata data_) private returns (bytes memory) {
+    function _executeWithinContext(
+        address target_,
+        address sender_,
+        bytes calldata data_
+    ) private returns (bytes memory) {
         if (!ContextManagerStorageLib.isTargetApproved(target_)) {
             revert TargetNotApproved(target_);
         }

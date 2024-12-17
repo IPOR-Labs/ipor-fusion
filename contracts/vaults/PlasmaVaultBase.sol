@@ -43,7 +43,7 @@ contract PlasmaVaultBase is
         if (accessManager_ == address(0)) {
             revert Errors.WrongAddress();
         }
-        
+
         super.__ERC20Votes_init();
         super.__ERC20Permit_init(assetName_);
         super.__AccessManaged_init(accessManager_);

@@ -144,7 +144,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         }
 
         uint256 requestTimestamp_ = endWithdrawWindowTimestamp_ - withdrawWindow_;
-        
+
         return
             block.timestamp >= requestTimestamp_ &&
             block.timestamp <= endWithdrawWindowTimestamp_ &&

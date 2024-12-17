@@ -86,6 +86,4 @@ abstract contract UniversalReader {
         result.data = target.functionDelegateCall(data);
         return result;
     }
-
-    
 }

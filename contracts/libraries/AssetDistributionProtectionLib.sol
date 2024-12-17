@@ -77,7 +77,7 @@ library AssetDistributionProtectionLib {
         if (!isMarketsLimitsActivated()) {
             return;
         }
-        
+
         uint256 len = data_.marketsToCheck.length;
         uint256 limit;
 
