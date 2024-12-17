@@ -18,6 +18,14 @@ import {ContextClient} from "../context/ContextClient.sol";
 /// @title RewardsClaimManager
 /// @notice Manages the claiming and vesting of rewards from the Plasma Vault
 /// @dev This contract implements role-based access control for various reward management functions
+///
+/// Access Control:
+/// - TRANSFER_REWARDS_ROLE: Required for transfer function
+/// - CLAIM_REWARDS_ROLE: Required for claimRewards function
+/// - FUSE_MANAGER_ROLE: Required for addRewardFuses and removeRewardFuses functions
+/// - ATOMIST_ROLE: Required for setupVestingTime function
+/// - Other functions are publicly accessible: balanceOf, isRewardFuseSupported, getVestingData, getRewardsFuses,
+///   updateBalance, transferVestedTokensToVault
 contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IRewardsClaimManager {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;

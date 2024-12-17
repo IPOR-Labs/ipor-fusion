@@ -8,12 +8,12 @@ pragma solidity 0.8.26;
 /// @custom:security-contact security@ipor.io
 library ContextClientStorageLib {
     /// @dev Unique storage slot for context sender data
-    /// @dev Calculated as: keccak256(abi.encode(uint256(keccak256("io.ipor.context.client.storage")) - 1)) & ~bytes32(uint256(0xff))
+    /// @dev Calculated as: keccak256(abi.encode(uint256(keccak256("io.ipor.context.client.sender.storage")) - 1)) & ~bytes32(uint256(0xff))
     /// @dev The last byte is cleared to allow for additional storage patterns
     /// @dev This specific slot ensures no storage collision with other contract storage
     /// @custom:security Uses ERC-7201 namespaced storage pattern to prevent storage collisions
     bytes32 private constant CONTEXT_SENDER_STORAGE_SLOT =
-        0x1ed01a488675aee5f2546b3ab61bd85c8f7a260e8a6dddb11fc993513462ac00;
+        0x68262fe08792a71a690eb5eb2de15df1b0f463dd786bf92bdbd5f0f0d1ae8b00;
 
     /// @dev Structure holding the context sender information
     /// @custom:storage-location erc7201:io.ipor.context.client.storage

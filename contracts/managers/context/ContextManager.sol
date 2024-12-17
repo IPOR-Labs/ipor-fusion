@@ -148,6 +148,32 @@ contract ContextManager is AccessManagedUpgradeable {
     }
 
     /**
+     * @notice Gets the current nonce for a specific address
+     * @param addr The address to get the nonce for
+     * @return Current nonce value for the address
+     */
+    function getNonce(address addr) external view returns (uint256) {
+        return ContextManagerStorageLib.getNonce(addr);
+    }
+
+    /**
+     * @notice Checks if an address is approved
+     * @param addr Address to check
+     * @return bool True if address is approved
+     */
+    function isApproved(address addr) external view returns (bool) {
+        return ContextManagerStorageLib.isApproved(addr);
+    }
+
+    /**
+     * @notice Returns the list of all approved addresses
+     * @return Array of approved addresses
+     */
+    function getApprovedAddresses() external view returns (address[] memory) {
+        return ContextManagerStorageLib.getApprovedAddresses();
+    }
+
+    /**
      * @notice Adds multiple addresses to the approved addresses list
      * @param addrs Array of addresses to be approved
      * @return approvedCount Number of newly approved addresses
@@ -289,56 +315,6 @@ contract ContextManager is AccessManagedUpgradeable {
     }
 
     /**
-     * @notice Checks if an address is approved
-     * @param addr Address to check
-     * @return bool True if address is approved
-     */
-    function isApproved(address addr) external view returns (bool) {
-        return ContextManagerStorageLib.isApproved(addr);
-    }
-
-    /**
-     * @notice Returns the list of all approved addresses
-     * @return Array of approved addresses
-     */
-    function getApprovedAddresses() external view returns (address[] memory) {
-        return ContextManagerStorageLib.getApprovedAddresses();
-    }
-
-    /**
-     * @notice Verifies the signature of context data using ECDSA recovery
-     * @param contextData The context data containing the signature to verify
-     * @return bool True if the recovered signer matches the claimed sender
-     * @dev Creates a hash of (expirationTime, nonce, chainId, target, data)
-     * and verifies that the signature's recovered address matches the sender
-     * @custom:security Uses ECDSA.recover for signature verification
-     */
-    function _verifySignature(ContextDataWithSender memory contextData) internal view returns (bool) {
-        return
-            ECDSA.recover(
-                keccak256(
-                    abi.encodePacked(
-                        contextData.expirationTime,
-                        contextData.nonce,
-                        CHAIN_ID,
-                        contextData.target,
-                        contextData.data
-                    )
-                ),
-                contextData.signature
-            ) == contextData.sender;
-    }
-
-    /**
-     * @notice Gets the current nonce for a specific address
-     * @param addr The address to get the nonce for
-     * @return Current nonce value for the address
-     */
-    function getNonce(address addr) external view returns (uint256) {
-        return ContextManagerStorageLib.getNonce(addr);
-    }
-
-    /**
      * @notice Executes a single call within context after verifying target approval
      * @param target The contract address to call
      * @param sender The sender address to set in context
@@ -368,5 +344,29 @@ contract ContextManager is AccessManagedUpgradeable {
         emit ContextCall(target, data, result);
 
         return result;
+    }
+
+    /**
+     * @notice Verifies the signature of context data using ECDSA recovery
+     * @param contextData The context data containing the signature to verify
+     * @return bool True if the recovered signer matches the claimed sender
+     * @dev Creates a hash of (expirationTime, nonce, chainId, target, data)
+     * and verifies that the signature's recovered address matches the sender
+     * @custom:security Uses ECDSA.recover for signature verification
+     */
+    function _verifySignature(ContextDataWithSender memory contextData) internal view returns (bool) {
+        return
+            ECDSA.recover(
+                keccak256(
+                    abi.encodePacked(
+                        contextData.expirationTime,
+                        contextData.nonce,
+                        CHAIN_ID,
+                        contextData.target,
+                        contextData.data
+                    )
+                ),
+                contextData.signature
+            ) == contextData.sender;
     }
 }

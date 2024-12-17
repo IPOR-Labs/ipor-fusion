@@ -45,8 +45,10 @@ enum FeeType {
 }
 
 /// @title FeeManager
-/// @notice Manages the fees for the IPOR Fusion protocol's plasma vault system
-/// @dev Implements fee collection and distribution logic with role-based access control
+/// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
+/// Total performance fee percentage is the sum of all recipients performance fees + DAO performance fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+/// Total management fee percentage is the sum of all recipients management fees + DAO management fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+/// @dev Inherits from AccessManaged for access control.
 contract FeeManager is AccessManagedUpgradeable, ContextClient {
     event HarvestManagementFee(address receiver, uint256 amount);
     event HarvestPerformanceFee(address receiver, uint256 amount);

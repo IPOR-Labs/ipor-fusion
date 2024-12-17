@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-// Add custom error at the top level, before the structs
 error FeeManagerStorageLibZeroAddress();
 
 /// @notice Storage structure for DAO fee recipient data
