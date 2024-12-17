@@ -71,9 +71,11 @@ library ContextClientStorageLib {
     /// @custom:security-risk HIGH - Core component of permission system
     function getSenderFromContext() internal view returns (address) {
         address sender = getContextSender();
+
         if (sender == address(0)) {
             return msg.sender;
         }
+
         return sender;
     }
 

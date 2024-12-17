@@ -33,7 +33,7 @@ contract ContextManagerRewardsClaimManagerTest is Test, ContextManagerInitSetup 
         addresses[0] = address(_rewardsClaimManager);
 
         vm.startPrank(TestAddresses.ATOMIST);
-        _contextManager.addApprovedAddresses(addresses);
+        _contextManager.addApprovedTargets(addresses);
         vm.stopPrank();
 
         // Deploy MoonwellClaimFuse

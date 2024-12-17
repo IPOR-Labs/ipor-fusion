@@ -30,7 +30,7 @@ contract ContextManagerWithSignatureWithdrawManagerTest is Test, ContextManagerI
         addresses[0] = address(_withdrawManager);
 
         vm.startPrank(TestAddresses.ATOMIST);
-        _contextManager.addApprovedAddresses(addresses);
+        _contextManager.addApprovedTargets(addresses);
         vm.stopPrank();
     }
 

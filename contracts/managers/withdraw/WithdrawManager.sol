@@ -5,8 +5,6 @@ import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {WithdrawManagerStorageLib} from "./WithdrawManagerStorageLib.sol";
 import {WithdrawRequest} from "./WithdrawManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
-import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
-import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 
 struct WithdrawRequestInfo {
     uint256 amount;
@@ -148,6 +146,8 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
             endWithdrawWindowTimestamp - withdrawWindow < releaseFundsTimestamp;
     }
 
+    /// @notice Internal function to get the message sender from context
+    /// @return The address of the message sender
     function _msgSender() internal view override returns (address) {
         return getSenderFromContext();
     }

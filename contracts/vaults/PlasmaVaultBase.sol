@@ -3,8 +3,6 @@ pragma solidity ^0.8.20;
 
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
-import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {ERC20VotesUpgradeable} from "./ERC20VotesUpgradeable.sol";
@@ -84,6 +82,8 @@ contract PlasmaVaultBase is
         _transferVotingUnits(from_, to_, value_);
     }
 
+    /// @notice Internal function to get the message sender from context
+    /// @return The address of the message sender
     function _msgSender() internal view override returns (address) {
         return getSenderFromContext();
     }

@@ -44,7 +44,7 @@ enum FeeType {
     PERFORMANCE
 }
 
-/// @title FeeManager
+ /// @title FeeManager
 /// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
 /// Total performance fee percentage is the sum of all recipients performance fees + DAO performance fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
 /// Total management fee percentage is the sum of all recipients management fees + DAO management fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
@@ -84,8 +84,16 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @notice Performance fee percentage for IPOR DAO (10000 = 100%, 100 = 1%)
     uint256 public immutable IPOR_DAO_PERFORMANCE_FEE;
 
+    modifier onlyInitialized() {
+        if (_getInitializedVersion() != INITIALIZED_VERSION) {
+            revert NotInitialized();
+        }
+        _;
+    }
+
     constructor(FeeManagerInitData memory initData_) initializer {
         if (initData_.initialAuthority == address(0)) revert InvalidAuthority();
+
         super.__AccessManaged_init_unchained(initData_.initialAuthority);
         PLASMA_VAULT = initData_.plasmaVault;
 
@@ -339,6 +347,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         uint256[] memory newFees = new uint256[](recipientFees.length);
 
         uint256 recipientFeesLength = recipientFees.length;
+
         for (uint256 i; i < recipientFeesLength; i++) {
             if (recipientFees[i].recipient == address(0)) {
                 revert InvalidFeeRecipientAddress();
@@ -371,6 +380,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     function getManagementFeeRecipients() external view returns (RecipientFee[] memory) {
         address[] memory recipients = FeeManagerStorageLib.getManagementFeeRecipientAddresses();
         uint256 length = recipients.length;
+
         RecipientFee[] memory recipientFees = new RecipientFee[](length);
 
         for (uint256 i; i < length; i++) {
@@ -508,14 +518,10 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         return remainingBalance;
     }
 
+    /// @notice Internal function to get the message sender from context
+    /// @return The address of the message sender
     function _msgSender() internal view override returns (address) {
         return getSenderFromContext();
     }
 
-    modifier onlyInitialized() {
-        if (_getInitializedVersion() != INITIALIZED_VERSION) {
-            revert NotInitialized();
-        }
-        _;
-    }
 }

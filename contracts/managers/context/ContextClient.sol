@@ -45,7 +45,6 @@ abstract contract ContextClient is IContextClient, AccessManagedUpgradeable {
      * @custom:throws ContextAlreadySet if a context is currently active
      */
     function setupContext(address sender) external override restricted {
-        // Ensure context isn't already set
         if (ContextClientStorageLib.isContextSenderSet()) {
             revert ContextAlreadySet();
         }
@@ -64,10 +63,8 @@ abstract contract ContextClient is IContextClient, AccessManagedUpgradeable {
      * @custom:throws ContextNotSet if no context is currently set
      */
     function clearContext() external override restricted {
-        // Get current context before clearing
         address currentSender = ContextClientStorageLib.getSenderFromContext();
 
-        // Ensure context is set before clearing
         if (currentSender == address(0)) {
             revert ContextNotSet();
         }
@@ -87,4 +84,5 @@ abstract contract ContextClient is IContextClient, AccessManagedUpgradeable {
     function getSenderFromContext() internal view returns (address) {
         return ContextClientStorageLib.getSenderFromContext();
     }
+    
 }

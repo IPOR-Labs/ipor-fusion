@@ -94,16 +94,16 @@ contract ContextManager is AccessManagedUpgradeable {
     using Address for address;
 
     /// @notice Emitted when an address is added to approved list
-    event AddressApproved(address indexed addr);
+    event TargetApproved(address indexed target);
 
     /// @notice Emitted when an address is removed from approved list
-    event AddressRemoved(address indexed addr);
+    event TargetRemoved(address indexed target);
 
     /// @notice Emitted when a call is executed within context
     event ContextCall(address indexed target, bytes data, bytes result);
 
     /// @notice Custom errors for better gas efficiency and clarity
-    error AddressNotApproved(address addr);
+    error TargetNotApproved(address target);
     error LengthMismatch();
     error EmptyArrayNotAllowed();
     error InvalidAuthority();
@@ -117,31 +117,29 @@ contract ContextManager is AccessManagedUpgradeable {
     /**
      * @notice Initializes the ContextManager with initial authority and approved addresses
      * @param initialAuthority Address of the initial authority for access control
-     * @param approvedAddresses Array of initially approved addresses
+     * @param approvedTargets Array of initially approved targets
      * @dev Sets up access control and approved addresses list
      * @custom:security Validates initial authority and approved addresses
      */
-    constructor(address initialAuthority, address[] memory approvedAddresses) initializer {
+    constructor(address initialAuthority, address[] memory approvedTargets) initializer {
         if (initialAuthority == address(0)) {
             revert InvalidAuthority();
         }
 
-        // Validate approved addresses
-        uint256 length = approvedAddresses.length;
+        uint256 length = approvedTargets.length;
+
         if (length == 0) {
             revert EmptyArrayNotAllowed();
         }
 
         super.__AccessManaged_init_unchained(initialAuthority);
 
-        // Add approved addresses
         for (uint256 i; i < length; ++i) {
-            // Validate each address
-            if (approvedAddresses[i] == address(0)) {
+            if (approvedTargets[i] == address(0)) {
                 revert InvalidAuthority();
             }
 
-            ContextManagerStorageLib.addApprovedAddress(approvedAddresses[i]);
+            ContextManagerStorageLib.addApprovedTarget(approvedTargets[i]);
         }
 
         CHAIN_ID = block.chainid;
@@ -149,50 +147,51 @@ contract ContextManager is AccessManagedUpgradeable {
 
     /**
      * @notice Gets the current nonce for a specific address
-     * @param addr The address to get the nonce for
-     * @return Current nonce value for the address
+     * @param sender The sender to get the nonce for
+     * @return Current nonce value for the sender
      */
-    function getNonce(address addr) external view returns (uint256) {
-        return ContextManagerStorageLib.getNonce(addr);
+    function getNonce(address sender) external view returns (uint256) {
+        return ContextManagerStorageLib.getNonce(sender);
     }
 
     /**
      * @notice Checks if an address is approved
-     * @param addr Address to check
-     * @return bool True if address is approved
+     * @param target Target to check
+     * @return bool True if target is approved
      */
-    function isApproved(address addr) external view returns (bool) {
-        return ContextManagerStorageLib.isApproved(addr);
+    function isTargetApproved(address target) external view returns (bool) {
+        return ContextManagerStorageLib.isTargetApproved(target);
     }
 
     /**
-     * @notice Returns the list of all approved addresses
-     * @return Array of approved addresses
+     * @notice Returns the list of all approved targets
+     * @return Array of approved targets
      */
-    function getApprovedAddresses() external view returns (address[] memory) {
-        return ContextManagerStorageLib.getApprovedAddresses();
+    function getApprovedTargets() external view returns (address[] memory) {
+        return ContextManagerStorageLib.getApprovedTargets();
     }
 
     /**
-     * @notice Adds multiple addresses to the approved addresses list
-     * @param addrs Array of addresses to be approved
-     * @return approvedCount Number of newly approved addresses
+     * @notice Adds multiple targets to the approved targets list
+     * @param targets Array of targets to be approved
+     * @return approvedCount Number of newly approved targets
      * @dev Only callable by restricted roles
-     * @custom:security Validates addresses and prevents zero address additions
+     * @custom:security Validates targets and prevents zero address additions
      * @custom:access Restricted to ATOMIST_ROLE
      */
-    function addApprovedAddresses(address[] calldata addrs) external restricted returns (uint256 approvedCount) {
-        uint256 length = addrs.length;
+    function addApprovedTargets(address[] calldata targets) external restricted returns (uint256 approvedCount) {
+        uint256 length = targets.length;
+
         if (length == 0) {
             revert EmptyArrayNotAllowed();
         }
 
         for (uint256 i; i < length; ++i) {
-            if (addrs[i] == address(0)) {
+            if (targets[i] == address(0)) {
                 revert InvalidAuthority();
             }
 
-            if (ContextManagerStorageLib.addApprovedAddress(addrs[i])) {
+            if (ContextManagerStorageLib.addApprovedTarget(targets[i])) {
                 unchecked {
                     ++approvedCount;
                 }
@@ -201,16 +200,17 @@ contract ContextManager is AccessManagedUpgradeable {
     }
 
     /**
-     * @notice Removes multiple addresses from the approved addresses list
-     * @param addrs Array of addresses to be removed
-     * @return removedCount Number of addresses actually removed
+     * @notice Removes multiple targets from the approved targets list
+     * @param targets Array of targets to be removed
+     * @return removedCount Number of targets actually removed
      * @dev Only callable by restricted roles
      * @custom:access Restricted to ATOMIST_ROLE
      */
-    function removeApprovedAddresses(address[] calldata addrs) external restricted returns (uint256 removedCount) {
-        uint256 length = addrs.length;
+    function removeApprovedTargets(address[] calldata targets) external restricted returns (uint256 removedCount) {
+        uint256 length = targets.length;
+
         for (uint256 i; i < length; ++i) {
-            if (ContextManagerStorageLib.removeApprovedAddress(addrs[i])) {
+            if (ContextManagerStorageLib.removeApprovedTarget(targets[i])) {
                 unchecked {
                     ++removedCount;
                 }
@@ -219,7 +219,7 @@ contract ContextManager is AccessManagedUpgradeable {
     }
 
     /**
-     * @notice Executes multiple calls to approved addresses within a managed context
+     * @notice Executes multiple calls to approved targets within a managed context
      * @param executeData Struct containing arrays of target addresses and call data
      * @return results Array of bytes containing the results of each call
      * @dev Requirements:
@@ -287,6 +287,7 @@ contract ContextManager is AccessManagedUpgradeable {
         results = new bytes[](length);
 
         ContextDataWithSender calldata contextData;
+
         for (uint256 i; i < length; ++i) {
             contextData = contextDataArray[i];
 
@@ -317,9 +318,8 @@ contract ContextManager is AccessManagedUpgradeable {
      * @custom:access Internal function - access controlled by public functions
      */
     function _executeWithinContext(address target, address sender, bytes calldata data) private returns (bytes memory) {
-        // Check if target address is approved
-        if (!ContextManagerStorageLib.isApproved(target)) {
-            revert AddressNotApproved(target);
+        if (!ContextManagerStorageLib.isTargetApproved(target)) {
+            revert TargetNotApproved(target);
         }
 
         IContextClient(target).setupContext(sender);
