@@ -9,6 +9,7 @@ import {IERC20} from "../../lib/forge-std/src/interfaces/IERC20.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
+import {RecipientFee} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
     // Test events
@@ -39,17 +40,24 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         vm.startPrank(TestAddresses.ATOMIST);
         _contextManager.addApprovedAddresses(addresses);
         vm.stopPrank();
+
+        vm.startPrank(TestAddresses.DAO);
+        _feeManager.setIporDaoFeeRecipientAddress(TestAddresses.IPOR_DAO_FEE_RECIPIENT_ADDRESS);
+        vm.stopPrank();
     }
 
-    function stestUpdatePerformanceFee() public {
+    function testUpdatePerformanceFee() public {
         // given
         uint256 newPerformanceFee = 1000; // 10% (with 2 decimals)
+
+        RecipientFee[] memory recipientFees = new RecipientFee[](1);
+        recipientFees[0] = RecipientFee({recipient: makeAddr("RECIPIENT"), feeValue: newPerformanceFee});
 
         _addresses = new address[](1);
         _addresses[0] = address(_feeManager);
 
         _data = new bytes[](1);
-        _data[0] = abi.encodeWithSelector(FeeManager.updatePerformanceFee.selector, newPerformanceFee);
+        _data[0] = abi.encodeWithSelector(FeeManager.updatePerformanceFee.selector, recipientFees);
 
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
@@ -72,15 +80,18 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         );
     }
 
-    function stestUpdateManagementFee() public {
+    function testUpdateManagementFee() public {
         // given
         uint256 newManagementFee = 500; // 5% (with 2 decimals)
 
         _addresses = new address[](1);
         _addresses[0] = address(_feeManager);
 
+        RecipientFee[] memory recipientFees = new RecipientFee[](1);
+        recipientFees[0] = RecipientFee({recipient: makeAddr("RECIPIENT"), feeValue: newManagementFee});
+
         _data = new bytes[](1);
-        _data[0] = abi.encodeWithSelector(FeeManager.updateManagementFee.selector, newManagementFee);
+        _data[0] = abi.encodeWithSelector(FeeManager.updateManagementFee.selector, recipientFees);
 
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 

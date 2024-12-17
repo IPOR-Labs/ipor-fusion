@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {ContextManagerInitSetup} from "./ContextManagerInitSetup.sol";
 import {TestAddresses} from "../test_helpers/TestAddresses.sol";
-import {ContextManager, ContextDataWithSender} from "../../contracts/managers/context/ContextManager.sol";
+import {ContextDataWithSender} from "../../contracts/managers/context/ContextManager.sol";
 
 contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
     // Test events

@@ -2,54 +2,66 @@
 pragma solidity 0.8.26;
 
 import {FeeManager, FeeManagerInitData} from "./FeeManager.sol";
-import {FeeManagerStorage} from "./FeeManagerStorageLib.sol";
 
-/// @notice Struct containing the fees for a recipient
-/// @param recipient The address of the recipient
-/// @param feeValue The fee value for the recipient (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @notice Struct containing fee configuration for a single recipient
+/// @dev All fee values are stored with 2 decimal precision
+/// @param recipient The address that will receive the fees
+/// @param feeValue Fee percentage allocated to this recipient (10000 = 100%, 100 = 1%)
 struct RecipientFee {
     address recipient;
     uint256 feeValue;
 }
 
-/// @notice FeeConfig is a struct that represents the configuration of fees in the Plasma Vault
+/// @notice Configuration parameters for initializing a new fee management system
+/// @dev Used to set up initial fee structure and recipients for a plasma vault
 struct FeeConfig {
-    /// @notice The address of the fee factory
+    /// @notice Address of the factory contract deploying the fee manager
     address feeFactory;
-    /// @notice The management fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    /// @notice Base management fee allocated to the IPOR DAO
+    /// @dev Percentage with 2 decimal precision (10000 = 100%, 100 = 1%)
     uint256 iporDaoManagementFee;
-    /// @notice The performance fee for the DAO (percentage with 2 decimals, e.g., 10000 is 100%, 100 is 1%)
+    /// @notice Base performance fee allocated to the IPOR DAO
+    /// @dev Percentage with 2 decimal precision (10000 = 100%, 100 = 1%)
     uint256 iporDaoPerformanceFee;
-    /// @notice The address of the DAO fee recipient
+    /// @notice Address that receives the IPOR DAO's portion of fees
+    /// @dev Must be non-zero address
     address iporDaoFeeRecipientAddress;
-    /// @notice The list of recipients and their fees (management fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    /// @notice List of additional management fee recipients and their allocations
+    /// @dev Total of all management fees (including DAO) must not exceed 100%
     RecipientFee[] recipientManagementFees;
-    /// @notice The list of recipients and their fees (performance fees), represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
+    /// @notice List of additional performance fee recipients and their allocations
+    /// @dev Total of all performance fees (including DAO) must not exceed 100%
     RecipientFee[] recipientPerformanceFees;
 }
 
-/// @notice Struct containing data related to the fee manager
-/// @param feeManager Address of the fee manager
-/// @param plasmaVault Address of the plasma vault
-/// @param performanceFeeAccount Address of the performance fee account
-/// @param managementFeeAccount Address of the management fee account
-/// @param managementFee Management fee percentage (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
-/// @param performanceFee Performance fee percentage (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
+/// @notice Data structure containing deployed fee manager details
+/// @dev Returned after successful deployment of a new fee manager
 struct FeeManagerData {
+    /// @notice Address of the deployed fee manager contract
     address feeManager;
+    /// @notice Address of the associated plasma vault
     address plasmaVault;
+    /// @notice Account that collects performance fees before distribution
     address performanceFeeAccount;
+    /// @notice Account that collects management fees before distribution
     address managementFeeAccount;
+    /// @notice Total management fee percentage (sum of all recipients including DAO)
+    /// @dev Stored with 2 decimal precision (10000 = 100%, 100 = 1%)
     uint256 managementFee;
+    /// @notice Total performance fee percentage (sum of all recipients including DAO)
+    /// @dev Stored with 2 decimal precision (10000 = 100%, 100 = 1%)
     uint256 performanceFee;
 }
 
 /// @title FeeManagerFactory
-/// @notice Factory contract for deploying FeeManager instances
+/// @notice Factory contract for deploying and initializing FeeManager instances
+/// @dev Creates standardized fee management systems for plasma vaults
 contract FeeManagerFactory {
-    /// @notice Deploys a new FeeManager contract
-    /// @param initData Initialization data for the fee manager
-    /// @return FeeManagerData containing addresses and fee information of the deployed fee manager
+    /// @notice Deploys a new FeeManager contract with the specified configuration
+    /// @dev Creates and initializes a new FeeManager with associated fee accounts
+    /// @param initData Initialization parameters for the fee manager
+    /// @return Data structure containing addresses and fee information of the deployed system
+    /// @custom:security Validates fee recipient addresses and fee percentages during deployment
     function deployFeeManager(FeeManagerInitData memory initData) external returns (FeeManagerData memory) {
         FeeManager feeManager = new FeeManager(initData);
 

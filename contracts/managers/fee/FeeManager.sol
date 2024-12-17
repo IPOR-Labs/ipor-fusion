@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
-import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
@@ -10,7 +9,7 @@ import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUt
 import {FeeAccount} from "./FeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {RecipientFee} from "./FeeManagerFactory.sol";
-import {FeeManagerStorageLib, FeeManagerStorage, FeeRecipientDataStorage} from "./FeeManagerStorageLib.sol";
+import {FeeManagerStorageLib, FeeRecipientDataStorage} from "./FeeManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
 
 /// @notice Struct containing initialization data for the fee manager
@@ -46,10 +45,8 @@ enum FeeType {
 }
 
 /// @title FeeManager
-/// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
-/// Total performance fee percentage is the sum of all recipients performance fees + DAO performance fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-/// Total management fee percentage is the sum of all recipients management fees + DAO management fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
-/// @dev Inherits from AccessManaged for access control.
+/// @notice Manages the fees for the IPOR Fusion protocol's plasma vault system
+/// @dev Implements fee collection and distribution logic with role-based access control
 contract FeeManager is AccessManagedUpgradeable, ContextClient {
     event HarvestManagementFee(address receiver, uint256 amount);
     event HarvestPerformanceFee(address receiver, uint256 amount);
@@ -64,6 +61,9 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
     /// @notice Thrown when trying to set an invalid (zero) address as a fee recipient
     error InvalidFeeRecipientAddress();
+
+    /// @notice Thrown when trying to set an invalid authority
+    error InvalidAuthority();
 
     uint64 private constant INITIALIZED_VERSION = 10;
 
@@ -83,6 +83,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     uint256 public immutable IPOR_DAO_PERFORMANCE_FEE;
 
     constructor(FeeManagerInitData memory initData_) initializer {
+        if (initData_.initialAuthority == address(0)) revert InvalidAuthority();
         super.__AccessManaged_init_unchained(initData_.initialAuthority);
         PLASMA_VAULT = initData_.plasmaVault;
 
@@ -134,23 +135,31 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         FeeManagerStorageLib.setPlasmaVaultTotalManagementFee(totalManagementFee);
     }
 
+    /// @notice Initializes the FeeManager contract by setting up fee account approvals
+    /// @dev Can only be called once due to reinitializer modifier
+    /// @dev Sets maximum approval for both performance and management fee accounts to interact with plasma vault
+    /// @dev This is required for the fee accounts to transfer tokens to recipients during fee distribution
+    /// @custom:access Can only be called once during initialization
+    /// @custom:error AlreadyInitialized if called after initialization
     function initialize() external reinitializer(INITIALIZED_VERSION) {
         FeeAccount(PERFORMANCE_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
         FeeAccount(MANAGEMENT_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
     }
 
-    /// @notice Harvests both management and performance fees by calling their respective harvest functions
+    /// @notice Harvests both management and performance fees
+    /// @dev Can be called by any address once initialized
     /// @dev This is a convenience function that calls harvestManagementFee() and harvestPerformanceFee()
+    /// @custom:access Public after initialization
     function harvestAllFees() external onlyInitialized {
         harvestManagementFee();
         harvestPerformanceFee();
     }
 
-    /// @notice Harvests the management fee and transfers it to the respective recipient addresses.
-    /// @dev This function can only be called if the contract is initialized.
-    /// It checks if the fee recipient addresses are valid and then calculates the amount to be transferred to the DAO
-    /// and the remaining amount to the fee recipient. The function emits events for each transfer.
-    /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
+    /// @notice Harvests the management fee and distributes it to recipients
+    /// @dev Can be called by any address once initialized
+    /// @dev Distributes fees proportionally based on configured fee percentages
+    /// @dev First transfers the DAO portion, then distributes remaining to other recipients
+    /// @custom:access Public after initialization
     function harvestManagementFee() public onlyInitialized {
         if (FeeManagerStorageLib.getIporDaoFeeRecipientAddress() == address(0)) {
             revert InvalidFeeRecipientAddress();
@@ -199,11 +208,11 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         }
     }
 
-    /// @notice Harvests the performance fee and transfers it to the respective recipient addresses.
-    /// @dev This function can only be called if the contract is initialized.
-    /// It checks if the fee recipient addresses are valid and then calculates the amount to be transferred to the DAO
-    /// and the remaining amount to the fee recipient. The function emits events for each transfer.
-    /// @custom:modifier onlyInitialized Ensures the contract is initialized before executing the function.
+    /// @notice Harvests the performance fee and distributes it to recipients
+    /// @dev Can be called by any address once initialized
+    /// @dev Distributes fees proportionally based on configured fee percentages
+    /// @dev First transfers the DAO portion, then distributes remaining to other recipients
+    /// @custom:access Public after initialization
     function harvestPerformanceFee() public onlyInitialized {
         if (FeeManagerStorageLib.getIporDaoFeeRecipientAddress() == address(0)) {
             revert InvalidFeeRecipientAddress();
@@ -252,8 +261,12 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         }
     }
 
-    /// @notice Updates management fees for all recipients, not including the DAO fee recipient which is set in the constructor and cannot be updated
+    /// @notice Updates management fees for all recipients
+    /// @dev Only callable by ATOMIST_ROLE (role id: 100)
+    /// @dev Harvests existing management fees before updating
+    /// @dev Total management fee will be the sum of all recipient fees + DAO fee
     /// @param recipientFees Array of recipient fees containing address and new fee value
+    /// @custom:access Restricted to ATOMIST_ROLE
     function updateManagementFee(RecipientFee[] calldata recipientFees) external restricted {
         harvestManagementFee();
         _updateFees(
@@ -265,8 +278,12 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         );
     }
 
-    /// @notice Updates performance fees for all recipients, not including the DAO fee recipient which is set in the constructor and cannot be updated
+    /// @notice Updates performance fees for all recipients
+    /// @dev Only callable by ATOMIST_ROLE (role id: 100)
+    /// @dev Harvests existing performance fees before updating
+    /// @dev Total performance fee will be the sum of all recipient fees + DAO fee
     /// @param recipientFees Array of recipient fees containing address and new fee value
+    /// @custom:access Restricted to ATOMIST_ROLE
     function updatePerformanceFee(RecipientFee[] calldata recipientFees) external restricted {
         harvestPerformanceFee();
         _updateFees(
@@ -278,17 +295,15 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         );
     }
 
-    /**
-     * @notice Sets the address of the DAO fee recipient.
-     * @dev This function can only be called by an authorized account (IPOR_DAO_ROLE).
-     * @param iporDaoFeeRecipientAddress_ The address to set as the DAO fee recipient.
-     * @custom:error InvalidAddress Thrown if the provided address is the zero address.
-     */
+    /// @notice Sets the IPOR DAO fee recipient address
+    /// @dev Only callable by IPOR_DAO_ROLE (role id: 4)
+    /// @dev The DAO fee recipient receives both management and performance fees allocated to the DAO
+    /// @param iporDaoFeeRecipientAddress_ The address to set as the DAO fee recipient
+    /// @custom:access Restricted to IPOR_DAO_ROLE
     function setIporDaoFeeRecipientAddress(address iporDaoFeeRecipientAddress_) external restricted {
         if (iporDaoFeeRecipientAddress_ == address(0)) {
             revert InvalidFeeRecipientAddress();
         }
-
         FeeManagerStorageLib.setIporDaoFeeRecipientAddress(iporDaoFeeRecipientAddress_);
     }
 
@@ -322,7 +337,6 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         uint256[] memory newFees = new uint256[](recipientFees.length);
 
         uint256 recipientFeesLength = recipientFees.length;
-
         for (uint256 i; i < recipientFeesLength; i++) {
             if (recipientFees[i].recipient == address(0)) {
                 revert InvalidFeeRecipientAddress();
@@ -348,8 +362,10 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         }
     }
 
-    /// @notice Gets all management fee recipients with their corresponding fee values
+    /// @notice Gets all management fee recipients with their fee values
+    /// @dev View function accessible by anyone
     /// @return Array of RecipientFee structs containing recipient addresses and their fee values
+    /// @custom:access Public view
     function getManagementFeeRecipients() external view returns (RecipientFee[] memory) {
         address[] memory recipients = FeeManagerStorageLib.getManagementFeeRecipientAddresses();
         uint256 length = recipients.length;
@@ -365,8 +381,10 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         return recipientFees;
     }
 
-    /// @notice Gets all performance fee recipients with their corresponding fee values
+    /// @notice Gets all performance fee recipients with their fee values
+    /// @dev View function accessible by anyone
     /// @return Array of RecipientFee structs containing recipient addresses and their fee values
+    /// @custom:access Public view
     function getPerformanceFeeRecipients() external view returns (RecipientFee[] memory) {
         address[] memory recipients = FeeManagerStorageLib.getPerformanceFeeRecipientAddresses();
         uint256 length = recipients.length;
@@ -382,14 +400,26 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         return recipientFees;
     }
 
+    /// @notice Gets the total management fee percentage
+    /// @dev View function accessible by anyone
+    /// @return Total management fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
+    /// @custom:access Public view
     function getTotalManagementFee() external view returns (uint256) {
         return FeeManagerStorageLib.getPlasmaVaultTotalManagementFee();
     }
 
+    /// @notice Gets the total performance fee percentage
+    /// @dev View function accessible by anyone
+    /// @return Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
+    /// @custom:access Public view
     function getTotalPerformanceFee() external view returns (uint256) {
         return FeeManagerStorageLib.getPlasmaVaultTotalPerformanceFee();
     }
 
+    /// @notice Gets the IPOR DAO fee recipient address
+    /// @dev View function accessible by anyone
+    /// @return The current DAO fee recipient address
+    /// @custom:access Public view
     function getIporDaoFeeRecipientAddress() external view returns (address) {
         return FeeManagerStorageLib.getIporDaoFeeRecipientAddress();
     }

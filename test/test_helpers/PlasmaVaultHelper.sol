@@ -7,7 +7,6 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {MarketSubstratesConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {FeeConfigHelper} from "./FeeConfigHelper.sol";
-import {TestAddresses} from "./TestAddresses.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 struct DeployMinimalPlasmaVaultParams {
     address underlyingToken;

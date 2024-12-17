@@ -1,106 +1,79 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-struct FeeManagerStorage {
-    address feeRecipientAddress;
+// At the top of the file, add file-level documentation
+/// @title Fee Manager Storage Library
+/// @notice Library for managing fee-related storage in the IPOR Protocol's plasma vault system
+/// @dev Implements diamond storage pattern for fee management including performance, management, and DAO fees
+
+// Add custom error at the top level, before the structs
+error FeeManagerStorageLibZeroAddress();
+
+/// @notice Storage structure for DAO fee recipient data
+/// @dev Stores the address that receives IPOR DAO fees
+struct DaoFeeRecipientDataStorage {
     address iporDaoFeeRecipientAddress;
-    uint256 plasmaVaultPerformanceFee;
-    uint256 plasmaVaultManagementFee;
 }
 
+// Add new event with just the new recipient
+event IporDaoFeeRecipientAddressChanged(address indexed newRecipient);
+
+/// @notice Storage structure for total performance fee in plasma vault
+/// @dev Value stored with 2 decimal precision (10000 = 100%)
 struct PlasmaVaultTotalPerformanceFeeStorage {
     uint256 value;
 }
 
+/// @notice Storage structure for total management fee in plasma vault
+/// @dev Value stored with 2 decimal precision (10000 = 100%)
 struct PlasmaVaultTotalManagementFeeStorage {
     uint256 value;
 }
 
+/// @notice Storage structure for fee recipient data
+/// @dev Maps recipient addresses to their fee allocations and maintains list of recipients
 struct FeeRecipientDataStorage {
     mapping(address recipient => uint256 feeValue) recipientFees;
     address[] recipientAddresses;
 }
 
 library FeeManagerStorageLib {
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.storage")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant STORAGE_SLOT = 0x6b6e11a2184881fb60b9dd5717029d54bff22805620d5aac5728fb19c945a900;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.dao.fee.recipient.data.storage")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant DAO_FEE_RECIPIENT_DATA_SLOT =
+        0xaf522f71ce1f2b5702c38f667fa2366c184e3c6dd86ab049ad3b02fec741fd00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.total.performance.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant TOTAL_PERFORMANCE_FEE_SLOT =
-        0x8b6e11a2184881fb60b9dd5717029d54bff22805620d5aac5728fb19c945a901;
+        0x91a7fd667a02d876183d5e3c0caf915fa5c0b6847afae1b6a2261f7bce984500;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.total.management.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant TOTAL_MANAGEMENT_FEE_SLOT =
-        0x9b6e11a2184881fb60b9dd5717029d54bff22805620d5aac5728fb19c945a902;
+        0xcf56f35f42e69dcdff0b7b1f2e356cc5f92476bed919f8df0cdbf41f78aa1f00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.management.fee.recipient.data.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant MANAGEMENT_FEE_RECIPIENT_DATA_SLOT =
-        0xab6e11a2184881fb60b9dd5717029d54bff22805620d5aac5728fb19c945a903;
+        0xf1a2374333eb639fe6654c1bd32856f942f1f785e32d72be0c2e035f2e0f8000;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.performance.fee.recipient.data.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PERFORMANCE_FEE_RECIPIENT_DATA_SLOT =
-        0xbb6e11a2184881fb60b9dd5717029d54bff22805620d5aac5728fb19c945a904;
+        0xc456e86573d79f7b5b60c9eb824345c471d5390facece9407699845c141b2d00;
 
-    function _storage() private pure returns (FeeManagerStorage storage $) {
-        assembly {
-            $.slot := STORAGE_SLOT
-        }
-    }
-
-    function _totalPerformanceFeeStorage() private pure returns (PlasmaVaultTotalPerformanceFeeStorage storage $) {
-        assembly {
-            $.slot := TOTAL_PERFORMANCE_FEE_SLOT
-        }
-    }
-
-    function _totalManagementFeeStorage() private pure returns (PlasmaVaultTotalManagementFeeStorage storage $) {
-        assembly {
-            $.slot := TOTAL_MANAGEMENT_FEE_SLOT
-        }
-    }
-
+    /// @notice Retrieves management fee recipient data storage
+    /// @dev Uses assembly to access diamond storage pattern slot
+    /// @return Storage pointer to FeeRecipientDataStorage
     function _managementFeeRecipientDataStorage() internal pure returns (FeeRecipientDataStorage storage $) {
         assembly {
             $.slot := MANAGEMENT_FEE_RECIPIENT_DATA_SLOT
         }
     }
 
+    /// @notice Retrieves performance fee recipient data storage
+    /// @dev Uses assembly to access diamond storage pattern slot
+    /// @return Storage pointer to FeeRecipientDataStorage
     function _performanceFeeRecipientDataStorage() internal pure returns (FeeRecipientDataStorage storage $) {
         assembly {
             $.slot := PERFORMANCE_FEE_RECIPIENT_DATA_SLOT
         }
-    }
-
-    function getFeeRecipientAddress() internal view returns (address) {
-        return _storage().feeRecipientAddress;
-    }
-
-    function setFeeRecipientAddress(address addr) internal {
-        _storage().feeRecipientAddress = addr;
-    }
-
-    function getIporDaoFeeRecipientAddress() internal view returns (address) {
-        return _storage().iporDaoFeeRecipientAddress;
-    }
-
-    function setIporDaoFeeRecipientAddress(address addr) internal {
-        _storage().iporDaoFeeRecipientAddress = addr;
-    }
-
-    function getPlasmaVaultPerformanceFee() internal view returns (uint256) {
-        return _storage().plasmaVaultPerformanceFee;
-    }
-
-    function setPlasmaVaultPerformanceFee(uint256 fee) internal {
-        _storage().plasmaVaultPerformanceFee = fee;
-    }
-
-    function getPlasmaVaultManagementFee() internal view returns (uint256) {
-        return _storage().plasmaVaultManagementFee;
-    }
-
-    function setPlasmaVaultManagementFee(uint256 fee) internal {
-        _storage().plasmaVaultManagementFee = fee;
     }
 
     /// @notice Gets the total performance fee percentage for the plasma vault
@@ -110,6 +83,7 @@ library FeeManagerStorageLib {
     }
 
     /// @notice Sets the total performance fee percentage for the plasma vault
+    /// @dev Updates the total performance fee that will be distributed among recipients
     /// @param fee Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     function setPlasmaVaultTotalPerformanceFee(uint256 fee) internal {
         _totalPerformanceFeeStorage().value = fee;
@@ -135,8 +109,9 @@ library FeeManagerStorageLib {
     }
 
     /// @notice Sets the fee value for a specific management fee recipient
+    /// @dev Updates individual recipient's share of the total management fee
     /// @param recipient The address of the recipient
-    /// @param feeValue The fee value to set
+    /// @param feeValue The fee value to set, representing recipient's share of total fee
     function setManagementFeeRecipientFee(address recipient, uint256 feeValue) internal {
         _managementFeeRecipientDataStorage().recipientFees[recipient] = feeValue;
     }
@@ -148,7 +123,9 @@ library FeeManagerStorageLib {
     }
 
     /// @notice Sets all management fee recipient addresses
+    /// @dev Overwrites the entire array of management fee recipients
     /// @param addresses Array of recipient addresses to set
+    /// @dev Important: This replaces all existing recipients
     function setManagementFeeRecipientAddresses(address[] memory addresses) internal {
         _managementFeeRecipientDataStorage().recipientAddresses = addresses;
     }
@@ -179,7 +156,37 @@ library FeeManagerStorageLib {
         _performanceFeeRecipientDataStorage().recipientAddresses = addresses;
     }
 
-    function getFeeConfig() internal view returns (FeeManagerStorage memory) {
-        return _storage();
+    /// @notice Gets the IPOR DAO fee recipient address
+    /// @return The address of the IPOR DAO fee recipient
+    function getIporDaoFeeRecipientAddress() internal view returns (address) {
+        return _daoFeeRecipientDataStorage().iporDaoFeeRecipientAddress;
+    }
+
+    /// @notice Sets the IPOR DAO fee recipient address
+    /// @dev Updates the address that receives DAO fees and emits an event
+    /// @param recipientAddress The address to set as the IPOR DAO fee recipient
+    /// @dev Emits IporDaoFeeRecipientAddressChanged event
+    function setIporDaoFeeRecipientAddress(address recipientAddress) internal {
+        if (recipientAddress == address(0)) revert FeeManagerStorageLibZeroAddress();
+        _daoFeeRecipientDataStorage().iporDaoFeeRecipientAddress = recipientAddress;
+        emit IporDaoFeeRecipientAddressChanged(recipientAddress);
+    }
+
+    function _daoFeeRecipientDataStorage() private pure returns (DaoFeeRecipientDataStorage storage $) {
+        assembly {
+            $.slot := DAO_FEE_RECIPIENT_DATA_SLOT
+        }
+    }
+
+    function _totalPerformanceFeeStorage() private pure returns (PlasmaVaultTotalPerformanceFeeStorage storage $) {
+        assembly {
+            $.slot := TOTAL_PERFORMANCE_FEE_SLOT
+        }
+    }
+
+    function _totalManagementFeeStorage() private pure returns (PlasmaVaultTotalManagementFeeStorage storage $) {
+        assembly {
+            $.slot := TOTAL_MANAGEMENT_FEE_SLOT
+        }
     }
 }

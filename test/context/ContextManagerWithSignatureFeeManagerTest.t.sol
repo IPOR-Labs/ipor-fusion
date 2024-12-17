@@ -9,7 +9,7 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {ContextDataWithSender} from "../../contracts/managers/context/ContextManager.sol";
-
+import {RecipientFee} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSetup {
     // Test events
     event ContextCall(address indexed target, bytes data, bytes result);
@@ -39,11 +39,18 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
         vm.startPrank(TestAddresses.ATOMIST);
         _contextManager.addApprovedAddresses(addresses);
         vm.stopPrank();
+
+        vm.startPrank(TestAddresses.DAO);
+        _feeManager.setIporDaoFeeRecipientAddress(TestAddresses.IPOR_DAO_FEE_RECIPIENT_ADDRESS);
+        vm.stopPrank();
     }
 
-    function stestUpdatePerformanceFee() public {
+    function testUpdatePerformanceFee() public {
         // given
         uint256 newPerformanceFee = 1000; // 10% (with 2 decimals)
+
+        RecipientFee[] memory recipientFees = new RecipientFee[](1);
+        recipientFees[0] = RecipientFee({recipient: makeAddr("RECIPIENT"), feeValue: newPerformanceFee});
 
         ContextDataWithSender[] memory dataWithSignatures = new ContextDataWithSender[](1);
         dataWithSignatures[0] = preperateDataWithSignature(
@@ -51,7 +58,7 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
             block.timestamp + 1000,
             block.number,
             address(_feeManager),
-            abi.encodeWithSelector(FeeManager.updatePerformanceFee.selector, newPerformanceFee)
+            abi.encodeWithSelector(FeeManager.updatePerformanceFee.selector, recipientFees)
         );
 
         uint256 initialPerformanceFee = _feeManager.getTotalPerformanceFee();
@@ -71,9 +78,12 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
         );
     }
 
-    function stestUpdateManagementFee() public {
+    function testUpdateManagementFee() public {
         // given
         uint256 newManagementFee = 500; // 5% (with 2 decimals)
+
+        RecipientFee[] memory recipientFees = new RecipientFee[](1);
+        recipientFees[0] = RecipientFee({recipient: makeAddr("RECIPIENT"), feeValue: newManagementFee});
 
         ContextDataWithSender[] memory dataWithSignatures = new ContextDataWithSender[](1);
         dataWithSignatures[0] = preperateDataWithSignature(
@@ -81,7 +91,7 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
             block.timestamp + 1000,
             block.number,
             address(_feeManager),
-            abi.encodeWithSelector(FeeManager.updateManagementFee.selector, newManagementFee)
+            abi.encodeWithSelector(FeeManager.updateManagementFee.selector, recipientFees)
         );
 
         uint256 initialManagementFee = _feeManager.getTotalManagementFee();
@@ -97,7 +107,7 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
         assertEq(updatedManagementFee, expectedManagementFee, "Management fee should be set to new value plus DAO fee");
     }
 
-    function stestSetIporDaoFeeRecipientAddress() public {
+    function testSetIporDaoFeeRecipientAddress() public {
         // given
         address newDaoFeeRecipient = makeAddr("NEW_DAO_FEE_RECIPIENT");
 

@@ -21,8 +21,6 @@ import {IAavePriceOracle} from "../../contracts/fuses/aave_v3/ext/IAavePriceOrac
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {IComet} from "../../contracts/fuses/compound_v3/ext/IComet.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
-import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
-import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 
 contract PlasmaVaultUpdateMarketsBalances is Test {
     address private constant _ATOMIST = address(1111111);
