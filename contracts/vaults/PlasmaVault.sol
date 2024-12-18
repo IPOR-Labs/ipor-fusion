@@ -563,6 +563,42 @@ contract PlasmaVault is
         return super.transferFrom(from_, to_, value_);
     }
 
+    /// @notice Deposits underlying assets into the vault
+    /// @dev Handles deposit validation, share minting, and fee realization
+    ///
+    /// Deposit Flow:
+    /// 1. Pre-deposit Checks
+    ///    - Validates deposit amount
+    ///    - Verifies receiver address
+    ///    - Checks deposit permissions
+    ///    - Validates supply cap
+    ///
+    /// 2. Fee Processing
+    ///    - Realizes pending management fees
+    ///    - Updates fee accounting
+    ///    - Adjusts share calculations
+    ///
+    /// 3. Asset Transfer
+    ///    - Transfers assets to vault
+    ///    - Calculates share amount
+    ///    - Mints vault shares
+    ///    - Updates balances
+    ///
+    /// Security Features:
+    /// - Non-zero amount validation
+    /// - Address validation
+    /// - Reentrancy protection
+    /// - Access control checks
+    ///
+    /// @param assets_ Amount of underlying assets to deposit
+    /// @param receiver_ Address to receive the minted shares
+    /// @return uint256 Amount of shares minted
+    /// @custom:security Non-reentrant and role-restricted
+    /// @custom:access Initially restricted to WHITELIST_ROLE, can be set to PUBLIC_ROLE via convertToPublicVault
+    function deposit(uint256 assets_, address receiver_) public override nonReentrant restricted returns (uint256) {
+        return _deposit(assets_, receiver_);
+    }
+
     /// @notice Deposits assets into vault using ERC20 permit for gasless approvals
     /// @dev Combines permit signature verification with deposit operation
     ///

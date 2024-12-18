@@ -1587,6 +1587,11 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// @param fuse_ The address of the fuse to add
     /// @dev Validates fuse address and adds it to the market
     /// @custom:access Internal
+    /// @notice Internal helper to add a balance fuse
+    /// @param marketId_ The ID of the market
+    /// @param fuse_ The address of the fuse to add
+    /// @dev Validates fuse address and adds it to the market
+    /// @custom:access Internal
     function _addBalanceFuse(uint256 marketId_, address fuse_) internal {
         if (fuse_ == address(0)) {
             revert Errors.WrongAddress();
