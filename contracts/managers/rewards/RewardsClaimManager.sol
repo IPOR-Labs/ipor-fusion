@@ -117,6 +117,11 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
         if (asset_ == UNDERLYING_TOKEN) {
             revert UnableToTransferUnderlyingToken();
         }
+
+        if (amount_ == 0) {
+            return;
+        }
+
         IERC20(asset_).safeTransfer(to_, amount_);
     }
 
@@ -125,6 +130,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// @custom:access CLAIM_REWARDS_ROLE
     function claimRewards(FuseAction[] calldata calls_) external restricted {
         uint256 len = calls_.length;
+
         for (uint256 i; i < len; ++i) {
             if (!FusesLib.isFuseSupported(calls_[i].fuse)) {
                 revert FusesLib.FuseUnsupported(calls_[i].fuse);
@@ -139,10 +145,13 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// @custom:access PUBLIC_ROLE
     function updateBalance() external restricted {
         uint256 balance = balanceOf();
+        
         if (balance > 0) {
             IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
         }
+
         VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
+        
         data.updateBalanceTimestamp = block.timestamp.toUint32();
         data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN).balanceOf(address(this)).toUint128();
         data.transferredTokens = 0;
@@ -155,11 +164,14 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// @custom:access PUBLIC_ROLE
     function transferVestedTokensToVault() external restricted {
         uint256 balance = balanceOf();
+
         if (balance == 0) {
             return;
         }
+        
         IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
         RewardsClaimManagersStorageLib.updateTransferredTokens(balance);
+        
         emit AmountWithdrawn(balance);
     }
 
@@ -168,6 +180,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// @custom:access FUSE_MANAGER_ROLE
     function addRewardFuses(address[] calldata fuses_) external restricted {
         uint256 len = fuses_.length;
+
         for (uint256 i; i < len; ++i) {
             FusesLib.addFuse(fuses_[i]);
         }
@@ -178,6 +191,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// @custom:access FUSE_MANAGER_ROLE
     function removeRewardFuses(address[] calldata fuses_) external restricted {
         uint256 len = fuses_.length;
+
         for (uint256 i; i < len; ++i) {
             FusesLib.removeFuse(fuses_[i]);
         }

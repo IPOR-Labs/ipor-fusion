@@ -509,8 +509,10 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
             remainingBalance_ -= recipientShare;
 
-            IERC4626(PLASMA_VAULT).transferFrom(feeAccount_, recipient_, recipientShare);
-            _emitHarvestEvent(recipient_, recipientShare, feeType_);
+            if (recipientShare > 0) {
+                IERC4626(PLASMA_VAULT).transferFrom(feeAccount_, recipient_, recipientShare);
+                _emitHarvestEvent(recipient_, recipientShare, feeType_);
+            }
         }
 
         return remainingBalance_;

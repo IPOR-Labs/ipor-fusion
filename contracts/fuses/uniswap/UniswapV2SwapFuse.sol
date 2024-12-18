@@ -86,12 +86,19 @@ contract UniswapV2SwapFuse is IFuseCommon {
 
         /// @dev the first token in the path is the input token to swap which has to be in the vault
         uint256 vaultBalance = IERC20(data_.path[0]).balanceOf(address(this));
+
         uint256 inputAmount = data_.tokenInAmount <= vaultBalance ? data_.tokenInAmount : vaultBalance;
+
+        if (inputAmount == 0) {
+            return;
+        }
 
         IERC20(data_.path[0]).safeTransfer(UNIVERSAL_ROUTER, inputAmount);
 
         bytes memory commands = abi.encodePacked(bytes1(uint8(V2_SWAP_EXACT_IN)));
+
         bytes[] memory inputs = new bytes[](1);
+        
         inputs[0] = abi.encode(
             INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER,
             inputAmount,
