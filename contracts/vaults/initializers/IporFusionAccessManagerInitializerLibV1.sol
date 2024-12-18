@@ -616,13 +616,13 @@ library IporFusionAccessManagerInitializerLibV1 {
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.contextManager,
                 roleId: Roles.ATOMIST_ROLE,
-                functionSelector: ContextManager.addApprovedAddresses.selector,
+                functionSelector: ContextManager.addApprovedTargets.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.contextManager,
                 roleId: Roles.ATOMIST_ROLE,
-                functionSelector: ContextManager.removeApprovedAddresses.selector,
+                functionSelector: ContextManager.removeApprovedTargets.selector,
                 minimalExecutionDelay: 0
             });
 

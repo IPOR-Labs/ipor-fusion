@@ -8,14 +8,14 @@ import {ContextDataWithSender} from "../../contracts/managers/context/ContextMan
 
 contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
     // Test events
-    event ApprovedAddressAdded(address indexed addr);
-    event ApprovedAddressRemoved(address indexed addr);
+    event ApprovedTargetAdded(address indexed target);
+    event ApprovedTargetRemoved(address indexed target);
 
     function setUp() public {
         initSetup();
     }
 
-    function testRevertWhenAddEmptyApprovedAddressesList() public {
+    function testRevertWhenAddEmptyApprovedTargetsList() public {
         // given
         address[] memory emptyAddresses = new address[](0);
 
@@ -24,10 +24,10 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
         // when
         vm.expectRevert(error);
         vm.prank(address(TestAddresses.ATOMIST));
-        _contextManager.addApprovedAddresses(emptyAddresses);
+        _contextManager.addApprovedTargets(emptyAddresses);
     }
 
-    function testRevertWhenAddApprovedAddressesNotByAtomist() public {
+    function testRevertWhenAddApprovedTargetsNotByAtomist() public {
         // given
         address[] memory addresses = new address[](1);
         addresses[0] = makeAddr("random_address");
@@ -37,88 +37,88 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
         // when
         vm.expectRevert(error);
         vm.prank(TestAddresses.USER);
-        _contextManager.addApprovedAddresses(addresses);
+        _contextManager.addApprovedTargets(addresses);
     }
 
-    function testAddApprovedAddressesHappyPath() public {
+    function testAddApprovedTargetsHappyPath() public {
         address[] memory addresses = new address[](2);
         addresses[0] = makeAddr("random_address1");
         addresses[1] = makeAddr("random_address2");
 
         // Expect events for each address
         vm.expectEmit(true, false, false, false);
-        emit ApprovedAddressAdded(addresses[0]);
+        emit ApprovedTargetAdded(addresses[0]);
         vm.expectEmit(true, false, false, false);
-        emit ApprovedAddressAdded(addresses[1]);
+        emit ApprovedTargetAdded(addresses[1]);
 
         // Execute as protocol owner
         vm.prank(address(TestAddresses.ATOMIST));
-        uint256 approvedCount = _contextManager.addApprovedAddresses(addresses);
+        uint256 approvedCount = _contextManager.addApprovedTargets(addresses);
 
         // Verify return value
         assertEq(approvedCount, 2, "Should return correct number of newly approved addresses");
 
         // Verify addresses were actually approved
-        assertTrue(_contextManager.isApproved(addresses[0]), "First address should be approved");
-        assertTrue(_contextManager.isApproved(addresses[1]), "Second address should be approved");
+        assertTrue(_contextManager.isTargetApproved(addresses[0]), "First address should be approved");
+        assertTrue(_contextManager.isTargetApproved(addresses[1]), "Second address should be approved");
     }
 
-    function testAddAlreadyApprovedAddress() public {
+    function testAddAlreadyApprovedTarget() public {
         address[] memory addresses = new address[](1);
         addresses[0] = makeAddr("random_address");
 
         // First approval
         vm.prank(address(TestAddresses.ATOMIST));
-        uint256 firstApprovalCount = _contextManager.addApprovedAddresses(addresses);
+        uint256 firstApprovalCount = _contextManager.addApprovedTargets(addresses);
         assertEq(firstApprovalCount, 1, "First approval should count as 1");
 
         // Second approval of same address
         vm.prank(address(TestAddresses.ATOMIST));
-        uint256 secondApprovalCount = _contextManager.addApprovedAddresses(addresses);
+        uint256 secondApprovalCount = _contextManager.addApprovedTargets(addresses);
         assertEq(secondApprovalCount, 0, "Second approval should count as 0");
     }
 
-    function testRemoveApprovedAddressesHappyPath() public {
+    function testRemoveApprovedTargetsHappyPath() public {
         // Setup - first add some addresses
         address[] memory addresses = new address[](2);
         addresses[0] = makeAddr("random_address1");
         addresses[1] = makeAddr("random_address2");
 
         vm.prank(address(TestAddresses.ATOMIST));
-        _contextManager.addApprovedAddresses(addresses);
+        _contextManager.addApprovedTargets(addresses);
 
         // Expect events for each address removal
         vm.expectEmit(true, false, false, false);
-        emit ApprovedAddressRemoved(addresses[0]);
+        emit ApprovedTargetRemoved(addresses[0]);
         vm.expectEmit(true, false, false, false);
-        emit ApprovedAddressRemoved(addresses[1]);
+        emit ApprovedTargetRemoved(addresses[1]);
 
         // Execute removal as protocol owner
         vm.prank(address(TestAddresses.ATOMIST));
-        uint256 removedCount = _contextManager.removeApprovedAddresses(addresses);
+        uint256 removedCount = _contextManager.removeApprovedTargets(addresses);
 
         // Verify return value
         assertEq(removedCount, 2, "Should return correct number of removed addresses");
 
         // Verify addresses were actually removed
-        assertFalse(_contextManager.isApproved(addresses[0]), "First address should not be approved");
-        assertFalse(_contextManager.isApproved(addresses[1]), "Second address should not be approved");
+        assertFalse(_contextManager.isTargetApproved(addresses[0]), "First address should not be approved");
+        assertFalse(_contextManager.isTargetApproved(addresses[1]), "Second address should not be approved");
     }
 
-    function testRemoveNonExistentApprovedAddresses() public {
+    function testRemoveNonExistentApprovedTargets() public {
         // Try to remove addresses that were never approved
         address[] memory addresses = new address[](2);
         addresses[0] = makeAddr("non_existent1");
         addresses[1] = makeAddr("non_existent2");
 
         vm.prank(address(TestAddresses.ATOMIST));
-        uint256 removedCount = _contextManager.removeApprovedAddresses(addresses);
+        uint256 removedCount = _contextManager.removeApprovedTargets(addresses);
 
         // Should return 0 as no addresses were actually removed
         assertEq(removedCount, 0, "Should return 0 for non-existent addresses");
     }
 
-    function testRevertWhenRemoveApprovedAddressesNotByAtomist() public {
+    function testRevertWhenRemoveApprovedTargetsNotByAtomist() public {
         address[] memory addresses = new address[](1);
         addresses[0] = makeAddr("random_address");
 
@@ -126,17 +126,17 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
 
         vm.expectRevert(error);
         vm.prank(TestAddresses.USER);
-        _contextManager.removeApprovedAddresses(addresses);
+        _contextManager.removeApprovedTargets(addresses);
     }
 
-    function testPartialRemovalOfApprovedAddresses() public {
+    function testPartialRemovalOfApprovedTargets() public {
         // Setup - add two addresses
         address[] memory addAddresses = new address[](2);
         addAddresses[0] = makeAddr("approved1");
         addAddresses[1] = makeAddr("approved2");
 
         vm.prank(address(TestAddresses.ATOMIST));
-        _contextManager.addApprovedAddresses(addAddresses);
+        _contextManager.addApprovedTargets(addAddresses);
 
         // Try to remove three addresses (two existing, one non-existent)
         address[] memory removeAddresses = new address[](3);
@@ -146,20 +146,20 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
 
         // Expect events only for the existing addresses
         vm.expectEmit(true, false, false, false);
-        emit ApprovedAddressRemoved(removeAddresses[0]);
+        emit ApprovedTargetRemoved(removeAddresses[0]);
         vm.expectEmit(true, false, false, false);
-        emit ApprovedAddressRemoved(removeAddresses[1]);
+        emit ApprovedTargetRemoved(removeAddresses[1]);
 
         vm.prank(address(TestAddresses.ATOMIST));
-        uint256 removedCount = _contextManager.removeApprovedAddresses(removeAddresses);
+        uint256 removedCount = _contextManager.removeApprovedTargets(removeAddresses);
 
         // Should only count actually removed addresses
         assertEq(removedCount, 2, "Should only count actually removed addresses");
 
         // Verify final state
-        assertFalse(_contextManager.isApproved(removeAddresses[0]), "First address should be removed");
-        assertFalse(_contextManager.isApproved(removeAddresses[1]), "Second address should be removed");
-        assertFalse(_contextManager.isApproved(removeAddresses[2]), "Third address should not exist");
+        assertFalse(_contextManager.isTargetApproved(removeAddresses[0]), "First address should be removed");
+        assertFalse(_contextManager.isTargetApproved(removeAddresses[1]), "Second address should be removed");
+        assertFalse(_contextManager.isTargetApproved(removeAddresses[2]), "Third address should not exist");
     }
 
     function testRevertWhenSenderNotMatchSignature() public {
@@ -174,7 +174,7 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
         approvedAddrs[0] = mockTarget;
 
         vm.prank(address(TestAddresses.ATOMIST));
-        _contextManager.addApprovedAddresses(approvedAddrs);
+        _contextManager.addApprovedTargets(approvedAddrs);
 
         // Prepare context data
         ContextDataWithSender[] memory contextDataArray = new ContextDataWithSender[](1);
@@ -219,7 +219,7 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
         approvedAddrs[0] = mockTarget;
 
         vm.prank(address(TestAddresses.ATOMIST));
-        _contextManager.addApprovedAddresses(approvedAddrs);
+        _contextManager.addApprovedTargets(approvedAddrs);
 
         // Prepare context data
         ContextDataWithSender[] memory contextDataArray = new ContextDataWithSender[](1);
@@ -287,7 +287,7 @@ contract ContextManagerMaintenanceTest is Test, ContextManagerInitSetup {
         address[] memory approvedAddrs = new address[](1);
         approvedAddrs[0] = mockTarget;
         vm.prank(address(TestAddresses.ATOMIST));
-        _contextManager.addApprovedAddresses(approvedAddrs);
+        _contextManager.addApprovedTargets(approvedAddrs);
 
         // Setup first transaction
         uint256 expirationTime = block.timestamp + 3600;

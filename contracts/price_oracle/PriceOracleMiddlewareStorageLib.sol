@@ -48,7 +48,7 @@ library PriceOracleMiddlewareStorageLib {
         }
 
         address oldSource = _getAssetsPricesSources().value[asset_];
-        // Avoid unnecessary storage writes and events if the source hasn't changed
+
         if (oldSource != source_) {
             _getAssetsPricesSources().value[asset_] = source_;
             emit AssetPriceSourceUpdated(asset_, source_);

@@ -4,8 +4,6 @@ pragma solidity 0.8.26;
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
-import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {FeeAccount} from "./FeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {RecipientFee} from "./FeeManagerFactory.sol";
@@ -84,8 +82,16 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @notice Performance fee percentage for IPOR DAO (10000 = 100%, 100 = 1%)
     uint256 public immutable IPOR_DAO_PERFORMANCE_FEE;
 
+    modifier onlyInitialized() {
+        if (_getInitializedVersion() != INITIALIZED_VERSION) {
+            revert NotInitialized();
+        }
+        _;
+    }
+
     constructor(FeeManagerInitData memory initData_) initializer {
         if (initData_.initialAuthority == address(0)) revert InvalidAuthority();
+
         super.__AccessManaged_init_unchained(initData_.initialAuthority);
         PLASMA_VAULT = initData_.plasmaVault;
 
@@ -339,6 +345,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         uint256[] memory newFees = new uint256[](recipientFees.length);
 
         uint256 recipientFeesLength = recipientFees.length;
+
         for (uint256 i; i < recipientFeesLength; i++) {
             if (recipientFees[i].recipient == address(0)) {
                 revert InvalidFeeRecipientAddress();
@@ -371,6 +378,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     function getManagementFeeRecipients() external view returns (RecipientFee[] memory) {
         address[] memory recipients = FeeManagerStorageLib.getManagementFeeRecipientAddresses();
         uint256 length = recipients.length;
+
         RecipientFee[] memory recipientFees = new RecipientFee[](length);
 
         for (uint256 i; i < length; i++) {
@@ -427,95 +435,90 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     }
 
     /// @notice Internal function to transfer fees to the DAO
-    /// @param feeAccount The address of the fee account
-    /// @param feeBalance The balance of the fee account
-    /// @param totalFee The total fee percentage
-    /// @param daoFee The DAO fee percentage
-    /// @param feeType The type of fee (PERFORMANCE or MANAGEMENT)
+    /// @param feeAccount_ The address of the fee account
+    /// @param feeBalance_ The balance of the fee account
+    /// @param totalFee_ The total fee percentage
+    /// @param daoFee_ The DAO fee percentage
+    /// @param feeType_ The type of fee (PERFORMANCE or MANAGEMENT)
     /// @return The remaining balance after transferring fees to the DAO
     function _transferDaoFee(
-        address feeAccount,
-        uint256 feeBalance,
-        uint256 totalFee,
-        uint256 daoFee,
-        FeeType feeType
+        address feeAccount_,
+        uint256 feeBalance_,
+        uint256 totalFee_,
+        uint256 daoFee_,
+        FeeType feeType_
     ) internal returns (uint256) {
         uint256 decimals = IERC4626(PLASMA_VAULT).decimals();
         uint256 numberOfDecimals = 10 ** decimals;
 
-        uint256 percentToTransferToDao = (daoFee * numberOfDecimals) / totalFee;
-        uint256 transferAmountToDao = Math.mulDiv(feeBalance, percentToTransferToDao, numberOfDecimals);
+        uint256 percentToTransferToDao_ = (daoFee_ * numberOfDecimals) / totalFee_;
+        uint256 transferAmountToDao_ = Math.mulDiv(feeBalance_, percentToTransferToDao_, numberOfDecimals);
 
-        if (transferAmountToDao > 0) {
+        if (transferAmountToDao_ > 0) {
             IERC4626(PLASMA_VAULT).transferFrom(
-                feeAccount,
+                feeAccount_,
                 FeeManagerStorageLib.getIporDaoFeeRecipientAddress(),
-                transferAmountToDao
+                transferAmountToDao_
             );
-            _emitHarvestEvent(FeeManagerStorageLib.getIporDaoFeeRecipientAddress(), transferAmountToDao, feeType);
+            _emitHarvestEvent(FeeManagerStorageLib.getIporDaoFeeRecipientAddress(), transferAmountToDao_, feeType_);
         }
 
-        return feeBalance > transferAmountToDao ? feeBalance - transferAmountToDao : 0;
+        return feeBalance_ > transferAmountToDao_ ? feeBalance_ - transferAmountToDao_ : 0;
     }
 
     /// @notice Internal function to emit harvest events
-    /// @param recipient The address of the fee recipient
-    /// @param amount The amount of fee to be harvested
-    /// @param feeType The type of fee (PERFORMANCE or MANAGEMENT)
-    function _emitHarvestEvent(address recipient, uint256 amount, FeeType feeType) internal {
-        if (feeType == FeeType.PERFORMANCE) {
-            emit HarvestPerformanceFee(recipient, amount);
+    /// @param recipient_ The address of the fee recipient
+    /// @param amount_ The amount of fee to be harvested
+    /// @param feeType_ The type of fee (PERFORMANCE or MANAGEMENT)
+    function _emitHarvestEvent(address recipient_, uint256 amount_, FeeType feeType_) internal {
+        if (feeType_ == FeeType.PERFORMANCE) {
+            emit HarvestPerformanceFee(recipient_, amount_);
         } else {
-            emit HarvestManagementFee(recipient, amount);
+            emit HarvestManagementFee(recipient_, amount_);
         }
     }
 
     /// @notice Internal function to handle fee transfer to a recipient
-    /// @param recipient The address of the fee recipient
-    /// @param remainingBalance Current remaining balance to distribute
-    /// @param totalFeeBalance Total fee balance being distributed
-    /// @param recipientFeeValue The fee value for this specific recipient
-    /// @param totalFeePercentage Total fee percentage (management or performance)
-    /// @param feeAccount The fee account to transfer from
-    /// @param feeType The type of fee ("MANAGEMENT" or "PERFORMANCE")
+    /// @param recipient_ The address of the fee recipient
+    /// @param remainingBalance_ Current remaining balance to distribute
+    /// @param totalFeeBalance_ Total fee balance being distributed
+    /// @param recipientFeeValue_ The fee value for this specific recipient
+    /// @param totalFeePercentage_ Total fee percentage (management or performance)
+    /// @param feeAccount_ The fee account to transfer from
+    /// @param feeType_ The type of fee ("MANAGEMENT" or "PERFORMANCE")
     /// @return The new remaining balance after transfer
     function _transferRecipientFee(
-        address recipient,
-        uint256 remainingBalance,
-        uint256 totalFeeBalance,
-        uint256 recipientFeeValue,
-        uint256 totalFeePercentage,
-        address feeAccount,
-        FeeType feeType
+        address recipient_,
+        uint256 remainingBalance_,
+        uint256 totalFeeBalance_,
+        uint256 recipientFeeValue_,
+        uint256 totalFeePercentage_,
+        address feeAccount_,
+        FeeType feeType_
     ) internal returns (uint256) {
         uint256 decimals = IERC4626(PLASMA_VAULT).decimals();
         uint256 numberOfDecimals = 10 ** decimals;
 
-        uint256 recipientPercentage = (recipientFeeValue * numberOfDecimals) / totalFeePercentage;
-        uint256 recipientShare = Math.mulDiv(totalFeeBalance, recipientPercentage, numberOfDecimals);
+        uint256 recipientPercentage = (recipientFeeValue_ * numberOfDecimals) / totalFeePercentage_;
+        uint256 recipientShare = Math.mulDiv(totalFeeBalance_, recipientPercentage, numberOfDecimals);
 
         if (recipientShare > 0) {
-            if (remainingBalance < recipientShare) {
-                recipientShare = remainingBalance;
+            if (remainingBalance_ < recipientShare) {
+                recipientShare = remainingBalance_;
             }
 
-            remainingBalance -= recipientShare;
+            remainingBalance_ -= recipientShare;
 
-            IERC4626(PLASMA_VAULT).transferFrom(feeAccount, recipient, recipientShare);
-            _emitHarvestEvent(recipient, recipientShare, feeType);
+            IERC4626(PLASMA_VAULT).transferFrom(feeAccount_, recipient_, recipientShare);
+            _emitHarvestEvent(recipient_, recipientShare, feeType_);
         }
 
-        return remainingBalance;
+        return remainingBalance_;
     }
 
+    /// @notice Internal function to get the message sender from context
+    /// @return The address of the message sender
     function _msgSender() internal view override returns (address) {
-        return getSenderFromContext();
-    }
-
-    modifier onlyInitialized() {
-        if (_getInitializedVersion() != INITIALIZED_VERSION) {
-            revert NotInitialized();
-        }
-        _;
+        return _getSenderFromContext();
     }
 }

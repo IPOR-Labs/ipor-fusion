@@ -81,9 +81,9 @@ library FeeManagerStorageLib {
 
     /// @notice Sets the total performance fee percentage for the plasma vault
     /// @dev Updates the total performance fee that will be distributed among recipients
-    /// @param fee Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
-    function setPlasmaVaultTotalPerformanceFee(uint256 fee) internal {
-        _totalPerformanceFeeStorage().value = fee;
+    /// @param fee_ Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
+    function setPlasmaVaultTotalPerformanceFee(uint256 fee_) internal {
+        _totalPerformanceFeeStorage().value = fee_;
     }
 
     /// @notice Gets the total management fee percentage for the plasma vault
@@ -93,24 +93,24 @@ library FeeManagerStorageLib {
     }
 
     /// @notice Sets the total management fee percentage for the plasma vault
-    /// @param fee Total management fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
-    function setPlasmaVaultTotalManagementFee(uint256 fee) internal {
-        _totalManagementFeeStorage().value = fee;
+    /// @param fee_ Total management fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
+    function setPlasmaVaultTotalManagementFee(uint256 fee_) internal {
+        _totalManagementFeeStorage().value = fee_;
     }
 
     /// @notice Gets the fee value for a specific management fee recipient
-    /// @param recipient The address of the recipient
+    /// @param recipient_ The address of the recipient
     /// @return The fee value for the recipient
-    function getManagementFeeRecipientFee(address recipient) internal view returns (uint256) {
-        return _managementFeeRecipientDataStorage().recipientFees[recipient];
+    function getManagementFeeRecipientFee(address recipient_) internal view returns (uint256) {
+        return _managementFeeRecipientDataStorage().recipientFees[recipient_];
     }
 
     /// @notice Sets the fee value for a specific management fee recipient
     /// @dev Updates individual recipient's share of the total management fee
-    /// @param recipient The address of the recipient
-    /// @param feeValue The fee value to set, representing recipient's share of total fee
-    function setManagementFeeRecipientFee(address recipient, uint256 feeValue) internal {
-        _managementFeeRecipientDataStorage().recipientFees[recipient] = feeValue;
+    /// @param recipient_ The address of the recipient
+    /// @param feeValue_ The fee value to set, representing recipient's share of total fee
+    function setManagementFeeRecipientFee(address recipient_, uint256 feeValue_) internal {
+        _managementFeeRecipientDataStorage().recipientFees[recipient_] = feeValue_;
     }
 
     /// @notice Gets all management fee recipient addresses
@@ -121,24 +121,24 @@ library FeeManagerStorageLib {
 
     /// @notice Sets all management fee recipient addresses
     /// @dev Overwrites the entire array of management fee recipients
-    /// @param addresses Array of recipient addresses to set
+    /// @param addresses_ Array of recipient addresses to set
     /// @dev Important: This replaces all existing recipients
-    function setManagementFeeRecipientAddresses(address[] memory addresses) internal {
-        _managementFeeRecipientDataStorage().recipientAddresses = addresses;
+    function setManagementFeeRecipientAddresses(address[] memory addresses_) internal {
+        _managementFeeRecipientDataStorage().recipientAddresses = addresses_;
     }
 
     /// @notice Gets the fee value for a specific performance fee recipient
-    /// @param recipient The address of the recipient
+    /// @param recipient_ The address of the recipient
     /// @return The fee value for the recipient
-    function getPerformanceFeeRecipientFee(address recipient) internal view returns (uint256) {
-        return _performanceFeeRecipientDataStorage().recipientFees[recipient];
+    function getPerformanceFeeRecipientFee(address recipient_) internal view returns (uint256) {
+        return _performanceFeeRecipientDataStorage().recipientFees[recipient_];
     }
 
     /// @notice Sets the fee value for a specific performance fee recipient
-    /// @param recipient The address of the recipient
-    /// @param feeValue The fee value to set
-    function setPerformanceFeeRecipientFee(address recipient, uint256 feeValue) internal {
-        _performanceFeeRecipientDataStorage().recipientFees[recipient] = feeValue;
+    /// @param recipient_ The address of the recipient
+    /// @param feeValue_ The fee value to set
+    function setPerformanceFeeRecipientFee(address recipient_, uint256 feeValue_) internal {
+        _performanceFeeRecipientDataStorage().recipientFees[recipient_] = feeValue_;
     }
 
     /// @notice Gets all performance fee recipient addresses
@@ -148,9 +148,9 @@ library FeeManagerStorageLib {
     }
 
     /// @notice Sets all performance fee recipient addresses
-    /// @param addresses Array of recipient addresses to set
-    function setPerformanceFeeRecipientAddresses(address[] memory addresses) internal {
-        _performanceFeeRecipientDataStorage().recipientAddresses = addresses;
+    /// @param addresses_ Array of recipient addresses to set
+    function setPerformanceFeeRecipientAddresses(address[] memory addresses_) internal {
+        _performanceFeeRecipientDataStorage().recipientAddresses = addresses_;
     }
 
     /// @notice Gets the IPOR DAO fee recipient address
@@ -161,11 +161,11 @@ library FeeManagerStorageLib {
 
     /// @notice Sets the IPOR DAO fee recipient address
     /// @dev Updates the address that receives DAO fees and emits an event
-    /// @param recipientAddress The address to set as the IPOR DAO fee recipient
+    /// @param recipientAddress_ The address to set as the IPOR DAO fee recipient
     /// @dev Emits IporDaoFeeRecipientAddressChanged event
-    function setIporDaoFeeRecipientAddress(address recipientAddress) internal {
-        _daoFeeRecipientDataStorage().iporDaoFeeRecipientAddress = recipientAddress;
-        emit IporDaoFeeRecipientAddressChanged(recipientAddress);
+    function setIporDaoFeeRecipientAddress(address recipientAddress_) internal {
+        _daoFeeRecipientDataStorage().iporDaoFeeRecipientAddress = recipientAddress_;
+        emit IporDaoFeeRecipientAddressChanged(recipientAddress_);
     }
 
     function _daoFeeRecipientDataStorage() private pure returns (DaoFeeRecipientDataStorage storage $) {

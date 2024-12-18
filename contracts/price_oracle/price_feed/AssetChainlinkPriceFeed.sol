@@ -47,7 +47,6 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
         uint256 assetXAssetYChainlinkFeedDecimals = AggregatorV3Interface(ASSET_X_ASSET_Y_CHAINLINK_FEED).decimals();
         uint256 assetYUsdChainlinkFeedDecimals = AggregatorV3Interface(ASSET_Y_USD_CHAINLINK_FEED).decimals();
 
-        // Validate that decimals are within reasonable range
         if (assetXAssetYChainlinkFeedDecimals > 18 || assetYUsdChainlinkFeedDecimals > 18) {
             revert InvalidDecimals();
         }
@@ -83,10 +82,8 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
             uint80 assetXYAnsweredInRound
         ) = AggregatorV3Interface(ASSET_X_ASSET_Y_CHAINLINK_FEED).latestRoundData();
 
-        // Validate the price data
         if (assetYPriceInUsd <= 0 || assetXPriceInAssetY <= 0) revert NegativeOrZeroPrice();
 
-        // Calculate the combined price
         price = Math
             .mulDiv(assetYPriceInUsd.toUint256(), assetXPriceInAssetY.toUint256(), PRICE_DENOMINATOR)
             .toInt256();

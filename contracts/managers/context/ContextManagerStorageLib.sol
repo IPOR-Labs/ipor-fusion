@@ -11,21 +11,21 @@ library ContextManagerStorageLib {
     error NonceTooLow();
 
     /// @notice Emitted when an address's nonce is updated
-    /// @param addr The address whose nonce was updated
+    /// @param target The address whose nonce was updated
     /// @param newNonce The new nonce value
-    event NonceUpdated(address indexed addr, uint256 newNonce);
+    event NonceUpdated(address indexed target, uint256 newNonce);
 
     /// @notice Emitted when an address is added to the approved addresses list
-    /// @param addr The address that was added to the approved addresses list
-    event ApprovedAddressAdded(address indexed addr);
+    /// @param target The address that was added to the approved addresses list
+    event ApprovedTargetAdded(address indexed target);
 
-    /// @notice Emitted when an address is removed from the approved addresses list
-    /// @param addr The address that was removed from the approved addresses list
-    event ApprovedAddressRemoved(address indexed addr);
+    /// @notice Emitted when an address is removed from the approved targets list
+    /// @param target The address that was removed from the approved targets list
+    event ApprovedTargetRemoved(address indexed target);
 
-    /// @dev Storage slot for approved addresses mapping and array
-    /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.context.manager.approved.addresses")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant APPROVED_ADDRESSES = 0xcd52b1eda56201f4a7653cae301594a261618d67f76e8e1d5e26f1bb9f772a00;
+    /// @dev Storage slot for approved targets mapping and array
+    /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.context.manager.approved.targets")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant APPROVED_TARGETS = 0xba0b14fc3b5f6eb62b63f24324d3267b78a7c3121b0d922dabc8df20fcad1800;
 
     /// @dev Storage slot for nonces mapping
     /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.context.manager.nonces")) - 1)) & ~bytes32(uint256(0xff))
@@ -33,11 +33,11 @@ library ContextManagerStorageLib {
 
     /// @notice Storage structure for managing approved addresses
     /// @dev Uses a mapping for O(1) lookups and an array for enumeration
-    struct ApprovedAddresses {
-        /// @dev Mapping of address to approval status (1 = approved, 0 = not approved)
-        mapping(address target => uint256 isGranted) addressGranted;
-        /// @dev Array of all approved addresses for enumeration
-        address[] addresses;
+    struct ApprovedTargets {
+        /// @dev Mapping of target to approval status (1 = approved, 0 = not approved)
+        mapping(address target => uint256 isApproved) targetApproved;
+        /// @dev Array of all approved targets for enumeration
+        address[] targets;
     }
 
     /// @notice Storage structure for managing nonces
@@ -49,51 +49,46 @@ library ContextManagerStorageLib {
 
     /// @notice Adds an address to the approved addresses list
     /// @dev Will not add zero address or already approved addresses
-    /// @param addr The address to be approved
+    /// @param target_ The address to be approved
     /// @return success True if the address was newly added, false if it was already approved or invalid
-    function addApprovedAddress(address addr) internal returns (bool success) {
-        if (addr == address(0) || isApproved(addr)) {
+    function addApprovedTarget(address target_) internal returns (bool success) {
+        if (target_ == address(0) || isTargetApproved(target_)) {
             return false;
         }
 
-        ApprovedAddresses storage $ = _getApprovedAddresses();
+        ApprovedTargets storage $ = _getApprovedTargets();
 
-        // Add to mapping and array
-        $.addressGranted[addr] = 1;
-        $.addresses.push(addr);
+        $.targetApproved[target_] = 1;
+        $.targets.push(target_);
 
-        // Emit event for better transparency and tracking
-        emit ApprovedAddressAdded(addr);
+        emit ApprovedTargetAdded(target_);
 
         return true;
     }
 
     /// @notice Removes an address from the approved addresses list
     /// @dev Maintains array consistency by replacing removed element with the last element
-    /// @param addr The address to be removed from approved list
+    /// @param target_ The address to be removed from approved list
     /// @return success True if the address was removed, false if it wasn't approved or invalid
-    function removeApprovedAddress(address addr) internal returns (bool success) {
-        // Quick validation
-        if (addr == address(0) || !isApproved(addr)) {
+    function removeApprovedTarget(address target_) internal returns (bool success) {
+        if (target_ == address(0) || !isTargetApproved(target_)) {
             return false;
         }
 
-        ApprovedAddresses storage $ = _getApprovedAddresses();
+        ApprovedTargets storage $ = _getApprovedTargets();
 
-        // Remove from mapping first
-        $.addressGranted[addr] = 0;
+        $.targetApproved[target_] = 0;
 
-        // Remove from array by finding and replacing with last element
-        uint256 length = $.addresses.length;
+        uint256 length = $.targets.length;
+
         for (uint256 i; i < length; ++i) {
-            if ($.addresses[i] == addr) {
-                // If not the last element, replace with the last one
+            if ($.targets[i] == target_) {
                 if (i != length - 1) {
-                    $.addresses[i] = $.addresses[length - 1];
+                    $.targets[i] = $.targets[length - 1];
                 }
-                $.addresses.pop();
+                $.targets.pop();
 
-                emit ApprovedAddressRemoved(addr);
+                emit ApprovedTargetRemoved(target_);
                 return true;
             }
         }
@@ -102,47 +97,50 @@ library ContextManagerStorageLib {
     /// @notice Retrieves the complete list of approved addresses
     /// @dev Creates a new array in memory with all approved addresses
     /// @return result Array containing all currently approved addresses
-    function getApprovedAddresses() internal view returns (address[] memory result) {
-        return _getApprovedAddresses().addresses;
+    function getApprovedTargets() internal view returns (address[] memory result) {
+        return _getApprovedTargets().targets;
     }
 
     /// @notice Checks if an address is approved
     /// @dev Quick O(1) lookup using the addressGranted mapping
-    /// @param addr The address to check approval status for
+    /// @param target_ The address to check approval status for
     /// @return True if the address is approved, false otherwise
-    function isApproved(address addr) internal view returns (bool) {
-        ApprovedAddresses storage $ = _getApprovedAddresses();
-        return $.addressGranted[addr] == 1;
+    function isTargetApproved(address target_) internal view returns (bool) {
+        ApprovedTargets storage $ = _getApprovedTargets();
+        return $.targetApproved[target_] == 1;
     }
 
     /// @notice Retrieves the current nonce for an address
     /// @dev Used for signature validation and replay protection
-    /// @param addr The address to get the nonce for
+    /// @param sender_ The address to get the nonce for
     /// @return The current nonce value for the address
-    function getNonce(address addr) internal view returns (uint256) {
+    function getNonce(address sender_) internal view returns (uint256) {
         Nonces storage $ = _getNonces();
-        return $.addressToNonce[addr];
+        return $.addressToNonce[sender_];
     }
 
     /// @notice Verifies and updates the nonce for an address
     /// @dev Ensures new nonce is higher than current nonce to prevent replay attacks
-    /// @param addr The address to update the nonce for
-    /// @param newNonce The new nonce value to set
+    /// @param sender_ The address to update the nonce for
+    /// @param newNonce_ The new nonce value to set
     /// @custom:throws NonceTooLow if the provided nonce is not higher than the current nonce
-    function verifyAndUpdateNonce(address addr, uint256 newNonce) internal {
+    function verifyAndUpdateNonce(address sender_, uint256 newNonce_) internal {
         Nonces storage $ = _getNonces();
-        if ($.addressToNonce[addr] >= newNonce) {
+
+        if ($.addressToNonce[sender_] >= newNonce_) {
             revert NonceTooLow();
         }
-        $.addressToNonce[addr] = newNonce;
-        emit NonceUpdated(addr, newNonce);
+
+        $.addressToNonce[sender_] = newNonce_;
+
+        emit NonceUpdated(sender_, newNonce_);
     }
 
-    /// @dev Internal function to access the ApprovedAddresses storage slot
-    /// @return $ Reference to the ApprovedAddresses storage struct
-    function _getApprovedAddresses() private pure returns (ApprovedAddresses storage $) {
+    /// @dev Internal function to access the ApprovedTargets storage slot
+    /// @return $ Reference to the ApprovedTargets storage struct
+    function _getApprovedTargets() private pure returns (ApprovedTargets storage $) {
         assembly {
-            $.slot := APPROVED_ADDRESSES
+            $.slot := APPROVED_TARGETS
         }
     }
 

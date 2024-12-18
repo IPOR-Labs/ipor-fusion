@@ -59,11 +59,11 @@ struct FeeManagerData {
 contract FeeManagerFactory {
     /// @notice Deploys a new FeeManager contract with the specified configuration
     /// @dev Creates and initializes a new FeeManager with associated fee accounts
-    /// @param initData Initialization parameters for the fee manager
+    /// @param initData_ Initialization parameters for the fee manager
     /// @return Data structure containing addresses and fee information of the deployed system
     /// @custom:security Validates fee recipient addresses and fee percentages during deployment
-    function deployFeeManager(FeeManagerInitData memory initData) external returns (FeeManagerData memory) {
-        FeeManager feeManager = new FeeManager(initData);
+    function deployFeeManager(FeeManagerInitData memory initData_) external returns (FeeManagerData memory) {
+        FeeManager feeManager = new FeeManager(initData_);
 
         return
             FeeManagerData({

@@ -164,8 +164,8 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         decimals = QUOTE_CURRENCY_DECIMALS;
     }
 
-    //solhint-disable-next-line
     /// @dev Required by the OZ UUPS module
     /// @param newImplementation Address of the new implementation
+    //solhint-disable-next-line
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

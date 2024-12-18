@@ -37,7 +37,7 @@ contract ContextManagerWithSignatureFeeManagerTest is Test, ContextManagerInitSe
         addresses[0] = address(_feeManager);
 
         vm.startPrank(TestAddresses.ATOMIST);
-        _contextManager.addApprovedAddresses(addresses);
+        _contextManager.addApprovedTargets(addresses);
         vm.stopPrank();
 
         vm.startPrank(TestAddresses.DAO);

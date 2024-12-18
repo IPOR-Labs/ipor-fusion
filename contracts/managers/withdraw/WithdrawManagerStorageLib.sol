@@ -114,19 +114,19 @@ library WithdrawManagerStorageLib {
     }
 
     /// @notice Creates or updates a withdraw request for an account
-    /// @param requester Address creating the withdraw request
+    /// @param requester_ Address creating the withdraw request
     /// @param amount_ Amount to withdraw in underlying token decimals
     /// @dev Sets endWithdrawWindowTimestamp based on current time plus window length
-    function updateWithdrawRequest(address requester, uint256 amount_) internal {
+    function updateWithdrawRequest(address requester_, uint256 amount_) internal {
         uint256 withdrawWindowLength = getWithdrawWindowInSeconds();
         WithdrawRequest memory request = WithdrawRequest({
             amount: amount_.toUint128(),
             endWithdrawWindowTimestamp: block.timestamp.toUint32() + withdrawWindowLength.toUint32()
         });
 
-        _getWithdrawRequests().requests[requester] = request;
+        _getWithdrawRequests().requests[requester_] = request;
 
-        emit WithdrawRequestUpdated(requester, amount_, request.endWithdrawWindowTimestamp);
+        emit WithdrawRequestUpdated(requester_, amount_, request.endWithdrawWindowTimestamp);
     }
 
     /// @notice Deletes a withdraw request for an account

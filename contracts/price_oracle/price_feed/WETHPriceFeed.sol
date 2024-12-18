@@ -34,7 +34,6 @@ contract WETHPriceFeed is IPriceFeed {
 
         ETH_USD_CHAINLINK_FEED = ethUsdChainlinkFeed_;
 
-        // Check decimals during construction
         if (PRICE_FEED_DECIMALS != AggregatorV3Interface(ETH_USD_CHAINLINK_FEED).decimals()) {
             revert InvalidDecimals();
         }
@@ -63,7 +62,6 @@ contract WETHPriceFeed is IPriceFeed {
             uint80 chainlinkAnsweredInRound
         ) = AggregatorV3Interface(ETH_USD_CHAINLINK_FEED).latestRoundData();
 
-        // Basic data validation
         if (answer <= 0) revert InvalidPrice();
         if (updateTime == 0) revert StalePrice();
 

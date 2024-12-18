@@ -5,8 +5,6 @@ import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {WithdrawManagerStorageLib} from "./WithdrawManagerStorageLib.sol";
 import {WithdrawRequest} from "./WithdrawManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
-import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
-import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 
 struct WithdrawRequestInfo {
     uint256 amount;
@@ -137,18 +135,25 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     }
 
     function _canWithdraw(
-        uint256 endWithdrawWindowTimestamp,
-        uint256 withdrawWindow,
-        uint256 releaseFundsTimestamp
+        uint256 endWithdrawWindowTimestamp_,
+        uint256 withdrawWindow_,
+        uint256 releaseFundsTimestamp_
     ) private view returns (bool) {
-        /// @dev endWithdrawWindowTimestamp - withdrawWindow = moment when user did request for withdraw
+        if (endWithdrawWindowTimestamp_ < withdrawWindow_) {
+            return false;
+        }
+
+        uint256 requestTimestamp_ = endWithdrawWindowTimestamp_ - withdrawWindow_;
+
         return
-            block.timestamp >= endWithdrawWindowTimestamp - withdrawWindow &&
-            block.timestamp <= endWithdrawWindowTimestamp &&
-            endWithdrawWindowTimestamp - withdrawWindow < releaseFundsTimestamp;
+            block.timestamp >= requestTimestamp_ &&
+            block.timestamp <= endWithdrawWindowTimestamp_ &&
+            requestTimestamp_ < releaseFundsTimestamp_;
     }
 
+    /// @notice Internal function to get the message sender from context
+    /// @return The address of the message sender
     function _msgSender() internal view override returns (address) {
-        return getSenderFromContext();
+        return _getSenderFromContext();
     }
 }

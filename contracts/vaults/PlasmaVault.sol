@@ -92,12 +92,15 @@ contract PlasmaVault is
     using Address for address;
     using SafeCast for int256;
 
+    /// @notice ISO-4217 currency code for USD represented as address
+    /// @dev 0x348 (840 in decimal) is the ISO-4217 numeric code for USD
     address private constant USD = address(0x0000000000000000000000000000000000000348);
     /// @dev Additional offset to withdraw from markets in case of rounding issues
     uint256 private constant WITHDRAW_FROM_MARKETS_OFFSET = 10;
     /// @dev 10 attempts to withdraw from markets in case of rounding issues
     uint256 private constant REDEEM_ATTEMPTS = 10;
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
+    uint256 private constant FEE_PERCENTAGE_DECIMALS_MULTIPLIER = 1e4; /// @dev 10000 = 100% (2 decimal places for fee percentage)
 
     error NoSharesToRedeem();
     error NoSharesToMint();
@@ -196,6 +199,7 @@ contract PlasmaVault is
         uint256 totalAssetsBefore = totalAssets();
 
         PlasmaVaultLib.executeStarted();
+
         for (uint256 i; i < callsCount; ++i) {
             if (!FusesLib.isFuseSupported(calls_[i].fuse)) {
                 revert UnsupportedFuse();
@@ -210,6 +214,7 @@ contract PlasmaVault is
 
             calls_[i].fuse.functionDelegateCall(calls_[i].data);
         }
+
         PlasmaVaultLib.executeFinished();
 
         _updateMarketsBalances(markets);
@@ -224,6 +229,7 @@ contract PlasmaVault is
         uint256 totalAssetsBefore = totalAssets();
         _updateMarketsBalances(marketIds_);
         _addPerformanceFee(totalAssetsBefore);
+
         return totalAssets();
     }
 
@@ -267,6 +273,7 @@ contract PlasmaVault is
         if (shares_ == 0) {
             revert NoSharesToMint();
         }
+
         if (receiver_ == address(0)) {
             revert Errors.WrongAddress();
         }
@@ -285,7 +292,7 @@ contract PlasmaVault is
             revert NoAssetsToWithdraw();
         }
 
-        if (receiver_ == address(0)) {
+        if (receiver_ == address(0) || owner_ == address(0)) {
             revert Errors.WrongAddress();
         }
 
@@ -446,7 +453,11 @@ contract PlasmaVault is
 
         PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
 
-        uint256 fee = Math.mulDiv(totalAssetsAfter - totalAssetsBefore_, feeData.feeInPercentage, 1e4);
+        uint256 fee = Math.mulDiv(
+            totalAssetsAfter - totalAssetsBefore_,
+            feeData.feeInPercentage,
+            FEE_PERCENTAGE_DECIMALS_MULTIPLIER
+        );
 
         /// @dev total supply cap validation is disabled for fee minting
         PlasmaVaultLib.setTotalSupplyCapValidation(1);
@@ -511,11 +522,10 @@ contract PlasmaVault is
 
             left = assets_ - vaultCurrentBalanceUnderlying_;
 
-            uint256 i;
             uint256 balanceOf;
             uint256 fusesLength = fuses.length;
 
-            for (i; left != 0 && i < fusesLength; ++i) {
+            for (uint256 i; left != 0 && i < fusesLength; ++i) {
                 params = PlasmaVaultLib.getInstantWithdrawalFusesParams(fuses[i], i);
 
                 /// @dev always first param is amount, by default is 0 in storage, set to left
@@ -552,8 +562,8 @@ contract PlasmaVault is
         int256 deltasInUnderlying;
         uint256[] memory markets = _checkBalanceFusesDependencies(markets_);
         uint256 marketsLength = markets.length;
-        /// @dev USD price is represented in 8 decimals
 
+        /// @dev USD price is represented in 8 decimals
         (uint256 underlyingAssetPrice, uint256 underlyingAssePriceDecimals) = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
         ).getAssetPrice(asset());
@@ -591,6 +601,7 @@ contract PlasmaVault is
         }
 
         dataToCheck.totalBalanceInVault = _getGrossTotalAssets();
+
         AssetDistributionProtectionLib.checkLimits(dataToCheck);
 
         emit MarketBalancesUpdated(markets, deltasInUnderlying);
@@ -609,13 +620,16 @@ contract PlasmaVault is
         while (marketsToCheck.length > 0) {
             tempMarketsToCheck = new uint256[](marketsLength * 2);
             uint256 tempIndex;
+
             for (uint256 i; i < marketsToCheck.length; ++i) {
                 if (!_checkIfExistsMarket(marketsChecked, marketsToCheck[i])) {
                     if (marketsChecked.length == index) {
                         marketsChecked = _increaseArray(marketsChecked, marketsChecked.length * 2);
                     }
+
                     marketsChecked[index] = marketsToCheck[i];
                     ++index;
+
                     uint256 dependentMarketsLength = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck[i]).length;
                     if (dependentMarketsLength > 0) {
                         for (uint256 j; j < dependentMarketsLength; ++j) {
@@ -630,10 +644,10 @@ contract PlasmaVault is
                     }
                 }
             }
-            marketsToCheck = getUniqueElements(tempMarketsToCheck);
+            marketsToCheck = _getUniqueElements(tempMarketsToCheck);
         }
 
-        return getUniqueElements(marketsChecked);
+        return _getUniqueElements(marketsChecked);
     }
 
     function _increaseArray(uint256[] memory arr_, uint256 newSize_) internal pure returns (uint256[] memory) {
@@ -652,9 +666,11 @@ contract PlasmaVault is
         uint256[] memory result = new uint256[](lengthOfNewArray_);
         uint256 i;
         uint256 lengthOfArr1 = arr1_.length;
+
         for (i; i < lengthOfArr1; ++i) {
             result[i] = arr1_[i];
         }
+
         for (uint256 j; i < lengthOfNewArray_; ++j) {
             result[i] = arr2_[j];
             ++i;
@@ -703,7 +719,7 @@ contract PlasmaVault is
             Math.mulDiv(
                 Math.mulDiv(totalAssets_, blockTimestamp - feeData.lastUpdateTimestamp, 365 days),
                 feeData.feeInPercentage,
-                1e4 /// @dev feeInPercentage is in percentage with 2 decimals, example 10000 is 100%
+                FEE_PERCENTAGE_DECIMALS_MULTIPLIER /// @dev feeInPercentage uses 2 decimal places, example 10000 = 100%
             );
     }
 
@@ -741,6 +757,7 @@ contract PlasmaVault is
         } else {
             (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller_, address(this), sig);
         }
+
         if (!immediate) {
             if (delay > 0) {
                 AccessManagedStorage storage $ = _getAccessManagedStorage();
@@ -767,27 +784,28 @@ contract PlasmaVault is
         return PlasmaVaultLib.DECIMALS_OFFSET;
     }
 
+    /// @dev Notice! Amount are assets when withdraw or shares when redeem
     function _extractAmountFromWithdrawAndRedeem() private view returns (uint256) {
         (uint256 amount, , ) = abi.decode(_msgData()[4:], (uint256, address, address));
         return amount;
     }
 
-    function contains(uint256[] memory array, uint256 element, uint256 count) private pure returns (bool) {
-        for (uint256 i; i < count; ++i) {
-            if (array[i] == element) {
+    function _contains(uint256[] memory array_, uint256 element_, uint256 count_) private pure returns (bool) {
+        for (uint256 i; i < count_; ++i) {
+            if (array_[i] == element_) {
                 return true;
             }
         }
         return false;
     }
 
-    function getUniqueElements(uint256[] memory inputArray) private pure returns (uint256[] memory) {
-        uint256[] memory tempArray = new uint256[](inputArray.length);
+    function _getUniqueElements(uint256[] memory inputArray_) private pure returns (uint256[] memory) {
+        uint256[] memory tempArray = new uint256[](inputArray_.length);
         uint256 count = 0;
 
-        for (uint256 i; i < inputArray.length; ++i) {
-            if (inputArray[i] != 0 && !contains(tempArray, inputArray[i], count)) {
-                tempArray[count] = inputArray[i];
+        for (uint256 i; i < inputArray_.length; ++i) {
+            if (inputArray_[i] != 0 && !_contains(tempArray, inputArray_[i], count)) {
+                tempArray[count] = inputArray_[i];
                 count++;
             }
         }

@@ -78,7 +78,6 @@ contract PtPriceFeed is IPriceFeed {
 
         (IStandardizedYield sy, , ) = IPMarket(pendleMarket_).readTokens();
 
-        // Cache SY info w jednym wywołaniu
         (, address assetAddress, uint8 assetDecimals) = sy.assetInfo();
 
         PENDLE_MARKET = pendleMarket_;
@@ -94,17 +93,14 @@ contract PtPriceFeed is IPriceFeed {
         view
         returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
-        // Cache TWAP_WINDOW aby uniknąć wielokrotnego odczytu ze storage
         uint32 twapWindow = TWAP_WINDOW;
 
         uint256 unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), twapWindow);
 
-        // Cache middleware price
         (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(
             ASSET_ADDRESS
         );
 
-        // Optymalizacja obliczeń
         uint256 scalingFactor = FEED_DECIMALS + priceDecimals - _decimals();
         price = SafeCast.toInt256((unitPrice * assetPrice) / 10 ** scalingFactor);
 
