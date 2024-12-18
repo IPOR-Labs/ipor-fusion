@@ -117,7 +117,12 @@ contract UniswapV3SwapFuse is IFuseCommon {
         }
 
         uint256 vaultBalance = IERC20(tokens[0]).balanceOf(address(this));
+
         uint256 inputAmount = data_.tokenInAmount <= vaultBalance ? data_.tokenInAmount : vaultBalance;
+
+        if (inputAmount == 0) {
+            return;
+        }   
 
         IERC20(tokens[0]).safeTransfer(UNIVERSAL_ROUTER, inputAmount);
 
