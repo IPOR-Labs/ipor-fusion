@@ -71,12 +71,6 @@ library CallbackHandlerLib {
      * - Uses safe delegatecall pattern
      * - Critical for protocol integration security
      *
-     * Callback System Integration:
-     * - Handlers must implement standardized return format
-     * - Enables atomic multi-step operations
-     * - Supports protocol-specific logic
-     * - Maintains vault security context
-     *
      * Gas Considerations:
      * - Single storage read for handler lookup
      * - Dynamic gas cost based on handler logic
@@ -84,6 +78,7 @@ library CallbackHandlerLib {
      * - Token approval costs if required
      */
     function handleCallback() internal {
+        /// @dev msg.sender - is the address of a contract which execute callback, msg.sig - is the signature of the function
         address handler = PlasmaVaultStorageLib.getCallbackHandler().callbackHandler[
             keccak256(abi.encodePacked(msg.sender, msg.sig))
         ];
@@ -100,10 +95,8 @@ library CallbackHandlerLib {
 
         CallbackData memory calls = abi.decode(data, (CallbackData));
 
-        // Execute additional FuseActions if provided
         PlasmaVault(address(this)).executeInternal(abi.decode(calls.actionData, (FuseAction[])));
 
-        // Approve token spending if specified
         ERC20(calls.asset).forceApprove(calls.addressToApprove, calls.amountToApprove);
     }
 
