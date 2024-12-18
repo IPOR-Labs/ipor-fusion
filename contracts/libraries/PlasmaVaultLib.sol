@@ -15,7 +15,7 @@ struct InstantWithdrawalFusesParamsStruct {
     address fuse;
     /// @notice Array of parameters specific to the fuse's withdrawal logic
     /// @dev Parameter structure:
-    /// - params[0]: Always represents the withdrawal amount in underlying token decimals (set during withdrawal)
+    /// - params[0]: Always represents the withdrawal amount in underlying token decimals (set during withdrawal, not during configuration)
     /// - params[1+]: Additional fuse-specific parameters such as:
     ///   - Asset addresses
     ///   - Market IDs
@@ -290,7 +290,7 @@ library PlasmaVaultLib {
     /// @dev Updates fee configuration and emits event
     ///
     /// Parameter requirements:
-    /// - feeAccount_: Must be non-zero address
+    /// - feeAccount_: Must be non-zero address. The address of the technical Management Fee Account that will receive the management fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
     /// - feeInPercentage_: Must not exceed MANAGEMENT_MAX_FEE_IN_PERCENTAGE (5%)
     ///
     /// Fee account types:
@@ -335,7 +335,7 @@ library PlasmaVaultLib {
 
     /// @notice Gets the performance fee configuration data
     /// @return performanceFeeData The current performance fee configuration containing:
-    ///         - feeAccount: Address receiving performance fees
+    ///         - feeAccount: The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
     ///         - feeInPercentage: Current fee rate (basis points, 1/10000)
     /// @dev Retrieves the current performance fee settings from storage
     ///
@@ -376,7 +376,7 @@ library PlasmaVaultLib {
     /// @dev Updates fee configuration and emits event
     ///
     /// Parameter requirements:
-    /// - feeAccount_: Must be non-zero address
+    /// - feeAccount_: Must be non-zero address. The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
     /// - feeInPercentage_: Must not exceed PERFORMANCE_MAX_FEE_IN_PERCENTAGE (50%)
     ///
     /// Fee account types:
@@ -521,7 +521,7 @@ library PlasmaVaultLib {
     ///
     /// Configuration process:
     /// - Creates ordered list of withdrawal fuses
-    /// - Stores parameters for each fuse instance
+    /// - Stores parameters for each fuse instance, in most cases are substrates used for instant withdraw
     /// - Validates fuse support status
     /// - Updates storage and emits event
     ///

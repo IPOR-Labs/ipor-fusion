@@ -1157,7 +1157,7 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     ///
     /// @param feeAccount_ Address to receive management fees
     /// @param feeInPercentage_ Fee percentage with 2 decimals (100 = 1%)
-    /// @custom:access TECH_MANAGEMENT_FEE_MANAGER_ROLE restricted
+    /// @custom:access TECH_REWARDS_CLAIM_MANAGER_ROLE (held by RewardsClaimManager) restricted
     /// @custom:security Critical for vault revenue model
     function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external override restricted {
         PlasmaVaultLib.configureManagementFee(feeAccount_, feeInPercentage_);
@@ -1192,19 +1192,22 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Performance accounting
     ///
     /// Security Considerations:
-    /// - Only callable by TECH_REWARDS_CLAIM_MANAGER_ROLE
+    /// - Only callable by TECH_REWARDS_CLAIM_MANAGER_ROLE which is assigned to RewardsClaimManager contract itself
+    /// - RewardsClaimManager must explicitly allow this method execution through its own logic
     /// - Critical for reward system integrity
     /// - Affects total asset calculations
     /// - Impacts performance metrics
+    /// - Cannot be changed if RewardsClaimManager contract does not permit it
     ///
     /// Related Components:
     /// - Protocol Reward Systems
     /// - Asset Valuation Calculator
     /// - Performance Tracking
     /// - Fee Computation Logic
+    /// - RewardsClaimManager Contract
     ///
     /// @param rewardsClaimManagerAddress_ The new rewards claim manager address
-    /// @custom:access TECH_REWARDS_CLAIM_MANAGER_ROLE restricted
+    /// @custom:access TECH_REWARDS_CLAIM_MANAGER_ROLE (held by RewardsClaimManager) restricted
     /// @custom:events Emits RewardsClaimManagerAddressChanged
     /// @custom:security Critical for reward system integrity
     function setRewardsClaimManagerAddress(address rewardsClaimManagerAddress_) public override restricted {
