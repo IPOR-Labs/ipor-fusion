@@ -5,7 +5,37 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 
-/// @title Fuses Library responsible for managing fuses in the Plasma Vault
+/**
+ * @title Fuses Library - Core Component for Plasma Vault's Fuse Management System
+ * @notice Library managing the lifecycle and configuration of fuses - specialized contracts that enable
+ * the Plasma Vault to interact with external DeFi protocols
+ * @dev This library is a critical component that:
+ * 1. Manages the addition and removal of fuses to the vault system
+ * 2. Handles balance fuse associations with specific markets
+ * 3. Provides validation and access functions for fuse operations
+ * 4. Maintains the integrity of fuse-market relationships
+ *
+ * Key Components:
+ * - Fuse Management: Adding/removing supported fuses
+ * - Balance Fuse Control: Market-specific balance tracking
+ * - Validation Functions: Fuse support verification
+ * - Storage Integration: Uses FuseStorageLib for persistent storage
+ *
+ * Integration Points:
+ * - Used by PlasmaVault.sol for fuse operation validation
+ * - Used by PlasmaVaultGovernance.sol for fuse configuration
+ * - Interacts with FuseStorageLib for storage management
+ * - Coordinates with PlasmaVaultStorageLib for market data
+ *
+ * Security Considerations:
+ * - Enforces strict validation of fuse addresses
+ * - Prevents duplicate fuse registrations
+ * - Ensures proper market-fuse relationships
+ * - Manages balance fuse removal conditions
+ * - Critical for vault's protocol integration security
+ *
+ * @custom:security-contact security@ipor.io
+ */
 library FusesLib {
     using Address for address;
 
@@ -21,43 +51,198 @@ library FusesLib {
     error BalanceFuseDoesNotExist(uint256 marketId, address fuse);
     error BalanceFuseNotReadyToRemove(uint256 marketId, address fuse, uint256 currentBalance);
 
-    /// @notice Checks if the fuse is supported
-    /// @param fuse_ The address of the fuse
-    /// @return true if the fuse is supported
+    /**
+     * @notice Validates if a fuse contract is registered and supported by the Plasma Vault
+     * @dev Checks the FuseStorageLib mapping to verify fuse registration status
+     * - A non-zero value in the mapping indicates the fuse is supported
+     * - The value represents (index + 1) in the fusesArray
+     * - Used by PlasmaVault.execute() to validate fuse operations
+     * - Critical for security as it prevents unauthorized protocol integrations
+     *
+     * Integration Context:
+     * - Called before any fuse operation in PlasmaVault.execute()
+     * - Used by PlasmaVaultGovernance for fuse management
+     * - Part of the vault's protocol integration security layer
+     *
+     * @param fuse_ The address of the fuse contract to check
+     * @return bool Returns true if the fuse is supported, false otherwise
+     *
+     * Security Notes:
+     * - Zero address returns false
+     * - Only fuses added through governance can return true
+     * - Non-existent fuses return false
+     */
     function isFuseSupported(address fuse_) internal view returns (bool) {
         return FuseStorageLib.getFuses().value[fuse_] != 0;
     }
 
-    /// @notice Checks if the balance fuse is supported
-    /// @param marketId_ The market id
-    /// @param fuse_ The address of the fuse
-    /// @return true if the balance fuse is supported
+    /**
+     * @notice Validates if a fuse is configured as the balance fuse for a specific market
+     * @dev Checks the PlasmaVaultStorageLib mapping to verify balance fuse assignment
+     * - Each market can have only one balance fuse at a time
+     * - Balance fuses are responsible for tracking market-specific asset balances
+     * - Used for market balance validation and updates
+     *
+     * Integration Context:
+     * - Used during market balance updates in PlasmaVault._updateMarketsBalances()
+     * - Referenced during balance fuse configuration in PlasmaVaultGovernance
+     * - Critical for asset distribution protection system
+     *
+     * Market Balance System:
+     * - Balance fuses track protocol-specific positions (e.g., Compound, Aave positions)
+     * - Provides standardized balance reporting across different protocols
+     * - Essential for maintaining accurate vault accounting
+     *
+     * @param marketId_ The unique identifier of the market to check
+     * @param fuse_ The address of the balance fuse contract to verify
+     * @return bool Returns true if the fuse is the designated balance fuse for the market
+     *
+     * Security Notes:
+     * - Returns false for non-existent market-fuse pairs
+     * - Only one balance fuse can be active per market
+     * - Critical for preventing unauthorized balance reporting
+     */
     function isBalanceFuseSupported(uint256 marketId_, address fuse_) internal view returns (bool) {
         return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] == fuse_;
     }
 
-    /// @notice Gets the balance fuse for the market
-    /// @param marketId_ The market id
-    /// @return The address of the balance fuse
+    /**
+     * @notice Retrieves the designated balance fuse contract address for a specific market
+     * @dev Provides direct access to the balance fuse mapping in PlasmaVaultStorageLib
+     * - Returns zero address if no balance fuse is configured for the market
+     * - Each market can have only one active balance fuse at a time
+     *
+     * Integration Context:
+     * - Used by PlasmaVault._updateMarketsBalances() for balance tracking
+     * - Called during market balance validation and updates
+     * - Referenced by AssetDistributionProtectionLib for limit checks
+     *
+     * Use Cases:
+     * - Balance calculation during vault operations
+     * - Market position valuation
+     * - Asset distribution protection checks
+     * - Protocol-specific balance queries
+     *
+     * @param marketId_ The unique identifier of the market
+     * @return address The address of the balance fuse contract for the market
+     *         Returns address(0) if no balance fuse is configured
+     *
+     * Related Components:
+     * - CompoundV3BalanceFuse
+     * - AaveV3BalanceFuse
+     * - Other protocol-specific balance fuses
+     */
     function getBalanceFuse(uint256 marketId_) internal view returns (address) {
         return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
     }
 
-    /// @notice Gets the array of stored and supported Fuses
-    /// @return The array of Fuses
+    /**
+     * @notice Retrieves the complete array of supported fuse contracts in the Plasma Vault
+     * @dev Provides direct access to the fuses array from FuseStorageLib
+     * - Array maintains order of fuse addition
+     * - Used for fuse enumeration and management
+     * - Critical for vault configuration and auditing
+     *
+     * Storage Pattern:
+     * - Array indices correspond to (mapping value - 1) in FuseStorageLib.Fuses
+     * - Maintains parallel structure with fuse mapping
+     * - No duplicates allowed
+     *
+     * Integration Context:
+     * - Used by PlasmaVaultGovernance for fuse management
+     * - Referenced during vault configuration
+     * - Used for fuse system auditing and verification
+     * - Supports protocol integration management
+     *
+     * Use Cases:
+     * - Fuse system configuration validation
+     * - Protocol integration auditing
+     * - Governance operations
+     * - System state inspection
+     *
+     * @return address[] Array of all supported fuse contract addresses
+     *
+     * Related Functions:
+     * - addFuse(): Appends to this array
+     * - removeFuse(): Maintains array ordering
+     * - getFuseArrayIndex(): Maps addresses to indices
+     */
     function getFusesArray() internal view returns (address[] memory) {
         return FuseStorageLib.getFusesArray().value;
     }
 
-    /// @notice Gets the index of the fuse in the fuses array
-    /// @param fuse_ The address of the fuse
-    /// @return The index of the fuse in the fuses array stored in Plasma Vault
+    /**
+     * @notice Retrieves the storage index for a given fuse contract
+     * @dev Maps fuse addresses to their position in the fuses array
+     * - Returns the value from FuseStorageLib.Fuses mapping
+     * - Return value is (array index + 1) to distinguish from unsupported fuses
+     * - Zero return value indicates fuse is not supported
+     *
+     * Storage Pattern:
+     * - Mapping value = array index + 1
+     * - Example: value 1 means index 0 in fusesArray
+     * - Zero value means fuse not supported
+     *
+     * Integration Context:
+     * - Used during fuse removal operations
+     * - Supports array maintenance in removeFuse()
+     * - Helps maintain storage consistency
+     *
+     * Use Cases:
+     * - Fuse removal operations
+     * - Storage validation
+     * - Fuse support verification
+     * - Array index lookups
+     *
+     * @param fuse_ The address of the fuse contract to look up
+     * @return uint256 The storage index value (array index + 1) of the fuse
+     *         Returns 0 if fuse is not supported
+     *
+     * Related Functions:
+     * - addFuse(): Sets this index
+     * - removeFuse(): Uses this for array maintenance
+     * - getFusesArray(): Contains fuses at these indices
+     */
     function getFuseArrayIndex(address fuse_) internal view returns (uint256) {
         return FuseStorageLib.getFuses().value[fuse_];
     }
 
-    /// @notice Adds a fuse to supported fuses
-    /// @param fuse_ The address of the fuse
+    /**
+     * @notice Registers a new fuse contract in the Plasma Vault's supported fuses list
+     * @dev Manages the addition of fuses to both mapping and array storage
+     * - Updates FuseStorageLib.Fuses mapping
+     * - Appends to FuseStorageLib.FusesArray
+     * - Maintains storage consistency between mapping and array
+     *
+     * Storage Updates:
+     * 1. Checks for existing fuse to prevent duplicates
+     * 2. Assigns new index (length + 1) in mapping
+     * 3. Appends fuse address to array
+     * 4. Emits FuseAdded event
+     *
+     * Integration Context:
+     * - Called by PlasmaVaultGovernance.addFuses()
+     * - Part of vault's protocol integration system
+     * - Used during initial vault setup and protocol expansion
+     *
+     * Error Conditions:
+     * - Reverts with FuseAlreadyExists if fuse is already registered
+     * - Zero address handling done at governance level
+     *
+     * @param fuse_ The address of the fuse contract to add
+     * @custom:events Emits FuseAdded when successful
+     *
+     * Security Considerations:
+     * - Only callable through governance
+     * - Critical for protocol integration security
+     * - Must maintain storage consistency
+     * - Affects vault's supported protocol list
+     *
+     * Gas Considerations:
+     * - One SSTORE for mapping update
+     * - One SSTORE for array push
+     * - Event emission
+     */
     function addFuse(address fuse_) internal {
         FuseStorageLib.Fuses storage fuses = FuseStorageLib.getFuses();
 
@@ -77,8 +262,46 @@ library FusesLib {
         emit FuseAdded(fuse_);
     }
 
-    /// @notice Removes a fuse from supported fuses
-    /// @param fuse_ The address of the fuse
+    /**
+     * @notice Removes a fuse contract from the Plasma Vault's supported fuses list
+     * @dev Manages removal while maintaining storage consistency using swap-and-pop pattern
+     * - Updates both FuseStorageLib.Fuses mapping and FusesArray
+     * - Uses efficient swap-and-pop for array maintenance
+     *
+     * Storage Updates:
+     * 1. Verifies fuse exists and gets its index
+     * 2. Moves last array element to removed fuse's position
+     * 3. Updates mapping for moved element
+     * 4. Clears removed fuse's mapping entry
+     * 5. Pops last array element
+     * 6. Emits FuseRemoved event
+     *
+     * Integration Context:
+     * - Called by PlasmaVaultGovernance.removeFuses()
+     * - Part of protocol integration management
+     * - Used during vault maintenance and protocol removal
+     *
+     * Error Conditions:
+     * - Reverts with FuseDoesNotExist if fuse not found
+     * - Zero address handling done at governance level
+     *
+     * @param fuse_ The address of the fuse contract to remove
+     * @custom:events Emits FuseRemoved when successful
+     *
+     * Security Considerations:
+     * - Only callable through governance
+     * - Must maintain mapping-array consistency
+     * - Critical for protocol integration security
+     * - Affects vault's supported protocol list
+     *
+     * Gas Optimization:
+     * - Uses swap-and-pop instead of shifting array
+     * - Minimizes storage operations
+     * - Three SSTORE operations:
+     *   1. Update moved element's mapping
+     *   2. Clear removed fuse's mapping
+     *   3. Pop array
+     */
     function removeFuse(address fuse_) internal {
         FuseStorageLib.Fuses storage fuses = FuseStorageLib.getFuses();
 
@@ -102,10 +325,47 @@ library FusesLib {
         emit FuseRemoved(fuse_);
     }
 
-    /// @notice Adds a balance fuse to the market
-    /// @param marketId_ The market id
-    /// @param fuse_ The address of the fuse
-    /// @dev Every market can have one dedicated balance fuse
+    /**
+     * @notice Associates a balance tracking fuse with a specific market in the Plasma Vault
+     * @dev Manages market-specific balance fuse assignments
+     * - Each market can have only one active balance fuse
+     * - Balance fuses are responsible for standardized balance reporting
+     *
+     * Storage Updates:
+     * 1. Checks for existing balance fuse to prevent duplicates
+     * 2. Updates PlasmaVaultStorageLib.BalanceFuses mapping
+     * 3. Emits BalanceFuseAdded event
+     *
+     * Integration Context:
+     * - Called by PlasmaVaultGovernance.addBalanceFuse()
+     * - Used during market setup and configuration
+     * - Essential for market balance tracking system
+     * - Integrates with protocol-specific balance fuses:
+     *   - CompoundV3BalanceFuse
+     *   - AaveV3BalanceFuse
+     *   - Other protocol balance trackers
+     *
+     * Error Conditions:
+     * - Reverts with BalanceFuseAlreadyExists if:
+     *   - Market already has this balance fuse
+     *   - Prevents duplicate assignments
+     *
+     * @param marketId_ The unique identifier of the market
+     * @param fuse_ The address of the balance fuse contract
+     * @custom:events Emits BalanceFuseAdded when successful
+     *
+     * Security Considerations:
+     * - Only callable through governance
+     * - Critical for accurate market balance tracking
+     * - Affects asset distribution protection system
+     * - Must validate fuse compatibility with market
+     *
+     * Balance System Integration:
+     * - Balance fuses must implement standardized balance reporting
+     * - Used by PlasmaVault._updateMarketsBalances()
+     * - Critical for vault's accounting system
+     * - Enables multi-protocol balance aggregation
+     */
     function addBalanceFuse(uint256 marketId_, address fuse_) internal {
         address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
 
@@ -118,10 +378,49 @@ library FusesLib {
         emit BalanceFuseAdded(marketId_, fuse_);
     }
 
-    /// @notice Removes a balance fuse from the market
-    /// @param marketId_ The market id
-    /// @param fuse_ The address of the fuse
-    /// @dev Every market can have one dedicated balance fuse
+    /**
+     * @notice Removes a balance tracking fuse from a specific market in the Plasma Vault
+     * @dev Manages safe removal of market balance fuses with balance validation
+     * - Ensures market has no significant balance before removal
+     * - Validates fuse-market relationship
+     * - Uses delegatecall for balance checks
+     *
+     * Storage Updates:
+     * 1. Verifies correct fuse-market association
+     * 2. Checks current balance is below dust threshold
+     * 3. Clears balance fuse mapping entry
+     * 4. Emits BalanceFuseRemoved event
+     *
+     * Balance Validation:
+     * - Checks current USD-denominated balance via delegatecall
+     * - Compares against allowed dust threshold
+     * - Prevents removal of fuses with active positions
+     * - Dust threshold based on underlying decimals
+     *
+     * Error Conditions:
+     * - Reverts with BalanceFuseDoesNotExist if:
+     *   - Fuse not assigned to market
+     *   - Wrong fuse-market pair
+     * - Reverts with BalanceFuseNotReadyToRemove if:
+     *   - Balance exceeds dust threshold
+     *   - Active positions exist
+     *
+     * @param marketId_ The unique identifier of the market
+     * @param fuse_ The address of the balance fuse contract to remove
+     * @custom:events Emits BalanceFuseRemoved when successful
+     *
+     * Security Considerations:
+     * - Only callable through governance
+     * - Prevents removal of active positions
+     * - Uses safe delegatecall for balance checks
+     * - Critical for market balance integrity
+     *
+     * Integration Context:
+     * - Called by PlasmaVaultGovernance.removeBalanceFuse()
+     * - Part of market decommissioning process
+     * - Requires prior position liquidation
+     * - Must coordinate with protocol withdrawals
+     */
     function removeBalanceFuse(uint256 marketId_, address fuse_) internal {
         address currentBalanceFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
 
