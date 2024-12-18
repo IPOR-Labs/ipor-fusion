@@ -180,7 +180,7 @@ library AssetDistributionProtectionLib {
      * - Percentages use 1e18 as 100%
      * - Each market can have unique limit
      * - Zero marketId is reserved
-     * - Limits must be <= 100%
+     * - The sum of limits may exceed 100%
      *
      * Storage Updates:
      * 1. Validates each market config
