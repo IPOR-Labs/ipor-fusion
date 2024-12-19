@@ -9,87 +9,87 @@ library IporMath {
     /// @dev The index of the most significant bit in a 256-bit signed integer
     uint256 private constant MSB = 255;
 
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
+    function min(uint256 a_, uint256 b_) internal pure returns (uint256) {
+        return a_ < b_ ? a_ : b_;
     }
 
     /// @notice Converts the value to WAD decimals, WAD decimals are 18
-    /// @param value The value to convert
-    /// @param assetDecimals The decimals of the asset
+    /// @param value_ The value to convert
+    /// @param assetDecimals_ The decimals of the asset
     /// @return The value in WAD decimals
-    function convertToWad(uint256 value, uint256 assetDecimals) internal pure returns (uint256) {
-        if (value > 0) {
-            if (assetDecimals == WAD_DECIMALS) {
-                return value;
-            } else if (assetDecimals > WAD_DECIMALS) {
-                return division(value, BASIS_OF_POWER ** (assetDecimals - WAD_DECIMALS));
+    function convertToWad(uint256 value_, uint256 assetDecimals_) internal pure returns (uint256) {
+        if (value_ > 0) {
+            if (assetDecimals_ == WAD_DECIMALS) {
+                return value_;
+            } else if (assetDecimals_ > WAD_DECIMALS) {
+                return division(value_, BASIS_OF_POWER ** (assetDecimals_ - WAD_DECIMALS));
             } else {
-                return value * BASIS_OF_POWER ** (WAD_DECIMALS - assetDecimals);
+                return value_ * BASIS_OF_POWER ** (WAD_DECIMALS - assetDecimals_);
             }
         } else {
-            return value;
+            return value_;
         }
     }
 
     /// @notice Converts the value to WAD decimals, WAD decimals are 18
-    /// @param value The value to convert
-    /// @param assetDecimals The decimals of the asset
+    /// @param value_ The value to convert
+    /// @param assetDecimals_ The decimals of the asset
     /// @return The value in WAD decimals
-    function convertWadToAssetDecimals(uint256 value, uint256 assetDecimals) internal pure returns (uint256) {
-        if (assetDecimals == WAD_DECIMALS) {
-            return value;
-        } else if (assetDecimals > WAD_DECIMALS) {
-            return value * WAD_DECIMALS ** (assetDecimals - WAD_DECIMALS);
+    function convertWadToAssetDecimals(uint256 value_, uint256 assetDecimals_) internal pure returns (uint256) {
+        if (assetDecimals_ == WAD_DECIMALS) {
+            return value_;
+        } else if (assetDecimals_ > WAD_DECIMALS) {
+            return value_ * WAD_DECIMALS ** (assetDecimals_ - WAD_DECIMALS);
         } else {
-            return division(value, BASIS_OF_POWER ** (WAD_DECIMALS - assetDecimals));
+            return division(value_, BASIS_OF_POWER ** (WAD_DECIMALS - assetDecimals_));
         }
     }
 
     /// @notice Converts the int value to WAD decimals, WAD decimals are 18
-    /// @param value The int value to convert
-    /// @param assetDecimals The decimals of the asset
+    /// @param value_ The int value to convert
+    /// @param assetDecimals_ The decimals of the asset
     /// @return The value in WAD decimals, int
-    function convertToWadInt(int256 value, uint256 assetDecimals) internal pure returns (int256) {
-        if (value == 0) {
+    function convertToWadInt(int256 value_, uint256 assetDecimals_) internal pure returns (int256) {
+        if (value_ == 0) {
             return 0;
         }
-        if (assetDecimals == WAD_DECIMALS) {
-            return value;
-        } else if (assetDecimals > WAD_DECIMALS) {
-            return divisionInt(value, int256(BASIS_OF_POWER ** (assetDecimals - WAD_DECIMALS)));
+        if (assetDecimals_ == WAD_DECIMALS) {
+            return value_;
+        } else if (assetDecimals_ > WAD_DECIMALS) {
+            return divisionInt(value_, int256(BASIS_OF_POWER ** (assetDecimals_ - WAD_DECIMALS)));
         } else {
-            return value * int256(BASIS_OF_POWER ** (WAD_DECIMALS - assetDecimals));
+            return value_ * int256(BASIS_OF_POWER ** (WAD_DECIMALS - assetDecimals_));
         }
     }
 
     /// @notice Divides two int256 numbers and rounds the result to the nearest integer
-    /// @param x The numerator
-    /// @param y The denominator
+    /// @param x_ The numerator
+    /// @param y_ The denominator
     /// @return z The result of the division
-    function divisionInt(int256 x, int256 y) internal pure returns (int256 z) {
-        uint256 absX = uint256(x < 0 ? -x : x);
-        uint256 absY = uint256(y < 0 ? -y : y);
+    function divisionInt(int256 x_, int256 y_) internal pure returns (int256 z) {
+        uint256 absX_ = uint256(x_ < 0 ? -x_ : x_);
+        uint256 absY_ = uint256(y_ < 0 ? -y_ : y_);
 
         // Use bitwise XOR to get the sign on MBS bit then shift to LSB
         // sign == 0x0000...0000 ==  0 if the number is non-negative
         // sign == 0xFFFF...FFFF == -1 if the number is negative
-        int256 sign = (x ^ y) >> MSB;
+        int256 sign = (x_ ^ y_) >> MSB;
 
         uint256 divAbs;
         uint256 remainder;
 
         unchecked {
-            divAbs = absX / absY;
-            remainder = absX % absY;
+            divAbs = absX_ / absY_;
+            remainder = absX_ % absY_;
         }
         // Check if we need to round
         if (sign < 0) {
             // remainder << 1 left shift is equivalent to multiplying by 2
-            if (remainder << 1 > absY) {
+            if (remainder << 1 > absY_) {
                 ++divAbs;
             }
         } else {
-            if (remainder << 1 >= absY) {
+            if (remainder << 1 >= absY_) {
                 ++divAbs;
             }
         }
@@ -101,10 +101,10 @@ library IporMath {
     }
 
     /// @notice Divides two uint256 numbers and rounds the result to the nearest integer
-    /// @param x The numerator
-    /// @param y The denominator
-    /// @return z The result of the division
-    function division(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = x / y;
+    /// @param x_ The numerator
+    /// @param y_ The denominator
+    /// @return z_ The result of the division
+    function division(uint256 x_, uint256 y_) internal pure returns (uint256 z_) {
+        z_ = x_ / y_;
     }
 }

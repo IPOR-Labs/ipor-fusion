@@ -9,33 +9,58 @@ import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
 import {IPriceFeed} from "./price_feed/IPriceFeed.sol";
 import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
 
-/// @title Price Oracle Middleware contract responsible for calculating the price of assets in USD
+/// @title Price Oracle Middleware
+/// @notice Contract responsible for providing standardized asset price feeds in USD
+/// @dev Supports both custom price feeds and Chainlink Feed Registry as fallback.
+/// @dev When CHAINLINK_FEED_REGISTRY is set to address(0), Chainlink fallback is disabled
+/// @dev and only custom price feeds will be supported
 contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeable, UUPSUpgradeable {
     using SafeCast for int256;
 
-    /// @dev USD
+    /// @dev Quote currency address representing USD (Chainlink standard)
+    /// @notice This is the standard Chainlink USD address used for price feeds
     address public constant QUOTE_CURRENCY = address(0x0000000000000000000000000000000000000348);
-    /// @dev USD - 8 decimals
+
+    /// @dev Number of decimals used for USD price representation
+    /// @notice All price feeds must conform to this decimal precision
     uint256 public constant QUOTE_CURRENCY_DECIMALS = 8;
 
-    /// @dev Chainlink Feed Registry currently supported only on Ethereum Mainnet
+    /// @dev Address of Chainlink Feed Registry (immutable, set in constructor)
+    /// @notice Currently supported only on Ethereum Mainnet
+    /// @notice If set to address(0), Chainlink Registry fallback is disabled and only custom price feeds will work
     address public immutable CHAINLINK_FEED_REGISTRY;
 
     constructor(address chainlinkFeedRegistry_) {
         CHAINLINK_FEED_REGISTRY = chainlinkFeedRegistry_;
     }
 
-    /// @notice Initializes the contract.
-    /// @param initialOwner_ The initial owner of the contract, it recommended to use MultiSig wallet
+    /// @notice Initializes the contract
+    /// @param initialOwner_ The address that will own the contract
+    /// @dev Should be a multi-sig wallet for security
     function initialize(address initialOwner_) external initializer {
         __Ownable_init(initialOwner_);
         __UUPSUpgradeable_init();
     }
 
+    /// @notice Gets the USD price for a single asset
+    /// @param asset_ The address of the asset to price
+    /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
+    /// @return decimals The number of decimals in the returned price
     function getAssetPrice(address asset_) external view returns (uint256 assetPrice, uint256 decimals) {
         (assetPrice, decimals) = _getAssetPrice(asset_);
     }
 
+    /// @notice Gets USD prices for multiple assets in a single call
+    /// @param assets_ Array of asset addresses to price
+    /// @return assetPrices Array of prices in USD (with QUOTE_CURRENCY_DECIMALS decimals)
+    /// @return decimalsList Array of decimals for each returned price
+    /// @dev Reverts if:
+    /// @dev - assets_ array is empty
+    /// @dev - any asset price feed returns price <= 0
+    /// @dev - any price feed has incorrect decimals
+    /// @dev - any asset is unsupported (no custom feed and no Chainlink support)
+    /// @dev - zero address is provided as an asset
+    /// @dev Note: This is a batch operation - if any asset price fetch fails, the entire call reverts
     function getAssetsPrices(
         address[] calldata assets_
     ) external view returns (uint256[] memory assetPrices, uint256[] memory decimalsList) {
@@ -53,10 +78,18 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         }
     }
 
+    /// @notice Returns the price feed source for a given asset
+    /// @param asset_ The address of the asset
+    /// @return sourceOfAssetPrice The address of the price feed source (returns zero address if using Chainlink Registry)
     function getSourceOfAssetPrice(address asset_) external view returns (address sourceOfAssetPrice) {
         sourceOfAssetPrice = PriceOracleMiddlewareStorageLib.getSourceOfAssetPrice(asset_);
     }
 
+    /// @notice Sets or updates price feed sources for multiple assets
+    /// @param assets_ Array of asset addresses
+    /// @param sources_ Array of corresponding price feed sources
+    /// @dev Arrays must be equal length and non-empty
+    /// @dev Only callable by owner
     function setAssetsPricesSources(address[] calldata assets_, address[] calldata sources_) external onlyOwner {
         uint256 assetsLength = assets_.length;
         uint256 sourcesLength = sources_.length;
@@ -73,23 +106,31 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         }
     }
 
-    /// @notice Returns the price in QUOTE_CURRENCY_DECIMALS of the quote currency for a given asset
-    /// @param asset_ address of the asset
-    /// @return assetPrice price in QUOTE_CURRENCY (default USD) of the asset
-    /// @return decimals number of decimals of the asset price
+    /// @notice Internal function to get asset price from either custom feed or Chainlink
+    /// @param asset_ The address of the asset to price
+    /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
+    /// @return decimals The number of decimals in the returned price
+    /// @dev Tries custom price feed first, falls back to Chainlink Registry if no custom feed is set
+    /// @dev Reverts if:
+    /// @dev - asset_ is zero address
+    /// @dev - price <= 0
+    /// @dev - decimals don't match QUOTE_CURRENCY_DECIMALS
+    /// @dev - no custom price feed is set and CHAINLINK_FEED_REGISTRY is address(0)
+    /// @dev - asset is not supported in Chainlink Registry when using it as fallback
+    /// @dev - Chainlink Registry call fails
     function _getAssetPrice(address asset_) private view returns (uint256 assetPrice, uint256 decimals) {
+        if (asset_ == address(0)) {
+            revert IPriceOracleMiddleware.UnsupportedAsset();
+        }
+
         address source = PriceOracleMiddlewareStorageLib.getSourceOfAssetPrice(asset_);
-        uint80 roundId;
         int256 price;
-        uint256 startedAt;
-        uint256 time;
-        uint80 answeredInRound;
 
         if (source != address(0)) {
             if (QUOTE_CURRENCY_DECIMALS != IPriceFeed(source).decimals()) {
                 revert IPriceOracleMiddleware.WrongDecimalsInPriceFeed();
             }
-            (roundId, price, startedAt, time, answeredInRound) = IPriceFeed(source).latestRoundData();
+            (, price, , , ) = IPriceFeed(source).latestRoundData();
         } else {
             if (CHAINLINK_FEED_REGISTRY == address(0)) {
                 revert IPriceOracleMiddleware.UnsupportedAsset();
@@ -114,6 +155,7 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
                 revert IPriceOracleMiddleware.UnsupportedAsset();
             }
         }
+
         if (price <= 0) {
             revert IPriceOracleMiddleware.UnexpectedPriceResult();
         }
@@ -122,6 +164,8 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         decimals = QUOTE_CURRENCY_DECIMALS;
     }
 
+    /// @dev Required by the OZ UUPS module
+    /// @param newImplementation Address of the new implementation
     //solhint-disable-next-line
-    function _authorizeUpgrade(address) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

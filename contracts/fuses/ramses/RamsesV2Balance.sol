@@ -62,7 +62,7 @@ contract RamsesV2Balance is IMarketBalanceFuse {
         for (uint256 i; i < len; ++i) {
             /// @dev Calculation of amount for token0 and token1 in existing position, take into account the fees
             /// and principal that a given nonfungible position manager token is worth
-            (token0, token1, amount0, amount1) = getAmountsForPosition(tokenIds[i]);
+            (token0, token1, amount0, amount1) = _getAmountsForPosition(tokenIds[i]);
 
             (priceToken, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(token0);
 
@@ -85,10 +85,10 @@ contract RamsesV2Balance is IMarketBalanceFuse {
      * @return amount0 The amount of token0.
      * @return amount1 The amount of token1.
      */
-    function getAmountsForPosition(
+    function _getAmountsForPosition(
         uint256 tokenId
     ) internal view returns (address token0, address token1, uint256 amount0, uint256 amount1) {
-        INonfungiblePositionManagerRamses.Position memory position = getPositionData(tokenId);
+        INonfungiblePositionManagerRamses.Position memory position = _getPositionData(tokenId);
 
         IRamsesV2Pool pool = IRamsesV2Pool(
             PoolAddress.computeAddress(
@@ -109,7 +109,7 @@ contract RamsesV2Balance is IMarketBalanceFuse {
             position.liquidity
         );
 
-        (uint256 fee0, uint256 fee1) = calculateFees(
+        (uint256 fee0, uint256 fee1) = _calculateFees(
             position.feeGrowthInside0Last,
             position.feeGrowthInside1Last,
             position.liquidity,
@@ -137,7 +137,7 @@ contract RamsesV2Balance is IMarketBalanceFuse {
      * @return fee0 The calculated fee for token0.
      * @return fee1 The calculated fee for token1.
      */
-    function calculateFees(
+    function _calculateFees(
         uint256 feeGrowthInside0Last,
         uint256 feeGrowthInside1Last,
         uint256 liquidity,
@@ -165,7 +165,7 @@ contract RamsesV2Balance is IMarketBalanceFuse {
      * @param tokenId The ID of the token.
      * @return position The position data.
      */
-    function getPositionData(
+    function _getPositionData(
         uint256 tokenId
     ) internal view returns (INonfungiblePositionManagerRamses.Position memory position) {
         (

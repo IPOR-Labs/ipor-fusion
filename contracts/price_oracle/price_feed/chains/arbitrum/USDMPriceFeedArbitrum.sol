@@ -47,19 +47,31 @@ contract USDMPriceFeedArbitrum is IPriceFeed {
         override
         returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
-        uint256 wUSDMPriceUSD = CHRONICLE.read();
-
-        if (wUSDMPriceUSD == 0) {
+        // Get wUSDM price in USD from Chronicle
+        uint256 wUsdMPriceUSD = CHRONICLE.read();
+        if (wUsdMPriceUSD == 0) {
             revert Errors.WrongValue();
         }
 
-        uint256 wUSDMUSDMExchangeRate = (IERC4626(WUSDM).totalAssets() * WAD_UNIT) / IERC4626(WUSDM).totalSupply();
+        // Get wUSDM total supply and total assets
+        uint256 totalSupply = IERC4626(WUSDM).totalSupply();
+        if (totalSupply == 0) {
+            revert Errors.WrongValue();
+        }
 
-        /* solhint-disable-next-line */
-        uint256 USDMPriceUSD = (wUSDMPriceUSD * wUSDMUSDMExchangeRate) / WAD_UNIT;
-        USDMPriceUSD = USDMPriceUSD / PRICE_DENOMINATOR;
+        uint256 totalAssets = IERC4626(WUSDM).totalAssets();
 
-        return (uint80(0), USDMPriceUSD.toInt256(), 0, 0, 0);
+        // Calculate exchange rate with better precision handling
+        uint256 wUsdMUsdmExchangeRate = (totalAssets * WAD_UNIT) / totalSupply;
+
+        // Calculate final USDM price in USD
+        uint256 usdmPriceUSD = ((wUsdMPriceUSD * wUsdMUsdmExchangeRate) / WAD_UNIT) / PRICE_DENOMINATOR;
+
+        if (usdmPriceUSD == 0) {
+            revert Errors.WrongValue();
+        }
+
+        return (uint80(0), usdmPriceUSD.toInt256(), 0, 0, 0);
     }
 
     function _decimals() internal pure returns (uint8) {

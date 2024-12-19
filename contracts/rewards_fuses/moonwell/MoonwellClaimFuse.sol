@@ -80,7 +80,6 @@ contract MoonwellClaimFuse is IFuseCommon {
         MultiRewardDistributor distributor = MultiRewardDistributor(rewardDistributor_);
         address plasmaVault = address(this);
 
-        // Get reward token addresses
         MultiRewardDistributor.MarketConfig[] memory rewardConfig = distributor.getAllMarketConfigs(mToken_);
 
         uint256 len = rewardConfig.length;
@@ -92,20 +91,18 @@ contract MoonwellClaimFuse is IFuseCommon {
         uint256[] memory balanceBefore = new uint256[](len);
         address[] memory rewardTokens = new address[](len);
 
-        // Store initial balances of reward tokens
         for (uint256 i; i < len; ++i) {
             rewardTokens[i] = rewardConfig[i].emissionToken;
             balanceBefore[i] = IERC20(rewardTokens[i]).balanceOf(plasmaVault);
         }
 
-        // Claim rewards through Comptroller
         address[] memory mTokens = new address[](1);
         mTokens[0] = mToken_;
         COMPTROLLER.claimReward(plasmaVault, mTokens);
 
         uint256 claimed;
         uint256 rewardConfigLen = rewardConfig.length;
-        // Transfer claimed rewards to rewards claim manager
+
         for (uint256 i; i < rewardConfigLen; ++i) {
             claimed = IERC20(rewardTokens[i]).balanceOf(plasmaVault) - balanceBefore[i];
 

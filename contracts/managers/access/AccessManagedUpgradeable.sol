@@ -9,6 +9,20 @@ import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Cont
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
+ * @dev Constant representing the function selector for setting up the context manager
+ * @dev This selector (0x87ef0b87) is used to identify the context manager setup operation
+ * @custom:security Used for access control and context management operations
+ */
+bytes4 constant CONTEXT_MANAGER_SETUP = bytes4(0x87ef0b87);
+
+/**
+ * @dev Constant representing the function selector for clearing the context manager
+ * @dev This selector (0xdb99bddd) is used to identify the context manager clear operation
+ * @custom:security Used for access control and context management operations
+ */
+bytes4 constant CONTEXT_MANAGER_CLEAR = bytes4(0xdb99bddd);
+
+/**
  * @dev This contract module makes available a {restricted} modifier. Functions decorated with this modifier will be
  * permissioned according to an "authority": a contract like {AccessManager} that follows the {IAuthority} interface,
  * implementing a policy that allows certain callers to access certain functions.
@@ -113,21 +127,26 @@ abstract contract AccessManagedUpgradeable is Initializable, ContextUpgradeable,
      * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
      * is less than 4 bytes long.
      */
-    function _checkCanCall(address caller, bytes calldata data) internal virtual {
+    function _checkCanCall(address caller_, bytes calldata data_) internal virtual {
+        bytes4 sig = bytes4(data_[0:4]);
+        if (sig == CONTEXT_MANAGER_SETUP || sig == CONTEXT_MANAGER_CLEAR) {
+            caller_ = msg.sender;
+        }
+
         AccessManagedStorage storage $ = _getAccessManagedStorage();
         (bool immediate, uint32 delay) = AuthorityUtils.canCallWithDelay(
             authority(),
-            caller,
+            caller_,
             address(this),
-            bytes4(data[0:4])
+            bytes4(data_[0:4])
         );
         if (!immediate) {
             if (delay > 0) {
                 $._consumingSchedule = true;
-                IAccessManager(authority()).consumeScheduledOp(caller, data);
+                IAccessManager(authority()).consumeScheduledOp(caller_, data_);
                 $._consumingSchedule = false;
             } else {
-                revert AccessManagedUnauthorized(caller);
+                revert AccessManagedUnauthorized(caller_);
             }
         }
     }

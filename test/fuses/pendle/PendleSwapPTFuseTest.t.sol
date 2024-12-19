@@ -55,10 +55,10 @@ contract PendleSwapPTFuseTest is Test {
         });
 
         vm.startPrank(TestAddresses.ATOMIST);
-        _plasmaVault = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
+        (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault);
+        _accessManager.setupInitRoles(_plasmaVault, address(0));
         vm.stopPrank();
 
         address[] memory markets = new address[](1);

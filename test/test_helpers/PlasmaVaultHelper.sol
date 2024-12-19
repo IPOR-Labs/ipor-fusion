@@ -5,9 +5,9 @@ import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} fr
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {MarketSubstratesConfig} from "../../contracts/vaults/PlasmaVault.sol";
-
+import {FeeConfigHelper} from "./FeeConfigHelper.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 struct DeployMinimalPlasmaVaultParams {
     address underlyingToken;
     string underlyingTokenName;
@@ -24,17 +24,9 @@ library PlasmaVaultHelper {
     /// @return plasmaVault Address of the deployed PlasmaVault
     function deployMinimalPlasmaVault(
         DeployMinimalPlasmaVaultParams memory params
-    ) internal returns (PlasmaVault plasmaVault) {
+    ) internal returns (PlasmaVault plasmaVault, address noAddress) {
         // Create fee configuration
-        FeeConfig memory feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            atomistManagementFee: 0,
-            atomistPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: address(0),
-            iporDaoFeeRecipientAddress: address(0)
-        });
+        FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         // Deploy access manager
         address accessManager = address(new IporFusionAccessManager(params.atomist, 0));
@@ -55,7 +47,37 @@ library PlasmaVaultHelper {
             withdrawManager: address(0)
         });
 
-        return new PlasmaVault(initData);
+        return (new PlasmaVault(initData), address(0));
+    }
+
+    function deployMinimalPlasmaVaultWithWithdrawManager(
+        DeployMinimalPlasmaVaultParams memory params
+    ) internal returns (PlasmaVault plasmaVault, address withdrawManager) {
+        // Create fee configuration
+        FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
+
+        // Deploy access manager
+        address accessManager = address(new IporFusionAccessManager(params.atomist, 0));
+
+        address withdrawManager = address(new WithdrawManager(accessManager));
+
+        // Create initialization data for PlasmaVault
+        PlasmaVaultInitData memory initData = PlasmaVaultInitData({
+            assetName: string(abi.encodePacked(params.underlyingTokenName, " Plasma Vault")),
+            assetSymbol: string(abi.encodePacked(params.underlyingTokenName, "-PV")),
+            underlyingToken: params.underlyingToken,
+            priceOracleMiddleware: params.priceOracleMiddleware,
+            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
+            fuses: new address[](0),
+            balanceFuses: new MarketBalanceFuseConfig[](0),
+            feeConfig: feeConfig,
+            accessManager: accessManager,
+            plasmaVaultBase: address(new PlasmaVaultBase()),
+            totalSupplyCap: type(uint256).max,
+            withdrawManager: withdrawManager
+        });
+
+        return (new PlasmaVault(initData), withdrawManager);
     }
 
     function accessManagerOf(PlasmaVault plasmaVault_) internal view returns (IporFusionAccessManager) {

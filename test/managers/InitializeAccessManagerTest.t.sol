@@ -6,12 +6,12 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
-import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
-import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 
 contract InitializeAccessManagerTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -60,7 +60,7 @@ contract InitializeAccessManagerTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(0, 0, 0, 0, address(address(new FeeManagerFactory())), address(0), address(0)),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
@@ -113,7 +113,8 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.GUARDIAN_ROLE &&
                 initData.adminRoles[i].roleId != Roles.PUBLIC_ROLE &&
                 initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
-                initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE
+                initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE &&
+                initData.adminRoles[i].roleId != Roles.TECH_CONTEXT_MANAGER_ROLE
             ) {
                 assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }
@@ -167,7 +168,8 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.CLAIM_REWARDS_ROLE &&
                 initData.adminRoles[i].roleId != Roles.TRANSFER_REWARDS_ROLE &&
                 initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
-                initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE
+                initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE &&
+                initData.adminRoles[i].roleId != Roles.TECH_CONTEXT_MANAGER_ROLE
             ) {
                 assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
             }

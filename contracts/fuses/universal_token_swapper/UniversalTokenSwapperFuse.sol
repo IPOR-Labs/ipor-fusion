@@ -89,6 +89,10 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
             tokenOutBalanceAfter: 0
         });
 
+        if (data_.amountIn == 0) {
+            return;
+        }   
+
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
         SwapExecutor(EXECUTOR).execute(
@@ -116,6 +120,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         uint256 tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
 
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+
         (uint256 tokenInPrice, uint256 tokenInPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
             .getAssetPrice(data_.tokenIn);
         (uint256 tokenOutPrice, uint256 tokenOutPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
