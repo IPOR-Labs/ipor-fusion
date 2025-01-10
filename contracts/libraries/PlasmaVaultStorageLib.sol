@@ -215,6 +215,10 @@ library PlasmaVaultStorageLib {
     bytes32 private constant CFG_PLASMA_VAULT_MARKET_SUBSTRATES =
         0x78e40624004925a4ef6749756748b1deddc674477302d5b7fe18e5335cde3900;
 
+    // keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultPreHooks")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant CFG_PLASMA_VAULT_PRE_HOOKS =
+        0xd334d8b26e68f82b7df26f2f64b6ffd2aaae5e2fc0e8c144c4b3598dcddd4b00;
+
     // todo: update doc
     /**
      * @dev Storage slot for balance fuses configuration in the Plasma Vault
@@ -781,6 +785,16 @@ library PlasmaVaultStorageLib {
         mapping(uint256 marketId => uint256 index) indexes;
     }
 
+    // todo: update doc
+    struct PreHooksConfig {
+        /// @dev selector => hook implementation address
+        mapping(bytes4 => address) hooksImplementation;
+        /// @dev list of selectors
+        bytes4[] selectors;
+        /// @dev index of the selector in the selectors array
+        mapping(bytes4 selector => uint256 index) indexes;
+    }
+
     /**
      * @notice Tracks dependencies between market balances for atomic updates
      * @dev Maps markets to their dependent markets requiring simultaneous balance updates
@@ -916,6 +930,12 @@ library PlasmaVaultStorageLib {
     function getBalanceFuses() internal pure returns (BalanceFuses storage balanceFuses) {
         assembly {
             balanceFuses.slot := CFG_PLASMA_VAULT_BALANCE_FUSES
+        }
+    }
+
+    function getPreHooksConfig() internal pure returns (PreHooksConfig storage preHooksConfig) {
+        assembly {
+            preHooksConfig.slot := CFG_PLASMA_VAULT_PRE_HOOKS
         }
     }
 

@@ -12,7 +12,7 @@ import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradea
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 import {IIporFusionAccessManager} from "../interfaces/IIporFusionAccessManager.sol";
-
+import {PreHooksLib} from "../pre_hooks_handlers/PreHooksLib.sol";
 /// @title Plasma Vault Governance
 /// @notice Core governance contract for managing Plasma Vault configuration, security, and operational parameters
 /// @dev Inherits AccessManagedUpgradeable for role-based access control and security management
@@ -1581,6 +1581,22 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         uint256[] calldata delays_
     ) external override restricted {
         IIporFusionAccessManager(authority()).setMinimalExecutionDelaysForRoles(rolesIds_, delays_);
+    }
+
+    // only by atomist
+    function setPreHookImplementations(
+        bytes4[] calldata selectors_,
+        address[] calldata implementations_
+    ) external restricted {
+        PreHooksLib.setPreHookImplementations(selectors_, implementations_);
+    }
+
+    function getPreHookSelectors() external view returns (bytes4[] memory) {
+        return PreHooksLib.getPreHookSelectors();
+    }
+
+    function getPreHookImplementation(bytes4 selector_) external view returns (address) {
+        return PreHooksLib.getPreHookImplementation(selector_);
     }
 
     function _addFuse(address fuse_) internal {
