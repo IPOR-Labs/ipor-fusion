@@ -693,6 +693,11 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return PlasmaVaultLib.getTotalSupplyCap();
     }
 
+    // todo add doc
+    function getActiveMarketsInBalanceFuses() external view returns (uint256[] memory) {
+        return FusesLib.getActiveMarketsInBalanceFuses();
+    }
+
     /// @notice Adds a balance fuse for a specific market
     /// @dev Manages market-specific balance fuse assignments through FusesLib
     ///

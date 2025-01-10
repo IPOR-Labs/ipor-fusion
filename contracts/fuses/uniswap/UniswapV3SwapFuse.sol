@@ -122,7 +122,7 @@ contract UniswapV3SwapFuse is IFuseCommon {
 
         if (inputAmount == 0) {
             return;
-        }   
+        }
 
         IERC20(tokens[0]).safeTransfer(UNIVERSAL_ROUTER, inputAmount);
 

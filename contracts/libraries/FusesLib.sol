@@ -4,7 +4,6 @@ pragma solidity 0.8.26;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
-
 /**
  * @title Fuses Library - Core Component for Plasma Vault's Fuse Management System
  * @notice Library managing the lifecycle and configuration of fuses - specialized contracts that enable
@@ -325,6 +324,7 @@ library FusesLib {
         emit FuseRemoved(fuse_);
     }
 
+    // todo: update doc
     /**
      * @notice Associates a balance tracking fuse with a specific market in the Plasma Vault
      * @dev Manages market-specific balance fuse assignments
@@ -373,11 +373,16 @@ library FusesLib {
             revert BalanceFuseAlreadyExists(marketId_, fuse_);
         }
 
-        PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] = fuse_;
+        PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
+        balanceFuses.value[marketId_] = fuse_;
+
+        balanceFuses.indexes[marketId_] = balanceFuses.marketIds.length;
+        balanceFuses.marketIds.push(marketId_);
 
         emit BalanceFuseAdded(marketId_, fuse_);
     }
 
+    // todo: update doc
     /**
      * @notice Removes a balance tracking fuse from a specific market in the Plasma Vault
      * @dev Manages safe removal of market balance fuses with balance validation
@@ -437,9 +442,21 @@ library FusesLib {
             revert BalanceFuseNotReadyToRemove(marketId_, fuse_, wadBalanceAmountInUSD);
         }
 
-        PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] = address(0);
+        PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
+        balanceFuses.value[marketId_] = address(0);
+
+        uint256 index = balanceFuses.indexes[marketId_];
+        if (index != balanceFuses.marketIds.length - 1) {
+            balanceFuses.marketIds[index] = balanceFuses.marketIds[balanceFuses.marketIds.length - 1];
+        }
+        balanceFuses.marketIds.pop();
 
         emit BalanceFuseRemoved(marketId_, fuse_);
+    }
+
+    // todo: update doc
+    function getActiveMarketsInBalanceFuses() internal view returns (uint256[] memory) {
+        return PlasmaVaultStorageLib.getBalanceFuses().marketIds;
     }
 
     function _calculateAllowedDustInBalanceFuse() private view returns (uint256) {

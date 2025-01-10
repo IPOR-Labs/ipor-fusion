@@ -364,6 +364,7 @@ contract PlasmaVault is
     ///
     /// @param calldata_ Raw calldata for function execution
     /// @return bytes Empty if callback, delegated result otherwise
+    // solhint-disable-next-line no-unused-vars
     fallback(bytes calldata calldata_) external returns (bytes memory) {
         if (PlasmaVaultLib.isExecutionStarted()) {
             /// @dev Handle callback can be done only during the execution of the FuseActions by Alpha

@@ -215,6 +215,7 @@ library PlasmaVaultStorageLib {
     bytes32 private constant CFG_PLASMA_VAULT_MARKET_SUBSTRATES =
         0x78e40624004925a4ef6749756748b1deddc674477302d5b7fe18e5335cde3900;
 
+    // todo: update doc
     /**
      * @dev Storage slot for balance fuses configuration in the Plasma Vault
      * @notice Maps markets to their respective balance fuses for asset tracking
@@ -770,14 +771,14 @@ library PlasmaVaultStorageLib {
         mapping(uint256 => MarketSubstratesStruct) value;
     }
 
-    /**
-     * @notice Maps markets to their balance tracking fuse contracts
-     * @dev Each market can have one designated fuse for balance updates
-     * @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultBalanceFuses
-     */
+    // todo: update doc
     struct BalanceFuses {
         /// @dev marketId => balance fuse address
         mapping(uint256 => address) value;
+        /// @dev list of marketIds
+        uint256[] marketIds;
+        /// @dev index of the marketId in the marketIds array
+        mapping(uint256 marketId => uint256 index) indexes;
     }
 
     /**

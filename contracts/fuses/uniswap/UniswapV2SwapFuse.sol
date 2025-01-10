@@ -98,7 +98,7 @@ contract UniswapV2SwapFuse is IFuseCommon {
         bytes memory commands = abi.encodePacked(bytes1(uint8(V2_SWAP_EXACT_IN)));
 
         bytes[] memory inputs = new bytes[](1);
-        
+
         inputs[0] = abi.encode(
             INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER,
             inputAmount,
