@@ -778,7 +778,7 @@ library PlasmaVaultStorageLib {
     // todo: update doc
     struct BalanceFuses {
         /// @dev marketId => balance fuse address
-        mapping(uint256 => address) value;
+        mapping(uint256 marketId => address fuseAddress) fuseAddresses;
         /// @dev list of marketIds
         uint256[] marketIds;
         /// @dev index of the marketId in the marketIds array

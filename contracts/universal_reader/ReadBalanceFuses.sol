@@ -18,7 +18,7 @@ contract ReadBalanceFuses {
      */
     function getBalanceFuse(uint256 marketId) external view returns (address) {
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
-        return balanceFuses.value[marketId];
+        return balanceFuses.fuseAddresses[marketId];
     }
 
     /**
@@ -37,7 +37,7 @@ contract ReadBalanceFuses {
         addresses = new address[](marketIdsLength);
 
         for (uint256 i; i < marketIdsLength; i++) {
-            addresses[i] = balanceFuses.value[marketIds[i]];
+            addresses[i] = balanceFuses.fuseAddresses[marketIds[i]];
         }
 
         return addresses;

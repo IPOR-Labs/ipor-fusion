@@ -14,9 +14,8 @@ library PreHooksLib {
 
     /// @notice Emitted when a pre-hook implementation is changed for a function selector
     /// @param selector The function selector that was updated
-    /// @param oldImplementation The previous implementation address (address(0) if it was not set)
     /// @param newImplementation The new implementation address (address(0) if it was removed)
-    event PreHookImplementationChanged(bytes4 indexed selector, address oldImplementation, address newImplementation);
+    event PreHookImplementationChanged(bytes4 indexed selector, address newImplementation);
 
     /// @notice Returns the pre-hook implementation address for a given function signature
     /// @dev Uses PlasmaVaultStorageLib to access the pre-hooks configuration
@@ -49,7 +48,8 @@ library PreHooksLib {
         bytes4 selector;
         address implementation;
         address oldImplementation;
-        for (uint256 i; i < selectors_.length; ++i) {
+        uint256 selectorsLength = selectors_.length;
+        for (uint256 i; i < selectorsLength; ++i) {
             selector = selectors_[i];
             implementation = implementations_[i];
 
@@ -80,7 +80,7 @@ library PreHooksLib {
 
             preHooksConfig.hooksImplementation[selector] = implementation;
 
-            emit PreHookImplementationChanged(selector, oldImplementation, implementation);
+            emit PreHookImplementationChanged(selector, implementation);
         }
     }
 }

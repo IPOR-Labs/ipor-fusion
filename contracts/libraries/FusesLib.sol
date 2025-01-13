@@ -102,7 +102,7 @@ library FusesLib {
      * - Critical for preventing unauthorized balance reporting
      */
     function isBalanceFuseSupported(uint256 marketId_, address fuse_) internal view returns (bool) {
-        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] == fuse_;
+        return PlasmaVaultStorageLib.getBalanceFuses().fuseAddresses[marketId_] == fuse_;
     }
 
     /**
@@ -132,7 +132,7 @@ library FusesLib {
      * - Other protocol-specific balance fuses
      */
     function getBalanceFuse(uint256 marketId_) internal view returns (address) {
-        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
+        return PlasmaVaultStorageLib.getBalanceFuses().fuseAddresses[marketId_];
     }
 
     /**
@@ -367,14 +367,14 @@ library FusesLib {
      * - Enables multi-protocol balance aggregation
      */
     function addBalanceFuse(uint256 marketId_, address fuse_) internal {
-        address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
+        address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().fuseAddresses[marketId_];
 
         if (currentFuse == fuse_) {
             revert BalanceFuseAlreadyExists(marketId_, fuse_);
         }
 
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
-        balanceFuses.value[marketId_] = fuse_;
+        balanceFuses.fuseAddresses[marketId_] = fuse_;
 
         balanceFuses.indexes[marketId_] = balanceFuses.marketIds.length;
         balanceFuses.marketIds.push(marketId_);
@@ -427,7 +427,7 @@ library FusesLib {
      * - Must coordinate with protocol withdrawals
      */
     function removeBalanceFuse(uint256 marketId_, address fuse_) internal {
-        address currentBalanceFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
+        address currentBalanceFuse = PlasmaVaultStorageLib.getBalanceFuses().fuseAddresses[marketId_];
 
         if (currentBalanceFuse != fuse_) {
             revert BalanceFuseDoesNotExist(marketId_, fuse_);
@@ -443,7 +443,7 @@ library FusesLib {
         }
 
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
-        balanceFuses.value[marketId_] = address(0);
+        balanceFuses.fuseAddresses[marketId_] = address(0);
 
         uint256 index = balanceFuses.indexes[marketId_];
         if (index != balanceFuses.marketIds.length - 1) {
