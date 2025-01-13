@@ -693,7 +693,48 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return PlasmaVaultLib.getTotalSupplyCap();
     }
 
-    // todo add doc
+    /// @notice Retrieves the list of all active markets with registered balance fuses
+    /// @dev Provides access to the ordered array of active market IDs from BalanceFuses storage
+    ///
+    /// Market Tracking System:
+    /// - Returns complete list of markets with balance fuses
+    /// - Order reflects market registration sequence
+    /// - List maintained by add/remove operations
+    /// - Critical for market state management
+    ///
+    /// Storage Access:
+    /// - Reads from PlasmaVaultStorageLib.BalanceFuses.marketIds
+    /// - No storage modifications
+    /// - O(1) operation for array access
+    /// - Returns complete array reference
+    ///
+    /// Integration Context:
+    /// - Used for market balance updates
+    /// - Supports multi-market operations
+    /// - Essential for balance synchronization
+    /// - Part of asset distribution system
+    ///
+    /// Array Properties:
+    /// - No duplicate market IDs
+    /// - Order may change during removals
+    /// - Maintained through governance operations
+    /// - Empty array possible if no active markets
+    ///
+    /// Use Cases:
+    /// - Market balance validation
+    /// - Asset distribution checks
+    /// - Protocol state monitoring
+    /// - Governance operations
+    ///
+    /// Related Components:
+    /// - Balance Fuse System
+    /// - Market Management
+    /// - Asset Protection
+    /// - Protocol Operations
+    ///
+    /// @return uint256[] Array of active market IDs with registered balance fuses
+    /// @custom:access External view
+    /// @custom:security Non-privileged view function
     function getActiveMarketsInBalanceFuses() external view returns (uint256[] memory) {
         return FusesLib.getActiveMarketsInBalanceFuses();
     }

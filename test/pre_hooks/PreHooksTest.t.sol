@@ -327,6 +327,13 @@ contract PreHooksTest is Test {
         // when - deposit USDC (should trigger pre-hook)
         vm.startPrank(_USER);
         IERC20(_USDC).approve(address(_plasmaVault), depositAmount);
+
+        // Expect MarketBalancesUpdated event during deposit
+        uint256[] memory expectedMarketIds = new uint256[](1);
+        expectedMarketIds[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
+        vm.expectEmit(true, true, true, true);
+        emit PlasmaVault.MarketBalancesUpdated(expectedMarketIds, 10005297); // delta value will be checked in actual event data
+
         _plasmaVault.deposit(depositAmount, _USER);
         vm.stopPrank();
 
