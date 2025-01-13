@@ -10,7 +10,7 @@ import {ERC20VotesUpgradeable} from "./ERC20VotesUpgradeable.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {ContextClient} from "../managers/context/ContextClient.sol";
-import {PreHooksHandler} from "../pre_hooks_handlers/PreHooksHandler.sol";
+import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
 /**
  * @title PlasmaVaultBase - Core Extension for PlasmaVault Token Functionality
  * @notice Stateless extension providing ERC20 Votes and Permit capabilities for PlasmaVault

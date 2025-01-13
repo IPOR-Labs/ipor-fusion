@@ -12,7 +12,7 @@ import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradea
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 import {IIporFusionAccessManager} from "../interfaces/IIporFusionAccessManager.sol";
-import {PreHooksLib} from "../pre_hooks_handlers/PreHooksLib.sol";
+import {PreHooksLib} from "../handlers/pre_hooks/PreHooksLib.sol";
 /// @title Plasma Vault Governance
 /// @notice Core governance contract for managing Plasma Vault configuration, security, and operational parameters
 /// @dev Inherits AccessManagedUpgradeable for role-based access control and security management

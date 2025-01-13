@@ -33,7 +33,7 @@ import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
-import {PreHooksHandler} from "../pre_hooks_handlers/PreHooksHandler.sol";
+import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
 /// @dev Encapsulates all required parameters for vault setup and protocol integration

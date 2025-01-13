@@ -14,7 +14,7 @@ import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IporFusionAccessManagerHelper} from "../test_helpers/IporFusionAccessManagerHelper.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {UpdateBalancesPreHook} from "../../contracts/pre_hooks_handlers/pre_hooks/UpdateBalancesPreHook.sol";
+import {UpdateBalancesPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/UpdateBalancesPreHook.sol";
 
 contract PreHooksTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
