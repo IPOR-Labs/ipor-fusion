@@ -10,7 +10,7 @@ import {ERC20VotesUpgradeable} from "./ERC20VotesUpgradeable.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {ContextClient} from "../managers/context/ContextClient.sol";
-
+import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
 /**
  * @title PlasmaVaultBase - Core Extension for PlasmaVault Token Functionality
  * @notice Stateless extension providing ERC20 Votes and Permit capabilities for PlasmaVault
@@ -62,7 +62,8 @@ contract PlasmaVaultBase is
     ERC20PermitUpgradeable,
     ERC20VotesUpgradeable,
     PlasmaVaultGovernance,
-    ContextClient
+    ContextClient,
+    PreHooksHandler
 {
     /**
      * @dev Total supply cap has been exceeded.
@@ -251,5 +252,10 @@ contract PlasmaVaultBase is
     /// @return The address of the message sender
     function _msgSender() internal view override returns (address) {
         return _getSenderFromContext();
+    }
+
+    function _checkCanCall(address caller_, bytes calldata data_) internal override {
+        super._checkCanCall(caller_, data_);
+        _runPreHooks(bytes4(data_[0:4]));
     }
 }

@@ -33,7 +33,7 @@ import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
-
+import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
 /// @dev Encapsulates all required parameters for vault setup and protocol integration
@@ -218,7 +218,8 @@ contract PlasmaVault is
     ReentrancyGuardUpgradeable,
     AccessManagedUpgradeable,
     UniversalReader,
-    IPlasmaVault
+    IPlasmaVault,
+    PreHooksHandler
 {
     using Address for address;
     using SafeCast for int256;
@@ -364,6 +365,7 @@ contract PlasmaVault is
     ///
     /// @param calldata_ Raw calldata for function execution
     /// @return bytes Empty if callback, delegated result otherwise
+    // solhint-disable-next-line no-unused-vars
     fallback(bytes calldata calldata_) external returns (bytes memory) {
         if (PlasmaVaultLib.isExecutionStarted()) {
             /// @dev Handle callback can be done only during the execution of the FuseActions by Alpha
@@ -1417,6 +1419,8 @@ contract PlasmaVault is
                 revert AccessManagedUnauthorized(caller_);
             }
         }
+
+        _runPreHooks(sig);
     }
 
     function _msgSender() internal view override returns (address) {

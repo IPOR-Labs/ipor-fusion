@@ -4,7 +4,6 @@ pragma solidity 0.8.26;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
-
 /**
  * @title Fuses Library - Core Component for Plasma Vault's Fuse Management System
  * @notice Library managing the lifecycle and configuration of fuses - specialized contracts that enable
@@ -22,7 +21,7 @@ import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
  * - Storage Integration: Uses FuseStorageLib for persistent storage
  *
  * Integration Points:
- * - Used by PlasmaVault.sol for fuse operation validation
+ * - Used by PlasmaVault.execute() to validate fuse operations
  * - Used by PlasmaVaultGovernance.sol for fuse configuration
  * - Interacts with FuseStorageLib for storage management
  * - Coordinates with PlasmaVaultStorageLib for market data
@@ -103,7 +102,7 @@ library FusesLib {
      * - Critical for preventing unauthorized balance reporting
      */
     function isBalanceFuseSupported(uint256 marketId_, address fuse_) internal view returns (bool) {
-        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] == fuse_;
+        return PlasmaVaultStorageLib.getBalanceFuses().fuseAddresses[marketId_] == fuse_;
     }
 
     /**
@@ -133,7 +132,7 @@ library FusesLib {
      * - Other protocol-specific balance fuses
      */
     function getBalanceFuse(uint256 marketId_) internal view returns (address) {
-        return PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
+        return PlasmaVaultStorageLib.getBalanceFuses().fuseAddresses[marketId_];
     }
 
     /**
@@ -327,23 +326,28 @@ library FusesLib {
 
     /**
      * @notice Associates a balance tracking fuse with a specific market in the Plasma Vault
-     * @dev Manages market-specific balance fuse assignments
-     * - Each market can have only one active balance fuse
-     * - Balance fuses are responsible for standardized balance reporting
+     * @dev Manages market-specific balance fuse assignments and maintains market tracking data structures
+     * - Updates both fuse mapping and market tracking arrays
+     * - Maintains O(1) lookup capabilities through index mapping
      *
      * Storage Updates:
-     * 1. Checks for existing balance fuse to prevent duplicates
-     * 2. Updates PlasmaVaultStorageLib.BalanceFuses mapping
-     * 3. Emits BalanceFuseAdded event
+     * 1. Validates no duplicate fuse assignment
+     * 2. Updates fuseAddresses mapping with new fuse
+     * 3. Adds market to tracking array
+     * 4. Updates index mapping for O(1) lookup
+     * 5. Emits BalanceFuseAdded event
      *
      * Integration Context:
      * - Called by PlasmaVaultGovernance.addBalanceFuse()
-     * - Used during market setup and configuration
-     * - Essential for market balance tracking system
-     * - Integrates with protocol-specific balance fuses:
-     *   - CompoundV3BalanceFuse
-     *   - AaveV3BalanceFuse
-     *   - Other protocol balance trackers
+     * - Part of market setup and configuration
+     * - Integrates with PlasmaVaultStorageLib.BalanceFuses
+     * - Supports multi-market balance tracking system
+     *
+     * Market Tracking:
+     * - Maintains ordered list of active markets
+     * - Enables efficient market iteration
+     * - Supports O(1) market existence checks
+     * - Critical for balance update operations
      *
      * Error Conditions:
      * - Reverts with BalanceFuseAlreadyExists if:
@@ -356,51 +360,69 @@ library FusesLib {
      *
      * Security Considerations:
      * - Only callable through governance
-     * - Critical for accurate market balance tracking
-     * - Affects asset distribution protection system
-     * - Must validate fuse compatibility with market
+     * - Must maintain array-mapping consistency
+     * - Critical for market balance tracking
+     * - Affects asset distribution protection
+     * - Requires proper fuse validation
      *
-     * Balance System Integration:
-     * - Balance fuses must implement standardized balance reporting
-     * - Used by PlasmaVault._updateMarketsBalances()
-     * - Critical for vault's accounting system
-     * - Enables multi-protocol balance aggregation
+     * Integration Points:
+     * - PlasmaVault._updateMarketsBalances: Uses registered fuses
+     * - AssetDistributionProtectionLib: Market balance checks
+     * - Balance Fuses: Protocol-specific balance tracking
+     * - Market Operations: Balance validation and updates
      */
     function addBalanceFuse(uint256 marketId_, address fuse_) internal {
-        address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
+        address currentFuse = PlasmaVaultStorageLib.getBalanceFuses().fuseAddresses[marketId_];
 
         if (currentFuse == fuse_) {
             revert BalanceFuseAlreadyExists(marketId_, fuse_);
         }
 
-        PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] = fuse_;
+        PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
+        balanceFuses.fuseAddresses[marketId_] = fuse_;
+
+        balanceFuses.indexes[marketId_] = balanceFuses.marketIds.length;
+        balanceFuses.marketIds.push(marketId_);
 
         emit BalanceFuseAdded(marketId_, fuse_);
     }
 
     /**
      * @notice Removes a balance tracking fuse from a specific market in the Plasma Vault
-     * @dev Manages safe removal of market balance fuses with balance validation
-     * - Ensures market has no significant balance before removal
-     * - Validates fuse-market relationship
-     * - Uses delegatecall for balance checks
+     * @dev Manages safe removal of market-fuse associations and updates market tracking data structures
+     * - Uses swap-and-pop pattern for efficient array maintenance
+     * - Maintains O(1) lookup capabilities through index mapping
      *
      * Storage Updates:
-     * 1. Verifies correct fuse-market association
-     * 2. Checks current balance is below dust threshold
-     * 3. Clears balance fuse mapping entry
-     * 4. Emits BalanceFuseRemoved event
+     * 1. Validates correct fuse-market association
+     * 2. Verifies balance is below dust threshold via delegatecall
+     * 3. Clears fuseAddresses mapping entry
+     * 4. Updates marketIds array using swap-and-pop
+     * 5. Updates indexes mapping for moved market
+     * 6. Emits BalanceFuseRemoved event
+     *
+     * Integration Context:
+     * - Called by PlasmaVaultGovernance.removeBalanceFuse()
+     * - Part of market decommissioning process
+     * - Integrates with PlasmaVaultStorageLib.BalanceFuses
+     * - Coordinates with balance fuse contracts
+     *
+     * Market Tracking:
+     * - Maintains integrity of active markets list
+     * - Updates market indexes after removal
+     * - Preserves O(1) lookup capability
+     * - Ensures proper market list maintenance
      *
      * Balance Validation:
-     * - Checks current USD-denominated balance via delegatecall
-     * - Compares against allowed dust threshold
-     * - Prevents removal of fuses with active positions
-     * - Dust threshold based on underlying decimals
+     * - Uses delegatecall to check current balance
+     * - Compares against dust threshold based on decimals
+     * - Prevents removal of active positions
+     * - Dust threshold scales with token precision
      *
      * Error Conditions:
      * - Reverts with BalanceFuseDoesNotExist if:
      *   - Fuse not assigned to market
-     *   - Wrong fuse-market pair
+     *   - Wrong fuse-market pair provided
      * - Reverts with BalanceFuseNotReadyToRemove if:
      *   - Balance exceeds dust threshold
      *   - Active positions exist
@@ -411,18 +433,25 @@ library FusesLib {
      *
      * Security Considerations:
      * - Only callable through governance
-     * - Prevents removal of active positions
-     * - Uses safe delegatecall for balance checks
-     * - Critical for market balance integrity
+     * - Must maintain array-mapping consistency
+     * - Requires safe delegatecall handling
+     * - Critical for market decommissioning
+     * - Protects against premature removal
      *
-     * Integration Context:
-     * - Called by PlasmaVaultGovernance.removeBalanceFuse()
-     * - Part of market decommissioning process
-     * - Requires prior position liquidation
-     * - Must coordinate with protocol withdrawals
+     * Integration Points:
+     * - PlasmaVault._updateMarketsBalances: Affected by removals
+     * - Balance Fuses: Balance validation
+     * - Asset Protection: Market tracking updates
+     * - Market Operations: State consistency
+     *
+     * Gas Optimization:
+     * - Uses swap-and-pop for array maintenance
+     * - Minimizes storage operations
+     * - Efficient market list updates
+     * - Optimized for minimal gas usage
      */
     function removeBalanceFuse(uint256 marketId_, address fuse_) internal {
-        address currentBalanceFuse = PlasmaVaultStorageLib.getBalanceFuses().value[marketId_];
+        address currentBalanceFuse = PlasmaVaultStorageLib.getBalanceFuses().fuseAddresses[marketId_];
 
         if (currentBalanceFuse != fuse_) {
             revert BalanceFuseDoesNotExist(marketId_, fuse_);
@@ -437,9 +466,64 @@ library FusesLib {
             revert BalanceFuseNotReadyToRemove(marketId_, fuse_, wadBalanceAmountInUSD);
         }
 
-        PlasmaVaultStorageLib.getBalanceFuses().value[marketId_] = address(0);
+        PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
+        balanceFuses.fuseAddresses[marketId_] = address(0);
+
+        uint256 index = balanceFuses.indexes[marketId_];
+        if (index != balanceFuses.marketIds.length - 1) {
+            balanceFuses.marketIds[index] = balanceFuses.marketIds[balanceFuses.marketIds.length - 1];
+        }
+        balanceFuses.marketIds.pop();
 
         emit BalanceFuseRemoved(marketId_, fuse_);
+    }
+
+    /**
+     * @notice Retrieves the list of all active markets with registered balance fuses
+     * @dev Provides direct access to the ordered array of active market IDs from BalanceFuses storage
+     * - Returns the complete marketIds array without modifications
+     * - Order of markets matches their registration sequence
+     *
+     * Storage Access:
+     * - Reads from PlasmaVaultStorageLib.BalanceFuses.marketIds
+     * - No storage modifications
+     * - O(1) operation for array access
+     * - Returns reference to complete array
+     *
+     * Integration Context:
+     * - Used by PlasmaVault._updateMarketsBalances for iteration
+     * - Referenced during multi-market operations
+     * - Supports balance update coordination
+     * - Essential for market state management
+     *
+     * Use Cases:
+     * - Market balance updates
+     * - Asset distribution checks
+     * - Market state validation
+     * - Protocol-wide operations
+     *
+     * Array Properties:
+     * - Maintained by addBalanceFuse/removeBalanceFuse
+     * - No duplicates allowed
+     * - Order may change during removals (swap-and-pop)
+     * - Empty array possible if no active markets
+     *
+     * @return uint256[] Array of active market IDs with registered balance fuses
+     *
+     * Integration Points:
+     * - Balance Update System: Market iteration
+     * - Asset Protection: Market validation
+     * - Governance: Market monitoring
+     * - Protocol Operations: State checks
+     *
+     * Performance Notes:
+     * - Constant gas cost for array access
+     * - No array copying - returns storage reference
+     * - Efficient for bulk market operations
+     * - Suitable for view function calls
+     */
+    function getActiveMarketsInBalanceFuses() internal view returns (uint256[] memory) {
+        return PlasmaVaultStorageLib.getBalanceFuses().marketIds;
     }
 
     function _calculateAllowedDustInBalanceFuse() private view returns (uint256) {

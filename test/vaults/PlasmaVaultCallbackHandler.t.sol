@@ -20,7 +20,7 @@ import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contrac
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
-import {CallbackHandlerMorpho} from "../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {CallbackHandlerMorpho} from "../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";

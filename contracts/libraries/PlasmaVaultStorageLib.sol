@@ -216,36 +216,83 @@ library PlasmaVaultStorageLib {
         0x78e40624004925a4ef6749756748b1deddc674477302d5b7fe18e5335cde3900;
 
     /**
+     * @dev Storage slot for pre-hooks configuration in the Plasma Vault
+     * @notice Manages function-specific pre-execution hooks and their implementations
+     *
+     * Calculation:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultPreHooks")) - 1)) & ~bytes32(uint256(0xff))
+     *
+     * Purpose:
+     * - Maps function selectors to their pre-execution hook implementations
+     * - Enables customizable pre-execution validation and logic
+     * - Provides extensible function-specific behavior
+     * - Coordinates cross-function state updates
+     *
+     * Storage Layout:
+     * - Points to PreHooksConfig struct containing:
+     *   - hooksImplementation: mapping(bytes4 selector => address implementation)
+     *   - selectors: bytes4[] array of registered function selectors
+     *   - indexes: mapping(bytes4 selector => uint256 index) for O(1) selector lookup
+     *
+     * Usage Pattern:
+     * - Each function can have one designated pre-hook
+     * - Hooks execute before main function logic
+     * - Selector array enables efficient iteration over registered hooks
+     * - Index mapping provides quick hook existence checks
+     *
+     * Integration Points:
+     * - PlasmaVault.execute: Pre-execution hook invocation
+     * - PreHooksHandler: Hook execution coordination
+     * - PlasmaVaultGovernance: Hook configuration
+     * - Function-specific hooks: Custom validation logic
+     *
+     * Security Considerations:
+     * - Only modifiable through governance
+     * - Critical for function execution control
+     * - Must validate hook implementations
+     * - Requires careful state management
+     * - Key component of vault security layer
+     */
+    bytes32 private constant CFG_PLASMA_VAULT_PRE_HOOKS =
+        0xd334d8b26e68f82b7df26f2f64b6ffd2aaae5e2fc0e8c144c4b3598dcddd4b00;
+
+    /**
      * @dev Storage slot for balance fuses configuration in the Plasma Vault
-     * @notice Maps markets to their respective balance fuses for asset tracking
+     * @notice Maps markets to their balance fuses and maintains an ordered list of active markets
      *
      * Calculation:
      * keccak256(abi.encode(uint256(keccak256("io.ipor.CfgPlasmaVaultBalanceFuses")) - 1)) & ~bytes32(uint256(0xff))
      *
      * Purpose:
-     * - Associates balance fuses with specific markets
-     * - Enables accurate tracking of market positions
-     * - Critical for market balance validation
+     * - Associates balance fuses with specific markets for asset tracking
+     * - Maintains ordered list of active markets for efficient iteration
+     * - Enables market balance validation and updates
+     * - Coordinates multi-market balance operations
      *
      * Storage Layout:
      * - Points to BalanceFuses struct containing:
-     *   - value: mapping(uint256 marketId => address fuse)
-     *   - Each market can have one designated balance fuse
+     *   - fuseAddresses: mapping(uint256 marketId => address fuseAddress)
+     *   - marketIds: uint256[] array of active market IDs
+     *   - indexes: mapping(uint256 marketId => uint256 index) for O(1) market lookup
      *
-     * Usage:
-     * - Used during market operations to track balances
-     * - Referenced for market balance updates
-     * - Essential for asset distribution protection
+     * Usage Pattern:
+     * - Each market has one designated balance fuse
+     * - Market IDs array enables efficient iteration over active markets
+     * - Index mapping provides quick market existence checks
+     * - Used during balance updates and market operations
      *
      * Integration Points:
-     * - Market Operations: Balance tracking
+     * - PlasmaVault._updateMarketsBalances: Market balance tracking
+     * - Balance Fuses: Market position management
+     * - PlasmaVaultGovernance: Fuse configuration
      * - Asset Protection: Balance validation
-     * - Fuse System: Market position management
      *
      * Security Considerations:
-     * - Only one balance fuse per market
+     * - Only modifiable through governance
      * - Critical for accurate asset tracking
-     * - Must be properly configured for each active market
+     * - Must maintain market list integrity
+     * - Requires proper fuse address validation
+     * - Key component of vault accounting
      */
     bytes32 private constant CFG_PLASMA_VAULT_BALANCE_FUSES =
         0x150144dd6af711bac4392499881ec6649090601bd196a5ece5174c1400b1f700;
@@ -771,13 +818,77 @@ library PlasmaVaultStorageLib {
     }
 
     /**
-     * @notice Maps markets to their balance tracking fuse contracts
-     * @dev Each market can have one designated fuse for balance updates
+     * @notice Manages market-to-fuse mappings and active market tracking
+     * @dev Provides efficient market lookup and iteration capabilities
      * @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultBalanceFuses
+     *
+     * Storage Components:
+     * - fuseAddresses: Maps each market to its designated balance fuse
+     * - marketIds: Maintains ordered list of active markets for iteration
+     * - indexes: Enables O(1) market existence checks and array access
+     *
+     * Key Features:
+     * - Efficient market-fuse relationship management
+     * - Fast market existence validation
+     * - Optimized iteration over active markets
+     * - Maintains market list integrity
+     *
+     * Usage:
+     * - Market balance tracking and validation
+     * - Fuse assignment and management
+     * - Market activation/deactivation
+     * - Multi-market operations coordination
+     *
+     * Security Notes:
+     * - Market IDs must be unique
+     * - Index mapping must stay synchronized with array
+     * - Fuse addresses must be validated before assignment
+     * - Critical for vault's balance tracking system
      */
     struct BalanceFuses {
-        /// @dev marketId => balance fuse address
-        mapping(uint256 => address) value;
+        /// @dev Maps market IDs to their corresponding balance fuse addresses
+        mapping(uint256 marketId => address fuseAddress) fuseAddresses;
+        /// @dev Ordered array of active market IDs for efficient iteration
+        uint256[] marketIds;
+        /// @dev Maps market IDs to their position in the marketIds array for O(1) lookup
+        mapping(uint256 marketId => uint256 index) indexes;
+    }
+
+    /**
+     * @notice Manages pre-execution hooks configuration for vault functions
+     * @dev Provides efficient hook lookup and management for function-specific pre-execution logic
+     * @custom:storage-location erc7201:io.ipor.CfgPlasmaVaultPreHooks
+     *
+     * Storage Components:
+     * - hooksImplementation: Maps function selectors to their hook implementation contracts
+     * - selectors: Maintains ordered list of registered function selectors
+     * - indexes: Enables O(1) selector existence checks and array access
+     *
+     * Key Features:
+     * - Efficient function-to-hook mapping management
+     * - Fast hook implementation lookup
+     * - Optimized iteration over registered hooks
+     * - Maintains hook registry integrity
+     *
+     * Usage:
+     * - Pre-execution validation and checks
+     * - Custom function-specific behavior
+     * - Hook registration and management
+     * - Cross-function state coordination
+     *
+     * Security Notes:
+     * - Function selectors must be unique
+     * - Index mapping must stay synchronized with array
+     * - Hook implementations must be validated before assignment
+     * - Critical for vault's execution security layer
+     */
+    struct PreHooksConfig {
+        /// @dev Maps function selectors to their corresponding hook implementation addresses
+        mapping(bytes4 => address) hooksImplementation;
+        /// @dev Ordered array of registered function selectors for efficient iteration
+        bytes4[] selectors;
+        /// @dev Maps function selectors to their position in the selectors array for O(1) lookup
+        mapping(bytes4 selector => uint256 index) indexes;
     }
 
     /**
@@ -915,6 +1026,12 @@ library PlasmaVaultStorageLib {
     function getBalanceFuses() internal pure returns (BalanceFuses storage balanceFuses) {
         assembly {
             balanceFuses.slot := CFG_PLASMA_VAULT_BALANCE_FUSES
+        }
+    }
+
+    function getPreHooksConfig() internal pure returns (PreHooksConfig storage preHooksConfig) {
+        assembly {
+            preHooksConfig.slot := CFG_PLASMA_VAULT_PRE_HOOKS
         }
     }
 

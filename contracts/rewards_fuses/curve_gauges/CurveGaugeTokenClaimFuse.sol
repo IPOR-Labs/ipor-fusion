@@ -67,13 +67,13 @@ contract CurveGaugeTokenClaimFuse {
                 IChildLiquidityGauge(curveGauge).claim_rewards(address(this), address(this));
                 totalClaimable = 0;
             }
-            
+
             for (uint256 j; j < rewardCount; ++j) {
                 if (rewardsTokenBalances[j] > 0) {
                     IERC20(rewardsTokens[j]).safeTransfer(rewardsClaimManager, rewardsTokenBalances[j]);
                 }
             }
-            
+
             emit CurveGaugeTokenClaimFuseRewardsClaimed(
                 VERSION,
                 curveGauge,

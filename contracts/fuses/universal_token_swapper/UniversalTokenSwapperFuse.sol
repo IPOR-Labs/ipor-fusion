@@ -91,7 +91,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
 
         if (data_.amountIn == 0) {
             return;
-        }   
+        }
 
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 

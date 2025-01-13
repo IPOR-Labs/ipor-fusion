@@ -12,7 +12,7 @@ import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradea
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 import {IIporFusionAccessManager} from "../interfaces/IIporFusionAccessManager.sol";
-
+import {PreHooksLib} from "../handlers/pre_hooks/PreHooksLib.sol";
 /// @title Plasma Vault Governance
 /// @notice Core governance contract for managing Plasma Vault configuration, security, and operational parameters
 /// @dev Inherits AccessManagedUpgradeable for role-based access control and security management
@@ -691,6 +691,52 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// @custom:security Non-privileged view function
     function getTotalSupplyCap() external view override returns (uint256) {
         return PlasmaVaultLib.getTotalSupplyCap();
+    }
+
+    /// @notice Retrieves the list of all active markets with registered balance fuses
+    /// @dev Provides access to the ordered array of active market IDs from BalanceFuses storage
+    ///
+    /// Market Tracking System:
+    /// - Returns complete list of markets with balance fuses
+    /// - Order reflects market registration sequence
+    /// - List maintained by add/remove operations
+    /// - Critical for market state management
+    ///
+    /// Storage Access:
+    /// - Reads from PlasmaVaultStorageLib.BalanceFuses.marketIds
+    /// - No storage modifications
+    /// - O(1) operation for array access
+    /// - Returns complete array reference
+    ///
+    /// Integration Context:
+    /// - Used for market balance updates
+    /// - Supports multi-market operations
+    /// - Essential for balance synchronization
+    /// - Part of asset distribution system
+    ///
+    /// Array Properties:
+    /// - No duplicate market IDs
+    /// - Order may change during removals
+    /// - Maintained through governance operations
+    /// - Empty array possible if no active markets
+    ///
+    /// Use Cases:
+    /// - Market balance validation
+    /// - Asset distribution checks
+    /// - Protocol state monitoring
+    /// - Governance operations
+    ///
+    /// Related Components:
+    /// - Balance Fuse System
+    /// - Market Management
+    /// - Asset Protection
+    /// - Protocol Operations
+    ///
+    /// @return uint256[] Array of active market IDs with registered balance fuses
+    /// @custom:access External view
+    /// @custom:security Non-privileged view function
+    function getActiveMarketsInBalanceFuses() external view returns (uint256[] memory) {
+        return FusesLib.getActiveMarketsInBalanceFuses();
     }
 
     /// @notice Adds a balance fuse for a specific market
@@ -1576,6 +1622,22 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         uint256[] calldata delays_
     ) external override restricted {
         IIporFusionAccessManager(authority()).setMinimalExecutionDelaysForRoles(rolesIds_, delays_);
+    }
+
+    // only by atomist
+    function setPreHookImplementations(
+        bytes4[] calldata selectors_,
+        address[] calldata implementations_
+    ) external restricted {
+        PreHooksLib.setPreHookImplementations(selectors_, implementations_);
+    }
+
+    function getPreHookSelectors() external view returns (bytes4[] memory) {
+        return PreHooksLib.getPreHookSelectors();
+    }
+
+    function getPreHookImplementation(bytes4 selector_) external view returns (address) {
+        return PreHooksLib.getPreHookImplementation(selector_);
     }
 
     function _addFuse(address fuse_) internal {

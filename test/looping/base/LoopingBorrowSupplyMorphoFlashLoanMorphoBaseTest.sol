@@ -31,7 +31,7 @@ import {MorphoFlashLoanFuse} from "../../../contracts/fuses/morpho/MorphoFlashLo
 import {MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 import {MorphoStorageLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoStorageLib.sol";
 import {Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
-import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 import {IMorpho, Position} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";

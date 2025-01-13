@@ -145,13 +145,13 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// @custom:access PUBLIC_ROLE
     function updateBalance() external restricted {
         uint256 balance = balanceOf();
-        
+
         if (balance > 0) {
             IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
         }
 
         VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
-        
+
         data.updateBalanceTimestamp = block.timestamp.toUint32();
         data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN).balanceOf(address(this)).toUint128();
         data.transferredTokens = 0;
@@ -168,10 +168,10 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
         if (balance == 0) {
             return;
         }
-        
+
         IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
         RewardsClaimManagersStorageLib.updateTransferredTokens(balance);
-        
+
         emit AmountWithdrawn(balance);
     }
 
