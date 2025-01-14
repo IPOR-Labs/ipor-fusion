@@ -82,6 +82,7 @@ contract RamsesClaimFuse {
         for (uint256 i; i < len; ++i) {
             balanceAfter = IERC20(tokenRewards[i]).balanceOf(plasmaVault);
             rewardToTransfer = balanceAfter - balancesBefore[i];
+
             if (rewardToTransfer > 0) {
                 IERC20(tokenRewards[i]).safeTransfer(rewardsClaimManager, rewardToTransfer);
                 emit RamsesClaimFuseTransferredReward(tokenId, tokenRewards[i], rewardToTransfer);

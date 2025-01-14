@@ -9,7 +9,7 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {WstETHPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FuseAction, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {MorphoSupplyFuse, MorphoSupplyFuseEnterData} from "../../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
@@ -17,10 +17,10 @@ import {MorphoCollateralFuse, MorphoCollateralFuseEnterData} from "../../../cont
 import {MorphoBorrowFuse, MorphoBorrowFuseEnterData, MorphoBorrowFuseExitData} from "../../../contracts/fuses/morpho/MorphoBorrowFuse.sol";
 import {MorphoBalanceFuse} from "../../../contracts/fuses/morpho/MorphoBalanceFuse.sol";
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
@@ -171,7 +171,7 @@ contract MorphoCreditMarketTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createAccessManager() private returns (address accessManager_) {
@@ -210,7 +210,8 @@ contract MorphoCreditMarketTest is Test {
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER()
+                    .FEE_MANAGER(),
+                contextManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

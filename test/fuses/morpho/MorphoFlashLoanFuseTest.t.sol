@@ -5,7 +5,7 @@ import {Test, Vm} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, MarketSubstratesConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, MarketSubstratesConfig, FuseAction, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -15,10 +15,11 @@ import {MorphoFlashLoanFuse, MorphoFlashLoanFuseEnterData} from "../../../contra
 import {MockInnerBalance} from "./MockInnerBalance.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
+
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 contract MorphoFlashLoanFuseTest is Test {
     address private constant _MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
@@ -94,7 +95,7 @@ contract MorphoFlashLoanFuseTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createFuse() private returns (address[] memory) {
@@ -146,7 +147,8 @@ contract MorphoFlashLoanFuseTest is Test {
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER()
+                    .FEE_MANAGER(),
+                contextManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

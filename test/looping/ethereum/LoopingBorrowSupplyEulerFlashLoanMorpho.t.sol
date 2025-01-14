@@ -20,7 +20,6 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -37,10 +36,12 @@ import {IToken} from "./IToken.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {MorphoFlashLoanFuse} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 import {MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
-import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
+
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 struct VaultBalance {
     uint256 eulerPrimeUsdc;
@@ -227,7 +228,7 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig(0, 0, 0, 0, address(new FeeManagerFactory()), address(0), address(0));
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createAccessManager() private returns (address accessManager_) {
@@ -266,7 +267,8 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER()
+                    .FEE_MANAGER(),
+                contextManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

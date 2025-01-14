@@ -10,7 +10,7 @@ library LiquidityAmounts {
     /// @notice Downcasts uint256 to uint128
     /// @param x The uint258 to be downcasted
     /// @return y The passed value, downcasted to uint128
-    function toUint128(uint256 x) private pure returns (uint128 y) {
+    function toUint128(uint256 x) internal pure returns (uint128 y) {
         require((y = uint128(x)) == x);
     }
 

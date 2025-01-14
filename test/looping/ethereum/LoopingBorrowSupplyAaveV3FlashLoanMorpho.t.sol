@@ -11,7 +11,6 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -26,7 +25,7 @@ import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInit
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {MorphoFlashLoanFuse} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 import {MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
-import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 import {IMorpho} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
@@ -35,6 +34,7 @@ import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/Unisw
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
@@ -155,15 +155,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
     function deployMinimalPlasmaVaultForWBTC() private returns (address) {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
 
-        FeeConfig memory feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            atomistManagementFee: 0,
-            atomistPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: address(0),
-            iporDaoFeeRecipientAddress: address(0)
-        });
+        FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
 
@@ -191,10 +183,10 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
 
     function deployWBTCPriceFeed() private returns (address) {
         address wbtc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-        address wbtcEthFeed = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
-        address ethUsdFeed = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
+        address wbtcBtcFeed = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
+        address btcUsdFeed = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
 
-        _wbtcPriceFeed = address(new AssetChainlinkPriceFeed(wbtc, wbtcEthFeed, ethUsdFeed));
+        _wbtcPriceFeed = address(new AssetChainlinkPriceFeed(wbtc, wbtcBtcFeed, btcUsdFeed));
 
         return address(_wbtcPriceFeed);
     }
@@ -264,7 +256,8 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER()
+                    .FEE_MANAGER(),
+                contextManager: address(0)
             })
         });
 

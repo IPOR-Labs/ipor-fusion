@@ -20,31 +20,31 @@ interface IIporFusionAccessManager is IAccessManager {
 
     /// @notice Close or open given target to interact with methods with restricted modifiers.
     /// @dev In most cases when Vault is bootstrapping the ADMIN_ROLE  is revoked so custom method is needed to grant roles for a GUARDIAN_ROLE.
-    function updateTargetClosed(address target, bool closed) external;
+    function updateTargetClosed(address target_, bool closed_) external;
 
     /// @notice Converts the specified vault to a public vault - mint and deposit functions are allowed for everyone.
     /// @dev Notice! Can convert to public but cannot convert back to private.
-    /// @param vault The address of the vault
-    function convertToPublicVault(address vault) external;
+    /// @param vault_ The address of the vault
+    function convertToPublicVault(address vault_) external;
 
     /// @notice Enables transfer shares, transfer and transferFrom functions are allowed for everyone.
-    /// @param vault The address of the vault
-    function enableTransferShares(address vault) external;
+    /// @param vault_ The address of the vault
+    function enableTransferShares(address vault_) external;
 
     /// @notice Sets the minimal execution delay required for the specified roles.
-    /// @param rolesIds The roles for which the minimal execution delay is set
-    /// @param delays The minimal execution delays for the specified roles
-    function setMinimalExecutionDelaysForRoles(uint64[] calldata rolesIds, uint256[] calldata delays) external;
+    /// @param rolesIds_ The roles for which the minimal execution delay is set
+    /// @param delays_ The minimal execution delays for the specified roles
+    function setMinimalExecutionDelaysForRoles(uint64[] calldata rolesIds_, uint256[] calldata delays_) external;
 
     /// @notice Returns the minimal execution delay required for the specified role.
-    /// @param roleId The role for which the minimal execution delay is returned
+    /// @param roleId_ The role for which the minimal execution delay is returned
     /// @return The minimal execution delay in seconds
-    function getMinimalExecutionDelayForRole(uint64 roleId) external view returns (uint256);
+    function getMinimalExecutionDelayForRole(uint64 roleId_) external view returns (uint256);
 
     /// @notice Returns the account lock time for the specified account.
-    /// @param account The account for which the account lock time is returned
+    /// @param account_ The account for which the account lock time is returned
     /// @return The account lock time in seconds
-    function getAccountLockTime(address account) external view returns (uint256);
+    function getAccountLockTime(address account_) external view returns (uint256);
 
     /// @notice Returns the function selector for the scheduled operation that is currently being consumed.
     /// @return The function selector

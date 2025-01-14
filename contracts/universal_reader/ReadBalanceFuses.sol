@@ -18,7 +18,7 @@ contract ReadBalanceFuses {
      */
     function getBalanceFuse(uint256 marketId) external view returns (address) {
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
-        return balanceFuses.value[marketId];
+        return balanceFuses.fuseAddresses[marketId];
     }
 
     /**
@@ -37,7 +37,7 @@ contract ReadBalanceFuses {
         addresses = new address[](marketIdsLength);
 
         for (uint256 i; i < marketIdsLength; i++) {
-            addresses[i] = balanceFuses.value[marketIds[i]];
+            addresses[i] = balanceFuses.fuseAddresses[marketIds[i]];
         }
 
         return addresses;
@@ -67,15 +67,15 @@ contract ReadBalanceFuses {
         uint256 marketId;
         for (uint256 i; i < fusesLength + 1; ++i) {
             marketId = marketIds[i];
-            if (!marketIdInArray(marketIdsUnique, marketId)) {
+            if (!_marketIdInArray(marketIdsUnique, marketId)) {
                 marketIdsUnique[uniqueMarkets] = marketId;
                 uniqueMarkets++;
             }
         }
-        return reduceSizeOfArray(marketIdsUnique, uniqueMarkets);
+        return _reduceSizeOfArray(marketIdsUnique, uniqueMarkets);
     }
 
-    function reduceSizeOfArray(uint256[] memory array, uint256 newSize) internal pure returns (uint256[] memory) {
+    function _reduceSizeOfArray(uint256[] memory array, uint256 newSize) internal pure returns (uint256[] memory) {
         uint256[] memory newArray = new uint256[](newSize);
         for (uint256 i; i < newSize; ++i) {
             newArray[i] = array[i];
@@ -83,7 +83,7 @@ contract ReadBalanceFuses {
         return newArray;
     }
 
-    function marketIdInArray(uint256[] memory array, uint256 marketId) internal pure returns (bool) {
+    function _marketIdInArray(uint256[] memory array, uint256 marketId) internal pure returns (bool) {
         for (uint256 i; i < array.length; ++i) {
             if (array[i] == marketId) {
                 return true;

@@ -76,4 +76,8 @@ library PriceOracleMiddlewareHelper {
     function getArbitrumPriceOracleMiddleware() internal returns (PriceOracleMiddleware) {
         return PriceOracleMiddleware(0xF9d7F359875E21b3A74BEd7Db40348f5393AF758);
     }
+
+    function getEthereumPriceOracleMiddleware() internal returns (PriceOracleMiddleware) {
+        return PriceOracleMiddleware(0xB7018C15279E0f5990613cc00A91b6032066f2f7);
+    }
 }

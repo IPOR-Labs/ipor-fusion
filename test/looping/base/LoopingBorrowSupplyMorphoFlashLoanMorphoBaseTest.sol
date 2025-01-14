@@ -12,7 +12,6 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -32,11 +31,13 @@ import {MorphoFlashLoanFuse} from "../../../contracts/fuses/morpho/MorphoFlashLo
 import {MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 import {MorphoStorageLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoStorageLib.sol";
 import {Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
-import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 import {IMorpho, Position} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
+
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
@@ -109,15 +110,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoBaseTest is Test {
     function deployMinimalPlasmaVaultForUsdc() private returns (address) {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
 
-        FeeConfig memory feeConfig = FeeConfig({
-            iporDaoManagementFee: 0,
-            iporDaoPerformanceFee: 0,
-            atomistManagementFee: 0,
-            atomistPerformanceFee: 0,
-            feeFactory: address(new FeeManagerFactory()),
-            feeRecipientAddress: address(0),
-            iporDaoFeeRecipientAddress: address(0)
-        });
+        FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
 
@@ -215,7 +208,8 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoBaseTest is Test {
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER()
+                    .FEE_MANAGER(),
+                contextManager: address(0)
             })
         });
 

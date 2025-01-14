@@ -10,6 +10,8 @@ import {RewardsClaimManager} from "../../managers/rewards/RewardsClaimManager.so
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
 import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
+import {ContextClient} from "../../managers/context/ContextClient.sol";
+import {ContextManager} from "../../managers/context/ContextManager.sol";
 
 /// @notice Plasma Vault address struct.
 struct PlasmaVaultAddress {
@@ -23,6 +25,8 @@ struct PlasmaVaultAddress {
     address withdrawManager;
     /// @notice Address of the Fee Manager.
     address feeManager;
+    /// @notice Address of the Context Manager.
+    address contextManager;
 }
 
 /// @notice Data for the initialization of the IPOR Fusion Plasma Vault, contain accounts involved in interactions with the Plasma Vault.
@@ -62,11 +66,12 @@ struct Iterator {
 
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
-    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 13;
-    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER = 34;
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 14;
+    uint256 private constant ROLES_TO_FUNCTION_ARRAY_LENGTH_WHEN_NO_REWARDS_CLAIM_MANAGER = 35;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 3;
-    uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 4;
+    uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 3;
+    uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
     /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
@@ -95,6 +100,7 @@ library IporFusionAccessManagerInitializerLibV1 {
                 data_.transferRewardsManagers.length +
                 data_.whitelist.length +
                 data_.configInstantWithdrawalFusesManagers.length +
+                (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +
                 (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +
                 (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 2) +
                 1 // Plasma Vault
@@ -230,33 +236,53 @@ library IporFusionAccessManagerInitializerLibV1 {
             ++index;
         }
 
+        if (data_.plasmaVaultAddress.contextManager != address(0)) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                account: data_.plasmaVaultAddress.contextManager,
+                executionDelay: 0
+            });
+            ++index;
+        }
+
         return accountToRoles;
     }
 
     function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
         adminRoles_ = new AdminRole[](ADMIN_ROLES_ARRAY_LENGTH);
-        adminRoles_[0] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
-        adminRoles_[1] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});
-        adminRoles_[2] = AdminRole({roleId: Roles.ATOMIST_ROLE, adminRoleId: Roles.OWNER_ROLE});
-        adminRoles_[3] = AdminRole({roleId: Roles.ALPHA_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[4] = AdminRole({roleId: Roles.WHITELIST_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[5] = AdminRole({
+        Iterator memory iterator;
+        adminRoles_[iterator.index] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.ATOMIST_ROLE, adminRoleId: Roles.OWNER_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.ALPHA_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.WHITELIST_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({
             roleId: Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE,
             adminRoleId: Roles.ATOMIST_ROLE
         });
-        adminRoles_[6] = AdminRole({roleId: Roles.TRANSFER_REWARDS_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[7] = AdminRole({roleId: Roles.CLAIM_REWARDS_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[8] = AdminRole({roleId: Roles.FUSE_MANAGER_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
-        adminRoles_[9] = AdminRole({
+        adminRoles_[_next(iterator)] = AdminRole({
+            roleId: Roles.TRANSFER_REWARDS_ROLE,
+            adminRoleId: Roles.ATOMIST_ROLE
+        });
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.CLAIM_REWARDS_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.FUSE_MANAGER_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({
             roleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
             adminRoleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE
         });
-        adminRoles_[10] = AdminRole({
+        adminRoles_[_next(iterator)] = AdminRole({
             roleId: Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE,
             adminRoleId: Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE
         });
-        adminRoles_[11] = AdminRole({roleId: Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
-        adminRoles_[12] = AdminRole({roleId: Roles.IPOR_DAO_ROLE, adminRoleId: Roles.IPOR_DAO_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({
+            roleId: Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
+            adminRoleId: Roles.ADMIN_ROLE
+        });
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.IPOR_DAO_ROLE, adminRoleId: Roles.IPOR_DAO_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({
+            roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+            adminRoleId: Roles.TECH_CONTEXT_MANAGER_ROLE
+        });
         return adminRoles_;
     }
 
@@ -272,6 +298,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         length += plasmaVaultAddress_.rewardsClaimManager == address(0) ? 0 : ROLES_TO_FUNCTION_CLAIM_MANAGER;
         length += plasmaVaultAddress_.withdrawManager == address(0) ? 0 : ROLES_TO_FUNCTION_WITHDRAW_MANAGER;
         length += plasmaVaultAddress_.feeManager == address(0) ? 0 : ROLES_TO_FUNCTION_FEE_MANAGER;
+        length += plasmaVaultAddress_.contextManager == address(0) ? 0 : ROLES_TO_FUNCTION_CONTEXT_MANAGER;
 
         rolesToFunction = new RoleToFunction[](length);
 
@@ -345,6 +372,12 @@ library IporFusionAccessManagerInitializerLibV1 {
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.FUSE_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.removeFuses.selector,
+            minimalExecutionDelay: 0
+        });
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.plasmaVault,
+            roleId: Roles.ATOMIST_ROLE,
+            functionSelector: PlasmaVaultGovernance.setPreHookImplementations.selector,
             minimalExecutionDelay: 0
         });
         rolesToFunction[_next(iterator)] = RoleToFunction({
@@ -576,16 +609,81 @@ library IporFusionAccessManagerInitializerLibV1 {
                 functionSelector: FeeManager.updateManagementFee.selector,
                 minimalExecutionDelay: 0
             });
-            rolesToFunction[_next(iterator)] = RoleToFunction({
-                target: plasmaVaultAddress_.feeManager,
-                roleId: Roles.ATOMIST_ROLE,
-                functionSelector: FeeManager.setFeeRecipientAddress.selector,
-                minimalExecutionDelay: 0
-            });
+
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.IPOR_DAO_ROLE,
                 functionSelector: FeeManager.setIporDaoFeeRecipientAddress.selector,
+                minimalExecutionDelay: 0
+            });
+        }
+
+        if (plasmaVaultAddress_.contextManager != address(0)) {
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.contextManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: ContextManager.addApprovedTargets.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.contextManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: ContextManager.removeApprovedTargets.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.plasmaVault,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.setupContext.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.plasmaVault,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.clearContext.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.feeManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.setupContext.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.feeManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.clearContext.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.withdrawManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.setupContext.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.withdrawManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.clearContext.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.rewardsClaimManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.setupContext.selector,
+                minimalExecutionDelay: 0
+            });
+
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.rewardsClaimManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.clearContext.selector,
                 minimalExecutionDelay: 0
             });
         }
