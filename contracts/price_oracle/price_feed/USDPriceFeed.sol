@@ -18,7 +18,6 @@ contract USDPriceFeed is IPriceFeed {
     /// @return startedAt The timestamp when the round started (always 0)
     /// @return time The timestamp when the round was updated (always 0) 
     /// @return answeredInRound The round ID in which the answer was computed (always 0)
-
     function latestRoundData()
         external
         view
