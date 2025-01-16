@@ -10,7 +10,7 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-contract WPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
+contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -91,10 +91,10 @@ contract WPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reentrancy
         if (assets_ == 0) revert ZeroAssetsDeposit();
         if (receiver_ == address(0)) revert ZeroReceiverAddress();
 
+        _calculateFees();
+
         uint256 shares = previewDeposit(assets_);
         if (shares == 0) revert ZeroSharesMint();
-
-        _calculateFees();
 
         IERC20(asset()).safeTransferFrom(msg.sender, address(this), assets_);
 
@@ -149,10 +149,10 @@ contract WPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reentrancy
         if (shares_ == 0) revert ZeroSharesMint();
         if (receiver_ == address(0)) revert ZeroReceiverAddress();
 
+        _calculateFees();
+
         uint256 assets = previewMint(shares_);
         if (assets == 0) revert ZeroAssetsDeposit();
-
-        _calculateFees();
 
         IERC20(asset()).safeTransferFrom(msg.sender, address(this), assets);
 
@@ -213,13 +213,13 @@ contract WPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reentrancy
         if (assets_ == 0) revert ZeroAssetsWithdraw();
         if (receiver_ == address(0)) revert ZeroReceiverAddress();
 
+        _calculateFees();
+
         uint256 shares = previewWithdraw(assets_);
 
         if (msg.sender != owner_) {
             _spendAllowance(owner_, msg.sender, shares);
         }
-
-        _calculateFees();
 
         _burn(owner_, shares);
 
@@ -281,10 +281,9 @@ contract WPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reentrancy
             _spendAllowance(owner_, msg.sender, shares_);
         }
 
+        _calculateFees();
         uint256 assets = previewRedeem(shares_);
         if (assets == 0) revert ZeroAssetsWithdraw();
-
-        _calculateFees();
 
         _burn(owner_, shares_);
 
@@ -395,7 +394,14 @@ contract WPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reentrancy
      * @return uint256 Total assets in underlying token decimals
      */
     function totalAssets() public view virtual override returns (uint256) {
-        return ERC4626Upgradeable(PLASMA_VAULT).maxWithdraw(address(this));
+        uint256 grossTotalAssets = ERC4626Upgradeable(PLASMA_VAULT).maxWithdraw(address(this));
+        uint256 unrealizedManagementFee = _getUnrealizedManagementFee(grossTotalAssets);
+
+        if (unrealizedManagementFee >= grossTotalAssets) {
+            return 0;
+        } else {
+            return grossTotalAssets - unrealizedManagementFee;
+        }
     }
 
     /**
@@ -524,7 +530,6 @@ contract WPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reentrancy
      */
     function maxWithdraw(address owner) public view override returns (uint256) {
         uint256 shares = balanceOf(owner);
-        uint256 managementFee = getUnrealizedManagementFee();
 
         PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
 
@@ -534,7 +539,7 @@ contract WPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reentrancy
             ? Math.mulDiv(totalAssetsNow - lastTotalAssets, feeData.feeInPercentage, FEE_PERCENTAGE_DECIMALS_MULTIPLIER)
             : 0;
 
-        uint256 sharesFromFees = convertToShares(managementFee + performanceFee);
+        uint256 sharesFromFees = performanceFee > 0 ? convertToShares(performanceFee) : 0;
         return
             shares.mulDiv(
                 totalAssets() + 1,

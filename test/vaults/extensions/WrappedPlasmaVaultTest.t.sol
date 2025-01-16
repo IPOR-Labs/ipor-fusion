@@ -2,13 +2,13 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {WPlasmaVault} from "../../../contracts/vaults/extensions/WPlasmaVault.sol";
+import {WrappedPlasmaVault} from "../../../contracts/vaults/extensions/WrappedPlasmaVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultStorageLib} from "../../../contracts/libraries/PlasmaVaultStorageLib.sol";
 
-contract WPlasmaVaultTest is Test {
-    WPlasmaVault public wPlasmaVault;
+contract WrappedPlasmaVaulttTest is Test {
+    WrappedPlasmaVault public wPlasmaVault;
     address public usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     PlasmaVault public plasmaVault = PlasmaVault(0x43Ee0243eA8CF02f7087d8B16C8D2007CC9c7cA2);
     address public owner;
@@ -20,7 +20,7 @@ contract WPlasmaVaultTest is Test {
         owner = makeAddr("owner");
         user = makeAddr("user");
 
-        wPlasmaVault = new WPlasmaVault(usdc, "Wrapped USDC", "wFusionUSDC", address(plasmaVault));
+        wPlasmaVault = new WrappedPlasmaVault(usdc, "Wrapped USDC", "wFusionUSDC", address(plasmaVault));
         wPlasmaVault.configurePerformanceFee(owner, 0);
         wPlasmaVault.configureManagementFee(owner, 0);
         wPlasmaVault.transferOwnership(owner);
