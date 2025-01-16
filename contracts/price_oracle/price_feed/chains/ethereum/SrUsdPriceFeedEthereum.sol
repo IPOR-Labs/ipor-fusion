@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {IPriceFeed} from "./IPriceFeed.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
+import {IPriceFeed} from "../../IPriceFeed.sol";
+
 interface ISavingModule {
 
     /// @notice Current price of srUSD in rUSD (always >= 1e8)
@@ -12,6 +15,8 @@ interface ISavingModule {
 /// @title SrUsdPriceFeedEthereum
 /// @notice Price feed for srUSD on Ethereum Mainnet, using SavingModule to get the price, sUSD is always treated as 1 USD
 contract SrUsdPriceFeedEthereum is IPriceFeed {
+    using SafeCast for uint256;
+
     error InvalidSavingModule();
 
     uint8 public constant override decimals = 8;
@@ -36,6 +41,6 @@ contract SrUsdPriceFeedEthereum is IPriceFeed {
 
         /// @dev In this implementation sUSD is always treated as 1 USD
 
-        return (0, srUSDPriceInRUSD, 0, 0, 0);
+        return (0, srUSDPriceInRUSD.toInt256(), 0, 0, 0);
     }
 }
