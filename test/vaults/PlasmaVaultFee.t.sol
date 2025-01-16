@@ -2,7 +2,9 @@
 pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {FeeConfig, RecipientFee} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
@@ -16,6 +18,8 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -26,7 +30,8 @@ contract PlasmaVaultFeeTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
-    address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     uint256 public constant AAVE_V3_MARKET_ID = 1;
@@ -91,13 +96,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -115,6 +118,11 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+
+        RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
+        recipientPerformanceFees[0] = RecipientFee({recipient: recipient, feeValue: performanceFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -124,10 +132,18 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: new RecipientFee[](0),
+                    recipientPerformanceFees: recipientPerformanceFees
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -135,6 +151,9 @@ contract PlasmaVaultFeeTest is Test {
         FuseAction[] memory calls = new FuseAction[](2);
 
         amount = 100 * 1e6;
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         /// @dev user one deposit
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -226,13 +245,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -250,6 +267,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
+        recipientPerformanceFees[0] = RecipientFee({recipient: recipient, feeValue: performanceFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -259,10 +280,18 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: new RecipientFee[](0),
+                    recipientPerformanceFees: recipientPerformanceFees
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -357,13 +386,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -381,6 +408,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
+        recipientPerformanceFees[0] = RecipientFee({recipient: recipient, feeValue: performanceFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -390,15 +421,26 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: new RecipientFee[](0),
+                    recipientPerformanceFees: recipientPerformanceFees
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -498,13 +540,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -522,6 +562,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
+        recipientPerformanceFees[0] = RecipientFee({recipient: recipient, feeValue: performanceFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -531,10 +575,18 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: new RecipientFee[](0),
+                    recipientPerformanceFees: recipientPerformanceFees
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -639,13 +691,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -663,6 +713,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
+        recipientPerformanceFees[0] = RecipientFee({recipient: recipient, feeValue: performanceFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -672,10 +726,18 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: new RecipientFee[](0),
+                    recipientPerformanceFees: recipientPerformanceFees
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -780,13 +842,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         /// @dev Market Compound V3
@@ -804,6 +864,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
+        recipientPerformanceFees[0] = RecipientFee({recipient: recipient, feeValue: performanceFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -813,10 +877,18 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: new RecipientFee[](0),
+                    recipientPerformanceFees: recipientPerformanceFees
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -927,13 +999,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -944,6 +1014,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
+        recipientPerformanceFees[0] = RecipientFee({recipient: recipient, feeValue: performanceFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -953,15 +1027,26 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: new RecipientFee[](0),
+                    recipientPerformanceFees: recipientPerformanceFees
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -1049,13 +1134,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -1066,6 +1149,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
+        recipientPerformanceFees[0] = RecipientFee({recipient: recipient, feeValue: performanceFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1075,10 +1162,18 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(performanceFeeManager, performanceFeeInPercentage, managementFeeManager, 0),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: new RecipientFee[](0),
+                    recipientPerformanceFees: recipientPerformanceFees
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1168,13 +1263,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -1187,6 +1280,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientManagementFees = new RecipientFee[](1);
+        recipientManagementFees[0] = RecipientFee({recipient: recipient, feeValue: managementFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1196,21 +1293,26 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(
-                    performanceFeeManager,
-                    performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
-                ),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: recipientManagementFees,
+                    recipientPerformanceFees: new RecipientFee[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
 
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
@@ -1267,13 +1369,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -1284,6 +1384,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientManagementFees = new RecipientFee[](1);
+        recipientManagementFees[0] = RecipientFee({recipient: recipient, feeValue: managementFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1293,21 +1397,27 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(
-                    performanceFeeManager,
-                    performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
-                ),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: recipientManagementFees,
+                    recipientPerformanceFees: new RecipientFee[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
         sharesAmount = 100 * 10 ** plasmaVault.decimals();
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         vm.warp(block.timestamp);
 
@@ -1374,13 +1484,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -1400,15 +1508,11 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(
-                    performanceFeeManager,
-                    performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
-                ),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1474,13 +1578,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -1491,6 +1593,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientManagementFees = new RecipientFee[](1);
+        recipientManagementFees[0] = RecipientFee({recipient: recipient, feeValue: managementFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1500,15 +1606,18 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(
-                    performanceFeeManager,
-                    performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
-                ),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: recipientManagementFees,
+                    recipientPerformanceFees: new RecipientFee[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1571,13 +1680,11 @@ contract PlasmaVaultFeeTest is Test {
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_PRICE_ORACLE_MAINNET,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
             AAVE_V3_MARKET_ID,
-            AAVE_POOL,
-            ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -1588,6 +1695,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientManagementFees = new RecipientFee[](1);
+        recipientManagementFees[0] = RecipientFee({recipient: recipient, feeValue: managementFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1597,20 +1708,26 @@ contract PlasmaVaultFeeTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(
-                    performanceFeeManager,
-                    performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
-                ),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: recipientManagementFees,
+                    recipientPerformanceFees: new RecipientFee[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
 
         amount = 100 * 1e6;
+
+        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         vm.warp(block.timestamp);
 
@@ -1696,7 +1813,12 @@ contract PlasmaVaultFeeTest is Test {
         underlyingToken = USDC;
         alpha = address(0x1);
 
+        address recipient = address(0x333);
+
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+
+        RecipientFee[] memory recipientManagementFees = new RecipientFee[](1);
+        recipientManagementFees[0] = RecipientFee({recipient: recipient, feeValue: managementFeeInPercentage});
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1707,15 +1829,18 @@ contract PlasmaVaultFeeTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(
-                    performanceFeeManager,
-                    performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
-                ),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: recipientManagementFees,
+                    recipientPerformanceFees: new RecipientFee[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager);
@@ -1750,6 +1875,9 @@ contract PlasmaVaultFeeTest is Test {
 
         /// @dev move time
         vm.warp(block.timestamp + 365 days);
+
+        //solhint-disable-next-line
+        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
 
         uint256 managementFeeAfter365DayBeforeMaxRedeem = plasmaVault.getUnrealizedManagementFee();
         vm.startPrank(userOne);
@@ -1809,6 +1937,10 @@ contract PlasmaVaultFeeTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address recipient = address(0x333);
+        RecipientFee[] memory recipientManagementFees = new RecipientFee[](1);
+        recipientManagementFees[0] = RecipientFee({recipient: recipient, feeValue: managementFeeInPercentage});
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1818,15 +1950,18 @@ contract PlasmaVaultFeeTest is Test {
                 new MarketSubstratesConfig[](0),
                 new address[](0),
                 new MarketBalanceFuseConfig[](0),
-                FeeConfig(
-                    performanceFeeManager,
-                    performanceFeeInPercentage,
-                    managementFeeManager,
-                    managementFeeInPercentage
-                ),
+                FeeConfig({
+                    iporDaoManagementFee: 0,
+                    iporDaoPerformanceFee: 0,
+                    feeFactory: address(new FeeManagerFactory()),
+                    iporDaoFeeRecipientAddress: address(0),
+                    recipientManagementFees: recipientManagementFees,
+                    recipientPerformanceFees: new RecipientFee[](0)
+                }),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
 

@@ -20,14 +20,16 @@ import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contrac
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
-import {CallbackHandlerMorpho} from "../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {CallbackHandlerMorpho} from "../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 
 contract PlasmaVaultCallbackHandler is Test {
     address private constant _AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
-    address private constant _ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
+
+    address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
 
     address private constant _AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     uint256 private constant _AAVE_V3_MARKET_ID = 1;
@@ -83,7 +85,8 @@ contract PlasmaVaultCallbackHandler is Test {
                     feeConfig,
                     _accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max
+                    type(uint256).max,
+                    address(0)
                 )
             )
         );
@@ -103,7 +106,7 @@ contract PlasmaVaultCallbackHandler is Test {
 
     function _setupFuses() private returns (address[] memory fuses) {
         _morphoFuse = new MorphoSupplyWithCallBackDataFuse(_MORPHO_MARKET_ID);
-        _supplyFuseAaveV3 = new AaveV3SupplyFuse(_AAVE_V3_MARKET_ID, _AAVE_POOL, _ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3);
+        _supplyFuseAaveV3 = new AaveV3SupplyFuse(_AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         _supplyFuseCompoundV3 = new CompoundV3SupplyFuse(_COMPOUND_V3_MARKET_ID, _COMET_V3_USDC);
 
         fuses = new address[](3);
@@ -130,13 +133,7 @@ contract PlasmaVaultCallbackHandler is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(_MORPHO_MARKET_ID, address(new MorphoBalanceFuse(_MORPHO_MARKET_ID)));
         balanceFuses[1] = MarketBalanceFuseConfig(
             _AAVE_V3_MARKET_ID,
-            address(
-                new AaveV3BalanceFuse(
-                    _AAVE_V3_MARKET_ID,
-                    _AAVE_PRICE_ORACLE_MAINNET,
-                    _ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3
-                )
-            )
+            address(new AaveV3BalanceFuse(_AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER))
         );
         balanceFuses[2] = MarketBalanceFuseConfig(
             _COMPOUND_V3_MARKET_ID,
@@ -145,13 +142,8 @@ contract PlasmaVaultCallbackHandler is Test {
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _createAccessManager() private {
@@ -170,6 +162,8 @@ contract PlasmaVaultCallbackHandler is Test {
         initAddress[0] = address(this);
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -177,15 +171,16 @@ contract PlasmaVaultCallbackHandler is Test {
             whitelist: initAddress,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: initAddress,
-            managementFeeManagers: initAddress,
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(this)
+                rewardsClaimManager: address(this),
+                withdrawManager: address(0),
+                feeManager: address(0),
+                contextManager: address(0)
             })
         });
 
@@ -233,8 +228,8 @@ contract PlasmaVaultCallbackHandler is Test {
                 "enter((bytes32,uint256,bytes))",
                 MorphoSupplyFuseEnterData({
                     morphoMarketId: _MARKET_ID_BYTES32,
-                    amount: 100e18,
-                    callbackData: callbackCallsBytes
+                    maxTokenAmount: 100e18,
+                    callbackFuseActionsData: callbackCallsBytes
                 })
             )
         );

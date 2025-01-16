@@ -122,14 +122,16 @@ interface IPlasmaVaultGovernance {
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external;
 
     /// @notice Configures the performance fee
-    /// @param feeManager_ The address of the fee manager
-    /// @param feeInPercentage_ The fee in percentage represented in 18 decimals, example 1e18 is 100%, 1e17 is 10% etc.
-    function configurePerformanceFee(address feeManager_, uint256 feeInPercentage_) external;
+    /// @param feeAccount_ The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
+    /// @param feeInPercentage_ The fee in percentage represented in 2 decimals, example 100% = 10000, 1% = 100, 0.01% = 1
+    /// @dev feeAccount_ can be also EOA address or MultiSig address, in this case it will receive the performance fee directly
+    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external;
 
     /// @notice Configures the management fee
-    /// @param feeManager_ The address of the fee manager
-    /// @param feeInPercentage_ The fee in percentage represented in 18 decimals, example 1e18 is 100%, 1e17 is 10% etc.
-    function configureManagementFee(address feeManager_, uint256 feeInPercentage_) external;
+    /// @param feeAccount_ The address of the technical Management Fee Account that will receive the management fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
+    /// @param feeInPercentage_ The fee in percentage represented in 2 decimals, example 100% = 10000, 1% = 100, 0.01% = 1
+    /// @dev feeAccount_ can be also EOA address or MultiSig address, in this case it will receive the management fee directly
+    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external;
 
     /// @notice Sets the Rewards Claim Manager address
     /// @param rewardsClaimManagerAddress_ The address of the Rewards Claim Manager

@@ -39,6 +39,7 @@ An example `.env` file is in [.env.example](./.env.example). Copy this file to `
 
 - `ETHEREUM_PROVIDER_URL` - Ethereum provider URL
 - `ARBITRUM_PROVIDER_URL` - Arbitrum provider URL
+- `BASE_PROVIDER_URL` - Base provider URL
 
 Test smart contracts using:
 

@@ -11,7 +11,7 @@ import {CurveChildLiquidityGaugeBalanceFuse} from "../../../contracts/fuses/curv
 import {CurveGaugeTokenClaimFuse} from "../../../contracts/rewards_fuses/curve_gauges/CurveGaugeTokenClaimFuse.sol";
 import {IChildLiquidityGauge} from "../../../contracts/fuses/curve_gauge/ext/IChildLiquidityGauge.sol";
 import {ICurveStableswapNG} from "../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {PlasmaVault, FeeConfig, FuseAction, PlasmaVault, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, FuseAction, PlasmaVault, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData, FeeConfig} from "./../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
@@ -24,6 +24,7 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVa
 import {InitializationData} from "../../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -534,7 +535,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(instances.accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                totalSupplyCap: type(uint256).max
+                totalSupplyCap: type(uint256).max,
+                withdrawManager: address(0)
             })
         );
     }
@@ -574,13 +576,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         );
     }
 
-    function _setupFeeConfig() private view returns (FeeConfig memory feeConfig) {
-        feeConfig = FeeConfig({
-            performanceFeeManager: address(this),
-            performanceFeeInPercentage: 0,
-            managementFeeManager: address(this),
-            managementFeeInPercentage: 0
-        });
+    function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
+        feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
     function _addClaimFuseToClaimRewardsManager() private {
@@ -594,6 +591,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         initAddress[0] = admin;
 
         DataForInitialization memory data = DataForInitialization({
+            isPublic: false,
+            iporDaos: initAddress,
             admins: initAddress,
             owners: initAddress,
             atomists: initAddress,
@@ -601,15 +600,16 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             whitelist: initAddress,
             guardians: initAddress,
             fuseManagers: initAddress,
-            performanceFeeManagers: initAddress,
-            managementFeeManagers: initAddress,
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(instances.plasmaVault),
                 accessManager: address(instances.accessManager),
-                rewardsClaimManager: address(instances.rewardsClaimManager)
+                rewardsClaimManager: address(instances.rewardsClaimManager),
+                withdrawManager: address(0),
+                feeManager: address(0),
+                contextManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

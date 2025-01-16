@@ -20,6 +20,10 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
  *
  * By default, token balance does not account for voting power. This makes transfers cheaper. The downside is that it
  * requires users to delegate to themselves in order to activate checkpoints and have their voting power tracked.
+
+ * IPOR Labs notice: This contract is a copy of the original ERC20VotesUpgradeable contract from OpenZeppelin,
+ * with removed _update function. Dedicated for Plasma Vault implementation of _update function is in PlasmaVaultBase.sol which covers the logic required for ERC20VotesUpgradeable
+ * and logic required for total supply cap validation in Plasma Vault.
  */
 abstract contract ERC20VotesUpgradeable is Initializable, ERC20Upgradeable, VotesUpgradeable {
     // solhint-disable-next-line func-name-mixedcase

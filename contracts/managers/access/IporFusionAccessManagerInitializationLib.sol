@@ -3,53 +3,83 @@ pragma solidity 0.8.26;
 
 import {IporFusionAccessManagersStorageLib, InitializationFlag} from "./IporFusionAccessManagersStorageLib.sol";
 
-/// @notice Struct for the role-to-function mapping
+/**
+ * @title Role-to-Function Mapping Structure
+ * @notice Defines the relationship between roles and their authorized function calls
+ * @dev Used to configure function-level access control during initialization
+ */
 struct RoleToFunction {
-    /// @notice The target contract address
+    /// @notice The target contract address where the function resides
     address target;
-    /// @notice The role ID
+    /// @notice The role identifier that has permission to call the function
     uint64 roleId;
-    /// @notice The function selector
+    /// @notice The 4-byte function selector of the authorized function
     bytes4 functionSelector;
-    /// @notice The minimal execution delay, if greater than 0 then the function is timelocked
+    /// @notice Timelock delay for function execution
+    /// @dev If greater than 0, function calls require waiting for the specified delay
     uint256 minimalExecutionDelay;
 }
 
-/// @notice Struct for the admin role mapping
+/**
+ * @title Admin Role Configuration Structure
+ * @notice Defines the hierarchical relationship between roles
+ * @dev Used to establish role administration rights
+ */
 struct AdminRole {
-    /// @notice The role ID
+    /// @notice The role being administered
     uint64 roleId;
-    /// @notice The admin role ID
+    /// @notice The role that has admin rights over roleId
     uint64 adminRoleId;
 }
 
-/// @notice Struct for the account-to-role mapping
+/**
+ * @title Account-to-Role Assignment Structure
+ * @notice Maps accounts to their assigned roles with optional execution delays
+ * @dev Used to configure initial role assignments during initialization
+ */
 struct AccountToRole {
-    /// @notice The role ID
+    /// @notice The role being assigned
     uint64 roleId;
-    /// @notice The account address
+    /// @notice The account receiving the role
     address account;
-    /// @notice The account lock time, if greater than 0 then the execution is timelocked for a given account
+    /// @notice Account-specific execution delay
+    /// @dev If greater than 0, the account must wait this period before executing role actions
     uint32 executionDelay;
 }
 
-/// @notice Struct for the initialization data for the IporFusionAccessManager contract
+/**
+ * @title Access Manager Initialization Configuration
+ * @notice Comprehensive structure for initializing the access control system
+ * @dev Combines all necessary configuration data for one-time initialization
+ */
 struct InitializationData {
-    /// @notice The role-to-function mappings
+    /// @notice Array of function access configurations
     RoleToFunction[] roleToFunctions;
-    /// @notice The account-to-role mappings
+    /// @notice Array of initial role assignments
     AccountToRole[] accountToRoles;
-    /// @notice The admin role mappings
+    /// @notice Array of role hierarchy configurations
     AdminRole[] adminRoles;
 }
 
-/// @title Library for initializing the IporFusionAccessManager contract, initializing the contract can only be done once
+/**
+ * @title IPOR Fusion Access Manager Initialization Library
+ * @notice Manages one-time initialization of access control settings
+ * @dev Implements initialization protection to prevent multiple configurations
+ * @custom:security-contact security@ipor.io
+ */
 library IporFusionAccessManagerInitializationLib {
+    /// @notice Emitted when the access manager is successfully initialized
     event IporFusionAccessManagerInitialized();
+
+    /// @notice Thrown when attempting to initialize an already initialized contract
     error AlreadyInitialized();
 
-    /// @notice Checks if the contract is already initialized
-    /// @dev The function checks if the contract is already initialized, if it is, it reverts with an error
+    /**
+     * @notice Verifies and sets the initialization state
+     * @dev Ensures the contract can only be initialized once
+     * @custom:security Critical function that prevents multiple initializations
+     * @custom:error-handling Reverts with AlreadyInitialized if already initialized
+     */
     function isInitialized() internal {
         InitializationFlag storage initializationFlag = IporFusionAccessManagersStorageLib.getInitializationFlag();
         if (initializationFlag.initialized > 0) {

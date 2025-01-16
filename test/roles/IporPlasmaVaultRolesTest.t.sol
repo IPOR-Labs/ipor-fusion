@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, PlasmaVaultInitData, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -18,12 +18,13 @@ import {IporFusionAccessManagerInitializerLibV1} from "../../contracts/vaults/in
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant CHAINLINK_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
     address public constant AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
-    address public constant AAVE_POOL_DATA_PROVIDER = 0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654;
+    address public constant ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb;
     address public constant AAVE_PRICE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
 
     address private _deployer = vm.rememberKey(1);
@@ -40,6 +41,24 @@ contract IporPlasmaVaultRolesTest is Test {
         _generatePlasmaVault();
         _generateRewardsClaimManager();
         _initializeAccessManager();
+    }
+
+    function testShouldAtomistGrantMarketSubstrates() external {
+        // given
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        //when
+        vm.startPrank(_data.atomists[0]);
+        IPlasmaVaultGovernance(address(_plasmaVault)).grantMarketSubstrates(IporFusionMarkets.AAVE_V3, substrates);
+        vm.stopPrank();
+
+        //then
+        assertEq(
+            IPlasmaVaultGovernance(address(_plasmaVault)).getMarketSubstrates(IporFusionMarkets.AAVE_V3)[0],
+            substrates[0],
+            "Market substrates should be equal"
+        );
     }
 
     function testDeployerShouldNotBeAdminAfterInitialization() external view {
@@ -89,11 +108,11 @@ contract IporPlasmaVaultRolesTest is Test {
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.PERFORMANCE_FEE_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.MANAGEMENT_FEE_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
@@ -101,11 +120,11 @@ contract IporPlasmaVaultRolesTest is Test {
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
+        _accessManager.setRoleAdmin(Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, uint64(11111));
 
         vm.prank(_deployer);
         vm.expectRevert(error);
@@ -239,48 +258,6 @@ contract IporPlasmaVaultRolesTest is Test {
         vm.prank(_deployer);
         vm.expectRevert(error);
         _accessManager.labelRole(Roles.ADMIN_ROLE, "ADMIN_ROLE");
-    }
-
-    function testShouldBeAbleToCancelScheduledOpByGuardianForManagementFeeManagerRole() external {
-        //given
-        address user = vm.rememberKey(1234);
-
-        vm.prank(_data.managementFeeManagers[0]);
-        _accessManager.grantRole(Roles.MANAGEMENT_FEE_MANAGER_ROLE, user, 10000);
-
-        address target = address(_plasmaVault);
-        bytes memory data = abi.encodeWithSignature("configureManagementFee(address,uint256)", address(0x555), 55);
-
-        vm.prank(user);
-        (, uint32 nonceSchedule) = _accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
-
-        //when
-        vm.prank(_data.guardians[0]);
-        uint32 nonceCancel = _accessManager.cancel(user, target, data);
-
-        //then
-        assertEq(nonceSchedule, nonceCancel, "Nonce should be equal");
-    }
-
-    function testShouldBeAbleToCancelScheduledOpByGuardianForPerformanceFeeManagerRole() external {
-        //given
-        address user = vm.rememberKey(1234);
-
-        vm.prank(_data.performanceFeeManagers[0]);
-        _accessManager.grantRole(Roles.PERFORMANCE_FEE_MANAGER_ROLE, user, 10000);
-
-        address target = address(_plasmaVault);
-        bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x555), 55);
-
-        vm.prank(user);
-        (, uint32 nonceSchedule) = _accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
-
-        //when
-        vm.prank(_data.guardians[0]);
-        uint32 nonceCancel = _accessManager.cancel(user, target, data);
-
-        //then
-        assertEq(nonceSchedule, nonceCancel, "Nonce should be equal");
     }
 
     function testShouldBeAbleToCancelScheduledOpByGuardianForAtomistRole() external {
@@ -446,11 +423,15 @@ contract IporPlasmaVaultRolesTest is Test {
             PlasmaVaultGovernance.setRewardsClaimManagerAddress.selector
         );
         (bool isMember, uint32 executionDelay) = _accessManager.hasRole(
-            Roles.REWARDS_CLAIM_MANAGER_ROLE,
+            Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
             address(_rewardsClaimManager)
         );
 
-        assertEq(roleId, Roles.REWARDS_CLAIM_MANAGER_ROLE, "Role id should be equal to rewards claim manager role");
+        assertEq(
+            roleId,
+            Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
+            "Role id should be equal to rewards claim manager role"
+        );
         assertTrue(isMember, "Rewards claim manager should be a member of rewards claim manager role");
         assertEq(executionDelay, 0, "Execution delay should be 0");
     }
@@ -491,10 +472,6 @@ contract IporPlasmaVaultRolesTest is Test {
         _data.guardians[0] = vm.rememberKey(6);
         _data.fuseManagers = new address[](1);
         _data.fuseManagers[0] = vm.rememberKey(7);
-        _data.performanceFeeManagers = new address[](1);
-        _data.performanceFeeManagers[0] = vm.rememberKey(8);
-        _data.managementFeeManagers = new address[](1);
-        _data.managementFeeManagers[0] = vm.rememberKey(9);
         _data.claimRewards = new address[](1);
         _data.claimRewards[0] = vm.rememberKey(10);
         _data.transferRewardsManagers = new address[](1);
@@ -534,14 +511,12 @@ contract IporPlasmaVaultRolesTest is Test {
 
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             IporFusionMarkets.AAVE_V3,
-            AAVE_PRICE_ORACLE,
-            AAVE_POOL_DATA_PROVIDER
+            ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
             IporFusionMarkets.AAVE_V3,
-            AAVE_POOL,
-            AAVE_POOL_DATA_PROVIDER
+            ARBITRUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](1);
@@ -560,10 +535,11 @@ contract IporPlasmaVaultRolesTest is Test {
                 marketConfigs,
                 fuses,
                 balanceFuses,
-                FeeConfig(_data.performanceFeeManagers[0], 0, _data.managementFeeManagers[0], 0),
+                FeeConfigHelper.createZeroFeeConfig(),
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max
+                type(uint256).max,
+                address(0)
             )
         );
         vm.stopPrank();
