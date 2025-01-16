@@ -18,11 +18,13 @@ contract SrUsdPriceFeedEthereum is IPriceFeed {
     using SafeCast for uint256;
 
     error InvalidSavingModule();
-
-    uint8 public constant override decimals = 8;
-
+    
     /// @dev https://docs.reservoir.xyz/security-and-compliance/smart-contract-addresses
     address public immutable SAVING_MODULE;
+
+    /// @notice The number of decimals used in price values
+    // solhint-disable-next-line const-name-snakecase
+    uint8 public constant override decimals = 8;
 
     constructor(address savingModule) {
         if (savingModule == address(0)) {

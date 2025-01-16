@@ -7,6 +7,7 @@ import {IPriceFeed} from "./IPriceFeed.sol";
 /// @notice A price feed implementation that always returns 1 USD in 8 decimals
 /// @dev Can be used as a fallback for this stablecoin which does not have a price feed on a particular chain
 contract USDPriceFeed is IPriceFeed {
+    
     /// @notice The number of decimals used in price values
     // solhint-disable-next-line const-name-snakecase
     uint8 public constant override decimals = 8;
