@@ -14,7 +14,6 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     using SafeERC20 for IERC20;
     using Math for uint256;
 
-    /// @notice Custom errors
     error ZeroPlasmaVaultAddress();
     error ZeroAssetAddress();
     error ZeroAssetsDeposit();
@@ -24,6 +23,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event PerformanceFeeAdded(uint256 fee, uint256 feeInShares);
+
     /// @notice The underlying PlasmaVault contract
     address public immutable PLASMA_VAULT;
     uint256 private constant FEE_PERCENTAGE_DECIMALS_MULTIPLIER = 1e4; /// @dev 10000 = 100% (2 decimal places for fee percentage)
@@ -435,7 +435,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      * @return uint256 Unrealized management fee in underlying token decimals
      */
     function getUnrealizedManagementFee() public view returns (uint256) {
-        return _getUnrealizedManagementFee(totalAssets());
+        return _getUnrealizedManagementFee(ERC4626Upgradeable(PLASMA_VAULT).maxWithdraw(address(this)));
     }
 
     /**
