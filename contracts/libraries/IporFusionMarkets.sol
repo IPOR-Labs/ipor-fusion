@@ -66,6 +66,9 @@ library IporFusionMarkets {
     /// @dev Pendle market
     uint256 public constant PENDLE = 23;
 
+    /// @dev Fluid rewards market
+    uint256 public constant FLUID_REWARDS = 24;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 

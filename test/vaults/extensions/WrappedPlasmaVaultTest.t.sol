@@ -117,7 +117,6 @@ contract WrappedPlasmaVaulttTest is Test {
 
         // Record states before redemption
         uint256 userShares = wPlasmaVault.balanceOf(user);
-        uint256 wrapperPlasmaShares = plasmaVault.balanceOf(address(wPlasmaVault));
 
         vm.warp(block.timestamp + 1 hours);
 
