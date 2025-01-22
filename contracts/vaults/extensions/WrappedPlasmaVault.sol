@@ -35,17 +35,19 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     /**
      * @notice Initializes the Wrapped Plasma Vault with the underlying asset and vault configuration
      * @dev This constructor is marked as initializer for proxy deployment pattern
-     * @param asset_ Address of the underlying ERC20 token that the vault will manage
      * @param name_ Name of the vault token
      * @param symbol_ Symbol of the vault token
      * @param plasmaVault_ Address of the underlying Plasma Vault that this wrapper will interact with
      * @custom:oz-upgrades-unsafe-allow constructor
      */
-    constructor(address asset_, string memory name_, string memory symbol_, address plasmaVault_) initializer {
+    constructor(string memory name_, string memory symbol_, address plasmaVault_) initializer {
         if (plasmaVault_ == address(0)) revert ZeroPlasmaVaultAddress();
-        if (asset_ == address(0)) revert ZeroAssetAddress();
 
-        __ERC4626_init(IERC20(asset_));
+        address asset = ERC4626Upgradeable(plasmaVault_).asset();
+
+        if (asset == address(0)) revert ZeroAssetAddress();
+
+        __ERC4626_init(IERC20(asset));
         __ERC20_init(name_, symbol_);
         __Ownable_init(msg.sender);
 
