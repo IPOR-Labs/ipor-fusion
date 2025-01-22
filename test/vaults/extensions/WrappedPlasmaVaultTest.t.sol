@@ -20,7 +20,7 @@ contract WrappedPlasmaVaulttTest is Test {
         owner = makeAddr("owner");
         user = makeAddr("user");
 
-        wPlasmaVault = new WrappedPlasmaVault(usdc, "Wrapped USDC", "wFusionUSDC", address(plasmaVault));
+        wPlasmaVault = new WrappedPlasmaVault("Wrapped USDC", "wFusionUSDC", address(plasmaVault));
         wPlasmaVault.configurePerformanceFee(owner, 0);
         wPlasmaVault.configureManagementFee(owner, 0);
         wPlasmaVault.transferOwnership(owner);
