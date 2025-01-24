@@ -7,35 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
-/**
- * @title IFluidMerkleDistributor
- * @notice Interface for interacting with FluidMerkleDistributor contract
- */
-interface IFluidMerkleDistributor {
-    /**
-     * @notice Claims rewards for a given position
-     * @param recipient_ The address that will receive the rewards
-     * @param cumulativeAmount_ The total amount of rewards claimable
-     * @param positionType_ The type of position for which rewards are being claimed
-     * @param positionId_ The unique identifier of the position
-     * @param cycle_ The cycle number for which rewards are being claimed
-     * @param merkleProof_ The merkle proof that validates this claim
-     * @param metadata_ Additional metadata required for the claim
-     */
-    function claim(
-        address recipient_,
-        uint256 cumulativeAmount_,
-        uint8 positionType_,
-        bytes32 positionId_,
-        uint256 cycle_,
-        bytes32[] calldata merkleProof_,
-        bytes memory metadata_
-    ) external;
-
-    /* solhint-enable func-name-mixedcase */
-    function TOKEN() external view returns (address);
-}
-
+import {IFluidMerkleDistributor} from "./ext/IFluidMerkleDistributor.sol";
 /**
  * @title FluidProofClaimFuse
  * @notice A fuse contract responsible for claiming rewards from Fluid's MerkleDistributor
@@ -102,7 +74,7 @@ contract FluidProofClaimFuse {
     /**
      * @notice Claims rewards from FluidMerkleDistributor and forwards them to the RewardsClaimManager
      * @dev Verifies the distributor is supported and uses merkle proofs for claim validation
-     * @param distributor The address of FluidMerkleDistributor contract
+     * @param distributor_ The address of FluidMerkleDistributor contract
      * @param cumulativeAmount_ The total amount of rewards claimable
      * @param positionType_ The type of position for which rewards are being claimed
      * @param positionId_ The unique identifier of the position
@@ -111,7 +83,7 @@ contract FluidProofClaimFuse {
      * @param metadata_ Additional metadata required for the claim
      */
     function claim(
-        address distributor,
+        address distributor_,
         uint256 cumulativeAmount_,
         uint8 positionType_,
         bytes32 positionId_,
@@ -124,16 +96,15 @@ contract FluidProofClaimFuse {
             revert FluidProofClaimFuseRewardsClaimManagerZeroAddress(VERSION);
         }
 
-        if (distributor == address(0)) {
+        if (distributor_ == address(0)) {
             revert FluidProofClaimFuseDistributorZeroAddress(VERSION);
         }
 
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, distributor)) {
-            revert FluidProofClaimFuseUnsupportedDistributor(distributor);
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, distributor_)) {
+            revert FluidProofClaimFuseUnsupportedDistributor(distributor_);
         }
 
-        // Get the reward token from the distributor
-        IERC20 rewardsToken = IERC20(IFluidMerkleDistributor(distributor).TOKEN());
+        IERC20 rewardsToken = IERC20(IFluidMerkleDistributor(distributor_).TOKEN());
 
         if (address(rewardsToken) == address(0)) {
             revert FluidProofClaimFuseRewardsTokenZeroAddress(VERSION);
@@ -141,8 +112,7 @@ contract FluidProofClaimFuse {
 
         uint256 balanceBefore = rewardsToken.balanceOf(address(this));
 
-        // Claim rewards from the distributor
-        IFluidMerkleDistributor(distributor).claim(
+        IFluidMerkleDistributor(distributor_).claim(
             address(this),
             cumulativeAmount_,
             positionType_,
