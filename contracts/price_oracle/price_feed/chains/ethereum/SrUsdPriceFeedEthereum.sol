@@ -6,7 +6,6 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IPriceFeed} from "../../IPriceFeed.sol";
 
 interface ISavingModule {
-
     /// @notice Current price of srUSD in rUSD (always >= 1e8)
     /// @return uint256 Price
     function currentPrice() external view returns (uint256);
@@ -18,7 +17,7 @@ contract SrUsdPriceFeedEthereum is IPriceFeed {
     using SafeCast for uint256;
 
     error InvalidSavingModule();
-    
+
     /// @dev https://docs.reservoir.xyz/security-and-compliance/smart-contract-addresses
     address public immutable SAVING_MODULE;
 
@@ -38,7 +37,6 @@ contract SrUsdPriceFeedEthereum is IPriceFeed {
         view
         returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
-
         uint256 srUSDPriceInRUSD = ISavingModule(SAVING_MODULE).currentPrice();
 
         /// @dev In this implementation sUSD is always treated as 1 USD

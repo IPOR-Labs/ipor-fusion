@@ -6,6 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IChildLiquidityGauge} from "./ext/IChildLiquidityGauge.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "./../../libraries/PlasmaVaultConfigLib.sol";
+import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
 /// @notice Data structure for entering the Curve Child Liquidity Gauge Supply Fuse
 /// @dev This struct contains the necessary information for staking LP tokens into a Curve gauge
@@ -62,7 +63,19 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
         emit CurveChildLiquidityGaugeSupplyFuseEnter(VERSION, data_.childLiquidityGauge, depositAmount);
     }
 
-    function exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_) external {
+    /// @dev Could be used only if lpToken is ERC4626.
+    /// @dev params[0] - amount in underlying asset, params[1] - vault address
+    function instantWithdraw(bytes32[] calldata params_) external {
+        uint256 amount = uint256(params_[0]);
+
+        address gauge = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
+        address lpToken = IChildLiquidityGauge(gauge).lp_token();
+        uint256 lpTokenToWithdraw = ERC4626Upgradeable(lpToken).convertToShares(amount);
+
+        exit(CurveChildLiquidityGaugeSupplyFuseExitData(gauge, lpTokenToWithdraw));
+    }
+
+    function exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_) public {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.childLiquidityGauge)) {
             revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
         }
