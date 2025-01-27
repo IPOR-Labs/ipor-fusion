@@ -64,12 +64,11 @@ library WithdrawManagerStorageLib {
         0xc98a13e0ed3915d36fc042835990f5c6fbf2b2570bd63878dcd560ca2b767c00;
 
     /// @dev Storage slot for withdraw requests mapping
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.wirgdraw.requests")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant WITHDRAW_REQUESTS = 0x88d141dcaacfb8523e39ee7fba7c6f591450286f42f9c7069cc072812d539200;
+    bytes32 private constant WITHDRAW_REQUESTS = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f00;
 
-    // todo: update bytes32 hash
-    /// @dev Storage slot for last release funds timestamp
-    bytes32 private constant LAST_RELEASE_FUNDS = 0x6603575a0b471dee79b9613aa260e2a8f3515603a898fdc76d6849fcd1ac7800;
+    /// @dev Storage slot for last release funds
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.wirgdraw.requests")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant LAST_RELEASE_FUNDS = 0x88d141dcaacfb8523e39ee7fba7c6f591450286f42f9c7069cc072812d539200;
 
     /// @dev Retrieves the withdraw window configuration from storage
     function _getWithdrawWindowLength() private view returns (WithdrawWindow storage withdrawWindow) {
@@ -139,16 +138,16 @@ library WithdrawManagerStorageLib {
     /// @param account_ Address whose request should be deleted
     /// @param amount_ Amount of funds released
     function deleteWithdrawRequest(address account_, uint256 amount_) internal {
-        delete _getWithdrawRequests().requests[account_];
         ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
         uint128 approvedAmountToRelase = releaseFundsLocal.amountToRelease;
 
         if (approvedAmountToRelase >= amount_) {
             releaseFundsLocal.amountToRelease = approvedAmountToRelase - amount_.toUint128();
-            emit WithdrawRequestUpdated(account_, amount_, 0);
+            emit WithdrawRequestUpdated(account_, 0, 0);
         } else {
             revert WithdrawManagerInvalidAmountToRelease(amount_);
         }
+        delete _getWithdrawRequests().requests[account_];
     }
 
     /// @notice Gets the timestamp of the last funds release

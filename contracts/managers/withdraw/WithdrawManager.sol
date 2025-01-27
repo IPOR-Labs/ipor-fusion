@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {WithdrawManagerStorageLib} from "./WithdrawManagerStorageLib.sol";
 import {WithdrawRequest} from "./WithdrawManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
-import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+
 struct WithdrawRequestInfo {
     uint256 amount;
     uint256 endWithdrawWindowTimestamp;
