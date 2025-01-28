@@ -20,7 +20,7 @@ contract WrappedPlasmaVaulttTest is Test {
         owner = makeAddr("owner");
         user = makeAddr("user");
 
-        wPlasmaVault = new WrappedPlasmaVault(usdc, "Wrapped USDC", "wFusionUSDC", address(plasmaVault));
+        wPlasmaVault = new WrappedPlasmaVault("Wrapped USDC", "wFusionUSDC", address(plasmaVault));
         wPlasmaVault.configurePerformanceFee(owner, 0);
         wPlasmaVault.configureManagementFee(owner, 0);
         wPlasmaVault.transferOwnership(owner);
@@ -117,7 +117,6 @@ contract WrappedPlasmaVaulttTest is Test {
 
         // Record states before redemption
         uint256 userShares = wPlasmaVault.balanceOf(user);
-        uint256 wrapperPlasmaShares = plasmaVault.balanceOf(address(wPlasmaVault));
 
         vm.warp(block.timestamp + 1 hours);
 
