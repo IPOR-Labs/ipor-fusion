@@ -13,13 +13,14 @@ contract WrappedPlasmaVaulttTest is Test {
     PlasmaVault public plasmaVault = PlasmaVault(0x43Ee0243eA8CF02f7087d8B16C8D2007CC9c7cA2);
     address public owner;
     address public user;
+    address public otherUser;
     address public feeAccount;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 21621506);
         owner = makeAddr("owner");
         user = makeAddr("user");
-
+        otherUser = makeAddr("otherUser");
         wPlasmaVault = new WrappedPlasmaVault("Wrapped USDC", "wFusionUSDC", address(plasmaVault));
         wPlasmaVault.configurePerformanceFee(owner, 0);
         wPlasmaVault.configureManagementFee(owner, 0);
@@ -32,6 +33,508 @@ contract WrappedPlasmaVaulttTest is Test {
         IERC20(usdc).approve(address(wPlasmaVault), type(uint256).max);
         vm.stopPrank();
         deal(usdc, user, 100_000_000e6);
+
+        vm.startPrank(otherUser);
+        IERC20(usdc).approve(address(wPlasmaVault), type(uint256).max);
+        vm.stopPrank();
+        deal(usdc, otherUser, 100_000_000e6);
+    }
+
+    function testShouldHaveExactTheSamePreviewDepositBeforeAndAfterRealizeFeeDepositManagementFee() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 100 days);
+
+        uint256 previewDepositBefore = wPlasmaVault.previewDeposit(assets);
+
+        wPlasmaVault.realizeFee();
+
+        // when
+        uint256 previewDepositAfter = wPlasmaVault.previewDeposit(assets);
+
+        //then
+        assertEq(previewDepositBefore, previewDepositAfter);
+    }
+
+    function testShouldHaveExactTheSamePreviewWithdrawBeforeAndAfterRealizeFeeManagementAndPerofmanceFee() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        /// @dev simlulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 previewDepositBefore = wPlasmaVault.previewDeposit(assets);
+        wPlasmaVault.realizeFee();
+
+        // when
+        uint256 previewDepositAfter = wPlasmaVault.previewDeposit(assets);
+
+        //then
+        assertEq(previewDepositBefore, previewDepositAfter);
+    }
+
+    function testShouldPreviewDepositBeSameValueAsSharesAfterDeposit() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+        uint256 previewDepositBefore = wPlasmaVault.previewDeposit(assets);
+
+        //when
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        uint256 shares = wPlasmaVault.balanceOf(user);
+
+        //then
+        assertEq(previewDepositBefore, shares);
+    }
+
+    function testShouldPreviewDepositBeSameValueAsSharesAfterDepositWithPreviousDeposit() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 otherUserAssets = 50_000e6;
+        vm.startPrank(otherUser);
+        wPlasmaVault.deposit(otherUserAssets, otherUser);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 100 days);
+
+        uint256 assets = 100_000e6;
+        uint256 previewDepositBefore = wPlasmaVault.previewDeposit(assets);
+
+        //when
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        uint256 shares = wPlasmaVault.balanceOf(user);
+
+        //then
+        assertEq(previewDepositBefore, shares);
+    }
+
+    function testShouldHaveExactTheSamePreviewWithdrawBeforeAndAfterRealizeFeeDepositManagementFee() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 100 days);
+
+        uint256 previewWithdrawBefore = wPlasmaVault.previewWithdraw(assets);
+
+        wPlasmaVault.realizeFee();
+
+        // when
+        uint256 previewWithdrawAfter = wPlasmaVault.previewWithdraw(assets);
+
+        //then
+        assertApproxEqAbs(
+            previewWithdrawBefore,
+            previewWithdrawAfter,
+            1,
+            "previewWithdrawBefore and previewWithdrawAfter should be approximately equal"
+        );
+    }
+
+    function testShouldHaveExactTheSamePreviewWithdrawBeforeAndAfterRealizeFeeManagementAndPerformanceFee() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 previewWithdrawBefore = wPlasmaVault.previewWithdraw(assets);
+
+        wPlasmaVault.realizeFee();
+
+        // when
+        uint256 previewWithdrawAfter = wPlasmaVault.previewWithdraw(assets);
+
+        //then
+        assertApproxEqAbs(
+            previewWithdrawBefore,
+            previewWithdrawAfter,
+            5,
+            "previewWithdrawBefore and previewWithdrawAfter should be approximately equal"
+        );
+    }
+
+    function testShouldPreviewWithdrawBeSameValueAsSharesAfterWithdraw() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 previewWithdrawBefore = wPlasmaVault.previewWithdraw(assets);
+
+        //when
+        vm.startPrank(user);
+        uint256 sharesBurned = wPlasmaVault.withdraw(assets, user, user);
+        vm.stopPrank();
+
+        //then
+        assertApproxEqAbs(
+            previewWithdrawBefore,
+            sharesBurned,
+            5,
+            "previewWithdrawBefore and sharesBurned should be approximately equal"
+        );
+    }
+
+    function testShouldPreviewRedeemBeSameValueAsPreviewRedeemAfterFeeCalculation() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 shares = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.mint(shares, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 previewRedeemBefore = wPlasmaVault.previewRedeem(shares);
+
+        //when
+        wPlasmaVault.realizeFee();
+
+        uint256 previewRedeemAfter = wPlasmaVault.previewRedeem(shares);
+
+        //then
+        assertEq(previewRedeemBefore, previewRedeemAfter);
+    }
+
+    function testShouldPreviewRedeemBeSameValueAsAssetsAfterRedeem() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 shares = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.mint(shares, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 previewRedeemBefore = wPlasmaVault.previewRedeem(shares);
+
+        //when
+        vm.startPrank(user);
+        uint256 assets = wPlasmaVault.redeem(shares, user, user);
+        vm.stopPrank();
+
+        //then
+        assertEq(previewRedeemBefore, assets);
+    }
+
+    function testShouldPreviewMintBeSameValueAsPreviewMintAfterFeeCalculation() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 shares = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.mint(shares, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 previewMintBefore = wPlasmaVault.previewMint(shares);
+
+        //when
+        wPlasmaVault.realizeFee();
+
+        uint256 previewMintAfter = wPlasmaVault.previewMint(shares);
+
+        //then
+        assertEq(previewMintBefore, previewMintAfter);
+    }
+
+    function testShouldPreviewMintBeSameValueAsAssetsAfterMint() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 shares = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.mint(shares, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 previewMintBefore = wPlasmaVault.previewMint(shares);
+
+        //when
+        vm.startPrank(user);
+        uint256 assets = wPlasmaVault.mint(shares, user);
+        vm.stopPrank();
+
+        //then
+        assertEq(previewMintBefore, assets);
+    }
+
+    function testShouldMaxWithdrawBeSameValueAsMaxWithdrawAfterFeeCalculation() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 maxWithdrawBefore = wPlasmaVault.maxWithdraw(user);
+
+        //when
+        wPlasmaVault.realizeFee();
+
+        uint256 maxWithdrawAfter = wPlasmaVault.maxWithdraw(user);
+
+        //then
+        assertEq(maxWithdrawBefore, maxWithdrawAfter);
+    }
+
+    function testShouldMaxRedeemBeSameValueAsMaxRedeemAfterFeeCalculation() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 maxRedeemBefore = wPlasmaVault.maxRedeem(user);
+
+        //when
+        wPlasmaVault.realizeFee();
+
+        uint256 maxRedeemAfter = wPlasmaVault.maxRedeem(user);
+
+        //then
+        assertEq(maxRedeemBefore, maxRedeemAfter);
+    }
+
+    function testShouldMaxWithdrawWhenFeeIsPartOfCalculation() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 maxWithdrawBefore = wPlasmaVault.maxWithdraw(user);
+
+        uint256 previewWithdrawBefore = wPlasmaVault.previewWithdraw(maxWithdrawBefore);
+
+        //when
+        vm.startPrank(user);
+        uint256 sharesBurned = wPlasmaVault.withdraw(maxWithdrawBefore, user, user);
+        vm.stopPrank();
+
+        //then
+        assertApproxEqAbs(
+            previewWithdrawBefore,
+            sharesBurned,
+            5,
+            "previewWithdrawBefore and sharesBurned should be approximately equal"
+        );
+    }
+
+    function testShouldMaxRedeemWhenFeeIsPartOfCalculation() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 maxRedeemBefore = wPlasmaVault.maxRedeem(user);
+
+        uint256 previewRedeemBefore = wPlasmaVault.previewRedeem(maxRedeemBefore);
+
+        //when
+        vm.startPrank(user);
+        uint256 assetsResult = wPlasmaVault.redeem(maxRedeemBefore, user, user);
+        vm.stopPrank();
+
+        //then
+        assertEq(previewRedeemBefore, assetsResult);
+    }
+
+    function testShouldNotMaxWithdrawWhenFeeIsPartOfCalculation() public {
+        //given
+        /// %2
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// %0.3
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 assets = 100_000e6;
+
+        vm.startPrank(user);
+        wPlasmaVault.deposit(assets, user);
+        vm.stopPrank();
+
+        /// @dev simulate adding assets for performance fee
+        vm.warp(block.timestamp + 100 days);
+        deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
+
+        uint256 maxWithdrawBefore = wPlasmaVault.maxWithdraw(user);
+
+        bytes memory error = abi.encodeWithSignature(
+            "ERC20InsufficientBalance(address,uint256,uint256)",
+            user,
+            10000000000000,
+            10000000000047
+        );
+
+        // when
+        vm.startPrank(user);
+        vm.expectRevert(error);
+        wPlasmaVault.withdraw(maxWithdrawBefore + 1, user, user);
+        vm.stopPrank();
     }
 
     function testshouldDEpositToWraperAndTransferAssetToPlasmaVault() public {
