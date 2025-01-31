@@ -793,50 +793,6 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
             );
     }
 
-    /**
-     * @notice Converts assets to shares considering fees and total supply/asset ratios
-     * @dev Internal conversion function that handles fee adjustments and share calculations
-     *
-     * Calculation Flow:
-     * 1. Fee Processing
-     *    - Accounts for unrealized management fees
-     *    - Adjusts total assets and supply
-     *    - Handles performance fee impacts
-     *
-     * 2. Share Price Determination
-     *    - Uses modified total assets/supply after fees
-     *    - Applies specified rounding direction
-     *    - Maintains price consistency with fee states
-     *
-     * 3. Share Calculation
-     *    - Computes shares needed for fee payments
-     *    - Adjusts total supply for fee minting
-     *    - Preserves share value for existing holders
-     *
-     * Integration Context:
-     * - Core conversion function for deposits/mints
-     * - Used in preview calculations
-     * - Critical for share price accuracy
-     * - Maintains fee-adjusted ratios
-     *
-     * Important Notes:
-     * - Management fees processed before performance fees
-     * - Uses conservative rounding approach
-     * - Preserves share value through conversions
-     * - Handles edge cases safely
-     *
-     * Mathematical Model:
-     * - Applies fee-adjusted conversion formula
-     * - Uses mulDiv for precision
-     * - Includes decimal offset for accuracy
-     * - Maintains consistent share pricing
-     *
-     * @param modifiedTotalAssets Total assets adjusted for realized fees
-     * @param modifiedTotalSupply Total supply adjusted for fee shares
-     * @param rounding_ Rounding direction for calculations
-     * @return uint256 Amount of shares after fee adjustments
-     * @custom:security Internal view function with safe math
-     */
 
     /**
      * @notice Converts shares to assets considering fees and total supply/asset ratios
