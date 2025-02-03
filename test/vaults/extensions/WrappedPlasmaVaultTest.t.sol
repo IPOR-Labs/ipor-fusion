@@ -7,6 +7,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultStorageLib} from "../../../contracts/libraries/PlasmaVaultStorageLib.sol";
 
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
 contract WrappedPlasmaVaulttTest is Test {
     WrappedPlasmaVault public wPlasmaVault;
     address public usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -15,6 +17,11 @@ contract WrappedPlasmaVaulttTest is Test {
     address public user;
     address public otherUser;
     address public feeAccount;
+
+    address public performanceFeeRecipient;
+    address public managementFeeRecipient;
+    uint256 public performanceFeeShares;
+    uint256 public managementFeeShares;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 21621506);
@@ -38,6 +45,9 @@ contract WrappedPlasmaVaulttTest is Test {
         IERC20(usdc).approve(address(wPlasmaVault), type(uint256).max);
         vm.stopPrank();
         deal(usdc, otherUser, 100_000_000e6);
+
+        performanceFeeRecipient = makeAddr("performanceFeeRecipient");
+        managementFeeRecipient = makeAddr("managementFeeRecipient");
     }
 
     function testShouldHaveExactTheSamePreviewDepositBeforeAndAfterRealizeFeeDepositManagementFee() public {
@@ -808,5 +818,95 @@ contract WrappedPlasmaVaulttTest is Test {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", owner));
         wPlasmaVault.configurePerformanceFee(owner, 500);
+    }
+
+    function testShouldAccrueCorrectFeesWithSeparateRecipients() public {
+        // given
+        uint256 initialDeposit = 100_000e6;
+        uint256 valueIncrease = 50_000e6;
+
+        // Record initial USDC balances
+        uint256 userInitialBalance = IERC20(usdc).balanceOf(user);
+        uint256 performanceFeeRecipientInitialBalance = IERC20(usdc).balanceOf(performanceFeeRecipient);
+        uint256 managementFeeRecipientInitialBalance = IERC20(usdc).balanceOf(managementFeeRecipient);
+
+        // Configure fees with separate recipients
+        vm.startPrank(owner);
+        wPlasmaVault.configurePerformanceFee(performanceFeeRecipient, 500); // 5%
+        wPlasmaVault.configureManagementFee(managementFeeRecipient, 200); // 2%
+        vm.stopPrank();
+
+        // Initial deposit
+        vm.startPrank(user);
+        wPlasmaVault.deposit(initialDeposit, user);
+        vm.stopPrank();
+
+        // Verify user's USDC balance after deposit
+        assertEq(
+            IERC20(usdc).balanceOf(user),
+            userInitialBalance - initialDeposit,
+            "User balance should be reduced by deposit amount"
+        );
+
+        // Move time forward and simulate value increase
+        vm.warp(block.timestamp + 180 days); // 6 months
+
+        vm.startPrank(otherUser);
+        IERC20(usdc).transfer(address(plasmaVault), valueIncrease);
+        vm.stopPrank();
+
+        // // Record balances before withdrawal
+        uint256 userSharesBefore = wPlasmaVault.balanceOf(user);
+
+        // // Withdraw all user shares
+        vm.startPrank(user);
+        wPlasmaVault.redeem(userSharesBefore, user, user);
+        vm.stopPrank();
+
+        // Verify and withdraw performance fee recipient shares
+        performanceFeeShares = wPlasmaVault.balanceOf(performanceFeeRecipient);
+        assertTrue(performanceFeeShares > 0, "Performance fee recipient should have received shares");
+
+        vm.startPrank(performanceFeeRecipient);
+        wPlasmaVault.redeem(performanceFeeShares, performanceFeeRecipient, performanceFeeRecipient);
+        vm.stopPrank();
+
+        // Verify and withdraw management fee recipient shares
+        managementFeeShares = wPlasmaVault.balanceOf(managementFeeRecipient);
+        assertTrue(managementFeeShares > 0, "Management fee recipient should have received shares");
+
+        vm.startPrank(managementFeeRecipient);
+        wPlasmaVault.redeem(managementFeeShares, managementFeeRecipient, managementFeeRecipient);
+        vm.stopPrank();
+
+        // Verify final USDC balances of all participants
+        uint256 performanceFeeRecipientFinalBalance = IERC20(usdc).balanceOf(performanceFeeRecipient);
+        uint256 managementFeeRecipientFinalBalance = IERC20(usdc).balanceOf(managementFeeRecipient);
+        uint256 userFinalBalance = IERC20(usdc).balanceOf(user);
+
+        // Verify user's profit after fees
+        uint256 userProfit = userFinalBalance - (userInitialBalance - initialDeposit);
+        assertTrue(userProfit > 0, "User should have made a profit");
+
+        // Expected performance fee (approximate)
+        uint256 expectedMinPerformanceFee = 110e6; // Some fee because 50k was transferred to plasma vault (with already existing balance)
+        assertTrue(
+            performanceFeeRecipientFinalBalance - performanceFeeRecipientInitialBalance > expectedMinPerformanceFee,
+            "Performance fee recipient should have received at least minimum expected USDC"
+        );
+
+        // Expected management fee (approximate)
+        uint256 expectedMinManagementFee = 1000e6; // 1% of 100k because 180 days left and 2% annual fee
+        assertTrue(
+            managementFeeRecipientFinalBalance - managementFeeRecipientInitialBalance > expectedMinManagementFee,
+            "Management fee recipient should have received at least minimum expected USDC"
+        );
+
+        // Verify fee recipients received different amounts in USDC
+        assertTrue(
+            performanceFeeRecipientFinalBalance - performanceFeeRecipientInitialBalance !=
+                managementFeeRecipientFinalBalance - managementFeeRecipientInitialBalance,
+            "Performance and management fees should be different in USDC terms"
+        );
     }
 }
