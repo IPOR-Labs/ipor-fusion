@@ -60,8 +60,12 @@ library PreHooksLib {
     /// @param selectors_ Array of function selectors to set implementations for
     /// @param implementations_ Array of implementation addresses (use address(0) to disable)
     /// @custom:events Emits PreHookImplementationChanged for each update
-    function setPreHookImplementations(bytes4[] calldata selectors_, address[] calldata implementations_) internal {
-        if (selectors_.length != implementations_.length) {
+    function setPreHookImplementations(
+        bytes4[] calldata selectors_,
+        address[] calldata implementations_,
+        bytes32[][] calldata substrates_
+    ) internal {
+        if (selectors_.length != implementations_.length || selectors_.length != substrates_.length) {
             revert PreHooksLibInvalidArrayLength();
         }
 
