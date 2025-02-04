@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC4626ZapiIn, ZapInData, Call} from "../../contracts/zaps/ERC4626ZapiIn.sol";
-import {ZapInAllowance} from "../../contracts/zaps/ZapInAllowance.sol";
+import {ERC4626ZapInAllowance} from "../../contracts/zaps/ERC4626ZapInAllowance.sol";
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
@@ -57,7 +57,7 @@ contract UsdcToRUsdcZapTest is Test {
         });
         calls[1] = Call({
             target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
+            data: abi.encodeWithSelector(ERC4626ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
             target: address(creditEnforcer),
@@ -114,7 +114,7 @@ contract UsdcToRUsdcZapTest is Test {
         });
         calls[1] = Call({
             target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
+            data: abi.encodeWithSelector(ERC4626ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
             target: address(creditEnforcer),
@@ -160,7 +160,7 @@ contract UsdcToRUsdcZapTest is Test {
         });
         calls[1] = Call({
             target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
+            data: abi.encodeWithSelector(ERC4626ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
             target: address(creditEnforcer),
@@ -206,7 +206,7 @@ contract UsdcToRUsdcZapTest is Test {
         });
         calls[1] = Call({
             target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
+            data: abi.encodeWithSelector(ERC4626ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
             target: address(creditEnforcer),
@@ -285,7 +285,7 @@ contract UsdcToRUsdcZapTest is Test {
         });
         calls[1] = Call({
             target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
+            data: abi.encodeWithSelector(ERC4626ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
             target: address(creditEnforcer),

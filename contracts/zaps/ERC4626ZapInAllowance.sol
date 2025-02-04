@@ -40,7 +40,7 @@ contract ERC4626ZapInAllowance {
     /// @param asset_ Address of the token to fetch
     /// @param amount_ Amount of tokens to fetch
     /// @return success True if the transfer was successful
-    function transferApprovedAssets(address asset_, uint256 amount_) external OnlyERC4626ZapIn returns (bool success) {
+    function transferApprovedAssets(address asset_, uint256 amount_) external onlyERC4626ZapIn returns (bool success) {
         if (amount_ == 0) {
             revert AmountIsZero();
         }
@@ -69,7 +69,7 @@ contract ERC4626ZapInAllowance {
         revert EthTransfersNotAccepted();
     }
 
-    modifier OnlyERC4626ZapIn() {
+    modifier onlyERC4626ZapIn() {
         if (msg.sender != ERC4626_ZAP_IN) {
             revert NotERC4626ZapIn();
         }

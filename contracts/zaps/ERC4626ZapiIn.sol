@@ -2,9 +2,8 @@
 pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {ZapInAllowance} from "./ZapInAllowance.sol";
+import {ERC4626ZapInAllowance} from "./ERC4626ZapInAllowance.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -37,7 +36,7 @@ struct ZapInData {
 /// @dev Handles token approvals, multiple contract interactions, and deposits in a single transaction
 contract ERC4626ZapiIn is ReentrancyGuard {
     using Address for address;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC4626;
 
     /// @notice Thrown when minAmountToDeposit is zero
     error MinAmountToDepositIsZero();
@@ -59,7 +58,7 @@ contract ERC4626ZapiIn is ReentrancyGuard {
     address public currentZapSender;
 
     constructor() {
-        ZAP_IN_ALLOWANCE_CONTRACT = address(new ZapInAllowance(address(this)));
+        ZAP_IN_ALLOWANCE_CONTRACT = address(new ERC4626ZapInAllowance(address(this)));
     }
 
     /// @notice Executes a complex zap-in operation with multiple steps
@@ -93,7 +92,7 @@ contract ERC4626ZapiIn is ReentrancyGuard {
         }
 
         IERC4626 vault = IERC4626(zapInData_.vault);
-        uint256 depositAssetBalance = IERC20(vault.asset()).balanceOf(address(this));
+        uint256 depositAssetBalance = IERC4626(vault.asset()).balanceOf(address(this));
 
         if (depositAssetBalance < zapInData_.minAmountToDeposit) {
             revert InsufficientDepositAssetBalance();
@@ -107,9 +106,9 @@ contract ERC4626ZapiIn is ReentrancyGuard {
 
         for (uint256 i; i < assetsToRefundToSenderLength; ++i) {
             asset = zapInData_.assetsToRefundToSender[i];
-            balance = IERC20(asset).balanceOf(address(this));
+            balance = IERC4626(asset).balanceOf(address(this));
             if (balance > 0) {
-                IERC20(asset).safeTransfer(currentZapSender, balance);
+                IERC4626(asset).safeTransfer(currentZapSender, balance);
             }
         }
 
