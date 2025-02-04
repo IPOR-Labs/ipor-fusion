@@ -728,7 +728,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      * @custom:security Non-view function that modifies state
      */
 
-    function realizeFee() external {
+    function realizeFees() external nonReentrant {
         _calculateFees();
     }
 

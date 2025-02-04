@@ -69,7 +69,7 @@ contract WrappedPlasmaVaulttTest is Test {
 
         uint256 previewDepositBefore = wPlasmaVault.previewDeposit(assets);
 
-        wPlasmaVault.realizeFee();
+        wPlasmaVault.realizeFees();
 
         // when
         uint256 previewDepositAfter = wPlasmaVault.previewDeposit(assets);
@@ -98,7 +98,7 @@ contract WrappedPlasmaVaulttTest is Test {
         deal(usdc, address(plasmaVault), IERC20(usdc).balanceOf(address(plasmaVault)) + 50_000e6);
 
         uint256 previewDepositBefore = wPlasmaVault.previewDeposit(assets);
-        wPlasmaVault.realizeFee();
+        wPlasmaVault.realizeFees();
 
         // when
         uint256 previewDepositAfter = wPlasmaVault.previewDeposit(assets);
@@ -179,7 +179,7 @@ contract WrappedPlasmaVaulttTest is Test {
 
         uint256 previewWithdrawBefore = wPlasmaVault.previewWithdraw(assets);
 
-        wPlasmaVault.realizeFee();
+        wPlasmaVault.realizeFees();
 
         // when
         uint256 previewWithdrawAfter = wPlasmaVault.previewWithdraw(assets);
@@ -214,7 +214,7 @@ contract WrappedPlasmaVaulttTest is Test {
 
         uint256 previewWithdrawBefore = wPlasmaVault.previewWithdraw(assets);
 
-        wPlasmaVault.realizeFee();
+        wPlasmaVault.realizeFees();
 
         // when
         uint256 previewWithdrawAfter = wPlasmaVault.previewWithdraw(assets);
@@ -285,7 +285,7 @@ contract WrappedPlasmaVaulttTest is Test {
         uint256 previewRedeemBefore = wPlasmaVault.previewRedeem(shares);
 
         //when
-        wPlasmaVault.realizeFee();
+        wPlasmaVault.realizeFees();
 
         uint256 previewRedeemAfter = wPlasmaVault.previewRedeem(shares);
 
@@ -345,7 +345,7 @@ contract WrappedPlasmaVaulttTest is Test {
         uint256 previewMintBefore = wPlasmaVault.previewMint(shares);
 
         //when
-        wPlasmaVault.realizeFee();
+        wPlasmaVault.realizeFees();
 
         uint256 previewMintAfter = wPlasmaVault.previewMint(shares);
 
@@ -405,7 +405,7 @@ contract WrappedPlasmaVaulttTest is Test {
         uint256 maxWithdrawBefore = wPlasmaVault.maxWithdraw(user);
 
         //when
-        wPlasmaVault.realizeFee();
+        wPlasmaVault.realizeFees();
 
         uint256 maxWithdrawAfter = wPlasmaVault.maxWithdraw(user);
 
@@ -435,7 +435,7 @@ contract WrappedPlasmaVaulttTest is Test {
         uint256 maxRedeemBefore = wPlasmaVault.maxRedeem(user);
 
         //when
-        wPlasmaVault.realizeFee();
+        wPlasmaVault.realizeFees();
 
         uint256 maxRedeemAfter = wPlasmaVault.maxRedeem(user);
 
