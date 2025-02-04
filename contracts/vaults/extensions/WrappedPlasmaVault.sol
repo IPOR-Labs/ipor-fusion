@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
-
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
@@ -55,6 +54,77 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     }
 
     /**
+     * @notice Returns the total amount of underlying assets held by the vault
+     * @dev Calculates total assets by querying the maximum withdrawable amount from the underlying PlasmaVault
+     *
+     * Calculation Flow:
+     * 1. Asset Valuation
+     *    - Queries underlying PlasmaVault
+     *    - Determines maximum withdrawable amount
+     *    - Accounts for vault's share position
+     *
+     * 2. Value Representation
+     *    - Returns amount in underlying token decimals
+     *    - Reflects current vault holdings
+     *    - Considers protocol-specific limits
+     *
+     * Integration Context:
+     * - Used for share price calculations
+     * - Affects deposit/withdrawal limits
+     * - Influences fee computations
+     * - Critical for vault operations
+     *
+     * Important Notes:
+     * - Value may fluctuate based on market conditions
+     * - Subject to withdrawal limits
+     * - Considers protocol-specific constraints
+     * - Used in share/asset conversions
+     *
+     * @return uint256 Total assets in underlying token decimals
+     */
+    function totalAssets() public view virtual override returns (uint256) {
+        uint256 grossTotalAssets = ERC4626Upgradeable(PLASMA_VAULT).maxWithdraw(address(this));
+        uint256 unrealizedManagementFee = _getUnrealizedManagementFee(grossTotalAssets);
+        return _totalAssets(grossTotalAssets, unrealizedManagementFee);
+    }
+
+    /**
+     * @notice Simulates the amount of shares that would be minted for a given deposit
+     * @dev Calculates shares accounting for both management and performance fees
+     *
+     * Calculation Flow:
+     * 1. Fee Consideration
+     *    - Accounts for unrealized management fees
+     *    - Includes potential performance fees
+     *    - Uses fee-adjusted total assets and supply
+     *
+     * 2. Share Price Calculation
+     *    - Applies current conversion rate
+     *    - Includes fee adjustments
+     *    - Uses floor rounding for conservative estimate
+     *
+     * Integration Context:
+     * - Used for deposit previews
+     * - Helps users estimate outcomes
+     * - Critical for UI/UX integration
+     * - Supports deposit planning
+     *
+     * Important Notes:
+     * - Preview may differ from actual mint
+     * - Subject to market conditions
+     * - Includes all applicable fees
+     * - Uses conservative rounding
+     *
+     * @param assets_ Amount of assets to simulate deposit for
+     * @return uint256 Expected number of shares to be minted
+     * @custom:security View function, no state modifications
+     */
+
+    function previewDeposit(uint256 assets_) public view virtual override returns (uint256) {
+        return _convertToSharesWithFees(assets_, Math.Rounding.Floor);
+    }
+
+    /**
      * @notice Deposits assets into the vault and mints corresponding shares
      * @dev Handles deposit validation, share minting, and fee realization
      *
@@ -96,6 +166,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         _calculateFees();
 
         uint256 shares = previewDeposit(assets_);
+
         if (shares == 0) revert ZeroSharesMint();
 
         IERC20(asset()).safeTransferFrom(msg.sender, address(this), assets_);
@@ -110,6 +181,42 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
 
         lastTotalAssets = totalAssets();
         return shares;
+    }
+
+    /**
+     * @notice Calculates the amount of assets needed to mint a specific amount of shares
+     * @dev Converts shares to assets accounting for fees and rounding up
+     *
+     * Calculation Flow:
+     * 1. Asset Conversion
+     *    - Converts requested shares to underlying assets
+     *    - Accounts for current fee state
+     *    - Applies appropriate rounding
+     *
+     * 2. Fee Consideration
+     *    - Includes unrealized management fees
+     *    - Adjusts for fee-modified totals
+     *    - Maintains share price accuracy
+     *
+     * Integration Context:
+     * - Used in mint operations
+     * - Affects deposit pricing
+     * - Critical for share issuance
+     * - Fee-aware calculations
+     *
+     * Important Notes:
+     * - View function only
+     * - Rounds up for mint safety
+     * - Includes fee adjustments
+     * - No state modifications
+     *
+     * @param shares Amount of shares to calculate assets for
+     * @return uint256 Amount of assets needed to mint the specified shares
+     * @custom:security View function, no state modifications
+     */
+
+    function previewMint(uint256 shares) public view virtual override returns (uint256) {
+        return _convertToAssetsWithFees(shares, Math.Rounding.Ceil);
     }
 
     /**
@@ -168,6 +275,78 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         lastTotalAssets = totalAssets();
 
         return assets;
+    }
+
+    /**
+     * @notice Returns the maximum amount of shares that can be withdrawn by an owner
+     * @dev Calculates maximum shares considering fees and vault constraints
+     *
+     * Calculation Flow:
+     * 1. Balance Assessment
+     *    - Checks owner's current share balance
+     *    - Considers withdrawal restrictions
+     *    - Accounts for fees
+     *
+     * 2. Conversion Process
+     *    - Converts shares to assets with fees
+     *    - Uses floor rounding for conservative estimate
+     *    - Applies any withdrawal limits
+     *
+     * Integration Context:
+     * - Used for withdrawal planning
+     * - Affects UI display limits
+     * - Guides user interactions
+     * - Supports withdrawal validation
+     *
+     * Important Notes:
+     * - Conservative calculation
+     * - Includes all fees
+     * - Real-time value
+     * - May change with market conditions
+     *
+     * @param owner Address of the share owner to check
+     * @return uint256 Maximum amount of shares that can be withdrawn
+     * @custom:security View function, no state modifications
+     */
+
+    function maxWithdraw(address owner) public view override returns (uint256) {
+        return _convertToAssetsWithFees(balanceOf(owner), Math.Rounding.Floor);
+    }
+
+    /**
+     * @notice Simulates the amount of shares needed to withdraw a given amount of assets
+     * @dev Calculates required shares accounting for both management and performance fees
+     *
+     * Calculation Flow:
+     * 1. Fee Consideration
+     *    - Accounts for unrealized management fees
+     *    - Includes potential performance fees
+     *    - Uses fee-adjusted total assets and supply
+     *
+     * 2. Share Calculation
+     *    - Applies current conversion rate
+     *    - Includes fee adjustments
+     *    - Uses ceiling rounding for conservative estimate
+     *
+     * Integration Context:
+     * - Used for withdrawal previews
+     * - Helps users estimate costs
+     * - Critical for UI/UX integration
+     * - Supports withdrawal planning
+     *
+     * Important Notes:
+     * - Preview may differ from actual withdrawal
+     * - Subject to market conditions
+     * - Includes all applicable fees
+     * - Uses conservative rounding
+     *
+     * @param assets_ Amount of assets to simulate withdrawal for
+     * @return uint256 Expected number of shares needed for withdrawal
+     * @custom:security View function, no state modifications
+     */
+
+    function previewWithdraw(uint256 assets_) public view virtual override returns (uint256) {
+        return _convertToSharesWithFees(assets_, Math.Rounding.Ceil);
     }
 
     /**
@@ -235,6 +414,42 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     }
 
     /**
+     * @notice Calculates the amount of assets that would be withdrawn for a given share redemption
+     * @dev Converts shares to assets accounting for fees and rounding down
+     *
+     * Calculation Flow:
+     * 1. Asset Conversion
+     *    - Converts requested shares to underlying assets
+     *    - Accounts for current fee state
+     *    - Applies appropriate rounding
+     *
+     * 2. Fee Consideration
+     *    - Includes unrealized management fees
+     *    - Adjusts for fee-modified totals
+     *    - Maintains share price accuracy
+     *
+     * Integration Context:
+     * - Used in redeem operations
+     * - Affects withdrawal pricing
+     * - Critical for share redemption
+     * - Fee-aware calculations
+     *
+     * Important Notes:
+     * - View function only
+     * - Rounds down for withdrawal safety
+     * - Includes fee adjustments
+     * - No state modifications
+     *
+     * @param shares Amount of shares to calculate assets for
+     * @return uint256 Amount of assets that would be withdrawn
+     * @custom:security View function, no state modifications
+     */
+
+    function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
+        return _convertToAssetsWithFees(shares, Math.Rounding.Floor);
+    }
+
+    /**
      * @notice Redeems vault shares for underlying assets
      * @dev Handles share redemption with asset withdrawal and fee realization
      *
@@ -295,6 +510,28 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
 
         emit Withdraw(msg.sender, receiver_, owner_, assets, shares_);
         return assets;
+    }
+
+    /**
+     * @notice Converts assets to shares considering fees
+     * @dev Uses internal conversion function with floor rounding
+     * @param assets Amount of assets to convert
+     * @return uint256 Amount of shares resulting from conversion
+     * @custom:security View function, no state modifications
+     */
+    function convertToSharesWithFees(uint256 assets) public view returns (uint256) {
+        return _convertToSharesWithFees(assets, Math.Rounding.Floor);
+    }
+
+    /**
+     * @notice Converts shares to assets considering fees
+     * @dev Uses internal conversion function with floor rounding
+     * @param shares Amount of shares to convert
+     * @return uint256 Amount of assets resulting from conversion
+     * @custom:security View function, no state modifications
+     */
+    function convertToAssetsWithFees(uint256 shares) public view returns (uint256) {
+        return _convertToAssetsWithFees(shares, Math.Rounding.Floor);
     }
 
     /**
@@ -364,46 +601,6 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      */
     function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external onlyOwner {
         PlasmaVaultLib.configurePerformanceFee(feeAccount_, feeInPercentage_);
-    }
-
-    /**
-     * @notice Returns the total amount of underlying assets held by the vault
-     * @dev Calculates total assets by querying the maximum withdrawable amount from the underlying PlasmaVault
-     *
-     * Calculation Flow:
-     * 1. Asset Valuation
-     *    - Queries underlying PlasmaVault
-     *    - Determines maximum withdrawable amount
-     *    - Accounts for vault's share position
-     *
-     * 2. Value Representation
-     *    - Returns amount in underlying token decimals
-     *    - Reflects current vault holdings
-     *    - Considers protocol-specific limits
-     *
-     * Integration Context:
-     * - Used for share price calculations
-     * - Affects deposit/withdrawal limits
-     * - Influences fee computations
-     * - Critical for vault operations
-     *
-     * Important Notes:
-     * - Value may fluctuate based on market conditions
-     * - Subject to withdrawal limits
-     * - Considers protocol-specific constraints
-     * - Used in share/asset conversions
-     *
-     * @return uint256 Total assets in underlying token decimals
-     */
-    function totalAssets() public view virtual override returns (uint256) {
-        uint256 grossTotalAssets = ERC4626Upgradeable(PLASMA_VAULT).maxWithdraw(address(this));
-        uint256 unrealizedManagementFee = _getUnrealizedManagementFee(grossTotalAssets);
-
-        if (unrealizedManagementFee >= grossTotalAssets) {
-            return 0;
-        } else {
-            return grossTotalAssets - unrealizedManagementFee;
-        }
     }
 
     /**
@@ -501,53 +698,269 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     }
 
     /**
-     * @notice Calculates the maximum amount of underlying assets that can be withdrawn for a given owner
-     * @dev Computes withdrawal limit considering unrealized fees and share price adjustments
+     * @notice Manually triggers fee calculation and realization
+     * @dev Calculates and realizes both management and performance fees
      *
-     * Calculation Flow:
-     * 1. Share Analysis
-     *    - Retrieves owner's share balance
-     *    - Calculates unrealized management fees
-     *    - Determines potential performance fees
+     * Fee Realization Flow:
+     * 1. Management Fee Processing
+     *    - Calculates time-based management fees
+     *    - Updates fee accounting state
+     *    - Mints fee shares to recipient
      *
-     * 2. Fee Impact Assessment
-     *    - Computes shares needed for management fees
-     *    - Calculates performance fee if profit exists
-     *    - Combines total fee impact on shares
+     * 2. Performance Fee Processing
+     *    - Evaluates performance metrics
+     *    - Calculates performance-based fees
+     *    - Updates high water marks
+     *    - Mints fee shares if applicable
      *
-     * 3. Maximum Withdrawal Computation
-     *    - Adjusts for total supply changes
-     *    - Accounts for decimals offset
-     *    - Applies floor rounding for safety
-     *    - Ensures withdrawal precision
+     * Integration Context:
+     * - Manual fee realization
+     * - Governance operations
+     * - Fee recipient payments
+     * - Performance tracking
      *
      * Important Notes:
-     * - Considers both management and performance fees
-     * - Accounts for unrealized fees
-     * - Uses floor rounding for safety
-     * - Includes precision adjustments
+     * - Updates fee state
+     * - Mints fee shares
+     * - Affects share price
+     * - Updates tracking values
      *
-     * @param owner Address of the share owner
-     * @return uint256 Maximum withdrawable amount in underlying token decimals
+     * @custom:security Non-view function that modifies state
      */
-    function maxWithdraw(address owner) public view override returns (uint256) {
-        uint256 shares = balanceOf(owner);
 
-        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
+    function realizeFees() external nonReentrant {
+        _calculateFees();
+    }
 
-        uint256 totalAssetsNow = totalAssets();
+    /**
+     * @notice Converts assets to shares considering both management and performance fees
+     * @dev Internal function used by deposit/mint operations to calculate share amounts
+     *
+     * Calculation Flow:
+     * 1. Fee Consideration
+     *    - Assumes management fees are realized first
+     *    - Calculates performance fee impact
+     *    - Adjusts share/asset ratios accordingly
+     *
+     * 2. Share Price Determination
+     *    - Uses modified total assets/supply after fees
+     *    - Applies specified rounding direction
+     *    - Maintains price consistency with fee states
+     *
+     *    - Computes shares needed for fee payments
+     *    - Adjusts total supply for fee minting
+     *    - Preserves share value for existing holders
+     *
+     * Integration Context:
+     * - Core conversion function for deposits/mints
+     * - Used in preview calculations
+     * - Critical for share price accuracy
+     * - Maintains fee-adjusted ratios
+     *
+     * Important Notes:
+     * - Management fees processed before performance fees
+     * - Uses conservative rounding approach
+     * - Preserves share value through conversions
+     * - Handles edge cases safely
+     *
+     * Mathematical Model:
+     * - Applies fee-adjusted conversion formula
+     * - Uses mulDiv for precision
+     * - Includes decimal offset for accuracy
+     * - Maintains consistent share pricing
+     *
+     * @param assets_ Amount of assets to convert to shares
+     * @param rounding_ Rounding direction for calculations
+     * @return uint256 Amount of shares after fee adjustments
+     * @custom:security Internal view function with safe math
+     */
+    function _convertToSharesWithFees(
+        uint256 assets_,
+        Math.Rounding rounding_
+    ) internal view virtual returns (uint256) {
+        (
+            uint256 modifiedTotalAssets,
+            uint256 modifiedTotalSupply
+        ) = _takeIntoAccountInTotalsWhenManagementFeeIsRealized(rounding_);
 
-        uint256 performanceFee = totalAssetsNow > lastTotalAssets
-            ? Math.mulDiv(totalAssetsNow - lastTotalAssets, feeData.feeInPercentage, FEE_PERCENTAGE_DECIMALS_MULTIPLIER)
+        return
+            assets_.mulDiv(
+                modifiedTotalSupply +
+                    _calculateTotalFeeSharesForConvertWithFee(modifiedTotalAssets, modifiedTotalSupply, rounding_) +
+                    10 ** _decimalsOffset(),
+                modifiedTotalAssets + 1,
+                rounding_
+            );
+    }
+
+
+    /**
+     * @notice Converts shares to assets considering fees and total supply/asset ratios
+     * @dev Internal conversion function that handles fee adjustments and asset calculations
+     *
+     * Calculation Flow:
+     * 1. Fee Processing
+     *    - Accounts for unrealized management fees
+     *    - Adjusts total assets and supply
+     *    - Handles performance fee impacts
+     *
+     * 2. Asset Value Determination
+     *    - Uses modified total assets/supply after fees
+     *    - Applies specified rounding direction
+     *    - Maintains price consistency with fee states
+     *
+     * 3. Asset Calculation
+     *    - Computes assets corresponding to shares
+     *    - Adjusts for fee-modified totals
+     *    - Preserves share value for holders
+     *
+     * Integration Context:
+     * - Core conversion function for withdrawals/redemptions
+     * - Used in preview calculations
+     * - Critical for asset value accuracy
+     * - Maintains fee-adjusted ratios
+     *
+     * Important Notes:
+     * - Management fees processed before performance fees
+     * - Uses conservative rounding approach
+     * - Preserves asset value through conversions
+     * - Handles edge cases safely
+     *
+     * Mathematical Model:
+     * - Applies fee-adjusted conversion formula
+     * - Uses mulDiv for precision
+     * - Includes decimal offset for accuracy
+     * - Maintains consistent asset pricing
+     *
+     * @param shares_ Amount of shares to convert to assets
+     * @param rounding_ Rounding direction for calculations
+     * @return uint256 Amount of assets after fee adjustments
+     * @custom:security Internal view function with safe math
+     */
+    function _convertToAssetsWithFees(
+        uint256 shares_,
+        Math.Rounding rounding_
+    ) internal view virtual returns (uint256) {
+        (
+            uint256 modifiedTotalAssets,
+            uint256 modifiedTotalSupply
+        ) = _takeIntoAccountInTotalsWhenManagementFeeIsRealized(rounding_);
+
+        return
+            shares_.mulDiv(
+                modifiedTotalAssets + 1,
+                modifiedTotalSupply +
+                    _calculateTotalFeeSharesForConvertWithFee(modifiedTotalAssets, modifiedTotalSupply, rounding_) +
+                    10 ** _decimalsOffset(),
+                rounding_
+            );
+    }
+
+    function _totalAssets(uint256 grossTotalAssets, uint256 unrealizedManagementFee) internal view returns (uint256) {
+        if (unrealizedManagementFee >= grossTotalAssets) {
+            return 0;
+        } else {
+            return grossTotalAssets - unrealizedManagementFee;
+        }
+    }
+
+    function _convertToSharesSimple(
+        uint256 currentTotalSupply,
+        uint256 currentTotalAssets,
+        uint256 assets,
+        Math.Rounding rounding_
+    ) internal view returns (uint256) {
+        return assets.mulDiv(currentTotalSupply + 10 ** _decimalsOffset(), currentTotalAssets + 1, rounding_);
+    }
+
+    /**
+     * @notice Calculates total fee shares for asset/share conversions with fee adjustments
+     * @dev Computes performance fee shares based on asset value changes
+     *
+     * Calculation Flow:
+     * 1. Performance Fee Assessment
+     *    - Compares current assets to last recorded total
+     *    - Calculates fee on asset value increase
+     *    - Uses configured fee percentage
+     *
+     * 2. Share Conversion
+     *    - Converts performance fee to shares
+     *    - Applies current conversion rate
+     *    - Uses specified rounding direction
+     *
+     * Mathematical Model:
+     * - Fee = (CurrentAssets - LastAssets) * FeePercentage
+     * - Shares = Fee * (Supply/Assets) with rounding
+     *
+     * @param modifiedTotalAssets_ Total assets after fee adjustments
+     * @param modifiedTotalSupply_ Total supply after fee adjustments
+     * @param rounding_ Rounding direction for calculations
+     * @return totalFeeShares Amount of shares representing total fees
+     * @custom:security Internal view function with safe math
+     */
+    function _calculateTotalFeeSharesForConvertWithFee(
+        uint256 modifiedTotalAssets_,
+        uint256 modifiedTotalSupply_,
+        Math.Rounding rounding_
+    ) internal view returns (uint256 totalFeeShares) {
+        uint256 performanceFeeWhenManagementFeeIsMinted = modifiedTotalAssets_ > lastTotalAssets
+            ? Math.mulDiv(
+                modifiedTotalAssets_ - lastTotalAssets,
+                PlasmaVaultLib.getPerformanceFeeData().feeInPercentage,
+                FEE_PERCENTAGE_DECIMALS_MULTIPLIER
+            )
             : 0;
 
-        uint256 sharesFromFees = performanceFee > 0 ? convertToShares(performanceFee) : 0;
-        return
-            shares.mulDiv(
-                totalAssets() + 1,
-                totalSupply() + sharesFromFees + 10 ** _decimalsOffset(),
-                Math.Rounding.Floor
-            );
+        totalFeeShares = performanceFeeWhenManagementFeeIsMinted > 0
+            ? _convertToSharesSimple(
+                modifiedTotalSupply_,
+                modifiedTotalAssets_,
+                performanceFeeWhenManagementFeeIsMinted,
+                rounding_
+            )
+            : 0;
+    }
+
+    /**
+     * @notice Calculates modified total assets and supply when management fee is realized
+     * @dev Simulates the impact of management fee realization on vault totals
+     *
+     * Calculation Flow:
+     * 1. Asset Assessment
+     *    - Gets maximum withdrawable assets from PlasmaVault
+     *    - Calculates unrealized management fee
+     *    - Determines initial totals
+     *
+     * 2. Fee Share Calculation
+     *    - Converts fee to shares based on current ratio
+     *    - Handles edge case of zero total supply
+     *    - Applies specified rounding direction
+     *
+     * 3. Total Modifications
+     *    - Adds fee to total assets
+     *    - Adds fee shares to total supply
+     *    - Returns modified totals
+     *
+     * @param rounding_ Rounding direction for share calculations
+     * @return modifiedTotalAssets Total assets after fee realization
+     * @return modifiedTotalSupply Total supply after fee shares minted
+     * @custom:security Internal view function with safe math
+     */
+    function _takeIntoAccountInTotalsWhenManagementFeeIsRealized(
+        Math.Rounding rounding_
+    ) internal view returns (uint256 modifiedTotalAssets, uint256 modifiedTotalSupply) {
+        uint256 grossTotalAssets = ERC4626Upgradeable(PLASMA_VAULT).maxWithdraw(address(this));
+        uint256 unrealizedManagementFeeInUnderlying = _getUnrealizedManagementFee(grossTotalAssets);
+
+        uint256 initialTotalAssets = _totalAssets(grossTotalAssets, unrealizedManagementFeeInUnderlying);
+        uint256 initialSupply = totalSupply();
+
+        uint256 simulatedManagementFeeShares = initialSupply == 0
+            ? unrealizedManagementFeeInUnderlying
+            : unrealizedManagementFeeInUnderlying.mulDiv(initialSupply, grossTotalAssets, rounding_);
+
+        modifiedTotalAssets = initialTotalAssets + unrealizedManagementFeeInUnderlying;
+        modifiedTotalSupply = initialSupply + simulatedManagementFeeShares;
     }
 
     function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
@@ -571,49 +984,42 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
             );
     }
 
+    function _calculateFees() internal {
+        // First realize management fee
+        _realizeManagementFee();
+        // Then add performance fee based on lastTotalAssets
+        _realizePerformanceFee(lastTotalAssets);
+    }
+
     function _realizeManagementFee() internal {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
-
         uint256 unrealizedFeeInUnderlying = getUnrealizedManagementFee();
-
         PlasmaVaultLib.updateManagementFeeData();
-
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
-
         if (unrealizedFeeInShares == 0) {
             return;
         }
-
         _mint(feeData.feeAccount, unrealizedFeeInShares);
-
         emit ManagementFeeRealized(unrealizedFeeInUnderlying, unrealizedFeeInShares);
     }
 
-    function _addPerformanceFee(uint256 totalAssetsBefore_) internal {
+    function _realizePerformanceFee(uint256 totalAssetsBefore_) internal {
         uint256 totalAssetsAfter = totalAssets();
-
         if (totalAssetsAfter < totalAssetsBefore_) {
             return;
         }
-
         PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
-
         uint256 fee = Math.mulDiv(
             totalAssetsAfter - totalAssetsBefore_,
             feeData.feeInPercentage,
             FEE_PERCENTAGE_DECIMALS_MULTIPLIER
         );
-
         uint256 feeInShares = convertToShares(fee);
-
         _mint(feeData.feeAccount, feeInShares);
-
         emit PerformanceFeeAdded(fee, feeInShares);
-    }
 
-    function _calculateFees() internal {
-        _realizeManagementFee();
-        _addPerformanceFee(lastTotalAssets);
+        /// @dev Update lastTotalAssets after realizing fees to ensure consistent performance fee calculations
+        lastTotalAssets = totalAssets();
     }
 
     /**

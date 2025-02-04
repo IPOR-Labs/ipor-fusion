@@ -66,7 +66,7 @@ contract ContextManagerWithSignatureWithdrawManagerTest is Test, ContextManagerI
             block.timestamp + 1000,
             block.number,
             address(_withdrawManager),
-            abi.encodeWithSelector(WithdrawManager.releaseFunds.selector, timestamp)
+            abi.encodeWithSelector(WithdrawManager.releaseFunds.selector, timestamp, 100e18)
         );
 
         uint256 initialReleaseFundsTimestamp = _withdrawManager.getLastReleaseFundsTimestamp();
