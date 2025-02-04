@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {ZapInAllowance} from "./ZapInAllowance.sol";
-import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -12,7 +12,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 /// @dev Used to execute multiple operations in a single transaction
 struct Call {
     /// @notice Target contract address to call
-    address to;
+    address target;
     /// @notice Encoded function call data
     bytes data;
 }
@@ -20,8 +20,8 @@ struct Call {
 /// @notice Input data structure for the zapIn function
 /// @dev Contains all necessary parameters for executing a zap-in operation
 struct ZapInData {
-    /// @notice Address of the target PlasmaVault to deposit into
-    address plasmaVault;
+    /// @notice Address of the target ERC4626 vault to deposit into
+    address vault;
     /// @notice Address that will receive the vault shares
     address receiver;
     /// @notice Minimum amount of tokens that must be deposited
@@ -32,17 +32,17 @@ struct ZapInData {
     Call[] calls;
 }
 
-/// @title IporFusionZapIn
-/// @notice Facilitates complex zap-in operations for PlasmaVault deposits
+/// @title ERC4626ZapiIn
+/// @notice Facilitates complex zap-in operations for ERC4626 vault deposits
 /// @dev Handles token approvals, multiple contract interactions, and deposits in a single transaction
-contract IporFusionZapIn is ReentrancyGuard {
+contract ERC4626ZapiIn is ReentrancyGuard {
     using Address for address;
     using SafeERC20 for IERC20;
 
     /// @notice Thrown when minAmountToDeposit is zero
     error MinAmountToDepositIsZero();
-    /// @notice Thrown when plasmaVault address is zero
-    error PlasmaVaultIsZero();
+    /// @notice Thrown when ERC4626 address is zero
+    error ERC4626VaultIsZero();
     /// @notice Thrown when no calls are provided in the zap-in data
     error NoCalls();
     /// @notice Thrown when the resulting deposit asset balance is less than minAmountToDeposit
@@ -63,7 +63,7 @@ contract IporFusionZapIn is ReentrancyGuard {
     }
 
     /// @notice Executes a complex zap-in operation with multiple steps
-    /// @dev Performs a series of calls, then deposits resulting tokens into a PlasmaVault
+    /// @dev Performs a series of calls, then deposits resulting tokens into a ERC4626
     /// @param zapInData_ Struct containing all necessary parameters for the zap-in operation
     /// @return results Array of bytes containing the results of each call
     function zapIn(
@@ -73,8 +73,8 @@ contract IporFusionZapIn is ReentrancyGuard {
             revert MinAmountToDepositIsZero();
         }
 
-        if (zapInData_.plasmaVault == address(0)) {
-            revert PlasmaVaultIsZero();
+        if (zapInData_.vault == address(0)) {
+            revert ERC4626VaultIsZero();
         }
 
         uint256 callsLength = zapInData_.calls.length;
@@ -89,17 +89,17 @@ contract IporFusionZapIn is ReentrancyGuard {
 
         results = new bytes[](callsLength);
         for (uint256 i; i < callsLength; i++) {
-            results[i] = zapInData_.calls[i].to.functionCall(zapInData_.calls[i].data);
+            results[i] = zapInData_.calls[i].target.functionCall(zapInData_.calls[i].data);
         }
 
-        ERC4626 plasmaVault = ERC4626(zapInData_.plasmaVault);
-        uint256 depositAssetBalance = IERC20(plasmaVault.asset()).balanceOf(address(this));
+        IERC4626 vault = IERC4626(zapInData_.vault);
+        uint256 depositAssetBalance = IERC20(vault.asset()).balanceOf(address(this));
 
         if (depositAssetBalance < zapInData_.minAmountToDeposit) {
             revert InsufficientDepositAssetBalance();
         }
 
-        plasmaVault.deposit(depositAssetBalance, zapInData_.receiver);
+        vault.deposit(depositAssetBalance, zapInData_.receiver);
 
         uint256 assetsToRefundToSenderLength = zapInData_.assetsToRefundToSender.length;
         address asset;

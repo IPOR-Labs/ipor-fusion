@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {IporFusionZapIn, ZapInData, Call} from "../../contracts/zaps/IporFusionZapIn.sol";
+import {ERC4626ZapiIn, ZapInData, Call} from "../../contracts/zaps/ERC4626ZapiIn.sol";
 import {ZapInAllowance} from "../../contracts/zaps/ZapInAllowance.sol";
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -23,12 +23,12 @@ contract UsdcToRUsdcZapTest is Test {
     address internal creditEnforcer = 0x04716DB62C085D9e08050fcF6F7D775A03d07720;
     address internal pegStabilityModule = 0x4809010926aec940b550D34a46A52739f996D75D;
 
-    IporFusionZapIn internal zapIn;
+    ERC4626ZapiIn internal zapIn;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), FORK_BLOCK_NUMBER);
 
-        zapIn = new IporFusionZapIn();
+        zapIn = new ERC4626ZapiIn();
     }
 
     function testShouldDepositRusdWithZapFromUsdc() public {
@@ -39,7 +39,7 @@ contract UsdcToRUsdcZapTest is Test {
         deal(usdc, user, usdcAmount);
 
         ZapInData memory zapInData = ZapInData({
-            plasmaVault: address(plasmaVaultRUsdc),
+            vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: new address[](0),
@@ -52,19 +52,19 @@ contract UsdcToRUsdcZapTest is Test {
 
         Call[] memory calls = new Call[](4);
         calls[0] = Call({
-            to: usdc,
+            target: usdc,
             data: abi.encodeWithSelector(IERC20.approve.selector, pegStabilityModule, usdcAmount)
         });
         calls[1] = Call({
-            to: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.fetchAssets.selector, usdc, usdcAmount)
+            target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
+            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
-            to: address(creditEnforcer),
+            target: address(creditEnforcer),
             data: abi.encodeWithSelector(CreditEnforcer.mintStablecoin.selector, usdcAmount)
         });
         calls[3] = Call({
-            to: address(rUsd),
+            target: address(rUsd),
             data: abi.encodeWithSelector(IERC20.approve.selector, address(plasmaVaultRUsdc), minAmountToDeposit)
         });
 
@@ -97,7 +97,7 @@ contract UsdcToRUsdcZapTest is Test {
         deal(usdc, user, usdcAmount);
 
         ZapInData memory zapInData = ZapInData({
-            plasmaVault: address(plasmaVaultRUsdc),
+            vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: minAmountToDeposit,
             assetsToRefundToSender: new address[](0),
@@ -109,19 +109,19 @@ contract UsdcToRUsdcZapTest is Test {
 
         Call[] memory calls = new Call[](4);
         calls[0] = Call({
-            to: usdc,
+            target: usdc,
             data: abi.encodeWithSelector(IERC20.approve.selector, pegStabilityModule, usdcAmount)
         });
         calls[1] = Call({
-            to: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.fetchAssets.selector, usdc, usdcAmount)
+            target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
+            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
-            to: address(creditEnforcer),
+            target: address(creditEnforcer),
             data: abi.encodeWithSelector(CreditEnforcer.mintStablecoin.selector, usdcAmount)
         });
         calls[3] = Call({
-            to: address(rUsd),
+            target: address(rUsd),
             data: abi.encodeWithSelector(IERC20.approve.selector, address(plasmaVaultRUsdc), minAmountToDeposit)
         });
 
@@ -143,7 +143,7 @@ contract UsdcToRUsdcZapTest is Test {
         deal(usdc, user, usdcAmount);
 
         ZapInData memory zapInData = ZapInData({
-            plasmaVault: address(0),
+            vault: address(0),
             receiver: user,
             minAmountToDeposit: minAmountToDeposit,
             assetsToRefundToSender: new address[](0),
@@ -155,25 +155,25 @@ contract UsdcToRUsdcZapTest is Test {
 
         Call[] memory calls = new Call[](4);
         calls[0] = Call({
-            to: usdc,
+            target: usdc,
             data: abi.encodeWithSelector(IERC20.approve.selector, pegStabilityModule, usdcAmount)
         });
         calls[1] = Call({
-            to: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.fetchAssets.selector, usdc, usdcAmount)
+            target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
+            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
-            to: address(creditEnforcer),
+            target: address(creditEnforcer),
             data: abi.encodeWithSelector(CreditEnforcer.mintStablecoin.selector, usdcAmount)
         });
         calls[3] = Call({
-            to: address(rUsd),
+            target: address(rUsd),
             data: abi.encodeWithSelector(IERC20.approve.selector, address(0), minAmountToDeposit)
         });
 
         zapInData.calls = calls;
 
-        bytes memory error = abi.encodeWithSignature("PlasmaVaultIsZero()");
+        bytes memory error = abi.encodeWithSignature("ERC4626VaultIsZero()");
 
         // when / then
         vm.expectRevert(error);
@@ -189,7 +189,7 @@ contract UsdcToRUsdcZapTest is Test {
         deal(usdc, user, usdcAmount);
 
         ZapInData memory zapInData = ZapInData({
-            plasmaVault: address(plasmaVaultRUsdc),
+            vault: address(plasmaVaultRUsdc),
             receiver: address(0),
             minAmountToDeposit: minAmountToDeposit,
             assetsToRefundToSender: new address[](0),
@@ -201,19 +201,19 @@ contract UsdcToRUsdcZapTest is Test {
 
         Call[] memory calls = new Call[](4);
         calls[0] = Call({
-            to: usdc,
+            target: usdc,
             data: abi.encodeWithSelector(IERC20.approve.selector, pegStabilityModule, usdcAmount)
         });
         calls[1] = Call({
-            to: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.fetchAssets.selector, usdc, usdcAmount)
+            target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
+            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
-            to: address(creditEnforcer),
+            target: address(creditEnforcer),
             data: abi.encodeWithSelector(CreditEnforcer.mintStablecoin.selector, usdcAmount)
         });
         calls[3] = Call({
-            to: address(rUsd),
+            target: address(rUsd),
             data: abi.encodeWithSelector(IERC20.approve.selector, address(plasmaVaultRUsdc), minAmountToDeposit)
         });
 
@@ -235,7 +235,7 @@ contract UsdcToRUsdcZapTest is Test {
         deal(usdc, user, usdcAmount);
 
         ZapInData memory zapInData = ZapInData({
-            plasmaVault: address(plasmaVaultRUsdc),
+            vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: minAmountToDeposit,
             assetsToRefundToSender: new address[](0),
@@ -267,7 +267,7 @@ contract UsdcToRUsdcZapTest is Test {
         assetsToRefund[0] = dai;
 
         ZapInData memory zapInData = ZapInData({
-            plasmaVault: address(plasmaVaultRUsdc),
+            vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: assetsToRefund,
@@ -280,19 +280,19 @@ contract UsdcToRUsdcZapTest is Test {
 
         Call[] memory calls = new Call[](4);
         calls[0] = Call({
-            to: usdc,
+            target: usdc,
             data: abi.encodeWithSelector(IERC20.approve.selector, pegStabilityModule, usdcAmount)
         });
         calls[1] = Call({
-            to: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
-            data: abi.encodeWithSelector(ZapInAllowance.fetchAssets.selector, usdc, usdcAmount)
+            target: zapIn.ZAP_IN_ALLOWANCE_CONTRACT(),
+            data: abi.encodeWithSelector(ZapInAllowance.transferApprovedAssets.selector, usdc, usdcAmount)
         });
         calls[2] = Call({
-            to: address(creditEnforcer),
+            target: address(creditEnforcer),
             data: abi.encodeWithSelector(CreditEnforcer.mintStablecoin.selector, usdcAmount)
         });
         calls[3] = Call({
-            to: address(rUsd),
+            target: address(rUsd),
             data: abi.encodeWithSelector(IERC20.approve.selector, address(plasmaVaultRUsdc), minAmountToDeposit)
         });
 
@@ -334,7 +334,7 @@ contract UsdcToRUsdcZapTest is Test {
         deal(usdc, user, usdcAmount);
 
         ZapInData memory zapInData = ZapInData({
-            plasmaVault: address(plasmaVaultRUsdc),
+            vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: new address[](0),
@@ -361,7 +361,7 @@ contract UsdcToRUsdcZapTest is Test {
 
         Call[] memory calls = new Call[](5);
         calls[0] = Call({
-            to: usdc,
+            target: usdc,
             data: abi.encodeWithSelector(
                 IERC20Permit.permit.selector,
                 user,
@@ -374,19 +374,19 @@ contract UsdcToRUsdcZapTest is Test {
             )
         });
         calls[1] = Call({
-            to: usdc,
+            target: usdc,
             data: abi.encodeWithSelector(IERC20.approve.selector, pegStabilityModule, usdcAmount)
         });
         calls[2] = Call({
-            to: usdc,
+            target: usdc,
             data: abi.encodeWithSelector(IERC20.transferFrom.selector, user, address(zapIn), usdcAmount)
         });
         calls[3] = Call({
-            to: address(creditEnforcer),
+            target: address(creditEnforcer),
             data: abi.encodeWithSelector(CreditEnforcer.mintStablecoin.selector, usdcAmount)
         });
         calls[4] = Call({
-            to: address(rUsd),
+            target: address(rUsd),
             data: abi.encodeWithSelector(IERC20.approve.selector, address(plasmaVaultRUsdc), minAmountToDeposit)
         });
 

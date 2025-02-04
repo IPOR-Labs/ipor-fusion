@@ -4,21 +4,21 @@ pragma solidity 0.8.26;
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-interface IporFusionZapIn {
+interface IERC4626ZapiIn {
     /// @notice Returns the address of the current user performing a zap-in operation
     function currentZapSender() external view returns (address);
 }
 
-/// @title ZapInAllowance
-/// @notice Helper contract for handling token allowances in IporFusionZapIn
+/// @title ERC4626ZapInAllowance
+/// @notice Helper contract for handling token allowances in ERC4626 zap-in operations
 /// @dev This contract acts as an intermediary for token transfers in the zap-in process
-contract ZapInAllowance {
+contract ERC4626ZapInAllowance {
     using SafeERC20 for IERC20;
 
-    /// @notice Address of the IporFusionZapIn contract
-    address public immutable IPOR_FUSION_ZAP_IN;
+    /// @notice Address of the ERC4626ZapIn contract
+    address public immutable ERC4626_ZAP_IN;
 
-    error OnlyIPORFusionZapIn();
+    error NotERC4626ZapIn();
     error AmountIsZero();
     error AssetIsZero();
     error CurrentZapSenderIsZero();
@@ -28,19 +28,19 @@ contract ZapInAllowance {
     /// @param from Address from which the assets are fetched
     /// @param asset Address of the token being fetched
     /// @param amount Amount of tokens being fetched
-    event FetchAssets(address indexed from, address indexed asset, uint256 amount);
+    event AssetsTransferred(address indexed from, address indexed asset, uint256 amount);
 
-    /// @notice Constructs the ZapInAllowance contract
-    /// @param iporFusionZapIn_ Address of the IporFusionZapIn contract
-    constructor(address iporFusionZapIn_) {
-        IPOR_FUSION_ZAP_IN = iporFusionZapIn_;
+    /// @notice Constructs the ERC4626ZapInAllowance contract
+    /// @param erc4626ZapIn_ Address of the ERC4626ZapIn contract
+    constructor(address erc4626ZapIn_) {
+        ERC4626_ZAP_IN = erc4626ZapIn_;
     }
 
-    /// @notice Fetches approved tokens from a user to the IporFusionZapIn contract
+    /// @notice Fetches approved tokens from a user to the ERC4626ZapIn contract
     /// @param asset_ Address of the token to fetch
     /// @param amount_ Amount of tokens to fetch
     /// @return success True if the transfer was successful
-    function fetchAssets(address asset_, uint256 amount_) external onlyIPORFusionZapIn returns (bool success) {
+    function transferApprovedAssets(address asset_, uint256 amount_) external OnlyERC4626ZapIn returns (bool success) {
         if (amount_ == 0) {
             revert AmountIsZero();
         }
@@ -49,15 +49,15 @@ contract ZapInAllowance {
             revert AssetIsZero();
         }
 
-        address currentZapSender = IporFusionZapIn(IPOR_FUSION_ZAP_IN).currentZapSender();
+        address currentZapSender = IERC4626ZapiIn(ERC4626_ZAP_IN).currentZapSender();
 
         if (currentZapSender == address(0)) {
             revert CurrentZapSenderIsZero();
         }
 
-        IERC20(asset_).safeTransferFrom(currentZapSender, IPOR_FUSION_ZAP_IN, amount_);
+        IERC20(asset_).safeTransferFrom(currentZapSender, ERC4626_ZAP_IN, amount_);
 
-        emit FetchAssets(currentZapSender, asset_, amount_);
+        emit AssetsTransferred(currentZapSender, asset_, amount_);
         return true;
     }
 
@@ -69,9 +69,9 @@ contract ZapInAllowance {
         revert EthTransfersNotAccepted();
     }
 
-    modifier onlyIPORFusionZapIn() {
-        if (msg.sender != IPOR_FUSION_ZAP_IN) {
-            revert OnlyIPORFusionZapIn();
+    modifier OnlyERC4626ZapIn() {
+        if (msg.sender != ERC4626_ZAP_IN) {
+            revert NotERC4626ZapIn();
         }
         _;
     }
