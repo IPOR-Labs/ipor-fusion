@@ -191,17 +191,13 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
         uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
 
         uint256 borrowAssetPrice = IAavePriceOracle(AAVE_PRICE_ORACLE).getAssetPrice(borrowAsset);
+        (uint256 assetPrice, uint256 decimals) = IPriceOracleMiddleware(priceOracle).getAssetPrice(asset);
 
-        uint256 priceBorrowAsset = borrowAssetPrice * 10 ** 18;
+        // Adjust borrowAssetPrice from 8 decimals to 18 decimals
+        borrowAssetPrice = borrowAssetPrice * 1e10;
 
-        (uint256 assetPrice, ) = IPriceOracleMiddleware(priceOracle).getAssetPrice(asset);
-
-        uint256 priceDepositAsset = assetPrice * 10 ** 18;
-
-        uint256 vaultBalanceInUnderlying = (((depositAmount * priceDepositAsset) /
-            10 ** 18 -
-            (borrowAmount * priceBorrowAsset) /
-            10 ** 18) * 10 ** 18) / priceDepositAsset;
+        // Calculate vault balance in underlying
+        uint256 vaultBalanceInUnderlying = ((depositAmount * assetPrice - borrowAmount * borrowAssetPrice)) / assetPrice;
 
         //when
         vm.prank(alpha);

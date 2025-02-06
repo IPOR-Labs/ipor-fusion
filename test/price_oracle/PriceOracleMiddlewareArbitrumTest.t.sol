@@ -39,7 +39,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(USDC);
 
         // then
-        assertEq(result, uint256(100000000), "Price should be calculated correctly");
+        assertEq(result, uint256(1*10**decimals), "Price should be calculated correctly");
     }
 
     function testShouldRevertWhenPassNotSupportedAsset() external {

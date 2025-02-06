@@ -32,7 +32,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(dai);
 
         // then
-        assertEq(result, uint256(99984808), "Price should be calculated correctly");
+        assertEq(result, uint256(99984808*1e10), "Price should be calculated correctly");
     }
 
     function testShouldReturnUsdcPrice() external {
@@ -44,7 +44,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(usdc);
 
         // then
-        assertEq(result, uint256(99995746), "Price should be calculated correctly");
+        assertEq(result, uint256(99995746*1e10), "Price should be calculated correctly");
     }
 
     function testShouldReturnUsdtPrice() external {
@@ -56,7 +56,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(usdt);
 
         // then
-        assertEq(result, uint256(99975732), "Price should be calculated correctly");
+        assertEq(result, uint256(99975732*1e10), "Price should be calculated correctly");
     }
 
     function testShouldReturnEthPrice() external {
@@ -68,7 +68,7 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(eth);
 
         // then
-        assertEq(result, uint256(334937530000), "Price should be calculated correctly");
+        assertEq(result, uint256(334937530000*1e10), "Price should be calculated correctly");
     }
 
     function testShouldReturnSDaiPrice() external {
@@ -88,6 +88,6 @@ contract PriceOracleMiddlewareMaintenanceTest is Test {
         (uint256 result, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(sDai);
 
         // then
-        assertEq(result, uint256(106851828), "Price should be calculated correctly");
+        assertEq(result, uint256(106851828*1e10), "Price should be calculated correctly");
     }
 }

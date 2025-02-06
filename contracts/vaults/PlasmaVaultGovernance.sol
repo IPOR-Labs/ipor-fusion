@@ -1106,8 +1106,7 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         IPriceOracleMiddleware newPriceOracleMiddleware = IPriceOracleMiddleware(priceOracleMiddleware_);
 
         if (
-            oldPriceOracleMiddleware.QUOTE_CURRENCY() != newPriceOracleMiddleware.QUOTE_CURRENCY() ||
-            oldPriceOracleMiddleware.QUOTE_CURRENCY_DECIMALS() != newPriceOracleMiddleware.QUOTE_CURRENCY_DECIMALS()
+            oldPriceOracleMiddleware.QUOTE_CURRENCY() != newPriceOracleMiddleware.QUOTE_CURRENCY()
         ) {
             revert Errors.UnsupportedPriceOracleMiddleware();
         }

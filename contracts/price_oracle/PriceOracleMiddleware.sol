@@ -8,6 +8,7 @@ import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/Fe
 import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
 import {IPriceFeed} from "./price_feed/IPriceFeed.sol";
 import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
+import {IporMath} from "../libraries/math/IporMath.sol";
 
 /// @title Price Oracle Middleware
 /// @notice Contract responsible for providing standardized asset price feeds in USD
@@ -23,7 +24,7 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
 
     /// @dev Number of decimals used for USD price representation
     /// @notice All price feeds must conform to this decimal precision
-    uint256 public constant QUOTE_CURRENCY_DECIMALS = 8;
+    uint256 public constant QUOTE_CURRENCY_DECIMALS = 18;
 
     /// @dev Address of Chainlink Feed Registry (immutable, set in constructor)
     /// @notice Currently supported only on Ethereum Mainnet
@@ -124,43 +125,39 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
         }
 
         address source = PriceOracleMiddlewareStorageLib.getSourceOfAssetPrice(asset_);
-        int256 price;
+
+        int256 priceFeedPrice;
+        uint256 priceFeedDecimals;
 
         if (source != address(0)) {
-            if (QUOTE_CURRENCY_DECIMALS != IPriceFeed(source).decimals()) {
-                revert IPriceOracleMiddleware.WrongDecimalsInPriceFeed();
-            }
-            (, price, , , ) = IPriceFeed(source).latestRoundData();
+            priceFeedDecimals = IPriceFeed(source).decimals();
+            (, priceFeedPrice, , , ) = IPriceFeed(source).latestRoundData();
         } else {
             if (CHAINLINK_FEED_REGISTRY == address(0)) {
                 revert IPriceOracleMiddleware.UnsupportedAsset();
             }
 
-            if (
-                QUOTE_CURRENCY_DECIMALS !=
-                FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).decimals(asset_, QUOTE_CURRENCY)
-            ) {
-                revert IPriceOracleMiddleware.WrongDecimalsInPriceFeed();
-            }
-
             try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset_, QUOTE_CURRENCY) returns (
                 uint80 roundIdChainlink,
-                int256 priceChainlink,
+                int256 chainlinkPrice,
                 uint256 startedAtChainlink,
                 uint256 timeChainlink,
                 uint80 answeredInRoundChainlink
             ) {
-                price = priceChainlink;
+
+                priceFeedDecimals = FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).decimals(asset_, QUOTE_CURRENCY);
+                priceFeedPrice = chainlinkPrice;
             } catch {
                 revert IPriceOracleMiddleware.UnsupportedAsset();
             }
         }
 
-        if (price <= 0) {
+        assetPrice = IporMath.convertToWad(priceFeedPrice.toUint256(), priceFeedDecimals);
+        
+        if (assetPrice <= 0) {
             revert IPriceOracleMiddleware.UnexpectedPriceResult();
         }
 
-        assetPrice = price.toUint256();
         decimals = QUOTE_CURRENCY_DECIMALS;
     }
 
