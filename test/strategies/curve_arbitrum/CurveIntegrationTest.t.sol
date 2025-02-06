@@ -87,7 +87,7 @@ contract CurveIntegrationTest is Test {
         bytes32[] memory gaugeSubstrates = new bytes32[](1);
         gaugeSubstrates[0] = bytes32(uint256(uint160(_CURVE_GAUGE_3)));
         PlasmaVaultGovernance(address(_plasmaVault)).grantMarketSubstrates(
-            IporFusionMarkets.CURVE_LP_GAUGE,
+            IporFusionMarkets.CURVE_GAUGE_ERC4626,
             gaugeSubstrates
         );
 
@@ -96,9 +96,11 @@ contract CurveIntegrationTest is Test {
         // Deploy and configure fuses
         _erc4626SupplyFuse = new Erc4626SupplyFuse(IporFusionMarkets.ERC4626_0001);
         _erc4626BalanceFuse = new Erc4626BalanceFuse(IporFusionMarkets.ERC4626_0001);
-        _curveChildLiquidityGaugeSupplyFuse = new CurveChildLiquidityGaugeSupplyFuse(IporFusionMarkets.CURVE_LP_GAUGE);
+        _curveChildLiquidityGaugeSupplyFuse = new CurveChildLiquidityGaugeSupplyFuse(
+            IporFusionMarkets.CURVE_GAUGE_ERC4626
+        );
         _curveChildLiquidityGaugeBalanceFuse = new CurveChildLiquidityGaugeErc4626BalanceFuse(
-            IporFusionMarkets.CURVE_LP_GAUGE
+            IporFusionMarkets.CURVE_GAUGE_ERC4626
         );
 
         // Add fuses to vault using addFuses as FUSE_MANAGER
@@ -114,13 +116,13 @@ contract CurveIntegrationTest is Test {
             address(_erc4626BalanceFuse)
         );
         PlasmaVaultGovernance(address(_plasmaVault)).addBalanceFuse(
-            IporFusionMarkets.CURVE_LP_GAUGE,
+            IporFusionMarkets.CURVE_GAUGE_ERC4626,
             address(_curveChildLiquidityGaugeBalanceFuse)
         );
         vm.stopPrank();
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarkets.CURVE_LP_GAUGE;
+        marketIds[0] = IporFusionMarkets.CURVE_GAUGE_ERC4626;
 
         uint256[] memory dependencies = new uint256[](1);
         dependencies[0] = IporFusionMarkets.ERC4626_0001;
@@ -458,7 +460,9 @@ contract CurveIntegrationTest is Test {
         uint256 totalAssetsInErc4626MarketBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC4626_0001);
         assertEq(totalAssetsInErc4626MarketBefore, 0, "ERC4626 market balance should be 0 before execute");
 
-        uint256 totalAssetsInGaugeMarketBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_LP_GAUGE);
+        uint256 totalAssetsInGaugeMarketBefore = _plasmaVault.totalAssetsInMarket(
+            IporFusionMarkets.CURVE_GAUGE_ERC4626
+        );
         assertEq(totalAssetsInGaugeMarketBefore, 0, "Gauge market balance should be 0 before execute");
 
         // Create supply to vault action
@@ -495,7 +499,9 @@ contract CurveIntegrationTest is Test {
         uint256 vaultBalance = IERC20(_CURVE_VAULT_3).balanceOf(address(_plasmaVault));
         assertEq(vaultBalance, 0, "Vault should have 0 LP tokens as all were staked");
 
-        uint256 totalAssetsInErc4626MarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_LP_GAUGE);
+        uint256 totalAssetsInErc4626MarketAfter = _plasmaVault.totalAssetsInMarket(
+            IporFusionMarkets.CURVE_GAUGE_ERC4626
+        );
         assertGt(totalAssetsInErc4626MarketAfter, 0, "ERC4626 market balance should be 0 after execute");
         assertApproxEqAbs(
             totalAssetsInErc4626MarketAfter,
@@ -512,7 +518,7 @@ contract CurveIntegrationTest is Test {
         uint256 gaugeBalance = IERC20(_CURVE_GAUGE_3).balanceOf(address(_plasmaVault));
         assertGt(gaugeBalance, 0, "Gauge should have staked LP tokens");
 
-        uint256 totalAssetsInGaugeMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_LP_GAUGE);
+        uint256 totalAssetsInGaugeMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_GAUGE_ERC4626);
         assertGt(totalAssetsInGaugeMarketAfter, 0, "Gauge market balance should be greater than 0 after execute");
         assertApproxEqAbs(
             totalAssetsInGaugeMarketAfter,
@@ -530,7 +536,9 @@ contract CurveIntegrationTest is Test {
         uint256 totalAssetsInErc4626MarketBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC4626_0001);
         assertEq(totalAssetsInErc4626MarketBefore, 0, "ERC4626 market balance should be 0 before execute");
 
-        uint256 totalAssetsInGaugeMarketBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_LP_GAUGE);
+        uint256 totalAssetsInGaugeMarketBefore = _plasmaVault.totalAssetsInMarket(
+            IporFusionMarkets.CURVE_GAUGE_ERC4626
+        );
         assertEq(totalAssetsInGaugeMarketBefore, 0, "Gauge market balance should be 0 before execute");
 
         // STEP 1: Supply to vault and stake in gauge
@@ -568,7 +576,7 @@ contract CurveIntegrationTest is Test {
         uint256 gaugeBalanceAfterStake = IERC20(_CURVE_GAUGE_3).balanceOf(address(_plasmaVault));
         assertGt(gaugeBalanceAfterStake, 0, "Gauge should have staked LP tokens");
 
-        uint256 totalAssetsInGaugeAfterStake = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_LP_GAUGE);
+        uint256 totalAssetsInGaugeAfterStake = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_GAUGE_ERC4626);
         assertGt(totalAssetsInGaugeAfterStake, 0, "Gauge market balance should be greater than 0 after stake");
         assertApproxEqAbs(
             totalAssetsInGaugeAfterStake,
@@ -614,7 +622,7 @@ contract CurveIntegrationTest is Test {
         uint256 totalAssetsInErc4626MarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC4626_0001);
         assertEq(totalAssetsInErc4626MarketAfter, 0, "ERC4626 market balance should be 0 after full withdrawal");
 
-        uint256 totalAssetsInGaugeMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_LP_GAUGE);
+        uint256 totalAssetsInGaugeMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_GAUGE_ERC4626);
         assertEq(totalAssetsInGaugeMarketAfter, 0, "Gauge market balance should be 0 after full withdrawal");
 
         // Check total assets in plasma vault after full withdrawal
@@ -636,7 +644,9 @@ contract CurveIntegrationTest is Test {
         uint256 totalAssetsInErc4626MarketBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC4626_0001);
         assertEq(totalAssetsInErc4626MarketBefore, 0, "ERC4626 market balance should be 0 before execute");
 
-        uint256 totalAssetsInGaugeMarketBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_LP_GAUGE);
+        uint256 totalAssetsInGaugeMarketBefore = _plasmaVault.totalAssetsInMarket(
+            IporFusionMarkets.CURVE_GAUGE_ERC4626
+        );
         assertEq(totalAssetsInGaugeMarketBefore, 0, "Gauge market balance should be 0 before execute");
 
         // STEP 1: Supply to vault and stake in gauge
@@ -675,7 +685,7 @@ contract CurveIntegrationTest is Test {
         uint256 gaugeBalanceAfterStake = IERC20(_CURVE_GAUGE_3).balanceOf(address(_plasmaVault));
         assertGt(gaugeBalanceAfterStake, 0, "Gauge should have staked LP tokens");
 
-        uint256 totalAssetsInGaugeAfterStake = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_LP_GAUGE);
+        uint256 totalAssetsInGaugeAfterStake = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_GAUGE_ERC4626);
         assertGt(totalAssetsInGaugeAfterStake, 0, "Gauge market balance should be greater than 0 after stake");
         assertApproxEqAbs(
             totalAssetsInGaugeAfterStake,
@@ -698,7 +708,7 @@ contract CurveIntegrationTest is Test {
         );
 
         // Verify final state
-        uint256 totalAssetsInGaugeMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_LP_GAUGE);
+        uint256 totalAssetsInGaugeMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.CURVE_GAUGE_ERC4626);
         assertGt(totalAssetsInGaugeMarketAfter, 0, "Gauge market balance should be greater than 0");
         assertApproxEqAbs(
             totalAssetsInGaugeMarketAfter,

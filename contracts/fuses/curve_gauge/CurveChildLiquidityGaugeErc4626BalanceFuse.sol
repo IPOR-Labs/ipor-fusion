@@ -42,21 +42,25 @@ contract CurveChildLiquidityGaugeErc4626BalanceFuse is IMarketBalanceFuse {
         address plasmaVault = address(this);
         address plasmaVaultAsset = IERC4626(plasmaVault).asset();
         uint256 plasmaVaultAssetPriceDecimals = ERC20(plasmaVaultAsset).decimals();
-        address stakedLpTokenAddress;
+        address gaugeAddress;
         address lpTokenAddress; /// @dev Curve LP token
+        uint256 assetPriceInUSD;
+        uint256 priceDecimals;
 
-        (uint256 assetPriceInUSD, uint256 priceDecimals) = IPriceOracleMiddleware(
+        IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
-        ).getAssetPrice(plasmaVaultAsset);
+        );
+
         for (uint256 i; i < len; ++i) {
-            stakedLpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
-            lpTokenAddress = IChildLiquidityGauge(stakedLpTokenAddress).lp_token();
-            stakedLPTokenBalance = IChildLiquidityGauge(stakedLpTokenAddress).balanceOf(plasmaVault);
+            gaugeAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
+            lpTokenAddress = IChildLiquidityGauge(gaugeAddress).lp_token();
+            stakedLPTokenBalance = IChildLiquidityGauge(gaugeAddress).balanceOf(plasmaVault);
             if (stakedLPTokenBalance > 0) {
                 withdrawUnderlyingTokenAmount = ERC4626Upgradeable(lpTokenAddress).convertToAssets(
                     stakedLPTokenBalance
                 );
                 if (withdrawUnderlyingTokenAmount > 0) {
+                    (assetPriceInUSD, priceDecimals) = priceOracleMiddleware.getAssetPrice(plasmaVaultAsset);
                     balance += IporMath.convertToWad(
                         withdrawUnderlyingTokenAmount * assetPriceInUSD,
                         plasmaVaultAssetPriceDecimals + priceDecimals
