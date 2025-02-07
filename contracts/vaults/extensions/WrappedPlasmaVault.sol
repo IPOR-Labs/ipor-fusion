@@ -793,7 +793,6 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
             );
     }
 
-
     /**
      * @notice Converts shares to assets considering fees and total supply/asset ratios
      * @dev Internal conversion function that handles fee adjustments and asset calculations
