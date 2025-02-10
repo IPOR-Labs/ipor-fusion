@@ -54,6 +54,7 @@ contract CurveChildLiquidityGaugeErc4626BalanceFuse is IMarketBalanceFuse {
         for (uint256 i; i < len; ++i) {
             gaugeAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
             lpTokenAddress = IChildLiquidityGauge(gaugeAddress).lp_token();
+            /// @dev The balance in the Gauge contract is 1:1 with LP tokens - staking does not change the token ratio
             stakedLPTokenBalance = IChildLiquidityGauge(gaugeAddress).balanceOf(plasmaVault);
             if (stakedLPTokenBalance > 0) {
                 withdrawUnderlyingTokenAmount = ERC4626Upgradeable(lpTokenAddress).convertToAssets(
