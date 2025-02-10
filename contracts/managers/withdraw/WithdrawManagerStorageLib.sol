@@ -27,7 +27,9 @@ struct WithdrawWindow {
 /// @notice Tracks the timestamp of the last funds release
 struct ReleaseFunds {
     /// @dev Timestamp of the most recent funds release
-    uint256 lastReleaseFundsTimestamp;
+    uint32 lastReleaseFundsTimestamp;
+    /// @dev Amount of funds released
+    uint128 amountToRelease;
 }
 
 /// @title WithdrawManagerStorageLib
@@ -47,11 +49,14 @@ library WithdrawManagerStorageLib {
     event WithdrawRequestUpdated(address account, uint256 amount, uint32 endWithdrawWindow);
 
     /// @notice Emitted when funds are released
-    /// @param releaseFunds Timestamp when funds were released
-    event ReleaseFundsUpdated(uint256 releaseFunds);
+    /// @param releaseTimestamp Timestamp when funds were released
+    /// @param amountToRelease Amount of funds released
+    event ReleaseFundsUpdated(uint32 releaseTimestamp, uint128 amountToRelease);
 
     /// @notice Thrown when attempting to set withdraw window length to zero
     error WithdrawWindowLengthCannotBeZero();
+    /// @notice Thrown when attempting to release funds with an invalid amount
+    error WithdrawManagerInvalidAmountToRelease(uint256 amount_);
 
     // Storage slot constants
     /// @dev Storage slot for withdraw window configuration
@@ -61,9 +66,9 @@ library WithdrawManagerStorageLib {
     /// @dev Storage slot for withdraw requests mapping
     bytes32 private constant WITHDRAW_REQUESTS = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f00;
 
-    /// @dev Storage slot for last release funds timestamp
-    bytes32 private constant LAST_RELEASE_FUNDS_TIMESTAMP =
-        0x6603575a0b471dee79b9613aa260e2a8f3515603a898fdc76d6849fcd1ac7800;
+    /// @dev Storage slot for last release funds
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.wirgdraw.requests")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant LAST_RELEASE_FUNDS = 0x88d141dcaacfb8523e39ee7fba7c6f591450286f42f9c7069cc072812d539200;
 
     /// @dev Retrieves the withdraw window configuration from storage
     function _getWithdrawWindowLength() private view returns (WithdrawWindow storage withdrawWindow) {
@@ -82,7 +87,7 @@ library WithdrawManagerStorageLib {
     /// @dev Retrieves the release funds timestamp from storage
     function _getReleaseFunds() private view returns (ReleaseFunds storage releaseFundsResult) {
         assembly {
-            releaseFundsResult.slot := LAST_RELEASE_FUNDS_TIMESTAMP
+            releaseFundsResult.slot := LAST_RELEASE_FUNDS
         }
     }
 
@@ -131,9 +136,18 @@ library WithdrawManagerStorageLib {
 
     /// @notice Deletes a withdraw request for an account
     /// @param account_ Address whose request should be deleted
-    function deleteWithdrawRequest(address account_) internal {
+    /// @param amount_ Amount of funds released
+    function deleteWithdrawRequest(address account_, uint256 amount_) internal {
+        ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
+        uint128 approvedAmountToRelase = releaseFundsLocal.amountToRelease;
+
+        if (approvedAmountToRelase >= amount_) {
+            releaseFundsLocal.amountToRelease = approvedAmountToRelase - amount_.toUint128();
+            emit WithdrawRequestUpdated(account_, 0, 0);
+        } else {
+            revert WithdrawManagerInvalidAmountToRelease(amount_);
+        }
         delete _getWithdrawRequests().requests[account_];
-        emit WithdrawRequestUpdated(account_, 0, 0);
     }
 
     /// @notice Gets the timestamp of the last funds release
@@ -142,11 +156,17 @@ library WithdrawManagerStorageLib {
         return _getReleaseFunds().lastReleaseFundsTimestamp;
     }
 
+    function getAmountToRelease() internal view returns (uint256) {
+        return uint256(_getReleaseFunds().amountToRelease);
+    }
+
     /// @notice Updates the last funds release timestamp
     /// @param timestamp_ New timestamp to set
-    function releaseFunds(uint256 timestamp_) internal {
+    /// @param amountToRelease_ Amount of funds released
+    function releaseFunds(uint256 timestamp_, uint256 amountToRelease_) internal {
         ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
-        releaseFundsLocal.lastReleaseFundsTimestamp = timestamp_;
-        emit ReleaseFundsUpdated(timestamp_);
+        releaseFundsLocal.lastReleaseFundsTimestamp = timestamp_.toUint32();
+        releaseFundsLocal.amountToRelease = amountToRelease_.toUint128();
+        emit ReleaseFundsUpdated(timestamp_.toUint32(), amountToRelease_.toUint128());
     }
 }

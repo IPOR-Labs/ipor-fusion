@@ -66,7 +66,7 @@ contract ContextManagerWithdrawManagerTest is Test, ContextManagerInitSetup {
         _addresses[0] = address(_withdrawManager);
 
         _data = new bytes[](1);
-        _data[0] = abi.encodeWithSelector(WithdrawManager.releaseFunds.selector, timestamp);
+        _data[0] = abi.encodeWithSelector(WithdrawManager.releaseFunds.selector, timestamp, 100e18);
 
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 

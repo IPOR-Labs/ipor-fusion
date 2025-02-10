@@ -26,6 +26,7 @@ contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USD = 0x0000000000000000000000000000000000000348;
+    address public constant USD_WRONG = 0x0000000000000000000000000000000000000349;
     /// @dev Aave Price Oracle mainnet address where base currency is USD
     address public constant AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
     address public constant ETHEREUM_AAVE_POOL_DATA_PROVIDER_V3 = 0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3;
@@ -1492,7 +1493,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         setupRoles(plasmaVault, accessManager);
 
-        address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 6, address(0)));
+        address newPriceOracle = address(new PriceOracleMiddlewareMock(USD_WRONG, 6, address(0)));
         address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
 
         bytes memory error = abi.encodeWithSignature("UnsupportedPriceOracleMiddleware()");

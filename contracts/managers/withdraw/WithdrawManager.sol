@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {WithdrawManagerStorageLib} from "./WithdrawManagerStorageLib.sol";
 import {WithdrawRequest} from "./WithdrawManagerStorageLib.sol";
@@ -42,10 +43,6 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         uint256 releaseFundsTimestamp = WithdrawManagerStorageLib.getLastReleaseFundsTimestamp();
         WithdrawRequest memory request = WithdrawManagerStorageLib.getWithdrawRequest(account_);
 
-        if (request.endWithdrawWindowTimestamp == 0) {
-            return false;
-        }
-
         if (
             _canWithdraw(
                 request.endWithdrawWindowTimestamp,
@@ -53,8 +50,15 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
                 releaseFundsTimestamp
             ) && request.amount >= amount_
         ) {
-            WithdrawManagerStorageLib.deleteWithdrawRequest(account_);
+            WithdrawManagerStorageLib.deleteWithdrawRequest(account_, amount_);
             return true;
+        }
+
+        uint256 balanceOfPlasmaVault = ERC4626(ERC4626(msg.sender).asset()).balanceOf(msg.sender);
+        uint256 amountToRelease = WithdrawManagerStorageLib.getAmountToRelease();
+
+        if (balanceOfPlasmaVault >= amountToRelease) {
+            return balanceOfPlasmaVault - amountToRelease >= amount_;
         }
         return false;
     }
@@ -73,12 +77,13 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
      * @notice Updates the release funds timestamp to allow withdrawals after this point
      * @dev Only callable by accounts with ALPHA_ROLE
      * @param timestamp_ The timestamp to set as the release funds timestamp
+     * @param amountToRelease_ Amount of funds released
      * @dev Reverts if the provided timestamp is in the future
      * @custom:access ALPHA_ROLE
      */
-    function releaseFunds(uint256 timestamp_) external restricted {
+    function releaseFunds(uint256 timestamp_, uint256 amountToRelease_) external restricted {
         if (timestamp_ < block.timestamp) {
-            WithdrawManagerStorageLib.releaseFunds(timestamp_);
+            WithdrawManagerStorageLib.releaseFunds(timestamp_, amountToRelease_);
         } else {
             revert WithdrawManagerInvalidTimestamp(timestamp_);
         }
@@ -92,6 +97,10 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
      */
     function getLastReleaseFundsTimestamp() external view returns (uint256) {
         return WithdrawManagerStorageLib.getLastReleaseFundsTimestamp();
+    }
+
+    function getAmountToRelease() external view returns (uint256) {
+        return WithdrawManagerStorageLib.getAmountToRelease();
     }
 
     /**
