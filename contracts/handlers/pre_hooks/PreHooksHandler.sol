@@ -33,7 +33,7 @@ abstract contract PreHooksHandler {
     ///      - Executes the hook via delegate call to maintain vault's context
     ///      - Preserves the vault's storage context during execution
     /// @param selector_ The function selector of the operation requiring pre-hook execution
-    function _runPreHooks(bytes4 selector_) internal {
+    function _runPreHook(bytes4 selector_) internal {
         address implementation = PreHooksLib.getPreHookImplementation(selector_);
         if (implementation == address(0)) {
             return;

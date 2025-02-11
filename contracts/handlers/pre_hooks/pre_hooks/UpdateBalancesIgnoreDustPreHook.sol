@@ -19,10 +19,25 @@ import {PreHooksLib} from "../PreHooksLib.sol";
 /// - Updates balances only for markets with significant amounts
 /// - Gas efficient implementation using dynamic arrays
 ///
+/// Substrates Configuration:
+/// - The contract expects exactly one substrate value configured through PlasmaVaultGovernance
+/// - The substrate value represents the dust threshold in the vault's underlying token decimals
+/// - Example: For USDC (6 decimals), a substrate value of 1e6 means 1 USDC dust threshold
+/// - Markets with balance changes below this threshold will be ignored during updates
+/// - This configuration is set during hook registration via setPreHookImplementations
+///
+/// Example substrate configuration from tests:
+/// ```solidity
+/// bytes32[][] memory preHookSubstrates = new bytes32[][](1);
+/// preHookSubstrates[0] = new bytes32[](1);
+/// preHookSubstrates[0][0] = bytes32(uint256(1e6)); // 1 USDC dust threshold
+/// ```
+///
 /// Security considerations:
 /// - Immutable version address for substrate lookup
 /// - Validates substrate configuration
 /// - Protected by PlasmaVault's access control
+/// - Dust threshold can only be modified by governance
 contract UpdateBalancesIgnoreDustPreHook is IPreHook {
     /// @notice Immutable version address used for substrate configuration lookup
     /// @dev This address is set during construction and used to retrieve the dust threshold
