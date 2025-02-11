@@ -38,14 +38,6 @@ library PriceOracleMiddlewareHelper {
             );
     }
 
-    function setAssetsPricesSources(
-        PriceOracleMiddleware priceOracleMiddleware_,
-        address[] memory assets,
-        address[] memory sources
-    ) internal {
-        priceOracleMiddleware_.setAssetsPricesSources(assets, sources);
-    }
-
     function addressOf(PriceOracleMiddleware priceOracleMiddleware_) internal view returns (address) {
         return address(priceOracleMiddleware_);
     }
