@@ -39,7 +39,7 @@ library IporMath {
         if (assetDecimals_ == WAD_DECIMALS) {
             return value_;
         } else if (assetDecimals_ > WAD_DECIMALS) {
-            return value_ * WAD_DECIMALS ** (assetDecimals_ - WAD_DECIMALS);
+            return value_ * BASIS_OF_POWER ** (assetDecimals_ - WAD_DECIMALS);
         } else {
             return division(value_, BASIS_OF_POWER ** (WAD_DECIMALS - assetDecimals_));
         }

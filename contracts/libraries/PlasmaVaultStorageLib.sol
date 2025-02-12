@@ -889,6 +889,9 @@ library PlasmaVaultStorageLib {
         bytes4[] selectors;
         /// @dev Maps function selectors to their position in the selectors array for O(1) lookup
         mapping(bytes4 selector => uint256 index) indexes;
+        /// @dev Maps function selectors and addresses to their corresponding substrate ids
+        /// @dev key is keccak256(abi.encodePacked(address, selector))
+        mapping(bytes32 key => bytes32[] substrates) substrates;
     }
 
     /**
