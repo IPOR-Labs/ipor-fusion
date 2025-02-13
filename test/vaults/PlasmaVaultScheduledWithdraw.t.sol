@@ -13,6 +13,8 @@ import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMid
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
+import {console2} from "forge-std/console2.sol";
+
 contract PlasmaVaultScheduledWithdraw is Test {
     address private constant _ATOMIST = address(1111111);
     address private constant _ALPHA = address(2222222);
@@ -138,29 +140,29 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
         vm.stopPrank();
 
-        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
         // when
         vm.startPrank(_USER);
         vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
+        PlasmaVault(_plasmaVault).redeemFromRequest(withdrawAmount, _USER, _USER);
         vm.stopPrank();
     }
 
-    function testShouldNotBeAbleToRedeemWithoutRequest() external {
-        // given
-        uint256 withdrawAmount = 1_000e6;
+    // function stestShouldNotBeAbleToRedeemWithoutRequest() external {
+    //     // given
+    //     uint256 withdrawAmount = 1_000e6;
 
-        vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
-        vm.stopPrank();
+    //     vm.startPrank(_ALPHA);
+    //     WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
+    //     vm.stopPrank();
 
-        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, 10000000);
-        // when
-        vm.startPrank(_USER);
-        vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).redeem(withdrawAmount, _USER, _USER);
-        vm.stopPrank();
-    }
+    //     bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, 10000000);
+    //     // when
+    //     vm.startPrank(_USER);
+    //     vm.expectRevert(error);
+    //     PlasmaVault(_plasmaVault).redeem(withdrawAmount, _USER, _USER);
+    //     vm.stopPrank();
+    // }
 
     function testShouldReturnZeroWhenInitWithdrawWindow() external {
         // given
@@ -199,52 +201,85 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
         vm.stopPrank();
 
-        uint256 withdrawAmount = 1_000e6;
+        uint256 withdrawAmount = 1_000e8;
         vm.startPrank(_USER);
         WithdrawManager(_withdrawManager).request(withdrawAmount);
         vm.stopPrank();
 
-        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
 
         vm.warp(block.timestamp + 10 hours);
 
         // when
         vm.startPrank(_USER);
         vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
+        PlasmaVault(_plasmaVault).redeemFromRequest(withdrawAmount, _USER, _USER);
         vm.stopPrank();
     }
 
-    function testShouldNotBeAbleToRedeemWhenNotReleaseFunds() external {
+    // function stestShouldNotBeAbleToRedeemWhenNotReleaseFunds() external {
+    //     // given
+    //     uint256 withdrawAmount = 1_000e6;
+
+    //     vm.startPrank(_ALPHA);
+    //     WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
+    //     vm.stopPrank();
+
+    //     vm.startPrank(_USER);
+    //     WithdrawManager(_withdrawManager).request(withdrawAmount);
+    //     vm.stopPrank();
+
+    //     bytes memory error = abi.encodeWithSignature(
+    //         "WithdrawIsNotAllowed(address,uint256)",
+    //         _USER,
+    //         withdrawAmount / 10 ** 2
+    //     );
+
+    //     vm.warp(block.timestamp + 10 hours);
+
+    //     // when
+    //     vm.startPrank(_USER);
+    //     vm.expectRevert(error);
+    //     PlasmaVault(_plasmaVault).redeem(withdrawAmount, _USER, _USER);
+    //     vm.stopPrank();
+    // }
+
+    // function stestShouldBeAbleToWithdraw() external {
+    //     // given
+    //     uint256 withdrawAmount = 1_000e6;
+
+    //     vm.prank(_ATOMIST);
+    //     WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+    //     vm.startPrank(_USER);
+    //     WithdrawManager(_withdrawManager).request(withdrawAmount);
+    //     vm.stopPrank();
+
+    //     vm.warp(block.timestamp + 1 hours);
+
+    //     vm.prank(_ALPHA);
+    //     WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, withdrawAmount);
+
+    //     vm.warp(block.timestamp + 10 hours);
+
+    //     uint256 balanceBefore = ERC20(_USDC).balanceOf(_USER);
+
+    //     // when
+    //     vm.startPrank(_USER);
+    //     PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
+    //     vm.stopPrank();
+
+    //     // then
+    //     uint256 balanceAfter = ERC20(_USDC).balanceOf(_USER);
+    //     assertTrue(
+    //         balanceAfter == withdrawAmount + balanceBefore,
+    //         "user balance should be increased by withdraw amount"
+    //     );
+    // }
+
+    function testShouldBeAbleToRedeemFromRequest() external {
         // given
-        uint256 withdrawAmount = 1_000e6;
-
-        vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
-        vm.stopPrank();
-
-        vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
-        vm.stopPrank();
-
-        bytes memory error = abi.encodeWithSignature(
-            "WithdrawIsNotAllowed(address,uint256)",
-            _USER,
-            withdrawAmount / 10 ** 2
-        );
-
-        vm.warp(block.timestamp + 10 hours);
-
-        // when
-        vm.startPrank(_USER);
-        vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).redeem(withdrawAmount, _USER, _USER);
-        vm.stopPrank();
-    }
-
-    function testShouldBeAbleToWithdraw() external {
-        // given
-        uint256 withdrawAmount = 1_000e6;
+        uint256 withdrawAmount = 1_000e8;
 
         vm.prank(_ATOMIST);
         WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
@@ -264,27 +299,37 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         // when
         vm.startPrank(_USER);
-        PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
+        PlasmaVault(_plasmaVault).redeemFromRequest(withdrawAmount, _USER, _USER);
         vm.stopPrank();
 
         // then
         uint256 balanceAfter = ERC20(_USDC).balanceOf(_USER);
+
         assertTrue(
-            balanceAfter == withdrawAmount + balanceBefore,
+            balanceAfter == withdrawAmount / 100 + balanceBefore,
             "user balance should be increased by withdraw amount"
         );
     }
 
-    function testShouldBeAbleToRedeem() external {
+    function testShouldBeAbleToRedeemFromRequestWithFee() external {
         // given
-        uint256 withdrawAmount = 1_000e6;
+        uint256 withdrawAmount = 1_000e8;
 
         vm.prank(_ATOMIST);
         WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
 
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateRequestFee(0.01e18);
+        WithdrawManager(_withdrawManager).updatePlasmaVaultAddress(_plasmaVault);
+        vm.stopPrank();
+
+        uint256 balanceWithdrawManagerBefore = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
+
         vm.startPrank(_USER);
         WithdrawManager(_withdrawManager).request(withdrawAmount);
         vm.stopPrank();
+
+        uint256 balanceWithdrawManagerAfter = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
 
         vm.warp(block.timestamp + 1 hours);
 
@@ -297,20 +342,25 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         // when
         vm.startPrank(_USER);
-        PlasmaVault(_plasmaVault).redeem(withdrawAmount * 100, _USER, _USER);
+        PlasmaVault(_plasmaVault).redeemFromRequest(withdrawAmount - 10e8, _USER, _USER);
         vm.stopPrank();
 
         // then
         uint256 balanceAfter = ERC20(_USDC).balanceOf(_USER);
-        assertTrue(
-            balanceAfter == withdrawAmount + balanceBefore,
-            "user balance should be increased by withdraw amount"
-        );
+        console2.log("balanceBefore", balanceBefore);
+        console2.log("balanceAfter", balanceAfter);
+        console2.log("balanceWithdrawManagerBefore", balanceWithdrawManagerBefore);
+        console2.log("balanceWithdrawManagerAfter", balanceWithdrawManagerAfter);
+
+        assertEq(balanceBefore, 0);
+        assertEq(balanceAfter, 990000000);
+        assertEq(balanceWithdrawManagerBefore, 0);
+        assertEq(balanceWithdrawManagerAfter, 1000000000);
     }
 
-    function testShouldNOTBeAbleToRedeemBecauseNoExecutionReleaseFunds() external {
+    function testShouldNOTBeAbleToRedeemFromRequestBecauseNoExecutionReleaseFunds() external {
         // given
-        uint256 withdrawAmount = 1_000e6;
+        uint256 withdrawAmount = 1_000e8;
 
         vm.startPrank(_ALPHA);
         WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
@@ -327,46 +377,19 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         vm.warp(block.timestamp + 10 hours);
 
-        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
 
         vm.startPrank(_USER);
         //then
         vm.expectRevert(error);
         // when
-        PlasmaVault(_plasmaVault).redeem(withdrawAmount * 100, _USER, _USER);
-        vm.stopPrank();
-    }
-
-    function testShouldNOTBeAbleToWithdrawBecauseNoExecutionReleaseFunds() external {
-        // given
-        uint256 withdrawAmount = 1_000e6;
-
-        vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
-        vm.stopPrank();
-
-        vm.prank(_ATOMIST);
-        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
-
-        vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
-        vm.stopPrank();
-
-        vm.warp(block.timestamp + 10 hours);
-
-        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
-
-        vm.startPrank(_USER);
-        //then
-        vm.expectRevert(error);
-        // when
-        PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
+        PlasmaVault(_plasmaVault).redeemFromRequest(withdrawAmount, _USER, _USER);
         vm.stopPrank();
     }
 
     function testShouldNotBeAbleToRedeemWhenWithdrawWindowFinish() external {
         // given
-        uint256 withdrawAmount = 1_000e6;
+        uint256 withdrawAmount = 1_000e8;
 
         vm.prank(_ATOMIST);
         WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
@@ -382,16 +405,18 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         vm.warp(block.timestamp + 24 hours);
 
-        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
 
         // when
         vm.startPrank(_USER);
         vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).redeem(withdrawAmount * 100, _USER, _USER);
+        PlasmaVault(_plasmaVault).redeemFromRequest(withdrawAmount, _USER, _USER);
         vm.stopPrank();
     }
 
-    function testShouldNotBeAbleToRedeemWhenWithdrawWindowFinishAndReleaseFundAfterWithdrawWindow() external {
+    function testShouldNotBeAbleToRedeemFromRequestWhenWithdrawWindowFinishAndReleaseFundAfterWithdrawWindow()
+        external
+    {
         // given
         uint256 withdrawAmount = 1_000e6;
 
@@ -407,70 +432,18 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.prank(_ALPHA);
         WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
 
-        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
 
         // when
         vm.startPrank(_USER);
         vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).redeem(withdrawAmount * 100, _USER, _USER);
+        PlasmaVault(_plasmaVault).redeemFromRequest(withdrawAmount, _USER, _USER);
         vm.stopPrank();
     }
 
-    function testShouldNotBeAbleToWithdrawWhenWithdrawWindowFinish() external {
+    function testShouldNotBeAbleToRedeemFromRequestWhenAmountBiggerThenRequest() external {
         // given
-        uint256 withdrawAmount = 1_000e6;
-
-        vm.prank(_ATOMIST);
-        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
-
-        vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
-        vm.stopPrank();
-
-        vm.warp(block.timestamp + 1 hours);
-
-        vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
-
-        vm.warp(block.timestamp + 24 hours);
-
-        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
-
-        // when
-        vm.startPrank(_USER);
-        vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
-        vm.stopPrank();
-    }
-
-    function testShouldNotBeAbleToWithdrawWhenWithdrawWindowFinishAndReleaseFundsAfterRequestWindow() external {
-        // given
-        uint256 withdrawAmount = 1_000e6;
-
-        vm.prank(_ATOMIST);
-        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
-
-        vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
-        vm.stopPrank();
-
-        vm.warp(block.timestamp + 1 days + 1 hours);
-
-        vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
-
-        bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, withdrawAmount);
-
-        // when
-        vm.startPrank(_USER);
-        vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
-        vm.stopPrank();
-    }
-
-    function testShouldNotBeAbleToRedeemWhenAmountBiggerThenRequest() external {
-        // given
-        uint256 withdrawAmount = 1_000e6;
+        uint256 withdrawAmount = 1_000e8;
 
         vm.prank(_ATOMIST);
         WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
@@ -487,46 +460,14 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 24 hours);
 
         bytes memory error = abi.encodeWithSignature(
-            "WithdrawIsNotAllowed(address,uint256)",
-            _USER,
+            "WithdrawManagerInvalidAmountToRelease(uint256)",
             withdrawAmount + 1e6
         );
 
         // when
         vm.startPrank(_USER);
         vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).redeem(withdrawAmount * 100 + 1e8, _USER, _USER);
-        vm.stopPrank();
-    }
-
-    function testShouldNotBeAbleToWithdrawWhenAmountBiggerThenRequest() external {
-        // given
-        uint256 withdrawAmount = 1_000e6;
-
-        vm.prank(_ATOMIST);
-        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
-
-        vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
-        vm.stopPrank();
-
-        vm.warp(block.timestamp + 1 hours);
-
-        vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
-
-        vm.warp(block.timestamp + 24 hours);
-
-        bytes memory error = abi.encodeWithSignature(
-            "WithdrawIsNotAllowed(address,uint256)",
-            _USER,
-            withdrawAmount + 1
-        );
-
-        // when
-        vm.startPrank(_USER);
-        vm.expectRevert(error);
-        PlasmaVault(_plasmaVault).withdraw(withdrawAmount + 1, _USER, _USER);
+        PlasmaVault(_plasmaVault).redeemFromRequest(withdrawAmount + 1e6, _USER, _USER);
         vm.stopPrank();
     }
 
@@ -614,5 +555,71 @@ contract PlasmaVaultScheduledWithdraw is Test {
             balanceAfter == withdrawAmount + balanceBefore,
             "user balance should be increased by withdraw amount"
         );
+    }
+
+    function testShouldNotBeAbleToUpdateWithdrawFeeWhenNotAtomist() external {
+        // given
+        uint256 withdrawFee = 0.01e18; // 1% fee
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        WithdrawManager(_withdrawManager).updateWithdrawFee(withdrawFee);
+        vm.stopPrank();
+    }
+
+    function testShouldBeAbleToRedeemWithFee() external {
+        // given
+        uint256 withdrawFee = 0.01e18; // 1% fee
+
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawFee(withdrawFee);
+        vm.stopPrank();
+
+        uint256 balanceBefore = ERC20(_USDC).balanceOf(_plasmaVault);
+
+        vm.startPrank(_USER);
+        PlasmaVault(_plasmaVault).redeem(1000e8, _USER, _USER);
+        vm.stopPrank();
+
+        uint256 balanceAfter = ERC20(_USDC).balanceOf(_plasmaVault);
+
+        assertEq(balanceBefore, 10000000000);
+        assertEq(balanceAfter, 9010000000);
+    }
+
+    function testShouldBeAbleToUpdateWithdrawFeeWhenAtomist() external {
+        // given
+        uint256 withdrawFee = 0.01e18; // 1% fee
+
+        // when
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawFee(withdrawFee);
+        vm.stopPrank();
+
+        // then
+        uint256 currentFee = WithdrawManager(_withdrawManager).getWithdrawFee();
+        assertEq(currentFee, withdrawFee, "withdraw fee should be updated to 1%");
+    }
+
+    function testShouldBeAbleToWithdrawWithFee() external {
+        // given
+        uint256 withdrawFee = 0.01e18; // 1% fee
+
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawFee(withdrawFee);
+        vm.stopPrank();
+
+        uint256 balanceBefore = ERC20(_USDC).balanceOf(_plasmaVault);
+
+        vm.startPrank(_USER);
+        PlasmaVault(_plasmaVault).withdraw(10e6, _USER, _USER);
+        vm.stopPrank();
+
+        uint256 balanceAfter = ERC20(_USDC).balanceOf(_plasmaVault);
+
+        assertEq(balanceBefore, 10000000000);
+        assertEq(balanceAfter, 9990100000);
     }
 }

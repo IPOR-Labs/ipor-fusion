@@ -2,13 +2,17 @@
 pragma solidity 0.8.26;
 
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {WithdrawManagerStorageLib} from "./WithdrawManagerStorageLib.sol";
 import {WithdrawRequest} from "./WithdrawManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
+import {IPlasmaVaultBase} from "../../interfaces/IPlasmaVaultBase.sol";
+
+import {console2} from "forge-std/console2.sol";
 
 struct WithdrawRequestInfo {
-    uint256 amount;
+    uint256 shares;
     uint256 endWithdrawWindowTimestamp;
     bool canWithdraw;
     uint256 withdrawWindowInSeconds;
@@ -26,20 +30,41 @@ struct WithdrawRequestInfo {
  */
 contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     error WithdrawManagerInvalidTimestamp(uint256 timestamp_);
-
+    error WithdrawManagerInvalidAmountToRelease(
+        uint256 amountToRelease,
+        uint256 shares_,
+        uint256 plasmaVaultBalanceOfUnallocatedShears
+    );
     constructor(address accessManager_) initializer {
         super.__AccessManaged_init(accessManager_);
     }
 
     /**
-     * @notice Checks if the account can withdraw the specified amount and updates the withdraw request
+     * @notice Creates a new withdrawal request
+     * @dev Publicly accessible function
+     * @param shares_ The amount requested for redeem, amount of shares to redeem
+     * @custom:access Public
+     */
+    function request(uint256 shares_) external {
+        uint256 feeRate = WithdrawManagerStorageLib.getRequestFee();
+        if (feeRate > 0) {
+            uint256 feeAmount = Math.mulDiv(shares_, feeRate, 1e18);
+            WithdrawManagerStorageLib.updateWithdrawRequest(_msgSender(), shares_ - feeAmount);
+            IPlasmaVaultBase(getPlasmaVaultAddress()).transferRequestFee(_msgSender(), address(this), feeAmount);
+        } else {
+            WithdrawManagerStorageLib.updateWithdrawRequest(_msgSender(), shares_);
+        }
+    }
+
+    /**
+     * @notice Checks if the account can withdraw the specified amount from a request
      * @dev Only callable by PlasmaVault contract (TECH_PLASMA_VAULT_ROLE)
      * @param account_ The address of the account to check
-     * @param amount_ The amount to check for withdrawal
+     * @param shares_ The amount to check for withdrawal
      * @return bool True if the account can withdraw the specified amount, false otherwise
      * @custom:access TECH_PLASMA_VAULT_ROLE
      */
-    function canWithdrawAndUpdate(address account_, uint256 amount_) external restricted returns (bool) {
+    function canWithdrawFromRequest(address account_, uint256 shares_) external restricted returns (bool) {
         uint256 releaseFundsTimestamp = WithdrawManagerStorageLib.getLastReleaseFundsTimestamp();
         WithdrawRequest memory request = WithdrawManagerStorageLib.getWithdrawRequest(account_);
 
@@ -48,42 +73,49 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
                 request.endWithdrawWindowTimestamp,
                 WithdrawManagerStorageLib.getWithdrawWindowInSeconds(),
                 releaseFundsTimestamp
-            ) && request.amount >= amount_
+            ) && request.shares >= shares_
         ) {
-            WithdrawManagerStorageLib.deleteWithdrawRequest(account_, amount_);
+            WithdrawManagerStorageLib.decreaseWithdrawRequest(account_, shares_);
+            WithdrawManagerStorageLib.decreaseSharesToRelease(shares_);
             return true;
-        }
-
-        uint256 balanceOfPlasmaVault = ERC4626(ERC4626(msg.sender).asset()).balanceOf(msg.sender);
-        uint256 amountToRelease = WithdrawManagerStorageLib.getAmountToRelease();
-
-        if (balanceOfPlasmaVault >= amountToRelease) {
-            return balanceOfPlasmaVault - amountToRelease >= amount_;
         }
         return false;
     }
 
-    /**
-     * @notice Creates a new withdrawal request
-     * @dev Publicly accessible function
-     * @param amount_ The amount requested for withdrawal
-     * @custom:access Public
-     */
-    function request(uint256 amount_) external {
-        WithdrawManagerStorageLib.updateWithdrawRequest(_msgSender(), amount_);
+    function canWithdrawFromUnallocated(
+        address account_,
+        uint256 shares_
+    ) external restricted returns (uint256 feeSharesToBurn) {
+        uint256 feeRate = WithdrawManagerStorageLib.getWithdrawFee();
+        uint256 balanceOfPlasmaVault = ERC4626(ERC4626(msg.sender).asset()).balanceOf(msg.sender);
+        uint256 plasmaVaultBalanceOfUnallocatedShears = ERC4626(msg.sender).convertToShares(balanceOfPlasmaVault);
+        uint256 amountToRelease = WithdrawManagerStorageLib.getAmountToRelease();
+
+        if (plasmaVaultBalanceOfUnallocatedShears < amountToRelease + shares_) {
+            revert WithdrawManagerInvalidAmountToRelease(
+                amountToRelease,
+                shares_,
+                plasmaVaultBalanceOfUnallocatedShears
+            );
+        }
+        if (feeRate > 0) {
+            uint256 feeAmount = Math.mulDiv(shares_, feeRate, 1e18);
+            return feeAmount;
+        }
+        return 0;
     }
 
     /**
      * @notice Updates the release funds timestamp to allow withdrawals after this point
      * @dev Only callable by accounts with ALPHA_ROLE
      * @param timestamp_ The timestamp to set as the release funds timestamp
-     * @param amountToRelease_ Amount of funds released
+     * @param sharesToRelease_ Amount of shares released
      * @dev Reverts if the provided timestamp is in the future
      * @custom:access ALPHA_ROLE
      */
-    function releaseFunds(uint256 timestamp_, uint256 amountToRelease_) external restricted {
+    function releaseFunds(uint256 timestamp_, uint256 sharesToRelease_) external restricted {
         if (timestamp_ < block.timestamp) {
-            WithdrawManagerStorageLib.releaseFunds(timestamp_, amountToRelease_);
+            WithdrawManagerStorageLib.releaseFunds(timestamp_, sharesToRelease_);
         } else {
             revert WithdrawManagerInvalidTimestamp(timestamp_);
         }
@@ -99,7 +131,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         return WithdrawManagerStorageLib.getLastReleaseFundsTimestamp();
     }
 
-    function getAmountToRelease() external view returns (uint256) {
+    function getSharesReleased() external view returns (uint256) {
         return WithdrawManagerStorageLib.getAmountToRelease();
     }
 
@@ -111,6 +143,30 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
      */
     function updateWithdrawWindow(uint256 window_) external restricted {
         WithdrawManagerStorageLib.updateWithdrawWindowLength(window_);
+    }
+
+    function updateWithdrawFee(uint256 fee_) external restricted {
+        WithdrawManagerStorageLib.setWithdrawFee(fee_);
+    }
+
+    function getWithdrawFee() external view returns (uint256) {
+        return WithdrawManagerStorageLib.getWithdrawFee();
+    }
+
+    function updateRequestFee(uint256 fee_) external restricted {
+        WithdrawManagerStorageLib.setRequestFee(fee_);
+    }
+
+    function getRequestFee() external view returns (uint256) {
+        return WithdrawManagerStorageLib.getRequestFee();
+    }
+
+    function updatePlasmaVaultAddress(address plasmaVaultAddress_) external restricted {
+        WithdrawManagerStorageLib.setPlasmaVaultAddress(plasmaVaultAddress_);
+    }
+
+    function getPlasmaVaultAddress() public view returns (address) {
+        return WithdrawManagerStorageLib.getPlasmaVaultAddress();
     }
 
     /**
@@ -136,7 +192,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         WithdrawRequest memory request = WithdrawManagerStorageLib.getWithdrawRequest(account_);
         return
             WithdrawRequestInfo({
-                amount: request.amount,
+                shares: request.shares,
                 endWithdrawWindowTimestamp: request.endWithdrawWindowTimestamp,
                 canWithdraw: _canWithdraw(request.endWithdrawWindowTimestamp, withdrawWindow, releaseFundsTimestamp),
                 withdrawWindowInSeconds: withdrawWindow

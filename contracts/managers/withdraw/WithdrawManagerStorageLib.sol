@@ -6,8 +6,8 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 /// @notice Represents a single withdraw request from a user
 /// @dev All amounts are stored in underlying token decimals
 struct WithdrawRequest {
-    /// @dev The requested withdrawal amount in underlying token decimals
-    uint128 amount;
+    /// @dev The requested withdrawal shares
+    uint128 shares;
     /// @dev Timestamp when the withdraw window expires (requestTimeStamp + withdrawWindowInSeconds)
     uint32 endWithdrawWindowTimestamp;
 }
@@ -22,6 +22,21 @@ struct WithdrawRequests {
 struct WithdrawWindow {
     /// @dev Duration of the withdraw window in seconds
     uint256 withdrawWindowInSeconds;
+}
+
+struct RequestFee {
+    /// @dev The fee amount in 18 decimals precision
+    uint256 fee;
+}
+
+struct WithdrawFee {
+    /// @dev The fee amount in 18 decimals precision
+    uint256 fee;
+}
+
+struct PlasmaVaultAddress {
+    /// @dev The address of the plasma vault
+    address plasmaVault;
 }
 
 /// @notice Tracks the timestamp of the last funds release
@@ -58,6 +73,21 @@ library WithdrawManagerStorageLib {
     /// @notice Thrown when attempting to release funds with an invalid amount
     error WithdrawManagerInvalidAmountToRelease(uint256 amount_);
 
+    /// @notice Thrown when attempting to set plasma vault address to zero
+    error PlasmaVaultAddressCannotBeZero();
+
+    /// @notice Emitted when the request fee is updated
+    /// @param fee New fee amount
+    event RequestFeeUpdated(uint256 fee);
+
+    /// @notice Emitted when the withdraw fee is updated
+    /// @param fee New fee amount
+    event WithdrawFeeUpdated(uint256 fee);
+
+    /// @notice Emitted when the plasma vault address is updated
+    /// @param plasmaVaultAddress New plasma vault address
+    event PlasmaVaultAddressUpdated(address plasmaVaultAddress);
+
     // Storage slot constants
     /// @dev Storage slot for withdraw window configuration
     bytes32 private constant WITHDRAW_WINDOW_IN_SECONDS =
@@ -69,6 +99,30 @@ library WithdrawManagerStorageLib {
     /// @dev Storage slot for last release funds
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.wirgdraw.requests")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant LAST_RELEASE_FUNDS = 0x88d141dcaacfb8523e39ee7fba7c6f591450286f42f9c7069cc072812d539200;
+
+    /// @dev Storage slot for request fee todo check if this is correct
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.requests.fee")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant REQUEST_FEE = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f01;
+
+    /// @dev Storage slot for withdraw fee
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.withdraw.fee")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant WITHDRAW_FEE = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f02;
+
+    /// @dev Storage slot for plasma vault address
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.plasma.vault")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant PLASMA_VAULT_ADDRESS = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f03;
+
+    function _getRequestFee() private view returns (RequestFee storage requestFee) {
+        assembly {
+            requestFee.slot := REQUEST_FEE
+        }
+    }
+
+    function _getWithdrawFee() private view returns (WithdrawFee storage withdrawFee) {
+        assembly {
+            withdrawFee.slot := WITHDRAW_FEE
+        }
+    }
 
     /// @dev Retrieves the withdraw window configuration from storage
     function _getWithdrawWindowLength() private view returns (WithdrawWindow storage withdrawWindow) {
@@ -89,6 +143,34 @@ library WithdrawManagerStorageLib {
         assembly {
             releaseFundsResult.slot := LAST_RELEASE_FUNDS
         }
+    }
+
+    function _getPlasmaVaultAddress() private view returns (PlasmaVaultAddress storage plasmaVaultAddress) {
+        assembly {
+            plasmaVaultAddress.slot := PLASMA_VAULT_ADDRESS
+        }
+    }
+
+    function getRequestFee() internal view returns (uint256) {
+        return _getRequestFee().fee;
+    }
+
+    function setRequestFee(uint256 fee_) internal {
+        RequestFee storage requestFee = _getRequestFee();
+        requestFee.fee = fee_;
+
+        emit RequestFeeUpdated(fee_);
+    }
+
+    function getWithdrawFee() internal view returns (uint256) {
+        return _getWithdrawFee().fee;
+    }
+
+    function setWithdrawFee(uint256 fee_) internal {
+        WithdrawFee storage withdrawFee = _getWithdrawFee();
+        withdrawFee.fee = fee_;
+
+        emit WithdrawFeeUpdated(fee_);
     }
 
     /// @notice Updates the length of the withdraw window
@@ -120,18 +202,26 @@ library WithdrawManagerStorageLib {
 
     /// @notice Creates or updates a withdraw request for an account
     /// @param requester_ Address creating the withdraw request
-    /// @param amount_ Amount to withdraw in underlying token decimals
+    /// @param shares_ Shares to withdraw
     /// @dev Sets endWithdrawWindowTimestamp based on current time plus window length
-    function updateWithdrawRequest(address requester_, uint256 amount_) internal {
+    function updateWithdrawRequest(address requester_, uint256 shares_) internal {
         uint256 withdrawWindowLength = getWithdrawWindowInSeconds();
         WithdrawRequest memory request = WithdrawRequest({
-            amount: amount_.toUint128(),
+            shares: shares_.toUint128(),
             endWithdrawWindowTimestamp: block.timestamp.toUint32() + withdrawWindowLength.toUint32()
         });
 
         _getWithdrawRequests().requests[requester_] = request;
 
-        emit WithdrawRequestUpdated(requester_, amount_, request.endWithdrawWindowTimestamp);
+        emit WithdrawRequestUpdated(requester_, request.shares, request.endWithdrawWindowTimestamp);
+    }
+
+    function decreaseWithdrawRequest(address account_, uint256 amount_) internal {
+        WithdrawRequest memory request = getWithdrawRequest(account_);
+        if (request.shares >= amount_) {
+            request.shares -= amount_.toUint128();
+            emit WithdrawRequestUpdated(account_, request.shares, request.endWithdrawWindowTimestamp);
+        }
     }
 
     /// @notice Deletes a withdraw request for an account
@@ -168,5 +258,30 @@ library WithdrawManagerStorageLib {
         releaseFundsLocal.lastReleaseFundsTimestamp = timestamp_.toUint32();
         releaseFundsLocal.amountToRelease = amountToRelease_.toUint128();
         emit ReleaseFundsUpdated(timestamp_.toUint32(), amountToRelease_.toUint128());
+    }
+
+    function decreaseSharesToRelease(uint256 amount_) internal {
+        ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
+        if (releaseFundsLocal.amountToRelease >= amount_) {
+            releaseFundsLocal.amountToRelease -= amount_.toUint128();
+            emit ReleaseFundsUpdated(releaseFundsLocal.lastReleaseFundsTimestamp, releaseFundsLocal.amountToRelease);
+        } else {
+            revert WithdrawManagerInvalidAmountToRelease(amount_);
+        }
+    }
+
+    function setPlasmaVaultAddress(address plasmaVaultAddress_) internal {
+        if (plasmaVaultAddress_ == address(0)) {
+            revert PlasmaVaultAddressCannotBeZero();
+        }
+
+        PlasmaVaultAddress storage plasmaVaultAddress = _getPlasmaVaultAddress();
+        plasmaVaultAddress.plasmaVault = plasmaVaultAddress_;
+
+        emit PlasmaVaultAddressUpdated(plasmaVaultAddress_);
+    }
+
+    function getPlasmaVaultAddress() internal view returns (address) {
+        return _getPlasmaVaultAddress().plasmaVault;
     }
 }

@@ -31,9 +31,11 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {FeeManagerData, FeeManagerFactory, FeeConfig, FeeConfig} from "../managers/fee/FeeManagerFactory.sol";
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
+import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
+import {console2} from "forge-std/console2.sol";
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
 /// @dev Encapsulates all required parameters for vault setup and protocol integration
@@ -241,6 +243,7 @@ contract PlasmaVault is
     error UnsupportedFuse();
     error UnsupportedMethod();
     error WithdrawIsNotAllowed(address caller, uint256 requested);
+    error WithdrawManagerInvalidAmountToRelease(uint256 amount);
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -753,6 +756,18 @@ contract PlasmaVault is
 
         _addPerformanceFee(totalAssetsBefore);
 
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+
+        if (withdrawManager != address(0)) {
+            uint256 shares = previewWithdraw(assets_);
+            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(owner_, shares);
+            if (feeSharesToBurn > 0) {
+                uint256 withdrawAmount = super.withdraw(assets_ - previewRedeem(feeSharesToBurn), receiver_, owner_);
+                _burn(owner_, feeSharesToBurn);
+                return withdrawAmount;
+            }
+        }
+
         return super.withdraw(assets_, receiver_, owner_);
     }
 
@@ -796,6 +811,10 @@ contract PlasmaVault is
         address receiver_,
         address owner_
     ) public override nonReentrant restricted returns (uint256) {
+        return _redeem(shares_, receiver_, owner_, true);
+    }
+
+    function _redeem(uint256 shares_, address receiver_, address owner_, bool withFee_) internal returns (uint256) {
         if (shares_ == 0) {
             revert NoSharesToRedeem();
         }
@@ -823,7 +842,37 @@ contract PlasmaVault is
 
         _addPerformanceFee(totalAssetsBefore);
 
+        if (withFee_) {
+            address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+            if (withdrawManager == address(0)) {
+                return super.redeem(shares_, receiver_, owner_);
+            }
+
+            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(owner_, shares_);
+            if (feeSharesToBurn == 0) {
+                return super.redeem(shares_, receiver_, owner_);
+            }
+
+            uint256 redeemAmount = super.redeem(shares_ - feeSharesToBurn, receiver_, owner_);
+            console2.log("feeSharesToBurn", feeSharesToBurn);
+            _burn(owner_, feeSharesToBurn);
+            return redeemAmount;
+        }
+
         return super.redeem(shares_, receiver_, owner_);
+    }
+
+    function redeemFromRequest(uint256 shares_, address receiver_, address owner_) external restricted {
+        bool canWithdraw = WithdrawManager(PlasmaVaultStorageLib.getWithdrawManager().manager).canWithdrawFromRequest(
+            owner_,
+            shares_
+        );
+
+        if (!canWithdraw) {
+            revert WithdrawManagerInvalidAmountToRelease(shares_);
+        }
+
+        _redeem(shares_, receiver_, owner_, false);
     }
 
     /// @notice Calculates maximum deposit amount allowed for an address
@@ -1382,22 +1431,8 @@ contract PlasmaVault is
         bytes4 sig = bytes4(data_[0:4]);
         bool immediate;
         uint32 delay;
-        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
-        if (withdrawManager != address(0) && this.withdraw.selector == sig) {
-            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
-            uint256 amount = _extractAmountFromWithdrawAndRedeem();
-            if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
-                revert WithdrawIsNotAllowed(caller_, amount);
-            }
-        } else if (withdrawManager != address(0) && this.redeem.selector == sig) {
-            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
-            uint256 amount = convertToAssets(_extractAmountFromWithdrawAndRedeem());
-
-            if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
-                revert WithdrawIsNotAllowed(caller_, amount);
-            }
-        } else if (
+        if (
             this.deposit.selector == sig ||
             this.mint.selector == sig ||
             this.depositWithPermit.selector == sig ||

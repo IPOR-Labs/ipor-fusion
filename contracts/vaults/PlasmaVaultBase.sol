@@ -145,6 +145,14 @@ contract PlasmaVaultBase is
         return PlasmaVaultStorageLib.getERC20CappedStorage().cap;
     }
 
+    function transferRequestFee(address from_, address to_, uint256 amount_) external override restricted {
+        _transfer(from_, to_, amount_);
+    }
+
+    function redeemFromRequest(address account_, uint256 shares_) external restricted {
+        _transfer(account_, address(this), shares_);
+    }
+
     /// @notice Updates token balances and voting power during transfers
     /// @dev Can only be executed via delegatecall from PlasmaVault
     ///

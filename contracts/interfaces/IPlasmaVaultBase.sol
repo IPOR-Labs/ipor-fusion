@@ -15,4 +15,6 @@ interface IPlasmaVaultBase {
     /// @param to_ The address to which the tokens are transferred
     /// @param value_ The amount of tokens transferred
     function updateInternal(address from_, address to_, uint256 value_) external;
+
+    function transferRequestFee(address from_, address to_, uint256 amount_) external;
 }

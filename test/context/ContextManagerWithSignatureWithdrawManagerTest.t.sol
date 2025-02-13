@@ -52,7 +52,7 @@ contract ContextManagerWithSignatureWithdrawManagerTest is Test, ContextManagerI
 
         // then
         WithdrawRequestInfo memory requestInfo = _withdrawManager.requestInfo(_USER_2);
-        assertEq(requestInfo.amount, withdrawAmount, "Withdraw request amount should match");
+        assertEq(requestInfo.shares, withdrawAmount, "Withdraw request shares should match");
         assertTrue(requestInfo.endWithdrawWindowTimestamp > 0, "End withdraw window timestamp should be set");
     }
 
