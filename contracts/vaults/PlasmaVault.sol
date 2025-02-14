@@ -1365,12 +1365,11 @@ contract PlasmaVault is
         ) {
             return 0;
         }
-
         return
             Math.mulDiv(
-                Math.mulDiv(totalAssets_, blockTimestamp - feeData.lastUpdateTimestamp, 365 days),
+                totalAssets_ * (blockTimestamp - feeData.lastUpdateTimestamp),
                 feeData.feeInPercentage,
-                FEE_PERCENTAGE_DECIMALS_MULTIPLIER /// @dev feeInPercentage uses 2 decimal places, example 10000 = 100%
+                365 days * FEE_PERCENTAGE_DECIMALS_MULTIPLIER
             );
     }
 
