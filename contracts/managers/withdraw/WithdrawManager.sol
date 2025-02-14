@@ -9,8 +9,6 @@ import {WithdrawRequest} from "./WithdrawManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
 import {IPlasmaVaultBase} from "../../interfaces/IPlasmaVaultBase.sol";
 
-import {console2} from "forge-std/console2.sol";
-
 struct WithdrawRequestInfo {
     uint256 shares;
     uint256 endWithdrawWindowTimestamp;
@@ -82,10 +80,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         return false;
     }
 
-    function canWithdrawFromUnallocated(
-        address account_,
-        uint256 shares_
-    ) external restricted returns (uint256 feeSharesToBurn) {
+    function canWithdrawFromUnallocated(uint256 shares_) external restricted returns (uint256 feeSharesToBurn) {
         uint256 feeRate = WithdrawManagerStorageLib.getWithdrawFee();
         uint256 balanceOfPlasmaVault = ERC4626(ERC4626(msg.sender).asset()).balanceOf(msg.sender);
         uint256 plasmaVaultBalanceOfUnallocatedShears = ERC4626(msg.sender).convertToShares(balanceOfPlasmaVault);

@@ -3,17 +3,16 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
-import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
-import {console2} from "forge-std/console2.sol";
+import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
+import {BurnRequestFeeFuse} from "../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
+import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 
 contract PlasmaVaultScheduledWithdraw is Test {
     address private constant _ATOMIST = address(1111111);
@@ -26,6 +25,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
     address private _priceOracle = 0x9838c0d15b439816D25d5fD1AEbd259EeddB66B4;
     address private _accessManager;
     address private _withdrawManager;
+    BurnRequestFeeFuse private _burnRequestFeeFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 256415332);
@@ -33,7 +33,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
         ERC20(_USDC).transfer(_USER, 10_000e6);
         _createAccessManager();
         _createWithdrawManager();
-        _createPriceOracle();
         _createPlasmaVault();
         _initAccessManager();
 
@@ -53,7 +52,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
                     underlyingToken: _USDC,
                     priceOracleMiddleware: _priceOracle,
                     marketSubstratesConfigs: _setupMarketConfigs(),
-                    fuses: new address[](0),
+                    fuses: _setupFuses(),
                     balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: address(_accessManager),
@@ -67,11 +66,27 @@ contract PlasmaVaultScheduledWithdraw is Test {
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
-        marketConfigs = new MarketSubstratesConfig[](0);
+        marketConfigs = new MarketSubstratesConfig[](1);
+        marketConfigs[0] = MarketSubstratesConfig({
+            marketId: IporFusionMarkets.ZERO_BALANCE_MARKET,
+            substrates: new bytes32[](0)
+        });
+    }
+
+    function _setupFuses() private returns (address[] memory fuses) {
+        _burnRequestFeeFuse = new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET);
+
+        fuses = new address[](1);
+        fuses[0] = address(_burnRequestFeeFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        balanceFuses = new MarketBalanceFuseConfig[](0);
+        ZeroBalanceFuse zeroBalanceFuse = new ZeroBalanceFuse(IporFusionMarkets.ZERO_BALANCE_MARKET);
+        balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig({
+            marketId: IporFusionMarkets.ZERO_BALANCE_MARKET,
+            fuse: address(zeroBalanceFuse)
+        });
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
@@ -84,14 +99,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
     function _createWithdrawManager() private {
         _withdrawManager = address(new WithdrawManager(_accessManager));
-    }
-
-    function _createPriceOracle() private {
-        PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
-
-        _priceOracle = address(
-            new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
-        );
     }
 
     function _initAccessManager() private {
@@ -148,22 +155,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.stopPrank();
     }
 
-    // function stestShouldNotBeAbleToRedeemWithoutRequest() external {
-    //     // given
-    //     uint256 withdrawAmount = 1_000e6;
-
-    //     vm.startPrank(_ALPHA);
-    //     WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
-    //     vm.stopPrank();
-
-    //     bytes memory error = abi.encodeWithSignature("WithdrawIsNotAllowed(address,uint256)", _USER, 10000000);
-    //     // when
-    //     vm.startPrank(_USER);
-    //     vm.expectRevert(error);
-    //     PlasmaVault(_plasmaVault).redeem(withdrawAmount, _USER, _USER);
-    //     vm.stopPrank();
-    // }
-
     function testShouldReturnZeroWhenInitWithdrawWindow() external {
         // given
         // when
@@ -216,66 +207,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
         PlasmaVault(_plasmaVault).redeemFromRequest(withdrawAmount, _USER, _USER);
         vm.stopPrank();
     }
-
-    // function stestShouldNotBeAbleToRedeemWhenNotReleaseFunds() external {
-    //     // given
-    //     uint256 withdrawAmount = 1_000e6;
-
-    //     vm.startPrank(_ALPHA);
-    //     WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
-    //     vm.stopPrank();
-
-    //     vm.startPrank(_USER);
-    //     WithdrawManager(_withdrawManager).request(withdrawAmount);
-    //     vm.stopPrank();
-
-    //     bytes memory error = abi.encodeWithSignature(
-    //         "WithdrawIsNotAllowed(address,uint256)",
-    //         _USER,
-    //         withdrawAmount / 10 ** 2
-    //     );
-
-    //     vm.warp(block.timestamp + 10 hours);
-
-    //     // when
-    //     vm.startPrank(_USER);
-    //     vm.expectRevert(error);
-    //     PlasmaVault(_plasmaVault).redeem(withdrawAmount, _USER, _USER);
-    //     vm.stopPrank();
-    // }
-
-    // function stestShouldBeAbleToWithdraw() external {
-    //     // given
-    //     uint256 withdrawAmount = 1_000e6;
-
-    //     vm.prank(_ATOMIST);
-    //     WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
-
-    //     vm.startPrank(_USER);
-    //     WithdrawManager(_withdrawManager).request(withdrawAmount);
-    //     vm.stopPrank();
-
-    //     vm.warp(block.timestamp + 1 hours);
-
-    //     vm.prank(_ALPHA);
-    //     WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, withdrawAmount);
-
-    //     vm.warp(block.timestamp + 10 hours);
-
-    //     uint256 balanceBefore = ERC20(_USDC).balanceOf(_USER);
-
-    //     // when
-    //     vm.startPrank(_USER);
-    //     PlasmaVault(_plasmaVault).withdraw(withdrawAmount, _USER, _USER);
-    //     vm.stopPrank();
-
-    //     // then
-    //     uint256 balanceAfter = ERC20(_USDC).balanceOf(_USER);
-    //     assertTrue(
-    //         balanceAfter == withdrawAmount + balanceBefore,
-    //         "user balance should be increased by withdraw amount"
-    //     );
-    // }
 
     function testShouldBeAbleToRedeemFromRequest() external {
         // given
@@ -347,15 +278,59 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         // then
         uint256 balanceAfter = ERC20(_USDC).balanceOf(_USER);
-        console2.log("balanceBefore", balanceBefore);
-        console2.log("balanceAfter", balanceAfter);
-        console2.log("balanceWithdrawManagerBefore", balanceWithdrawManagerBefore);
-        console2.log("balanceWithdrawManagerAfter", balanceWithdrawManagerAfter);
 
         assertEq(balanceBefore, 0);
         assertEq(balanceAfter, 990000000);
         assertEq(balanceWithdrawManagerBefore, 0);
         assertEq(balanceWithdrawManagerAfter, 1000000000);
+    }
+
+    function testShouldBeAbleToBurnRequestFee() external {
+        // given
+        uint256 withdrawAmount = 1_000e8;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateRequestFee(0.01e18);
+        WithdrawManager(_withdrawManager).updatePlasmaVaultAddress(_plasmaVault);
+        vm.stopPrank();
+
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 hours);
+
+        vm.prank(_ALPHA);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, withdrawAmount);
+
+        vm.warp(block.timestamp + 10 hours);
+
+        uint256 balanceBefore = ERC20(_USDC).balanceOf(_USER);
+        uint256 balanceWithdrawManagerBefore = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_burnRequestFeeFuse),
+            abi.encodeWithSignature("enter((uint256))", balanceWithdrawManagerBefore)
+        );
+
+        // when
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+        // then
+
+        uint256 balanceWithdrawManagerAfter = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
+        uint256 balanceAfter = ERC20(_USDC).balanceOf(_USER);
+
+        assertEq(balanceBefore, 0);
+        assertEq(balanceAfter, 0);
+        assertEq(balanceWithdrawManagerBefore, 1000000000);
+        assertEq(balanceWithdrawManagerAfter, 0);
     }
 
     function testShouldNOTBeAbleToRedeemFromRequestBecauseNoExecutionReleaseFunds() external {

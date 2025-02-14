@@ -35,7 +35,7 @@ import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
-import {console2} from "forge-std/console2.sol";
+
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
 /// @dev Encapsulates all required parameters for vault setup and protocol integration
@@ -760,7 +760,7 @@ contract PlasmaVault is
 
         if (withdrawManager != address(0)) {
             uint256 shares = previewWithdraw(assets_);
-            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(owner_, shares);
+            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares);
             if (feeSharesToBurn > 0) {
                 uint256 withdrawAmount = super.withdraw(assets_ - previewRedeem(feeSharesToBurn), receiver_, owner_);
                 _burn(owner_, feeSharesToBurn);
@@ -848,13 +848,13 @@ contract PlasmaVault is
                 return super.redeem(shares_, receiver_, owner_);
             }
 
-            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(owner_, shares_);
+            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
             if (feeSharesToBurn == 0) {
                 return super.redeem(shares_, receiver_, owner_);
             }
 
             uint256 redeemAmount = super.redeem(shares_ - feeSharesToBurn, receiver_, owner_);
-            console2.log("feeSharesToBurn", feeSharesToBurn);
+
             _burn(owner_, feeSharesToBurn);
             return redeemAmount;
         }
