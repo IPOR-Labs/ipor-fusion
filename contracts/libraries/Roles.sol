@@ -76,6 +76,10 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant UPDATE_MARKETS_BALANCES_ROLE = 1000;
 
+    /// @notice Account with this role has rights to update balance in the RewardsClaimManager contract
+    /// @dev Managed by the Atomist 
+    uint64 public constant UPDATE_REWARDS_BALANCE_ROLE = 1100;
+
     /// @notice Public role, no restrictions
     uint64 public constant PUBLIC_ROLE = type(uint64).max;
 }

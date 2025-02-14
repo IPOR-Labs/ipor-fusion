@@ -378,6 +378,7 @@ contract RamsesClaimFuseTest is Test {
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
             updateMarketsBalancesAccounts: initAddress,
+            updateRewardsBalanceAccounts: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
