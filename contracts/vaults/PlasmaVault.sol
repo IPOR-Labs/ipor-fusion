@@ -1397,12 +1397,21 @@ contract PlasmaVault is
             if (!WithdrawManager(withdrawManager).canWithdrawAndUpdate(caller_, amount)) {
                 revert WithdrawIsNotAllowed(caller_, amount);
             }
+        } else if (this.transferFrom.selector == sig) {
+            (address tranferFromAddress, , ) = abi.decode(_msgData()[4:], (address, address, uint256));
+
+            /// @dev check if the owner of shares has access to transfer
+            IporFusionAccessManager(authority()).canCallAndUpdate(tranferFromAddress, address(this), sig);
+
+            /// @dev check if the caller has access to transferFrom method
+            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
         } else if (
             this.deposit.selector == sig ||
             this.mint.selector == sig ||
             this.depositWithPermit.selector == sig ||
             this.redeem.selector == sig ||
-            this.withdraw.selector == sig
+            this.withdraw.selector == sig ||
+            this.transfer.selector == sig
         ) {
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
         } else {
