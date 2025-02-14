@@ -59,7 +59,7 @@ struct DataForInitialization {
     /// @notice Array of addresses of the Config Instant Withdrawal Fuses Managers (Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE)
     address[] configInstantWithdrawalFusesManagers;
     /// @notice Array of addresses of the Update Markets Balances Managers (Roles.UPDATE_MARKETS_BALANCES_ROLE)
-    address[] updateMarketsBalances;
+    address[] updateMarketsBalancesAccounts;
     /// @notice Plasma Vault address struct.
     PlasmaVaultAddress plasmaVaultAddress;
 }
@@ -104,7 +104,7 @@ library IporFusionAccessManagerInitializerLibV1 {
                 data_.transferRewardsManagers.length +
                 data_.whitelist.length +
                 data_.configInstantWithdrawalFusesManagers.length +
-                data_.updateMarketsBalances.length +
+                data_.updateMarketsBalancesAccounts.length +
                 1 + /// @dev +1 - Rights for the Plasma Vault to role UPDATE_MARKETS_BALANCES_ROLE
                 (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +
                 (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +
@@ -221,10 +221,10 @@ library IporFusionAccessManagerInitializerLibV1 {
             ++index;
         }
 
-        for (uint256 i; i < data_.updateMarketsBalances.length; ++i) {
+        for (uint256 i; i < data_.updateMarketsBalancesAccounts.length; ++i) {
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.UPDATE_MARKETS_BALANCES_ROLE,
-                account: data_.updateMarketsBalances[i],
+                account: data_.updateMarketsBalancesAccounts[i],
                 executionDelay: 0
             });
             ++index;

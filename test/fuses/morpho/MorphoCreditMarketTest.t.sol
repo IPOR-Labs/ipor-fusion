@@ -204,7 +204,7 @@ contract MorphoCreditMarketTest is Test {
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
-            updateMarketsBalances: initAddress,
+            updateMarketsBalancesAccounts: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
