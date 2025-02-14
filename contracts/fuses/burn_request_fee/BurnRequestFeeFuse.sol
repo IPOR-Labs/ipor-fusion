@@ -11,7 +11,7 @@ struct BurnRequestFeeDataEnter {
 
 contract BurnRequestFeeFuse is IFuseCommon, ERC20Upgradeable {
     error BurnRequestFeeWithdrawManagerNotSet();
-
+    error BurnRequestFeeAmountIsZero();
     event BurnRequestFeeEnter(address version, uint256 amount);
 
     address public immutable VERSION;
@@ -28,6 +28,10 @@ contract BurnRequestFeeFuse is IFuseCommon, ERC20Upgradeable {
 
         if (withdrawManager == address(0)) {
             revert BurnRequestFeeWithdrawManagerNotSet();
+        }
+
+        if (data_.amount == 0) {
+            revert BurnRequestFeeAmountIsZero();
         }
 
         _burn(withdrawManager, data_.amount);

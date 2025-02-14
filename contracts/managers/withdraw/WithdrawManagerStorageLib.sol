@@ -102,15 +102,15 @@ library WithdrawManagerStorageLib {
 
     /// @dev Storage slot for request fee todo check if this is correct
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.requests.fee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant REQUEST_FEE = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f01;
+    bytes32 private constant REQUEST_FEE = 0x97f346e04a16e2eb518a1ffef159e6c87d3eaa2076a90372e699cdb1af482400;
 
     /// @dev Storage slot for withdraw fee
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.withdraw.fee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant WITHDRAW_FEE = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f02;
+    bytes32 private constant WITHDRAW_FEE = 0x1dc9c20e1601df7037c9a39067c6ecf51e88a43bc6cd86f115a2c29716b36600;
 
     /// @dev Storage slot for plasma vault address
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.plasma.vault")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant PLASMA_VAULT_ADDRESS = 0x5f79d61c9d5139383097775e8e8bbfd941634f6602a18bee02d4f80d80c89f03;
+    bytes32 private constant PLASMA_VAULT_ADDRESS = 0xeb1948ad07cc64342983d8dc0a37729fcf2d17dcf49a1e3705ff0fa01e7d9400;
 
     function _getRequestFee() private view returns (RequestFee storage requestFee) {
         assembly {
@@ -216,10 +216,10 @@ library WithdrawManagerStorageLib {
         emit WithdrawRequestUpdated(requester_, request.shares, request.endWithdrawWindowTimestamp);
     }
 
-    function decreaseWithdrawRequest(address account_, uint256 amount_) internal {
+    function decreaseWithdrawRequest(address account_, uint256 shares_) internal {
         WithdrawRequest memory request = getWithdrawRequest(account_);
-        if (request.shares >= amount_) {
-            request.shares -= amount_.toUint128();
+        if (request.shares >= shares_) {
+            request.shares -= shares_.toUint128();
             emit WithdrawRequestUpdated(account_, request.shares, request.endWithdrawWindowTimestamp);
         }
     }
@@ -260,13 +260,13 @@ library WithdrawManagerStorageLib {
         emit ReleaseFundsUpdated(timestamp_.toUint32(), amountToRelease_.toUint128());
     }
 
-    function decreaseSharesToRelease(uint256 amount_) internal {
+    function decreaseSharesToRelease(uint256 shares_) internal {
         ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
-        if (releaseFundsLocal.amountToRelease >= amount_) {
-            releaseFundsLocal.amountToRelease -= amount_.toUint128();
+        if (releaseFundsLocal.amountToRelease >= shares_) {
+            releaseFundsLocal.amountToRelease -= shares_.toUint128();
             emit ReleaseFundsUpdated(releaseFundsLocal.lastReleaseFundsTimestamp, releaseFundsLocal.amountToRelease);
         } else {
-            revert WithdrawManagerInvalidAmountToRelease(amount_);
+            revert WithdrawManagerInvalidAmountToRelease(shares_);
         }
     }
 
