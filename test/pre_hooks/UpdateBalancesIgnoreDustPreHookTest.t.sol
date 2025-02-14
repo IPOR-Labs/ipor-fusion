@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../test_helpers/PlasmaVaultHelper.sol";
@@ -15,10 +15,11 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {IporFusionAccessManagerHelper} from "../test_helpers/IporFusionAccessManagerHelper.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {UpdateBalancesPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/UpdateBalancesPreHook.sol";
 import {UpdateBalancesIgnoreDustPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/UpdateBalancesIgnoreDustPreHook.sol";
 import {Erc4626BalanceFuse} from "../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {MockERC4626} from "../test_helpers/MockErc4626.sol";
+
+import {Roles} from "../../contracts/libraries/Roles.sol";
 
 contract UpdateBalancesIgnoreDustPreHookTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
@@ -142,7 +143,15 @@ contract UpdateBalancesIgnoreDustPreHookTest is Test {
         _erc4626_3.deposit(3e5, address(_plasmaVault));
         vm.stopPrank();
 
+        address balanceUpdater = address(0x777);
+
+        vm.startPrank(TestAddresses.ATOMIST);
+        _accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, balanceUpdater, 0);
+        vm.stopPrank();
+
+        vm.startPrank(balanceUpdater);
         _plasmaVault.updateMarketsBalances(_marketIds);
+        vm.stopPrank();
 
         uint256 erc4626BalanceBefore1 = _plasmaVault.totalAssetsInMarket(_marketIds[0]);
         uint256 erc4626BalanceBefore2 = _plasmaVault.totalAssetsInMarket(_marketIds[1]);
@@ -173,8 +182,15 @@ contract UpdateBalancesIgnoreDustPreHookTest is Test {
         _erc4626_3.deposit(3e5, address(_plasmaVault));
         vm.stopPrank();
 
-        _plasmaVault.updateMarketsBalances(_marketIds);
+        address balanceUpdater = address(0x777);
 
+        vm.startPrank(TestAddresses.ATOMIST);
+        _accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, balanceUpdater, 0);
+        vm.stopPrank();
+
+        vm.startPrank(balanceUpdater);
+        _plasmaVault.updateMarketsBalances(_marketIds);
+        vm.stopPrank();
         uint256 erc4626BalanceBefore1 = _plasmaVault.totalAssetsInMarket(_marketIds[0]);
         uint256 erc4626BalanceBefore2 = _plasmaVault.totalAssetsInMarket(_marketIds[1]);
         uint256 erc4626BalanceBefore3 = _plasmaVault.totalAssetsInMarket(_marketIds[2]);
@@ -204,7 +220,15 @@ contract UpdateBalancesIgnoreDustPreHookTest is Test {
         _erc4626_3.deposit(3e5, address(_plasmaVault));
         vm.stopPrank();
 
+        address balanceUpdater = address(0x777);
+
+        vm.startPrank(TestAddresses.ATOMIST);
+        _accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, balanceUpdater, 0);
+        vm.stopPrank();
+
+        vm.startPrank(balanceUpdater);
         _plasmaVault.updateMarketsBalances(_marketIds);
+        vm.stopPrank();
 
         uint256 erc4626BalanceBefore1 = _plasmaVault.totalAssetsInMarket(_marketIds[0]);
         uint256 erc4626BalanceBefore2 = _plasmaVault.totalAssetsInMarket(_marketIds[1]);
@@ -238,8 +262,15 @@ contract UpdateBalancesIgnoreDustPreHookTest is Test {
         _erc4626_3.deposit(3e7, address(_plasmaVault));
         vm.stopPrank();
 
-        _plasmaVault.updateMarketsBalances(_marketIds);
+        address balanceUpdater = address(0x777);
 
+        vm.startPrank(TestAddresses.ATOMIST);
+        _accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, balanceUpdater, 0);
+        vm.stopPrank();
+
+        vm.startPrank(balanceUpdater);
+        _plasmaVault.updateMarketsBalances(_marketIds);
+        vm.stopPrank();
         uint256 erc4626BalanceBefore1 = _plasmaVault.totalAssetsInMarket(_marketIds[0]);
         uint256 erc4626BalanceBefore2 = _plasmaVault.totalAssetsInMarket(_marketIds[1]);
         uint256 erc4626BalanceBefore3 = _plasmaVault.totalAssetsInMarket(_marketIds[2]);

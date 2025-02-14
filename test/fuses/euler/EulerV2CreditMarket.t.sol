@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
@@ -121,7 +120,6 @@ contract EulerCreditMarketTest is Test {
         _initAccessManager();
         _setupDependenceBalance();
         _initialDepositIntoPlasmaVault();
-
         _grantMarketSubstratesForEuler();
 
         _subAccountOneAddress = EulerFuseLib.generateSubAccountAddress(_plasmaVault, _SUB_ACCOUNT_BYTE_ONE);
@@ -220,6 +218,7 @@ contract EulerCreditMarketTest is Test {
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
+            updateMarketsBalances: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
@@ -254,6 +253,7 @@ contract EulerCreditMarketTest is Test {
 
     function _initialDepositIntoPlasmaVault() private {
         deal(_USER, 100_000e18);
+
         vm.startPrank(_USER);
         IWETH9(_W_ETH).deposit{value: 100e18}();
         IstETH(_ST_ETH).submit{value: 100e18}(address(0));
