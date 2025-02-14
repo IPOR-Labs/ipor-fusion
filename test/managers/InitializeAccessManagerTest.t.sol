@@ -128,6 +128,7 @@ contract InitializeAccessManagerTest is Test {
         DataForInitialization memory data = _generateDataForInitialization();
         data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
         data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
         InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
             data
         );
@@ -160,7 +161,11 @@ contract InitializeAccessManagerTest is Test {
         }
 
         for (uint256 i; i < initData.adminRoles.length; i++) {
-            assertEq(accessManager.getRoleAdmin(initData.adminRoles[i].roleId), initData.adminRoles[i].adminRoleId);
+            assertEq(
+                accessManager.getRoleAdmin(initData.adminRoles[i].roleId),
+                initData.adminRoles[i].adminRoleId,
+                "Admin role should be set"
+            );
             if (
                 initData.adminRoles[i].roleId != Roles.ADMIN_ROLE &&
                 initData.adminRoles[i].roleId != Roles.GUARDIAN_ROLE &&
@@ -171,11 +176,15 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE &&
                 initData.adminRoles[i].roleId != Roles.TECH_CONTEXT_MANAGER_ROLE
             ) {
-                assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
+                assertEq(
+                    accessManager.getRoleGuardian(initData.adminRoles[i].roleId),
+                    Roles.GUARDIAN_ROLE,
+                    "Guardian role should be set"
+                );
             }
         }
 
-        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0, "Redemption delay should be 0");
     }
 
     function testShouldNotBeAbleToCallInitializeTwiceWhenRevokeAdminRole() external {

@@ -265,12 +265,17 @@ library IporFusionAccessManagerInitializerLibV1 {
         return accountToRoles;
     }
 
-    function _prepareAccountToRoles(DataForInitialization memory data_) private pure returns (AccountToRole[] memory accountToRoles_) {
-        accountToRoles_ = new AccountToRole[](_prepareAdminRolesLengthPatch1(data_) + _prepareAdminRolesLengthPatch2(data_));
+    function _prepareAccountToRoles(
+        DataForInitialization memory data_
+    ) private pure returns (AccountToRole[] memory accountToRoles_) {
+        accountToRoles_ = new AccountToRole[](
+            _prepareAdminRolesLengthPatch1(data_) + _prepareAdminRolesLengthPatch2(data_)
+        );
     }
 
     function _prepareAdminRolesLengthPatch1(DataForInitialization memory data_) private pure returns (uint256) {
-        return data_.iporDaos.length + 
+        return
+            data_.iporDaos.length +
             data_.admins.length +
             data_.owners.length +
             data_.guardians.length +
@@ -284,7 +289,8 @@ library IporFusionAccessManagerInitializerLibV1 {
     }
 
     function _prepareAdminRolesLengthPatch2(DataForInitialization memory data_) private pure returns (uint256) {
-        return data_.updateMarketsBalancesAccounts.length +
+        return
+            data_.updateMarketsBalancesAccounts.length +
             data_.updateRewardsBalanceAccounts.length +
             1 + /// @dev +1 - Rights for the Plasma Vault to role UPDATE_MARKETS_BALANCES_ROLE
             (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +
