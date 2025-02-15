@@ -57,6 +57,8 @@ library WithdrawManagerStorageLib {
     error WithdrawWindowLengthCannotBeZero();
     /// @notice Thrown when attempting to release funds with an invalid amount
     error WithdrawManagerInvalidAmountToRelease(uint256 amount_);
+    /// @notice Thrown when attempting to release funds with an invalid timestamp
+    error WithdrawManagerInvalidTimestamp(uint256 lastReleaseFundsTimestamp, uint256 newReleaseFundsTimestamp);
 
     // Storage slot constants
     /// @dev Storage slot for withdraw window configuration
@@ -161,12 +163,20 @@ library WithdrawManagerStorageLib {
     }
 
     /// @notice Updates the last funds release timestamp
-    /// @param timestamp_ New timestamp to set
+    /// @param newReleaseFundsTimestamp_ New release funds timestamp to set
     /// @param amountToRelease_ Amount of funds released
-    function releaseFunds(uint256 timestamp_, uint256 amountToRelease_) internal {
+    function releaseFunds(uint256 newReleaseFundsTimestamp_, uint256 amountToRelease_) internal {
         ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
-        releaseFundsLocal.lastReleaseFundsTimestamp = timestamp_.toUint32();
+
+        uint256 lastReleaseFundsTimestamp = releaseFundsLocal.lastReleaseFundsTimestamp;
+
+        if (lastReleaseFundsTimestamp > newReleaseFundsTimestamp_) {
+            revert WithdrawManagerInvalidTimestamp(lastReleaseFundsTimestamp, newReleaseFundsTimestamp_);
+        }
+
+        releaseFundsLocal.lastReleaseFundsTimestamp = newReleaseFundsTimestamp_.toUint32();
         releaseFundsLocal.amountToRelease = amountToRelease_.toUint128();
-        emit ReleaseFundsUpdated(timestamp_.toUint32(), amountToRelease_.toUint128());
+
+        emit ReleaseFundsUpdated(newReleaseFundsTimestamp_.toUint32(), amountToRelease_.toUint128());
     }
 }

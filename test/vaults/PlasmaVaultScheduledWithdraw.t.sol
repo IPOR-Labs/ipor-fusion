@@ -615,4 +615,62 @@ contract PlasmaVaultScheduledWithdraw is Test {
             "user balance should be increased by withdraw amount"
         );
     }
+
+    function testShouldNotBeAbleToReleaseFundsWhenNewReleaseFundsTimestampIsLowerThenLastReleaseFundsTimestamp()
+        external
+    {
+        // given
+        /// @dev simulate time passing
+        vm.warp(block.timestamp + 1 hours);
+
+        uint256 releaseFundsTimestamp = block.timestamp - 1;
+
+        vm.startPrank(_ALPHA);
+        WithdrawManager(_withdrawManager).releaseFunds(releaseFundsTimestamp, 1e18);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 days);
+
+        uint256 newReleaseFundsTimestamp = releaseFundsTimestamp - 1;
+
+        bytes memory error = abi.encodeWithSignature(
+            "WithdrawManagerInvalidTimestamp(uint256,uint256)",
+            releaseFundsTimestamp,
+            newReleaseFundsTimestamp
+        );
+
+        //then
+        vm.expectRevert(error);
+        // when
+        vm.startPrank(_ALPHA);
+        WithdrawManager(_withdrawManager).releaseFunds(newReleaseFundsTimestamp, 1e18);
+        vm.stopPrank();
+    }
+
+    function testShouldBeAbleToReleaseFundsWhenNewReleaseFundsTimestampIsGreaterThenLastReleaseFundsTimestamp()
+        external
+    {
+        // given
+        /// @dev simulate time passing
+        vm.warp(block.timestamp + 1 hours);
+
+        uint256 releaseFundsTimestamp = block.timestamp - 1;
+
+        vm.startPrank(_ALPHA);
+        WithdrawManager(_withdrawManager).releaseFunds(releaseFundsTimestamp, 1e18);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 days);
+
+        uint256 newReleaseFundsTimestamp = releaseFundsTimestamp + 1;
+
+        // when
+        vm.startPrank(_ALPHA);
+        WithdrawManager(_withdrawManager).releaseFunds(newReleaseFundsTimestamp, 2e18);
+        vm.stopPrank();
+
+        // then
+        uint256 amountToRelease = WithdrawManager(_withdrawManager).getAmountToRelease();
+        assertEq(amountToRelease, 2e18);
+    }
 }
