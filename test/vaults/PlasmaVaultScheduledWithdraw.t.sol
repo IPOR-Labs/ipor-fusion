@@ -194,7 +194,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         uint256 withdrawAmount = 1_000e8;
         vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
         vm.stopPrank();
 
         bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
@@ -216,7 +216,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
 
         vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 hours);
@@ -257,7 +257,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 balanceWithdrawManagerBefore = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
 
         vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
         vm.stopPrank();
 
         uint256 balanceWithdrawManagerAfter = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
@@ -298,7 +298,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.stopPrank();
 
         vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 hours);
@@ -345,7 +345,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
 
         vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 hours);
@@ -370,7 +370,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
 
         vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 hours);
@@ -399,7 +399,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
 
         vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 days + 1 hours);
@@ -424,7 +424,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
 
         vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(withdrawAmount);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 hours);
@@ -508,7 +508,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         // Make a request for smaller amount
         vm.startPrank(_USER);
-        WithdrawManager(_withdrawManager).request(requestAmount);
+        WithdrawManager(_withdrawManager).requestShares(requestAmount);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 hours);

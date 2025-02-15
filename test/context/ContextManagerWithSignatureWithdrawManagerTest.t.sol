@@ -44,7 +44,7 @@ contract ContextManagerWithSignatureWithdrawManagerTest is Test, ContextManagerI
             block.timestamp + 1000,
             block.number,
             address(_withdrawManager),
-            abi.encodeWithSelector(WithdrawManager.request.selector, withdrawAmount)
+            abi.encodeWithSelector(WithdrawManager.requestShares.selector, withdrawAmount)
         );
 
         // when

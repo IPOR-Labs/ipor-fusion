@@ -27,12 +27,13 @@ struct WithdrawRequestInfo {
  * - PUBLIC_ROLE: Can call request, getLastReleaseFundsTimestamp, getWithdrawWindow, and requestInfo
  */
 contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
-    error WithdrawManagerInvalidTimestamp(uint256 timestamp_);
+    error WithdrawManagerInvalidTimestamp(uint256 timestamp);
     error WithdrawManagerInvalidAmountToRelease(
         uint256 amountToRelease,
-        uint256 shares_,
+        uint256 shares,
         uint256 plasmaVaultBalanceOfUnallocatedShears
     );
+    error WithdrawManagerZeroShares();
     constructor(address accessManager_) initializer {
         super.__AccessManaged_init(accessManager_);
     }
@@ -43,7 +44,11 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
      * @param shares_ The amount requested for redeem, amount of shares to redeem
      * @custom:access Public
      */
-    function request(uint256 shares_) external {
+    function requestShares(uint256 shares_) external {
+        if (shares_ == 0) {
+            revert WithdrawManagerZeroShares();
+        }
+
         uint256 feeRate = WithdrawManagerStorageLib.getRequestFee();
         if (feeRate > 0) {
             uint256 feeAmount = Math.mulDiv(shares_, feeRate, 1e18);
@@ -84,11 +89,11 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         uint256 feeRate = WithdrawManagerStorageLib.getWithdrawFee();
         uint256 balanceOfPlasmaVault = ERC4626(ERC4626(msg.sender).asset()).balanceOf(msg.sender);
         uint256 plasmaVaultBalanceOfUnallocatedShears = ERC4626(msg.sender).convertToShares(balanceOfPlasmaVault);
-        uint256 amountToRelease = WithdrawManagerStorageLib.getAmountToRelease();
+        uint256 sharesToRelease = WithdrawManagerStorageLib.getSharesReleased();
 
-        if (plasmaVaultBalanceOfUnallocatedShears < amountToRelease + shares_) {
+        if (plasmaVaultBalanceOfUnallocatedShears < sharesToRelease + shares_) {
             revert WithdrawManagerInvalidAmountToRelease(
-                amountToRelease,
+                sharesToRelease,
                 shares_,
                 plasmaVaultBalanceOfUnallocatedShears
             );
@@ -127,7 +132,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     }
 
     function getSharesReleased() external view returns (uint256) {
-        return WithdrawManagerStorageLib.getAmountToRelease();
+        return WithdrawManagerStorageLib.getSharesReleased();
     }
 
     /**
