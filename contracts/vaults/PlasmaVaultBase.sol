@@ -264,6 +264,6 @@ contract PlasmaVaultBase is
 
     function _checkCanCall(address caller_, bytes calldata data_) internal override {
         super._checkCanCall(caller_, data_);
-        _runPreHooks(bytes4(data_[0:4]));
+        _runPreHook(bytes4(data_[0:4]));
     }
 }

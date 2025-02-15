@@ -1455,7 +1455,7 @@ contract PlasmaVault is
             }
         }
 
-        _runPreHooks(sig);
+        _runPreHook(sig);
     }
 
     function _msgSender() internal view override returns (address) {
