@@ -89,10 +89,12 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     }
 
     function canWithdrawFromUnallocated(uint256 shares_) external restricted returns (uint256 feeSharesToBurn) {
-        address msgSender = msg.sender;
+        address plasmaVaultAddress = msg.sender;
         uint256 feeRate = WithdrawManagerStorageLib.getWithdrawFee();
-        uint256 balanceOfPlasmaVault = ERC4626(ERC4626(msgSender).asset()).balanceOf(msgSender);
-        uint256 plasmaVaultBalanceOfUnallocatedShares = ERC4626(msgSender).convertToShares(balanceOfPlasmaVault);
+        uint256 balanceOfPlasmaVault = ERC4626(ERC4626(plasmaVaultAddress).asset()).balanceOf(plasmaVaultAddress);
+        uint256 plasmaVaultBalanceOfUnallocatedShares = ERC4626(plasmaVaultAddress).convertToShares(
+            balanceOfPlasmaVault
+        );
         uint256 sharesToRelease = WithdrawManagerStorageLib.getSharesToRelease();
 
         if (plasmaVaultBalanceOfUnallocatedShares < sharesToRelease + shares_) {
