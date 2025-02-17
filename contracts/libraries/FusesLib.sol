@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 /**
@@ -49,7 +50,7 @@ library FusesLib {
     error BalanceFuseAlreadyExists(uint256 marketId, address fuse);
     error BalanceFuseDoesNotExist(uint256 marketId, address fuse);
     error BalanceFuseNotReadyToRemove(uint256 marketId, address fuse, uint256 currentBalance);
-
+    error BalanceFuseMarketIdMismatch(uint256 marketId, address fuse);
     /**
      * @notice Validates if a fuse contract is registered and supported by the Plasma Vault
      * @dev Checks the FuseStorageLib mapping to verify fuse registration status
@@ -376,6 +377,10 @@ library FusesLib {
 
         if (currentFuse == fuse_) {
             revert BalanceFuseAlreadyExists(marketId_, fuse_);
+        }
+
+        if (marketId_ != IFuseCommon(fuse_).MARKET_ID()) {
+            revert BalanceFuseMarketIdMismatch(marketId_, fuse_);
         }
 
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();

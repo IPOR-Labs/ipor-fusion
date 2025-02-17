@@ -15,8 +15,8 @@ contract FusesLibTest is Test {
 
     function testShouldAddBalanceFuse() public {
         //given
-        address fuse = address(0x1);
         uint256 marketId = 1;
+        address fuse = address(new ZeroBalanceFuse(marketId));
 
         //when
         fusesLibMock.addBalanceFuse(marketId, fuse);
@@ -40,6 +40,19 @@ contract FusesLibTest is Test {
         //then
         assertFalse(fusesLibMock.isBalanceFuseSupported(marketId, fuse));
         assertTrue(fuseBefore);
+    }
+
+    function testShouldNotAddBalanceFuseBecauseOfMarketIdMismatch() public {
+        //given
+        uint256 marketId = 1;
+        address fuse = address(new ZeroBalanceFuse(marketId + 1));
+
+        bytes memory error = abi.encodeWithSignature("BalanceFuseMarketIdMismatch(uint256,address)", marketId, fuse);
+
+        //then
+        vm.expectRevert(error);
+        //when
+        fusesLibMock.addBalanceFuse(marketId, fuse);
     }
 
     function testShouldNotRemoveBalanceFuseBecauseOfDust() public {
@@ -148,10 +161,9 @@ contract FusesLibTest is Test {
 
     function testShouldOverrideOldBalanceFuse() public {
         //given
-        address fuseOne = address(0x1);
-        address fuseTwo = address(0x2);
-
         uint256 marketId = 1;
+        address fuseOne = address(new ZeroBalanceFuse(marketId));
+        address fuseTwo = address(new ZeroBalanceFuse(marketId));
 
         fusesLibMock.addBalanceFuse(marketId, fuseOne);
 
