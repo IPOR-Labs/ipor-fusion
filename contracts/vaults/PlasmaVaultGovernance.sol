@@ -51,7 +51,6 @@ import {PreHooksLib} from "../handlers/pre_hooks/PreHooksLib.sol";
 /// - Fuse System: Protocol integrations
 /// - Fee Manager: Revenue distribution
 ///
-/// @custom:security-contact security@ipor.network
 abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManagedUpgradeable {
     /// @notice Checks if a substrate is granted for a specific market
     /// @param marketId_ The ID of the market to check

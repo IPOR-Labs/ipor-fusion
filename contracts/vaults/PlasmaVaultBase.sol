@@ -55,7 +55,6 @@ import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
  * - ERC20InvalidCap: Invalid Cap Configuration
  * - Standard OpenZeppelin Errors
  *
- * @custom:security-contact security@ipor.network
  */
 contract PlasmaVaultBase is
     IPlasmaVaultBase,

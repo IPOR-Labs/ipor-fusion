@@ -47,7 +47,6 @@ import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
  * - Delegatecall security implications
  * - Storage layout compatibility
  *
- * @custom:security-contact security@ipor.network
  */
 
 /// @notice Data structure for the enter function parameters

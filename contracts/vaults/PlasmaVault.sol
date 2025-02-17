@@ -213,7 +213,6 @@ struct MarketSubstratesConfig {
 /// - Balance fuses for position tracking
 /// - Callback system for complex operations
 ///
-/// @custom:security-contact security@ipor.network
 contract PlasmaVault is
     ERC20Upgradeable,
     ERC4626Upgradeable,
