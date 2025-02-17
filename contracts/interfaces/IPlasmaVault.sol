@@ -42,7 +42,6 @@ interface IPlasmaVault {
 
     /// @notice Deposit assets to the Plasma Vault with permit function
     /// @param assets_ The amount of underlying assets to deposit
-    /// @param owner_ The owner of the assets
     /// @param receiver_ The receiver of the assets
     /// @param deadline_ The deadline for the permit function
     /// @param v_ The v value of the signature
@@ -51,11 +50,16 @@ interface IPlasmaVault {
     /// @return The amount of shares minted
     function depositWithPermit(
         uint256 assets_,
-        address owner_,
         address receiver_,
         uint256 deadline_,
         uint8 v_,
         bytes32 r_,
         bytes32 s_
     ) external returns (uint256);
+
+    function redeemFromRequest(
+        uint256 shares_,
+        address receiver_,
+        address owner_
+    ) external  returns (uint256);
 }

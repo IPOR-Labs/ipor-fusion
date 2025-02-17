@@ -12,6 +12,8 @@ bytes4 constant DEPOSIT_WITH_PERMIT_SELECTOR = PlasmaVault.depositWithPermit.sel
 bytes4 constant MINT_SELECTOR = PlasmaVault.mint.selector;
 bytes4 constant WITHDRAW_SELECTOR = PlasmaVault.withdraw.selector;
 bytes4 constant REDEEM_SELECTOR = PlasmaVault.redeem.selector;
+bytes4 constant TRANSFER_FROM_SELECTOR = PlasmaVault.transferFrom.selector;
+bytes4 constant TRANSFER_SELECTOR = PlasmaVault.transfer.selector;
 
 /**
  * @title Redemption Delay Library
@@ -49,7 +51,12 @@ library RedemptionDelayLib {
      * @custom:error-handling Reverts with AccountIsLocked if withdrawal attempted during lock period
      */
     function lockChecks(address account_, bytes4 sig_) internal {
-        if (sig_ == WITHDRAW_SELECTOR || sig_ == REDEEM_SELECTOR) {
+        if (
+            sig_ == WITHDRAW_SELECTOR ||
+            sig_ == REDEEM_SELECTOR ||
+            sig_ == TRANSFER_FROM_SELECTOR ||
+            sig_ == TRANSFER_SELECTOR
+        ) {
             uint256 unlockTime = IporFusionAccessManagersStorageLib.getRedemptionLocks().redemptionLock[account_];
             if (unlockTime > block.timestamp) {
                 revert AccountIsLocked(unlockTime);
