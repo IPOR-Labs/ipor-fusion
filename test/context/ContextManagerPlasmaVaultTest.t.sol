@@ -12,6 +12,7 @@ import {IPlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 
 contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
     // Test events
@@ -283,7 +284,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
     function testFuseManagerCanAddBalanceFuseUsingContextManager() public {
         // given
         uint256 marketId = 1;
-        address newFuse = makeAddr("NEW_FUSE");
+        address newFuse = address(new ZeroBalanceFuse(marketId));
 
         _addresses = new address[](1);
         _addresses[0] = address(_plasmaVault);
@@ -305,7 +306,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
 
     function testFuseManagerCanRemoveBalanceFuseUsingContextManager() public {
         // given
-        uint256 marketId = 1;
+        uint256 marketId = 2;
         address fuseToRemove = 0x62286efb801ae4eE93733c3bc1bFA0746e5103D8;
 
         // First add the balance fuse
