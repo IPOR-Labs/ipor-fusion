@@ -205,6 +205,7 @@ contract UniversalReaderTest is Test {
             transferRewardsManagers: transferRewardsManagers,
             configInstantWithdrawalFusesManagers: configInstantWithdrawalFusesManagers,
             updateMarketsBalancesAccounts: new address[](0),
+            updateRewardsBalanceAccounts: new address[](0),
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,

@@ -7,7 +7,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {MockPlasmaVault} from "./MockPlasmaVault.sol";
 import {MockToken} from "./MockToken.sol";
-
+import {Roles} from "../../contracts/libraries/Roles.sol";
 contract RewardsClaimManagerTest is Test {
     uint64 private constant _REWARD_MANAGER_ROLE = 1001;
 
@@ -410,5 +410,29 @@ contract RewardsClaimManagerTest is Test {
 
         assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
         assertEq(vestedBalanceAfter, 0, "Vested balance before should be 0");
+    }
+
+    function testShouldUpdateBalanceOnClaimRewardsManager() public {
+        // given
+        vm.prank(_atomist);
+        _accessManager.grantRole(Roles.UPDATE_REWARDS_BALANCE_ROLE, _userOne, 0);
+
+        // when
+        vm.prank(_userOne);
+        _rewardsClaimManager.updateBalance();
+
+        // then
+        assertEq(true, true, "Should pass if updateBalance executed successfully");
+    }
+
+    function testShouldRevertWhenUserDontHaveRoleToUpdateBalance() public {
+        // given
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _userTwo);
+
+        vm.prank(_userTwo);
+        // then
+        vm.expectRevert(error);
+        // when
+        _rewardsClaimManager.updateBalance();
     }
 }

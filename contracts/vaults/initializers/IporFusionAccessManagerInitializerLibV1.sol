@@ -61,6 +61,8 @@ struct DataForInitialization {
     address[] configInstantWithdrawalFusesManagers;
     /// @notice Array of addresses of the Update Markets Balances Managers (Roles.UPDATE_MARKETS_BALANCES_ROLE)
     address[] updateMarketsBalancesAccounts;
+    /// @notice Array of addresses of the Update Rewards Balance Managers (Roles.UPDATE_REWARDS_BALANCE_ROLE)
+    address[] updateRewardsBalanceAccounts;
     /// @notice Plasma Vault address struct.
     PlasmaVaultAddress plasmaVaultAddress;
 }
@@ -71,8 +73,8 @@ struct Iterator {
 
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
-    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 15;
-    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 38;
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 16;
+    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 3;
@@ -222,6 +224,14 @@ library IporFusionAccessManagerInitializerLibV1 {
         });
         ++index;
 
+        for (uint256 i; i < data_.updateRewardsBalanceAccounts.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.UPDATE_REWARDS_BALANCE_ROLE,
+                account: data_.updateRewardsBalanceAccounts[i],
+                executionDelay: 0
+            });
+        }
+
         accountToRoles[index] = AccountToRole({
             roleId: Roles.TECH_PLASMA_VAULT_ROLE,
             account: data_.plasmaVaultAddress.plasmaVault,
@@ -284,12 +294,12 @@ library IporFusionAccessManagerInitializerLibV1 {
             data_.transferRewardsManagers.length +
             data_.whitelist.length +
             data_.configInstantWithdrawalFusesManagers.length;
-
     }
 
     function _prepareAdminRolesLengthPatch2(DataForInitialization memory data_) private pure returns (uint256) {
         return
             data_.updateMarketsBalancesAccounts.length +
+            data_.updateRewardsBalanceAccounts.length +
             1 + /// @dev +1 - Rights for the Plasma Vault to role UPDATE_MARKETS_BALANCES_ROLE
             (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +
             (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +
@@ -312,6 +322,10 @@ library IporFusionAccessManagerInitializerLibV1 {
         });
         adminRoles_[_next(iterator)] = AdminRole({
             roleId: Roles.UPDATE_MARKETS_BALANCES_ROLE,
+            adminRoleId: Roles.ATOMIST_ROLE
+        });
+        adminRoles_[_next(iterator)] = AdminRole({
+            roleId: Roles.UPDATE_REWARDS_BALANCE_ROLE,
             adminRoleId: Roles.ATOMIST_ROLE
         });
         adminRoles_[_next(iterator)] = AdminRole({
@@ -561,7 +575,6 @@ library IporFusionAccessManagerInitializerLibV1 {
             minimalExecutionDelay: 0
         });
 
-        // IporFuseAccessManager
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.ADMIN_ROLE,
@@ -641,7 +654,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.rewardsClaimManager,
-                roleId: Roles.PUBLIC_ROLE,
+                roleId: Roles.UPDATE_REWARDS_BALANCE_ROLE,
                 functionSelector: RewardsClaimManager.updateBalance.selector,
                 minimalExecutionDelay: 0
             });
