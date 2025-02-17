@@ -88,18 +88,11 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
             .mulDiv(assetYPriceInUsd.toUint256(), assetXPriceInAssetY.toUint256(), PRICE_DENOMINATOR)
             .toInt256();
 
-        return (
-            0,
-            price,
-            Math.min(assetYStartedAt, assetXYStartedAt),
-            Math.min(assetYUpdatedAt, assetXYUpdatedAt),
-            0
-        );
+        return (0, price, Math.min(assetYStartedAt, assetXYStartedAt), Math.min(assetYUpdatedAt, assetXYUpdatedAt), 0);
     }
 
     /// @dev Internal function to return the number of decimals
     function _decimals() internal pure returns (uint8) {
         return 8;
     }
-    
 }

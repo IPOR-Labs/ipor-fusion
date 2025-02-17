@@ -47,11 +47,7 @@ contract FusesLibTest is Test {
         uint256 marketId = 1;
         address fuse = address(new ZeroBalanceFuse(marketId + 1));
 
-        bytes memory error = abi.encodeWithSignature(
-            "BalanceFuseMarketIdMismatch(uint256,address)",
-            marketId,
-            fuse
-        );
+        bytes memory error = abi.encodeWithSignature("BalanceFuseMarketIdMismatch(uint256,address)", marketId, fuse);
 
         //then
         vm.expectRevert(error);

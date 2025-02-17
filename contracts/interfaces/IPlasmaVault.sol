@@ -57,9 +57,5 @@ interface IPlasmaVault {
         bytes32 s_
     ) external returns (uint256);
 
-    function redeemFromRequest(
-        uint256 shares_,
-        address receiver_,
-        address owner_
-    ) external  returns (uint256);
+    function redeemFromRequest(uint256 shares_, address receiver_, address owner_) external returns (uint256);
 }

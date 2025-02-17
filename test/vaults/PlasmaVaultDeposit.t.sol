@@ -608,7 +608,7 @@ contract PlasmaVaultDepositTest is Test {
         // Direct transfer to manipulate the asset/share ratio
         uint256 largeAmount = 1e10 * 1e6 + 10000 + 1; /// @dev have to simulate the deposit there is no holder with such big balance of usdc on mainnet currently
         deal(USDC, address(plasmaVault), largeAmount);
-        
+
         // Victim tries to deposit a relatively small amount
         uint256 victimDepositAmount = 1e8; // 100 USDC but still < 1e12
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -619,7 +619,6 @@ contract PlasmaVaultDepositTest is Test {
         // Calculate expected shares - should be 0 due to precision loss
         uint256 sharesBefore = plasmaVault.totalSupply();
         uint256 assetsBefore = plasmaVault.totalAssets();
-
 
         bytes memory error = abi.encodeWithSignature("NoSharesToDeposit()");
 

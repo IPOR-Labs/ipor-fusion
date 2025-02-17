@@ -340,7 +340,11 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
             WithdrawRequestInfo({
                 shares: request.shares,
                 endWithdrawWindowTimestamp: request.endWithdrawWindowTimestamp,
-                canWithdraw: _canWithdrawFromRequest(request.endWithdrawWindowTimestamp, withdrawWindow, releaseFundsTimestamp),
+                canWithdraw: _canWithdrawFromRequest(
+                    request.endWithdrawWindowTimestamp,
+                    withdrawWindow,
+                    releaseFundsTimestamp
+                ),
                 withdrawWindowInSeconds: withdrawWindow
             });
     }
@@ -351,9 +355,9 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         uint256 releaseFundsTimestamp_
     ) private view returns (bool) {
         /// @dev User who never requested a withdrawal can withdraw immediately, but can't withdraw from request
-         if (endWithdrawWindowTimestamp_ < withdrawWindow_) {
-             return false;
-         }
+        if (endWithdrawWindowTimestamp_ < withdrawWindow_) {
+            return false;
+        }
 
         uint256 requestTimestamp_ = endWithdrawWindowTimestamp_ - withdrawWindow_;
 
