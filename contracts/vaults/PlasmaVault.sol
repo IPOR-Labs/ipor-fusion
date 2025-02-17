@@ -632,7 +632,6 @@ contract PlasmaVault is
     /// - Vault share minting
     ///
     /// @param assets_ Amount of assets to deposit
-    /// @param owner_ Owner of the assets and signer of permit
     /// @param receiver_ Address to receive the minted shares
     /// @param deadline_ Timestamp until which the signature is valid
     /// @param v_ Recovery byte of the signature
@@ -643,14 +642,13 @@ contract PlasmaVault is
     /// @custom:access Initially restricted to WHITELIST_ROLE, can be set to PUBLIC_ROLE via convertToPublicVault
     function depositWithPermit(
         uint256 assets_,
-        address owner_,
         address receiver_,
         uint256 deadline_,
         uint8 v_,
         bytes32 r_,
         bytes32 s_
     ) external override nonReentrant restricted returns (uint256) {
-        IERC20Permit(asset()).permit(owner_, address(this), assets_, deadline_, v_, r_, s_);
+        IERC20Permit(asset()).permit(_msgSender(), address(this), assets_, deadline_, v_, r_, s_);
         return _deposit(assets_, receiver_);
     }
 
