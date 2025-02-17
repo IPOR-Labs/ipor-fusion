@@ -597,4 +597,52 @@ contract PlasmaVaultScheduledWithdraw is Test {
         assertEq(balanceBefore, 10000000000);
         assertEq(balanceAfter, 9990100000);
     }
+
+    /**
+     * @notice Test that previewWithdraw with fee returns higher share value than without fee
+     * @dev This is because the fee is taken in shares, so more shares are needed to withdraw the same amount of assets
+     */
+    function testPreviewWithdrawWithFeeReturnsHigherShareValue() external {
+        // given
+        uint256 withdrawFee = 0.1e18; // 10% fee
+        uint256 assetsToWithdraw = 1000e6; // 1000 USDC
+
+        // Check shares needed without fee
+        uint256 sharesWithoutFee = PlasmaVault(_plasmaVault).previewWithdraw(assetsToWithdraw);
+
+        // Set withdraw fee
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawFee(withdrawFee);
+        vm.stopPrank();
+
+        // Check shares needed with fee
+        uint256 sharesWithFee = PlasmaVault(_plasmaVault).previewWithdraw(assetsToWithdraw);
+
+        // then
+        assertTrue(sharesWithFee > sharesWithoutFee, "Shares with fee should be higher than without fee");
+    }
+
+    /**
+     * @notice Test that previewRedeem with fee returns lower asset value than without fee
+     * @dev This is because the fee is taken in shares, so the same amount of shares yields fewer assets after fee
+     */
+    function testPreviewRedeemWithFeeReturnsLowerAssetValue() external {
+        // given
+        uint256 withdrawFee = 0.1e18; // 10% fee
+        uint256 sharesToRedeem = 1000e8; // 1000 shares
+
+        // Check assets received without fee
+        uint256 assetsWithoutFee = PlasmaVault(_plasmaVault).previewRedeem(sharesToRedeem);
+
+        // Set withdraw fee
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawFee(withdrawFee);
+        vm.stopPrank();
+
+        // Check assets received with fee
+        uint256 assetsWithFee = PlasmaVault(_plasmaVault).previewRedeem(sharesToRedeem);
+
+        // then
+        assertTrue(assetsWithFee < assetsWithoutFee, "Assets with fee should be lower than without fee");
+    }
 }

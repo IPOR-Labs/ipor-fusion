@@ -88,7 +88,61 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         return false;
     }
 
-    function canWithdrawFromUnallocated(uint256 shares_) external restricted returns (uint256 feeSharesToBurn) {
+    /**
+     * @notice Validates and calculates withdrawal fee for unallocated balance withdrawals
+     * @dev Only callable by PlasmaVault contract (TECH_PLASMA_VAULT_ROLE)
+     *
+     * Unallocated Balance:
+     * - Represents the portion of vault's assets not committed to pending withdrawal requests
+     * - Calculated as: vault's total balance - sum of all pending withdrawal requests
+     * - Available for immediate withdrawals without scheduling
+     * - Subject to different fee structure than scheduled withdrawals
+     * - Can be accessed through standard withdraw/redeem operations
+     *
+     * Validation Flow:
+     * 1. Balance Verification
+     *    - Checks PlasmaVault's total underlying token balance
+     *    - Subtracts total shares pending for scheduled withdrawals
+     *    - Ensures withdrawal amount + pending releases <= total unallocated balance
+     *    - Prevents double-allocation of shares
+     *
+     * 2. Fee Calculation
+     *    - Retrieves current withdraw fee rate for unallocated withdrawals
+     *    - Calculates fee amount in shares
+     *    - Uses WAD precision (18 decimals)
+     *    - Returns 0 if no fee configured
+     *
+     * Security Features:
+     * - Role-based access control
+     * - Balance sufficiency checks
+     * - Share conversion safety
+     * - Withdrawal limit enforcement
+     * - Protection against over-allocation
+     *
+     * Integration Points:
+     * - PlasmaVault: Main caller and balance source
+     * - ERC4626: Share/asset conversion
+     * - Storage: Fee rate and pending withdrawals
+     * - BurnRequestFeeFuse: Fee burning mechanism
+     *
+     * Important Notes:
+     * - Different from scheduled withdrawal system
+     * - Immediate withdrawal pathway
+     * - Separate fee structure
+     * - Must maintain withdrawal request safety
+     * - Critical for vault liquidity management
+     *
+     * Error Cases:
+     * - Insufficient unallocated balance
+     * - Invalid share calculations
+     * - Unauthorized caller
+     * - Balance allocation conflicts
+     *
+     * @param shares_ Amount of shares attempting to withdraw from unallocated balance
+     * @return feeSharesToBurn Amount of shares to be burned as fee (0 if no fee)
+     * @custom:access TECH_PLASMA_VAULT_ROLE
+     */
+    function canWithdrawFromUnallocated(uint256 shares_) external restricted returns (uint256) {
         address plasmaVaultAddress = msg.sender;
         uint256 feeRate = WithdrawManagerStorageLib.getWithdrawFee();
         uint256 balanceOfPlasmaVault = ERC4626(ERC4626(plasmaVaultAddress).asset()).balanceOf(plasmaVaultAddress);
@@ -106,8 +160,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         }
         if (feeRate > 0) {
             //@dev 1e18 is the precision of the fee rate
-            uint256 feeAmount = Math.mulDiv(shares_, feeRate, 1e18);
-            return feeAmount;
+            return Math.mulDiv(shares_, feeRate, 1e18);
         }
         return 0;
     }
