@@ -32,6 +32,10 @@ library Roles {
     /// @dev System role that can only be assigned to ContextManager contract. Set during initialization and cannot be changed afterward
     uint64 public constant TECH_CONTEXT_MANAGER_ROLE = 5;
 
+    /// @notice Technical role to limit access to methods only from the WithdrawManager contract
+    /// @dev System role that can only be assigned to WithdrawManager contract. Set during initialization and cannot be changed afterward
+    uint64 public constant TECH_WITHDRAW_MANAGER_ROLE = 6;
+
     /// @notice Account with this role has rights to manage the PlasmaVault. It recommended to use MultiSig contract for this role.
     /// @dev Managed by Owner
     uint64 public constant ATOMIST_ROLE = 100;
