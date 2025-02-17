@@ -25,7 +25,7 @@ import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInit
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {MorphoFlashLoanFuse} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 import {MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
-import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 import {IMorpho} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
@@ -183,10 +183,10 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
 
     function deployWBTCPriceFeed() private returns (address) {
         address wbtc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-        address wbtcEthFeed = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
-        address ethUsdFeed = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
+        address wbtcBtcFeed = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
+        address btcUsdFeed = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
 
-        _wbtcPriceFeed = address(new AssetChainlinkPriceFeed(wbtc, wbtcEthFeed, ethUsdFeed));
+        _wbtcPriceFeed = address(new AssetChainlinkPriceFeed(wbtc, wbtcBtcFeed, btcUsdFeed));
 
         return address(_wbtcPriceFeed);
     }

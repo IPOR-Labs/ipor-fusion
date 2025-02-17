@@ -66,6 +66,12 @@ library IporFusionMarkets {
     /// @dev Pendle market
     uint256 public constant PENDLE = 23;
 
+    /// @dev Fluid rewards market
+    uint256 public constant FLUID_REWARDS = 24;
+
+    /// @dev Curve gauge ERC4626 market
+    uint256 public constant CURVE_GAUGE_ERC4626 = 25;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
@@ -80,6 +86,21 @@ library IporFusionMarkets {
 
     /// @dev Market 5 for ERC4626 Vault
     uint256 public constant ERC4626_0005 = 100_005;
+
+    /// @dev Market 6 for ERC4626 Vault
+    uint256 public constant ERC4626_0006 = 100_006;
+
+    /// @dev Market 7 for ERC4626 Vault
+    uint256 public constant ERC4626_0007 = 100_007;
+
+    /// @dev Market 8 for ERC4626 Vault
+    uint256 public constant ERC4626_0008 = 100_008;
+
+    /// @dev Market 9 for ERC4626 Vault
+    uint256 public constant ERC4626_0009 = 100_009;
+
+    /// @dev Market 10 for ERC4626 Vault
+    uint256 public constant ERC4626_0010 = 100_010;
 
     /// @dev Meta Morpho Market 1
     uint256 public constant META_MORPHO_0001 = 200_001;
@@ -110,4 +131,7 @@ library IporFusionMarkets {
 
     /// @dev Meta Morpho Market 10
     uint256 public constant META_MORPHO_0010 = 200_010;
+
+    /// @dev Market used in cases where the fuse does not require maintaining any balance and there are no dependent balances.
+    uint256 public constant ZERO_BALANCE_MARKET = type(uint256).max;
 }

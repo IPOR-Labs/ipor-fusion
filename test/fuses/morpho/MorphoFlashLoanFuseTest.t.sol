@@ -15,7 +15,7 @@ import {MorphoFlashLoanFuse, MorphoFlashLoanFuseEnterData} from "../../../contra
 import {MockInnerBalance} from "./MockInnerBalance.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {CallbackHandlerMorpho} from "../../../contracts/callback_handlers/CallbackHandlerMorpho.sol";
+import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 

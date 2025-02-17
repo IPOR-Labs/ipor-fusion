@@ -38,14 +38,6 @@ library PriceOracleMiddlewareHelper {
             );
     }
 
-    function setAssetsPricesSources(
-        PriceOracleMiddleware priceOracleMiddleware_,
-        address[] memory assets,
-        address[] memory sources
-    ) internal {
-        priceOracleMiddleware_.setAssetsPricesSources(assets, sources);
-    }
-
     function addressOf(PriceOracleMiddleware priceOracleMiddleware_) internal view returns (address) {
         return address(priceOracleMiddleware_);
     }
@@ -75,5 +67,9 @@ library PriceOracleMiddlewareHelper {
 
     function getArbitrumPriceOracleMiddleware() internal returns (PriceOracleMiddleware) {
         return PriceOracleMiddleware(0xF9d7F359875E21b3A74BEd7Db40348f5393AF758);
+    }
+
+    function getEthereumPriceOracleMiddleware() internal returns (PriceOracleMiddleware) {
+        return PriceOracleMiddleware(0xB7018C15279E0f5990613cc00A91b6032066f2f7);
     }
 }

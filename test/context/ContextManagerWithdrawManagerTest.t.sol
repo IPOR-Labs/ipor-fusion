@@ -43,7 +43,7 @@ contract ContextManagerWithdrawManagerTest is Test, ContextManagerInitSetup {
         _addresses[0] = address(_withdrawManager);
 
         _data = new bytes[](1);
-        _data[0] = abi.encodeWithSelector(WithdrawManager.request.selector, withdrawAmount);
+        _data[0] = abi.encodeWithSelector(WithdrawManager.requestShares.selector, withdrawAmount);
 
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
@@ -54,7 +54,7 @@ contract ContextManagerWithdrawManagerTest is Test, ContextManagerInitSetup {
 
         // then
         WithdrawRequestInfo memory requestInfo = _withdrawManager.requestInfo(_USER_2);
-        assertEq(requestInfo.amount, withdrawAmount, "Withdraw request amount should match");
+        assertEq(requestInfo.shares, withdrawAmount, "Withdraw request shares should match");
         assertTrue(requestInfo.endWithdrawWindowTimestamp > 0, "End withdraw window timestamp should be set");
     }
 
@@ -66,7 +66,7 @@ contract ContextManagerWithdrawManagerTest is Test, ContextManagerInitSetup {
         _addresses[0] = address(_withdrawManager);
 
         _data = new bytes[](1);
-        _data[0] = abi.encodeWithSelector(WithdrawManager.releaseFunds.selector, timestamp);
+        _data[0] = abi.encodeWithSelector(WithdrawManager.releaseFunds.selector, timestamp, 100e18);
 
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 

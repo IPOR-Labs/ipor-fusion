@@ -73,4 +73,6 @@ interface IChildLiquidityGauge {
      * @return address Address of the reward token
      */
     function reward_tokens(uint256 _index) external view returns (address);
+
+    function balanceOf(address account) external view returns (uint256);
 }
