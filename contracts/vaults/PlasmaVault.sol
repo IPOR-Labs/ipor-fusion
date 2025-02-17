@@ -756,19 +756,55 @@ contract PlasmaVault is
 
         _addPerformanceFee(totalAssetsBefore);
 
+        uint256 maxAssets = maxWithdraw(owner_);
+
+        if (assets_ > maxAssets) {
+            revert ERC4626ExceededMaxWithdraw(owner_, assets_, maxAssets);
+        }
+
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
+        uint256 shares = convertToShares(assets_);
+
         if (withdrawManager != address(0)) {
-            uint256 shares = previewWithdraw(assets_);
             uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares);
             if (feeSharesToBurn > 0) {
-                uint256 withdrawAmount = super.withdraw(assets_ - previewRedeem(feeSharesToBurn), receiver_, owner_);
+                uint256 assetsToWithdraw = assets_ - super.convertToAssets(feeSharesToBurn);
+
+                super._withdraw(_msgSender(), receiver_, owner_, assetsToWithdraw, shares - feeSharesToBurn);
                 _burn(owner_, feeSharesToBurn);
-                return withdrawAmount;
+                return assetsToWithdraw;
             }
         }
 
-        return super.withdraw(assets_, receiver_, owner_);
+        super._withdraw(_msgSender(), receiver_, owner_, assets_, shares);
+        return assets_;
+    }
+
+    function previewRedeem(uint256 shares_) public view override returns (uint256) {
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+
+        if (withdrawManager != address(0)) {
+            uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
+            if (withdrawFee > 0) {
+                return super.previewRedeem(Math.mulDiv(shares_, 1e18 - withdrawFee, 1e18));
+            }
+        }
+
+        return super.previewRedeem(shares_);
+    }
+
+    function previewWithdraw(uint256 assets_) public view override returns (uint256) {
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+        if (withdrawManager != address(0)) {
+            /// @dev get withdraw fee in shares with 18 decimals
+            uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
+
+            if (withdrawFee > 0) {
+                return Math.mulDiv(super.previewWithdraw(assets_), 1e18, withdrawFee);
+            }
+        }
+        return super.previewWithdraw(assets_);
     }
 
     /// @notice Redeems vault shares for underlying assets
@@ -811,6 +847,11 @@ contract PlasmaVault is
         address receiver_,
         address owner_
     ) public override nonReentrant restricted returns (uint256) {
+        uint256 maxShares = maxRedeem(owner_);
+        if (shares_ > maxShares) {
+            revert ERC4626ExceededMaxRedeem(owner_, shares_, maxShares);
+        }
+
         return _redeem(shares_, receiver_, owner_, true);
     }
 
@@ -842,27 +883,73 @@ contract PlasmaVault is
 
         _addPerformanceFee(totalAssetsBefore);
 
-        if (withFee_) {
-            address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
-            if (withdrawManager == address(0)) {
-                return super.redeem(shares_, receiver_, owner_);
-            }
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
-            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
-            if (feeSharesToBurn == 0) {
-                return super.redeem(shares_, receiver_, owner_);
-            }
-
-            uint256 redeemAmount = super.redeem(shares_ - feeSharesToBurn, receiver_, owner_);
-
-            _burn(owner_, feeSharesToBurn);
-            return redeemAmount;
+        if (!withFee_ || withdrawManager == address(0)) {
+            uint256 assetsToWithdraw = convertToAssets(shares_);
+            _withdraw(_msgSender(), receiver_, owner_, assetsToWithdraw, shares_);
+            return assetsToWithdraw;
         }
 
-        return super.redeem(shares_, receiver_, owner_);
+        uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
+
+        if (feeSharesToBurn == 0) {
+            uint256 assetsToWithdraw = convertToAssets(shares_);
+            _withdraw(_msgSender(), receiver_, owner_, assetsToWithdraw, shares_);
+            return assetsToWithdraw;
+        }
+
+        uint256 redeemAmount = super.redeem(shares_, receiver_, owner_);
+        _burn(owner_, feeSharesToBurn);
+        return redeemAmount;
     }
 
-    function redeemFromRequest(uint256 shares_, address receiver_, address owner_) external restricted {
+    /// @notice Redeems shares from a previously submitted withdrawal request
+    /// @dev Processes redemption of shares that were part of an approved withdrawal request
+    ///
+    /// Redemption Flow:
+    /// 1. Request Validation
+    ///    - Verifies request exists via WithdrawManager
+    ///    - Checks withdrawal window timing
+    ///    - Validates share amount availability
+    ///    - Confirms release funds timestamp
+    ///
+    /// 2. Share Processing
+    ///    - Executes share redemption
+    ///    - Handles asset transfer
+    ///    - Updates request state
+    ///    - No fee application (unlike standard redeem)
+    ///
+    /// Security Features:
+    /// - Request-based access control
+    /// - Withdrawal window enforcement
+    /// - Share amount validation
+    /// - State consistency checks
+    /// - Atomic execution
+    ///
+    /// Integration Points:
+    /// - WithdrawManager for request validation
+    /// - ERC4626 share redemption
+    /// - Asset transfer system
+    /// - Balance tracking
+    ///
+    /// Important Notes:
+    /// - Different from standard redeem
+    /// - No withdrawal fee applied
+    /// - Requires prior request
+    /// - Time-window restricted
+    /// - Request-bound redemption
+    ///
+    /// @param shares_ Amount of shares to redeem from the request
+    /// @param receiver_ Address to receive the underlying assets
+    /// @param owner_ Owner of the shares being redeemed
+    /// @return uint256 Amount of underlying assets transferred to receiver
+    /// @custom:access Restricted to accounts with valid withdrawal requests
+    function redeemFromRequest(
+        uint256 shares_,
+        address receiver_,
+        address owner_
+    ) external restricted returns (uint256) {
         bool canWithdraw = WithdrawManager(PlasmaVaultStorageLib.getWithdrawManager().manager).canWithdrawFromRequest(
             owner_,
             shares_
@@ -872,7 +959,13 @@ contract PlasmaVault is
             revert WithdrawManagerInvalidSharesToRelease(shares_);
         }
 
-        _redeem(shares_, receiver_, owner_, false);
+        uint256 maxShares = maxRedeem(owner_);
+
+        if (shares_ > maxShares) {
+            revert ERC4626ExceededMaxRedeem(owner_, shares_, maxShares);
+        }
+
+        return _redeem(shares_, receiver_, owner_, false);
     }
 
     /// @notice Calculates maximum deposit amount allowed for an address

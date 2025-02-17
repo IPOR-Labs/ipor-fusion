@@ -89,10 +89,11 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     }
 
     function canWithdrawFromUnallocated(uint256 shares_) external restricted returns (uint256 feeSharesToBurn) {
+        address msgSender = msg.sender;
         uint256 feeRate = WithdrawManagerStorageLib.getWithdrawFee();
-        uint256 balanceOfPlasmaVault = ERC4626(ERC4626(msg.sender).asset()).balanceOf(msg.sender);
-        uint256 plasmaVaultBalanceOfUnallocatedShares = ERC4626(msg.sender).convertToShares(balanceOfPlasmaVault);
-        uint256 sharesToRelease = WithdrawManagerStorageLib.getSharesReleased();
+        uint256 balanceOfPlasmaVault = ERC4626(ERC4626(msgSender).asset()).balanceOf(msgSender);
+        uint256 plasmaVaultBalanceOfUnallocatedShares = ERC4626(msgSender).convertToShares(balanceOfPlasmaVault);
+        uint256 sharesToRelease = WithdrawManagerStorageLib.getSharesToRelease();
 
         if (plasmaVaultBalanceOfUnallocatedShares < sharesToRelease + shares_) {
             revert WithdrawManagerInvalidSharesToRelease(
@@ -135,8 +136,8 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         return WithdrawManagerStorageLib.getLastReleaseFundsTimestamp();
     }
 
-    function getSharesReleased() external view returns (uint256) {
-        return WithdrawManagerStorageLib.getSharesReleased();
+    function getSharesToRelease() external view returns (uint256) {
+        return WithdrawManagerStorageLib.getSharesToRelease();
     }
 
     /**
@@ -149,6 +150,42 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         WithdrawManagerStorageLib.updateWithdrawWindowLength(window_);
     }
 
+    /**
+     * @notice Updates the fee rate for withdrawals from unallocated balance
+     * @dev Only callable by accounts with ATOMIST_ROLE
+     *
+     * Fee System:
+     * - Fee rate is specified in WAD (18 decimals)
+     * - 1e18 represents 100% fee
+     * - Fee is calculated as: amount * feeRate / 1e18
+     * - Collected fees are burned through BurnRequestFeeFuse
+     *
+     * Access Control:
+     * - Restricted to ATOMIST_ROLE
+     * - Critical protocol parameter
+     * - Part of fee management system
+     *
+     * Integration Points:
+     * - Used in canWithdrawFromUnallocated
+     * - Affects withdrawal costs
+     * - Impacts protocol revenue
+     * - Connected to burn mechanism
+     *
+     * Security Considerations:
+     * - Maximum fee rate capped at 100%
+     * - State updates through storage library
+     * - Event emission for tracking
+     * - Access controlled operation
+     *
+     * Use Cases:
+     * - Protocol fee adjustment
+     * - Revenue model updates
+     * - Market condition responses
+     * - Economic parameter tuning
+     *
+     * @param fee_ The new fee rate in WAD (18 decimals precision, 1e18 = 100%)
+     * @custom:access ATOMIST_ROLE
+     */
     function updateWithdrawFee(uint256 fee_) external restricted {
         //@dev 1e18 is the 100% of the fee rate
         if (fee_ > 1e18) {
@@ -161,6 +198,48 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         return WithdrawManagerStorageLib.getWithdrawFee();
     }
 
+    /**
+     * @notice Updates the fee rate for withdrawal requests
+     * @dev Only callable by accounts with ATOMIST_ROLE
+     *
+     * Fee System:
+     * - Fee rate is specified in WAD (18 decimals)
+     * - 1e18 represents 100% fee
+     * - Fee is calculated as: shares * feeRate / 1e18
+     * - Fees are transferred to WithdrawManager during requestShares
+     *
+     * Access Control:
+     * - Restricted to ATOMIST_ROLE
+     * - Critical protocol parameter
+     * - Part of request fee management system
+     *
+     * Integration Points:
+     * - Used in requestShares function
+     * - Affects request costs
+     * - Impacts protocol revenue
+     * - Integrates with transferRequestSharesFee
+     *
+     * Security Considerations:
+     * - Maximum fee rate capped at 100%
+     * - State updates through storage library
+     * - Event emission for tracking
+     * - Access controlled operation
+     *
+     * Use Cases:
+     * - Request fee adjustment
+     * - Withdrawal request cost management
+     * - Protocol revenue optimization
+     * - Market condition adaptation
+     *
+     * Related Components:
+     * - WithdrawManagerStorageLib
+     * - PlasmaVaultBase (for fee transfers)
+     * - BurnRequestFeeFuse (eventual fee burning)
+     * - Access control system
+     *
+     * @param fee_ The new request fee rate in WAD (18 decimals precision, 1e18 = 100%)
+     * @custom:access ATOMIST_ROLE
+     */
     function updateRequestFee(uint256 fee_) external restricted {
         //@dev 1e18 is the 100% of the fee rate
         if (fee_ > 1e18) {

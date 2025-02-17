@@ -207,7 +207,7 @@ library WithdrawManagerStorageLib {
         return _getReleaseFunds().lastReleaseFundsTimestamp;
     }
 
-    function getSharesReleased() internal view returns (uint256) {
+    function getSharesToRelease() internal view returns (uint256) {
         return uint256(_getReleaseFunds().sharesToRelease);
     }
 
