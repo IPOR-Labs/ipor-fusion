@@ -15,6 +15,7 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IporFusionAccessManagerHelper} from "../test_helpers/IporFusionAccessManagerHelper.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {UpdateBalancesPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/UpdateBalancesPreHook.sol";
+import {Roles} from "../../contracts/libraries/Roles.sol";
 
 contract PreHooksTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
@@ -77,7 +78,15 @@ contract PreHooksTest is Test {
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
 
+        address balanceUpdater = address(0x777);
+
+        vm.startPrank(TestAddresses.ATOMIST);
+        _accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, balanceUpdater, 0);
+        vm.stopPrank();
+
+        vm.startPrank(balanceUpdater);
         _plasmaVault.updateMarketsBalances(marketIds);
+        vm.stopPrank();
 
         _updateBalancesPreHook = new UpdateBalancesPreHook();
     }

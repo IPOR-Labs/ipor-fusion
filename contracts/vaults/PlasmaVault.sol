@@ -470,7 +470,7 @@ contract PlasmaVault is
     /// @param marketIds_ Array of market IDs to update
     /// @return uint256 Updated total assets after balance refresh
     /// @custom:access Public function, no role restrictions
-    function updateMarketsBalances(uint256[] calldata marketIds_) external returns (uint256) {
+    function updateMarketsBalances(uint256[] calldata marketIds_) external restricted returns (uint256) {
         if (marketIds_.length == 0) {
             return totalAssets();
         }
@@ -947,7 +947,7 @@ contract PlasmaVault is
         uint256 shares_,
         address receiver_,
         address owner_
-    ) external restricted returns (uint256) {
+    ) external override restricted returns (uint256) {
         bool canWithdraw = WithdrawManager(PlasmaVaultStorageLib.getWithdrawManager().manager).canWithdrawFromRequest(
             owner_,
             shares_

@@ -202,6 +202,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoBaseTest is Test {
             claimRewards: claimRewards,
             transferRewardsManagers: transferRewardsManagers,
             configInstantWithdrawalFusesManagers: configInstantWithdrawalFusesManagers,
+            updateMarketsBalancesAccounts: new address[](0),
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,

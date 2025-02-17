@@ -76,6 +76,10 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE = 900;
 
+    /// @notice Account with this role has rights to update the markets balances in the PlasmaVault
+    /// @dev Managed by the Atomist
+    uint64 public constant UPDATE_MARKETS_BALANCES_ROLE = 1000;
+
     /// @notice Public role, no restrictions
     uint64 public constant PUBLIC_ROLE = type(uint64).max;
 }

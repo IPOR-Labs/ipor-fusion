@@ -24,6 +24,7 @@ library IporFusionAccessManagerHelper {
         address[] claimRewards;
         address[] transferRewardsManagers;
         address[] configInstantWithdrawalFusesManagers;
+        address[] updateMarketsBalancesAccounts;
         address[] whitelist;
     }
 
@@ -93,6 +94,7 @@ library IporFusionAccessManagerHelper {
             claimRewards: roles_.claimRewards,
             transferRewardsManagers: roles_.transferRewardsManagers,
             configInstantWithdrawalFusesManagers: roles_.configInstantWithdrawalFusesManagers,
+            updateMarketsBalancesAccounts: roles_.updateMarketsBalancesAccounts,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(plasmaVault_),
                 accessManager: address(accessManager_),
