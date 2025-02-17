@@ -487,7 +487,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.TECH_WITHDRAW_MANAGER_ROLE,
-            functionSelector: PlasmaVaultBase.transferRequestFee.selector,
+            functionSelector: PlasmaVaultBase.transferRequestSharesFee.selector,
             minimalExecutionDelay: 0
         });
 

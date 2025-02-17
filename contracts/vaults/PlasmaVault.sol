@@ -243,7 +243,7 @@ contract PlasmaVault is
     error UnsupportedFuse();
     error UnsupportedMethod();
     error WithdrawIsNotAllowed(address caller, uint256 requested);
-    error WithdrawManagerInvalidAmountToRelease(uint256 amount);
+    error WithdrawManagerInvalidSharesToRelease(uint256 sharesToRelease);
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -869,7 +869,7 @@ contract PlasmaVault is
         );
 
         if (!canWithdraw) {
-            revert WithdrawManagerInvalidAmountToRelease(shares_);
+            revert WithdrawManagerInvalidSharesToRelease(shares_);
         }
 
         _redeem(shares_, receiver_, owner_, false);

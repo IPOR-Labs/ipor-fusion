@@ -44,7 +44,7 @@ struct ReleaseFunds {
     /// @dev Timestamp of the most recent funds release
     uint32 lastReleaseFundsTimestamp;
     /// @dev Amount of funds released
-    uint128 amountToRelease;
+    uint128 sharesToRelease;
 }
 
 /// @title WithdrawManagerStorageLib
@@ -65,13 +65,13 @@ library WithdrawManagerStorageLib {
 
     /// @notice Emitted when funds are released
     /// @param releaseTimestamp Timestamp when funds were released
-    /// @param amountToRelease Amount of funds released
-    event ReleaseFundsUpdated(uint32 releaseTimestamp, uint128 amountToRelease);
+    /// @param sharesToRelease Amount of funds released
+    event ReleaseFundsUpdated(uint32 releaseTimestamp, uint128 sharesToRelease);
 
     /// @notice Thrown when attempting to set withdraw window length to zero
     error WithdrawWindowLengthCannotBeZero();
     /// @notice Thrown when attempting to release funds with an invalid amount
-    error WithdrawManagerInvalidAmountToRelease(uint256 amount_);
+    error WithdrawManagerInvalidSharesToRelease(uint256 amount_);
 
     /// @notice Thrown when attempting to set plasma vault address to zero
     error PlasmaVaultAddressCannotBeZero();
@@ -111,45 +111,6 @@ library WithdrawManagerStorageLib {
     /// @dev Storage slot for plasma vault address
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.withdraw.manager.plasma.vault")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PLASMA_VAULT_ADDRESS = 0xeb1948ad07cc64342983d8dc0a37729fcf2d17dcf49a1e3705ff0fa01e7d9400;
-
-    function _getRequestFee() private view returns (RequestFee storage requestFee) {
-        assembly {
-            requestFee.slot := REQUEST_FEE
-        }
-    }
-
-    function _getWithdrawFee() private view returns (WithdrawFee storage withdrawFee) {
-        assembly {
-            withdrawFee.slot := WITHDRAW_FEE
-        }
-    }
-
-    /// @dev Retrieves the withdraw window configuration from storage
-    function _getWithdrawWindowLength() private view returns (WithdrawWindow storage withdrawWindow) {
-        assembly {
-            withdrawWindow.slot := WITHDRAW_WINDOW_IN_SECONDS
-        }
-    }
-
-    /// @dev Retrieves the withdraw requests mapping from storage
-    function _getWithdrawRequests() private view returns (WithdrawRequests storage requests) {
-        assembly {
-            requests.slot := WITHDRAW_REQUESTS
-        }
-    }
-
-    /// @dev Retrieves the release funds timestamp from storage
-    function _getReleaseFunds() private view returns (ReleaseFunds storage releaseFundsResult) {
-        assembly {
-            releaseFundsResult.slot := LAST_RELEASE_FUNDS
-        }
-    }
-
-    function _getPlasmaVaultAddress() private view returns (PlasmaVaultAddress storage plasmaVaultAddress) {
-        assembly {
-            plasmaVaultAddress.slot := PLASMA_VAULT_ADDRESS
-        }
-    }
 
     function getRequestFee() internal view returns (uint256) {
         return _getRequestFee().fee;
@@ -216,7 +177,7 @@ library WithdrawManagerStorageLib {
         emit WithdrawRequestUpdated(requester_, request.shares, request.endWithdrawWindowTimestamp);
     }
 
-    function decreaseWithdrawRequest(address account_, uint256 shares_) internal {
+    function decreaseSharesFromWithdrawRequest(address account_, uint256 shares_) internal {
         WithdrawRequest memory request = getWithdrawRequest(account_);
         if (request.shares >= shares_) {
             request.shares -= shares_.toUint128();
@@ -229,13 +190,13 @@ library WithdrawManagerStorageLib {
     /// @param amount_ Amount of funds released
     function deleteWithdrawRequest(address account_, uint256 amount_) internal {
         ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
-        uint128 approvedAmountToRelase = releaseFundsLocal.amountToRelease;
+        uint128 approvedAmountToRelase = releaseFundsLocal.sharesToRelease;
 
         if (approvedAmountToRelase >= amount_) {
-            releaseFundsLocal.amountToRelease = approvedAmountToRelase - amount_.toUint128();
+            releaseFundsLocal.sharesToRelease = approvedAmountToRelase - amount_.toUint128();
             emit WithdrawRequestUpdated(account_, 0, 0);
         } else {
-            revert WithdrawManagerInvalidAmountToRelease(amount_);
+            revert WithdrawManagerInvalidSharesToRelease(amount_);
         }
         delete _getWithdrawRequests().requests[account_];
     }
@@ -247,26 +208,26 @@ library WithdrawManagerStorageLib {
     }
 
     function getSharesReleased() internal view returns (uint256) {
-        return uint256(_getReleaseFunds().amountToRelease);
+        return uint256(_getReleaseFunds().sharesToRelease);
     }
 
     /// @notice Updates the last funds release timestamp
     /// @param timestamp_ New timestamp to set
-    /// @param amountToRelease_ Amount of funds released
-    function releaseFunds(uint256 timestamp_, uint256 amountToRelease_) internal {
+    /// @param sharesToRelease_ Amount of funds released
+    function releaseFunds(uint256 timestamp_, uint256 sharesToRelease_) internal {
         ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
         releaseFundsLocal.lastReleaseFundsTimestamp = timestamp_.toUint32();
-        releaseFundsLocal.amountToRelease = amountToRelease_.toUint128();
-        emit ReleaseFundsUpdated(timestamp_.toUint32(), amountToRelease_.toUint128());
+        releaseFundsLocal.sharesToRelease = sharesToRelease_.toUint128();
+        emit ReleaseFundsUpdated(timestamp_.toUint32(), sharesToRelease_.toUint128());
     }
 
     function decreaseSharesToRelease(uint256 shares_) internal {
         ReleaseFunds storage releaseFundsLocal = _getReleaseFunds();
-        if (releaseFundsLocal.amountToRelease >= shares_) {
-            releaseFundsLocal.amountToRelease -= shares_.toUint128();
-            emit ReleaseFundsUpdated(releaseFundsLocal.lastReleaseFundsTimestamp, releaseFundsLocal.amountToRelease);
+        if (releaseFundsLocal.sharesToRelease >= shares_) {
+            releaseFundsLocal.sharesToRelease -= shares_.toUint128();
+            emit ReleaseFundsUpdated(releaseFundsLocal.lastReleaseFundsTimestamp, releaseFundsLocal.sharesToRelease);
         } else {
-            revert WithdrawManagerInvalidAmountToRelease(shares_);
+            revert WithdrawManagerInvalidSharesToRelease(shares_);
         }
     }
 
@@ -283,5 +244,44 @@ library WithdrawManagerStorageLib {
 
     function getPlasmaVaultAddress() internal view returns (address) {
         return _getPlasmaVaultAddress().plasmaVault;
+    }
+
+    function _getRequestFee() private view returns (RequestFee storage requestFee) {
+        assembly {
+            requestFee.slot := REQUEST_FEE
+        }
+    }
+
+    function _getWithdrawFee() private view returns (WithdrawFee storage withdrawFee) {
+        assembly {
+            withdrawFee.slot := WITHDRAW_FEE
+        }
+    }
+
+    /// @dev Retrieves the withdraw window configuration from storage
+    function _getWithdrawWindowLength() private view returns (WithdrawWindow storage withdrawWindow) {
+        assembly {
+            withdrawWindow.slot := WITHDRAW_WINDOW_IN_SECONDS
+        }
+    }
+
+    /// @dev Retrieves the withdraw requests mapping from storage
+    function _getWithdrawRequests() private view returns (WithdrawRequests storage requests) {
+        assembly {
+            requests.slot := WITHDRAW_REQUESTS
+        }
+    }
+
+    /// @dev Retrieves the release funds timestamp from storage
+    function _getReleaseFunds() private view returns (ReleaseFunds storage releaseFundsResult) {
+        assembly {
+            releaseFundsResult.slot := LAST_RELEASE_FUNDS
+        }
+    }
+
+    function _getPlasmaVaultAddress() private view returns (PlasmaVaultAddress storage plasmaVaultAddress) {
+        assembly {
+            plasmaVaultAddress.slot := PLASMA_VAULT_ADDRESS
+        }
     }
 }

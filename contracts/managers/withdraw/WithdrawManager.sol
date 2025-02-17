@@ -28,12 +28,14 @@ struct WithdrawRequestInfo {
  */
 contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     error WithdrawManagerInvalidTimestamp(uint256 timestamp);
-    error WithdrawManagerInvalidAmountToRelease(
-        uint256 amountToRelease,
+    error WithdrawManagerInvalidSharesToRelease(
+        uint256 sharesToRelease,
         uint256 shares,
-        uint256 plasmaVaultBalanceOfUnallocatedShears
+        uint256 plasmaVaultBalanceOfUnallocatedShares
     );
     error WithdrawManagerZeroShares();
+    error WithdrawManagerInvalidFee(uint256 fee);
+
     constructor(address accessManager_) initializer {
         super.__AccessManaged_init(accessManager_);
     }
@@ -51,9 +53,10 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
 
         uint256 feeRate = WithdrawManagerStorageLib.getRequestFee();
         if (feeRate > 0) {
+            //@dev 1e18 is the precision of the fee rate
             uint256 feeAmount = Math.mulDiv(shares_, feeRate, 1e18);
             WithdrawManagerStorageLib.updateWithdrawRequest(_msgSender(), shares_ - feeAmount);
-            IPlasmaVaultBase(getPlasmaVaultAddress()).transferRequestFee(_msgSender(), address(this), feeAmount);
+            IPlasmaVaultBase(getPlasmaVaultAddress()).transferRequestSharesFee(_msgSender(), address(this), feeAmount);
         } else {
             WithdrawManagerStorageLib.updateWithdrawRequest(_msgSender(), shares_);
         }
@@ -78,7 +81,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
                 releaseFundsTimestamp
             ) && request.shares >= shares_
         ) {
-            WithdrawManagerStorageLib.decreaseWithdrawRequest(account_, shares_);
+            WithdrawManagerStorageLib.decreaseSharesFromWithdrawRequest(account_, shares_);
             WithdrawManagerStorageLib.decreaseSharesToRelease(shares_);
             return true;
         }
@@ -88,17 +91,18 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     function canWithdrawFromUnallocated(uint256 shares_) external restricted returns (uint256 feeSharesToBurn) {
         uint256 feeRate = WithdrawManagerStorageLib.getWithdrawFee();
         uint256 balanceOfPlasmaVault = ERC4626(ERC4626(msg.sender).asset()).balanceOf(msg.sender);
-        uint256 plasmaVaultBalanceOfUnallocatedShears = ERC4626(msg.sender).convertToShares(balanceOfPlasmaVault);
+        uint256 plasmaVaultBalanceOfUnallocatedShares = ERC4626(msg.sender).convertToShares(balanceOfPlasmaVault);
         uint256 sharesToRelease = WithdrawManagerStorageLib.getSharesReleased();
 
-        if (plasmaVaultBalanceOfUnallocatedShears < sharesToRelease + shares_) {
-            revert WithdrawManagerInvalidAmountToRelease(
+        if (plasmaVaultBalanceOfUnallocatedShares < sharesToRelease + shares_) {
+            revert WithdrawManagerInvalidSharesToRelease(
                 sharesToRelease,
                 shares_,
-                plasmaVaultBalanceOfUnallocatedShears
+                plasmaVaultBalanceOfUnallocatedShares
             );
         }
         if (feeRate > 0) {
+            //@dev 1e18 is the precision of the fee rate
             uint256 feeAmount = Math.mulDiv(shares_, feeRate, 1e18);
             return feeAmount;
         }
@@ -146,6 +150,10 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     }
 
     function updateWithdrawFee(uint256 fee_) external restricted {
+        //@dev 1e18 is the 100% of the fee rate
+        if (fee_ > 1e18) {
+            revert WithdrawManagerInvalidFee(fee_);
+        }
         WithdrawManagerStorageLib.setWithdrawFee(fee_);
     }
 
@@ -154,6 +162,10 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     }
 
     function updateRequestFee(uint256 fee_) external restricted {
+        //@dev 1e18 is the 100% of the fee rate
+        if (fee_ > 1e18) {
+            revert WithdrawManagerInvalidFee(fee_);
+        }
         WithdrawManagerStorageLib.setRequestFee(fee_);
     }
 

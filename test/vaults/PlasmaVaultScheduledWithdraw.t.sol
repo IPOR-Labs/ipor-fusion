@@ -147,7 +147,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
         vm.stopPrank();
 
-        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidSharesToRelease(uint256)", withdrawAmount);
         // when
         vm.startPrank(_USER);
         vm.expectRevert(error);
@@ -197,7 +197,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
         vm.stopPrank();
 
-        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidSharesToRelease(uint256)", withdrawAmount);
 
         vm.warp(block.timestamp + 10 hours);
 
@@ -352,7 +352,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         vm.warp(block.timestamp + 10 hours);
 
-        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidSharesToRelease(uint256)", withdrawAmount);
 
         vm.startPrank(_USER);
         //then
@@ -380,7 +380,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         vm.warp(block.timestamp + 24 hours);
 
-        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidSharesToRelease(uint256)", withdrawAmount);
 
         // when
         vm.startPrank(_USER);
@@ -407,7 +407,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.prank(_ALPHA);
         WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
 
-        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidAmountToRelease(uint256)", withdrawAmount);
+        bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidSharesToRelease(uint256)", withdrawAmount);
 
         // when
         vm.startPrank(_USER);
@@ -435,7 +435,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 24 hours);
 
         bytes memory error = abi.encodeWithSignature(
-            "WithdrawManagerInvalidAmountToRelease(uint256)",
+            "WithdrawManagerInvalidSharesToRelease(uint256)",
             withdrawAmount + 1e6
         );
 
@@ -472,7 +472,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 withdrawAmount = 1_000e6;
         uint256 balanceBefore = ERC20(_USDC).balanceOf(_USER);
 
-        // Set amountToRelease to 0 and release funds
+        // Set sharesToRelease to 0 and release funds
         vm.startPrank(_ALPHA);
         WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, 0);
         vm.stopPrank();
@@ -513,7 +513,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         vm.warp(block.timestamp + 1 hours);
 
-        // Set amountToRelease to 0 and release funds
+        // Set sharesToRelease to 0 and release funds
         vm.startPrank(_ALPHA);
         WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, 1_500e6);
         vm.stopPrank();
