@@ -239,6 +239,7 @@ contract PlasmaVault is
     error NoSharesToMint();
     error NoAssetsToWithdraw();
     error NoAssetsToDeposit();
+    error NoSharesToDeposit();
     error UnsupportedFuse();
     error UnsupportedMethod();
     error WithdrawIsNotAllowed(address caller, uint256 requested);
@@ -1233,7 +1234,13 @@ contract PlasmaVault is
 
         _realizeManagementFee();
 
-        return super.deposit(assets_, receiver_);
+        uint256 shares = super.deposit(assets_, receiver_);
+
+        if (shares == 0) {
+            revert NoSharesToDeposit();
+        }
+
+        return shares;
     }
 
     function _addPerformanceFee(uint256 totalAssetsBefore_) internal {
