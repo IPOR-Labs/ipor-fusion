@@ -132,12 +132,14 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, ownerSig, Roles.OWNER_ROLE);
 
-        bytes4[] memory publicSig = new bytes4[](5);
+        bytes4[] memory publicSig = new bytes4[](7);
         publicSig[0] = PlasmaVault.deposit.selector;
         publicSig[1] = PlasmaVault.mint.selector;
         publicSig[2] = PlasmaVault.withdraw.selector;
         publicSig[3] = PlasmaVault.redeem.selector;
         publicSig[4] = PlasmaVault.depositWithPermit.selector;
+        publicSig[5] = PlasmaVault.transferFrom.selector;
+        publicSig[6] = PlasmaVault.transfer.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, publicSig, Roles.PUBLIC_ROLE);

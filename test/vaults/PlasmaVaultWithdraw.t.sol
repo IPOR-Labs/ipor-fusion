@@ -201,6 +201,59 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(amount, userOne, userOne);
     }
 
+    function testShouldNotBeAbleTransferDuringRedemptionLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1729783655);
+
+        //when
+        vm.warp(block.timestamp + 5 minutes);
+        vm.expectRevert(error);
+        vm.prank(userOne);
+        plasmaVault.transfer(userTwo, amount);
+    }
+
+    function testShouldNotBeAbleTransferFromDuringRedemptionLock() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);
+
+        vm.prank(userOne);
+        plasmaVault.approve(address(userTwo), type(uint256).max);
+
+        userOne = address(0x777);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1729783655);
+
+        //when
+        vm.warp(block.timestamp + 5 minutes);
+        vm.expectRevert(error);
+        vm.prank(userTwo);
+        plasmaVault.transferFrom(userOne, userTwo, amount);
+    }
+
     function testShouldNotBeAbleRedeemDuringRedemptionLock() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);
