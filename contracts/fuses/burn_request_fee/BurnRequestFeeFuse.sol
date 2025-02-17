@@ -10,6 +10,13 @@ import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
  * @notice Specialized fuse contract for burning request fee shares from the PlasmaVault
  * @dev Inherits from ERC20Upgradeable to interact with PlasmaVault's share token functionality
  *
+ * Execution Context:
+ * - All fuse operations are executed via delegatecall from PlasmaVault
+ * - Storage operations affect PlasmaVault's state, not the fuse contract
+ * - msg.sender refers to the caller of PlasmaVault.execute
+ * - address(this) refers to PlasmaVault's address during execution
+ * - ERC20 operations modify PlasmaVault's token balances
+ *
  * Inheritance Structure:
  * - ERC20Upgradeable: Used to interact with PlasmaVault's share token system
  * - IFuseCommon: Base fuse interface implementation
@@ -27,7 +34,7 @@ import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
  * - Maintains protocol tokenomics
  *
  * Integration Points:
- * - PlasmaVault: Main vault interaction
+ * - PlasmaVault: Main vault interaction (via delegatecall)
  * - WithdrawManager: Fee source
  * - ERC20 Share Token: State management
  * - Fuse System: Execution framework
@@ -37,6 +44,8 @@ import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
  * - State consistency checks
  * - Share burning validation
  * - Version tracking for upgrades
+ * - Delegatecall security implications
+ * - Storage layout compatibility
  *
  * @custom:security-contact security@ipor.network
  */
