@@ -581,6 +581,65 @@ contract PlasmaVaultDepositTest is Test {
         plasmaVault.depositWithPermit(amount + 1, userOne, block.timestamp, v, r, s);
     }
 
+    function testShouldNotGetSharesForSmallDepositsAfterPrecisionAttack() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(1e30);
+        address attacker = address(0x888);
+        address victim = address(0x999);
+
+        // First deposit: 1 wei -> 100 shares (due to decimal offset of 2)
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(attacker), 1);
+        vm.prank(attacker);
+        ERC20(USDC).approve(address(plasmaVault), 1);
+        vm.prank(attacker);
+        plasmaVault.deposit(1, attacker);
+        assertEq(plasmaVault.balanceOf(attacker), 100, "First deposit shares");
+
+        // Second deposit: 10000 wei -> 1000000 shares
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(attacker), 10000);
+        vm.prank(attacker);
+        ERC20(USDC).approve(address(plasmaVault), 10000);
+        vm.prank(attacker);
+        plasmaVault.deposit(10000, attacker);
+        assertEq(plasmaVault.balanceOf(attacker), 100 + 1000000, "Second deposit shares");
+
+        // Direct transfer to manipulate the asset/share ratio
+        uint256 largeAmount = 1e10 * 1e6 + 10000 + 1; /// @dev have to simulate the deposit there is no holder with such big balance of usdc on mainnet currently
+        deal(USDC, address(plasmaVault), largeAmount);
+        
+        // Victim tries to deposit a relatively small amount
+        uint256 victimDepositAmount = 1e8; // 100 USDC but still < 1e12
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(victim), victimDepositAmount);
+        vm.prank(victim);
+        ERC20(USDC).approve(address(plasmaVault), victimDepositAmount);
+
+        // Calculate expected shares - should be 0 due to precision loss
+        uint256 sharesBefore = plasmaVault.totalSupply();
+        uint256 assetsBefore = plasmaVault.totalAssets();
+
+
+        bytes memory error = abi.encodeWithSignature("NoSharesToDeposit()");
+
+        // when
+        vm.expectRevert(error);
+        vm.prank(victim);
+        plasmaVault.deposit(victimDepositAmount, victim);
+
+        // Verify assets ARE NOT transferred
+        assertEq(
+            ERC20(USDC).balanceOf(address(plasmaVault)),
+            largeAmount,
+            "Vault balance should include victim's deposit"
+        );
+
+        // Show the extreme asset/share ratio
+        uint256 assetsPerShare = (plasmaVault.totalAssets() * 1e6) / plasmaVault.totalSupply();
+        assertGt(assetsPerShare, 1e12, "Assets per share should be very high");
+    }
+
     function createAccessManager(
         UsersToRoles memory usersToRoles,
         uint256 redemptionDelay_

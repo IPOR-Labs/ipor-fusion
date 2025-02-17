@@ -131,4 +131,7 @@ library IporFusionMarkets {
 
     /// @dev Meta Morpho Market 10
     uint256 public constant META_MORPHO_0010 = 200_010;
+
+    /// @dev Market used in cases where the fuse does not require maintaining any balance and there are no dependent balances.
+    uint256 public constant ZERO_BALANCE_MARKET = type(uint256).max;
 }

@@ -89,11 +89,11 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
             .toInt256();
 
         return (
-            _combineRoundIds(assetXYRoundId, assetYUsdRoundId),
+            0,
             price,
             Math.min(assetYStartedAt, assetXYStartedAt),
             Math.min(assetYUpdatedAt, assetXYUpdatedAt),
-            _combineRoundIds(assetXYAnsweredInRound, assetYAnsweredInRound)
+            0
         );
     }
 
@@ -101,12 +101,5 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
     function _decimals() internal pure returns (uint8) {
         return 8;
     }
-
-    /// @dev Combines two round IDs into a single ID
-    /// @param id1 First round ID
-    /// @param id2 Second round ID
-    /// @return Combined round ID
-    function _combineRoundIds(uint80 id1, uint80 id2) internal pure returns (uint80) {
-        return uint80((uint256(id1) + uint256(id2)) / 2);
-    }
+    
 }
