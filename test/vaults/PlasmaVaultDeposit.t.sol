@@ -530,7 +530,7 @@ contract PlasmaVaultDepositTest is Test {
 
         //when
         vm.prank(userOne);
-        plasmaVault.depositWithPermit(amount, userOne, userOne, block.timestamp, v, r, s);
+        plasmaVault.depositWithPermit(amount, userOne, block.timestamp, v, r, s);
 
         //then
         uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
@@ -578,7 +578,7 @@ contract PlasmaVaultDepositTest is Test {
         //when
         vm.prank(userOne);
         vm.expectRevert(bytes("EIP2612: invalid signature"));
-        plasmaVault.depositWithPermit(amount + 1, userOne, userOne, block.timestamp, v, r, s);
+        plasmaVault.depositWithPermit(amount + 1, userOne, block.timestamp, v, r, s);
     }
 
     function createAccessManager(
