@@ -341,7 +341,7 @@ contract ContextManager is AccessManagedUpgradeable {
      * @notice Verifies the signature of context data using ECDSA recovery
      * @param contextData_ The context data containing the signature to verify
      * @return bool True if the recovered signer matches the claimed sender
-     * @dev Creates a hash of (expirationTime, nonce, chainId, target, data)
+     * @dev Creates a hash of (contextManagerAddress, expirationTime, nonce, chainId, target, data)
      * and verifies that the signature's recovered address matches the sender
      * @custom:security Uses ECDSA.recover for signature verification
      */
@@ -350,6 +350,7 @@ contract ContextManager is AccessManagedUpgradeable {
             ECDSA.recover(
                 keccak256(
                     abi.encodePacked(
+                        address(this),
                         contextData_.expirationTime,
                         contextData_.nonce,
                         CHAIN_ID,
