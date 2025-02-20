@@ -543,9 +543,11 @@ library FusesLib {
     function _updateBalanceFuseStructWhenAdding(uint256 marketId_, address fuse_) private {
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
 
+        uint256 newMarketIdIndexValue = balanceFuses.marketIds.length + 1;
+
         balanceFuses.fuseAddresses[marketId_] = fuse_;
         balanceFuses.marketIds.push(marketId_);
-        balanceFuses.indexes[marketId_] = balanceFuses.marketIds.length;
+        balanceFuses.indexes[marketId_] = newMarketIdIndexValue;
     }
     function _updateBalanceFuseStructWhenRemoving(uint256 marketId_) private {
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
