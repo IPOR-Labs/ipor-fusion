@@ -273,7 +273,7 @@ library PlasmaVaultStorageLib {
      * - Points to BalanceFuses struct containing:
      *   - fuseAddresses: mapping(uint256 marketId => address fuseAddress)
      *   - marketIds: uint256[] array of active market IDs
-     *   - indexes: mapping(uint256 marketId => uint256 index) for O(1) market lookup
+     *   - indexes: Maps market IDs to their position+1 in marketIds array
      *
      * Usage Pattern:
      * - Each market has one designated balance fuse
@@ -825,11 +825,11 @@ library PlasmaVaultStorageLib {
      * Storage Components:
      * - fuseAddresses: Maps each market to its designated balance fuse
      * - marketIds: Maintains ordered list of active markets for iteration
-     * - indexes: Enables O(1) market existence checks and array access
+     * - indexes: Maps market IDs to their position+1 in marketIds array
      *
      * Key Features:
      * - Efficient market-fuse relationship management
-     * - Fast market existence validation
+     * - Fast market existence validation (index 0 means not present)
      * - Optimized iteration over active markets
      * - Maintains market list integrity
      *
@@ -838,6 +838,12 @@ library PlasmaVaultStorageLib {
      * - Fuse assignment and management
      * - Market activation/deactivation
      * - Multi-market operations coordination
+     *
+     * Index Mapping Pattern:
+     * - Stored value = actual array index + 1
+     * - Value of 0 indicates market not present
+     * - To get array index, subtract 1 from stored value
+     * - Enables distinction between unset markets and first position
      *
      * Security Notes:
      * - Market IDs must be unique
@@ -850,7 +856,7 @@ library PlasmaVaultStorageLib {
         mapping(uint256 marketId => address fuseAddress) fuseAddresses;
         /// @dev Ordered array of active market IDs for efficient iteration
         uint256[] marketIds;
-        /// @dev Maps market IDs to their position in the marketIds array for O(1) lookup
+        /// @dev Maps market IDs to their position+1 in the marketIds array (0 means not present)
         mapping(uint256 marketId => uint256 index) indexes;
     }
 
