@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
+
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
@@ -25,7 +26,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
 
     /// @notice The underlying PlasmaVault contract
     address public immutable PLASMA_VAULT;
-    uint256 private immutable SHARE_SCALE_MULTIPLIER; /// @dev 10^_decimalsOffset() multiplier for share scaling in ERC4626
+    uint256 private immutable _SHARE_SCALE_MULTIPLIER; /// @dev 10^_decimalsOffset() multiplier for share scaling in ERC4626
 
     uint256 private constant FEE_PERCENTAGE_DECIMALS_MULTIPLIER = 1e4; /// @dev 10000 = 100% (2 decimal places for fee percentage)
 
@@ -53,7 +54,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         __Ownable_init(msg.sender);
 
         PLASMA_VAULT = plasmaVault_;
-        SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
+        _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
     }
 
     /**
@@ -790,7 +791,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
             assets_.mulDiv(
                 modifiedTotalSupply +
                     _calculateTotalFeeSharesForConvertWithFee(modifiedTotalAssets, modifiedTotalSupply, rounding_) +
-                    SHARE_SCALE_MULTIPLIER,
+                    _SHARE_SCALE_MULTIPLIER,
                 modifiedTotalAssets + 1,
                 rounding_
             );
@@ -853,7 +854,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
                 modifiedTotalAssets + 1,
                 modifiedTotalSupply +
                     _calculateTotalFeeSharesForConvertWithFee(modifiedTotalAssets, modifiedTotalSupply, rounding_) +
-                    SHARE_SCALE_MULTIPLIER,
+                    _SHARE_SCALE_MULTIPLIER,
                 rounding_
             );
     }
@@ -872,7 +873,10 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         uint256 assets,
         Math.Rounding rounding_
     ) internal view returns (uint256) {
-        return assets.mulDiv(currentTotalSupply + SHARE_SCALE_MULTIPLIER, currentTotalAssets + 1, rounding_);
+        return
+            currentTotalSupply == 0
+                ? assets * _SHARE_SCALE_MULTIPLIER
+                : assets.mulDiv(currentTotalSupply + _SHARE_SCALE_MULTIPLIER, currentTotalAssets + 1, rounding_);
     }
 
     /**
@@ -1065,14 +1069,23 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      * @dev Internal conversion function (from assets to shares) with support for rounding direction.
      */
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual override returns (uint256) {
-        return assets.mulDiv(totalSupply() + SHARE_SCALE_MULTIPLIER, totalAssets() + 1, rounding);
+        uint256 supply = totalSupply();
+        return
+            supply == 0
+                ? assets * _SHARE_SCALE_MULTIPLIER
+                : assets.mulDiv(supply + _SHARE_SCALE_MULTIPLIER, totalAssets() + 1, rounding);
     }
 
     /**
      * @dev Internal conversion function (from shares to assets) with support for rounding direction.
      */
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual override returns (uint256) {
-        return shares.mulDiv(totalAssets() + 1, totalSupply() + SHARE_SCALE_MULTIPLIER, rounding);
+        uint256 supply = totalSupply();
+        // When supply is 0, we need to divide by _SHARE_SCALE_MULTIPLIER to account for decimal offset
+        return
+            supply == 0
+                ? shares / _SHARE_SCALE_MULTIPLIER
+                : shares.mulDiv(totalAssets() + 1, supply + _SHARE_SCALE_MULTIPLIER, rounding);
     }
 
     /**

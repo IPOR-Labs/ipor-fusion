@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
-
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -224,7 +223,7 @@ contract PlasmaVault is
 {
     using Address for address;
     using SafeCast for int256;
-
+    using Math for uint256;
     /// @notice ISO-4217 currency code for USD represented as address
     /// @dev 0x348 (840 in decimal) is the ISO-4217 numeric code for USD
     address private constant USD = address(0x0000000000000000000000000000000000000348);
@@ -249,6 +248,7 @@ contract PlasmaVault is
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
     address public immutable PLASMA_VAULT_BASE;
+    uint256 private immutable _SHARE_SCALE_MULTIPLIER; /// @dev 10^_decimalsOffset() multiplier for share scaling in ERC4626
 
     /// @notice Initializes the Plasma Vault with core configuration and protocol integrations
     /// @dev Sets up ERC4626 vault, fuse system, and security parameters
@@ -285,6 +285,8 @@ contract PlasmaVault is
     constructor(PlasmaVaultInitData memory initData_) ERC20Upgradeable() ERC4626Upgradeable() initializer {
         super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
         super.__ERC4626_init(IERC20(initData_.underlyingToken));
+
+        _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
 
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
         PLASMA_VAULT_BASE.functionDelegateCall(
@@ -995,7 +997,6 @@ contract PlasmaVault is
         if (totalSupply >= totalSupplyCap) {
             return 0;
         }
-
         return convertToAssets(totalSupplyCap - totalSupply);
     }
 
@@ -1575,6 +1576,24 @@ contract PlasmaVault is
 
     function _decimalsOffset() internal view virtual override returns (uint8) {
         return PlasmaVaultLib.DECIMALS_OFFSET;
+    }
+
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual override returns (uint256) {
+        uint256 supply = totalSupply();
+
+        return
+            supply == 0
+                ? assets * _SHARE_SCALE_MULTIPLIER
+                : assets.mulDiv(supply + _SHARE_SCALE_MULTIPLIER, totalAssets() + 1, rounding);
+    }
+
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual override returns (uint256) {
+        uint256 supply = totalSupply();
+
+        return
+            supply == 0
+                ? shares / _SHARE_SCALE_MULTIPLIER
+                : shares.mulDiv(totalAssets() + 1, supply + _SHARE_SCALE_MULTIPLIER, rounding);
     }
 
     /// @dev Notice! Amount are assets when withdraw or shares when redeem

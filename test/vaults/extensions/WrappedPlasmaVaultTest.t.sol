@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {console2} from "forge-std/console2.sol";
 import {WrappedPlasmaVault} from "../../../contracts/vaults/extensions/WrappedPlasmaVault.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultStorageLib} from "../../../contracts/libraries/PlasmaVaultStorageLib.sol";
@@ -906,5 +907,49 @@ contract WrappedPlasmaVaulttTest is Test {
                 managementFeeRecipientFinalBalance - managementFeeRecipientInitialBalance,
             "Performance and management fees should be different in USDC terms"
         );
+    }
+
+    function testShouldConvertToSharesAndAssetsCorrectly() public {
+        // given
+        vm.warp(block.timestamp);
+        /// 2%
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// 3%
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 initialDeposit = 100_000e6;
+
+        // Realize fees
+        wPlasmaVault.realizeFees();
+
+        ///  @dev Simulate situation when WrappedPlasmaVault is created with initial deposit in PlasmaVault for this WrappedPlasmaVault
+        deal(usdc, address(wPlasmaVault), initialDeposit);
+        vm.startPrank(address(wPlasmaVault));
+        IERC20(usdc).approve(address(plasmaVault), initialDeposit);
+
+        plasmaVault.deposit(initialDeposit, address(wPlasmaVault));
+
+        vm.stopPrank();
+
+        /// @dev to get management fee
+        vm.warp(block.timestamp + 100 days);
+
+        // when
+        uint256 exchangeRate = wPlasmaVault.convertToShares(1e6);
+
+        uint256 shares = wPlasmaVault.totalSupply();
+        uint256 assets = wPlasmaVault.totalAssets();
+
+        uint256 assetsWithFees = wPlasmaVault.convertToAssetsWithFees(shares);
+        uint256 sharesWithFees = wPlasmaVault.convertToSharesWithFees(assets);
+
+        // then
+        assertEq(shares, 0, "Initial shares should be 0");
+        assertEq(assets, 99061826134, "Assets should be equal to initial deposit minus fees");
+        assertEq(exchangeRate, 1e8, "Exchange rate should be equal to 1e8");
+        assertEq(sharesWithFees, 83049092671, "Shares should be greater than 0");
+        assertEq(assetsWithFees, 0, "Assets should be greater than 0");
     }
 }
