@@ -458,6 +458,120 @@ contract IporPlasmaVaultRolesTest is Test {
         );
     }
 
+    function testShouldBeAbleToUpdateRewardsBalance() external {
+        // given
+        address user = vm.rememberKey(1234);
+
+        // when
+        vm.prank(_data.updateRewardsBalanceAccounts[0]);
+        RewardsClaimManager(_rewardsClaimManager).updateBalance();
+
+        // then
+        assertEq(RewardsClaimManager(_rewardsClaimManager).balanceOf(), 0, "Balance should be 0");
+    }
+
+    function testShouldNotBeAbleToUpdateRewardsBalanceByNonUpdateRewardsBalanceAccount() external {
+        // given
+        address user = vm.rememberKey(1234);
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
+
+        // then
+        vm.expectRevert(error);
+        // when
+        vm.prank(user);
+        RewardsClaimManager(_rewardsClaimManager).updateBalance();
+    }
+
+    function testShouldBeAbleToUpdateMarketsBalances() external {
+        // given
+        address user = vm.rememberKey(1234);
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = 0;
+
+        // when
+        vm.prank(_data.updateMarketsBalancesAccounts[0]);
+        _plasmaVault.updateMarketsBalances(marketIds);
+
+        // then
+        assertEq(_plasmaVault.totalAssets(), 0, "Total assets should be 0");
+    }
+
+    function testShouldNotBeAbleToUpdateMarketsBalancesByNonUpdateMarketsBalancesAccount() external {
+        // given
+        address user = vm.rememberKey(1234);
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = 0;
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
+
+        // then
+        vm.expectRevert(error);
+        // when
+        vm.prank(user);
+        _plasmaVault.updateMarketsBalances(marketIds);
+    }
+
+    function testShouldAtomistBeAbleToGrantRoleUpdateRewardsBalance() external {
+        // given
+        address user = vm.rememberKey(1234);
+
+        // when
+        vm.prank(_data.atomists[0]);
+        _accessManager.grantRole(Roles.UPDATE_REWARDS_BALANCE_ROLE, user, 10000);
+
+        // then
+        (bool isMember, uint32 executionDelay) = _accessManager.hasRole(Roles.UPDATE_REWARDS_BALANCE_ROLE, user);
+        assertEq(isMember, true, "User should have update rewards balance role");
+        assertEq(executionDelay, 10000, "Execution delay should be 10000");
+    }
+
+    function testShouldNotBeAbleToGrantRoleUpdateRewardsBalanceByNonAtomist() external {
+        // given
+        address user = vm.rememberKey(1234);
+
+        bytes memory error = abi.encodeWithSignature(
+            "AccessManagerUnauthorizedAccount(address,uint64)",
+            user,
+            Roles.ATOMIST_ROLE
+        );
+
+        // when
+        vm.prank(user);
+        vm.expectRevert(error);
+        _accessManager.grantRole(Roles.UPDATE_REWARDS_BALANCE_ROLE, user, 10000);
+    }
+
+    function testShouldAtomistBeAbleToGrantRoleUpdateMarketsBalances() external {
+        // given
+        address user = vm.rememberKey(1234);
+
+        // when
+        vm.prank(_data.atomists[0]);
+        _accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, user, 10000);
+
+        // then
+        (bool isMember, uint32 executionDelay) = _accessManager.hasRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, user);
+        assertEq(isMember, true, "User should have update markets balances role");
+        assertEq(executionDelay, 10000, "Execution delay should be 10000");
+    }
+
+    function testShouldNotBeAbleToGrantRoleUpdateMarketsBalancesByNonAtomist() external {
+        // given
+        address user = vm.rememberKey(1234);
+
+        bytes memory error = abi.encodeWithSignature(
+            "AccessManagerUnauthorizedAccount(address,uint64)",
+            user,
+            Roles.ATOMIST_ROLE
+        );
+
+        // when
+        vm.prank(user);
+        vm.expectRevert(error);
+        _accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, user, 10000);
+    }
+
     function _generateDataForInitialization() private {
         _data.admins = new address[](0);
         _data.owners = new address[](1);
@@ -478,6 +592,10 @@ contract IporPlasmaVaultRolesTest is Test {
         _data.transferRewardsManagers[0] = vm.rememberKey(11);
         _data.configInstantWithdrawalFusesManagers = new address[](1);
         _data.configInstantWithdrawalFusesManagers[0] = vm.rememberKey(12);
+        _data.updateMarketsBalancesAccounts = new address[](1);
+        _data.updateMarketsBalancesAccounts[0] = vm.rememberKey(13);
+        _data.updateRewardsBalanceAccounts = new address[](1);
+        _data.updateRewardsBalanceAccounts[0] = vm.rememberKey(14);
     }
 
     function _setupPriceOracleMiddleware() private {
