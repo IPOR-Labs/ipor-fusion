@@ -230,8 +230,9 @@ library IporFusionAccessManagerInitializerLibV1 {
                 account: data_.updateRewardsBalanceAccounts[i],
                 executionDelay: 0
             });
+            ++index;
         }
-        ++index;
+        
 
         accountToRoles[index] = AccountToRole({
             roleId: Roles.TECH_PLASMA_VAULT_ROLE,

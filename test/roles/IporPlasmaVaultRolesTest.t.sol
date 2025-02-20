@@ -470,6 +470,18 @@ contract IporPlasmaVaultRolesTest is Test {
         assertEq(RewardsClaimManager(_rewardsClaimManager).balanceOf(), 0, "Balance should be 0");
     }
 
+    function testShouldBeAbleToUpdateRewardsBalanceSecondUser() external {
+        // given
+        address user = vm.rememberKey(1234);
+
+        // when
+        vm.prank(_data.updateRewardsBalanceAccounts[1]);
+        RewardsClaimManager(_rewardsClaimManager).updateBalance();
+
+        // then
+        assertEq(RewardsClaimManager(_rewardsClaimManager).balanceOf(), 0, "Balance should be 0");
+    }
+
     function testShouldNotBeAbleToUpdateRewardsBalanceByNonUpdateRewardsBalanceAccount() external {
         // given
         address user = vm.rememberKey(1234);
@@ -594,8 +606,9 @@ contract IporPlasmaVaultRolesTest is Test {
         _data.configInstantWithdrawalFusesManagers[0] = vm.rememberKey(12);
         _data.updateMarketsBalancesAccounts = new address[](1);
         _data.updateMarketsBalancesAccounts[0] = vm.rememberKey(13);
-        _data.updateRewardsBalanceAccounts = new address[](1);
+        _data.updateRewardsBalanceAccounts = new address[](2);
         _data.updateRewardsBalanceAccounts[0] = vm.rememberKey(14);
+        _data.updateRewardsBalanceAccounts[1] = vm.rememberKey(15);
     }
 
     function _setupPriceOracleMiddleware() private {
