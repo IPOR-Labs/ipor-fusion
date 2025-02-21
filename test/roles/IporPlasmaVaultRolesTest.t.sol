@@ -459,9 +459,6 @@ contract IporPlasmaVaultRolesTest is Test {
     }
 
     function testShouldBeAbleToUpdateRewardsBalance() external {
-        // given
-        address user = vm.rememberKey(1234);
-
         // when
         vm.prank(_data.updateRewardsBalanceAccounts[0]);
         RewardsClaimManager(_rewardsClaimManager).updateBalance();
@@ -471,9 +468,6 @@ contract IporPlasmaVaultRolesTest is Test {
     }
 
     function testShouldBeAbleToUpdateRewardsBalanceSecondUser() external {
-        // given
-        address user = vm.rememberKey(1234);
-
         // when
         vm.prank(_data.updateRewardsBalanceAccounts[1]);
         RewardsClaimManager(_rewardsClaimManager).updateBalance();
@@ -485,7 +479,6 @@ contract IporPlasmaVaultRolesTest is Test {
     function testShouldNotBeAbleToUpdateRewardsBalanceByNonUpdateRewardsBalanceAccount() external {
         // given
         address user = vm.rememberKey(1234);
-
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", user);
 
         // then
@@ -497,7 +490,6 @@ contract IporPlasmaVaultRolesTest is Test {
 
     function testShouldBeAbleToUpdateMarketsBalances() external {
         // given
-        address user = vm.rememberKey(1234);
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = 0;
 

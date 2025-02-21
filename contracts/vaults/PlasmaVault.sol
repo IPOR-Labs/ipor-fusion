@@ -1600,7 +1600,7 @@ contract PlasmaVault is
 
         return
             supply == 0
-                ? assets * _SHARE_SCALE_MULTIPLIER
+                ? assets.mulDiv(_SHARE_SCALE_MULTIPLIER, 1, rounding)
                 : assets.mulDiv(supply + _SHARE_SCALE_MULTIPLIER, totalAssets() + 1, rounding);
     }
 
@@ -1609,7 +1609,7 @@ contract PlasmaVault is
 
         return
             supply == 0
-                ? shares / _SHARE_SCALE_MULTIPLIER
+                ? shares.mulDiv(1, _SHARE_SCALE_MULTIPLIER, rounding)
                 : shares.mulDiv(totalAssets() + 1, supply + _SHARE_SCALE_MULTIPLIER, rounding);
     }
 
