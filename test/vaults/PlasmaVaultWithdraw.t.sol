@@ -1859,6 +1859,68 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(amount, userTwo, userTwo);
     }
 
+    function testShouldNotBeAbleWithdrawDuringRedemptionLockWithDifferentRecipientAndApproved() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);
+
+        userOne = address(0x777);
+        userTwo = address(0x888);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userTwo);
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1729783655);
+
+        vm.prank(userTwo);
+        plasmaVault.approve(userOne, amount);
+
+        //when
+        vm.warp(block.timestamp + 5 minutes);
+        vm.expectRevert(error);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userTwo);
+    }
+
+    function testShouldBeAbleWithdrawDuringRedemptionLockWithDifferentRecipientAndApproved() public {
+        //given
+        PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);
+
+        userOne = address(0x777);
+        userTwo = address(0x888);
+
+        uint256 amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userTwo);
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1729783655);
+
+        vm.prank(userTwo);
+        plasmaVault.approve(userOne, 10 ** 2 * amount);
+
+        uint256 userOneBalanceBefore = ERC20(DAI).balanceOf(userOne);
+        //when
+        vm.warp(block.timestamp + 60 minutes);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userTwo);
+
+        uint256 userOneBalanceAfter = ERC20(DAI).balanceOf(userOne);
+
+        assertEq(userOneBalanceAfter, userOneBalanceBefore + amount);
+    }
+
     function testShouldNotBeAbleWithdrawDuringRedemptionLockAfterMintWithDifferentRecipient() public {
         //given
         PlasmaVault plasmaVault = _preparePlasmaVaultDai(10 minutes);

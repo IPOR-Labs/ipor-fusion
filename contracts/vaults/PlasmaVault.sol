@@ -1554,12 +1554,14 @@ contract PlasmaVault is
             IporFusionAccessManager(authority()).canCallAndUpdate(receiver, address(this), sig);
             /// @dev check if the caller has access to depositWithPermit and setup delay
             (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller_, address(this), sig);
-        } else if (
-            this.redeem.selector == sig ||
-            this.redeem.selector == sig ||
-            this.withdraw.selector == sig ||
-            this.transfer.selector == sig
-        ) {
+        } else if (this.redeem.selector == sig || this.withdraw.selector == sig) {
+            (, , address owner) = abi.decode(_msgData()[4:], (uint256, address, address));
+
+            /// @dev check if the owner of shares has access to redeem or withdraw and setup delay
+            IporFusionAccessManager(authority()).canCallAndUpdate(owner, address(this), sig);
+
+            (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
+        } else if (this.transfer.selector == sig) {
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
         } else {
             (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller_, address(this), sig);
