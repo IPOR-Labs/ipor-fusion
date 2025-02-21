@@ -1537,10 +1537,25 @@ contract PlasmaVault is
 
             /// @dev check if the caller has access to transferFrom method
             (immediate, delay) = IporFusionAccessManager(authority()).canCallAndUpdate(caller_, address(this), sig);
+        } else if (this.deposit.selector == sig || this.mint.selector == sig) {
+            (, address receiver) = abi.decode(_msgData()[4:], (uint256, address));
+
+            /// @dev check if the receiver of shares has access to deposit or mint and setup delay
+            IporFusionAccessManager(authority()).canCallAndUpdate(receiver, address(this), sig);
+            /// @dev check if the caller has access to deposit or mint and setup delay
+            (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller_, address(this), sig);
+        } else if (this.depositWithPermit.selector == sig) {
+            (, address receiver, , , , ) = abi.decode(
+                _msgData()[4:],
+                (uint256, address, uint256, uint8, bytes32, bytes32)
+            );
+
+            /// @dev check if the receiver of shares has access to depositWithPermit and setup delay
+            IporFusionAccessManager(authority()).canCallAndUpdate(receiver, address(this), sig);
+            /// @dev check if the caller has access to depositWithPermit and setup delay
+            (immediate, delay) = AuthorityUtils.canCallWithDelay(authority(), caller_, address(this), sig);
         } else if (
-            this.deposit.selector == sig ||
-            this.mint.selector == sig ||
-            this.depositWithPermit.selector == sig ||
+            this.redeem.selector == sig ||
             this.redeem.selector == sig ||
             this.withdraw.selector == sig ||
             this.transfer.selector == sig
