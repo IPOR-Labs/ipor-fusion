@@ -1905,8 +1905,6 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         plasmaVault.deposit(amount, userTwo);
 
-        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", 1729783655);
-
         vm.prank(userTwo);
         plasmaVault.approve(userOne, 10 ** 2 * amount);
 

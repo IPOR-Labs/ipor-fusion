@@ -232,7 +232,6 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             ++index;
         }
-        
 
         accountToRoles[index] = AccountToRole({
             roleId: Roles.TECH_PLASMA_VAULT_ROLE,

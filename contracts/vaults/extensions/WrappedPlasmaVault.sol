@@ -1084,7 +1084,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         // When supply is 0, we need to divide by _SHARE_SCALE_MULTIPLIER to account for decimal offset
         return
             supply == 0
-                ? shares / _SHARE_SCALE_MULTIPLIER
+                ? shares.mulDiv(1, _SHARE_SCALE_MULTIPLIER, rounding)
                 : shares.mulDiv(totalAssets() + 1, supply + _SHARE_SCALE_MULTIPLIER, rounding);
     }
 
