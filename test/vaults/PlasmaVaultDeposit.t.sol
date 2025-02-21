@@ -616,10 +616,6 @@ contract PlasmaVaultDepositTest is Test {
         vm.prank(victim);
         ERC20(USDC).approve(address(plasmaVault), victimDepositAmount);
 
-        // Calculate expected shares - should be 0 due to precision loss
-        uint256 sharesBefore = plasmaVault.totalSupply();
-        uint256 assetsBefore = plasmaVault.totalAssets();
-
         bytes memory error = abi.encodeWithSignature("NoSharesToDeposit()");
 
         // when
