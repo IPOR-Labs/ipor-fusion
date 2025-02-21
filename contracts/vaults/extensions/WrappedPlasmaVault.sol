@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
+
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
@@ -25,6 +26,8 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
 
     /// @notice The underlying PlasmaVault contract
     address public immutable PLASMA_VAULT;
+    uint256 private immutable _SHARE_SCALE_MULTIPLIER; /// @dev 10^_decimalsOffset() multiplier for share scaling in ERC4626
+
     uint256 private constant FEE_PERCENTAGE_DECIMALS_MULTIPLIER = 1e4; /// @dev 10000 = 100% (2 decimal places for fee percentage)
 
     /// @notice Stores the total assets value from the last operation (deposit/withdraw/mint/redeem)
@@ -51,6 +54,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         __Ownable_init(msg.sender);
 
         PLASMA_VAULT = plasmaVault_;
+        _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
     }
 
     /**
@@ -787,7 +791,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
             assets_.mulDiv(
                 modifiedTotalSupply +
                     _calculateTotalFeeSharesForConvertWithFee(modifiedTotalAssets, modifiedTotalSupply, rounding_) +
-                    10 ** _decimalsOffset(),
+                    _SHARE_SCALE_MULTIPLIER,
                 modifiedTotalAssets + 1,
                 rounding_
             );
@@ -850,7 +854,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
                 modifiedTotalAssets + 1,
                 modifiedTotalSupply +
                     _calculateTotalFeeSharesForConvertWithFee(modifiedTotalAssets, modifiedTotalSupply, rounding_) +
-                    10 ** _decimalsOffset(),
+                    _SHARE_SCALE_MULTIPLIER,
                 rounding_
             );
     }
@@ -869,7 +873,10 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         uint256 assets,
         Math.Rounding rounding_
     ) internal view returns (uint256) {
-        return assets.mulDiv(currentTotalSupply + 10 ** _decimalsOffset(), currentTotalAssets + 1, rounding_);
+        return
+            currentTotalSupply == 0
+                ? assets * _SHARE_SCALE_MULTIPLIER
+                : assets.mulDiv(currentTotalSupply + _SHARE_SCALE_MULTIPLIER, currentTotalAssets + 1, rounding_);
     }
 
     /**
@@ -950,18 +957,51 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     ) internal view returns (uint256 modifiedTotalAssets, uint256 modifiedTotalSupply) {
         uint256 grossTotalAssets = ERC4626Upgradeable(PLASMA_VAULT).maxWithdraw(address(this));
         uint256 unrealizedManagementFeeInUnderlying = _getUnrealizedManagementFee(grossTotalAssets);
-
         uint256 initialTotalAssets = _totalAssets(grossTotalAssets, unrealizedManagementFeeInUnderlying);
         uint256 initialSupply = totalSupply();
 
-        uint256 simulatedManagementFeeShares = initialSupply == 0
-            ? unrealizedManagementFeeInUnderlying
-            : unrealizedManagementFeeInUnderlying.mulDiv(initialSupply, grossTotalAssets, rounding_);
+        uint256 simulatedManagementFeeInShares = _convertToSharesSimple(
+            initialSupply,
+            grossTotalAssets,
+            unrealizedManagementFeeInUnderlying,
+            rounding_
+        );
 
         modifiedTotalAssets = initialTotalAssets + unrealizedManagementFeeInUnderlying;
-        modifiedTotalSupply = initialSupply + simulatedManagementFeeShares;
+        modifiedTotalSupply = initialSupply + simulatedManagementFeeInShares;
     }
 
+    /**
+     * @notice Calculates the current unrealized management fee based on total assets
+     * @dev Computes time-based management fee accrual since last fee update
+     *
+     * Calculation Flow:
+     * 1. Fee Data Validation
+     *    - Checks if fee percentage is set
+     *    - Verifies last update timestamp
+     *    - Validates current timestamp
+     *
+     * 2. Fee Computation
+     *    - Calculates time elapsed since last update
+     *    - Applies annual fee rate pro-rata
+     *    - Uses total assets as fee base
+     *
+     * Mathematical Model:
+     * - Fee = TotalAssets * TimeElapsed * FeeRate / (365 days * FEE_DECIMALS)
+     * - Pro-rates annual fee based on elapsed time
+     * - Maintains precision through calculations
+     *
+     * Important Notes:
+     * - Returns 0 if fee conditions not met
+     * - Uses block timestamp for time tracking
+     * - Applies fee percentage with decimals
+     * - Handles edge cases safely
+     * - Return value is denominated in underlying asset tokens
+     *
+     * @param totalAssets_ Current total assets to calculate fee on
+     * @return uint256 Unrealized management fee amount in underlying asset tokens
+     * @custom:security Internal view function with safe math
+     */
     function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
 
@@ -977,9 +1017,9 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
 
         return
             Math.mulDiv(
-                Math.mulDiv(totalAssets_, blockTimestamp - feeData.lastUpdateTimestamp, 365 days),
+                totalAssets_ * (blockTimestamp - feeData.lastUpdateTimestamp),
                 feeData.feeInPercentage,
-                FEE_PERCENTAGE_DECIMALS_MULTIPLIER /// @dev feeInPercentage uses 2 decimal places, example 10000 = 100%
+                365 days * FEE_PERCENTAGE_DECIMALS_MULTIPLIER
             );
     }
 
@@ -993,11 +1033,15 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     function _realizeManagementFee() internal {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
         uint256 unrealizedFeeInUnderlying = getUnrealizedManagementFee();
+
         PlasmaVaultLib.updateManagementFeeData();
+
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
+
         if (unrealizedFeeInShares == 0) {
             return;
         }
+
         _mint(feeData.feeAccount, unrealizedFeeInShares);
         emit ManagementFeeRealized(unrealizedFeeInUnderlying, unrealizedFeeInShares);
     }
@@ -1019,6 +1063,29 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
 
         /// @dev Update lastTotalAssets after realizing fees to ensure consistent performance fee calculations
         lastTotalAssets = totalAssets();
+    }
+
+    /**
+     * @dev Internal conversion function (from assets to shares) with support for rounding direction.
+     */
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual override returns (uint256) {
+        uint256 supply = totalSupply();
+        return
+            supply == 0
+                ? assets * _SHARE_SCALE_MULTIPLIER
+                : assets.mulDiv(supply + _SHARE_SCALE_MULTIPLIER, totalAssets() + 1, rounding);
+    }
+
+    /**
+     * @dev Internal conversion function (from shares to assets) with support for rounding direction.
+     */
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual override returns (uint256) {
+        uint256 supply = totalSupply();
+        // When supply is 0, we need to divide by _SHARE_SCALE_MULTIPLIER to account for decimal offset
+        return
+            supply == 0
+                ? shares / _SHARE_SCALE_MULTIPLIER
+                : shares.mulDiv(totalAssets() + 1, supply + _SHARE_SCALE_MULTIPLIER, rounding);
     }
 
     /**

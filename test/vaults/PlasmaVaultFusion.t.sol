@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -124,6 +123,29 @@ contract PlasmaVaultErc20FusionTest is Test {
         );
 
         setupRoles(plasmaVault, accessManager);
+    }
+
+    function testExchangeRateWhenSupplyIsZero() public {
+        //given
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(plasmaVault), 1000e6);
+
+        uint256 amount = 1000e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        //when
+        uint256 exchangeRate = plasmaVault.convertToShares(1e6);
+
+        //then
+        assertEq(exchangeRate, 50000000);
     }
 
     function testShouldNotCallFunctionUpdateInternal() public {
