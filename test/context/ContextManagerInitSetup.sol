@@ -134,7 +134,9 @@ abstract contract ContextManagerInitSetup is Test {
         address target,
         bytes memory data
     ) private view returns (bytes memory) {
-        bytes32 digest = keccak256(abi.encodePacked(expirationTime, nonce, TestAddresses.BASE_CHAIN_ID, target, data));
+        bytes32 digest = keccak256(
+            abi.encodePacked(address(_contextManager), expirationTime, nonce, TestAddresses.BASE_CHAIN_ID, target, data)
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         return abi.encodePacked(r, s, v);
     }
