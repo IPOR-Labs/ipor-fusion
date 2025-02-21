@@ -1072,7 +1072,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         uint256 supply = totalSupply();
         return
             supply == 0
-                ? assets.mulDiv(_SHARE_SCALE_MULTIPLIER, 1, rounding)
+                ? assets * _SHARE_SCALE_MULTIPLIER
                 : assets.mulDiv(supply + _SHARE_SCALE_MULTIPLIER, totalAssets() + 1, rounding);
     }
 
