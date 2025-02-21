@@ -475,6 +475,7 @@ library FusesLib {
         balanceFuses.fuseAddresses[marketId_] = address(0);
 
         uint256 index = balanceFuses.indexes[marketId_];
+
         if (index != balanceFuses.marketIds.length - 1) {
             balanceFuses.marketIds[index] = balanceFuses.marketIds[balanceFuses.marketIds.length - 1];
         }
