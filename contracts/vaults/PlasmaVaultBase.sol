@@ -55,7 +55,6 @@ import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
  * - ERC20InvalidCap: Invalid Cap Configuration
  * - Standard OpenZeppelin Errors
  *
- * @custom:security-contact security@ipor.network
  */
 contract PlasmaVaultBase is
     IPlasmaVaultBase,
@@ -143,6 +142,10 @@ contract PlasmaVaultBase is
     /// @custom:security Non-privileged view function
     function cap() public view virtual returns (uint256) {
         return PlasmaVaultStorageLib.getERC20CappedStorage().cap;
+    }
+
+    function transferRequestSharesFee(address from_, address to_, uint256 amount_) external override restricted {
+        _transfer(from_, to_, amount_);
     }
 
     /// @notice Updates token balances and voting power during transfers
@@ -256,6 +259,6 @@ contract PlasmaVaultBase is
 
     function _checkCanCall(address caller_, bytes calldata data_) internal override {
         super._checkCanCall(caller_, data_);
-        _runPreHooks(bytes4(data_[0:4]));
+        _runPreHook(bytes4(data_[0:4]));
     }
 }

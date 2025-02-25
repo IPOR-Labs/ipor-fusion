@@ -51,7 +51,6 @@ import {PreHooksLib} from "../handlers/pre_hooks/PreHooksLib.sol";
 /// - Fuse System: Protocol integrations
 /// - Fee Manager: Revenue distribution
 ///
-/// @custom:security-contact security@ipor.network
 abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManagedUpgradeable {
     /// @notice Checks if a substrate is granted for a specific market
     /// @param marketId_ The ID of the market to check
@@ -1621,12 +1620,61 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         IIporFusionAccessManager(authority()).setMinimalExecutionDelaysForRoles(rolesIds_, delays_);
     }
 
-    // only by atomist
+    /// @notice Sets or updates pre-hook implementations for function selectors
+    /// @dev Manages the configuration of pre-execution hooks through PreHooksLib
+    ///
+    /// Pre-Hook System:
+    /// - Maps function selectors to pre-hook implementations
+    /// - Configures substrate parameters for each hook
+    /// - Supports addition, update, and removal operations
+    /// - Maintains hook execution order
+    ///
+    /// Configuration Components:
+    /// - selectors_: Function signatures requiring pre-hooks
+    /// - implementations_: Corresponding hook contract addresses
+    /// - substrates_: Configuration parameters for each hook
+    ///
+    /// Storage Updates:
+    /// - Updates PreHooksLib configuration
+    /// - Maintains selector to implementation mapping
+    /// - Stores substrate configurations
+    /// - Preserves hook execution order
+    ///
+    /// Operation Types:
+    /// - Add new pre-hook: Maps new selector to implementation
+    /// - Update existing: Changes implementation or substrates
+    /// - Remove pre-hook: Sets implementation to address(0)
+    /// - Batch operations supported
+    ///
+    /// Security Considerations:
+    /// - Only callable by ATOMIST_ROLE
+    /// - Validates array length matching
+    /// - Prevents invalid selector configurations
+    /// - Critical for execution security
+    ///
+    /// Integration Context:
+    /// - Used for vault operation customization
+    /// - Supports protocol-specific validations
+    /// - Enables complex operation flows
+    /// - Critical for vault extensibility
+    ///
+    /// Related Components:
+    /// - PreHooksLib: Core management
+    /// - Pre-hook Implementations
+    /// - Vault Operations
+    /// - Security Framework
+    ///
+    /// @param selectors_ Array of function selectors to configure
+    /// @param implementations_ Array of pre-hook implementation addresses
+    /// @param substrates_ Array of substrate configurations for each hook
+    /// @custom:access ATOMIST_ROLE restricted
+    /// @custom:security Critical for vault operation security
     function setPreHookImplementations(
         bytes4[] calldata selectors_,
-        address[] calldata implementations_
+        address[] calldata implementations_,
+        bytes32[][] calldata substrates_
     ) external restricted {
-        PreHooksLib.setPreHookImplementations(selectors_, implementations_);
+        PreHooksLib.setPreHookImplementations(selectors_, implementations_, substrates_);
     }
 
     function getPreHookSelectors() external view returns (bytes4[] memory) {

@@ -32,6 +32,10 @@ library Roles {
     /// @dev System role that can only be assigned to ContextManager contract. Set during initialization and cannot be changed afterward
     uint64 public constant TECH_CONTEXT_MANAGER_ROLE = 5;
 
+    /// @notice Technical role to limit access to methods only from the WithdrawManager contract
+    /// @dev System role that can only be assigned to WithdrawManager contract. Set during initialization and cannot be changed afterward
+    uint64 public constant TECH_WITHDRAW_MANAGER_ROLE = 6;
+
     /// @notice Account with this role has rights to manage the PlasmaVault. It recommended to use MultiSig contract for this role.
     /// @dev Managed by Owner
     uint64 public constant ATOMIST_ROLE = 100;
@@ -71,6 +75,14 @@ library Roles {
     /// @notice Account with this role has rights to configure instant withdrawal fuses order.
     /// @dev Managed by the Atomist
     uint64 public constant CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE = 900;
+
+    /// @notice Account with this role has rights to update the markets balances in the PlasmaVault
+    /// @dev Managed by the Atomist
+    uint64 public constant UPDATE_MARKETS_BALANCES_ROLE = 1000;
+
+    /// @notice Account with this role has rights to update balance in the RewardsClaimManager contract
+    /// @dev Managed by the Atomist
+    uint64 public constant UPDATE_REWARDS_BALANCE_ROLE = 1100;
 
     /// @notice Public role, no restrictions
     uint64 public constant PUBLIC_ROLE = type(uint64).max;

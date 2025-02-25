@@ -907,4 +907,144 @@ contract WrappedPlasmaVaulttTest is Test {
             "Performance and management fees should be different in USDC terms"
         );
     }
+
+    function testShouldConvertToSharesAndAssetsCorrectly() public {
+        // given
+        vm.warp(block.timestamp);
+        /// 2%
+        vm.prank(owner);
+        wPlasmaVault.configurePerformanceFee(owner, 200);
+        /// 3%
+        vm.prank(owner);
+        wPlasmaVault.configureManagementFee(owner, 300);
+
+        uint256 initialDeposit = 100_000e6;
+
+        // Realize fees
+        wPlasmaVault.realizeFees();
+
+        ///  @dev Simulate situation when WrappedPlasmaVault is created with initial deposit in PlasmaVault for this WrappedPlasmaVault
+        deal(usdc, address(wPlasmaVault), initialDeposit);
+        vm.startPrank(address(wPlasmaVault));
+        IERC20(usdc).approve(address(plasmaVault), initialDeposit);
+        plasmaVault.deposit(initialDeposit, address(wPlasmaVault));
+        vm.stopPrank();
+
+        /// @dev to get management fee
+        vm.warp(block.timestamp + 100 days);
+
+        // when
+        uint256 exchangeRate = wPlasmaVault.convertToShares(1e6);
+
+        uint256 shares = wPlasmaVault.totalSupply();
+        uint256 assets = wPlasmaVault.totalAssets();
+
+        uint256 assetsWithFees = wPlasmaVault.convertToAssetsWithFees(shares);
+        uint256 sharesWithFees = wPlasmaVault.convertToSharesWithFees(assets);
+
+        // then
+        assertEq(shares, 0, "Initial shares should be 0");
+        assertEq(assets, 99061826134, "Assets should be equal to initial deposit minus fees");
+        assertEq(exchangeRate, 1e8, "Exchange rate should be equal to 1e8");
+        assertEq(sharesWithFees, 83049092671, "Shares should be greater than 0");
+        assertEq(assetsWithFees, 0, "Assets should be greater than 0");
+    }
+
+    function testShouldMintSharesAndDecreaseUserAssetBalanceOneMint() public {
+        //given
+        address userOne = address(0x1);
+
+        uint256 amount = 1000e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        IERC20(usdc).transfer(address(userOne), amount);
+
+        vm.prank(userOne);
+        IERC20(usdc).approve(address(wPlasmaVault), amount);
+
+        uint256 amountBefore = IERC20(usdc).balanceOf(userOne);
+        uint256 totalSupplyBefore = wPlasmaVault.totalSupply();
+
+        //when
+        vm.prank(userOne);
+        wPlasmaVault.mint(1, userOne);
+
+        uint256 amountAfter = IERC20(usdc).balanceOf(userOne);
+        uint256 totalSupplyAfter = wPlasmaVault.totalSupply();
+
+        //then
+        assertGt(amountBefore, amountAfter, "User should have less USDC after mint");
+        assertEq(totalSupplyBefore, 0, "Total supply should be 0");
+        assertGt(totalSupplyAfter, totalSupplyBefore, "Total supply should increase");
+    }
+
+    function testShouldMintSharesAndDecreaseUserAssetBalanceOneMintExternalTransfer() public {
+        //given
+        ///  @dev Simulate situation when WrappedPlasmaVault is created with initial deposit in PlasmaVault for this WrappedPlasmaVault
+        uint256 initialDeposit = 100_000e6;
+        deal(usdc, address(wPlasmaVault), initialDeposit);
+        vm.startPrank(address(wPlasmaVault));
+        IERC20(usdc).approve(address(plasmaVault), initialDeposit);
+        plasmaVault.deposit(initialDeposit, address(wPlasmaVault));
+        vm.stopPrank();
+
+        address userOne = address(0x1);
+
+        uint256 amount = 1000e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        IERC20(usdc).transfer(address(userOne), amount);
+
+        vm.prank(userOne);
+        IERC20(usdc).approve(address(wPlasmaVault), amount);
+
+        uint256 amountBefore = IERC20(usdc).balanceOf(userOne);
+        uint256 totalSupplyBefore = wPlasmaVault.totalSupply();
+
+        //when
+        vm.prank(userOne);
+        wPlasmaVault.mint(1, userOne);
+
+        uint256 amountAfter = IERC20(usdc).balanceOf(userOne);
+        uint256 totalSupplyAfter = wPlasmaVault.totalSupply();
+
+        //then
+        assertGt(amountBefore, amountAfter, "User should have less USDC after mint");
+        assertEq(totalSupplyBefore, 0, "Total supply should be 0");
+        assertGt(totalSupplyAfter, totalSupplyBefore, "Total supply should increase");
+    }
+
+    function testShouldMintSharesAndDecreaseUserAssetBalanceMultipleMints() public {
+        //given
+        address userOne = address(0x1);
+
+        uint256 amount = 1000e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        IERC20(usdc).transfer(address(userOne), amount);
+
+        vm.prank(userOne);
+        IERC20(usdc).approve(address(wPlasmaVault), amount);
+
+        uint256 amountBefore = IERC20(usdc).balanceOf(userOne);
+        uint256 totalSupplyBefore = wPlasmaVault.totalSupply();
+
+        //when
+        vm.prank(userOne);
+        wPlasmaVault.mint(1, userOne);
+
+        vm.prank(userOne);
+        wPlasmaVault.mint(1, userOne);
+
+        vm.prank(userOne);
+        wPlasmaVault.mint(1, userOne);
+
+        uint256 amountAfter = IERC20(usdc).balanceOf(userOne);
+        uint256 totalSupplyAfter = wPlasmaVault.totalSupply();
+
+        //then
+        assertGt(amountBefore, amountAfter, "User should have less USDC after mint");
+        assertEq(totalSupplyBefore, 0, "Total supply should be 0");
+        assertGt(totalSupplyAfter, totalSupplyBefore, "Total supply should increase");
+    }
 }

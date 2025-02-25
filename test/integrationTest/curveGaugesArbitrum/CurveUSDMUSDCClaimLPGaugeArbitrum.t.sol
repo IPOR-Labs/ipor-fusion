@@ -603,6 +603,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
+            updateMarketsBalancesAccounts: initAddress,
+            updateRewardsBalanceAccounts: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(instances.plasmaVault),
                 accessManager: address(instances.accessManager),

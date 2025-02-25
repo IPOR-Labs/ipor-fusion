@@ -184,6 +184,8 @@ contract FeeManagerTest is Test {
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
+            updateMarketsBalancesAccounts: initAddress,
+            updateRewardsBalanceAccounts: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,

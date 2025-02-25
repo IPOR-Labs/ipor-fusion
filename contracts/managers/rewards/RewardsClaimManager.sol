@@ -142,7 +142,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
 
     /// @notice Updates the balance and vesting schedule
     /// @dev Transfers available tokens to Plasma Vault and updates vesting data
-    /// @custom:access PUBLIC_ROLE
+    /// @custom:access UPDATE_REWARDS_BALANCE_ROLE
     function updateBalance() external restricted {
         uint256 balance = balanceOf();
 

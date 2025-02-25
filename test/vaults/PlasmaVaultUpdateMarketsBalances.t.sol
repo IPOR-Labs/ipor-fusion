@@ -21,6 +21,7 @@ import {IAavePriceOracle} from "../../contracts/fuses/aave_v3/ext/IAavePriceOrac
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {IComet} from "../../contracts/fuses/compound_v3/ext/IComet.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
+import {Roles} from "../../contracts/libraries/Roles.sol";
 
 contract PlasmaVaultUpdateMarketsBalances is Test {
     address private constant _ATOMIST = address(1111111);
@@ -181,6 +182,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
             claimRewards: initAddress,
             transferRewardsManagers: initAddress,
             configInstantWithdrawalFusesManagers: initAddress,
+            updateMarketsBalancesAccounts: initAddress,
+            updateRewardsBalanceAccounts: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
@@ -194,6 +197,35 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
             .generateInitializeIporPlasmaVault(data);
         vm.startPrank(_ATOMIST);
         IporFusionAccessManager(_accessManager).initialize(initializationData);
+        vm.stopPrank();
+    }
+
+    function testShouldUpdateMarketsBalancesWhenHasRoleUpdateMarketsBalances() external {
+        // given
+        vm.startPrank(_ATOMIST);
+        IporFusionAccessManager(_accessManager).grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, _USER, 0);
+        vm.stopPrank();
+
+        // when
+        uint256 updateMarketsBalances = PlasmaVault(_plasmaVault).updateMarketsBalances(new uint256[](0));
+
+        // then
+        assertEq(
+            updateMarketsBalances,
+            PlasmaVault(_plasmaVault).totalAssets(),
+            "updateMarketsBalances should be equal to totalAssets"
+        );
+    }
+
+    function testShouldRevertWhenHasNoRoleUpdateMarketsBalances() external {
+        // given
+        address randomUser = address(0x777);
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", randomUser);
+
+        // when
+        vm.expectRevert(error);
+        vm.startPrank(randomUser);
+        PlasmaVault(_plasmaVault).updateMarketsBalances(new uint256[](0));
         vm.stopPrank();
     }
 
