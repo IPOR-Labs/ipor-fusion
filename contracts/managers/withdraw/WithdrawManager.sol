@@ -75,7 +75,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
         WithdrawRequest memory request = WithdrawManagerStorageLib.getWithdrawRequest(account_);
 
         if (
-            _canWithdraw(
+            _canWithdrawFromRequest(
                 request.endWithdrawWindowTimestamp,
                 WithdrawManagerStorageLib.getWithdrawWindowInSeconds(),
                 releaseFundsTimestamp
@@ -340,16 +340,21 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
             WithdrawRequestInfo({
                 shares: request.shares,
                 endWithdrawWindowTimestamp: request.endWithdrawWindowTimestamp,
-                canWithdraw: _canWithdraw(request.endWithdrawWindowTimestamp, withdrawWindow, releaseFundsTimestamp),
+                canWithdraw: _canWithdrawFromRequest(
+                    request.endWithdrawWindowTimestamp,
+                    withdrawWindow,
+                    releaseFundsTimestamp
+                ),
                 withdrawWindowInSeconds: withdrawWindow
             });
     }
 
-    function _canWithdraw(
+    function _canWithdrawFromRequest(
         uint256 endWithdrawWindowTimestamp_,
         uint256 withdrawWindow_,
         uint256 releaseFundsTimestamp_
     ) private view returns (bool) {
+        /// @dev User who never requested a withdrawal can withdraw immediately, but can't withdraw from request
         if (endWithdrawWindowTimestamp_ < withdrawWindow_) {
             return false;
         }

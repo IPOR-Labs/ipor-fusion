@@ -8,6 +8,11 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {MarketSubstratesConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {FeeConfigHelper} from "./FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
+
+import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+
 struct DeployMinimalPlasmaVaultParams {
     address underlyingToken;
     string underlyingTokenName;
@@ -19,6 +24,40 @@ struct DeployMinimalPlasmaVaultParams {
 /// @notice Helper library for testing PlasmaVault operations
 /// @dev Contains utility functions to assist with PlasmaVault testing
 library PlasmaVaultHelper {
+    function constructDefaultDataForInitialization(
+        bool isPublic_,
+        address plasmaVault_,
+        address accessManager_,
+        address claimRewardsManager_,
+        address[] memory initAddress_
+    ) internal view returns (DataForInitialization memory data) {
+        return
+            DataForInitialization({
+                isPublic: isPublic_,
+                iporDaos: initAddress_,
+                admins: initAddress_,
+                owners: initAddress_,
+                atomists: initAddress_,
+                alphas: initAddress_,
+                whitelist: initAddress_,
+                guardians: initAddress_,
+                fuseManagers: initAddress_,
+                claimRewards: initAddress_,
+                transferRewardsManagers: initAddress_,
+                configInstantWithdrawalFusesManagers: initAddress_,
+                updateMarketsBalancesAccounts: initAddress_,
+                updateRewardsBalanceAccounts: initAddress_,
+                plasmaVaultAddress: PlasmaVaultAddress({
+                    plasmaVault: plasmaVault_,
+                    accessManager: accessManager_,
+                    rewardsClaimManager: claimRewardsManager_,
+                    withdrawManager: address(0),
+                    feeManager: FeeAccount(PlasmaVaultGovernance(plasmaVault_).getPerformanceFeeData().feeAccount)
+                        .FEE_MANAGER(),
+                    contextManager: address(0)
+                })
+            });
+    }
     /// @notice Deploys a minimal PlasmaVault with basic configuration
     /// @param params Parameters for deployment
     /// @return plasmaVault Address of the deployed PlasmaVault

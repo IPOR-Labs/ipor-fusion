@@ -148,10 +148,6 @@ contract PlasmaVaultBase is
         _transfer(from_, to_, amount_);
     }
 
-    function redeemFromRequest(address account_, uint256 shares_) external restricted {
-        _transfer(account_, address(this), shares_);
-    }
-
     /// @notice Updates token balances and voting power during transfers
     /// @dev Can only be executed via delegatecall from PlasmaVault
     ///

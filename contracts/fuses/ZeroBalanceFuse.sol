@@ -20,7 +20,7 @@ contract ZeroBalanceFuse is IMarketBalanceFuse {
      * @dev This implementation always returns 0, as the balance is ignored for this specific market fuse.
      * @return uint256 Always returns 0, represented in 18 decimals.
      */
-    function balanceOf() external view override returns (uint256) {
+    function balanceOf() external pure override returns (uint256) {
         return 0;
     }
 }
