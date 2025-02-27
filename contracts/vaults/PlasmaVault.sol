@@ -241,7 +241,6 @@ contract PlasmaVault is
     error NoSharesToDeposit();
     error UnsupportedFuse();
     error UnsupportedMethod();
-    error WithdrawIsNotAllowed(address caller, uint256 requested);
     error WithdrawManagerInvalidSharesToRelease(uint256 sharesToRelease);
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
