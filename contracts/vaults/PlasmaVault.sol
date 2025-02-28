@@ -241,7 +241,6 @@ contract PlasmaVault is
     error NoSharesToDeposit();
     error UnsupportedFuse();
     error UnsupportedMethod();
-    error WithdrawIsNotAllowed(address caller, uint256 requested);
     error WithdrawManagerInvalidSharesToRelease(uint256 sharesToRelease);
     error PermitFailed();
 
@@ -652,9 +651,9 @@ contract PlasmaVault is
         bytes32 s_
     ) external override nonReentrant restricted returns (uint256) {
         try IERC20Permit(asset()).permit(_msgSender(), address(this), assets_, deadline_, v_, r_, s_) {
-            ///@dev Permit successful, proceed with deposit
+            /// @dev Permit successful, proceed with deposit
         } catch {
-            ///@dev Check if we already have sufficient allowance
+            /// @dev Check if we already have sufficient allowance
             if (IERC20(asset()).allowance(_msgSender(), address(this)) < assets_) {
                 revert PermitFailed();
             }
