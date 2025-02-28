@@ -552,6 +552,59 @@ contract PlasmaVaultDepositTest is Test {
         assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
     }
 
+    function testShouldDepositWithPermitToPlasmaVaultWhenFrontRunAttack() public {
+        //given
+        uint256 privateKey = 0xBEEF;
+        address userOne = vm.addr(privateKey);
+
+        PlasmaVault plasmaVault = _preparePlasmaVaultUsdc(type(uint256).max);
+
+        amount = 100 * 1e6;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    IERC20Permit(USDC).DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, userOne, address(plasmaVault), amount, 0, block.timestamp))
+                )
+            )
+        );
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount);
+
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        IERC20Permit(USDC).permit(userOne, address(plasmaVault), amount, block.timestamp, v, r, s);
+
+        //when
+        vm.prank(userOne);
+        plasmaVault.depositWithPermit(amount, userOne, block.timestamp, v, r, s);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore, 0);
+        assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore + amount);
+
+        assertEq(userVaultBalanceBefore, 0);
+        assertEq(userVaultBalanceAfter, userVaultBalanceBefore + sharesAmount);
+
+        assertEq(amount, ERC20(USDC).balanceOf(address(plasmaVault)));
+
+        assertEq(amount, vaultTotalAssetsAfter);
+
+        assertEq(ERC20(USDC).balanceOf(userOne), 0);
+
+        /// @dev no transfer to the market when depositing
+        assertEq(plasmaVault.totalAssetsInMarket(AAVE_V3_MARKET_ID), 0);
+    }
+
     function testShouldRevertDepositWithPermitToPlasmaVaultWhenInvalidSignature() public {
         //given
         uint256 privateKey = 0xBEEF;
@@ -575,9 +628,11 @@ contract PlasmaVaultDepositTest is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount);
 
+        bytes memory error = abi.encodeWithSignature("PermitFailed()");
+
         //when
         vm.prank(userOne);
-        vm.expectRevert(bytes("EIP2612: invalid signature"));
+        vm.expectRevert(error);
         plasmaVault.depositWithPermit(amount + 1, userOne, block.timestamp, v, r, s);
     }
 
