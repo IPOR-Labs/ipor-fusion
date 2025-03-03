@@ -131,7 +131,6 @@ library IporFusionMarkets {
 
     /// @dev Market 20 for ERC4626 Vault
     uint256 public constant ERC4626_0020 = 100_020;
-    
 
     /// @dev Meta Morpho Market 1
     uint256 public constant META_MORPHO_0001 = 200_001;
