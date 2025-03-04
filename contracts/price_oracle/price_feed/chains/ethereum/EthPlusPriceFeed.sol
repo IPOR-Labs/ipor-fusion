@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IPriceFeed} from "../../IPriceFeed.sol";
 import {IEthPlusOracle} from "../../ext/IEthPlusOracle.sol";
 
