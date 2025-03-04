@@ -60,6 +60,7 @@ library PlasmaVaultLib {
     event RewardsClaimManagerAddressChanged(address newRewardsClaimManagerAddress);
     event DependencyBalanceGraphChanged(uint256 marketId, uint256[] newDependenceGraph);
     event WithdrawManagerChanged(address newWithdrawManager);
+    event TotalSupplyCapChanged(uint256 newTotalSupplyCap);
 
     /// @notice Gets the total assets in the vault for all markets
     /// @dev Retrieves the total value of assets across all integrated markets and protocols
@@ -789,6 +790,7 @@ library PlasmaVaultLib {
             revert Errors.WrongValue();
         }
         PlasmaVaultStorageLib.getERC20CappedStorage().cap = cap_;
+        emit TotalSupplyCapChanged(cap_);
     }
 
     /// @notice Controls validation of the total supply cap
