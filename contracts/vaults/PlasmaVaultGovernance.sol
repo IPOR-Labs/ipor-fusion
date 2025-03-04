@@ -915,7 +915,7 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
             revert Errors.WrongArrayLength();
         }
         for (uint256 i; i < marketIdsLength; ++i) {
-            PlasmaVaultStorageLib.getDependencyBalanceGraph().dependencyGraph[marketIds_[i]] = dependencies_[i];
+            PlasmaVaultLib.updateDependencyBalanceGraph(marketIds_[i], dependencies_[i]);
         }
     }
 
