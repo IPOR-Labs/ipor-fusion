@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {ERC4626ZapiIn, ZapInData, Call} from "../../contracts/zaps/ERC4626ZapiIn.sol";
+import {ERC4626ZapIn, ZapInData, Call} from "../../contracts/zaps/ERC4626ZapIn.sol";
 import {ERC4626ZapInAllowance} from "../../contracts/zaps/ERC4626ZapInAllowance.sol";
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -23,12 +23,12 @@ contract UsdcToRUsdcZapTest is Test {
     address internal creditEnforcer = 0x04716DB62C085D9e08050fcF6F7D775A03d07720;
     address internal pegStabilityModule = 0x4809010926aec940b550D34a46A52739f996D75D;
 
-    ERC4626ZapiIn internal zapIn;
+    ERC4626ZapIn internal zapIn;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), FORK_BLOCK_NUMBER);
 
-        zapIn = new ERC4626ZapiIn();
+        zapIn = new ERC4626ZapIn();
     }
 
     function testShouldDepositRusdWithZapFromUsdc() public {

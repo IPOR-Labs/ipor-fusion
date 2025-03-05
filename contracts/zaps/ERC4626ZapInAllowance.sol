@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-interface IERC4626ZapiIn {
+interface IERC4626ZapIn {
     /// @notice Returns the address of the current user performing a zap-in operation
     function currentZapSender() external view returns (address);
 }
@@ -49,7 +49,7 @@ contract ERC4626ZapInAllowance {
             revert AssetIsZero();
         }
 
-        address currentZapSender = IERC4626ZapiIn(ERC4626_ZAP_IN).currentZapSender();
+        address currentZapSender = IERC4626ZapIn(ERC4626_ZAP_IN).currentZapSender();
 
         if (currentZapSender == address(0)) {
             revert CurrentZapSenderIsZero();
