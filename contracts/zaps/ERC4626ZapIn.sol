@@ -31,10 +31,10 @@ struct ZapInData {
     Call[] calls;
 }
 
-/// @title ERC4626ZapiIn
+/// @title ERC4626ZapIn
 /// @notice Facilitates complex zap-in operations for ERC4626 vault deposits
 /// @dev Handles token approvals, multiple contract interactions, and deposits in a single transaction
-contract ERC4626ZapiIn is ReentrancyGuard {
+contract ERC4626ZapIn is ReentrancyGuard {
     using Address for address;
     using SafeERC20 for IERC4626;
 
