@@ -76,6 +76,14 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE = 900;
 
+    /// @notice Account with this role has rights to update request fee in the WithdrawManager contract
+    /// @dev Managed by the Atomist
+    uint64 public constant WITHDRAW_MANAGER_REQUEST_FEE_ROLE = 901;
+
+    /// @notice Account with this role has rights to update withdraw fee in the WithdrawManager contract
+    /// @dev Managed by the Atomist
+    uint64 public constant WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE = 902;
+
     /// @notice Account with this role has rights to update the markets balances in the PlasmaVault
     /// @dev Managed by the Atomist
     uint64 public constant UPDATE_MARKETS_BALANCES_ROLE = 1000;
