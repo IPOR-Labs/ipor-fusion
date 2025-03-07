@@ -63,6 +63,10 @@ struct DataForInitialization {
     address[] updateMarketsBalancesAccounts;
     /// @notice Array of addresses of the Update Rewards Balance Managers (Roles.UPDATE_REWARDS_BALANCE_ROLE)
     address[] updateRewardsBalanceAccounts;
+    /// @notice Array of addresses of the Withdraw Manager Request Fee Managers (Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE)
+    address[] withdrawManagerRequestFeeManagers;
+    /// @notice Array of addresses of the Withdraw Manager Withdraw Fee Managers (Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE)
+    address[] withdrawManagerWithdrawFeeManagers;
     /// @notice Plasma Vault address struct.
     PlasmaVaultAddress plasmaVaultAddress;
 }
@@ -73,7 +77,7 @@ struct Iterator {
 
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
-    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 16;
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 18;
     uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
@@ -233,6 +237,24 @@ library IporFusionAccessManagerInitializerLibV1 {
             ++index;
         }
 
+        for (uint256 i; i < data_.withdrawManagerRequestFeeManagers.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE,
+                account: data_.withdrawManagerRequestFeeManagers[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
+        for (uint256 i; i < data_.withdrawManagerWithdrawFeeManagers.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE,
+                account: data_.withdrawManagerWithdrawFeeManagers[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
         accountToRoles[index] = AccountToRole({
             roleId: Roles.TECH_PLASMA_VAULT_ROLE,
             account: data_.plasmaVaultAddress.plasmaVault,
@@ -301,6 +323,8 @@ library IporFusionAccessManagerInitializerLibV1 {
         return
             data_.updateMarketsBalancesAccounts.length +
             data_.updateRewardsBalanceAccounts.length +
+            data_.withdrawManagerRequestFeeManagers.length +
+            data_.withdrawManagerWithdrawFeeManagers.length +
             1 + /// @dev +1 - Rights for the Plasma Vault to role UPDATE_MARKETS_BALANCES_ROLE
             (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +
             (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +
@@ -319,6 +343,14 @@ library IporFusionAccessManagerInitializerLibV1 {
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.WHITELIST_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({
             roleId: Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE,
+            adminRoleId: Roles.ATOMIST_ROLE
+        });
+        adminRoles_[_next(iterator)] = AdminRole({
+            roleId: Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE,
+            adminRoleId: Roles.ATOMIST_ROLE
+        });
+        adminRoles_[_next(iterator)] = AdminRole({
+            roleId: Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE,
             adminRoleId: Roles.ATOMIST_ROLE
         });
         adminRoles_[_next(iterator)] = AdminRole({
@@ -713,13 +745,13 @@ library IporFusionAccessManagerInitializerLibV1 {
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.withdrawManager,
-                roleId: Roles.ATOMIST_ROLE,
+                roleId: Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE,
                 functionSelector: WithdrawManager.updateWithdrawFee.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.withdrawManager,
-                roleId: Roles.ATOMIST_ROLE,
+                roleId: Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE,
                 functionSelector: WithdrawManager.updateRequestFee.selector,
                 minimalExecutionDelay: 0
             });

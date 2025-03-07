@@ -143,6 +143,8 @@ contract MorphoFlashLoanFuseTest is Test {
             configInstantWithdrawalFusesManagers: initAddress,
             updateMarketsBalancesAccounts: initAddress,
             updateRewardsBalanceAccounts: initAddress,
+            withdrawManagerRequestFeeManagers: initAddress,
+            withdrawManagerWithdrawFeeManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
