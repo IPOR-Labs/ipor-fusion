@@ -47,6 +47,8 @@ library PlasmaVaultHelper {
                 configInstantWithdrawalFusesManagers: initAddress_,
                 updateMarketsBalancesAccounts: initAddress_,
                 updateRewardsBalanceAccounts: initAddress_,
+                withdrawManagerRequestFeeManagers: initAddress_,
+                withdrawManagerWithdrawFeeManagers: initAddress_,
                 plasmaVaultAddress: PlasmaVaultAddress({
                     plasmaVault: plasmaVault_,
                     accessManager: accessManager_,
