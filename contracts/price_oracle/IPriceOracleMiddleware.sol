@@ -9,6 +9,9 @@ interface IPriceOracleMiddleware {
     error UnsupportedAsset();
     error ZeroAddress(string variableName);
     error WrongDecimals();
+    error InvalidExpectedPrice();
+    error PriceDeltaTooHigh();
+    error AssetPriceSourceAlreadySet();
 
     /// @notice Returns the price of the given asset in given decimals
     /// @return assetPrice price in QUOTE_CURRENCY of the asset
