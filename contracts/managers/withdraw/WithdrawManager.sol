@@ -239,7 +239,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
      * - Economic parameter tuning
      *
      * @param fee_ The new fee rate in WAD (18 decimals precision, 1e18 = 100%)
-     * @custom:access ATOMIST_ROLE
+     * @custom:access WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE
      */
     function updateWithdrawFee(uint256 fee_) external restricted {
         //@dev 1e18 is the 100% of the fee rate
@@ -293,10 +293,10 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
      * - Access control system
      *
      * @param fee_ The new request fee rate in WAD (18 decimals precision, 1e18 = 100%)
-     * @custom:access ATOMIST_ROLE
+     * @custom:access WITHDRAW_MANAGER_REQUEST_FEE_ROLE
      */
     function updateRequestFee(uint256 fee_) external restricted {
-        //@dev 1e18 is the 100% of the fee rate
+        /// @dev 1e18 is the 100% of the fee rate
         if (fee_ > 1e18) {
             revert WithdrawManagerInvalidFee(fee_);
         }
