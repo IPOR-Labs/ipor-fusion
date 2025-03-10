@@ -17,8 +17,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {PendleHelper, PendleAddresses} from "../../test_helpers/PendleHelper.sol";
 
 import {PendleSwapPTFuse, PendleSwapPTFuseEnterData, PendleSwapPTFuseExitData} from "../../../contracts/fuses/pendle/PendleSwapPTFuse.sol";
-import {PendleRedeemPTFuse, PendleRedeemPTFuseEnterData} from "../../../contracts/fuses/pendle/PendleRedeemPTFuse.sol";
-
+import {PendleRedeemPTAfterMaturityFuse, PendleRedeemPTAfterMaturityFuseEnterData} from "../../../contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol";
 contract PendleSwapPTFuseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
     using PlasmaVaultHelper for PlasmaVault;
@@ -162,9 +161,9 @@ contract PendleSwapPTFuseTest is Test {
         uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
         uint256 totalAssetsBefore = _plasmaVault.totalAssets();
 
-        PendleRedeemPTFuseEnterData memory enterData = PendleRedeemPTFuseEnterData({
+        PendleRedeemPTAfterMaturityFuseEnterData memory enterData = PendleRedeemPTAfterMaturityFuseEnterData({
             market: _MARKET,
-            exactPyIn: ptBalanceBefore,
+            netPyIn: ptBalanceBefore,
             output: TokenOutput({
                 tokenOut: _UNDERLYING_TOKEN,
                 minTokenOut: 0, // For test purposes
@@ -176,7 +175,7 @@ contract PendleSwapPTFuseTest is Test {
 
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
-            fuse: _pendleAddresses.redeemPTFuse,
+            fuse: _pendleAddresses.redeemPTAfterMaturityFuse,
             data: abi.encodeWithSignature(
                 "enter((address,uint256,(address,uint256,address,address,(uint8,address,bytes,bool))))",
                 enterData
@@ -214,9 +213,9 @@ contract PendleSwapPTFuseTest is Test {
         (, IPPrincipalToken pt, ) = market.readTokens();
         uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
 
-        PendleRedeemPTFuseEnterData memory enterData = PendleRedeemPTFuseEnterData({
+        PendleRedeemPTAfterMaturityFuseEnterData memory enterData = PendleRedeemPTAfterMaturityFuseEnterData({
             market: _MARKET,
-            exactPyIn: ptBalanceBefore,
+            netPyIn: ptBalanceBefore,
             output: TokenOutput({
                 tokenOut: _UNDERLYING_TOKEN,
                 minTokenOut: 0, // For test purposes
@@ -228,7 +227,7 @@ contract PendleSwapPTFuseTest is Test {
 
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
-            fuse: _pendleAddresses.redeemPTFuse,
+            fuse: _pendleAddresses.redeemPTAfterMaturityFuse,
             data: abi.encodeWithSignature(
                 "enter((address,uint256,(address,uint256,address,address,(uint8,address,bytes,bool))))",
                 enterData
@@ -237,7 +236,7 @@ contract PendleSwapPTFuseTest is Test {
 
         // When
         vm.prank(TestAddresses.ALPHA);
-        vm.expectRevert(PendleRedeemPTFuse.PendleRedeemPTFusePTNotExpired.selector);
+        vm.expectRevert(PendleRedeemPTAfterMaturityFuse.PendleRedeemPTAfterMaturityFusePTNotExpired.selector);
         _plasmaVault.execute(actions);
     }
 

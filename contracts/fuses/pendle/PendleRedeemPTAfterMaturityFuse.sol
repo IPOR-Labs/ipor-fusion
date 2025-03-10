@@ -9,25 +9,25 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IPYieldToken} from "@pendle/core-v2/contracts/interfaces/IPYieldToken.sol";
 import {IPAllActionV3} from "@pendle/core-v2/contracts/interfaces/IPAllActionV3.sol";
 import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
-import {TokenInput, TokenOutput} from "@pendle/core-v2/contracts/interfaces/IPAllActionTypeV3.sol";
+import {TokenOutput} from "@pendle/core-v2/contracts/interfaces/IPAllActionTypeV3.sol";
 import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandardizedYield.sol";
 import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
 
 /// @notice Data for entering (redeem PT and YT for token) to the Pendle protocol
 /// @param market Market address to redeem from
-/// @param exactPyIn Exact amount of PT/YT pair to redeem
+/// @param netPyIn Exact amount of PT/YT pair to redeem
 /// @param output Token output parameters for the redemption
-struct PendleRedeemPTFuseEnterData {
+struct PendleRedeemPTAfterMaturityFuseEnterData {
     address market;
-    uint256 exactPyIn;
+    uint256 netPyIn;
     TokenOutput output;
 }
 
-/// @title PendleRedeemPTFuse
+/// @title PendleRedeemPTAfterMaturityFuse
 /// @notice Fuse for redeeming PT/YT pairs for underlying tokens in the Pendle protocol
 /// @dev Handles redeeming PT/YT pairs for underlying tokens using Pendle's redeemPyToToken
 /// @dev Substrates in this fuse are the Pendle market addresses
-contract PendleRedeemPTFuse is IFuseCommon {
+contract PendleRedeemPTAfterMaturityFuse is IFuseCommon {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
@@ -35,16 +35,16 @@ contract PendleRedeemPTFuse is IFuseCommon {
     /// @param version Address of this contract version
     /// @param market Address of the Pendle market
     /// @param netTokenOut Amount of tokens received
-    event PendleRedeemPTFuseEnter(address version, address market, uint256 netTokenOut);
+    event PendleRedeemPTAfterMaturityFuseEnter(address version, address market, uint256 netTokenOut);
 
     /// @notice Error thrown when an invalid market ID is provided
-    error PendleRedeemPTFuseInvalidMarketId();
+    error PendleRedeemPTAfterMaturityFuseInvalidMarketId();
     /// @notice Error thrown when an invalid router address is provided
-    error PendleRedeemPTFuseInvalidRouter();
+    error PendleRedeemPTAfterMaturityFuseInvalidRouter();
     /// @notice Error thrown when an invalid token output is provided
-    error PendleRedeemPTFuseInvalidTokenOut();
+    error PendleRedeemPTAfterMaturityFuseInvalidTokenOut();
     /// @notice Error thrown when PT is not expired
-    error PendleRedeemPTFusePTNotExpired();
+    error PendleRedeemPTAfterMaturityFusePTNotExpired();
 
     /// @notice Version of this contract for tracking
     address public immutable VERSION;
@@ -58,8 +58,8 @@ contract PendleRedeemPTFuse is IFuseCommon {
     /// @param router_ Address of the Pendle router contract
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
-        if (marketId_ == 0) revert PendleRedeemPTFuseInvalidMarketId();
-        if (router_ == address(0)) revert PendleRedeemPTFuseInvalidRouter();
+        if (marketId_ == 0) revert PendleRedeemPTAfterMaturityFuseInvalidMarketId();
+        if (router_ == address(0)) revert PendleRedeemPTAfterMaturityFuseInvalidRouter();
 
         MARKET_ID = marketId_;
         ROUTER = IPAllActionV3(router_);
@@ -67,22 +67,22 @@ contract PendleRedeemPTFuse is IFuseCommon {
 
     /// @notice Redeems PT pairs for underlying tokens after maturity
     /// @param data_ Struct containing redemption parameters
-    function enter(PendleRedeemPTFuseEnterData calldata data_) external {
+    function enter(PendleRedeemPTAfterMaturityFuseEnterData calldata data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.market)) {
-            revert PendleRedeemPTFuseInvalidMarketId();
+            revert PendleRedeemPTAfterMaturityFuseInvalidMarketId();
         }
 
         (IStandardizedYield sy, IPPrincipalToken pt, IPYieldToken yt) = IPMarket(data_.market).readTokens();
 
-        if (!sy.isValidTokenOut(data_.output.tokenOut)) revert PendleRedeemPTFuseInvalidTokenOut();
-        if (!pt.isExpired()) revert PendleRedeemPTFusePTNotExpired();
+        if (!sy.isValidTokenOut(data_.output.tokenOut)) revert PendleRedeemPTAfterMaturityFuseInvalidTokenOut();
+        if (!pt.isExpired()) revert PendleRedeemPTAfterMaturityFusePTNotExpired();
 
-        ERC20(address(pt)).forceApprove(address(ROUTER), data_.exactPyIn);
+        ERC20(address(pt)).forceApprove(address(ROUTER), data_.netPyIn);
 
-        (uint256 netTokenOut, ) = ROUTER.redeemPyToToken(address(this), address(yt), data_.exactPyIn, data_.output);
+        (uint256 netTokenOut, ) = ROUTER.redeemPyToToken(address(this), address(yt), data_.netPyIn, data_.output);
 
         ERC20(address(pt)).forceApprove(address(ROUTER), 0);
 
-        emit PendleRedeemPTFuseEnter(VERSION, data_.market, netTokenOut);
+        emit PendleRedeemPTAfterMaturityFuseEnter(VERSION, data_.market, netTokenOut);
     }
 }
