@@ -15,6 +15,8 @@ import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipal
 import {PtPriceFeed} from "./price_feed/PtPriceFeed.sol";
 import {IporFusionAccessControl} from "./IporFusionAccessControl.sol";
 
+import {console2} from "forge-std/console2.sol";
+
 /// @title Price Oracle Middleware
 /// @notice Contract responsible for providing standardized asset price feeds in USD
 /// @dev Supports both custom price feeds and Chainlink Feed Registry as fallback.
@@ -130,18 +132,21 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, Ownable2Step
 
         (, int256 price, , , ) = ptPriceFeed.latestRoundData();
 
+        console2.log("price", price.toUint256());
+        console2.log("expextedPriceAfterDeployment_", expextedPriceAfterDeployment_.toUint256());
+
         if (price < expextedPriceAfterDeployment_) {
             int256 priceDelta = expextedPriceAfterDeployment_ - price;
             int256 priceDeltaPercentage = (priceDelta * 100) / expextedPriceAfterDeployment_;
 
-            if (priceDeltaPercentage > 5) {
+            if (priceDeltaPercentage > 1) {
                 revert IPriceOracleMiddleware.PriceDeltaTooHigh();
             }
         } else {
             int256 priceDelta = price - expextedPriceAfterDeployment_;
             int256 priceDeltaPercentage = (priceDelta * 100) / expextedPriceAfterDeployment_;
 
-            if (priceDeltaPercentage > 5) {
+            if (priceDeltaPercentage > 1) {
                 revert IPriceOracleMiddleware.PriceDeltaTooHigh();
             }
         }

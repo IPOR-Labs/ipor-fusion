@@ -8,6 +8,7 @@ import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandard
 import {IPPYLpOracle} from "@pendle/core-v2/contracts/interfaces/IPPYLpOracle.sol";
 import {IPriceOracleMiddleware} from "../IPriceOracleMiddleware.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {console2} from "forge-std/console2.sol";
 
 /// @title Price feed for Pendle Principal Tokens (PT)
 /// @notice Provides price data for PT tokens based on Pendle market rates
@@ -80,6 +81,8 @@ contract PtPriceFeed is IPriceFeed {
 
         (, address assetAddress, uint8 assetDecimals) = sy.assetInfo();
 
+        console2.log("assetAddress", assetAddress);
+
         PENDLE_MARKET = pendleMarket_;
         TWAP_WINDOW = twapWindow_;
         PRICE_MIDDLEWARE = priceMiddleware_;
@@ -95,7 +98,9 @@ contract PtPriceFeed is IPriceFeed {
     {
         uint32 twapWindow = TWAP_WINDOW;
 
-        uint256 unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), twapWindow);
+        uint256 unitPrice = PendlePYOracleLib.getPtToSyRate(IPMarket(PENDLE_MARKET), twapWindow);
+
+        console2.log("unitPrice", unitPrice);
 
         (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(
             ASSET_ADDRESS
