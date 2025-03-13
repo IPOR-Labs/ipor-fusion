@@ -13,7 +13,7 @@ import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {BurnRequestFeeFuse} from "../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
-import {UpdateWithdrawManagerFuse, UpdateWithdrawManagerFuseEnterData} from "../../contracts/fuses/maintenance/UpdateWithdrawManagerFuse.sol";
+import {UpdateWithdrawManagerMaintenanceFuse, UpdateWithdrawManagerMaintenanceFuseEnterData} from "../../contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol";
 import {UniversalReader, ReadResult} from "../../contracts/universal_reader/UniversalReader.sol";
 
 contract PlasmaVaultScheduledWithdraw is Test {
@@ -28,7 +28,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
     address private _accessManager;
     address private _withdrawManager;
     BurnRequestFeeFuse private _burnRequestFeeFuse;
-    UpdateWithdrawManagerFuse private _updateWithdrawManagerFuse;
+    UpdateWithdrawManagerMaintenanceFuse private _updateWithdrawManagerMaintenanceFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 256415332);
@@ -78,11 +78,13 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
     function _setupFuses() private returns (address[] memory fuses) {
         _burnRequestFeeFuse = new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET);
-        _updateWithdrawManagerFuse = new UpdateWithdrawManagerFuse(IporFusionMarkets.ZERO_BALANCE_MARKET);
+        _updateWithdrawManagerMaintenanceFuse = new UpdateWithdrawManagerMaintenanceFuse(
+            IporFusionMarkets.ZERO_BALANCE_MARKET
+        );
 
         fuses = new address[](2);
         fuses[0] = address(_burnRequestFeeFuse);
-        fuses[1] = address(_updateWithdrawManagerFuse);
+        fuses[1] = address(_updateWithdrawManagerMaintenanceFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
@@ -721,7 +723,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         address newWithdrawManager = address(new WithdrawManager(_accessManager));
 
         ReadResult memory readResult = UniversalReader(address(_plasmaVault)).read(
-            address(_updateWithdrawManagerFuse),
+            address(_updateWithdrawManagerMaintenanceFuse),
             abi.encodeWithSignature("getWithdrawManager()")
         );
 
@@ -729,8 +731,11 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction(
-            address(_updateWithdrawManagerFuse),
-            abi.encodeWithSignature("enter((address))", UpdateWithdrawManagerFuseEnterData(newWithdrawManager))
+            address(_updateWithdrawManagerMaintenanceFuse),
+            abi.encodeWithSignature(
+                "enter((address))",
+                UpdateWithdrawManagerMaintenanceFuseEnterData(newWithdrawManager)
+            )
         );
 
         // when
@@ -740,7 +745,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         // then
         readResult = UniversalReader(address(_plasmaVault)).read(
-            address(_updateWithdrawManagerFuse),
+            address(_updateWithdrawManagerMaintenanceFuse),
             abi.encodeWithSignature("getWithdrawManager()")
         );
         address updatedWithdrawManager = abi.decode(readResult.data, (address));
@@ -755,8 +760,11 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction(
-            address(_updateWithdrawManagerFuse),
-            abi.encodeWithSignature("enter((address))", UpdateWithdrawManagerFuseEnterData(newWithdrawManager))
+            address(_updateWithdrawManagerMaintenanceFuse),
+            abi.encodeWithSignature(
+                "enter((address))",
+                UpdateWithdrawManagerMaintenanceFuseEnterData(newWithdrawManager)
+            )
         );
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);

@@ -4,15 +4,15 @@ pragma solidity 0.8.26;
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 
-/// @notice Data structure for entering the UpdateWithdrawManagerFuse
-struct UpdateWithdrawManagerFuseEnterData {
+/// @notice Data structure for entering the UpdateWithdrawManagerMaintenanceFuse
+struct UpdateWithdrawManagerMaintenanceFuseEnterData {
     /// @dev New withdraw manager address to be set
     address newManager;
 }
 
 /// @title Fuse for updating the withdraw manager address in the system
 /// @dev This fuse allows authorized entities to update the withdraw manager using storage library
-contract UpdateWithdrawManagerFuse is IFuseCommon {
+contract UpdateWithdrawManagerMaintenanceFuse is IFuseCommon {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
@@ -23,7 +23,7 @@ contract UpdateWithdrawManagerFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(UpdateWithdrawManagerFuseEnterData memory data_) external {
+    function enter(UpdateWithdrawManagerMaintenanceFuseEnterData memory data_) external {
         if (data_.newManager == address(0)) {
             return;
         }
