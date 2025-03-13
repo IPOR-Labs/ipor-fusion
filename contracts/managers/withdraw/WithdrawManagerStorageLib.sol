@@ -181,7 +181,7 @@ library WithdrawManagerStorageLib {
     }
 
     function decreaseSharesFromWithdrawRequest(address account_, uint256 shares_) internal {
-        WithdrawRequest memory request = getWithdrawRequest(account_);
+        WithdrawRequest storage request = _getWithdrawRequests().requests[account_];
         if (request.shares >= shares_) {
             request.shares -= shares_.toUint128();
             emit WithdrawRequestUpdated(account_, request.shares, request.endWithdrawWindowTimestamp);
