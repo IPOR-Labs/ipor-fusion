@@ -13,7 +13,7 @@ import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {BurnRequestFeeFuse} from "../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
-import {UpdateWithdrawManagerFuse, UpdateWithdrawManagerFuseEnterData} from "../../contracts/fuses/emergency/UpdateWithdrawManagerFuse.sol";
+import {UpdateWithdrawManagerFuse, UpdateWithdrawManagerFuseEnterData} from "../../contracts/fuses/maintenance/UpdateWithdrawManagerFuse.sol";
 import {UniversalReader, ReadResult} from "../../contracts/universal_reader/UniversalReader.sol";
 
 contract PlasmaVaultScheduledWithdraw is Test {
