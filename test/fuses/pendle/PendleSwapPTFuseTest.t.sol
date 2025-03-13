@@ -17,7 +17,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {PendleHelper, PendleAddresses} from "../../test_helpers/PendleHelper.sol";
 
 import {PendleSwapPTFuse, PendleSwapPTFuseEnterData, PendleSwapPTFuseExitData} from "../../../contracts/fuses/pendle/PendleSwapPTFuse.sol";
-
+import {PendleRedeemPTAfterMaturityFuse, PendleRedeemPTAfterMaturityFuseEnterData} from "../../../contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol";
 contract PendleSwapPTFuseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
     using PlasmaVaultHelper for PlasmaVault;
@@ -147,6 +147,97 @@ contract PendleSwapPTFuseTest is Test {
             ERROR_DELTA,
             "ERC20 market balance should be 9997453876860145982"
         );
+    }
+
+    function testRedeemPTForToken() public {
+        // First swap tokens for PT
+        testSwapTokenForPT();
+
+        vm.warp(block.timestamp + 356 days);
+
+        // Given
+        IPMarket market = IPMarket(_MARKET);
+        (, IPPrincipalToken pt, ) = market.readTokens();
+        uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
+        uint256 totalAssetsBefore = _plasmaVault.totalAssets();
+
+        PendleRedeemPTAfterMaturityFuseEnterData memory enterData = PendleRedeemPTAfterMaturityFuseEnterData({
+            market: _MARKET,
+            netPyIn: ptBalanceBefore,
+            output: TokenOutput({
+                tokenOut: _UNDERLYING_TOKEN,
+                minTokenOut: 0, // For test purposes
+                tokenRedeemSy: _UNDERLYING_TOKEN,
+                pendleSwap: address(0),
+                swapData: _createSwapTypeNoAggregator()
+            })
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: _pendleAddresses.redeemPTAfterMaturityFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,(address,uint256,address,address,(uint8,address,bytes,bool))))",
+                enterData
+            )
+        });
+
+        // When
+        vm.prank(TestAddresses.ALPHA);
+        _plasmaVault.execute(actions);
+
+        // Then
+        uint256 ptBalanceAfter = pt.balanceOf(address(_plasmaVault));
+        uint256 totalAssetsAfter = _plasmaVault.totalAssets();
+        uint256 erc20MarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
+
+        assertApproxEqAbs(ptBalanceBefore, 12117435159760642058, 0, "PT balance should be 12117435159760642058");
+        assertApproxEqAbs(ptBalanceAfter, 0, ERROR_DELTA, "PT balance should be 0");
+
+        assertApproxEqAbs(totalAssetsBefore, 9997453876860145982, 0, "Total assets should be 9997453876860145982");
+        assertApproxEqAbs(
+            totalAssetsAfter,
+            10222875153389507980,
+            ERROR_DELTA,
+            "Total assets should be 10222875153389507980"
+        );
+        assertApproxEqAbs(erc20MarketAfter, 0, ERROR_DELTA, "ERC20 market balance should be 0");
+    }
+
+    function testSouldNotRedeemPTForTokenWhenNotMature() public {
+        // First swap tokens for PT
+        testSwapTokenForPT();
+
+        // Given
+        IPMarket market = IPMarket(_MARKET);
+        (, IPPrincipalToken pt, ) = market.readTokens();
+        uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
+
+        PendleRedeemPTAfterMaturityFuseEnterData memory enterData = PendleRedeemPTAfterMaturityFuseEnterData({
+            market: _MARKET,
+            netPyIn: ptBalanceBefore,
+            output: TokenOutput({
+                tokenOut: _UNDERLYING_TOKEN,
+                minTokenOut: 0, // For test purposes
+                tokenRedeemSy: _UNDERLYING_TOKEN,
+                pendleSwap: address(0),
+                swapData: _createSwapTypeNoAggregator()
+            })
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: _pendleAddresses.redeemPTAfterMaturityFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,(address,uint256,address,address,(uint8,address,bytes,bool))))",
+                enterData
+            )
+        });
+
+        // When
+        vm.prank(TestAddresses.ALPHA);
+        vm.expectRevert(PendleRedeemPTAfterMaturityFuse.PendleRedeemPTAfterMaturityFusePTNotExpired.selector);
+        _plasmaVault.execute(actions);
     }
 
     function testSwapPTForToken() public {
