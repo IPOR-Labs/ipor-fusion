@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {WithdrawManager, WithdrawRequestInfo} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {BurnRequestFeeFuse} from "../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
+import {UpdateWithdrawManagerMaintenanceFuse, UpdateWithdrawManagerMaintenanceFuseEnterData} from "../../contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol";
+import {UniversalReader, ReadResult} from "../../contracts/universal_reader/UniversalReader.sol";
 
 contract PlasmaVaultScheduledWithdraw is Test {
     address private constant _ATOMIST = address(1111111);
@@ -26,6 +28,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
     address private _accessManager;
     address private _withdrawManager;
     BurnRequestFeeFuse private _burnRequestFeeFuse;
+    UpdateWithdrawManagerMaintenanceFuse private _updateWithdrawManagerMaintenanceFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 256415332);
@@ -75,9 +78,13 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
     function _setupFuses() private returns (address[] memory fuses) {
         _burnRequestFeeFuse = new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET);
+        _updateWithdrawManagerMaintenanceFuse = new UpdateWithdrawManagerMaintenanceFuse(
+            IporFusionMarkets.ZERO_BALANCE_MARKET
+        );
 
-        fuses = new address[](1);
+        fuses = new address[](2);
         fuses[0] = address(_burnRequestFeeFuse);
+        fuses[1] = address(_updateWithdrawManagerMaintenanceFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
@@ -224,6 +231,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 hours);
+        WithdrawRequestInfo memory withdrawRequestInfoBefore = WithdrawManager(_withdrawManager).requestInfo(_USER);
 
         vm.prank(_ALPHA);
         WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, withdrawAmount);
@@ -238,8 +246,10 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.stopPrank();
 
         // then
+        WithdrawRequestInfo memory withdrawRequestInfoAfter = WithdrawManager(_withdrawManager).requestInfo(_USER);
         uint256 balanceAfter = ERC20(_USDC).balanceOf(_USER);
 
+        assertGt(withdrawRequestInfoBefore.shares, withdrawRequestInfoAfter.shares);
         assertTrue(
             balanceAfter == withdrawAmount / 100 + balanceBefore,
             "user balance should be increased by withdraw amount"
@@ -706,5 +716,63 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         // then
         assertTrue(assetsWithFee < assetsWithoutFee, "Assets with fee should be lower than without fee");
+    }
+
+    function testShouldBeAbleToUpdateWithdrawManagerUsingFuse() external {
+        // given
+        address newWithdrawManager = address(new WithdrawManager(_accessManager));
+
+        ReadResult memory readResult = UniversalReader(address(_plasmaVault)).read(
+            address(_updateWithdrawManagerMaintenanceFuse),
+            abi.encodeWithSignature("getWithdrawManager()")
+        );
+
+        address oldWithdrawManager = abi.decode(readResult.data, (address));
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_updateWithdrawManagerMaintenanceFuse),
+            abi.encodeWithSignature(
+                "enter((address))",
+                UpdateWithdrawManagerMaintenanceFuseEnterData(newWithdrawManager)
+            )
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+
+        // then
+        readResult = UniversalReader(address(_plasmaVault)).read(
+            address(_updateWithdrawManagerMaintenanceFuse),
+            abi.encodeWithSignature("getWithdrawManager()")
+        );
+        address updatedWithdrawManager = abi.decode(readResult.data, (address));
+        assertNotEq(oldWithdrawManager, updatedWithdrawManager, "withdraw manager should be updated");
+        assertEq(updatedWithdrawManager, newWithdrawManager, "withdraw manager should be set to new address");
+    }
+
+    function testShouldNotBeAbleToUpdateWithdrawManagerUsingFuseWhenNotAlpha() external {
+        // given
+
+        address newWithdrawManager = address(new WithdrawManager(_accessManager));
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_updateWithdrawManagerMaintenanceFuse),
+            abi.encodeWithSignature(
+                "enter((address))",
+                UpdateWithdrawManagerMaintenanceFuseEnterData(newWithdrawManager)
+            )
+        );
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
     }
 }
