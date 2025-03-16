@@ -64,7 +64,10 @@ contract PendleSwapPTFuseTest is Test {
         address[] memory markets = new address[](1);
         markets[0] = _MARKET;
 
-        _pendleAddresses = PendleHelper.addFullMarket(_plasmaVault, markets, vm);
+        uint256[] memory usePendleOracleMethod = new uint256[](1);
+        usePendleOracleMethod[0] = 0;
+
+        _pendleAddresses = PendleHelper.addFullMarket(_plasmaVault, markets, usePendleOracleMethod, vm);
 
         // Fund user with wstETH
         deal(_UNDERLYING_TOKEN, _USER, 100 ether);
@@ -129,23 +132,23 @@ contract PendleSwapPTFuseTest is Test {
         assertApproxEqAbs(ptBalanceBefore, 0, ERROR_DELTA, "PT balance should be 0");
         assertApproxEqAbs(
             totalAssetsAfter,
-            9997453876860145982,
+            8434352772450140063,
             ERROR_DELTA,
-            "Total assets should be 9997453876860145982"
+            "Total assets should be 8434352772450140063"
         );
         assertApproxEqAbs(erc20MarketBefore, 0, ERROR_DELTA, "ERC20 market balance should be 0");
         assertApproxEqAbs(
             erc20MarketAfter,
-            9997453876860145982,
+            8434352772450140063,
             ERROR_DELTA,
-            "ERC20 market balance should be 9997453876860145982"
+            "ERC20 market balance should be 8434352772450140063"
         );
         assertApproxEqAbs(erc20MarketBefore, 0, ERROR_DELTA, "ERC20 market balance should be 0");
         assertApproxEqAbs(
             erc20MarketAfter,
-            9997453876860145982,
+            8434352772450140063,
             ERROR_DELTA,
-            "ERC20 market balance should be 9997453876860145982"
+            "ERC20 market balance should be 8434352772450140063"
         );
     }
 

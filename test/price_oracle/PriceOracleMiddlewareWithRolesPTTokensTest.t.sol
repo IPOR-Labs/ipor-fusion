@@ -6,6 +6,12 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {PriceOracleMiddlewareWithRoles} from "../../contracts/price_oracle/PriceOracleMiddlewareWithRoles.sol";
 import {SDaiPriceFeedEthereum} from "../../contracts/price_oracle/price_feed/chains/ethereum/SDaiPriceFeedEthereum.sol";
 
+struct TestItem {
+    address market;
+    int256 price;
+    uint256 usePendleOracleMethod;
+    uint256 blockNumber;
+}
 contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
     address private constant CHAINLINK_FEED_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
     address public constant BASE_CURRENCY = 0x0000000000000000000000000000000000000348;
@@ -20,8 +26,10 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
     address public constant PENDLE_ORACLE = 0x9a9Fa8338dd5E5B2188006f1Cd2Ef26d921650C2;
     address public constant SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
 
+    TestItem private _activeItem;
+
     function setUp() public {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22026402);
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22061720);
         PriceOracleMiddlewareWithRoles implementation = new PriceOracleMiddlewareWithRoles(CHAINLINK_FEED_REGISTRY);
 
         priceOracleMiddlewareProxy = PriceOracleMiddlewareWithRoles(
@@ -32,17 +40,58 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
         priceOracleMiddlewareProxy.grantRole(priceOracleMiddlewareProxy.ADD_PT_TOKEN_PRICE(), ADMIN);
         vm.stopPrank();
     }
-
-    function testTest() public {
+    function testShouldAddNewPtToken() public activeItem {
         vm.startPrank(ADMIN);
-        priceOracleMiddlewareProxy.addNewPtToken(PENDLE_ORACLE, MARCKET_SUSDE, uint32(300), 1e18);
+        priceOracleMiddlewareProxy.addNewPtToken(
+            PENDLE_ORACLE,
+            _activeItem.market,
+            uint32(300),
+            _activeItem.price,
+            _activeItem.usePendleOracleMethod
+        );
         vm.stopPrank();
+    }
 
-        (uint256 assetPrice, uint256 decimals) = priceOracleMiddlewareProxy.getAssetPrice(SUSDE);
-        console2.log("assetPrice", assetPrice);
-        console2.log("decimals", decimals);
+    function _getTestItems() private view returns (TestItem[] memory testItems) {
+        testItems = new TestItem[](5);
+        testItems[0] = TestItem({
+            market: 0xB162B764044697cf03617C2EFbcB1f42e31E4766,
+            price: int256(84102754),
+            usePendleOracleMethod: 0,
+            blockNumber: 0
+        }); // MARCKET_SUSDE
+        testItems[1] = TestItem({
+            market: 0x85667e484a32d884010Cf16427D90049CCf46e97,
+            price: int256(97221872),
+            usePendleOracleMethod: 0,
+            blockNumber: 0
+        }); // https://app.pendle.finance/trade/markets/0x85667e484a32d884010cf16427d90049ccf46e97/swap?view=pt&chain=ethereum&tab=info
+        testItems[2] = TestItem({
+            market: 0xB451A36c8B6b2EAc77AD0737BA732818143A0E25,
+            price: int256(99503847),
+            usePendleOracleMethod: 0,
+            blockNumber: 0
+        }); // https://app.pendle.finance/trade/markets/0xb451a36c8b6b2eac77ad0737ba732818143a0e25/swap?view=pt&chain=ethereum&tab=info
+        testItems[3] = TestItem({
+            market: 0x353d0B2EFB5B3a7987fB06D30Ad6160522d08426,
+            price: int256(93146528),
+            usePendleOracleMethod: 1,
+            blockNumber: 0
+        }); // https://app.pendle.finance/trade/markets/0x353d0b2efb5b3a7987fb06d30ad6160522d08426/swap?view=pt&chain=ethereum
+        testItems[4] = TestItem({
+            market: 0xC374f7eC85F8C7DE3207a10bB1978bA104bdA3B2,
+            price: int256(152085500723),
+            usePendleOracleMethod: 1,
+            blockNumber: 0
+        }); // https://app.pendle.finance/trade/markets/0x353d0b2efb5b3a7987fb06d30ad6160522d08426/swap?view=pt&chain=ethereum
+        return testItems;
+    }
+
+    modifier activeItem() {
+        TestItem[] memory testItems = _getTestItems();
+        for (uint256 i; i < testItems.length; i++) {
+            _activeItem = testItems[i];
+            _;
+        }
     }
 }
-// 0,8415 100/118,808= buy pt
-// 0,840972 sell pt
-// 0,841101214743130988 price pt

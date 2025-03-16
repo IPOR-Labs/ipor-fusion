@@ -8,7 +8,6 @@ import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandard
 import {IPPYLpOracle} from "@pendle/core-v2/contracts/interfaces/IPPYLpOracle.sol";
 import {IPriceOracleMiddleware} from "../IPriceOracleMiddleware.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title Price feed for Pendle Principal Tokens (PT)
 /// @notice Provides price data for PT tokens based on Pendle market rates
@@ -46,6 +45,10 @@ contract PtPriceFeed is IPriceFeed {
     // solhint-disable-next-line const-name-snakecase
     uint8 public constant override decimals = 8;
 
+    /// @notice The method to use for the Pendle oracle
+    /// @dev 1 for getPtToAssetRate, 0 for getPtToSyRate
+    uint256 public immutable USE_PENDLE_ORACLE_METHOD;
+
     error PriceOracleInvalidConfiguration();
     error PriceOracleInvalidTwapWindow(uint32 provided, uint32 minimum);
     error PriceOraclePendleOracleNotReady();
@@ -61,7 +64,14 @@ contract PtPriceFeed is IPriceFeed {
     /// @param pendleMarket_ Address of the Pendle market
     /// @param twapWindow_ Duration of TWAP window (recommended 15 minutes)
     /// @param priceMiddleware_ Address of price oracle middleware that must support the underlying asset
-    constructor(address pendleOracle_, address pendleMarket_, uint32 twapWindow_, address priceMiddleware_) {
+    /// @param usePendleOracleMethod 1 for getPtToAssetRate, 0 for getPtToSyRate
+    constructor(
+        address pendleOracle_,
+        address pendleMarket_,
+        uint32 twapWindow_,
+        address priceMiddleware_,
+        uint256 usePendleOracleMethod
+    ) {
         if (twapWindow_ < MIN_TWAP_WINDOW) {
             revert PriceOracleInvalidTwapWindow(twapWindow_, MIN_TWAP_WINDOW);
         }
@@ -81,8 +91,6 @@ contract PtPriceFeed is IPriceFeed {
 
         (, address assetAddress, uint8 assetDecimals) = sy.assetInfo();
 
-        console2.log("assetAddress", assetAddress);
-
         PENDLE_MARKET = pendleMarket_;
         TWAP_WINDOW = twapWindow_;
         PRICE_MIDDLEWARE = priceMiddleware_;
@@ -98,9 +106,12 @@ contract PtPriceFeed is IPriceFeed {
     {
         uint32 twapWindow = TWAP_WINDOW;
 
-        uint256 unitPrice = PendlePYOracleLib.getPtToSyRate(IPMarket(PENDLE_MARKET), twapWindow);
-
-        console2.log("unitPrice", unitPrice);
+        uint256 unitPrice;
+        if (USE_PENDLE_ORACLE_METHOD == 1) {
+            unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), twapWindow);
+        } else {
+            unitPrice = PendlePYOracleLib.getPtToSyRate(IPMarket(PENDLE_MARKET), twapWindow);
+        }
 
         (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(
             ASSET_ADDRESS

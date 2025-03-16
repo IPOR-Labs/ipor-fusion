@@ -15,8 +15,6 @@ import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipal
 import {PtPriceFeed} from "./price_feed/PtPriceFeed.sol";
 import {IporFusionAccessControl} from "./IporFusionAccessControl.sol";
 
-import {console2} from "forge-std/console2.sol";
-
 /// @title Price Oracle Middleware
 /// @notice Contract responsible for providing standardized asset price feeds in USD
 /// @dev Supports both custom price feeds and Chainlink Feed Registry as fallback.
@@ -122,18 +120,22 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, Ownable2Step
         address pendleOracle_,
         address pendleMarket_,
         uint32 twapWindow_,
-        int256 expextedPriceAfterDeployment_
+        int256 expextedPriceAfterDeployment_,
+        uint256 usePendleOracleMethod_
     ) external onlyRole(ADD_PT_TOKEN_PRICE) {
         if (expextedPriceAfterDeployment_ <= 0) {
             revert IPriceOracleMiddleware.InvalidExpectedPrice();
         }
 
-        PtPriceFeed ptPriceFeed = new PtPriceFeed(pendleOracle_, pendleMarket_, twapWindow_, address(this));
+        PtPriceFeed ptPriceFeed = new PtPriceFeed(
+            pendleOracle_,
+            pendleMarket_,
+            twapWindow_,
+            address(this),
+            usePendleOracleMethod_
+        );
 
         (, int256 price, , , ) = ptPriceFeed.latestRoundData();
-
-        console2.log("price", price.toUint256());
-        console2.log("expextedPriceAfterDeployment_", expextedPriceAfterDeployment_.toUint256());
 
         if (price < expextedPriceAfterDeployment_) {
             int256 priceDelta = expextedPriceAfterDeployment_ - price;
