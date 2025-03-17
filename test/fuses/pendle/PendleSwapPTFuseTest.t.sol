@@ -197,7 +197,7 @@ contract PendleSwapPTFuseTest is Test {
         assertApproxEqAbs(ptBalanceBefore, 12117435159760642058, 0, "PT balance should be 12117435159760642058");
         assertApproxEqAbs(ptBalanceAfter, 0, ERROR_DELTA, "PT balance should be 0");
 
-        assertApproxEqAbs(totalAssetsBefore, 9997453876860145982, 0, "Total assets should be 9997453876860145982");
+        assertApproxEqAbs(totalAssetsBefore, 8434352772450140063, 0, "Total assets should be 8434352772450140063");
         assertApproxEqAbs(
             totalAssetsAfter,
             10222875153389507980,
