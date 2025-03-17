@@ -46,7 +46,7 @@ contract PtPriceFeed is IPriceFeed {
     uint8 public constant override decimals = 8;
 
     /// @notice The method to use for the Pendle oracle
-    /// @dev 1 for getPtToAssetRate, 0 for getPtToSyRate
+    /// @dev 0 for getPtToSyRate, 1 for getPtToAssetRate
     uint256 public immutable USE_PENDLE_ORACLE_METHOD;
 
     error PriceOracleInvalidConfiguration();
@@ -64,7 +64,7 @@ contract PtPriceFeed is IPriceFeed {
     /// @param pendleMarket_ Address of the Pendle market
     /// @param twapWindow_ Duration of TWAP window (recommended 15 minutes)
     /// @param priceMiddleware_ Address of price oracle middleware that must support the underlying asset
-    /// @param usePendleOracleMethod 1 for getPtToAssetRate, 0 for getPtToSyRate
+    /// @param usePendleOracleMethod 0 for getPtToSyRate, 1 for getPtToAssetRate
     constructor(
         address pendleOracle_,
         address pendleMarket_,

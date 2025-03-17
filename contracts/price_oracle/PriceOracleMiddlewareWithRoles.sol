@@ -116,6 +116,18 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, Ownable2Step
         }
     }
 
+    /// @notice Adds a new Pendle Principal Token (PT) to the price oracle system
+    /// @dev Creates and configures a new PtPriceFeed contract for the PT token
+    /// @dev Validates the initial price against expected price with 1% tolerance
+    /// @dev The function will revert if:
+    /// @dev - Expected price is <= 0
+    /// @dev - Price delta between actual and expected price is > 1%
+    /// @dev - PT token already has a price source configured
+    /// @param pendleOracle_ Address of the Pendle Oracle contract used for price feeds
+    /// @param pendleMarket_ Address of the Pendle Market contract associated with the PT
+    /// @param twapWindow_ Time window in seconds for TWAP calculations
+    /// @param expextedPriceAfterDeployment_ Expected initial price of PT token (used for validation)
+    /// @param usePendleOracleMethod_ Configuration parameter for the PtPriceFeed's oracle method
     function addNewPtToken(
         address pendleOracle_,
         address pendleMarket_,
