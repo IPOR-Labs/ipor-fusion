@@ -8,6 +8,7 @@ import {Vm} from "forge-std/Vm.sol";
 import {TestAddresses} from "./TestAddresses.sol";
 
 import {PendleSwapPTFuse} from "../../contracts/fuses/pendle/PendleSwapPTFuse.sol";
+import {PendleRedeemPTAfterMaturityFuse} from "../../contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol";
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
@@ -18,6 +19,7 @@ import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol
 struct PendleAddresses {
     address swapPTFuse;
     address marketsBalanceFuse;
+    address redeemPTAfterMaturityFuse;
 }
 
 /// @title PendleHelper
@@ -44,6 +46,7 @@ library PendleHelper {
 
         vm_.startPrank(TestAddresses.FUSE_MANAGER);
         pendleAddresses.swapPTFuse = _addSwapPTFuse(plasmaVault_);
+        pendleAddresses.redeemPTAfterMaturityFuse = _addRedeemPTAfterMaturityFuse(plasmaVault_);
         vm_.stopPrank();
 
         vm_.startPrank(TestAddresses.FUSE_MANAGER);
@@ -98,6 +101,21 @@ library PendleHelper {
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(pendleSwapPTFuse);
+        plasmaVault_.addFusesToVault(fuses);
+
+        return fuses[0];
+    }
+
+    function _addRedeemPTAfterMaturityFuse(
+        PlasmaVault plasmaVault_
+    ) private returns (address redeemPTAfterMaturityFuse) {
+        PendleRedeemPTAfterMaturityFuse pendleRedeemPTAfterMaturityFuse = new PendleRedeemPTAfterMaturityFuse(
+            IporFusionMarkets.PENDLE,
+            TestAddresses.ARBITRUM_PENDLE_ROUTER
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(pendleRedeemPTAfterMaturityFuse);
         plasmaVault_.addFusesToVault(fuses);
 
         return fuses[0];
