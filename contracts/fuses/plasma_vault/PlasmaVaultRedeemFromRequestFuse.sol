@@ -16,10 +16,6 @@ struct PlasmaVaultRedeemFromRequestFuseEnterData {
     uint256 sharesAmount;
     /// @dev address of the Plasma Vault
     address plasmaVault;
-    /// @dev address of the receiver
-    address receiver;
-    /// @dev address of the owner
-    address owner;
 }
 
 error PlasmaVaultRedeemFromRequestFuseUnsupportedVault(string action, address vault);
@@ -28,13 +24,7 @@ error PlasmaVaultRedeemFromRequestFuseInvalidWithdrawManager(address vault);
 /// @title Fuse for Plasma Vault responsible for redeeming shares from request
 /// @dev This fuse is used to redeem shares from a previously submitted withdrawal request
 contract PlasmaVaultRedeemFromRequestFuse is IFuseCommon {
-    event PlasmaVaultRedeemFromRequestFuseEnter(
-        address version,
-        address plasmaVault,
-        uint256 sharesAmount,
-        address receiver,
-        address owner
-    );
+    event PlasmaVaultRedeemFromRequestFuseEnter(address version, address plasmaVault, uint256 sharesAmount);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -63,13 +53,7 @@ contract PlasmaVaultRedeemFromRequestFuse is IFuseCommon {
 
         IPlasmaVault(data_.plasmaVault).redeemFromRequest(finalSharesAmount, address(this), address(this));
 
-        emit PlasmaVaultRedeemFromRequestFuseEnter(
-            VERSION,
-            data_.plasmaVault,
-            finalSharesAmount,
-            data_.receiver,
-            data_.owner
-        );
+        emit PlasmaVaultRedeemFromRequestFuseEnter(VERSION, data_.plasmaVault, finalSharesAmount);
     }
 
     function getWithdrawManager() external view returns (address) {
