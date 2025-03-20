@@ -128,7 +128,7 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, Ownable2Step
     /// @param twapWindow_ Time window in seconds for TWAP calculations
     /// @param expextedPriceAfterDeployment_ Expected initial price of PT token (used for validation)
     /// @param usePendleOracleMethod_ Configuration parameter for the PtPriceFeed's oracle method
-    function addNewPtToken(
+    function createAndAddPtTokenPriceFeed(
         address pendleOracle_,
         address pendleMarket_,
         uint32 twapWindow_,

@@ -40,9 +40,9 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
         priceOracleMiddlewareProxy.grantRole(priceOracleMiddlewareProxy.ADD_PT_TOKEN_PRICE(), ADMIN);
         vm.stopPrank();
     }
-    function testShouldAddNewPtToken() public activeItem {
+    function testShouldCreateAndAddPtTokenPriceFeed() public activeItem {
         vm.startPrank(ADMIN);
-        priceOracleMiddlewareProxy.addNewPtToken(
+        priceOracleMiddlewareProxy.createAndAddPtTokenPriceFeed(
             PENDLE_ORACLE,
             _activeItem.market,
             uint32(300),
