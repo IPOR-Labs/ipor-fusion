@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {PlasmaVaultRequestSharesFuse, PlasmaVaultRequestSharesFuseEnterData} from "../../../contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -63,8 +63,6 @@ contract PlasmaVaultRequestSharesTest is Test {
         PlasmaVault(TAU_VAULT).deposit(100_000e6, USER);
         vm.stopPrank();
 
-        console2.log("User balance:", ERC20(TAU_VAULT).balanceOf(USER));
-
         // missing configuration
         addERC20VaultBalanceFuse();
         addUniversalTokenSwapper();
@@ -112,14 +110,18 @@ contract PlasmaVaultRequestSharesTest is Test {
 
         uint256 vaultTotalAssetsAfter = PlasmaVault(TAU_VAULT).totalAssets();
 
-        console2.log("usdcVaultBalanceBefore: ", usdcVaultBalanceBefore);
-        console2.log("usdcVaultBalanceAfter:  ", usdcVaultBalanceAfter);
+        assertEq(usdcVaultBalanceBefore, 100000000000, "usdcVaultBalanceBefore is not equal to 100000000000");
+        assertEq(usdcVaultBalanceAfter, 50000000000, "usdcVaultBalanceAfter is not equal to 50000000000");
 
-        console2.log("rUsdcVaultBalanceBefore: ", rUsdcVaultBalanceBefore);
-        console2.log("rUsdcVaultBalanceAfter:  ", rUsdcVaultBalanceAfter);
+        assertEq(rUsdcVaultBalanceBefore, 0, "rUsdcVaultBalanceBefore is not equal to 0");
+        assertEq(
+            rUsdcVaultBalanceAfter,
+            50000000000000000000000,
+            "rUsdcVaultBalanceAfter is not equal to 50000000000000000000000"
+        );
 
-        console2.log("vaultTotalAssetsBefore: ", vaultTotalAssetsBefore);
-        console2.log("vaultTotalAssetsAfter:  ", vaultTotalAssetsAfter);
+        assertEq(vaultTotalAssetsBefore, 100000000000, "vaultTotalAssetsBefore is not equal to 100000000000");
+        assertEq(vaultTotalAssetsAfter, 100002029082, "vaultTotalAssetsAfter is not equal to 100002029082");
     }
 
     function testShouldBeAbleToDepositToFortunaFiVault() public {
@@ -155,25 +157,28 @@ contract PlasmaVaultRequestSharesTest is Test {
         uint256 usdcVaultBalanceAfter = ERC20(USDC).balanceOf(TAU_VAULT);
         uint256 vaultTotalAssetsAfter = PlasmaVault(TAU_VAULT).totalAssets();
 
-        console2.log("usdcVaultBalanceBefore: ", usdcVaultBalanceBefore);
-        console2.log("usdcVaultBalanceAfter:  ", usdcVaultBalanceAfter);
+        assertEq(usdcVaultBalanceBefore, 50000000000, "usdcVaultBalanceBefore is not equal to 50000000000");
+        assertEq(usdcVaultBalanceAfter, 50000000000, "usdcVaultBalanceAfter is not equal to 50000000000");
 
-        console2.log("rUsdcVaultBalanceBefore: ", rUsdcVaultBalanceBefore);
-        console2.log("rUsdcVaultBalanceAfter:  ", rUsdcVaultBalanceAfter);
+        assertEq(
+            rUsdcVaultBalanceBefore,
+            50000000000000000000000,
+            "rUsdcVaultBalanceBefore is not equal to 50000000000000000000000"
+        );
+        assertEq(rUsdcVaultBalanceAfter, 0, "rUsdcVaultBalanceAfter is not equal to 0");
 
-        console2.log("vaultTotalAssetsBefore: ", vaultTotalAssetsBefore);
-        console2.log("vaultTotalAssetsAfter:  ", vaultTotalAssetsAfter);
+        assertEq(vaultTotalAssetsBefore, 100002029082, "vaultTotalAssetsBefore is not equal to 100002029082");
+        assertEq(vaultTotalAssetsAfter, 100002029082, "vaultTotalAssetsAfter is not equal to 100002029082");
     }
 
     function testShouldBeAbleToRequestShares() public {
         // given
         testShouldBeAbleToDepositToFortunaFiVault();
-        uint256 sharesAmount = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
-        console2.log("sharesAmount: ", sharesAmount);
+        uint256 sharesAmountBefore = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
 
         bytes[] memory data = new bytes[](1);
         PlasmaVaultRequestSharesFuseEnterData memory enterData = PlasmaVaultRequestSharesFuseEnterData({
-            sharesAmount: sharesAmount,
+            sharesAmount: sharesAmountBefore,
             plasmaVault: FORTUNAFI_VAULT
         });
         data[0] = abi.encode(enterData);
@@ -191,8 +196,16 @@ contract PlasmaVaultRequestSharesTest is Test {
 
         uint256 sharesAmountAfter = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
 
-        console2.log("sharesAmountBefore: ", sharesAmount);
-        console2.log("sharesAmountAfter : ", sharesAmountAfter);
+        assertEq(
+            sharesAmountBefore,
+            4933203068300153978987452,
+            "sharesAmountBefore is not equal to 4933203068300153978987452"
+        );
+        assertEq(
+            sharesAmountAfter,
+            4895730457793346009363064,
+            "sharesAmountAfter is not equal to 4895730457793346009363064"
+        );
     }
 
     function testShouldBeAbleToRedeemFromRequest() public {
@@ -231,14 +244,22 @@ contract PlasmaVaultRequestSharesTest is Test {
         uint256 totalAssetsAfter = PlasmaVault(TAU_VAULT).totalAssets();
         uint256 rUsdVaultBalanceAfter = ERC20(R_USD).balanceOf(TAU_VAULT);
 
-        console2.log("sharesAmountBefore: ", sharesAmountBefore);
-        console2.log("sharesAmountAfter: ", sharesAmountAfter);
+        assertEq(
+            sharesAmountBefore,
+            4895730457793346009363064,
+            "sharesAmountBefore is not equal to 4895730457793346009363064"
+        );
+        assertEq(sharesAmountAfter, 0, "sharesAmountAfter is not equal to 0");
 
-        console2.log("totalAssetsBefore: ", totalAssetsBefore);
-        console2.log("totalAssetsAfter: ", totalAssetsAfter);
+        assertEq(totalAssetsBefore, 99622213669, "totalAssetsBefore is not equal to 99622213669");
+        assertEq(totalAssetsAfter, 99622082952, "totalAssetsAfter is not equal to 99622082952");
 
-        console2.log("rUsdVaultBalanceBefore: ", rUsdVaultBalanceBefore);
-        console2.log("rUsdVaultBalanceAfter: ", rUsdVaultBalanceAfter);
+        assertEq(rUsdVaultBalanceBefore, 0, "rUsdVaultBalanceBefore is not equal to 0");
+        assertEq(
+            rUsdVaultBalanceAfter,
+            49620183006786641511424,
+            "rUsdVaultBalanceAfter is not equal to 49620183006786641511424"
+        );
     }
 
     function testShouldSwapRUsdToUsdc() public {
@@ -282,14 +303,18 @@ contract PlasmaVaultRequestSharesTest is Test {
 
         uint256 vaultTotalAssetsAfter = PlasmaVault(TAU_VAULT).totalAssets();
 
-        console2.log("usdcVaultBalanceBefore: ", usdcVaultBalanceBefore);
-        console2.log("usdcVaultBalanceAfter:  ", usdcVaultBalanceAfter);
+        assertEq(usdcVaultBalanceBefore, 50000000000, "usdcVaultBalanceBefore is not equal to 50000000000");
+        assertEq(usdcVaultBalanceAfter, 100000000000, "usdcVaultBalanceAfter is not equal to 100000000000");
 
-        console2.log("rUsdcVaultBalanceBefore: ", rUsdcVaultBalanceBefore);
-        console2.log("rUsdcVaultBalanceAfter:  ", rUsdcVaultBalanceAfter);
+        assertEq(
+            rUsdcVaultBalanceBefore,
+            50000000000000000000000,
+            "rUsdcVaultBalanceBefore is not equal to 50000000000000000000000"
+        );
+        assertEq(rUsdcVaultBalanceAfter, 0, "rUsdcVaultBalanceAfter is not equal to 0");
 
-        console2.log("vaultTotalAssetsBefore: ", vaultTotalAssetsBefore);
-        console2.log("vaultTotalAssetsAfter:  ", vaultTotalAssetsAfter);
+        assertEq(vaultTotalAssetsBefore, 100002029082, "vaultTotalAssetsBefore is not equal to 100002029082");
+        assertEq(vaultTotalAssetsAfter, 100000000000, "vaultTotalAssetsAfter is not equal to 100000000000");
     }
 
     function testShouldTransferToIporOptimizerUsdcVault() public {
@@ -322,11 +347,11 @@ contract PlasmaVaultRequestSharesTest is Test {
         uint256 usdcVaultBalanceAfter = ERC20(USDC).balanceOf(TAU_VAULT);
         uint256 vaultTotalAssetsAfter = PlasmaVault(TAU_VAULT).totalAssets();
 
-        console2.log("usdcVaultBalanceBefore: ", usdcVaultBalanceBefore);
-        console2.log("usdcVaultBalanceAfter:  ", usdcVaultBalanceAfter);
+        assertEq(usdcVaultBalanceBefore, 100000000000, "usdcVaultBalanceBefore is not equal to 100000000000");
+        assertEq(usdcVaultBalanceAfter, 50000000000, "usdcVaultBalanceAfter is not equal to 50000000000");
 
-        console2.log("vaultTotalAssetsBefore: ", vaultTotalAssetsBefore);
-        console2.log("vaultTotalAssetsAfter:  ", vaultTotalAssetsAfter);
+        assertEq(vaultTotalAssetsBefore, 100000000000, "vaultTotalAssetsBefore is not equal to 100000000000");
+        assertEq(vaultTotalAssetsAfter, 99999999999, "vaultTotalAssetsAfter is not equal to 99999999999");
     }
 
     function testShouldBeAbleToWithdrawFromIporOptimizerUsdcVault() public {
@@ -363,11 +388,11 @@ contract PlasmaVaultRequestSharesTest is Test {
         uint256 usdcVaultBalanceAfter = ERC20(USDC).balanceOf(TAU_VAULT);
         uint256 vaultTotalAssetsAfter = PlasmaVault(TAU_VAULT).totalAssets();
 
-        console2.log("usdcVaultBalanceBefore: ", usdcVaultBalanceBefore);
-        console2.log("usdcVaultBalanceAfter:  ", usdcVaultBalanceAfter);
+        assertEq(usdcVaultBalanceBefore, 50000000000, "usdcVaultBalanceBefore is not equal to 50000000000");
+        assertEq(usdcVaultBalanceAfter, 90000000000, "usdcVaultBalanceAfter is not equal to 90000000000");
 
-        console2.log("vaultTotalAssetsBefore: ", vaultTotalAssetsBefore);
-        console2.log("vaultTotalAssetsAfter:  ", vaultTotalAssetsAfter);
+        assertEq(vaultTotalAssetsBefore, 99999999999, "vaultTotalAssetsBefore is not equal to 99999999999");
+        assertEq(vaultTotalAssetsAfter, 99999976456, "vaultTotalAssetsAfter is not equal to 99999976456");
     }
 
     function testShouldBeableToWithdrawUsingInstantWithdraw() public {
@@ -389,11 +414,12 @@ contract PlasmaVaultRequestSharesTest is Test {
         // then
         uint256 usdcVaultBalanceAfter = ERC20(USDC).balanceOf(TAU_VAULT);
         uint256 vaultTotalAssetsAfter = PlasmaVault(TAU_VAULT).totalAssets();
-        console2.log("usdcVaultBalanceBefore: ", usdcVaultBalanceBefore);
-        console2.log("usdcVaultBalanceAfter:  ", usdcVaultBalanceAfter);
 
-        console2.log("vaultTotalAssetsBefore: ", vaultTotalAssetsBefore);
-        console2.log("vaultTotalAssetsAfter:  ", vaultTotalAssetsAfter);
+        assertEq(usdcVaultBalanceBefore, 50000000000, "usdcVaultBalanceBefore is not equal to 50000000000");
+        assertEq(usdcVaultBalanceAfter, 10, "usdcVaultBalanceAfter is not equal to 10");
+
+        assertEq(vaultTotalAssetsBefore, 99999999999, "vaultTotalAssetsBefore is not equal to 99999999999");
+        assertEq(vaultTotalAssetsAfter, 30000008165, "vaultTotalAssetsAfter is not equal to 30000008165");
     }
 
     function addERC20VaultBalanceFuse() private {
