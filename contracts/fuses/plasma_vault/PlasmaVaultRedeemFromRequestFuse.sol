@@ -2,9 +2,7 @@
 pragma solidity 0.8.26;
 
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPlasmaVault} from "../../interfaces/IPlasmaVault.sol";
 
