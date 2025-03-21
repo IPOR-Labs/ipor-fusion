@@ -49,7 +49,6 @@ contract PtPriceFeed is IPriceFeed {
     /// @dev 0 for getPtToSyRate, 1 for getPtToAssetRate
     uint256 public immutable USE_PENDLE_ORACLE_METHOD;
 
-    error PriceOracleInvalidConfiguration();
     error PriceOracleInvalidTwapWindow(uint32 provided, uint32 minimum);
     error PriceOraclePendleOracleNotReady();
     error PriceOracleZeroAddress();
@@ -96,6 +95,7 @@ contract PtPriceFeed is IPriceFeed {
         PRICE_MIDDLEWARE = priceMiddleware_;
         ASSET_ADDRESS = assetAddress;
         ASSET_DECIMALS = assetDecimals;
+        USE_PENDLE_ORACLE_METHOD = usePendleOracleMethod;
     }
 
     /// @inheritdoc IPriceFeed

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddlewareWithRoles} from "../../contracts/price_oracle/PriceOracleMiddlewareWithRoles.sol";
 import {SDaiPriceFeedEthereum} from "../../contracts/price_oracle/price_feed/chains/ethereum/SDaiPriceFeedEthereum.sol";
@@ -21,7 +21,6 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
     PriceOracleMiddlewareWithRoles private priceOracleMiddlewareProxy;
 
     address private constant PT_SUSDE = 0xb7de5dFCb74d25c2f21841fbd6230355C50d9308;
-    // address private constant MARCKET_SUSDE = 0xB162B764044697cf03617C2EFbcB1f42e31E4766;
     address private constant MARCKET_SUSDE = 0xF4Cf59259D007a96C641B41621aB52C93b9691B1;
     address public constant PENDLE_ORACLE = 0x9a9Fa8338dd5E5B2188006f1Cd2Ef26d921650C2;
     address public constant SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
@@ -74,16 +73,16 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
         }); // https://app.pendle.finance/trade/markets/0xb451a36c8b6b2eac77ad0737ba732818143a0e25/swap?view=pt&chain=ethereum&tab=info
         testItems[3] = TestItem({
             market: 0x353d0B2EFB5B3a7987fB06D30Ad6160522d08426,
-            price: int256(93146528),
+            price: int256(99716640),
             usePendleOracleMethod: 1,
             blockNumber: 0
         }); // https://app.pendle.finance/trade/markets/0x353d0b2efb5b3a7987fb06d30ad6160522d08426/swap?view=pt&chain=ethereum
         testItems[4] = TestItem({
             market: 0xC374f7eC85F8C7DE3207a10bB1978bA104bdA3B2,
-            price: int256(152085500723),
+            price: int256(182040012762),
             usePendleOracleMethod: 1,
             blockNumber: 0
-        }); // https://app.pendle.finance/trade/markets/0x353d0b2efb5b3a7987fb06d30ad6160522d08426/swap?view=pt&chain=ethereum
+        }); // https://app.pendle.finance/trade/markets/0xc374f7ec85f8c7de3207a10bb1978ba104bda3b2/swap?view=pt&chain=ethereum&py=input
         return testItems;
     }
 
