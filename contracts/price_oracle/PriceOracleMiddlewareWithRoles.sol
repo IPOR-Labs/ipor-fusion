@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
@@ -20,8 +19,10 @@ import {IporFusionAccessControl} from "./IporFusionAccessControl.sol";
 /// @dev Supports both custom price feeds and Chainlink Feed Registry as fallback.
 /// @dev When CHAINLINK_FEED_REGISTRY is set to address(0), Chainlink fallback is disabled
 /// @dev and only custom price feeds will be supported
-contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, Ownable2StepUpgradeable, UUPSUpgradeable {
+contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradeable {
     using SafeCast for int256;
+
+    event NewPtPriceFeedDeployedEvent(address ptPriceFeed);
 
     /// @dev Quote currency address representing USD (Chainlink standard)
     /// @notice This is the standard Chainlink USD address used for price feeds
@@ -134,18 +135,12 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, Ownable2Step
         uint32 twapWindow_,
         int256 expextedPriceAfterDeployment_,
         uint256 usePendleOracleMethod_
-    ) external onlyRole(ADD_PT_TOKEN_PRICE) {
+    ) external onlyRole(ADD_PT_TOKEN_PRICE) returns (PtPriceFeed ptPriceFeed) {
         if (expextedPriceAfterDeployment_ <= 0) {
             revert IPriceOracleMiddleware.InvalidExpectedPrice();
         }
 
-        PtPriceFeed ptPriceFeed = new PtPriceFeed(
-            pendleOracle_,
-            pendleMarket_,
-            twapWindow_,
-            address(this),
-            usePendleOracleMethod_
-        );
+        ptPriceFeed = new PtPriceFeed(pendleOracle_, pendleMarket_, twapWindow_, address(this), usePendleOracleMethod_);
 
         (, int256 price, , , ) = ptPriceFeed.latestRoundData();
 
@@ -175,6 +170,8 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, Ownable2Step
         }
 
         PriceOracleMiddlewareStorageLib.setAssetPriceSource(address(pt), address(ptPriceFeed));
+
+        emit NewPtPriceFeedDeployedEvent(address(ptPriceFeed));
     }
 
     /// @notice Internal function to get asset price from either custom feed or Chainlink
