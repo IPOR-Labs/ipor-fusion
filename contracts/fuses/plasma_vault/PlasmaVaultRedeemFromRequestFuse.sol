@@ -2,10 +2,8 @@
 pragma solidity 0.8.26;
 
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {UniversalReader, ReadResult} from "../../universal_reader/UniversalReader.sol";
 import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPlasmaVault} from "../../interfaces/IPlasmaVault.sol";
@@ -54,9 +52,5 @@ contract PlasmaVaultRedeemFromRequestFuse is IFuseCommon {
         IPlasmaVault(data_.plasmaVault).redeemFromRequest(finalSharesAmount, address(this), address(this));
 
         emit PlasmaVaultRedeemFromRequestFuseEnter(VERSION, data_.plasmaVault, finalSharesAmount);
-    }
-
-    function getWithdrawManager() external view returns (address) {
-        return PlasmaVaultStorageLib.getWithdrawManager().manager;
     }
 }
