@@ -390,7 +390,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     function _generateRoleToFunction(
         bool isPublic_,
         PlasmaVaultAddress memory plasmaVaultAddress_
-    ) private returns (RoleToFunction[] memory rolesToFunction) {
+    ) private pure returns (RoleToFunction[] memory rolesToFunction) {
         Iterator memory iterator;
 
         uint64 depositAndMintWithPermitRole = isPublic_ ? Roles.PUBLIC_ROLE : Roles.WHITELIST_ROLE;
