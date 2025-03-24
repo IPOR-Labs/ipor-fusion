@@ -8,6 +8,7 @@ import {Vm} from "forge-std/Vm.sol";
 import {TestAddresses} from "./TestAddresses.sol";
 
 import {PendleSwapPTFuse} from "../../contracts/fuses/pendle/PendleSwapPTFuse.sol";
+import {PendleRedeemPTAfterMaturityFuse} from "../../contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol";
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
@@ -18,6 +19,7 @@ import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol
 struct PendleAddresses {
     address swapPTFuse;
     address marketsBalanceFuse;
+    address redeemPTAfterMaturityFuse;
 }
 
 /// @title PendleHelper
@@ -29,6 +31,7 @@ library PendleHelper {
     function addFullMarket(
         PlasmaVault plasmaVault_,
         address[] memory markets_,
+        uint256[] memory usePendleOracleMethod,
         Vm vm_
     ) internal returns (PendleAddresses memory pendleAddresses) {
         vm_.startPrank(TestAddresses.ATOMIST);
@@ -39,11 +42,14 @@ library PendleHelper {
         address oracleOwner = PriceOracleMiddleware(plasmaVault_.priceOracleMiddlewareOf()).owner();
 
         vm_.startPrank(oracleOwner);
-        _addPtPriceFeed(plasmaVault_, markets_[0]);
+        for (uint256 i; i < markets_.length; i++) {
+            _addPtPriceFeed(plasmaVault_, markets_[i], usePendleOracleMethod[i]);
+        }
         vm_.stopPrank();
 
         vm_.startPrank(TestAddresses.FUSE_MANAGER);
         pendleAddresses.swapPTFuse = _addSwapPTFuse(plasmaVault_);
+        pendleAddresses.redeemPTAfterMaturityFuse = _addRedeemPTAfterMaturityFuse(plasmaVault_);
         vm_.stopPrank();
 
         vm_.startPrank(TestAddresses.FUSE_MANAGER);
@@ -53,11 +59,16 @@ library PendleHelper {
         return pendleAddresses;
     }
 
-    function _addPtPriceFeed(PlasmaVault plasmaVault_, address market) internal {
+    function _addPtPriceFeed(PlasmaVault plasmaVault_, address market, uint256 usePendleOracleMethod) internal {
         address priceOracle = plasmaVault_.priceOracleMiddlewareOf();
         (, IPPrincipalToken pt, ) = IPMarket(market).readTokens();
 
-        address ptPriceFeed = createPtPriceFeed(TestAddresses.ARBITRUM_PENDLE_ORACLE, address(market), priceOracle);
+        address ptPriceFeed = createPtPriceFeed(
+            TestAddresses.ARBITRUM_PENDLE_ORACLE,
+            address(market),
+            priceOracle,
+            usePendleOracleMethod
+        );
         address[] memory assets = new address[](2);
         assets[0] = address(pt);
         assets[1] = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // stEth address on etherium (came from pendel market configuration)
@@ -71,9 +82,12 @@ library PendleHelper {
     function createPtPriceFeed(
         address _pendleOracle,
         address _pendleMarket,
-        address _priceMiddleware
+        address _priceMiddleware,
+        uint256 _usePendleOracleMethod
     ) internal returns (address ptPriceFeed) {
-        ptPriceFeed = address(new PtPriceFeed(_pendleOracle, _pendleMarket, 5 minutes, _priceMiddleware));
+        ptPriceFeed = address(
+            new PtPriceFeed(_pendleOracle, _pendleMarket, 5 minutes, _priceMiddleware, _usePendleOracleMethod)
+        );
     }
 
     function _addSubstratesToMarket(PlasmaVault plasmaVault_, address[] memory markets_) private {
@@ -98,6 +112,21 @@ library PendleHelper {
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(pendleSwapPTFuse);
+        plasmaVault_.addFusesToVault(fuses);
+
+        return fuses[0];
+    }
+
+    function _addRedeemPTAfterMaturityFuse(
+        PlasmaVault plasmaVault_
+    ) private returns (address redeemPTAfterMaturityFuse) {
+        PendleRedeemPTAfterMaturityFuse pendleRedeemPTAfterMaturityFuse = new PendleRedeemPTAfterMaturityFuse(
+            IporFusionMarkets.PENDLE,
+            TestAddresses.ARBITRUM_PENDLE_ROUTER
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(pendleRedeemPTAfterMaturityFuse);
         plasmaVault_.addFusesToVault(fuses);
 
         return fuses[0];
