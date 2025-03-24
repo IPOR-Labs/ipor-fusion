@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 /**
@@ -49,7 +50,7 @@ library FusesLib {
     error BalanceFuseAlreadyExists(uint256 marketId, address fuse);
     error BalanceFuseDoesNotExist(uint256 marketId, address fuse);
     error BalanceFuseNotReadyToRemove(uint256 marketId, address fuse, uint256 currentBalance);
-
+    error BalanceFuseMarketIdMismatch(uint256 marketId, address fuse);
     /**
      * @notice Validates if a fuse contract is registered and supported by the Plasma Vault
      * @dev Checks the FuseStorageLib mapping to verify fuse registration status
@@ -337,6 +338,12 @@ library FusesLib {
      * 4. Updates index mapping for O(1) lookup
      * 5. Emits BalanceFuseAdded event
      *
+     * Storage Pattern:
+     * - balanceFuses.indexes[marketId_] stores (array index + 1)
+     * - Example: value 1 means index 0 in marketIds array
+     * - Matches pattern used in FuseStorageLib.Fuses mapping
+     * - Allows distinguishing between non-existent (0) and first position (1)
+     *
      * Integration Context:
      * - Called by PlasmaVaultGovernance.addBalanceFuse()
      * - Part of market setup and configuration
@@ -378,11 +385,11 @@ library FusesLib {
             revert BalanceFuseAlreadyExists(marketId_, fuse_);
         }
 
-        PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
-        balanceFuses.fuseAddresses[marketId_] = fuse_;
+        if (marketId_ != IFuseCommon(fuse_).MARKET_ID()) {
+            revert BalanceFuseMarketIdMismatch(marketId_, fuse_);
+        }
 
-        balanceFuses.indexes[marketId_] = balanceFuses.marketIds.length;
-        balanceFuses.marketIds.push(marketId_);
+        _updateBalanceFuseStructWhenAdding(marketId_, fuse_);
 
         emit BalanceFuseAdded(marketId_, fuse_);
     }
@@ -400,6 +407,12 @@ library FusesLib {
      * 4. Updates marketIds array using swap-and-pop
      * 5. Updates indexes mapping for moved market
      * 6. Emits BalanceFuseRemoved event
+     *
+     * Storage Pattern:
+     * - balanceFuses.indexes[marketId_] stores (array index + 1)
+     * - Example: value 1 means index 0 in marketIds array
+     * - Matches pattern used in FuseStorageLib.Fuses mapping
+     * - Allows distinguishing between non-existent (0) and first position (1)
      *
      * Integration Context:
      * - Called by PlasmaVaultGovernance.removeBalanceFuse()
@@ -453,6 +466,10 @@ library FusesLib {
     function removeBalanceFuse(uint256 marketId_, address fuse_) internal {
         address currentBalanceFuse = PlasmaVaultStorageLib.getBalanceFuses().fuseAddresses[marketId_];
 
+        if (marketId_ != IFuseCommon(fuse_).MARKET_ID()) {
+            revert BalanceFuseMarketIdMismatch(marketId_, fuse_);
+        }
+
         if (currentBalanceFuse != fuse_) {
             revert BalanceFuseDoesNotExist(marketId_, fuse_);
         }
@@ -466,14 +483,7 @@ library FusesLib {
             revert BalanceFuseNotReadyToRemove(marketId_, fuse_, wadBalanceAmountInUSD);
         }
 
-        PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
-        balanceFuses.fuseAddresses[marketId_] = address(0);
-
-        uint256 index = balanceFuses.indexes[marketId_];
-        if (index != balanceFuses.marketIds.length - 1) {
-            balanceFuses.marketIds[index] = balanceFuses.marketIds[balanceFuses.marketIds.length - 1];
-        }
-        balanceFuses.marketIds.pop();
+        _updateBalanceFuseStructWhenRemoving(marketId_);
 
         emit BalanceFuseRemoved(marketId_, fuse_);
     }
@@ -528,5 +538,31 @@ library FusesLib {
 
     function _calculateAllowedDustInBalanceFuse() private view returns (uint256) {
         return 10 ** (PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals / 2);
+    }
+
+    function _updateBalanceFuseStructWhenAdding(uint256 marketId_, address fuse_) private {
+        PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
+
+        uint256 newMarketIdIndexValue = balanceFuses.marketIds.length + 1;
+
+        balanceFuses.fuseAddresses[marketId_] = fuse_;
+        balanceFuses.marketIds.push(marketId_);
+        balanceFuses.indexes[marketId_] = newMarketIdIndexValue;
+    }
+    function _updateBalanceFuseStructWhenRemoving(uint256 marketId_) private {
+        PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
+
+        delete balanceFuses.fuseAddresses[marketId_];
+
+        uint256 indexValue = balanceFuses.indexes[marketId_];
+        uint256 marketIdsLength = balanceFuses.marketIds.length;
+
+        if (indexValue != marketIdsLength) {
+            balanceFuses.marketIds[indexValue - 1] = balanceFuses.marketIds[marketIdsLength - 1];
+            balanceFuses.indexes[balanceFuses.marketIds[marketIdsLength - 1]] = indexValue;
+        }
+        balanceFuses.marketIds.pop();
+
+        delete balanceFuses.indexes[marketId_];
     }
 }

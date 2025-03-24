@@ -12,7 +12,7 @@ import {InitializationData} from "../../contracts/managers/access/IporFusionAcce
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
-
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 contract InitializeAccessManagerTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -39,6 +39,7 @@ contract InitializeAccessManagerTest is Test {
     IporFusionAccessManager public accessManager;
     PlasmaVault public plasmaVault;
     RewardsClaimManager public rewardsClaimManager;
+    WithdrawManager public withdrawManager;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
@@ -70,6 +71,7 @@ contract InitializeAccessManagerTest is Test {
         vm.stopPrank();
 
         rewardsClaimManager = new RewardsClaimManager(address(accessManager), address(plasmaVault));
+        withdrawManager = new WithdrawManager(address(accessManager));
     }
 
     function testShouldSetupAccessManager() public {
@@ -103,24 +105,34 @@ contract InitializeAccessManagerTest is Test {
                 initData.accountToRoles[i].account
             );
             assertTrue(isMember);
-            assertEq(executionDelay, initData.accountToRoles[i].executionDelay);
+            assertEq(executionDelay, initData.accountToRoles[i].executionDelay, "Execution delay should be set");
         }
 
         for (uint256 i; i < initData.adminRoles.length; i++) {
-            assertEq(accessManager.getRoleAdmin(initData.adminRoles[i].roleId), initData.adminRoles[i].adminRoleId);
+            assertEq(
+                accessManager.getRoleAdmin(initData.adminRoles[i].roleId),
+                initData.adminRoles[i].adminRoleId,
+                "Admin role should be set"
+            );
             if (
                 initData.adminRoles[i].roleId != Roles.ADMIN_ROLE &&
                 initData.adminRoles[i].roleId != Roles.GUARDIAN_ROLE &&
                 initData.adminRoles[i].roleId != Roles.PUBLIC_ROLE &&
                 initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
                 initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE &&
-                initData.adminRoles[i].roleId != Roles.TECH_CONTEXT_MANAGER_ROLE
+                initData.adminRoles[i].roleId != Roles.TECH_CONTEXT_MANAGER_ROLE &&
+                initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE &&
+                initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE
             ) {
-                assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
+                assertEq(
+                    accessManager.getRoleGuardian(initData.adminRoles[i].roleId),
+                    Roles.GUARDIAN_ROLE,
+                    "Guardian role should be set"
+                );
             }
         }
 
-        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0, "Redemption delay should be 0");
     }
 
     function testShouldSetupAccessManagerWithoutRewardsClaimManager() public {
@@ -128,6 +140,7 @@ contract InitializeAccessManagerTest is Test {
         DataForInitialization memory data = _generateDataForInitialization();
         data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
         data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
         InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
             data
         );
@@ -160,7 +173,11 @@ contract InitializeAccessManagerTest is Test {
         }
 
         for (uint256 i; i < initData.adminRoles.length; i++) {
-            assertEq(accessManager.getRoleAdmin(initData.adminRoles[i].roleId), initData.adminRoles[i].adminRoleId);
+            assertEq(
+                accessManager.getRoleAdmin(initData.adminRoles[i].roleId),
+                initData.adminRoles[i].adminRoleId,
+                "Admin role should be set"
+            );
             if (
                 initData.adminRoles[i].roleId != Roles.ADMIN_ROLE &&
                 initData.adminRoles[i].roleId != Roles.GUARDIAN_ROLE &&
@@ -169,13 +186,19 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.TRANSFER_REWARDS_ROLE &&
                 initData.adminRoles[i].roleId != Roles.OWNER_ROLE &&
                 initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE &&
-                initData.adminRoles[i].roleId != Roles.TECH_CONTEXT_MANAGER_ROLE
+                initData.adminRoles[i].roleId != Roles.TECH_CONTEXT_MANAGER_ROLE &&
+                initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE &&
+                initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE
             ) {
-                assertEq(accessManager.getRoleGuardian(initData.adminRoles[i].roleId), Roles.GUARDIAN_ROLE);
+                assertEq(
+                    accessManager.getRoleGuardian(initData.adminRoles[i].roleId),
+                    Roles.GUARDIAN_ROLE,
+                    "Guardian role should be set"
+                );
             }
         }
 
-        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0, "Redemption delay should be 0");
     }
 
     function testShouldNotBeAbleToCallInitializeTwiceWhenRevokeAdminRole() external {
@@ -218,6 +241,158 @@ contract InitializeAccessManagerTest is Test {
         accessManager.initialize(initData);
     }
 
+    function testShouldAtomistGrantWithdrawManagerWithdrawFeeRole() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address newWithdrawFeeManager = address(0x123);
+
+        // when
+        vm.prank(data.atomists[0]);
+        accessManager.grantRole(Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE, newWithdrawFeeManager, 0);
+
+        // then
+        (bool isMember, uint32 executionDelay) = accessManager.hasRole(
+            Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE,
+            newWithdrawFeeManager
+        );
+        assertTrue(isMember);
+        assertEq(executionDelay, 0);
+    }
+
+    function testShouldAtomistGrantWithdrawManagerRequestFeeRole() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address newRequestFeeManager = address(0x456);
+
+        // when
+        vm.prank(data.atomists[0]);
+        accessManager.grantRole(Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE, newRequestFeeManager, 0);
+
+        // then
+        (bool isMember, uint32 executionDelay) = accessManager.hasRole(
+            Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE,
+            newRequestFeeManager
+        );
+        assertTrue(isMember);
+        assertEq(executionDelay, 0);
+    }
+
+    function testShouldWithdrawManagerUpdateWithdrawFee() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        data.plasmaVaultAddress.withdrawManager = address(withdrawManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address withdrawFeeManager = data.withdrawManagerWithdrawFeeManagers[0];
+        uint256 newFee = 100; // 1%
+
+        // when
+        vm.prank(withdrawFeeManager);
+        withdrawManager.updateWithdrawFee(newFee);
+
+        // then
+        assertEq(withdrawManager.getWithdrawFee(), newFee);
+    }
+
+    function testShouldWithdrawManagerUpdateRequestFee() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        data.plasmaVaultAddress.withdrawManager = address(withdrawManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address requestFeeManager = data.withdrawManagerRequestFeeManagers[0];
+        uint256 newFee = 50; // 0.5%
+
+        // when
+        vm.prank(requestFeeManager);
+        withdrawManager.updateRequestFee(newFee);
+
+        // then
+        assertEq(withdrawManager.getRequestFee(), newFee);
+    }
+
+    function testShouldRevertWhenNonWithdrawManagerTriesToUpdateWithdrawFee() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address nonManager = address(0x789);
+        uint256 newFee = 100;
+
+        // when/then
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", nonManager);
+        vm.expectRevert(error);
+        vm.prank(nonManager);
+        withdrawManager.updateWithdrawFee(newFee);
+    }
+
+    function testShouldRevertWhenNonRequestManagerTriesToUpdateRequestFee() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address nonManager = address(0x789);
+        uint256 newFee = 50;
+
+        // when/then
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", nonManager);
+        vm.expectRevert(error);
+        vm.prank(nonManager);
+        withdrawManager.updateRequestFee(newFee);
+    }
+
     function _generateDataForInitialization() private returns (DataForInitialization memory) {
         DataForInitialization memory data;
         data.admins = _generateAddresses(10, 10);
@@ -230,6 +405,10 @@ contract InitializeAccessManagerTest is Test {
         data.claimRewards = _generateAddresses(10_000_000_000, 10);
         data.transferRewardsManagers = _generateAddresses(100_000_000_000, 10);
         data.configInstantWithdrawalFusesManagers = _generateAddresses(1_000_000_000_000, 10);
+        data.updateMarketsBalancesAccounts = _generateAddresses(10_000_000_000_000, 10);
+        data.updateRewardsBalanceAccounts = _generateAddresses(100_000_000_000_000, 10);
+        data.withdrawManagerRequestFeeManagers = _generateAddresses(1_000_000_000_000_000, 10);
+        data.withdrawManagerWithdrawFeeManagers = _generateAddresses(10_000_000_000_000_000, 10);
 
         return data;
     }

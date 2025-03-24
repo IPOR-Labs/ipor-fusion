@@ -9,7 +9,9 @@ interface IPriceOracleMiddleware {
     error UnsupportedAsset();
     error ZeroAddress(string variableName);
     error WrongDecimals();
-    error WrongDecimalsInPriceFeed();
+    error InvalidExpectedPrice();
+    error PriceDeltaTooHigh();
+    error AssetPriceSourceAlreadySet();
 
     /// @notice Returns the price of the given asset in given decimals
     /// @return assetPrice price in QUOTE_CURRENCY of the asset
@@ -17,7 +19,7 @@ interface IPriceOracleMiddleware {
     function getAssetPrice(address asset) external view returns (uint256 assetPrice, uint256 decimals);
 
     /// @notice Returns the prices of the given assets in given decimals
-    /// @return assetPrices prices in QUOTE_CURRENCY of the assets represented in given decimals
+    /// @return assetPrices prices in QUOTE_CURRENCY of the assets represented in defined decimals QUOTE_CURRENCY_DECIMALS
     /// @return decimalsList number of decimals of the asset prices
     function getAssetsPrices(
         address[] calldata assets
@@ -36,7 +38,7 @@ interface IPriceOracleMiddleware {
     //solhint-disable-next-line
     function QUOTE_CURRENCY() external view returns (address);
 
-    /// @notice Returns the number of decimals of the quote currency, by default it is 8 for USD, but can be different for other types of Price Oracles Middlewares
+    /// @notice Returns the number of decimals of the quote currency, can be different for other types of Price Oracles Middlewares
     //solhint-disable-next-line
     function QUOTE_CURRENCY_DECIMALS() external view returns (uint256);
 }

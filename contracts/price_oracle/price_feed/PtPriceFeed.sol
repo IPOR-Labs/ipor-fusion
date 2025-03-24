@@ -45,7 +45,10 @@ contract PtPriceFeed is IPriceFeed {
     // solhint-disable-next-line const-name-snakecase
     uint8 public constant override decimals = 8;
 
-    error PriceOracleInvalidConfiguration();
+    /// @notice The method to use for the Pendle oracle
+    /// @dev 0 for getPtToSyRate, 1 for getPtToAssetRate
+    uint256 public immutable USE_PENDLE_ORACLE_METHOD;
+
     error PriceOracleInvalidTwapWindow(uint32 provided, uint32 minimum);
     error PriceOraclePendleOracleNotReady();
     error PriceOracleZeroAddress();
@@ -60,7 +63,14 @@ contract PtPriceFeed is IPriceFeed {
     /// @param pendleMarket_ Address of the Pendle market
     /// @param twapWindow_ Duration of TWAP window (recommended 15 minutes)
     /// @param priceMiddleware_ Address of price oracle middleware that must support the underlying asset
-    constructor(address pendleOracle_, address pendleMarket_, uint32 twapWindow_, address priceMiddleware_) {
+    /// @param usePendleOracleMethod 0 for getPtToSyRate, 1 for getPtToAssetRate
+    constructor(
+        address pendleOracle_,
+        address pendleMarket_,
+        uint32 twapWindow_,
+        address priceMiddleware_,
+        uint256 usePendleOracleMethod
+    ) {
         if (twapWindow_ < MIN_TWAP_WINDOW) {
             revert PriceOracleInvalidTwapWindow(twapWindow_, MIN_TWAP_WINDOW);
         }
@@ -85,6 +95,7 @@ contract PtPriceFeed is IPriceFeed {
         PRICE_MIDDLEWARE = priceMiddleware_;
         ASSET_ADDRESS = assetAddress;
         ASSET_DECIMALS = assetDecimals;
+        USE_PENDLE_ORACLE_METHOD = usePendleOracleMethod;
     }
 
     /// @inheritdoc IPriceFeed
@@ -95,7 +106,12 @@ contract PtPriceFeed is IPriceFeed {
     {
         uint32 twapWindow = TWAP_WINDOW;
 
-        uint256 unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), twapWindow);
+        uint256 unitPrice;
+        if (USE_PENDLE_ORACLE_METHOD == 1) {
+            unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), twapWindow);
+        } else {
+            unitPrice = PendlePYOracleLib.getPtToSyRate(IPMarket(PENDLE_MARKET), twapWindow);
+        }
 
         (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(
             ASSET_ADDRESS

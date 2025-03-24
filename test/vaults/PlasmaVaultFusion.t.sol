@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -124,6 +123,29 @@ contract PlasmaVaultErc20FusionTest is Test {
         );
 
         setupRoles(plasmaVault, accessManager);
+    }
+
+    function testExchangeRateWhenSupplyIsZero() public {
+        //given
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(plasmaVault), 1000e6);
+
+        uint256 amount = 1000e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(owner), amount);
+
+        vm.prank(owner);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(owner);
+        plasmaVault.deposit(amount, owner);
+
+        //when
+        uint256 exchangeRate = plasmaVault.convertToShares(1e6);
+
+        //then
+        assertEq(exchangeRate, 50000000);
     }
 
     function testShouldNotCallFunctionUpdateInternal() public {
@@ -701,6 +723,100 @@ contract PlasmaVaultErc20FusionTest is Test {
             sharesAmount,
             "Delegatee's voting power should be equal to the transferred amount"
         );
+    }
+
+    function testShouldMintSharesAndDecreaseUserAssetBalanceOneMint() public {
+        //given
+        address userOne = address(0x1);
+
+        uint256 amount = 1000e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        uint256 amountBefore = ERC20(USDC).balanceOf(userOne);
+        uint256 totalSupplyBefore = plasmaVault.totalSupply();
+
+        //when
+        vm.prank(userOne);
+        plasmaVault.mint(1, userOne);
+
+        uint256 amountAfter = ERC20(USDC).balanceOf(userOne);
+        uint256 totalSupplyAfter = plasmaVault.totalSupply();
+
+        //then
+        assertGt(amountBefore, amountAfter, "User should have less USDC after mint");
+        assertEq(totalSupplyBefore, 0, "Total supply should be 0");
+        assertGt(totalSupplyAfter, totalSupplyBefore, "Total supply should increase");
+    }
+
+    function testShouldMintSharesAndDecreaseUserAssetBalanceOneMintExternalTransfer() public {
+        //given
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(plasmaVault), 1000e6);
+
+        address userOne = address(0x1);
+
+        uint256 amount = 1000e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        uint256 amountBefore = ERC20(USDC).balanceOf(userOne);
+        uint256 totalSupplyBefore = plasmaVault.totalSupply();
+
+        //when
+        vm.prank(userOne);
+        plasmaVault.mint(1, userOne);
+
+        uint256 amountAfter = ERC20(USDC).balanceOf(userOne);
+        uint256 totalSupplyAfter = plasmaVault.totalSupply();
+
+        //then
+        assertEq(plasmaVault.balanceOf(userOne), 1, "User should have more USDC after mint");
+        assertGt(amountBefore, amountAfter, "User should have less USDC after mint");
+        assertEq(totalSupplyBefore, 0, "Total supply should be 0");
+        assertGt(totalSupplyAfter, totalSupplyBefore, "Total supply should increase");
+    }
+
+    function testShouldMintSharesAndDecreaseUserAssetBalanceMultipleMints() public {
+        //given
+        address userOne = address(0x1);
+
+        uint256 amount = 1000e6;
+
+        vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
+        ERC20(USDC).transfer(address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        uint256 amountBefore = ERC20(USDC).balanceOf(userOne);
+        uint256 totalSupplyBefore = plasmaVault.totalSupply();
+
+        //when
+        vm.prank(userOne);
+        plasmaVault.mint(1, userOne);
+
+        vm.prank(userOne);
+        plasmaVault.mint(1, userOne);
+
+        vm.prank(userOne);
+        plasmaVault.mint(1, userOne);
+
+        uint256 amountAfter = ERC20(USDC).balanceOf(userOne);
+        uint256 totalSupplyAfter = plasmaVault.totalSupply();
+
+        //then
+        assertGt(amountBefore, amountAfter, "User should have less USDC after mint");
+        assertEq(totalSupplyBefore, 0, "Total supply should be 0");
+        assertGt(totalSupplyAfter, totalSupplyBefore, "Total supply should increase");
     }
 
     function createAccessManager(
