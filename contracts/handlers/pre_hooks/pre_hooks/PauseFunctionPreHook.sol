@@ -19,6 +19,7 @@ import {IPreHook} from "../IPreHook.sol";
 /// - Register this hook for specific function selectors through PlasmaVaultGovernance
 /// - When registered, any call to the associated function will revert
 /// - Useful for emergency situations or planned maintenance
+/// - Can be used to pause restricted (access-controlled) functions
 ///
 /// Security considerations:
 /// - Protected by PlasmaVault's access control for hook registration
