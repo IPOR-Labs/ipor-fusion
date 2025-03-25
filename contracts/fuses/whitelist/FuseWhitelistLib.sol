@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import {IFuseCommon} from "../IFuseCommon.sol";
+
 struct FusesTypes {
     mapping(uint16 fuseId => string fuseType) fusesTypes;
     uint16[] fusesIds;
@@ -31,6 +33,10 @@ struct FuseInfo {
 
 struct FuseListByAddress {
     mapping(address fuseAddress => FuseInfo fuseInfo) fusesByAddress;
+}
+
+struct FuseInfoByMarketId {
+    mapping(uint256 marketId => address[] fuses) fusesByMarketId;
 }
 
 library FuseWhitelistLib {
@@ -78,10 +84,14 @@ library FuseWhitelistLib {
     event FuseInfoUpdated(address fuseAddress, uint16 fuseState, uint16 fuseType);
     event FuseMetadataUpdated(address fuseAddress, uint256 metadataId, bytes32[] metadata);
     event FuseStateUpdated(address fuseAddress, uint16 fuseState, uint16 fuseType);
+    event FuseAddedToMarketId(address fuseAddress, uint256 marketId);
+
     bytes32 private constant FUSES_TYPES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd00; //todo: change to hash
     bytes32 private constant FUSES_STATES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd01; //todo: change to hash
     bytes32 private constant FUSE_INFO = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd02; //todo: change to hash
     bytes32 private constant FUSE_LISTS_BY_TYPE = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd04; //todo: change to hash
+    bytes32 private constant FUSE_INFO_BY_MARKET_ID =
+        0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd03; //todo: change to hash
     bytes32 private constant METADATA_TYPES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd05; //todo: change to hash
 
     function addFuseType(uint16 fuseId_, string calldata fuseType_) internal {
@@ -305,11 +315,25 @@ library FuseWhitelistLib {
         return _getFuseInfo().fusesByAddress[fuseAddress_];
     }
 
+    function addFuseToMarketId(address fuseAddress_) internal {
+        uint256 marketId = IFuseCommon(fuseAddress_).MARKET_ID();
+        FuseInfoByMarketId storage fuseInfoByMarketId = _getFuseInfoByMarketId();
+        fuseInfoByMarketId.fusesByMarketId[marketId].push(fuseAddress_);
+
+        emit FuseAddedToMarketId(fuseAddress_, marketId);
+    }
+
     /// @dev Internal function to get FusesTypes struct from storage
     /// @return fusesTypes The FusesTypes struct from storage
     function _getFusesTypes() internal pure returns (FusesTypes storage fusesTypes) {
         assembly {
             fusesTypes.slot := FUSES_TYPES
+        }
+    }
+
+    function _getFuseInfoByMarketId() private pure returns (FuseInfoByMarketId storage fuseInfoByMarketId) {
+        assembly {
+            fuseInfoByMarketId.slot := FUSE_INFO_BY_MARKET_ID
         }
     }
 

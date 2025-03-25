@@ -94,6 +94,7 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl {
         for (uint256 i; i < length; i++) {
             FuseWhitelistLib.addFuseToListByType(types_[i], fuses_[i]);
             FuseWhitelistLib.addFuseInfo(types_[i], fuses_[i]);
+            FuseWhitelistLib.addFuseToMarketId(fuses_[i]);
         }
         return true;
     }
@@ -128,6 +129,11 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl {
         FuseWhitelistLib.updateFuseMetadata(fuseAddress_, metadataId_, metadata_);
         return true;
     }
+
+    function getFusesByMarketId(uint256 marketId_) external view returns (address[] memory) {
+        return FuseWhitelistLib.getFusesByMarketId(marketId_);
+    }
+
     /// @dev Required by the OZ UUPS module
     /// @param newImplementation Address of the new implementation
     //solhint-disable-next-line
