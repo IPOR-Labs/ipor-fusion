@@ -72,6 +72,9 @@ library IporFusionMarkets {
     /// @dev Curve gauge ERC4626 market
     uint256 public constant CURVE_GAUGE_ERC4626 = 25;
 
+    /// @dev Compound V3 market WETH
+    uint256 public constant COMPOUND_V3_WETH = 26;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
