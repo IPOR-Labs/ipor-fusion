@@ -64,6 +64,9 @@ library IporFusionAccessManagerHelper {
         roles.configInstantWithdrawalFusesManagers = new address[](1);
         roles.configInstantWithdrawalFusesManagers[0] = TestAddresses.CONFIG_INSTANT_WITHDRAWAL_FUSES_MANAGER;
 
+        roles.updateMarketsBalancesAccounts = new address[](1);
+        roles.updateMarketsBalancesAccounts[0] = TestAddresses.ATOMIST;
+
         roles.whitelist = new address[](0);
 
         return roles;
