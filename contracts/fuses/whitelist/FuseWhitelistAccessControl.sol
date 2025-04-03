@@ -10,32 +10,32 @@ abstract contract FuseWhitelistAccessControl is AccessControlEnumerableUpgradeab
     /// @notice Role for managing fuse types
     /// @dev Protects:
     /// - addFuseTypes()
-    bytes32 public constant FUSE_TYPE_MENAGER_ROLE = keccak256("FUSE_TYPE_MENAGER_ROLE");
+    bytes32 public constant FUSE_TYPE_MANAGER_ROLE = keccak256("FUSE_TYPE_MANAGER_ROLE");
 
     /// @notice Role for managing fuse states
     /// @dev Protects:
     /// - addFuseStates()
-    bytes32 public constant FUSE_STATE_MENAGER_ROLE = keccak256("FUSE_STATE_MENAGER_ROLE");
+    bytes32 public constant FUSE_STATE_MANAGER_ROLE = keccak256("FUSE_STATE_MANAGER_ROLE");
 
     /// @notice Role for managing metadata types
     /// @dev Protects:
     /// - addMetadataTypes()
-    bytes32 public constant FUSE_METADATA_MENAGER_ROLE = keccak256("FUSE_METADATA_MENAGER_ROLE");
+    bytes32 public constant FUSE_METADATA_MANAGER_ROLE = keccak256("FUSE_METADATA_MANAGER_ROLE");
 
     /// @notice Role for adding new fuses to the system
     /// @dev Protects:
     /// - addFuses()
-    bytes32 public constant ADD_FUSE_MENAGER_ROLE = keccak256("ADD_FUSE_MENAGER_ROLE");
+    bytes32 public constant ADD_FUSE_MANAGER_ROLE = keccak256("ADD_FUSE_MANAGER_ROLE");
 
     /// @notice Role for updating fuse states
     /// @dev Protects:
     /// - updateFuseState()
-    bytes32 public constant UPDATE_FUSE_STATE_ROLE = keccak256("UPDATE_FUSE_STATE_ROLE");
+    bytes32 public constant UPDATE_FUSE_STATE_MANAGER_ROLE = keccak256("UPDATE_FUSE_STATE_MANAGER_ROLE");
 
     /// @notice Role for updating fuse metadata
     /// @dev Protects:
     /// - updateFuseMetadata()
-    bytes32 public constant UPDATE_FUSE_METADATA_ROLE = keccak256("UPDATE_FUSE_METADATA_ROLE");
+    bytes32 public constant UPDATE_FUSE_METADATA_MANAGER_ROLE = keccak256("UPDATE_FUSE_METADATA_MANAGER_ROLE");
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {

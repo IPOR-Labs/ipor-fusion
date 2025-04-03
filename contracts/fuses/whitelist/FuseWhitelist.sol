@@ -25,12 +25,12 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     /// @param fuseTypeIds_ Array of unique identifiers for fuse types
     /// @param fuseTypeNames_ Array of descriptive names for fuse types
     /// @return bool True if operation was successful
-    /// @dev Requires FUSE_TYPE_MENAGER_ROLE
+    /// @dev Requires FUSE_TYPE_MANAGER_ROLE
     /// @dev Arrays must have equal length
     function addFuseTypes(
         uint16[] calldata fuseTypeIds_,
         string[] calldata fuseTypeNames_
-    ) external onlyRole(FUSE_TYPE_MENAGER_ROLE) returns (bool) {
+    ) external onlyRole(FUSE_TYPE_MANAGER_ROLE) returns (bool) {
         uint256 length = fuseTypeIds_.length;
         if (length != fuseTypeNames_.length) {
             revert FuseWhitelistInvalidInputLength();
@@ -45,12 +45,12 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     /// @param fuseStateIds_ Array of unique identifiers for fuse states
     /// @param fuseStateNames_ Array of descriptive names for fuse states
     /// @return bool True if operation was successful
-    /// @dev Requires FUSE_STATE_MENAGER_ROLE
+    /// @dev Requires FUSE_STATE_MANAGER_ROLE
     /// @dev Arrays must have equal length
     function addFuseStates(
         uint16[] calldata fuseStateIds_,
         string[] calldata fuseStateNames_
-    ) external onlyRole(FUSE_STATE_MENAGER_ROLE) returns (bool) {
+    ) external onlyRole(FUSE_STATE_MANAGER_ROLE) returns (bool) {
         uint256 length = fuseStateIds_.length;
         if (length != fuseStateNames_.length) {
             revert FuseWhitelistInvalidInputLength();
@@ -65,12 +65,12 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     /// @param metadataIds_ Array of unique identifiers for metadata types
     /// @param metadataTypes_ Array of descriptive names for metadata types
     /// @return bool True if operation was successful
-    /// @dev Requires FUSE_METADATA_MENAGER_ROLE
+    /// @dev Requires FUSE_METADATA_MANAGER_ROLE
     /// @dev Arrays must have equal length
     function addMetadataTypes(
         uint16[] calldata metadataIds_,
         string[] calldata metadataTypes_
-    ) external onlyRole(FUSE_METADATA_MENAGER_ROLE) returns (bool) {
+    ) external onlyRole(FUSE_METADATA_MANAGER_ROLE) returns (bool) {
         uint256 length = metadataIds_.length;
         if (length != metadataTypes_.length) {
             revert FuseWhitelistInvalidInputLength();
@@ -86,14 +86,14 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     /// @param types_ Array of fuse type IDs corresponding to each fuse
     /// @param states_ Array of fuse state IDs corresponding to each fuse
     /// @return bool True if operation was successful
-    /// @dev Requires ADD_FUSE_MENAGER_ROLE
+    /// @dev Requires ADD_FUSE_MANAGER_ROLE
     /// @dev All arrays must have equal length
     /// @dev Automatically adds fuses to market ID lists based on their MARKET_ID
     function addFuses(
         address[] calldata fuses_,
         uint16[] calldata types_,
         uint16[] calldata states_
-    ) external onlyRole(ADD_FUSE_MENAGER_ROLE) returns (bool) {
+    ) external onlyRole(ADD_FUSE_MANAGER_ROLE) returns (bool) {
         uint256 length = fuses_.length;
         if (length != types_.length || length != states_.length) {
             revert FuseWhitelistInvalidInputLength();
@@ -111,13 +111,13 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     /// @param fuseAddress_ The address of the fuse to update
     /// @param fuseState_ The new state ID to set
     /// @return bool True if operation was successful
-    /// @dev Requires UPDATE_FUSE_STATE_ROLE
+    /// @dev Requires UPDATE_FUSE_STATE_MANAGER_ROLE
     /// @dev Fuse must exist in the system
     /// @dev New state must be valid
     function updateFuseState(
         address fuseAddress_,
         uint16 fuseState_
-    ) external onlyRole(UPDATE_FUSE_STATE_ROLE) returns (bool) {
+    ) external onlyRole(UPDATE_FUSE_STATE_MANAGER_ROLE) returns (bool) {
         FuseWhitelistLib.updateFuseState(fuseAddress_, fuseState_);
         return true;
     }
@@ -127,14 +127,14 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     /// @param metadataId_ The ID of the metadata type to update
     /// @param metadata_ Array of metadata values to set
     /// @return bool True if operation was successful
-    /// @dev Requires UPDATE_FUSE_METADATA_ROLE
+    /// @dev Requires UPDATE_FUSE_METADATA_MANAGER_ROLE
     /// @dev Fuse must exist in the system
     /// @dev Metadata type must be valid
     function updateFuseMetadata(
         address fuseAddress_,
         uint16 metadataId_,
         bytes32[] calldata metadata_
-    ) external onlyRole(UPDATE_FUSE_METADATA_ROLE) returns (bool) {
+    ) external onlyRole(UPDATE_FUSE_METADATA_MANAGER_ROLE) returns (bool) {
         FuseWhitelistLib.updateFuseMetadata(fuseAddress_, metadataId_, metadata_);
         return true;
     }
@@ -163,8 +163,8 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     /// @notice Retrieves the description of a specific fuse state
     /// @param fuseStateId_ The ID of the fuse state to query
     /// @return The description string of the fuse state
-    function getFuseStateDescription(uint16 fuseStateId_) external view returns (string memory) {
-        return FuseWhitelistLib.getFuseStateDescription(fuseStateId_);
+    function getFuseStateName(uint16 fuseStateId_) external view returns (string memory) {
+        return FuseWhitelistLib.getFuseStateName(fuseStateId_);
     }
 
     /// @notice Retrieves all registered metadata types
@@ -177,15 +177,15 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     /// @notice Retrieves the description of a specific metadata type
     /// @param metadataId_ The ID of the metadata type to query
     /// @return The description string of the metadata type
-    function getMetadataTypeDescription(uint16 metadataId_) external view returns (string memory) {
-        return FuseWhitelistLib.getMetadataTypeDescription(metadataId_);
+    function getMetadataType(uint16 metadataId_) external view returns (string memory) {
+        return FuseWhitelistLib.getMetadataType(metadataId_);
     }
 
     /// @notice Retrieves all fuses of a specific type
     /// @param fuseTypeId_ The ID of the fuse type to query
     /// @return Array of fuse addresses
-    function getFuseByType(uint16 fuseTypeId_) external view returns (address[] memory) {
-        return FuseWhitelistLib.getFuseByType(fuseTypeId_);
+    function getFusesByType(uint16 fuseTypeId_) external view returns (address[] memory) {
+        return FuseWhitelistLib.getFusesByType(fuseTypeId_);
     }
 
     /// @notice Retrieves detailed information about a specific fuse

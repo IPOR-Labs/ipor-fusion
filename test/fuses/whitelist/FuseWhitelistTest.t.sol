@@ -12,10 +12,10 @@ import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyF
 contract FuseWhitelistTest is Test {
     FuseWhitelist private _fuseWhitelist;
     address ADMIN = TestAddresses.ADMIN;
-    address FUSE_TYPE_MENAGER_ROLE = TestAddresses.ATOMIST;
-    address FUSE_STATE_MENAGER_ROLE = TestAddresses.ATOMIST;
-    address FUSE_METADATA_MENAGER_ROLE = TestAddresses.ATOMIST;
-    address ADD_FUSE_MENAGER_ROLE = TestAddresses.ATOMIST;
+    address FUSE_TYPE_MANAGER_ROLE = TestAddresses.ATOMIST;
+    address FUSE_STATE_MANAGER_ROLE = TestAddresses.ATOMIST;
+    address FUSE_METADATA_MANAGER_ROLE = TestAddresses.ATOMIST;
+    address ADD_FUSE_MANAGER_ROLE = TestAddresses.ATOMIST;
     address UPDATE_FUSE_STATE_ROLE = TestAddresses.ATOMIST;
     address UPDATE_FUSE_METADATA_ROLE = TestAddresses.ATOMIST;
 
@@ -28,12 +28,12 @@ contract FuseWhitelistTest is Test {
         );
 
         vm.startPrank(ADMIN);
-        _fuseWhitelist.grantRole(_fuseWhitelist.FUSE_TYPE_MENAGER_ROLE(), FUSE_TYPE_MENAGER_ROLE);
-        _fuseWhitelist.grantRole(_fuseWhitelist.FUSE_STATE_MENAGER_ROLE(), FUSE_STATE_MENAGER_ROLE);
-        _fuseWhitelist.grantRole(_fuseWhitelist.FUSE_METADATA_MENAGER_ROLE(), FUSE_METADATA_MENAGER_ROLE);
-        _fuseWhitelist.grantRole(_fuseWhitelist.ADD_FUSE_MENAGER_ROLE(), ADD_FUSE_MENAGER_ROLE);
-        _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_STATE_ROLE(), UPDATE_FUSE_STATE_ROLE);
-        _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_METADATA_ROLE(), UPDATE_FUSE_METADATA_ROLE);
+        _fuseWhitelist.grantRole(_fuseWhitelist.FUSE_TYPE_MANAGER_ROLE(), FUSE_TYPE_MANAGER_ROLE);
+        _fuseWhitelist.grantRole(_fuseWhitelist.FUSE_STATE_MANAGER_ROLE(), FUSE_STATE_MANAGER_ROLE);
+        _fuseWhitelist.grantRole(_fuseWhitelist.FUSE_METADATA_MANAGER_ROLE(), FUSE_METADATA_MANAGER_ROLE);
+        _fuseWhitelist.grantRole(_fuseWhitelist.ADD_FUSE_MANAGER_ROLE(), ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_STATE_MANAGER_ROLE(), UPDATE_FUSE_STATE_ROLE);
+        _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_METADATA_MANAGER_ROLE(), UPDATE_FUSE_METADATA_ROLE);
         vm.stopPrank();
     }
 
@@ -53,7 +53,7 @@ contract FuseWhitelistTest is Test {
         (uint16[] memory fuseTypesIdsBefore, string[] memory fuseTypesNamesBefore) = _fuseWhitelist.getFuseTypes();
 
         // Act
-        vm.prank(FUSE_TYPE_MENAGER_ROLE);
+        vm.prank(FUSE_TYPE_MANAGER_ROLE);
         bool result = _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
 
         // Assert
@@ -79,7 +79,7 @@ contract FuseWhitelistTest is Test {
         fuseTypeNames[2] = "Type3";
 
         // Act & Assert
-        vm.prank(FUSE_TYPE_MENAGER_ROLE);
+        vm.prank(FUSE_TYPE_MANAGER_ROLE);
         vm.expectRevert(FuseWhitelist.FuseWhitelistInvalidInputLength.selector);
         _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
     }
@@ -98,7 +98,7 @@ contract FuseWhitelistTest is Test {
             abi.encodeWithSelector(
                 bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
                 address(0x123),
-                keccak256("FUSE_TYPE_MENAGER_ROLE")
+                keccak256("FUSE_TYPE_MANAGER_ROLE")
             )
         );
         _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
@@ -110,7 +110,7 @@ contract FuseWhitelistTest is Test {
         string[] memory fuseTypeNames = new string[](0);
 
         // Act
-        vm.startPrank(FUSE_TYPE_MENAGER_ROLE);
+        vm.startPrank(FUSE_TYPE_MANAGER_ROLE);
         bool result = _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
         vm.stopPrank();
 
@@ -130,7 +130,7 @@ contract FuseWhitelistTest is Test {
         fuseTypeNames[1] = "Type2";
 
         // Act & Assert
-        vm.startPrank(FUSE_TYPE_MENAGER_ROLE);
+        vm.startPrank(FUSE_TYPE_MANAGER_ROLE);
         vm.expectEmit(true, true, true, true);
         emit FuseWhitelistLib.FuseTypeAdded(1, "Type1");
         vm.expectEmit(true, true, true, true);
@@ -157,7 +157,7 @@ contract FuseWhitelistTest is Test {
         (uint16[] memory fuseStatesIdsBefore, string[] memory fuseStatesNamesBefore) = _fuseWhitelist.getFuseStates();
 
         // Act
-        vm.prank(FUSE_STATE_MENAGER_ROLE);
+        vm.prank(FUSE_STATE_MANAGER_ROLE);
         bool result = _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
 
         // Assert
@@ -183,7 +183,7 @@ contract FuseWhitelistTest is Test {
         fuseStateNames[2] = "State3";
 
         // Act & Assert
-        vm.prank(FUSE_STATE_MENAGER_ROLE);
+        vm.prank(FUSE_STATE_MANAGER_ROLE);
         vm.expectRevert(FuseWhitelist.FuseWhitelistInvalidInputLength.selector);
         _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
     }
@@ -202,7 +202,7 @@ contract FuseWhitelistTest is Test {
             abi.encodeWithSelector(
                 bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
                 address(0x123),
-                keccak256("FUSE_STATE_MENAGER_ROLE")
+                keccak256("FUSE_STATE_MANAGER_ROLE")
             )
         );
         _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
@@ -214,7 +214,7 @@ contract FuseWhitelistTest is Test {
         string[] memory fuseStateNames = new string[](0);
 
         // Act
-        vm.startPrank(FUSE_STATE_MENAGER_ROLE);
+        vm.startPrank(FUSE_STATE_MANAGER_ROLE);
         bool result = _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
         vm.stopPrank();
 
@@ -234,7 +234,7 @@ contract FuseWhitelistTest is Test {
         fuseStateNames[1] = "State2";
 
         // Act & Assert
-        vm.startPrank(FUSE_STATE_MENAGER_ROLE);
+        vm.startPrank(FUSE_STATE_MANAGER_ROLE);
         vm.expectEmit(true, true, true, true);
         emit FuseWhitelistLib.FuseStateAdded(1, "State1");
         vm.expectEmit(true, true, true, true);
@@ -261,7 +261,7 @@ contract FuseWhitelistTest is Test {
         (uint16[] memory metadataIdsBefore, string[] memory metadataTypesBefore) = _fuseWhitelist.getMetadataTypes();
 
         // Act
-        vm.prank(FUSE_METADATA_MENAGER_ROLE);
+        vm.prank(FUSE_METADATA_MANAGER_ROLE);
         bool result = _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
 
         // Assert
@@ -287,7 +287,7 @@ contract FuseWhitelistTest is Test {
         metadataTypes[2] = "Metadata3";
 
         // Act & Assert
-        vm.prank(FUSE_METADATA_MENAGER_ROLE);
+        vm.prank(FUSE_METADATA_MANAGER_ROLE);
         vm.expectRevert(FuseWhitelist.FuseWhitelistInvalidInputLength.selector);
         _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
     }
@@ -306,7 +306,7 @@ contract FuseWhitelistTest is Test {
             abi.encodeWithSelector(
                 bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
                 address(0x123),
-                keccak256("FUSE_METADATA_MENAGER_ROLE")
+                keccak256("FUSE_METADATA_MANAGER_ROLE")
             )
         );
         _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
@@ -318,7 +318,7 @@ contract FuseWhitelistTest is Test {
         string[] memory metadataTypes = new string[](0);
 
         // Act
-        vm.startPrank(FUSE_METADATA_MENAGER_ROLE);
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         bool result = _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
         vm.stopPrank();
 
@@ -338,7 +338,7 @@ contract FuseWhitelistTest is Test {
         metadataTypes[1] = "Metadata2";
 
         // Act & Assert
-        vm.startPrank(FUSE_METADATA_MENAGER_ROLE);
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         vm.expectEmit(true, true, true, true);
         emit FuseWhitelistLib.MetadataTypeAdded(1, "Metadata1");
         vm.expectEmit(true, true, true, true);
@@ -366,16 +366,16 @@ contract FuseWhitelistTest is Test {
         states[1] = 0;
 
         // Act
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
         // Assert
-        address[] memory fusesByType = _fuseWhitelist.getFuseByType(1);
+        address[] memory fusesByType = _fuseWhitelist.getFusesByType(1);
         assertEq(fusesByType.length, 1, "Fuses by type should be equal to the input");
         assertEq(fusesByType[0], fuses[0], "Fuses by type should be equal to the input");
 
-        fusesByType = _fuseWhitelist.getFuseByType(2);
+        fusesByType = _fuseWhitelist.getFusesByType(2);
         assertEq(fusesByType.length, 1, "Fuses by type should be equal to the input");
         assertEq(fusesByType[0], fuses[1], "Fuses by type should be equal to the input");
 
@@ -409,7 +409,7 @@ contract FuseWhitelistTest is Test {
         states[1] = 0;
 
         // Act & Assert
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.InvalidFuseTypeId.selector, 3));
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
@@ -434,7 +434,7 @@ contract FuseWhitelistTest is Test {
         states[2] = 0;
 
         // Act & Assert
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         vm.expectRevert(FuseWhitelist.FuseWhitelistInvalidInputLength.selector);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
@@ -455,7 +455,7 @@ contract FuseWhitelistTest is Test {
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -506,7 +506,7 @@ contract FuseWhitelistTest is Test {
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -532,7 +532,7 @@ contract FuseWhitelistTest is Test {
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -542,7 +542,7 @@ contract FuseWhitelistTest is Test {
             abi.encodeWithSelector(
                 bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
                 address(0x123),
-                keccak256("UPDATE_FUSE_STATE_ROLE")
+                keccak256("UPDATE_FUSE_STATE_MANAGER_ROLE")
             )
         );
         _fuseWhitelist.updateFuseState(fuseAddress, 1);
@@ -563,7 +563,7 @@ contract FuseWhitelistTest is Test {
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -592,7 +592,7 @@ contract FuseWhitelistTest is Test {
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -602,7 +602,7 @@ contract FuseWhitelistTest is Test {
         metadataIds[0] = 1;
         metadataTypes[0] = "TestMetadata";
 
-        vm.startPrank(FUSE_METADATA_MENAGER_ROLE);
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
         vm.stopPrank();
 
@@ -630,7 +630,7 @@ contract FuseWhitelistTest is Test {
         metadataIds[0] = 1;
         metadataTypes[0] = "TestMetadata";
 
-        vm.startPrank(FUSE_METADATA_MENAGER_ROLE);
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
         vm.stopPrank();
 
@@ -660,7 +660,7 @@ contract FuseWhitelistTest is Test {
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -689,7 +689,7 @@ contract FuseWhitelistTest is Test {
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -699,7 +699,7 @@ contract FuseWhitelistTest is Test {
         metadataIds[0] = 1;
         metadataTypes[0] = "TestMetadata";
 
-        vm.startPrank(FUSE_METADATA_MENAGER_ROLE);
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
         vm.stopPrank();
 
@@ -712,7 +712,7 @@ contract FuseWhitelistTest is Test {
             abi.encodeWithSelector(
                 bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
                 address(0x123),
-                keccak256("UPDATE_FUSE_METADATA_ROLE")
+                keccak256("UPDATE_FUSE_METADATA_MANAGER_ROLE")
             )
         );
         _fuseWhitelist.updateFuseMetadata(fuseAddress, 1, metadata);
@@ -733,7 +733,7 @@ contract FuseWhitelistTest is Test {
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -743,7 +743,7 @@ contract FuseWhitelistTest is Test {
         metadataIds[0] = 1;
         metadataTypes[0] = "TestMetadata";
 
-        vm.startPrank(FUSE_METADATA_MENAGER_ROLE);
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
         vm.stopPrank();
 
@@ -814,23 +814,23 @@ contract FuseWhitelistTest is Test {
         assertEq(statesNames.length, 0, "Should return empty array of names");
     }
 
-    function test_GetFuseStateDescription_Success() public {
+    function test_GetFuseStateName_Success() public {
         // Arrange
         addFuseTypesAndStates();
 
         // Act
-        string memory description = _fuseWhitelist.getFuseStateDescription(1);
+        string memory description = _fuseWhitelist.getFuseStateName(1);
 
         // Assert
         assertEq(description, "Active", "Fuse state description should match");
     }
 
-    function test_GetFuseStateDescription_NonExistentState() public {
+    function test_GetFuseStateName_NonExistentState() public {
         // Arrange
         addFuseTypesAndStates();
 
         // Act
-        string memory description = _fuseWhitelist.getFuseStateDescription(999);
+        string memory description = _fuseWhitelist.getFuseStateName(999);
 
         // Assert
         assertEq(description, "", "Non-existent fuse state should return empty string");
@@ -852,7 +852,7 @@ contract FuseWhitelistTest is Test {
         metadataTypes[1] = "Metadata2";
         metadataTypes[2] = "Metadata3";
 
-        vm.startPrank(FUSE_METADATA_MENAGER_ROLE);
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
         vm.stopPrank();
 
@@ -883,7 +883,7 @@ contract FuseWhitelistTest is Test {
         assertEq(types.length, 0, "Should return empty array of names");
     }
 
-    function test_GetMetadataTypeDescription_Success() public {
+    function test_GetMetadataType_Success() public {
         // Arrange
         addFuseTypesAndStates();
 
@@ -893,29 +893,29 @@ contract FuseWhitelistTest is Test {
         metadataIds[0] = 1;
         metadataTypes[0] = "TestMetadata";
 
-        vm.startPrank(FUSE_METADATA_MENAGER_ROLE);
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
         vm.stopPrank();
 
         // Act
-        string memory description = _fuseWhitelist.getMetadataTypeDescription(1);
+        string memory description = _fuseWhitelist.getMetadataType(1);
 
         // Assert
         assertEq(description, "TestMetadata", "Metadata type description should match");
     }
 
-    function test_GetMetadataTypeDescription_NonExistentType() public {
+    function test_GetMetadataType_NonExistentType() public {
         // Arrange
         addFuseTypesAndStates();
 
         // Act
-        string memory description = _fuseWhitelist.getMetadataTypeDescription(999);
+        string memory description = _fuseWhitelist.getMetadataType(999);
 
         // Assert
         assertEq(description, "", "Non-existent metadata type should return empty string");
     }
 
-    function test_GetFuseByType_Success() public {
+    function test_GetFusesByType_Success() public {
         // Arrange
         addFuseTypesAndStates();
 
@@ -932,12 +932,12 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
         // Act
-        address[] memory fusesByType = _fuseWhitelist.getFuseByType(1);
+        address[] memory fusesByType = _fuseWhitelist.getFusesByType(1);
 
         // Assert
         assertEq(fusesByType.length, 2, "Should return 2 fuses");
@@ -945,23 +945,23 @@ contract FuseWhitelistTest is Test {
         assertEq(fusesByType[1], fuses[1], "Second fuse should match");
     }
 
-    function test_GetFuseByType_Empty() public {
+    function test_GetFusesByType_Empty() public {
         // Arrange
         addFuseTypesAndStates();
 
         // Act
-        address[] memory fusesByType = _fuseWhitelist.getFuseByType(1);
+        address[] memory fusesByType = _fuseWhitelist.getFusesByType(1);
 
         // Assert
         assertEq(fusesByType.length, 0, "Should return empty array");
     }
 
-    function test_GetFuseByType_NonExistentType() public {
+    function test_GetFusesByType_NonExistentType() public {
         // Arrange
         addFuseTypesAndStates();
 
         // Act
-        address[] memory fusesByType = _fuseWhitelist.getFuseByType(999);
+        address[] memory fusesByType = _fuseWhitelist.getFusesByType(999);
 
         // Assert
         assertEq(fusesByType.length, 0, "Should return empty array for non-existent type");
@@ -983,7 +983,7 @@ contract FuseWhitelistTest is Test {
         uint16[] memory states = new uint16[](1);
         states[0] = fuseState;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -1036,7 +1036,7 @@ contract FuseWhitelistTest is Test {
         states[1] = 0;
         states[2] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -1077,7 +1077,7 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -1111,7 +1111,7 @@ contract FuseWhitelistTest is Test {
         states[2] = 0;
         states[3] = 2;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -1151,7 +1151,7 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -1179,7 +1179,7 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
-        vm.startPrank(ADD_FUSE_MENAGER_ROLE);
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.addFuses(fuses, types, states);
         vm.stopPrank();
 
@@ -1213,7 +1213,7 @@ contract FuseWhitelistTest is Test {
         fuseStateNames[2] = "Inactive";
 
         // Act
-        vm.startPrank(FUSE_TYPE_MENAGER_ROLE);
+        vm.startPrank(FUSE_TYPE_MANAGER_ROLE);
         _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
         _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
         vm.stopPrank();

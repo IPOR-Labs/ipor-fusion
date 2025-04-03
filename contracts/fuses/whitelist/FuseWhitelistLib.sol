@@ -128,48 +128,65 @@ library FuseWhitelistLib {
     /// @param fuseAddress The address of the added fuse
     /// @param marketId The market ID the fuse was added to
     event FuseAddedToMarketId(address fuseAddress, uint256 marketId);
+    /// @notice Emitted when fuse info is added
+    /// @param fuseAddress The address of the added fuse
+    /// @param fuseType The type of the fuse
+    /// @param timestamp When the fuse was added
+    event FuseInfoAdded(address fuseAddress, uint16 fuseType, uint32 timestamp);
 
     /// @notice Storage slot for FusesTypes struct
+    /// @dev Storage slot calculation:
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseTypes")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FUSES_TYPES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd00;
     /// @notice Storage slot for FusesStates struct
+    /// @dev Storage slot calculation:
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseStates")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FUSES_STATES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd01;
     /// @notice Storage slot for FuseInfo struct
+    /// @dev Storage slot calculation:
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseInfo")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FUSE_INFO = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd02;
     /// @notice Storage slot for FuseListsByType struct
+    /// @dev Storage slot calculation:
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseListsByType")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FUSE_LISTS_BY_TYPE = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd04;
     /// @notice Storage slot for FuseInfoByMarketId struct
+    /// @dev Storage slot calculation:
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseInfoByMarketId")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FUSE_INFO_BY_MARKET_ID =
         0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd03;
     /// @notice Storage slot for MetadataTypes struct
+    /// @dev Storage slot calculation:
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.metadataTypes")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant METADATA_TYPES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd05;
 
     /// @notice Adds a new fuse type to the system
     /// @param fuseId_ The unique identifier for the fuse type
-    /// @param fuseType_ The descriptive name of the fuse type
+    /// @param fuseTypeId_ The descriptive name of the fuse type
     /// @dev Reverts if:
-    /// - fuseType_ is empty
+    /// - fuseTypeId_ is empty
     /// - fuseId_ already exists
-    function addFuseType(uint16 fuseId_, string calldata fuseType_) internal {
-        if (bytes(fuseType_).length == 0) {
+    function addFuseType(uint16 fuseId_, string calldata fuseTypeId_) internal {
+        if (bytes(fuseTypeId_).length == 0) {
             revert EmptyFuseType();
         }
 
-        FusesTypes storage fusesTypes = _getFusesTypes();
+        FusesTypes storage fusesTypes = _getFusesTypesSlot();
         if (bytes(fusesTypes.fusesTypes[fuseId_]).length != 0) {
             revert FuseTypeAlreadyExists(fuseId_);
         }
 
-        fusesTypes.fusesTypes[fuseId_] = fuseType_;
+        fusesTypes.fusesTypes[fuseId_] = fuseTypeId_;
         fusesTypes.fusesIds.push(fuseId_);
 
-        emit FuseTypeAdded(fuseId_, fuseType_);
+        emit FuseTypeAdded(fuseId_, fuseTypeId_);
     }
 
     /// @notice Retrieves all registered fuse types
     /// @return fuseTypesIds Array of fuse type IDs
     /// @return fuseTypesNames Array of fuse type descriptions
     function getFuseTypes() internal view returns (uint16[] memory fuseTypesIds, string[] memory fuseTypesNames) {
-        FusesTypes storage fusesTypes = _getFusesTypes();
+        FusesTypes storage fusesTypes = _getFusesTypesSlot();
         fuseTypesIds = fusesTypes.fusesIds;
 
         uint256 length = fusesTypes.fusesIds.length;
@@ -184,51 +201,51 @@ library FuseWhitelistLib {
     /// @param fuseTypeId_ The ID of the fuse type to query
     /// @return The description string of the fuse type
     function getFuseTypeDescription(uint16 fuseTypeId_) internal view returns (string memory) {
-        return _getFusesTypes().fusesTypes[fuseTypeId_];
+        return _getFusesTypesSlot().fusesTypes[fuseTypeId_];
     }
 
     /// @notice Adds a new fuse state to the system
     /// @param stateId_ The unique identifier for the state
-    /// @param fuseState_ The descriptive name of the state
+    /// @param fuseStateName_ The descriptive name of the state
     /// @dev Reverts if:
-    /// - fuseState_ is empty
+    /// - fuseStateName_ is empty
     /// - stateId_ already exists
-    function addFuseState(uint16 stateId_, string calldata fuseState_) internal {
-        if (bytes(fuseState_).length == 0) {
+    function addFuseState(uint16 stateId_, string calldata fuseStateName_) internal {
+        if (bytes(fuseStateName_).length == 0) {
             revert EmptyFuseState();
         }
 
-        FusesStates storage fusesStates = _getFusesStates();
+        FusesStates storage fusesStates = _getFusesStatesSlot();
         if (bytes(fusesStates.fusesStates[stateId_]).length != 0) {
             revert FuseStateAlreadyExists(stateId_);
         }
 
-        fusesStates.fusesStates[stateId_] = fuseState_;
+        fusesStates.fusesStates[stateId_] = fuseStateName_;
         fusesStates.statesIds.push(stateId_);
 
-        emit FuseStateAdded(stateId_, fuseState_);
+        emit FuseStateAdded(stateId_, fuseStateName_);
     }
 
     /// @notice Retrieves all registered fuse states
-    /// @return fuseStatesIds Array of state IDs
-    /// @return fuseStatesNames Array of state descriptions
-    function getFuseStates() internal view returns (uint16[] memory fuseStatesIds, string[] memory fuseStatesNames) {
-        FusesStates storage fusesStates = _getFusesStates();
-        fuseStatesIds = fusesStates.statesIds;
+    /// @return fuseStateIds Array of state IDs
+    /// @return fuseStateNames Array of state descriptions
+    function getFuseStates() internal view returns (uint16[] memory fuseStateIds, string[] memory fuseStateNames) {
+        FusesStates storage fusesStates = _getFusesStatesSlot();
+        fuseStateIds = fusesStates.statesIds;
 
         uint256 length = fusesStates.statesIds.length;
-        fuseStatesNames = new string[](length);
+        fuseStateNames = new string[](length);
         for (uint256 i; i < length; ++i) {
-            fuseStatesNames[i] = fusesStates.fusesStates[fuseStatesIds[i]];
+            fuseStateNames[i] = fusesStates.fusesStates[fuseStateIds[i]];
         }
-        return (fuseStatesIds, fuseStatesNames);
+        return (fuseStateIds, fuseStateNames);
     }
 
     /// @notice Retrieves the description of a specific fuse state
     /// @param fuseStateId_ The ID of the state to query
     /// @return The description string of the state
-    function getFuseStateDescription(uint16 fuseStateId_) internal view returns (string memory) {
-        return _getFusesStates().fusesStates[fuseStateId_];
+    function getFuseStateName(uint16 fuseStateId_) internal view returns (string memory) {
+        return _getFusesStatesSlot().fusesStates[fuseStateId_];
     }
 
     /// @notice Adds a new metadata type to the system
@@ -242,7 +259,7 @@ library FuseWhitelistLib {
             revert EmptyMetadataType();
         }
 
-        MetadataTypes storage metadataTypes = _getMetadataTypes();
+        MetadataTypes storage metadataTypes = _getMetadataTypesSlot();
         if (bytes(metadataTypes.metadataTypes[metadataId_]).length != 0) {
             revert MetadataTypeAlreadyExists(metadataId_);
         }
@@ -255,28 +272,24 @@ library FuseWhitelistLib {
 
     /// @notice Retrieves all registered metadata types
     /// @return metadataIds Array of metadata type IDs
-    /// @return metadataTypesDescriptions Array of metadata type descriptions
-    function getMetadataTypes()
-        internal
-        view
-        returns (uint16[] memory metadataIds, string[] memory metadataTypesDescriptions)
-    {
-        MetadataTypes storage metadataTypes = _getMetadataTypes();
-        metadataIds = metadataTypes.metadataIds;
+    /// @return metadataTypes Array of metadata type descriptions
+    function getMetadataTypes() internal view returns (uint16[] memory metadataIds, string[] memory metadataTypes) {
+        MetadataTypes storage metadataTypesStorage = _getMetadataTypesSlot();
+        metadataIds = metadataTypesStorage.metadataIds;
 
-        uint256 length = metadataTypes.metadataIds.length;
-        metadataTypesDescriptions = new string[](length);
+        uint256 length = metadataTypesStorage.metadataIds.length;
+        metadataTypes = new string[](length);
         for (uint256 i; i < length; ++i) {
-            metadataTypesDescriptions[i] = metadataTypes.metadataTypes[metadataIds[i]];
+            metadataTypes[i] = metadataTypesStorage.metadataTypes[metadataIds[i]];
         }
-        return (metadataIds, metadataTypesDescriptions);
+        return (metadataIds, metadataTypes);
     }
 
     /// @notice Retrieves the description of a specific metadata type
     /// @param metadataId_ The ID of the metadata type to query
     /// @return The description string of the metadata type
-    function getMetadataTypeDescription(uint16 metadataId_) internal view returns (string memory) {
-        return _getMetadataTypes().metadataTypes[metadataId_];
+    function getMetadataType(uint16 metadataId_) internal view returns (string memory) {
+        return _getMetadataTypesSlot().metadataTypes[metadataId_];
     }
 
     /// @notice Adds a fuse to a type-specific list
@@ -290,14 +303,15 @@ library FuseWhitelistLib {
             revert ZeroAddressFuse();
         }
 
-        FuseListsByType storage fuseListsByType = _getFuseListsByType();
-        FusesTypes storage fusesTypes = _getFusesTypes();
+        FuseListsByType storage fuseListsByType = _getFuseListsByTypeSlot();
+        FusesTypes storage fusesTypes = _getFusesTypesSlot();
 
         if (bytes(fusesTypes.fusesTypes[fuseTypeId_]).length == 0) {
             revert InvalidFuseTypeId(fuseTypeId_);
         }
 
         fuseListsByType.fusesByType[fuseTypeId_].push(fuse_);
+        emit FuseAddedToListByType(fuseTypeId_, fuse_);
     }
 
     /// @notice Adds basic information about a fuse
@@ -311,8 +325,8 @@ library FuseWhitelistLib {
             revert ZeroAddressFuseInfo();
         }
 
-        FuseListByAddress storage fuseInfoByAddress = _getFuseInfo();
-        FusesTypes storage fusesTypes = _getFusesTypes();
+        FuseListByAddress storage fuseInfoByAddress = _getFuseListByAddressSlot();
+        FusesTypes storage fusesTypes = _getFusesTypesSlot();
 
         if (bytes(fusesTypes.fusesTypes[fuseType_]).length == 0) {
             revert InvalidFuseTypeForInfo(fuseType_);
@@ -322,6 +336,8 @@ library FuseWhitelistLib {
         fuseInfoByAddress.fusesByAddress[fuseAddress_].fuseAddress = fuseAddress_;
         fuseInfoByAddress.fusesByAddress[fuseAddress_].fuseState = 0;
         fuseInfoByAddress.fusesByAddress[fuseAddress_].timestamp = uint32(block.timestamp);
+
+        emit FuseInfoAdded(fuseAddress_, fuseType_, uint32(block.timestamp));
     }
 
     /// @notice Updates the state of a fuse
@@ -331,13 +347,13 @@ library FuseWhitelistLib {
     /// - fuseState_ is invalid
     /// - fuseAddress_ is not found
     function updateFuseState(address fuseAddress_, uint16 fuseState_) internal {
-        FusesStates storage fusesStates = _getFusesStates();
+        FusesStates storage fusesStates = _getFusesStatesSlot();
 
         if (bytes(fusesStates.fusesStates[fuseState_]).length == 0) {
             revert InvalidFuseState(fuseState_);
         }
 
-        FuseInfo storage fuseInfo = _getFuseInfo().fusesByAddress[fuseAddress_];
+        FuseInfo storage fuseInfo = _getFuseListByAddressSlot().fusesByAddress[fuseAddress_];
 
         if (fuseInfo.fuseType == 0) {
             revert FuseNotFound(fuseAddress_);
@@ -355,8 +371,8 @@ library FuseWhitelistLib {
     /// - fuseAddress_ is not found
     /// - metadataId_ is invalid
     function updateFuseMetadata(address fuseAddress_, uint256 metadataId_, bytes32[] calldata metadata_) internal {
-        FuseListByAddress storage fuseInfoByAddress = _getFuseInfo();
-        MetadataTypes storage metadataTypes = _getMetadataTypes();
+        FuseListByAddress storage fuseInfoByAddress = _getFuseListByAddressSlot();
+        MetadataTypes storage metadataTypes = _getMetadataTypesSlot();
 
         if (fuseInfoByAddress.fusesByAddress[fuseAddress_].fuseAddress == address(0)) {
             revert FuseNotFound(fuseAddress_);
@@ -390,7 +406,7 @@ library FuseWhitelistLib {
     /// - fuseAddress_ is not found
     /// - metadataId_ is not found for the fuse
     function removeFuseMetadata(address fuseAddress_, uint256 metadataId_) internal {
-        FuseListByAddress storage fuseInfoByAddress = _getFuseInfo();
+        FuseListByAddress storage fuseInfoByAddress = _getFuseListByAddressSlot();
 
         if (fuseInfoByAddress.fusesByAddress[fuseAddress_].fuseAddress == address(0)) {
             revert FuseNotFound(fuseAddress_);
@@ -414,15 +430,15 @@ library FuseWhitelistLib {
     /// @notice Retrieves all fuses of a specific type
     /// @param fuseTypeId_ The ID of the fuse type to query
     /// @return fuses Array of fuse addresses
-    function getFuseByType(uint16 fuseTypeId_) internal view returns (address[] memory fuses) {
-        return _getFuseListsByType().fusesByType[fuseTypeId_];
+    function getFusesByType(uint16 fuseTypeId_) internal view returns (address[] memory fuses) {
+        return _getFuseListsByTypeSlot().fusesByType[fuseTypeId_];
     }
 
     /// @notice Retrieves detailed information about a specific fuse
     /// @param fuseAddress_ The address of the fuse to query
     /// @return fuseInfo The FuseInfo struct containing all fuse details
     function getFuseByAddress(address fuseAddress_) internal view returns (FuseInfo storage fuseInfo) {
-        return _getFuseInfo().fusesByAddress[fuseAddress_];
+        return _getFuseListByAddressSlot().fusesByAddress[fuseAddress_];
     }
 
     /// @notice Adds a fuse to its market ID list
@@ -430,7 +446,7 @@ library FuseWhitelistLib {
     /// @dev Automatically determines market ID from the fuse contract
     function addFuseToMarketId(address fuseAddress_) internal {
         uint256 marketId = IFuseCommon(fuseAddress_).MARKET_ID();
-        FuseInfoByMarketId storage fuseInfoByMarketId = _getFuseInfoByMarketId();
+        FuseInfoByMarketId storage fuseInfoByMarketId = _getFuseInfoByMarketIdSlot();
         fuseInfoByMarketId.fusesByMarketId[marketId].push(fuseAddress_);
 
         emit FuseAddedToMarketId(fuseAddress_, marketId);
@@ -440,7 +456,7 @@ library FuseWhitelistLib {
     /// @param marketId_ The market ID to query
     /// @return fuses Array of fuse addresses
     function getFusesByMarketId(uint256 marketId_) internal view returns (address[] memory fuses) {
-        return _getFuseInfoByMarketId().fusesByMarketId[marketId_];
+        return _getFuseInfoByMarketIdSlot().fusesByMarketId[marketId_];
     }
 
     /// @notice Retrieves fuses filtered by type, market ID, and state
@@ -480,7 +496,7 @@ library FuseWhitelistLib {
 
     /// @dev Internal function to get FusesTypes struct from storage
     /// @return fusesTypes The FusesTypes struct from storage
-    function _getFusesTypes() internal pure returns (FusesTypes storage fusesTypes) {
+    function _getFusesTypesSlot() private pure returns (FusesTypes storage fusesTypes) {
         assembly {
             fusesTypes.slot := FUSES_TYPES
         }
@@ -488,7 +504,7 @@ library FuseWhitelistLib {
 
     /// @dev Internal function to get FuseInfoByMarketId struct from storage
     /// @return fuseInfoByMarketId The FuseInfoByMarketId struct from storage
-    function _getFuseInfoByMarketId() private pure returns (FuseInfoByMarketId storage fuseInfoByMarketId) {
+    function _getFuseInfoByMarketIdSlot() private pure returns (FuseInfoByMarketId storage fuseInfoByMarketId) {
         assembly {
             fuseInfoByMarketId.slot := FUSE_INFO_BY_MARKET_ID
         }
@@ -496,7 +512,7 @@ library FuseWhitelistLib {
 
     /// @dev Internal function to get FusesStates struct from storage
     /// @return fusesStates The FusesStates struct from storage
-    function _getFusesStates() private pure returns (FusesStates storage fusesStates) {
+    function _getFusesStatesSlot() private pure returns (FusesStates storage fusesStates) {
         assembly {
             fusesStates.slot := FUSES_STATES
         }
@@ -504,7 +520,7 @@ library FuseWhitelistLib {
 
     /// @dev Internal function to get FuseListsByType struct from storage
     /// @return fuseListsByType The FuseListsByType struct from storage
-    function _getFuseListsByType() private pure returns (FuseListsByType storage fuseListsByType) {
+    function _getFuseListsByTypeSlot() private pure returns (FuseListsByType storage fuseListsByType) {
         assembly {
             fuseListsByType.slot := FUSE_LISTS_BY_TYPE
         }
@@ -512,7 +528,7 @@ library FuseWhitelistLib {
 
     /// @dev Internal function to get MetadataTypes struct from storage
     /// @return metadataTypes The MetadataTypes struct from storage
-    function _getMetadataTypes() private pure returns (MetadataTypes storage metadataTypes) {
+    function _getMetadataTypesSlot() private pure returns (MetadataTypes storage metadataTypes) {
         assembly {
             metadataTypes.slot := METADATA_TYPES
         }
@@ -520,7 +536,7 @@ library FuseWhitelistLib {
 
     /// @dev Internal function to get FuseInfo struct from storage
     /// @return fuseInfo The FuseInfo struct from storage
-    function _getFuseInfo() private pure returns (FuseListByAddress storage fuseInfo) {
+    function _getFuseListByAddressSlot() private pure returns (FuseListByAddress storage fuseInfo) {
         assembly {
             fuseInfo.slot := FUSE_INFO
         }
