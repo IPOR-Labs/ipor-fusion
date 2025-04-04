@@ -109,11 +109,6 @@ library FuseWhitelistLib {
     /// @param fuseTypeId The ID of the fuse type
     /// @param fuseAddress The address of the added fuse
     event FuseAddedToListByType(uint16 fuseTypeId, address fuseAddress);
-    /// @notice Emitted when fuse info is updated
-    /// @param fuseAddress The address of the updated fuse
-    /// @param fuseState The new state of the fuse
-    /// @param fuseType The type of the fuse
-    event FuseInfoUpdated(address fuseAddress, uint16 fuseState, uint16 fuseType);
     /// @notice Emitted when fuse metadata is updated
     /// @param fuseAddress The address of the updated fuse
     /// @param metadataId The ID of the updated metadata
