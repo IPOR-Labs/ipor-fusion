@@ -28,6 +28,7 @@ library IporFusionAccessManagerHelper {
         address[] updateRewardsBalanceAccounts;
         address[] withdrawManagerRequestFeeManagers;
         address[] withdrawManagerWithdrawFeeManagers;
+        address[] priceOracleMiddlewareManagers;
         address[] whitelist;
     }
 
@@ -104,6 +105,7 @@ library IporFusionAccessManagerHelper {
             updateRewardsBalanceAccounts: roles_.updateRewardsBalanceAccounts,
             withdrawManagerRequestFeeManagers: roles_.withdrawManagerRequestFeeManagers,
             withdrawManagerWithdrawFeeManagers: roles_.withdrawManagerWithdrawFeeManagers,
+            priceOracleMiddlewareManagers: roles_.priceOracleMiddlewareManagers,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(plasmaVault_),
                 accessManager: address(accessManager_),
@@ -111,7 +113,8 @@ library IporFusionAccessManagerHelper {
                 withdrawManager: withdrawManager_,
                 feeManager: FeeAccount(PlasmaVaultGovernance(address(plasmaVault_)).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(contextManager)
+                contextManager: address(contextManager),
+                priceOracleMiddlewareManager: address(0)
             })
         });
 

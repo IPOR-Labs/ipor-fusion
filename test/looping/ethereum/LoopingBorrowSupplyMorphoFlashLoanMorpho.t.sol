@@ -214,6 +214,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
             updateRewardsBalanceAccounts: new address[](0),
             withdrawManagerRequestFeeManagers: new address[](0),
             withdrawManagerWithdrawFeeManagers: new address[](0),
+            priceOracleMiddlewareManagers: new address[](0),
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
@@ -221,7 +222,8 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0)
+                contextManager: address(0),
+                priceOracleMiddlewareManager: address(0)
             })
         });
 

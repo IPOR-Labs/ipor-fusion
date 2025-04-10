@@ -88,7 +88,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 3;
     uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
-    uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 2;
+    uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 3;
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
     /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
@@ -406,6 +406,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         length += plasmaVaultAddress_.withdrawManager == address(0) ? 0 : ROLES_TO_FUNCTION_WITHDRAW_MANAGER;
         length += plasmaVaultAddress_.feeManager == address(0) ? 0 : ROLES_TO_FUNCTION_FEE_MANAGER;
         length += plasmaVaultAddress_.contextManager == address(0) ? 0 : ROLES_TO_FUNCTION_CONTEXT_MANAGER;
+        length += plasmaVaultAddress_.priceOracleMiddlewareManager == address(0)
+            ? 0
+            : ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER;
 
         rolesToFunction = new RoleToFunction[](length);
 

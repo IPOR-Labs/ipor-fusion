@@ -108,13 +108,15 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
             updateRewardsBalanceAccounts: initAddress,
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
+            priceOracleMiddlewareManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
                 withdrawManager: address(0),
                 feeManager: address(0),
-                contextManager: address(0)
+                contextManager: address(0),
+                priceOracleMiddlewareManager: address(0)
             })
         });
 

@@ -49,6 +49,7 @@ library PlasmaVaultHelper {
                 updateRewardsBalanceAccounts: initAddress_,
                 withdrawManagerRequestFeeManagers: initAddress_,
                 withdrawManagerWithdrawFeeManagers: initAddress_,
+                priceOracleMiddlewareManagers: initAddress_,
                 plasmaVaultAddress: PlasmaVaultAddress({
                     plasmaVault: plasmaVault_,
                     accessManager: accessManager_,
@@ -56,7 +57,8 @@ library PlasmaVaultHelper {
                     withdrawManager: address(0),
                     feeManager: FeeAccount(PlasmaVaultGovernance(plasmaVault_).getPerformanceFeeData().feeAccount)
                         .FEE_MANAGER(),
-                    contextManager: address(0)
+                    contextManager: address(0),
+                    priceOracleMiddlewareManager: address(0)
                 })
             });
     }

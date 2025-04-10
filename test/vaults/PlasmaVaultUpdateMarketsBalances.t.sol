@@ -186,13 +186,15 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
             updateRewardsBalanceAccounts: initAddress,
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
+            priceOracleMiddlewareManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
                 feeManager: address(0),
-                contextManager: address(0)
+                contextManager: address(0),
+                priceOracleMiddlewareManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

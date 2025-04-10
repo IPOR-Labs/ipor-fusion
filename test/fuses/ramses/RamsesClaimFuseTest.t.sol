@@ -381,6 +381,7 @@ contract RamsesClaimFuseTest is Test {
             updateRewardsBalanceAccounts: initAddress,
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
+            priceOracleMiddlewareManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
@@ -388,7 +389,8 @@ contract RamsesClaimFuseTest is Test {
                 withdrawManager: address(0),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0)
+                contextManager: address(0),
+                priceOracleMiddlewareManager: address(0)
             })
         });
 
