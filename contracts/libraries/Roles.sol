@@ -92,6 +92,10 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant UPDATE_REWARDS_BALANCE_ROLE = 1100;
 
+    /// @notice Account with this role has rights to manage the PriceOracleMiddlewareManager contract
+    /// @dev Managed by the Atomist
+    uint64 public constant PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE = 1200;
+
     /// @notice Public role, no restrictions
     uint64 public constant PUBLIC_ROLE = type(uint64).max;
 }

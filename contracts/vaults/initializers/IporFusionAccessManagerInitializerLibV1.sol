@@ -15,6 +15,7 @@ import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
 import {ContextClient} from "../../managers/context/ContextClient.sol";
 import {ContextManager} from "../../managers/context/ContextManager.sol";
+import {PriceOracleMiddlewareManager} from "../../managers/price/PriceOracleMiddlewareManager.sol";
 
 /// @notice Plasma Vault address struct.
 struct PlasmaVaultAddress {
@@ -30,6 +31,8 @@ struct PlasmaVaultAddress {
     address feeManager;
     /// @notice Address of the Context Manager.
     address contextManager;
+    /// @notice Address of the Price Oracle Middleware Manager.
+    address priceOracleMiddlewareManager;
 }
 
 /// @notice Data for the initialization of the IPOR Fusion Plasma Vault, contain accounts involved in interactions with the Plasma Vault.
@@ -67,6 +70,8 @@ struct DataForInitialization {
     address[] withdrawManagerRequestFeeManagers;
     /// @notice Array of addresses of the Withdraw Manager Withdraw Fee Managers (Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE)
     address[] withdrawManagerWithdrawFeeManagers;
+    /// @notice Array of addresses of the Price Oracle Middleware Manager (Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE)
+    address[] priceOracleMiddlewareManagers;
     /// @notice Plasma Vault address struct.
     PlasmaVaultAddress plasmaVaultAddress;
 }
@@ -83,6 +88,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 3;
     uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
+    uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 2;
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
     /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
@@ -851,6 +857,27 @@ library IporFusionAccessManagerInitializerLibV1 {
                 target: plasmaVaultAddress_.rewardsClaimManager,
                 roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
                 functionSelector: ContextClient.clearContext.selector,
+                minimalExecutionDelay: 0
+            });
+        }
+
+        if (plasmaVaultAddress_.priceOracleMiddlewareManager != address(0)) {
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.setAssetsPriceSources.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.removeAssetsPriceSources.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.setPriceOracleMiddleware.selector,
                 minimalExecutionDelay: 0
             });
         }
