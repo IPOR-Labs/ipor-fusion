@@ -82,7 +82,7 @@ struct Iterator {
 
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
-    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 18;
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 19;
     uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
@@ -299,6 +299,16 @@ library IporFusionAccessManagerInitializerLibV1 {
                 executionDelay: 0
             });
         }
+
+        if (data_.plasmaVaultAddress.priceOracleMiddlewareManager != address(0)) {
+            for (uint256 i; i < data_.priceOracleMiddlewareManagers.length; ++i) {
+                accountToRoles[index] = AccountToRole({
+                    roleId: Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
+                    account: data_.priceOracleMiddlewareManagers[i],
+                    executionDelay: 0
+                });
+            }
+        }
         return accountToRoles;
     }
 
@@ -322,7 +332,8 @@ library IporFusionAccessManagerInitializerLibV1 {
             data_.claimRewards.length +
             data_.transferRewardsManagers.length +
             data_.whitelist.length +
-            data_.configInstantWithdrawalFusesManagers.length;
+            data_.configInstantWithdrawalFusesManagers.length +
+            data_.priceOracleMiddlewareManagers.length;
     }
 
     function _prepareAdminRolesLengthPatch2(DataForInitialization memory data_) private pure returns (uint256) {
@@ -336,7 +347,8 @@ library IporFusionAccessManagerInitializerLibV1 {
             (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +
             (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 2) +
             1 + // Plasma Vault
-            (data_.plasmaVaultAddress.withdrawManager == address(0) ? 0 : 1); // Withdraw Manager
+            (data_.plasmaVaultAddress.withdrawManager == address(0) ? 0 : 1) +
+            (data_.plasmaVaultAddress.priceOracleMiddlewareManager == address(0) ? 0 : 1); // Price Oracle Middleware Manager
     }
 
     function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
@@ -389,6 +401,10 @@ library IporFusionAccessManagerInitializerLibV1 {
         adminRoles_[_next(iterator)] = AdminRole({
             roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
             adminRoleId: Roles.TECH_CONTEXT_MANAGER_ROLE
+        });
+        adminRoles_[_next(iterator)] = AdminRole({
+            roleId: Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
+            adminRoleId: Roles.ATOMIST_ROLE
         });
         return adminRoles_;
     }

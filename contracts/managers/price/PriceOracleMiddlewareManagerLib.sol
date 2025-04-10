@@ -28,8 +28,11 @@ library PriceOracleMiddlewareManagerLib {
     /// @dev Storage slot for assets price sources mapping
     /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracle.AssetsPricesSources")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ASSETS_PRICES_SOURCES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd00;
+
+    /// @dev Storage slot for price oracle middleware address
+    /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracle.PriceOracleMiddleware")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PRICES_ORACLE_MIDDLEWARE =
-        0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd32; // TODO: fix this
+        0x722e31f2085db8f1738654bffa04bc73275abca3504518d5cfb46903bed30d00;
 
     function getSourceOfAssetPrice(address asset_) internal view returns (address source) {
         return _getAssetsPricesSourcesSlot().sources[asset_];

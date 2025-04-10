@@ -10,6 +10,12 @@ import {IPriceFeed} from "../../price_oracle/price_feed/IPriceFeed.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
+/// @title Price Oracle Middleware Manager
+/// @notice Manages price sources for assets and provides price information
+/// @dev This contract is responsible for managing price feeds and providing price information to the system
+/// @dev Access control is managed through roles:
+/// @dev - PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE: Can set and remove asset price sources
+/// @dev - ATOMIST_ROLE: Can set the price oracle middleware address
 contract PriceOracleMiddlewareManager is AccessManagedUpgradeable, ContextClient, UniversalReader {
     using SafeCast for int256;
 
@@ -57,7 +63,7 @@ contract PriceOracleMiddlewareManager is AccessManagedUpgradeable, ContextClient
     /// @param assets_ Array of asset addresses
     /// @param sources_ Array of corresponding price feed sources
     /// @dev Arrays must be equal length and non-empty
-    /// @dev Only callable by authorized addresses (via restricted modifier)
+    /// @dev Only callable by addresses with PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE
     function setAssetsPriceSources(address[] calldata assets_, address[] calldata sources_) external restricted {
         uint256 assetsLength = assets_.length;
         uint256 sourcesLength = sources_.length;
@@ -77,7 +83,7 @@ contract PriceOracleMiddlewareManager is AccessManagedUpgradeable, ContextClient
     /// @notice Removes price feed sources for multiple assets
     /// @param assets_ Array of asset addresses to remove sources for
     /// @dev Array must be non-empty
-    /// @dev Only callable by authorized addresses (via restricted modifier)
+    /// @dev Only callable by addresses with PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE
     function removeAssetsPriceSources(address[] calldata assets_) external restricted {
         uint256 assetsLength = assets_.length;
 
@@ -90,18 +96,28 @@ contract PriceOracleMiddlewareManager is AccessManagedUpgradeable, ContextClient
         }
     }
 
+    /// @notice Sets the price oracle middleware address
+    /// @param priceOracleMiddleware_ The new price oracle middleware address
+    /// @dev Only callable by addresses with ATOMIST_ROLE
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external restricted {
         PriceOracleMiddlewareManagerLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 
+    /// @notice Gets the current price oracle middleware address
+    /// @return The address of the current price oracle middleware
     function getPriceOracleMiddleware() external view returns (address) {
         return PriceOracleMiddlewareManagerLib.getPriceOracleMiddleware();
     }
 
+    /// @notice Gets the price feed source address for a specific asset
+    /// @param asset_ The address of the asset
+    /// @return The address of the price feed source for the asset
     function getSourceOfAssetPrice(address asset_) external view returns (address) {
         return PriceOracleMiddlewareManagerLib.getSourceOfAssetPrice(asset_);
     }
 
+    /// @notice Gets the list of all configured assets
+    /// @return Array of configured asset addresses
     function getConfiguredAssets() external view returns (address[] memory) {
         return PriceOracleMiddlewareManagerLib.getConfiguredAssets();
     }
