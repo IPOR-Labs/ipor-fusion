@@ -72,6 +72,8 @@ struct DataForInitialization {
     address[] withdrawManagerWithdrawFeeManagers;
     /// @notice Array of addresses of the Price Oracle Middleware Manager (Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE)
     address[] priceOracleMiddlewareManagers;
+    /// @notice Array of addresses of the Pre Hooks Manager (Roles.PRE_HOOKS_MANAGER_ROLE)
+    address[] preHooksManagers;
     /// @notice Plasma Vault address struct.
     PlasmaVaultAddress plasmaVaultAddress;
 }
@@ -82,7 +84,7 @@ struct Iterator {
 
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
-    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 19;
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
     uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
@@ -226,6 +228,15 @@ library IporFusionAccessManagerInitializerLibV1 {
             ++index;
         }
 
+        for (uint256 i; i < data_.preHooksManagers.length; ++i) {
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.PRE_HOOKS_MANAGER_ROLE,
+                account: data_.preHooksManagers[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
         /// @dev Always add UPDATE_MARKETS_BALANCES_ROLE to the Plasma Vault
         accountToRoles[index] = AccountToRole({
             roleId: Roles.UPDATE_MARKETS_BALANCES_ROLE,
@@ -333,7 +344,8 @@ library IporFusionAccessManagerInitializerLibV1 {
             data_.transferRewardsManagers.length +
             data_.whitelist.length +
             data_.configInstantWithdrawalFusesManagers.length +
-            data_.priceOracleMiddlewareManagers.length;
+            data_.priceOracleMiddlewareManagers.length +
+            data_.preHooksManagers.length;
     }
 
     function _prepareAdminRolesLengthPatch2(DataForInitialization memory data_) private pure returns (uint256) {
@@ -356,6 +368,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         Iterator memory iterator;
         adminRoles_[iterator.index] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.PRE_HOOKS_MANAGER_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.ATOMIST_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.ALPHA_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.WHITELIST_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
@@ -516,7 +529,7 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.ATOMIST_ROLE,
+            roleId: Roles.PRE_HOOKS_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.setPreHookImplementations.selector,
             minimalExecutionDelay: 0
         });

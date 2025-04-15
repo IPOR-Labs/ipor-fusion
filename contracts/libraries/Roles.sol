@@ -48,6 +48,10 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant FUSE_MANAGER_ROLE = 300;
 
+    /// @notice Account with this role has rights to manage the PreHooksManager contract, add or remove pre-hooks
+    /// @dev Managed by the Atomist
+    uint64 public constant PRE_HOOKS_MANAGER_ROLE = 301;
+
     /// @notice Technical role for the FeeManager contract's performance fee operations
     /// @dev System role that can only be assigned to FeeManager contract. Set during initialization and cannot be changed afterward
     uint64 public constant TECH_PERFORMANCE_FEE_MANAGER_ROLE = 400;

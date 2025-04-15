@@ -50,6 +50,7 @@ library PlasmaVaultHelper {
                 withdrawManagerRequestFeeManagers: initAddress_,
                 withdrawManagerWithdrawFeeManagers: initAddress_,
                 priceOracleMiddlewareManagers: initAddress_,
+                preHooksManagers: initAddress_,
                 plasmaVaultAddress: PlasmaVaultAddress({
                     plasmaVault: plasmaVault_,
                     accessManager: accessManager_,

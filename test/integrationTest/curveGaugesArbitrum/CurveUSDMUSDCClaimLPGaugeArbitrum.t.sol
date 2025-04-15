@@ -608,6 +608,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
             priceOracleMiddlewareManagers: initAddress,
+            preHooksManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(instances.plasmaVault),
                 accessManager: address(instances.accessManager),
