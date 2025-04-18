@@ -16,9 +16,9 @@ import {SwapExecutorEth, SwapExecutorEthData} from "./SwapExecutorEth.sol";
 /// @param  data - Data to be executed on the targets.
 struct UniversalTokenSwapperEthData {
     address[] targets;
-    bytes[] callData;
+    bytes[] callDatas;
     uint256[] ethAmounts;
-    address[] dustToCheck;
+    address[] tokensDustToCheck;
 }
 
 /// @notice Data structure used for entering a swap operation.
@@ -44,10 +44,9 @@ struct Balances {
 contract UniversalTokenSwapperEthFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
-    event UniversalTokenSwapperFuseEnter(address version, address asset, uint256 amount);
-
     error UniversalTokenSwapperFuseUnsupportedAsset(address asset);
     error UniversalTokenSwapperFuseSlippageFail();
+    error UniversalTokenSwapperFuseInvalidExecutorAddress();
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -57,6 +56,9 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     uint256 private constant _ONE = 1e18;
 
     constructor(uint256 marketId_, address executor_, uint256 slippageReverse_) {
+        if (executor_ == address(0)) {
+            revert UniversalTokenSwapperFuseInvalidExecutorAddress();
+        }
         VERSION = address(this);
         MARKET_ID = marketId_;
         EXECUTOR = payable(executor_);
@@ -74,9 +76,9 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
         }
 
-        uint256 dexsLength = data_.data.targets.length;
+        uint256 targetsLength = data_.data.targets.length;
 
-        for (uint256 i; i < dexsLength; ++i) {
+        for (uint256 i; i < targetsLength; ++i) {
             if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.targets[i])) {
                 revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
             }
@@ -102,9 +104,9 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
                 tokenIn: data_.tokenIn,
                 tokenOut: data_.tokenOut,
                 targets: data_.data.targets,
-                callData: data_.data.callData,
+                callDatas: data_.data.callDatas,
                 ethAmounts: data_.data.ethAmounts,
-                dustToCheck: data_.data.dustToCheck
+                tokensDustToCheck: data_.data.tokensDustToCheck
             })
         );
 

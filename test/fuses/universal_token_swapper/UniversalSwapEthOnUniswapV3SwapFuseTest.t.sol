@@ -127,9 +127,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         bytes[] memory inputs = new bytes[](1);
         inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
 
-        bytes[] memory callData = new bytes[](2);
-        callData[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
-        callData[1] = abi.encodeWithSignature(
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+        callDatas[1] = abi.encodeWithSignature(
             "execute(bytes,bytes[])",
             abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
             inputs
@@ -144,9 +144,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
             amountIn: depositAmount,
             data: UniversalTokenSwapperEthData({
                 targets: targets,
-                callData: callData,
+                callDatas: callDatas,
                 ethAmounts: ethAmounts,
-                dustToCheck: dustToCheck
+                tokensDustToCheck: dustToCheck
             })
         });
 
@@ -197,9 +197,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         targets[0] = W_ETH;
         targets[1] = STETH;
 
-        bytes[] memory callData = new bytes[](2);
-        callData[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
-        callData[1] = abi.encodeWithSignature("submit(address)", address(this));
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
+        callDatas[1] = abi.encodeWithSignature("submit(address)", address(this));
 
         uint256[] memory ethAmounts = new uint256[](2);
         ethAmounts[0] = 0;
@@ -214,9 +214,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
             amountIn: 10 ether,
             data: UniversalTokenSwapperEthData({
                 targets: targets,
-                callData: callData,
+                callDatas: callDatas,
                 ethAmounts: ethAmounts,
-                dustToCheck: dustToCheck
+                tokensDustToCheck: dustToCheck
             })
         });
 
@@ -270,9 +270,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         targets[0] = W_ETH;
         targets[1] = STADER_STAKING_POOL_MANAGER;
 
-        bytes[] memory callData = new bytes[](2);
-        callData[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
-        callData[1] = abi.encodeWithSignature("deposit(address)", _plasmaVault);
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
+        callDatas[1] = abi.encodeWithSignature("deposit(address)", _plasmaVault);
 
         uint256[] memory ethAmounts = new uint256[](2);
         ethAmounts[0] = 0;
@@ -287,9 +287,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
             amountIn: 10 ether,
             data: UniversalTokenSwapperEthData({
                 targets: targets,
-                callData: callData,
+                callDatas: callDatas,
                 ethAmounts: ethAmounts,
-                dustToCheck: dustToCheck
+                tokensDustToCheck: dustToCheck
             })
         });
 
@@ -340,9 +340,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         targets[0] = W_ETH;
         targets[1] = FRAX_ETHER_MINTER_V2_ADDRESS;
 
-        bytes[] memory callData = new bytes[](2);
-        callData[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
-        callData[1] = abi.encodeWithSignature("submitAndDeposit(address)", 0xF62849F9A0B5Bf2913b396098F7c7019b51A820a);
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
+        callDatas[1] = abi.encodeWithSignature("submitAndDeposit(address)", 0xF62849F9A0B5Bf2913b396098F7c7019b51A820a);
 
         uint256[] memory ethAmounts = new uint256[](2);
         ethAmounts[0] = 0;
@@ -357,9 +357,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
             amountIn: 10 ether,
             data: UniversalTokenSwapperEthData({
                 targets: targets,
-                callData: callData,
+                callDatas: callDatas,
                 ethAmounts: ethAmounts,
-                dustToCheck: dustToCheck
+                tokensDustToCheck: dustToCheck
             })
         });
 
@@ -411,9 +411,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         targets[0] = W_ETH;
         targets[1] = ROCKET_DEPOSIT_POOL_ADDRESS;
 
-        bytes[] memory callData = new bytes[](2);
-        callData[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
-        callData[1] = abi.encodeWithSignature("deposit()");
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
+        callDatas[1] = abi.encodeWithSignature("deposit()");
 
         uint256[] memory ethAmounts = new uint256[](2);
         ethAmounts[0] = 0;
@@ -428,9 +428,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
             amountIn: 10 ether,
             data: UniversalTokenSwapperEthData({
                 targets: targets,
-                callData: callData,
+                callDatas: callDatas,
                 ethAmounts: ethAmounts,
-                dustToCheck: dustToCheck
+                tokensDustToCheck: dustToCheck
             })
         });
 
