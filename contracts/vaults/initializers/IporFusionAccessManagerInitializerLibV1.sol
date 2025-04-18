@@ -309,6 +309,7 @@ library IporFusionAccessManagerInitializerLibV1 {
                 account: data_.plasmaVaultAddress.withdrawManager,
                 executionDelay: 0
             });
+            ++index;
         }
 
         if (data_.plasmaVaultAddress.priceOracleMiddlewareManager != address(0)) {
@@ -318,6 +319,7 @@ library IporFusionAccessManagerInitializerLibV1 {
                     account: data_.priceOracleMiddlewareManagers[i],
                     executionDelay: 0
                 });
+                ++index;
             }
         }
         return accountToRoles;
