@@ -136,6 +136,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
             withdrawManagerRequestFeeManagers: new address[](0),
             withdrawManagerWithdrawFeeManagers: new address[](0),
             priceOracleMiddlewareManagers: priceOracleMiddlewareManagers,
+            preHooksManagers: new address[](0),
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,

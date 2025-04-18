@@ -209,6 +209,7 @@ contract MorphoCreditMarketTest is Test {
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
             priceOracleMiddlewareManagers: initAddress,
+            preHooksManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,

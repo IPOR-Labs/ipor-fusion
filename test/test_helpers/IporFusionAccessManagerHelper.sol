@@ -30,6 +30,7 @@ library IporFusionAccessManagerHelper {
         address[] withdrawManagerWithdrawFeeManagers;
         address[] priceOracleMiddlewareManagers;
         address[] whitelist;
+        address[] preHooksManagers;
     }
 
     /// @notice Creates default role addresses using TestAddresses
@@ -70,6 +71,8 @@ library IporFusionAccessManagerHelper {
 
         roles.whitelist = new address[](0);
 
+        roles.preHooksManagers = new address[](1);
+        roles.preHooksManagers[0] = TestAddresses.ATOMIST;
         return roles;
     }
 
@@ -106,6 +109,7 @@ library IporFusionAccessManagerHelper {
             withdrawManagerRequestFeeManagers: roles_.withdrawManagerRequestFeeManagers,
             withdrawManagerWithdrawFeeManagers: roles_.withdrawManagerWithdrawFeeManagers,
             priceOracleMiddlewareManagers: roles_.priceOracleMiddlewareManagers,
+            preHooksManagers: roles_.preHooksManagers,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(plasmaVault_),
                 accessManager: address(accessManager_),
