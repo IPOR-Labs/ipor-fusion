@@ -44,6 +44,14 @@ struct Balances {
 contract UniversalTokenSwapperEthFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
+    event UniversalTokenSwapperEthFuseEnter(
+        address version,
+        address tokenIn,
+        address tokenOut,
+        uint256 tokenInDelta,
+        uint256 tokenOutDelta
+    );
+
     error UniversalTokenSwapperFuseUnsupportedAsset(address asset);
     error UniversalTokenSwapperFuseSlippageFail();
     error UniversalTokenSwapperFuseInvalidExecutorAddress();
@@ -53,7 +61,6 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     address payable public immutable EXECUTOR;
     /// @dev slippageReverse in WAD decimals, 1e18 - slippage;
     uint256 public immutable SLIPPAGE_REVERSE;
-    uint256 private constant _ONE = 1e18;
 
     constructor(uint256 marketId_, address executor_, uint256 slippageReverse_) {
         if (executor_ == address(0)) {
@@ -62,27 +69,14 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         VERSION = address(this);
         MARKET_ID = marketId_;
         EXECUTOR = payable(executor_);
-        if (slippageReverse_ > _ONE) {
+        if (slippageReverse_ > 1e18) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
-        SLIPPAGE_REVERSE = _ONE - slippageReverse_;
+        SLIPPAGE_REVERSE = 1e18 - slippageReverse_;
     }
 
     function enter(UniversalTokenSwapperEthEnterData calldata data_) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
-            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
-        }
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
-            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
-        }
-
-        uint256 targetsLength = data_.data.targets.length;
-
-        for (uint256 i; i < targetsLength; ++i) {
-            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.targets[i])) {
-                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
-            }
-        }
+        _checkSubstrates(data_);
 
         address plasmaVault = address(this);
 
@@ -145,6 +139,39 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
 
         if (quotient < SLIPPAGE_REVERSE) {
             revert UniversalTokenSwapperFuseSlippageFail();
+        }
+
+        _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
+    }
+
+    function _emitUniversalTokenSwapperFuseEnter(
+        UniversalTokenSwapperEthEnterData calldata data_,
+        uint256 tokenInDelta,
+        uint256 tokenOutDelta
+    ) private {
+        emit UniversalTokenSwapperEthFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+    }
+
+    function _checkSubstrates(UniversalTokenSwapperEthEnterData calldata data_) private view {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
+            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
+        }
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
+            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
+        }
+
+        uint256 targetsLength = data_.data.targets.length;
+        for (uint256 i; i < targetsLength; ++i) {
+            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.targets[i])) {
+                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
+            }
+        }
+
+        uint256 tokensDustToCheckLength = data_.data.tokensDustToCheck.length;
+        for (uint256 i; i < tokensDustToCheckLength; ++i) {
+            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.tokensDustToCheck[i])) {
+                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.tokensDustToCheck[i]);
+            }
         }
     }
 }

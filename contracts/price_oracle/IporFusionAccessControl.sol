@@ -10,7 +10,11 @@ import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgrad
  */
 abstract contract IporFusionAccessControl is AccessControlEnumerableUpgradeable {
     /// @notice Role that allows adding PT token prices
+    /// @dev bytes32 - 0x7bbd1fd432aa686d83eaff2e940b6d3b56e45b893444614ca341987f14379c7d
     bytes32 public constant ADD_PT_TOKEN_PRICE = keccak256("ADD_PT_TOKEN_PRICE");
+
+    /// @notice Role that allows setting assets prices sources
+    /// @dev bytes32 - 0x58fb5220de46b94ead43a7c850443ec6b00bec9e9e2a8741abda98af086ec957
     bytes32 public constant SET_ASSETS_PRICES_SOURCES = keccak256("SET_ASSETS_PRICES_SOURCES");
 
     /// @custom:oz-upgrades-unsafe-allow constructor

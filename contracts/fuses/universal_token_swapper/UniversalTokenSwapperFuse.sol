@@ -42,8 +42,13 @@ struct Balances {
 contract UniversalTokenSwapperFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
-    event UniversalTokenSwapperFuseEnter(address version, address asset, uint256 amount);
-
+    event UniversalTokenSwapperFuseEnter(
+        address version,
+        address tokenIn,
+        address tokenOut,
+        uint256 tokenInDelta,
+        uint256 tokenOutDelta
+    );
     error UniversalTokenSwapperFuseUnsupportedAsset(address asset);
     error UniversalTokenSwapperFuseSlippageFail();
 
@@ -140,5 +145,15 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         if (quotient < SLIPPAGE_REVERSE) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
+
+        _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
+    }
+
+    function _emitUniversalTokenSwapperFuseEnter(
+        UniversalTokenSwapperEnterData calldata data_,
+        uint256 tokenInDelta,
+        uint256 tokenOutDelta
+    ) private {
+        emit UniversalTokenSwapperFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
     }
 }
