@@ -9,14 +9,16 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {SwapExecutor, SwapExecutorData} from "./SwapExecutor.sol";
+import {SwapExecutorEth, SwapExecutorEthData} from "./SwapExecutorEth.sol";
 
 /// @notice Data structure used for executing a swap operation.
 /// @param  targets - The array of addresses to which the call will be made.
 /// @param  data - Data to be executed on the targets.
-struct UniversalTokenSwapperData {
+struct UniversalTokenSwapperEthData {
     address[] targets;
-    bytes[] data;
+    bytes[] callDatas;
+    uint256[] ethAmounts;
+    address[] tokensDustToCheck;
 }
 
 /// @notice Data structure used for entering a swap operation.
@@ -24,11 +26,11 @@ struct UniversalTokenSwapperData {
 /// @param  tokenOut - The token that will be returned to the plasmaVault after the operation is completed.
 /// @param  amountIn - The amount that needs to be transferred to the swapExecutor for executing swaps.
 /// @param  data - A set of data required to execute token swaps
-struct UniversalTokenSwapperEnterData {
+struct UniversalTokenSwapperEthEnterData {
     address tokenIn;
     address tokenOut;
     uint256 amountIn;
-    UniversalTokenSwapperData data;
+    UniversalTokenSwapperEthData data;
 }
 
 struct Balances {
@@ -39,51 +41,42 @@ struct Balances {
 }
 
 /// @title This contract is designed to execute every swap operation and check the slippage on any DEX.
-contract UniversalTokenSwapperFuse is IFuseCommon {
+contract UniversalTokenSwapperEthFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
-    event UniversalTokenSwapperFuseEnter(
+    event UniversalTokenSwapperEthFuseEnter(
         address version,
         address tokenIn,
         address tokenOut,
         uint256 tokenInDelta,
         uint256 tokenOutDelta
     );
+
     error UniversalTokenSwapperFuseUnsupportedAsset(address asset);
     error UniversalTokenSwapperFuseSlippageFail();
+    error UniversalTokenSwapperFuseInvalidExecutorAddress();
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
-    address public immutable EXECUTOR;
+    address payable public immutable EXECUTOR;
     /// @dev slippageReverse in WAD decimals, 1e18 - slippage;
     uint256 public immutable SLIPPAGE_REVERSE;
-    uint256 private constant _ONE = 1e18;
 
     constructor(uint256 marketId_, address executor_, uint256 slippageReverse_) {
+        if (executor_ == address(0)) {
+            revert UniversalTokenSwapperFuseInvalidExecutorAddress();
+        }
         VERSION = address(this);
         MARKET_ID = marketId_;
-        EXECUTOR = executor_;
-        if (slippageReverse_ > _ONE) {
+        EXECUTOR = payable(executor_);
+        if (slippageReverse_ > 1e18) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
-        SLIPPAGE_REVERSE = _ONE - slippageReverse_;
+        SLIPPAGE_REVERSE = 1e18 - slippageReverse_;
     }
 
-    function enter(UniversalTokenSwapperEnterData calldata data_) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
-            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
-        }
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
-            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
-        }
-
-        uint256 dexsLength = data_.data.targets.length;
-
-        for (uint256 i; i < dexsLength; ++i) {
-            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.targets[i])) {
-                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
-            }
-        }
+    function enter(UniversalTokenSwapperEthEnterData calldata data_) external {
+        _checkSubstrates(data_);
 
         address plasmaVault = address(this);
 
@@ -100,12 +93,14 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
 
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
-        SwapExecutor(EXECUTOR).execute(
-            SwapExecutorData({
+        SwapExecutorEth(EXECUTOR).execute(
+            SwapExecutorEthData({
                 tokenIn: data_.tokenIn,
                 tokenOut: data_.tokenOut,
-                dexs: data_.data.targets,
-                dexsData: data_.data.data
+                targets: data_.data.targets,
+                callDatas: data_.data.callDatas,
+                ethAmounts: data_.data.ethAmounts,
+                tokensDustToCheck: data_.data.tokensDustToCheck
             })
         );
 
@@ -150,10 +145,33 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     }
 
     function _emitUniversalTokenSwapperFuseEnter(
-        UniversalTokenSwapperEnterData calldata data_,
+        UniversalTokenSwapperEthEnterData calldata data_,
         uint256 tokenInDelta,
         uint256 tokenOutDelta
     ) private {
-        emit UniversalTokenSwapperFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+        emit UniversalTokenSwapperEthFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+    }
+
+    function _checkSubstrates(UniversalTokenSwapperEthEnterData calldata data_) private view {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
+            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
+        }
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
+            revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
+        }
+
+        uint256 targetsLength = data_.data.targets.length;
+        for (uint256 i; i < targetsLength; ++i) {
+            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.targets[i])) {
+                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
+            }
+        }
+
+        uint256 tokensDustToCheckLength = data_.data.tokensDustToCheck.length;
+        for (uint256 i; i < tokensDustToCheckLength; ++i) {
+            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.tokensDustToCheck[i])) {
+                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.tokensDustToCheck[i]);
+            }
+        }
     }
 }
