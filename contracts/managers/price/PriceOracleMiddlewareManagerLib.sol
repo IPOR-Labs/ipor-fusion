@@ -26,8 +26,8 @@ library PriceOracleMiddlewareManagerLib {
     event AssetPriceSourceRemoved(address indexed asset);
 
     /// @dev Storage slot for assets price sources mapping
-    /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracle.AssetsPricesSources")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant ASSETS_PRICES_SOURCES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd00;
+    /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracleManager.AssetsPricesSources")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ASSETS_PRICES_SOURCES = 0xbc7b173cf41b66df25801705abbfb53e317f15848d6d19b9b70f825d127da300;
 
     /// @dev Storage slot for price oracle middleware address
     /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracle.PriceOracleMiddleware")) - 1)) & ~bytes32(uint256(0xff))

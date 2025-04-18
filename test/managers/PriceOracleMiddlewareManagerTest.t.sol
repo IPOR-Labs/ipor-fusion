@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
@@ -30,6 +30,9 @@ contract PriceOracleMiddlewareManagerTest is Test {
     address private constant _TRANSFER_REWARDS_MANAGER = address(8888888);
     address private constant _CONFIG_INSTANT_WITHDRAWAL_FUSES_MANAGER = address(9999999);
     address private constant _PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS = address(10101010);
+    address private constant _PRICE_ORACLE_MIDDLEWARE_MANAGER2_ADDRESS = address(10101012);
+
+    address private constant _MOCK_WITHDRAW_MANAGER = address(1234567890);
 
     address private constant _USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
@@ -115,8 +118,9 @@ contract PriceOracleMiddlewareManagerTest is Test {
         address[] memory configInstantWithdrawalFusesManagers = new address[](1);
         configInstantWithdrawalFusesManagers[0] = _CONFIG_INSTANT_WITHDRAWAL_FUSES_MANAGER;
 
-        address[] memory priceOracleMiddlewareManagers = new address[](1);
+        address[] memory priceOracleMiddlewareManagers = new address[](2);
         priceOracleMiddlewareManagers[0] = _PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS;
+        priceOracleMiddlewareManagers[1] = _PRICE_ORACLE_MIDDLEWARE_MANAGER2_ADDRESS;
 
         DataForInitialization memory data = DataForInitialization({
             isPublic: true,
@@ -141,7 +145,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                withdrawManager: _MOCK_WITHDRAW_MANAGER,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
                 contextManager: address(0),
@@ -157,8 +161,26 @@ contract PriceOracleMiddlewareManagerTest is Test {
         vm.stopPrank();
     }
 
-    function testT() public {
-        assertTrue(true);
+    function testIfRolesAreSet() public {
+        (bool hasRolePriceOracleMiddlewareManager, uint32 delayPriceOracleMiddlewareManager) = IporFusionAccessManager(
+            _accessManager
+        ).hasRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, _PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        assertTrue(hasRolePriceOracleMiddlewareManager);
+
+        (
+            bool hasRolePriceOracleMiddlewareManager2,
+            uint32 delayPriceOracleMiddlewareManager2
+        ) = IporFusionAccessManager(_accessManager).hasRole(
+                Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
+                _PRICE_ORACLE_MIDDLEWARE_MANAGER2_ADDRESS
+            );
+        assertTrue(hasRolePriceOracleMiddlewareManager2);
+
+        (bool hasRoleWithdrawManager, uint32 delayWithdrawManager) = IporFusionAccessManager(_accessManager).hasRole(
+            Roles.TECH_WITHDRAW_MANAGER_ROLE,
+            _MOCK_WITHDRAW_MANAGER
+        );
+        assertTrue(hasRoleWithdrawManager);
     }
 
     function testSetAssetsPriceSources_Success() public {
