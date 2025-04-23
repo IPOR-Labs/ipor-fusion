@@ -162,6 +162,47 @@ library FuseStorageLib {
      */
     bytes32 private constant RAMSES_V2_TOKEN_IDS = 0x1a3831a406f27d4d5d820158b29ce95a1e8e840bf416921917aa388e2461b700;
 
+    /**
+     * @dev Storage slot for managing Liquity V2 Troves position token IDs in the Plasma Vault
+     * @notice Tracks and manages Liquity V2 Troves positions held by the vault
+     *
+     * Calculation:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.LiquityV2TroveIds")) - 1)) & ~bytes32(uint256(0xff))
+     *
+     * Purpose:
+     * - Tracks all Liquity V2 Troves positions owned by the vault
+     * - Enables efficient position management and lookup
+     * - Supports concentrated liquidity position tracking
+     * - Mirrors Uniswap V3-style position management for Arbitrum
+     *
+     * Storage Layout:
+     * - Points to LiquityV2TroveIds struct containing:
+     *   - tokenIds: uint256[] array of Liquity V2 Troves position IDs
+     *   - indexes: mapping(uint256 tokenId => uint256 index) for position lookup
+     *     - Maps each token ID to its index in the tokenIds array
+     *     - Zero index indicates non-existent position
+     *
+     * Usage Pattern:
+     * - Updated when creating new Liquity V2 positions
+     * - Referenced during position management
+     * - Used for position value calculations
+     * - Maintains efficient position tracking on Arbitrum
+     *
+     * Integration Points:
+     * - Liquity V2 position management fuses
+     * - Position value calculation systems
+     * - Balance tracking mechanisms
+     * - Arbitrum-specific liquidity operations
+     *
+     * Security Considerations:
+     * - Must accurately track all vault positions
+     * - Critical for Arbitrum liquidity management
+     * - Requires careful index management
+     * - Essential for position ownership verification
+     * - Parallel structure to Uniswap V3 position tracking
+     */
+    bytes32 private constant LIQUITY_V2_TROVE_IDS = 0x83f911297b7ca35ab26cc0b11f217e43a70624ab763b8e1f57b0f2df530e2e00;
+
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
         /// @dev fuse address => If index = 0 - is not granted, otherwise - granted
@@ -186,6 +227,12 @@ library FuseStorageLib {
         mapping(uint256 tokenId => uint256 index) indexes;
     }
 
+    /// @custom:storage-location erc7201:io.ipor.LiquityV2TroveIds
+    struct LiquityV2TroveIds {
+        mapping(address => uint256[]) troveIdsByAsset;
+        mapping(address => mapping(uint256 troveId => uint256 index)) indexesByAsset;
+    }
+
     /// @notice Gets the fuses storage pointer
     function getFuses() internal pure returns (Fuses storage fuses) {
         assembly {
@@ -206,10 +253,18 @@ library FuseStorageLib {
             uniswapV3TokenIds.slot := UNISWAP_V3_TOKEN_IDS
         }
     }
+
     /// @notice Gets the UniswapV3TokenIds storage pointer
     function getRamsesV2TokenIds() internal pure returns (RamsesV2TokenIds storage ramsesV2TokenIds) {
         assembly {
             ramsesV2TokenIds.slot := RAMSES_V2_TOKEN_IDS
+        }
+    }
+
+    /// @notice Gets the LiquityV2TroveIds storage pointer
+    function getLiquityV2TroveIds() internal pure returns (LiquityV2TroveIds storage liquityV2TroveIds) {
+        assembly {
+            liquityV2TroveIds.slot := LIQUITY_V2_TROVE_IDS
         }
     }
 }
