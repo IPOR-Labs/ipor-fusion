@@ -122,7 +122,8 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE &&
                 initData.adminRoles[i].roleId != Roles.TECH_CONTEXT_MANAGER_ROLE &&
                 initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE &&
-                initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE
+                initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE &&
+                initData.adminRoles[i].roleId != Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE
             ) {
                 assertEq(
                     accessManager.getRoleGuardian(initData.adminRoles[i].roleId),
@@ -188,7 +189,8 @@ contract InitializeAccessManagerTest is Test {
                 initData.adminRoles[i].roleId != Roles.IPOR_DAO_ROLE &&
                 initData.adminRoles[i].roleId != Roles.TECH_CONTEXT_MANAGER_ROLE &&
                 initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE &&
-                initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE
+                initData.adminRoles[i].roleId != Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE &&
+                initData.adminRoles[i].roleId != Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE
             ) {
                 assertEq(
                     accessManager.getRoleGuardian(initData.adminRoles[i].roleId),

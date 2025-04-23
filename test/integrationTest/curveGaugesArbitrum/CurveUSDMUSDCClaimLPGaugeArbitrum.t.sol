@@ -607,13 +607,16 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             updateRewardsBalanceAccounts: initAddress,
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
+            priceOracleMiddlewareManagers: initAddress,
+            preHooksManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(instances.plasmaVault),
                 accessManager: address(instances.accessManager),
                 rewardsClaimManager: address(instances.rewardsClaimManager),
                 withdrawManager: address(0),
                 feeManager: address(0),
-                contextManager: address(0)
+                contextManager: address(0),
+                priceOracleMiddlewareManager: address(0)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

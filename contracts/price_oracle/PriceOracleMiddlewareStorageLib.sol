@@ -6,7 +6,7 @@ pragma solidity 0.8.26;
 /// @dev Implements ERC-7201 namespaced storage pattern for price feed mappings
 library PriceOracleMiddlewareStorageLib {
     /// @dev Storage slot for assets price sources mapping
-    /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracle.AssetsPricesSources")) - 1)) & ~bytes32(uint256(0xff))
+    /// @dev Do not change this value !!!
     bytes32 private constant ASSETS_PRICES_SOURCES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd00;
 
     /// @dev Storage structure for assets price sources following ERC-7201 pattern

@@ -16,6 +16,7 @@ import {IporFusionAccessManagerHelper} from "../test_helpers/IporFusionAccessMan
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {UpdateBalancesPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/UpdateBalancesPreHook.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
+import {PreHookInfo, PreHooksInfoReader} from "../../contracts/readers/PreHooksInfoReader.sol";
 
 contract PreHooksTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
@@ -91,7 +92,7 @@ contract PreHooksTest is Test {
         _updateBalancesPreHook = new UpdateBalancesPreHook();
     }
 
-    function stestShouldAddPreHook() public {
+    function testShouldAddPreHook() public {
         // given
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = PlasmaVault.deposit.selector;
@@ -117,7 +118,7 @@ contract PreHooksTest is Test {
         );
     }
 
-    function stestShouldRemovePreHook() public {
+    function testShouldRemovePreHook() public {
         // given
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = PlasmaVault.deposit.selector;
@@ -155,7 +156,7 @@ contract PreHooksTest is Test {
         );
     }
 
-    function stestShouldAddSamePreHookForMultipleMethods() public {
+    function testShouldAddSamePreHookForMultipleMethods() public {
         // given
         bytes4[] memory selectors = new bytes4[](2);
         selectors[0] = PlasmaVault.deposit.selector;
@@ -256,7 +257,7 @@ contract PreHooksTest is Test {
         );
     }
 
-    function stestShouldUpdateTotalAssetsAfterDirectTransfer() public {
+    function testShouldUpdateTotalAssetsAfterDirectTransfer() public {
         // given
         uint256 initialTotalAssets = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
         uint256 additionalDaiAmount = 10 ether;
@@ -276,7 +277,9 @@ contract PreHooksTest is Test {
         // when - update balances
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
+        vm.startPrank(TestAddresses.ATOMIST);
         _plasmaVault.updateMarketsBalances(marketIds);
+        vm.stopPrank();
 
         // then
         assertGt(
@@ -286,7 +289,7 @@ contract PreHooksTest is Test {
         );
     }
 
-    function stestShouldUpdateTotalAssetsAfterDirectTransferAndDeposit() public {
+    function testShouldUpdateTotalAssetsAfterDirectTransferAndDeposit() public {
         // given
         uint256 initialTotalAssets = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
         uint256 additionalDaiAmount = 10 ether;
@@ -313,7 +316,10 @@ contract PreHooksTest is Test {
         // update balances after deposit
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
+
+        vm.startPrank(TestAddresses.ATOMIST);
         _plasmaVault.updateMarketsBalances(marketIds);
+        vm.stopPrank();
 
         // then
         uint256 afterDepositAssets = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
@@ -324,14 +330,15 @@ contract PreHooksTest is Test {
         );
 
         // when - update balances again to include direct transfer
+        vm.startPrank(TestAddresses.ATOMIST);
         _plasmaVault.updateMarketsBalances(marketIds);
-
+        vm.stopPrank();
         // then
         uint256 finalTotalAssets = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
         assertEq(finalTotalAssets, afterDepositAssets, "Total assets should not change after second balance update");
     }
 
-    function stestShouldUpdateTotalAssetsWithPreHook() public {
+    function testShouldUpdateTotalAssetsWithPreHook() public {
         // given - add pre-hook for deposit
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = PlasmaVault.deposit.selector;
@@ -382,5 +389,52 @@ contract PreHooksTest is Test {
             initialTotalAssets,
             "Total assets should increase after deposit and pre-hook execution"
         );
+    }
+
+    function testShouldUpdatePreHookImplementationAndSubstrates() public {
+        // given - add initial pre-hook with DAI substrate
+        PreHooksInfoReader preHookReader = new PreHooksInfoReader();
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = PlasmaVault.deposit.selector;
+
+        address[] memory preHooks = new address[](1);
+        preHooks[0] = address(_updateBalancesPreHook);
+
+        bytes32[][] memory substrates = new bytes32[][](1);
+        substrates[0] = new bytes32[](1);
+        substrates[0][0] = bytes32(uint256(uint160(_DAI)));
+
+        vm.startPrank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(_plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
+        vm.stopPrank();
+
+        // verify initial setup
+        PreHookInfo[] memory preHooksInfo = preHookReader.getPreHooksInfo(address(_plasmaVault));
+        assertEq(preHooksInfo.length, 1);
+        assertEq(preHooksInfo[0].selector, PlasmaVault.deposit.selector);
+        assertEq(preHooksInfo[0].implementation, address(_updateBalancesPreHook));
+        assertEq(preHooksInfo[0].substrates.length, 1);
+        assertEq(preHooksInfo[0].substrates[0], bytes32(uint256(uint160(_DAI))));
+
+        // when - update pre-hook with new implementation and USDC substrate
+        address newPreHook = address(0x123); // Mock new pre-hook address
+        address[] memory newPreHooks = new address[](1);
+        newPreHooks[0] = newPreHook;
+
+        bytes32[][] memory newSubstrates = new bytes32[][](1);
+        newSubstrates[0] = new bytes32[](1);
+        newSubstrates[0][0] = bytes32(uint256(uint160(_USDC)));
+
+        vm.startPrank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(_plasmaVault)).setPreHookImplementations(selectors, newPreHooks, newSubstrates);
+        vm.stopPrank();
+
+        // then - verify changes
+        PreHookInfo[] memory updatedPreHooksInfo = preHookReader.getPreHooksInfo(address(_plasmaVault));
+        assertEq(updatedPreHooksInfo.length, 1);
+        assertEq(updatedPreHooksInfo[0].selector, PlasmaVault.deposit.selector);
+        assertEq(updatedPreHooksInfo[0].implementation, newPreHook);
+        assertEq(updatedPreHooksInfo[0].substrates.length, 1);
+        assertEq(updatedPreHooksInfo[0].substrates[0], bytes32(uint256(uint160(_USDC))));
     }
 }

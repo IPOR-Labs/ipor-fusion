@@ -28,7 +28,9 @@ library IporFusionAccessManagerHelper {
         address[] updateRewardsBalanceAccounts;
         address[] withdrawManagerRequestFeeManagers;
         address[] withdrawManagerWithdrawFeeManagers;
+        address[] priceOracleMiddlewareManagers;
         address[] whitelist;
+        address[] preHooksManagers;
     }
 
     /// @notice Creates default role addresses using TestAddresses
@@ -64,8 +66,13 @@ library IporFusionAccessManagerHelper {
         roles.configInstantWithdrawalFusesManagers = new address[](1);
         roles.configInstantWithdrawalFusesManagers[0] = TestAddresses.CONFIG_INSTANT_WITHDRAWAL_FUSES_MANAGER;
 
+        roles.updateMarketsBalancesAccounts = new address[](1);
+        roles.updateMarketsBalancesAccounts[0] = TestAddresses.ATOMIST;
+
         roles.whitelist = new address[](0);
 
+        roles.preHooksManagers = new address[](1);
+        roles.preHooksManagers[0] = TestAddresses.ATOMIST;
         return roles;
     }
 
@@ -101,6 +108,8 @@ library IporFusionAccessManagerHelper {
             updateRewardsBalanceAccounts: roles_.updateRewardsBalanceAccounts,
             withdrawManagerRequestFeeManagers: roles_.withdrawManagerRequestFeeManagers,
             withdrawManagerWithdrawFeeManagers: roles_.withdrawManagerWithdrawFeeManagers,
+            priceOracleMiddlewareManagers: roles_.priceOracleMiddlewareManagers,
+            preHooksManagers: roles_.preHooksManagers,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(plasmaVault_),
                 accessManager: address(accessManager_),
@@ -108,7 +117,8 @@ library IporFusionAccessManagerHelper {
                 withdrawManager: withdrawManager_,
                 feeManager: FeeAccount(PlasmaVaultGovernance(address(plasmaVault_)).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(contextManager)
+                contextManager: address(contextManager),
+                priceOracleMiddlewareManager: address(0)
             })
         });
 
