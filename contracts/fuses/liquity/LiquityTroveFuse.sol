@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
@@ -11,104 +12,97 @@ import "./LiquityConstants.sol";
 
 struct LiquityTroveEnterData {
     address asset;
-    address _owner;
-    uint256 _ownerIndex;
     uint256 _collAmount;
     uint256 _boldAmount;
     uint256 _upperHint;
     uint256 _lowerHint;
     uint256 _annualInterestRate;
     uint256 _maxUpfrontFee;
-    address _addManager;
-    address _removeManager;
-    address _receiver;
 }
 
 struct LiquityTroveExitData {
     address asset;
-    uint256[] _troveIds;
+    uint256[] ownerIndexes;
 }
 
 contract LiquityTroveFuse is IFuseCommon {
+    using SafeERC20 for ERC20;
+
     uint256 public immutable MARKET_ID;
     address public immutable VERSION;
 
-    mapping(address => address) public assetToRegistry;
-
-    event LiquityTroveFuseEnter(address version, address asset, address owner, uint256 troveId);
+    event LiquityTroveFuseEnter(address version, address asset, uint256 ownerIndex, uint256 troveId);
     event LiquityTroveFuseExit(address version, address asset, uint256 troveId);
 
     constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
-        assetToRegistry[
+        FuseStorageLib.LiquityV2AssetToRegistry storage mappingStore = FuseStorageLib.getLiquityV2AssetToRegistry();
+
+        mappingStore.registryByAsset[
             address(IAddressesRegistry(LiquityConstants.LIQUITY_ETH_ADDRESSES_REGISTRY).collToken())
         ] = LiquityConstants.LIQUITY_ETH_ADDRESSES_REGISTRY;
-        assetToRegistry[
+        mappingStore.registryByAsset[
             address(IAddressesRegistry(LiquityConstants.LIQUITY_WSTETH_ADDRESSES_REGISTRY).collToken())
         ] = LiquityConstants.LIQUITY_WSTETH_ADDRESSES_REGISTRY;
-        assetToRegistry[
+        mappingStore.registryByAsset[
             address(IAddressesRegistry(LiquityConstants.LIQUITY_RETH_ADDRESSES_REGISTRY).collToken())
         ] = LiquityConstants.LIQUITY_RETH_ADDRESSES_REGISTRY;
     }
 
-    function enter(LiquityTroveEnterData memory data_) external {
-        address registry = assetToRegistry[data_.asset];
+    function enter(LiquityTroveEnterData calldata data_) external {
+        address registry = FuseStorageLib.getLiquityV2AssetToRegistry().registryByAsset[data_.asset];
         if (registry == address(0)) {
             revert Errors.WrongAddress();
         }
-
+        FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
+        uint256 newIndex = troveData.lastIndex++;
         IBorrowerOperations borrowerOperations = IBorrowerOperations(IAddressesRegistry(registry).borrowerOperations());
 
-        IERC20(data_.asset).approve(address(borrowerOperations), data_._collAmount);
+        ERC20(data_.asset).forceApprove(address(borrowerOperations), data_._collAmount);
 
+        // it's better to compute upperHint and lowerHint off-chain, since calculating on-chain is expensive
         uint256 troveId = borrowerOperations.openTrove(
-            data_._owner,
-            data_._ownerIndex,
+            address(this),
+            newIndex,
             data_._collAmount,
             data_._boldAmount,
             data_._upperHint,
             data_._lowerHint,
             data_._annualInterestRate,
             data_._maxUpfrontFee,
-            data_._addManager,
-            data_._removeManager,
-            data_._receiver
+            address(0), // anybody can add collateral and pay debt
+            address(this), // only this contract can withdraw collateral and borrow
+            address(this) // this contract is the recipient of the trove funds
         );
 
-        IERC20(data_.asset).approve(address(borrowerOperations), 0);
+        ERC20(data_.asset).forceApprove(address(borrowerOperations), 0);
 
-        FuseStorageLib.LiquityV2TroveIds storage troveIds = FuseStorageLib.getLiquityV2TroveIds();
-        troveIds.indexesByAsset[data_.asset][troveId] = troveIds.troveIdsByAsset[data_.asset].length;
-        troveIds.troveIdsByAsset[data_.asset].push(troveId);
+        troveData.idByOwnerIndex[data_.asset][newIndex] = troveId;
 
-        emit LiquityTroveFuseEnter(VERSION, data_.asset, data_._owner, troveId);
+        emit LiquityTroveFuseEnter(VERSION, data_.asset, newIndex, troveId);
     }
 
     function exit(LiquityTroveExitData calldata data_) external {
-        address registry = assetToRegistry[data_.asset];
+        address registry = FuseStorageLib.getLiquityV2AssetToRegistry().registryByAsset[data_.asset];
         if (registry == address(0)) {
             revert Errors.WrongAddress();
         }
 
-        FuseStorageLib.LiquityV2TroveIds storage troveIds = FuseStorageLib.getLiquityV2TroveIds();
-
-        uint256 len = troveIds.troveIdsByAsset[data_.asset].length;
-        uint256 troveIndex;
-
         IBorrowerOperations borrowerOperations = IBorrowerOperations(IAddressesRegistry(registry).borrowerOperations());
+        FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
+        uint256 len = data_.ownerIndexes.length;
 
         for (uint256 i; i < len; i++) {
-            troveIndex = troveIds.indexesByAsset[data_.asset][data_._troveIds[i]];
-            borrowerOperations.closeTrove(data_._troveIds[i]);
+            uint256 troveId = troveData.idByOwnerIndex[data_.asset][data_.ownerIndexes[i]];
+            if (troveId == 0) continue;
 
-            troveIndex = troveIds.indexesByAsset[data_.asset][data_._troveIds[i]];
-            if (troveIndex != len - 1) {
-                troveIds.troveIdsByAsset[data_.asset][troveIndex] = troveIds.troveIdsByAsset[data_.asset][len - 1];
-            }
-            troveIds.troveIdsByAsset[data_.asset].pop();
+            ERC20(LiquityConstants.LIQUITY_BOLD).forceApprove(address(borrowerOperations), type(uint256).max);
+            borrowerOperations.closeTrove(troveId);
+            ERC20(LiquityConstants.LIQUITY_BOLD).forceApprove(address(borrowerOperations), 0);
+            delete troveData.idByOwnerIndex[data_.asset][data_.ownerIndexes[i]];
 
-            emit LiquityTroveFuseExit(VERSION, data_.asset, data_._troveIds[i]);
+            emit LiquityTroveFuseExit(VERSION, data_.asset, troveId);
         }
     }
 }
