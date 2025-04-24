@@ -16,7 +16,7 @@ contract LiquityBalanceFuseTest is Test {
     function testLiquityBalanceShouldReturnZero() external view {
         uint256 balance = liquityBalanceFuse.balanceOf();
 
-        bytes32 res = keccak256(abi.encode(uint256(keccak256("io.ipor.LiquityV2TroveIds")) - 1)) &
+        bytes32 res = keccak256(abi.encode(uint256(keccak256("io.ipor.LiquityV2OwnerIndexes")) - 1)) &
             ~bytes32(uint256(0xff));
 
         console.logBytes32(res);
