@@ -752,7 +752,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             usersToRoles.alphas = alphas;
         }
         accessManager = IporFusionAccessManager(RoleLib.createAccessManager(usersToRoles, 0, vm));
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
     }
 
     function _createClaimRewardsManager() private {
@@ -816,6 +815,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     }
 
     function _setupPlasmaVault() private {
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
         vm.startPrank(admin);
         PlasmaVaultGovernance(address(plasmaVault)).setRewardsClaimManagerAddress(address(rewardsClaimManager));
 
@@ -828,8 +828,10 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         uint256[][] memory dependencyMarkets = new uint256[][](1);
         dependencyMarkets[0] = dependencies;
 
-        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
+        vm.stopPrank();
 
+        vm.startPrank(atomist);
+        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
         vm.stopPrank();
     }
 

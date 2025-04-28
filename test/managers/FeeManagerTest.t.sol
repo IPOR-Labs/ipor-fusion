@@ -269,6 +269,9 @@ contract FeeManagerTest is Test {
         //given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
 
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+        feeManager.initialize();
+
         vm.startPrank(_USER);
         ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
         AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
@@ -288,7 +291,7 @@ contract FeeManagerTest is Test {
         uint256 balanceAfter = PlasmaVault(_plasmaVault).balanceOf(performanceAccount);
 
         assertEq(balanceBefore, 0, "balanceBefore should be 0");
-        assertEq(balanceAfter, 68199104783, "balanceAfter should be 68199104783");
+        assertEq(balanceAfter, 88687800000, "balanceAfter should be 88687800000");
     }
 
     function testShouldHarvestPerformance() external {
@@ -321,14 +324,14 @@ contract FeeManagerTest is Test {
         uint256 balanceFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
         uint256 balanceDaoFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
-        assertEq(balancePerformanceAccountBefore, 68199104783, "balancePerformanceAccountBefore should be 68199104783");
+        assertEq(balancePerformanceAccountBefore, 88687800000, "balancePerformanceAccountBefore should be 88687800000");
         assertApproxEqAbs(balancePerformanceAccountAfter, 0, 100, "balancePerformanceAccountAfter should be 0");
 
         assertEq(balanceFeeRecipientBefore, 0, "balanceFeeRecipientBefore should be 0");
-        assertEq(balanceFeeRecipientAfter, 34099552391, "balanceFeeRecipientAfter should be 34099552391");
+        assertEq(balanceFeeRecipientAfter, 44343900000, "balanceFeeRecipientAfter should be 44343900000");
 
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
-        assertEq(balanceDaoFeeRecipientAfter, 34099552391, "balanceDaoFeeRecipientAfter should be 34099552391");
+        assertEq(balanceDaoFeeRecipientAfter, 44343900000, "balanceDaoFeeRecipientAfter should be 44343900000");
     }
 
     function testShouldHarvestPerformanceWhenAtomistSetZero() external {
@@ -369,9 +372,9 @@ contract FeeManagerTest is Test {
 
         assertApproxEqAbs(
             balancePerformanceAccountBefore,
-            34099552356,
+            44343899997,
             100,
-            "balancePerformanceAccountBefore should be 34099552391"
+            "balancePerformanceAccountBefore should be 44343899997"
         );
         assertEq(balancePerformanceAccountAfter, 0, "balancePerformanceAccountAfter should be 0");
 
@@ -381,7 +384,7 @@ contract FeeManagerTest is Test {
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
         assertApproxEqAbs(
             balanceDaoFeeRecipientAfter,
-            34099552391,
+            44343899997,
             100,
             "balanceDaoFeeRecipientAfter should be 34099552392"
         );
@@ -398,6 +401,8 @@ contract FeeManagerTest is Test {
         vm.expectRevert(error);
         feeManager.harvestManagementFee();
     }
+
+    // 14434391744 * 1443439
 
     function testShouldNotHarvestPerformanceFeeWhenNotInitialize() external {
         // given
@@ -679,9 +684,6 @@ contract FeeManagerTest is Test {
         AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
         vm.stopPrank();
 
-        // Wait for a year and update market balances
-        vm.warp(block.timestamp + 356 days);
-
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.AAVE_V3;
         PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
@@ -706,19 +708,19 @@ contract FeeManagerTest is Test {
         // Updated expected values based on actual implementation
         assertApproxEqAbs(
             balanceRecipient1After,
-            34099552380, // ~9% performance + 0.85% management (after DAO fee)
+            49999900001, // ~9% performance + 0.85% management (after DAO fee)
             100,
             "recipient1 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceRecipient2After,
-            17049776190, // ~4.5% performance + 0.425% management (after DAO fee)
+            24999950000, // ~4.5% performance + 0.425% management (after DAO fee)
             100,
             "recipient2 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceDaoRecipientAfter,
-            34099552380, // Equal to recipient1 (matches actual implementation)
+            49999900001, // Equal to recipient1 (matches actual implementation)
             100,
             "dao should receive correct fee share"
         );
@@ -764,9 +766,6 @@ contract FeeManagerTest is Test {
         AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
         vm.stopPrank();
 
-        // Wait for a year and update market balances
-        vm.warp(block.timestamp + 356 days);
-
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.AAVE_V3;
         PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
@@ -788,13 +787,7 @@ contract FeeManagerTest is Test {
         assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
         assertEq(balanceDaoRecipientBefore, 0, "dao recipient balance before should be 0");
 
-        // Recipient1 only gets performance fee (10%, no management fee)
-        assertApproxEqAbs(
-            balanceRecipient1After,
-            34099552375, // Only 10% performance fee
-            100,
-            "recipient1 should receive only performance fee"
-        );
+        assertApproxEqAbs(balanceRecipient1After, 49999900001, 100, "recipient1 should receive only performance fee");
 
         assertEq(
             balanceRecipient2After,
@@ -803,11 +796,6 @@ contract FeeManagerTest is Test {
         );
 
         // DAO gets both fees
-        assertApproxEqAbs(
-            balanceDaoRecipientAfter,
-            34099552375, // Matches recipient1's share
-            100,
-            "dao should receive correct fee share"
-        );
+        assertApproxEqAbs(balanceDaoRecipientAfter, 49999900001, 100, "dao should receive correct fee share");
     }
 }

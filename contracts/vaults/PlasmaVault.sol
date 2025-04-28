@@ -28,6 +28,8 @@ import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {FeeManagerData, FeeManagerFactory, FeeConfig, FeeConfig} from "../managers/fee/FeeManagerFactory.sol";
+import {FeeManager} from "../managers/fee/FeeManager.sol";
+import {FeeAccount} from "../managers/fee/FeeManager.sol";
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
@@ -223,6 +225,7 @@ contract PlasmaVault is
 {
     using Address for address;
     using SafeCast for int256;
+    using SafeCast for uint256;
     using Math for uint256;
     /// @notice ISO-4217 currency code for USD represented as address
     /// @dev 0x348 (840 in decimal) is the ISO-4217 numeric code for USD
@@ -1258,16 +1261,24 @@ contract PlasmaVault is
 
         PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
 
-        uint256 fee = Math.mulDiv(
-            totalAssetsAfter - totalAssetsBefore_,
-            feeData.feeInPercentage,
-            FEE_PERCENTAGE_DECIMALS_MULTIPLIER
-        );
+        uint256 exchangeRate = convertToAssets(10 ** uint256(decimals()));
+
+        (address recipient, uint256 feeShares) = FeeManager(FeeAccount(feeData.feeAccount).FEE_MANAGER())
+            .calculatePerformanceFee(
+                exchangeRate.toUint128(),
+                totalSupply(),
+                feeData.feeInPercentage,
+                decimals() - _decimalsOffset()
+            );
+
+        if (recipient == address(0) || feeShares == 0) {
+            return;
+        }
 
         /// @dev total supply cap validation is disabled for fee minting
         PlasmaVaultLib.setTotalSupplyCapValidation(1);
 
-        _mint(feeData.feeAccount, convertToShares(fee));
+        _mint(recipient, feeShares);
 
         /// @dev total supply cap validation is enabled when fee minting is finished
         PlasmaVaultLib.setTotalSupplyCapValidation(0);

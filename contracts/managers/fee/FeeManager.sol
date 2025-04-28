@@ -9,6 +9,10 @@ import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {RecipientFee} from "./FeeManagerFactory.sol";
 import {FeeManagerStorageLib, FeeRecipientDataStorage} from "./FeeManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
+import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
+import {HighWaterMarkPerformanceFeeStorage} from "./FeeManagerStorageLib.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /// @notice Struct containing initialization data for the fee manager
 /// @param initialAuthority Address of the initial authority
@@ -48,6 +52,7 @@ enum FeeType {
 /// Total management fee percentage is the sum of all recipients management fees + DAO management fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
 /// @dev Inherits from AccessManaged for access control.
 contract FeeManager is AccessManagedUpgradeable, ContextClient {
+    using SafeCast for uint256;
     event HarvestManagementFee(address receiver, uint256 amount);
     event HarvestPerformanceFee(address receiver, uint256 amount);
     event PerformanceFeeUpdated(uint256 totalFee, address[] recipients, uint256[] fees);
@@ -64,6 +69,12 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
     /// @notice Thrown when trying to set an invalid authority
     error InvalidAuthority();
+
+    /// @notice Thrown when trying to set an invalid high water mark
+    error InvalidHighWaterMark();
+
+    /// @notice Thrown when trying to call a function from a non-plasma vault contract
+    error NotPlasmaVault();
 
     uint64 private constant INITIALIZED_VERSION = 10;
 
@@ -94,7 +105,6 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
         super.__AccessManaged_init_unchained(initData_.initialAuthority);
         PLASMA_VAULT = initData_.plasmaVault;
-
         PERFORMANCE_FEE_ACCOUNT = address(new FeeAccount(address(this)));
         MANAGEMENT_FEE_ACCOUNT = address(new FeeAccount(address(this)));
 
@@ -152,6 +162,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     function initialize() external reinitializer(INITIALIZED_VERSION) {
         FeeAccount(PERFORMANCE_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
         FeeAccount(MANAGEMENT_FEE_ACCOUNT).approveMaxForFeeManager(PLASMA_VAULT);
+        _updateHighWaterMarkPerformanceFee();
     }
 
     /// @notice Harvests both management and performance fees
@@ -432,6 +443,67 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @custom:access Public view
     function getIporDaoFeeRecipientAddress() external view returns (address) {
         return FeeManagerStorageLib.getIporDaoFeeRecipientAddress();
+    }
+
+    function _updateHighWaterMarkPerformanceFee() private {
+        uint256 highWaterMark = IERC4626(PLASMA_VAULT).convertToAssets(
+            10 ** uint256(IERC20Metadata(PLASMA_VAULT).decimals())
+        );
+        if (highWaterMark > 0) {
+            FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(highWaterMark.toUint128());
+        } else {
+            revert InvalidHighWaterMark();
+        }
+    }
+
+    function updateHighWaterMarkPerformanceFee() external restricted {
+        _updateHighWaterMarkPerformanceFee();
+    }
+
+    function updateIntervalHighWaterMarkPerformanceFee(uint32 updateInterval_) external restricted {
+        FeeManagerStorageLib.updateIntervalHighWaterMarkPerformanceFee(updateInterval_);
+    }
+
+    function calculatePerformanceFee(
+        uint128 exchangeRate,
+        uint256 totalSupply,
+        uint256 performanceFee,
+        uint256 assetDecimals
+    ) external returns (address recipient, uint256 feeShares) {
+        if (msg.sender != PLASMA_VAULT) {
+            revert NotPlasmaVault();
+        }
+
+        HighWaterMarkPerformanceFeeStorage memory highWaterMark = FeeManagerStorageLib
+            .getPlasmaVaultHighWaterMarkPerformanceFee();
+
+        if (highWaterMark.highWaterMark == 0) {
+            FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(exchangeRate);
+            return (address(0), 0);
+        }
+
+        if (
+            highWaterMark.highWaterMark > exchangeRate &&
+            (highWaterMark.updateInterval == 0 ||
+                block.timestamp < highWaterMark.lastUpdate + highWaterMark.updateInterval)
+        ) {
+            return (address(0), 0);
+        } else if (
+            highWaterMark.highWaterMark > exchangeRate &&
+            highWaterMark.updateInterval != 0 &&
+            block.timestamp >= highWaterMark.lastUpdate + highWaterMark.updateInterval
+        ) {
+            FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(exchangeRate);
+            return (address(0), 0);
+        }
+
+        uint256 deltaInExchangeRate = exchangeRate - uint256(highWaterMark.highWaterMark);
+
+        uint256 sharesToHarvest = Math.mulDiv(totalSupply, deltaInExchangeRate, 10 ** assetDecimals);
+
+        uint256 feeShares = Math.mulDiv(sharesToHarvest, performanceFee, 10000);
+
+        return (PERFORMANCE_FEE_ACCOUNT, feeShares);
     }
 
     /// @notice Internal function to transfer fees to the DAO
