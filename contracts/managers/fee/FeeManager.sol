@@ -10,7 +10,7 @@ import {RecipientFee} from "./FeeManagerFactory.sol";
 import {FeeManagerStorageLib, FeeRecipientDataStorage} from "./FeeManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
 import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
-import {HighWaterMarkPerformanceFeeStorage} from "./FeeManagerStorageLib.sol";
+import {HighWaterMarkPerformanceFeeStorage, HighWaterMarkPerformanceFeeStorage} from "./FeeManagerStorageLib.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -445,17 +445,6 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         return FeeManagerStorageLib.getIporDaoFeeRecipientAddress();
     }
 
-    function _updateHighWaterMarkPerformanceFee() private {
-        uint256 highWaterMark = IERC4626(PLASMA_VAULT).convertToAssets(
-            10 ** uint256(IERC20Metadata(PLASMA_VAULT).decimals())
-        );
-        if (highWaterMark > 0) {
-            FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(highWaterMark.toUint128());
-        } else {
-            revert InvalidHighWaterMark();
-        }
-    }
-
     function updateHighWaterMarkPerformanceFee() external restricted {
         _updateHighWaterMarkPerformanceFee();
     }
@@ -504,6 +493,14 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         uint256 feeShares = Math.mulDiv(sharesToHarvest, performanceFee, 10000);
 
         return (PERFORMANCE_FEE_ACCOUNT, feeShares);
+    }
+
+    function getPlasmaVaultHighWaterMarkPerformanceFee()
+        external
+        view
+        returns (HighWaterMarkPerformanceFeeStorage memory)
+    {
+        return FeeManagerStorageLib.getPlasmaVaultHighWaterMarkPerformanceFee();
     }
 
     /// @notice Internal function to transfer fees to the DAO
@@ -588,6 +585,17 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         }
 
         return remainingBalance_;
+    }
+
+    function _updateHighWaterMarkPerformanceFee() private {
+        uint256 highWaterMark = IERC4626(PLASMA_VAULT).convertToAssets(
+            10 ** uint256(IERC20Metadata(PLASMA_VAULT).decimals())
+        );
+        if (highWaterMark > 0) {
+            FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(highWaterMark.toUint128());
+        } else {
+            revert InvalidHighWaterMark();
+        }
     }
 
     /// @notice Internal function to get the message sender from context

@@ -25,6 +25,11 @@ import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
+import {HighWaterMarkPerformanceFeeStorage} from "../../contracts/managers/fee/FeeManagerStorageLib.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
@@ -797,5 +802,149 @@ contract FeeManagerTest is Test {
 
         // DAO gets both fees
         assertApproxEqAbs(balanceDaoRecipientAfter, 49999900001, 100, "dao should receive correct fee share");
+    }
+
+    function testShouldNotUpdateHighWaterMarkPerformanceFeeWhenNotOwner() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        feeManager.updateHighWaterMarkPerformanceFee();
+        vm.stopPrank();
+    }
+
+    function testShouldUpdateHighWaterMarkPerformanceFeeWhenOwner() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        // Store initial high water mark
+        uint256 initialHighWaterMark = PlasmaVault(_plasmaVault).convertToAssets(
+            10 ** IERC20Metadata(_plasmaVault).decimals()
+        );
+
+        // Simulate some value change
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
+        AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 30 days);
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.AAVE_V3;
+        PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updateHighWaterMarkPerformanceFee();
+        vm.stopPrank();
+
+        // then
+        uint256 newHighWaterMark = PlasmaVault(_plasmaVault).convertToAssets(
+            10 ** IERC20Metadata(_plasmaVault).decimals()
+        );
+
+        assertGt(newHighWaterMark, initialHighWaterMark, "New high water mark should be greater than initial");
+    }
+
+    function testShouldRevertUpdateHighWaterMarkPerformanceFeeWhenInvalidHighWaterMark() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        // Simulate a scenario where convertToAssets returns 0
+        vm.mockCall(
+            _plasmaVault,
+            abi.encodeWithSelector(IERC4626.convertToAssets.selector, 10 ** IERC20Metadata(_plasmaVault).decimals()),
+            abi.encode(0)
+        );
+
+        bytes memory error = abi.encodeWithSignature("InvalidHighWaterMark()");
+
+        // when
+        vm.startPrank(_ATOMIST);
+        vm.expectRevert(error);
+        feeManager.updateHighWaterMarkPerformanceFee();
+        vm.stopPrank();
+    }
+
+    function testShouldNotUpdateIntervalHighWaterMarkPerformanceFeeWhenNotOwner() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        feeManager.updateIntervalHighWaterMarkPerformanceFee(7 days);
+        vm.stopPrank();
+    }
+
+    function testShouldUpdateIntervalHighWaterMarkPerformanceFeeWhenOwner() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        HighWaterMarkPerformanceFeeStorage memory initialHighWaterMark = feeManager
+            .getPlasmaVaultHighWaterMarkPerformanceFee();
+        uint32 newInterval = 7 days;
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updateIntervalHighWaterMarkPerformanceFee(newInterval);
+        vm.stopPrank();
+
+        // then
+        HighWaterMarkPerformanceFeeStorage memory updatedHighWaterMark = feeManager
+            .getPlasmaVaultHighWaterMarkPerformanceFee();
+
+        assertEq(initialHighWaterMark.updateInterval, 0, "Initial interval should be 0");
+        assertEq(updatedHighWaterMark.updateInterval, newInterval, "Update interval should be updated to new value");
+    }
+
+    function testShouldUpdateIntervalHighWaterMarkPerformanceFeeToZero() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        // First set non-zero interval
+        vm.startPrank(_ATOMIST);
+        feeManager.updateIntervalHighWaterMarkPerformanceFee(7 days);
+        vm.stopPrank();
+
+        HighWaterMarkPerformanceFeeStorage memory initialHighWaterMark = feeManager
+            .getPlasmaVaultHighWaterMarkPerformanceFee();
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updateIntervalHighWaterMarkPerformanceFee(0);
+        vm.stopPrank();
+
+        // then
+        HighWaterMarkPerformanceFeeStorage memory updatedHighWaterMark = feeManager
+            .getPlasmaVaultHighWaterMarkPerformanceFee();
+
+        assertEq(initialHighWaterMark.updateInterval, 7 days, "Initial interval should be 7 days");
+        assertEq(updatedHighWaterMark.updateInterval, 0, "Update interval should be set to zero");
     }
 }

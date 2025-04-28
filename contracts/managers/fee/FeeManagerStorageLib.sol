@@ -70,7 +70,7 @@ library FeeManagerStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.high.water.mark.performance.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant HIGH_WATER_MARK_PERFORMANCE_FEE_SLOT =
-        0xc456e86573d79f7b5b60c9eb824345c471d5390facece9407699845c141b2d11; // TODO: change this
+        0xb9423b11a8779228bace4bf919d779502e12a07e11bd2f782c23aeac55439c00;
 
     /// @notice Retrieves management fee recipient data storage
     /// @dev Uses assembly to access diamond storage pattern slot
