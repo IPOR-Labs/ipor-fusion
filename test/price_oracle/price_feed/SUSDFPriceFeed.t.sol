@@ -30,10 +30,6 @@ contract SUSDFPriceFeedTest is Test {
         vm.stopPrank();
     }
 
-    function testAlwaysPasses() public {
-        assertTrue(true, "Ten test zawsze przechodzi");
-    }
-
     function testUSDFPrice() public {
         (uint256 price, uint256 decimals) = IPriceOracleMiddleware(PRICE_ORACL).getAssetPrice(USDF);
 

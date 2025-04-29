@@ -35,7 +35,7 @@ contract ERC4626PriceFeed is IPriceFeed {
         address asset = IERC4626(vault).asset();
 
         /// @dev get price of asset in USD
-        /// @dev msg.sender is PriceOracleMiddleware
+        /// @dev msg.sender is PriceOracleMiddleware or PriceOracleMiddlewareManager
         (uint256 assetPrice, uint256 decimals) = IPriceOracleMiddleware(msg.sender).getAssetPrice(asset);
 
         uint256 price = IporMath.convertToWad(sharesPrice * assetPrice, IERC20Metadata(asset).decimals() + decimals);
