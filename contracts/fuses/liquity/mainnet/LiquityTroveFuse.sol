@@ -93,16 +93,18 @@ contract LiquityTroveFuse is IFuseCommon {
         FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
         uint256 len = data_.ownerIndexes.length;
 
+        ERC20(LiquityConstants.LIQUITY_BOLD).forceApprove(address(borrowerOperations), type(uint256).max);
+
         for (uint256 i; i < len; i++) {
             uint256 troveId = troveData.idByOwnerIndex[data_.asset][data_.ownerIndexes[i]];
             if (troveId == 0) continue;
 
-            ERC20(LiquityConstants.LIQUITY_BOLD).forceApprove(address(borrowerOperations), type(uint256).max);
             borrowerOperations.closeTrove(troveId);
-            ERC20(LiquityConstants.LIQUITY_BOLD).forceApprove(address(borrowerOperations), 0);
             delete troveData.idByOwnerIndex[data_.asset][data_.ownerIndexes[i]];
 
             emit LiquityTroveFuseExit(VERSION, data_.asset, troveId);
         }
+
+        ERC20(LiquityConstants.LIQUITY_BOLD).forceApprove(address(borrowerOperations), 0);
     }
 }
