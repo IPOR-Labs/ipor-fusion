@@ -29,7 +29,7 @@ contract LiquityBalanceFuseTest is Test {
         });
     }
 
-    function testLiquityBalanceShouldReturnZero() external {
+    function testLiquityBalance() external {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22375819);
         LiquityBalanceFuse liquityBalanceFuse = new LiquityBalanceFuse(541081796814);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(liquityBalanceFuse));
