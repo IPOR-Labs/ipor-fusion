@@ -407,8 +407,6 @@ contract FeeManagerTest is Test {
         feeManager.harvestManagementFee();
     }
 
-    // 14434391744 * 1443439
-
     function testShouldNotHarvestPerformanceFeeWhenNotInitialize() external {
         // given
         address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
