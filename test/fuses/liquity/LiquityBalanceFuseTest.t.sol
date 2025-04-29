@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
-import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/LiquityBalanceFuse.sol";
+import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/mainnet/LiquityBalanceFuse.sol";
 
 contract LiquityBalanceFuseTest is Test {
     LiquityBalanceFuse public liquityBalanceFuse;
