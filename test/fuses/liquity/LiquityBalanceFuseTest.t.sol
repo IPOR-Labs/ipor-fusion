@@ -5,22 +5,51 @@ import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
 import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/mainnet/LiquityBalanceFuse.sol";
+import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract LiquityBalanceFuseTest is Test {
-    LiquityBalanceFuse public liquityBalanceFuse;
+    struct Asset {
+        address token;
+        string name;
+    }
+    Asset[3] private assets;
 
-    function setUp() external {
-        liquityBalanceFuse = new LiquityBalanceFuse(1);
+    function setUp() public {
+        assets[0] = Asset({
+            token: address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // WETH
+            name: "WETH"
+        });
+        assets[1] = Asset({
+            token: address(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0), // WSTETH
+            name: "WSTETH"
+        });
+        assets[2] = Asset({
+            token: address(0xae78736Cd615f374D3085123A210448E74Fc6393), // rETH
+            name: "rETH"
+        });
     }
 
-    function testLiquityBalanceShouldReturnZero() external view {
-        uint256 balance = liquityBalanceFuse.balanceOf();
+    function testLiquityBalanceShouldReturnZero() external {
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22375819);
+        LiquityBalanceFuse liquityBalanceFuse = new LiquityBalanceFuse(541081796814);
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(liquityBalanceFuse));
 
-        bytes32 res = keccak256(abi.encode(uint256(keccak256("io.ipor.LiquityV2OwnerIndexes")) - 1)) &
-            ~bytes32(uint256(0xff));
+        uint256 initialAmount = 1000 * 1e18;
+        address[] memory tokens = new address[](3);
+        tokens[0] = assets[0].token;
+        tokens[1] = assets[1].token;
+        tokens[2] = assets[2].token;
+        deal(tokens[0], address(vaultMock), initialAmount);
+        deal(tokens[1], address(vaultMock), initialAmount);
+        deal(tokens[2], address(vaultMock), initialAmount);
 
-        console.logBytes32(res);
+        vaultMock.updateMarketConfiguration(541081796814, tokens);
 
-        assertEq(balance, 0, "Expected balance to be zero");
+        uint256 balanceBefore = vaultMock.balanceOf();
+
+        deal(tokens[0], address(vaultMock), initialAmount + 1);
+        uint256 balanceAfter = vaultMock.balanceOf();
+
+        assertTrue(balanceAfter > balanceBefore, "Balance should be greater");
     }
 }

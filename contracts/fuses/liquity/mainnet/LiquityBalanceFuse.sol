@@ -14,6 +14,8 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
     uint256 public immutable MARKET_ID;
 
+    uint256 private constant LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS = 18;
+
     constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
     }
@@ -22,11 +24,10 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
     // The Plasma Vault can contain BOLD (former LUSD), ETH, wstETH, and rETH
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+
         uint256 len = assetsRaw.length;
 
-        if (len == 0) {
-            return 0;
-        }
+        if (len == 0) return 0;
 
         address[3] memory registries = [
             LiquityConstants.LIQUITY_ETH_ADDRESSES_REGISTRY,
@@ -51,7 +52,10 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
             uint256 decimals = IERC20Metadata(asset).decimals();
             int256 balance = int256(IERC20Metadata(asset).balanceOf(plasmaVault));
             if (balance > 0) {
-                balanceTemp += IporMath.convertToWadInt(balance * int256(lastGoodPrice), decimals);
+                balanceTemp += IporMath.convertToWadInt(
+                    balance * int256(lastGoodPrice),
+                    decimals + LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS
+                );
             }
         }
 
