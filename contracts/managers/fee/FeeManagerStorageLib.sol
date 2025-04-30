@@ -36,6 +36,16 @@ struct FeeRecipientDataStorage {
     address[] recipientAddresses;
 }
 
+/// @notice Storage structure for high water mark performance fee logic in plasma vaults
+/// @dev Used to track the high water mark (HWM) for performance fee calculation,
+///      ensuring fees are only charged on new profits above the previous HWM.
+///      - `highWaterMark`: The highest value (e.g., share price or NAV) reached by the vault,
+///         used as a reference for performance fee accrual. Expressed in the same units as the tracked metric.
+///      - `lastUpdate`: The timestamp (in seconds) of the last HWM update. Used to enforce update intervals and prevent fee gaming.
+///      - `updateInterval`: The minimum interval (in seconds) required between HWM updates.
+///         Prevents frequent updates that could allow manipulation of performance fee calculations.
+/// @custom:security Implements a classic "plasma-style" HWM pattern to mitigate fee abuse and ensure fair fee accrual.
+/// @custom:see EIP-4626 for vault fee patterns and best practices.
 struct HighWaterMarkPerformanceFeeStorage {
     uint128 highWaterMark;
     uint32 lastUpdate;
@@ -90,18 +100,6 @@ library FeeManagerStorageLib {
         }
     }
 
-    /// @notice Retrieves high water mark performance fee storage
-    /// @dev Uses assembly to access diamond storage pattern slot
-    /// @return $ Storage pointer to HighWaterMarkPerformanceFeeStorage
-    function _highWaterMarkPerformanceFeeStorage()
-        internal
-        pure
-        returns (HighWaterMarkPerformanceFeeStorage storage $)
-    {
-        assembly {
-            $.slot := HIGH_WATER_MARK_PERFORMANCE_FEE_SLOT
-        }
-    }
     /// @notice Gets the total performance fee percentage for the plasma vault
     /// @return Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     function getPlasmaVaultTotalPerformanceFee() internal view returns (uint256) {
@@ -235,6 +233,15 @@ library FeeManagerStorageLib {
     function _totalManagementFeeStorage() private pure returns (PlasmaVaultTotalManagementFeeStorage storage $) {
         assembly {
             $.slot := TOTAL_MANAGEMENT_FEE_SLOT
+        }
+    }
+
+    /// @notice Retrieves high water mark performance fee storage
+    /// @dev Uses assembly to access diamond storage pattern slot
+    /// @return $ Storage pointer to HighWaterMarkPerformanceFeeStorage
+    function _highWaterMarkPerformanceFeeStorage() private pure returns (HighWaterMarkPerformanceFeeStorage storage $) {
+        assembly {
+            $.slot := HIGH_WATER_MARK_PERFORMANCE_FEE_SLOT
         }
     }
 }

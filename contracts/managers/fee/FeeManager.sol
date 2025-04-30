@@ -9,7 +9,6 @@ import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {RecipientFee} from "./FeeManagerFactory.sol";
 import {FeeManagerStorageLib, FeeRecipientDataStorage} from "./FeeManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
-import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
 import {HighWaterMarkPerformanceFeeStorage, HighWaterMarkPerformanceFeeStorage} from "./FeeManagerStorageLib.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -445,53 +444,90 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         return FeeManagerStorageLib.getIporDaoFeeRecipientAddress();
     }
 
+    /// @notice Updates the high water mark (HWM) for performance fee calculation to the current exchange rate
+    /// @dev This function should be called to synchronize the HWM with the current vault state.
+    ///      The HWM is used to ensure that performance fees are only charged on new profits above the previous maximum.
+    ///      Only callable by addresses with the `restricted` modifier (e.g., governance or automation).
+    ///      The new HWM is set to the current asset value per share (exchange rate) of the vault.
+    ///      Reverts if the current exchange rate is zero (prevents setting an invalid HWM).
+    /// @custom:security Only callable by authorized roles to prevent manipulation.
+    /// @custom:security Ensures HWM cannot be set to zero, which would allow fee abuse.
+    /// @custom:see EIP-4626 for vault fee patterns and best practices.
     function updateHighWaterMarkPerformanceFee() external restricted {
         _updateHighWaterMarkPerformanceFee();
     }
 
+    /// @notice Updates the minimum interval between high water mark (HWM) updates for performance fee calculation
+    /// @dev This function sets the minimum time (in seconds) that must elapse before the HWM can be updated again.
+    ///      The interval helps prevent frequent HWM updates, which could be exploited to reduce or avoid performance fees.
+    ///      Only callable by addresses with the `restricted` modifier (e.g., governance or automation).
+    ///      Setting the interval to zero disables the time restriction, allowing HWM to be updated at any time.
+    /// @param updateInterval_ The new minimum update interval in seconds
+    /// @custom:security Only callable by authorized roles to prevent manipulation.
+    /// @custom:security Setting a reasonable interval is important to mitigate fee gaming and ensure fair accrual.
+    /// @custom:see EIP-4626 for vault fee patterns and best practices.
     function updateIntervalHighWaterMarkPerformanceFee(uint32 updateInterval_) external restricted {
         FeeManagerStorageLib.updateIntervalHighWaterMarkPerformanceFee(updateInterval_);
     }
 
-    function calculatePerformanceFee(
-        uint128 exchangeRate,
-        uint256 totalSupply,
-        uint256 performanceFee,
-        uint256 assetDecimals
+    /// @notice Calculates performance fee based on high water mark mechanism
+    /// @dev This function implements a high water mark (HWM) based performance fee calculation
+    ///      where fees are only charged on gains above the previous highest value.
+    ///      The function can only be called by the plasma vault contract.
+    ///
+    /// @param actualExchangeRate_ Current exchange rate between shares and assets
+    /// @param totalSupply_ Total supply of vault shares
+    /// @param performanceFee_ Performance fee percentage with 2 decimal precision (10000 = 100%)
+    /// @param assetDecimals_ Number of decimals in the underlying asset
+    ///
+    /// @return recipient Address of the performance fee recipient (PERFORMANCE_FEE_ACCOUNT or address(0))
+    /// @return feeShares Number of shares to be minted as performance fee
+    ///
+    /// @dev Flow:
+    /// 1. If HWM is 0 (first time), sets HWM to current rate and returns 0 fee
+    /// 2. If current rate is below HWM:
+    ///    - If update interval not passed: returns 0 fee
+    ///    - If update interval passed: updates HWM to current rate and returns 0 fee
+    /// 3. If current rate is above HWM:
+    ///    - Calculates fee based on the gain above HWM
+    ///    - Returns fee recipient and calculated shares
+    ///
+    /// @custom:security Uses SafeCast for uint256 to uint128 conversion
+    /// @custom:security Implements reentrancy protection via plasma vault pattern
+    /// @custom:security Only callable by plasma vault to prevent unauthorized fee generation
+    function calculateAndUpdatePerformanceFee(
+        uint128 actualExchangeRate_,
+        uint256 totalSupply_,
+        uint256 performanceFee_,
+        uint256 assetDecimals_
     ) external returns (address recipient, uint256 feeShares) {
         if (msg.sender != PLASMA_VAULT) {
             revert NotPlasmaVault();
         }
 
-        HighWaterMarkPerformanceFeeStorage memory highWaterMark = FeeManagerStorageLib
+        HighWaterMarkPerformanceFeeStorage memory highWaterMarkStorage = FeeManagerStorageLib
             .getPlasmaVaultHighWaterMarkPerformanceFee();
 
-        if (highWaterMark.highWaterMark == 0) {
-            FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(exchangeRate);
+        if (highWaterMarkStorage.highWaterMark == 0) {
+            FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(actualExchangeRate_);
             return (address(0), 0);
         }
 
-        if (
-            highWaterMark.highWaterMark > exchangeRate &&
-            (highWaterMark.updateInterval == 0 ||
-                block.timestamp < highWaterMark.lastUpdate + highWaterMark.updateInterval)
-        ) {
-            return (address(0), 0);
-        } else if (
-            highWaterMark.highWaterMark > exchangeRate &&
-            highWaterMark.updateInterval != 0 &&
-            block.timestamp >= highWaterMark.lastUpdate + highWaterMark.updateInterval
-        ) {
-            FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(exchangeRate);
+        if (actualExchangeRate_ <= highWaterMarkStorage.highWaterMark) {
+            if (
+                highWaterMarkStorage.updateInterval != 0 &&
+                block.timestamp >= highWaterMarkStorage.lastUpdate + highWaterMarkStorage.updateInterval
+            ) {
+                FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(actualExchangeRate_);
+            }
             return (address(0), 0);
         }
 
-        uint256 deltaInExchangeRate = exchangeRate - uint256(highWaterMark.highWaterMark);
+        uint256 delta = actualExchangeRate_ - uint256(highWaterMarkStorage.highWaterMark);
+        uint256 sharesToHarvest = Math.mulDiv(totalSupply_, delta, 10 ** assetDecimals_);
+        uint256 feeShares = Math.mulDiv(sharesToHarvest, performanceFee_, 10000);
 
-        uint256 sharesToHarvest = Math.mulDiv(totalSupply, deltaInExchangeRate, 10 ** assetDecimals);
-
-        uint256 feeShares = Math.mulDiv(sharesToHarvest, performanceFee, 10000);
-
+        FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(actualExchangeRate_);
         return (PERFORMANCE_FEE_ACCOUNT, feeShares);
     }
 
