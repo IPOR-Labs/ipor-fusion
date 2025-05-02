@@ -6,7 +6,8 @@ import {Vm} from "forge-std/Test.sol";
 import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
 import {Roles} from "../contracts/libraries/Roles.sol";
-
+import {FeeManager} from "../contracts/managers/fee/FeeManager.sol";
+import {FeeAccount} from "../contracts/managers/fee/FeeAccount.sol";
 struct UsersToRoles {
     address superAdmin;
     address atomist;
@@ -96,6 +97,15 @@ library RoleLib {
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, alphaSig, Roles.ALPHA_ROLE);
+
+        address feeManager = FeeAccount(PlasmaVaultGovernance(plasmaVault_).getPerformanceFeeData().feeAccount)
+            .FEE_MANAGER();
+
+        bytes4[] memory feeManagerSig = new bytes4[](1);
+        feeManagerSig[0] = FeeManager.updateHighWaterMarkPerformanceFee.selector;
+
+        vm_.prank(usersWithRoles_.superAdmin);
+        accessManager_.setTargetFunctionRole(feeManager, feeManagerSig, Roles.ALPHA_ROLE);
 
         bytes4[] memory atomistsSig = new bytes4[](10);
         atomistsSig[0] = PlasmaVaultGovernance.addBalanceFuse.selector;

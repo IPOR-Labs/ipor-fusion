@@ -512,7 +512,6 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             usersToRoles.alphas = alphas;
         }
         instances.accessManager = IporFusionAccessManager(RoleLib.createAccessManager(usersToRoles, 0, vm));
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(instances.plasmaVault), instances.accessManager);
     }
 
     function _createClaimRewardsManager() private {
@@ -539,6 +538,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 withdrawManager: address(0)
             })
         );
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(instances.plasmaVault), instances.accessManager);
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
