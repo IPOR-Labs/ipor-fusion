@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 error FeeManagerStorageLibZeroAddress();
 
 /// @notice Storage structure for DAO fee recipient data
@@ -11,6 +13,9 @@ struct DaoFeeRecipientDataStorage {
 
 // Add new event with just the new recipient
 event IporDaoFeeRecipientAddressChanged(address indexed newRecipient);
+
+event HighWaterMarkPerformanceFeeUpdated(uint128 highWaterMark);
+event HighWaterMarkPerformanceFeeUpdateIntervalUpdated(uint32 updateInterval);
 
 /// @notice Storage structure for total performance fee in plasma vault
 /// @dev Value stored with 2 decimal precision (10000 = 100%)
@@ -31,10 +36,28 @@ struct FeeRecipientDataStorage {
     address[] recipientAddresses;
 }
 
+/// @notice Storage structure for high water mark performance fee logic in plasma vaults
+/// @dev Used to track the high water mark (HWM) for performance fee calculation,
+///      ensuring fees are only charged on new profits above the previous HWM.
+///      - `highWaterMark`: The highest value (e.g., share price or NAV) reached by the vault,
+///         used as a reference for performance fee accrual. Expressed in the same units as the tracked metric.
+///      - `lastUpdate`: The timestamp (in seconds) of the last HWM update. Used to enforce update intervals and prevent fee gaming.
+///      - `updateInterval`: The minimum interval (in seconds) required between HWM updates.
+///         Prevents frequent updates that could allow manipulation of performance fee calculations.
+/// @custom:security Implements a classic "plasma-style" HWM pattern to mitigate fee abuse and ensure fair fee accrual.
+/// @custom:see EIP-4626 for vault fee patterns and best practices.
+struct HighWaterMarkPerformanceFeeStorage {
+    uint128 highWaterMark;
+    uint32 lastUpdate;
+    uint32 updateInterval;
+}
+
 /// @title Fee Manager Storage Library
 /// @notice Library for managing fee-related storage in the IPOR Protocol's plasma vault system
 /// @dev Implements diamond storage pattern for fee management including performance, management, and DAO fees
 library FeeManagerStorageLib {
+    using SafeCast for uint256;
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.dao.fee.recipient.data.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant DAO_FEE_RECIPIENT_DATA_SLOT =
         0xaf522f71ce1f2b5702c38f667fa2366c184e3c6dd86ab049ad3b02fec741fd00;
@@ -54,6 +77,10 @@ library FeeManagerStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.performance.fee.recipient.data.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant PERFORMANCE_FEE_RECIPIENT_DATA_SLOT =
         0xc456e86573d79f7b5b60c9eb824345c471d5390facece9407699845c141b2d00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.high.water.mark.performance.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant HIGH_WATER_MARK_PERFORMANCE_FEE_SLOT =
+        0xb9423b11a8779228bace4bf919d779502e12a07e11bd2f782c23aeac55439c00;
 
     /// @notice Retrieves management fee recipient data storage
     /// @dev Uses assembly to access diamond storage pattern slot
@@ -77,6 +104,29 @@ library FeeManagerStorageLib {
     /// @return Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     function getPlasmaVaultTotalPerformanceFee() internal view returns (uint256) {
         return _totalPerformanceFeeStorage().value;
+    }
+
+    /// @notice Gets the high water mark performance fee percentage for the plasma vault
+    /// @return High water mark performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
+    function getPlasmaVaultHighWaterMarkPerformanceFee()
+        internal
+        view
+        returns (HighWaterMarkPerformanceFeeStorage memory)
+    {
+        return _highWaterMarkPerformanceFeeStorage();
+    }
+
+    function updateHighWaterMarkPerformanceFee(uint128 highWaterMark_) internal {
+        HighWaterMarkPerformanceFeeStorage storage $ = _highWaterMarkPerformanceFeeStorage();
+        $.highWaterMark = highWaterMark_;
+        $.lastUpdate = block.timestamp.toUint32();
+        emit HighWaterMarkPerformanceFeeUpdated(highWaterMark_);
+    }
+
+    function updateIntervalHighWaterMarkPerformanceFee(uint32 updateInterval_) internal {
+        HighWaterMarkPerformanceFeeStorage storage $ = _highWaterMarkPerformanceFeeStorage();
+        $.updateInterval = updateInterval_;
+        emit HighWaterMarkPerformanceFeeUpdateIntervalUpdated(updateInterval_);
     }
 
     /// @notice Sets the total performance fee percentage for the plasma vault
@@ -183,6 +233,15 @@ library FeeManagerStorageLib {
     function _totalManagementFeeStorage() private pure returns (PlasmaVaultTotalManagementFeeStorage storage $) {
         assembly {
             $.slot := TOTAL_MANAGEMENT_FEE_SLOT
+        }
+    }
+
+    /// @notice Retrieves high water mark performance fee storage
+    /// @dev Uses assembly to access diamond storage pattern slot
+    /// @return $ Storage pointer to HighWaterMarkPerformanceFeeStorage
+    function _highWaterMarkPerformanceFeeStorage() private pure returns (HighWaterMarkPerformanceFeeStorage storage $) {
+        assembly {
+            $.slot := HIGH_WATER_MARK_PERFORMANCE_FEE_SLOT
         }
     }
 }
