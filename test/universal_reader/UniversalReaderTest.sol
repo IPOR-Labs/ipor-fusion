@@ -118,7 +118,7 @@ contract UniversalReaderTest is Test {
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
-        
+
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
             assetName: "USDC Plasma Vault",
             assetSymbol: "USDC-PV",
@@ -404,10 +404,10 @@ contract UniversalReaderTest is Test {
         address[] memory balanceFuses = abi.decode(readResult.data, (address[]));
 
         assertEq(balanceFuses.length, 4);
-        assertEq(balanceFuses[0], 0xa0Cb889707d426A7A386870A03bc70d1b0697598);
-        assertEq(balanceFuses[1], 0x03A6a84cD762D9707A21605b548aaaB891562aAb);
-        assertEq(balanceFuses[2], 0x2a07706473244BC757E10F2a9E86fB532828afe3);
-        assertEq(balanceFuses[3], 0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9);
+        assertEq(balanceFuses[0], 0x1d1499e622D69689cdf9004d05Ec547d650Ff211);
+        assertEq(balanceFuses[1], 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF);
+        assertEq(balanceFuses[2], 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7);
+        assertEq(balanceFuses[3], 0xc7183455a4C133Ae270771860664b6B7ec320bB1);
     }
 
     function testRevertWhenUnauthorizedCallerTriesToRead() external {
