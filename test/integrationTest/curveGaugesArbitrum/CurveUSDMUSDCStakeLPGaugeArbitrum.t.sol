@@ -25,6 +25,7 @@ import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -63,6 +64,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
 
     /// Vaults
     PlasmaVault public plasmaVault;
+    address public withdrawManager;
 
     /// Fuses
     address[] public fuses;
@@ -815,7 +817,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     }
 
     function _setupPlasmaVault() private {
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
         vm.startPrank(admin);
         PlasmaVaultGovernance(address(plasmaVault)).setRewardsClaimManagerAddress(address(rewardsClaimManager));
 
@@ -848,6 +850,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     }
 
     function _createPlasmaVault() private {
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
         plasmaVault = new PlasmaVault(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",
@@ -861,7 +864,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 accessManager: address(accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
                 totalSupplyCap: type(uint256).max,
-                withdrawManager: address(0)
+                withdrawManager: address(withdrawManager)
             })
         );
     }

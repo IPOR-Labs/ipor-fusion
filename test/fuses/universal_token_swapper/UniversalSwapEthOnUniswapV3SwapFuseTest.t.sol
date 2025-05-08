@@ -20,6 +20,7 @@ import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {SwapExecutorEth, SwapExecutorEthData} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
 import {UniversalTokenSwapperEthFuse, UniversalTokenSwapperEthEnterData, UniversalTokenSwapperEthData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -46,6 +47,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+    address private _withdrawManager;
 
     UniversalTokenSwapperEthFuse private _universalTokenSwapperFuse;
 
@@ -82,6 +84,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         sources[5] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         PriceOracleMiddleware(_priceOracle).setAssetsPricesSources(assets, sources);
 
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
         // plasma vault
         _plasmaVault = address(
             new PlasmaVault(
@@ -97,7 +100,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    _withdrawManager
                 )
             )
         );
@@ -480,7 +483,13 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, _plasmaVault, IporFusionAccessManager(_accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            _plasmaVault,
+            IporFusionAccessManager(_accessManager),
+            _withdrawManager
+        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs_) {

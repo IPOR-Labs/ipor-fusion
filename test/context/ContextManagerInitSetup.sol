@@ -67,9 +67,7 @@ abstract contract ContextManagerInitSetup is Test {
 
         address withdrawManager;
 
-        (_plasmaVault, withdrawManager) = withWithdrawManager
-            ? PlasmaVaultHelper.deployMinimalPlasmaVaultWithWithdrawManager(params)
-            : PlasmaVaultHelper.deployMinimalPlasmaVault(params);
+        (_plasmaVault, withdrawManager) = PlasmaVaultHelper.deployMinimalPlasmaVaultWithWithdrawManager(params);
 
         _withdrawManager = WithdrawManager(withdrawManager);
 

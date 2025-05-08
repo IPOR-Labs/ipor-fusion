@@ -246,6 +246,7 @@ contract PlasmaVault is
     error UnsupportedMethod();
     error WithdrawManagerInvalidSharesToRelease(uint256 sharesToRelease);
     error PermitFailed();
+    error WithdrawManagerNotSet();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -347,7 +348,9 @@ contract PlasmaVault is
         PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
 
         PlasmaVaultLib.updateManagementFeeData();
-        /// @dev If the address is zero, it means that scheduled withdrawals are turned off.
+        if (initData_.withdrawManager == address(0)) {
+            revert WithdrawManagerNotSet();
+        }
         PlasmaVaultLib.updateWithdrawManager(initData_.withdrawManager);
     }
 

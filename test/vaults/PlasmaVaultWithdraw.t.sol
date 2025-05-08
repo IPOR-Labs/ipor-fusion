@@ -20,6 +20,7 @@ import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
 }
@@ -329,6 +330,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -343,10 +345,10 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -435,6 +437,8 @@ contract PlasmaVaultWithdrawTest is Test {
         amount = 200 * 1e6;
         sharesAmount = 200 * 10 ** (6 + PlasmaVaultLib.DECIMALS_OFFSET);
 
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -448,10 +452,10 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 sharesAmount,
-                address(0)
+                withdrawManager
             )
         );
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount);
@@ -543,6 +547,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -557,11 +562,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -658,6 +663,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -672,11 +678,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -761,6 +767,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -775,11 +782,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -892,6 +899,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -905,11 +914,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1052,6 +1061,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1065,11 +1076,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
         sharesAmount = 100 * 10 ** plasmaVault.decimals();
@@ -1204,6 +1215,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1218,11 +1230,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1349,6 +1361,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1363,11 +1376,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1463,6 +1476,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1476,11 +1491,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1592,7 +1607,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         PlasmaVaultBase plasmaVaultBase = new PlasmaVaultBase();
-
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1606,10 +1621,10 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(plasmaVaultBase),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1743,6 +1758,7 @@ contract PlasmaVaultWithdrawTest is Test {
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -1757,11 +1773,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
         return plasmaVault;
     }
 
@@ -1791,6 +1807,8 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, redemptionDelay);
 
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1804,11 +1822,11 @@ contract PlasmaVaultWithdrawTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         return plasmaVault;
     }
@@ -1827,10 +1845,14 @@ contract PlasmaVaultWithdrawTest is Test {
         return RoleLib.createAccessManager(usersToRoles_, redemptionDelay_, vm);
     }
 
-    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
+    function setupRoles(
+        PlasmaVault plasmaVault,
+        IporFusionAccessManager accessManager,
+        address withdrawManager
+    ) public {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
     }
 
     function testShouldNotBeAbleWithdrawDuringRedemptionLockWithDifferentRecipient() public {

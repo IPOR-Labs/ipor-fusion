@@ -22,6 +22,7 @@ import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovern
 import {RamsesV2CollectFuse, RamsesV2CollectFuseEnterData} from "../../../contracts/fuses/ramses/RamsesV2CollectFuse.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract RamsesV2PositionFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -42,6 +43,7 @@ contract RamsesV2PositionFuseTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+    address private _withdrawManager;
     RamsesV2NewPositionFuse private _ramsesV2NewPositionFuse;
     RamsesV2ModifyPositionFuse private _ramsesV2ModifyPositionFuse;
     RamsesV2CollectFuse private _ramsesV2CollectFuse;
@@ -63,6 +65,7 @@ contract RamsesV2PositionFuseTest is Test {
         vm.prank(PriceOracleMiddleware(_priceOracle).owner());
         PriceOracleMiddleware(_priceOracle).setAssetsPricesSources(assetsDai, sourcesDai);
 
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
         // plasma vault
         _plasmaVault = address(
             new PlasmaVault(
@@ -78,7 +81,7 @@ contract RamsesV2PositionFuseTest is Test {
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    _withdrawManager
                 )
             )
         );
@@ -617,7 +620,13 @@ contract RamsesV2PositionFuseTest is Test {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, _plasmaVault, IporFusionAccessManager(_accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            _plasmaVault,
+            IporFusionAccessManager(_accessManager),
+            _withdrawManager
+        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs_) {
