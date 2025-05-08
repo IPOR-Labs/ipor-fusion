@@ -19,7 +19,7 @@ import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/Plas
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
-
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant CHAINLINK_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
@@ -32,6 +32,7 @@ contract IporPlasmaVaultRolesTest is Test {
     DataForInitialization private _data;
     PlasmaVault private _plasmaVault;
     IporFusionAccessManager private _accessManager;
+    WithdrawManager private _withdrawManager;
     RewardsClaimManager private _rewardsClaimManager;
 
     function setUp() public {
@@ -648,7 +649,7 @@ contract IporPlasmaVaultRolesTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.AAVE_V3, address(balanceFuse));
         _accessManager = new IporFusionAccessManager(_deployer, 0);
-
+        _withdrawManager = new WithdrawManager(address(_accessManager));
         _plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -662,7 +663,7 @@ contract IporPlasmaVaultRolesTest is Test {
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                address(_withdrawManager)
             )
         );
         vm.stopPrank();

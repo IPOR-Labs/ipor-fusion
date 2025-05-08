@@ -28,6 +28,8 @@ import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.
 import {HighWaterMarkPerformanceFeeStorage} from "../../contracts/managers/fee/FeeManagerStorageLib.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+
 
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
@@ -62,6 +64,7 @@ contract FeeManagerTest is Test {
         vm.prank(_USDC_HOLDER);
         ERC20(_USDC).transfer(_USER, 20_000e6);
         _createAccessManager();
+        _createWithdrawManager();
         _createPriceOracle();
         _createPlasmaVault();
         _initAccessManager();
@@ -87,7 +90,7 @@ contract FeeManagerTest is Test {
                     accessManager: address(_accessManager),
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     totalSupplyCap: type(uint256).max,
-                    withdrawManager: address(0)
+                    withdrawManager: _withdrawManager
                 })
             )
         );
@@ -147,6 +150,10 @@ contract FeeManagerTest is Test {
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
     }
 
+    function _createWithdrawManager() private {
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
+    }
+
     function _createPriceOracle() private {
         PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
@@ -197,7 +204,7 @@ contract FeeManagerTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
                 contextManager: address(0),

@@ -37,6 +37,7 @@ contract InitializeAccessManagerTest is Test {
 
     PriceOracleMiddleware public priceOracleMiddlewareProxy;
     IporFusionAccessManager public accessManager;
+    
     PlasmaVault public plasmaVault;
     RewardsClaimManager public rewardsClaimManager;
     WithdrawManager public withdrawManager;
@@ -50,6 +51,7 @@ contract InitializeAccessManagerTest is Test {
         );
 
         accessManager = new IporFusionAccessManager(admin, 0);
+        withdrawManager = new WithdrawManager(address(accessManager));
 
         vm.startPrank(admin);
         plasmaVault = new PlasmaVault(
@@ -65,13 +67,13 @@ contract InitializeAccessManagerTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                address(withdrawManager)
             )
         );
         vm.stopPrank();
 
         rewardsClaimManager = new RewardsClaimManager(address(accessManager), address(plasmaVault));
-        withdrawManager = new WithdrawManager(address(accessManager));
+
     }
 
     function testShouldSetupAccessManager() public {

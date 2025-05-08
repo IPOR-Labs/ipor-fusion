@@ -16,6 +16,7 @@ import {FixedValuePriceFeed} from "../../contracts/price_oracle/price_feed/Fixed
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PriceOracleMiddlewareManagerLib} from "../../contracts/managers/price/PriceOracleMiddlewareManagerLib.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract PriceOracleMiddlewareManagerTest is Test {
     address private constant _DAO = address(1111111);
@@ -32,13 +33,12 @@ contract PriceOracleMiddlewareManagerTest is Test {
     address private constant _PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS = address(10101010);
     address private constant _PRICE_ORACLE_MIDDLEWARE_MANAGER2_ADDRESS = address(10101012);
 
-    address private constant _MOCK_WITHDRAW_MANAGER = address(1234567890);
-
     address private constant _USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
     address private constant _PRICE_ORACLE_MIDDLEWARE = 0xC9F32d65a278b012371858fD3cdE315B12d664c6;
 
     address private _accessManager;
+    address private _withdrawManager;
     address private _plasmaVault;
     address private _priceOracleMiddlewareManager;
 
@@ -60,6 +60,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
         FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
+        _withdrawManager = address(new WithdrawManager(_accessManager));
 
         _priceOracleMiddlewareManager = address(
             new PriceOracleMiddlewareManager(_accessManager, _PRICE_ORACLE_MIDDLEWARE)
@@ -77,7 +78,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
             totalSupplyCap: type(uint256).max,
-            withdrawManager: address(0)
+            withdrawManager: _withdrawManager
         });
 
         vm.startPrank(_ATOMIST);
@@ -145,7 +146,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: _MOCK_WITHDRAW_MANAGER,
+                withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
                 contextManager: address(0),
@@ -165,7 +166,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
         (bool hasRolePriceOracleMiddlewareManager, uint32 delayPriceOracleMiddlewareManager) = IporFusionAccessManager(
             _accessManager
         ).hasRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, _PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
-        assertTrue(hasRolePriceOracleMiddlewareManager);
+        assertTrue(hasRolePriceOracleMiddlewareManager, "PriceOracleMiddlewareManager should have role");
 
         (
             bool hasRolePriceOracleMiddlewareManager2,
@@ -174,13 +175,13 @@ contract PriceOracleMiddlewareManagerTest is Test {
                 Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
                 _PRICE_ORACLE_MIDDLEWARE_MANAGER2_ADDRESS
             );
-        assertTrue(hasRolePriceOracleMiddlewareManager2);
+        assertTrue(hasRolePriceOracleMiddlewareManager2, "PriceOracleMiddlewareManager2 should have role");
 
         (bool hasRoleWithdrawManager, uint32 delayWithdrawManager) = IporFusionAccessManager(_accessManager).hasRole(
             Roles.TECH_WITHDRAW_MANAGER_ROLE,
-            _MOCK_WITHDRAW_MANAGER
+            _withdrawManager
         );
-        assertTrue(hasRoleWithdrawManager);
+        assertTrue(hasRoleWithdrawManager, "WithdrawManager should have role");
     }
 
     function testSetAssetsPriceSources_Success() public {

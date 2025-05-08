@@ -23,6 +23,7 @@ import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_i
 import {FluidInstadappClaimFuse} from "../../../contracts/rewards_fuses/fluid_instadapp/FluidInstadappClaimFuse.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract FluidInstadappStakingUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -62,6 +63,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     function _createPlasmaVault() private {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
+
+        address withdrawManager = address(new WithdrawManager(_accessManager));
         _plasmaVault = address(
             new PlasmaVault(
                 PlasmaVaultInitData({
@@ -76,7 +79,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                     accessManager: _accessManager,
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     totalSupplyCap: type(uint256).max,
-                    withdrawManager: address(0)
+                    withdrawManager: withdrawManager
                 })
             )
         );

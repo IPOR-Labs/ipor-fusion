@@ -25,6 +25,7 @@ import {DataForInitialization} from "../../../contracts/vaults/initializers/Ipor
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 interface IGAUGE {
     function rewards(uint256 index) external view returns (address);
@@ -64,6 +65,7 @@ contract RamsesClaimFuseTest is Test {
     address private _accessManager;
     address private _claimRewardsManager;
     address private _claimFuse;
+    address private _withdrawManager;
     RamsesV2NewPositionFuse private _ramsesV2NewPositionFuse;
 
     function setUp() public {
@@ -84,6 +86,8 @@ contract RamsesClaimFuseTest is Test {
         vm.prank(PriceOracleMiddleware(_priceOracle).owner());
         PriceOracleMiddleware(_priceOracle).setAssetsPricesSources(assetsDai, sourcesDai);
 
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
+
         // plasma vault
         _plasmaVault = address(
             new PlasmaVault(
@@ -99,7 +103,7 @@ contract RamsesClaimFuseTest is Test {
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    _withdrawManager
                 )
             )
         );
@@ -212,7 +216,13 @@ contract RamsesClaimFuseTest is Test {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, _plasmaVault, IporFusionAccessManager(_accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            _plasmaVault,
+            IporFusionAccessManager(_accessManager),
+            _withdrawManager
+        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs_) {
