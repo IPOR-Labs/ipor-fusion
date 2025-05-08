@@ -2270,8 +2270,8 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userTwo);
         plasmaVault.withdraw(amount, userTwo, userTwo);
 
-        // vm.prank(userOne);
-        // plasmaVault.redeemFromRequest(userOneRequestSharesAmount, userOne, userOne);
+        vm.prank(userOne);
+        plasmaVault.redeemFromRequest(userOneRequestSharesAmount, userOne, userOne);
 
         // then
         uint256 balanceAfter = ERC20(USDC).balanceOf(userTwo);

@@ -8,7 +8,7 @@ import {WithdrawManagerStorageLib} from "./WithdrawManagerStorageLib.sol";
 import {WithdrawRequest} from "./WithdrawManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
 import {IPlasmaVaultBase} from "../../interfaces/IPlasmaVaultBase.sol";
-import {console2} from "forge-std/console2.sol";
+
 struct WithdrawRequestInfo {
     uint256 shares;
     uint256 endWithdrawWindowTimestamp;
@@ -150,12 +150,7 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
             balanceOfPlasmaVault
         );
         uint256 sharesToRelease = WithdrawManagerStorageLib.getSharesToRelease();
-
-        console2.log("sharesToRelease", sharesToRelease);
-        console2.log("plasmaVaultBalanceOfUnallocatedShares", plasmaVaultBalanceOfUnallocatedShares);
-        console2.log("shares_", shares_);
-        console2.log("plasmaVaultBalanceOfUnallocatedShares < sharesToRelease + shares_", plasmaVaultBalanceOfUnallocatedShares < sharesToRelease + shares_);
-
+        
         if (sharesToRelease > 0 && plasmaVaultBalanceOfUnallocatedShares < sharesToRelease + shares_) {
             revert WithdrawManagerInvalidSharesToRelease(
                 sharesToRelease,

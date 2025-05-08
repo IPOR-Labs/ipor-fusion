@@ -37,7 +37,6 @@ import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
 
-import {console2} from "forge-std/console2.sol";
 
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
@@ -769,7 +768,19 @@ contract PlasmaVault is
 
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
-        _withdrawFromMarkets(assets_ + WITHDRAW_FROM_MARKETS_OFFSET + convertToAssets(WithdrawManager(withdrawManager).getSharesToRelease()), IERC20(asset()).balanceOf(address(this)));
+        uint256 sharesToRelease = WithdrawManager(withdrawManager).getSharesToRelease();
+
+        uint256 assetsToWithdrawFromMarkets;
+
+        if (sharesToRelease > 0) {
+            /// @dev When shares are in withdrawal request, we need to withdraw more assets to cover the shares and use offset
+            /// @dev Offset of 0.01% (10001/10000) is added to account for potential rounding errors and price fluctuations during withdrawal
+            assetsToWithdrawFromMarkets = assets_ + convertToAssets(sharesToRelease) * 10001 / 10000;
+        } else {
+            assetsToWithdrawFromMarkets = assets_ + WITHDRAW_FROM_MARKETS_OFFSET;
+        }
+
+        _withdrawFromMarkets(assetsToWithdrawFromMarkets, IERC20(asset()).balanceOf(address(this)));
 
         _addPerformanceFee(totalAssetsBefore);
 
@@ -793,8 +804,8 @@ contract PlasmaVault is
             return assetsToWithdraw;
         }
 
-
         super._withdraw(_msgSender(), receiver_, owner_, assets_, shares);
+
         return assets_;
     }
 
