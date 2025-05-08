@@ -178,6 +178,12 @@ library RoleLib {
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, ownerSig, Roles.OWNER_ROLE);
+
+        bytes4[] memory publicRedeemFromRequestSig = new bytes4[](1);
+        publicRedeemFromRequestSig[0] = PlasmaVault.redeemFromRequest.selector;
+
+        vm_.prank(usersWithRoles_.superAdmin);
+        accessManager_.setTargetFunctionRole(plasmaVault_, publicRedeemFromRequestSig, Roles.PUBLIC_ROLE);
     }
 
     function _setupPublicRoles(
@@ -206,13 +212,20 @@ library RoleLib {
         IporFusionAccessManager accessManager_,
         address withdrawManager_
     ) private {
-        bytes4[] memory withdrawManagerSig = new bytes4[](1);
+        bytes4[] memory withdrawManagerSig = new bytes4[](2);
         withdrawManagerSig[0] = WithdrawManager.canWithdrawFromUnallocated.selector;
+        withdrawManagerSig[1] = WithdrawManager.canWithdrawFromRequest.selector;
 
-        vm_.prank(usersWithRoles_.superAdmin);
+        bytes4[] memory alphaRoleSig = new bytes4[](1);
+        alphaRoleSig[0] = WithdrawManager.releaseFunds.selector;
+
+        vm_.startPrank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(withdrawManager_, withdrawManagerSig, Roles.TECH_PLASMA_VAULT_ROLE);
-
-        vm_.prank(usersWithRoles_.superAdmin);
+        accessManager_.setTargetFunctionRole(withdrawManager_, alphaRoleSig, Roles.ALPHA_ROLE);
         accessManager_.grantRole(Roles.TECH_PLASMA_VAULT_ROLE, plasmaVault_, 0);
+
+        
+        vm_.stopPrank();
+        
     }
 }
