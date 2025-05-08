@@ -1835,6 +1835,7 @@ contract PlasmaVaultFeeTest is Test {
         recipientManagementFees[0] = RecipientFee({recipient: recipient, feeValue: managementFeeInPercentage});
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
+        
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,

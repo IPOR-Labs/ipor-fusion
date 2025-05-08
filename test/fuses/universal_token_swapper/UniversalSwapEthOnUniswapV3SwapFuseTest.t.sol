@@ -84,7 +84,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         sources[5] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         PriceOracleMiddleware(_priceOracle).setAssetsPricesSources(assets, sources);
 
-        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
+        
         // plasma vault
         _plasmaVault = address(
             new PlasmaVault(
@@ -100,7 +100,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    _withdrawManager
+                    _createWithdrawManager()
                 )
             )
         );
@@ -477,6 +477,11 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         usersToRoles.alphas = alphas;
         accessManager_ = address(RoleLib.createAccessManager(usersToRoles, 0, vm));
         _accessManager = accessManager_;
+    }
+
+    function _createWithdrawManager() private returns (address withdrawManager_) {
+        withdrawManager_ = address(new WithdrawManager(address(_accessManager)));
+        _withdrawManager = withdrawManager_;
     }
 
     function _setupRoles() private {

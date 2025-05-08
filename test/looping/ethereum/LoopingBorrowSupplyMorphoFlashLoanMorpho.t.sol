@@ -38,6 +38,7 @@ import {IMorpho, Position} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
@@ -80,6 +81,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
 
     address private _plasmaVault;
     address private _accessManager;
+    address private _withdrawManager;
     address private _morphoFlashLoanFuse;
     address private _uniswapV3SwapFuse;
     address private _morphoSupplyFuse;
@@ -118,7 +120,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
         });
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
-
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
             assetName: "WBTC Plasma Vault",
             assetSymbol: "WBTC-PV",
@@ -131,7 +133,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
             totalSupplyCap: type(uint256).max,
-            withdrawManager: address(0)
+            withdrawManager: _withdrawManager
         });
 
         vm.startPrank(_ATOMIST);
@@ -220,7 +222,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
                 contextManager: address(0),

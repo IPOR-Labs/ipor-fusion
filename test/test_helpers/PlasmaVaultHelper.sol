@@ -24,57 +24,19 @@ struct DeployMinimalPlasmaVaultParams {
 /// @notice Helper library for testing PlasmaVault operations
 /// @dev Contains utility functions to assist with PlasmaVault testing
 library PlasmaVaultHelper {
-    function constructDefaultDataForInitialization(
-        bool isPublic_,
-        address plasmaVault_,
-        address accessManager_,
-        address claimRewardsManager_,
-        address[] memory initAddress_
-    ) internal view returns (DataForInitialization memory data) {
-        return
-            DataForInitialization({
-                isPublic: isPublic_,
-                iporDaos: initAddress_,
-                admins: initAddress_,
-                owners: initAddress_,
-                atomists: initAddress_,
-                alphas: initAddress_,
-                whitelist: initAddress_,
-                guardians: initAddress_,
-                fuseManagers: initAddress_,
-                claimRewards: initAddress_,
-                transferRewardsManagers: initAddress_,
-                configInstantWithdrawalFusesManagers: initAddress_,
-                updateMarketsBalancesAccounts: initAddress_,
-                updateRewardsBalanceAccounts: initAddress_,
-                withdrawManagerRequestFeeManagers: initAddress_,
-                withdrawManagerWithdrawFeeManagers: initAddress_,
-                priceOracleMiddlewareManagers: initAddress_,
-                preHooksManagers: initAddress_,
-                plasmaVaultAddress: PlasmaVaultAddress({
-                    plasmaVault: plasmaVault_,
-                    accessManager: accessManager_,
-                    rewardsClaimManager: claimRewardsManager_,
-                    withdrawManager: address(0),
-                    feeManager: FeeAccount(PlasmaVaultGovernance(plasmaVault_).getPerformanceFeeData().feeAccount)
-                        .FEE_MANAGER(),
-                    contextManager: address(0),
-                    priceOracleMiddlewareManager: address(0)
-                })
-            });
-    }
+    
     /// @notice Deploys a minimal PlasmaVault with basic configuration
     /// @param params Parameters for deployment
     /// @return plasmaVault Address of the deployed PlasmaVault
     function deployMinimalPlasmaVault(
         DeployMinimalPlasmaVaultParams memory params
-    ) internal returns (PlasmaVault plasmaVault, address noAddress) {
+    ) internal returns (PlasmaVault plasmaVault, address withdrawManager) {
         // Create fee configuration
         FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         // Deploy access manager
         address accessManager = address(new IporFusionAccessManager(params.atomist, 0));
-        address withdrawManager = address(new WithdrawManager(accessManager));
+        withdrawManager = address(new WithdrawManager(accessManager));
 
         // Create initialization data for PlasmaVault
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
@@ -92,7 +54,7 @@ library PlasmaVaultHelper {
             withdrawManager: withdrawManager
         });
 
-        return (new PlasmaVault(initData), address(0));
+        return (new PlasmaVault(initData), withdrawManager);
     }
 
     function deployMinimalPlasmaVaultWithWithdrawManager(

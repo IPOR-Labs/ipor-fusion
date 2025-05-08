@@ -863,7 +863,7 @@ contract PlasmaVaultBasicTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                address(withdrawManager)
             )
         );
 
@@ -1043,7 +1043,7 @@ contract PlasmaVaultBasicTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                address(withdrawManager)
             )
         );
 
