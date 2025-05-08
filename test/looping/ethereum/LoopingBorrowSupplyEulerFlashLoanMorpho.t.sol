@@ -34,6 +34,7 @@ import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/Callb
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 struct VaultBalance {
     uint256 eulerPrimeUsdc;
@@ -92,7 +93,7 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
-
+    address private _withdrawManager;
     address private _eulerSupplyFuse;
     address private _eulerCollateralFuse;
     address private _eulerControllerFuse;
@@ -121,7 +122,7 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    _createWithdrawManager()
                 )
             )
         );
@@ -228,6 +229,11 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
         _accessManager = accessManager_;
     }
 
+    function _createWithdrawManager() private returns (address withdrawManager_) {
+        withdrawManager_ = address(new WithdrawManager(address(_accessManager)));
+        _withdrawManager = withdrawManager_;
+    }
+
     function _initAccessManager() private {
         address[] memory initAddress = new address[](3);
         initAddress[0] = address(this);
@@ -263,7 +269,7 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
                 contextManager: address(0),

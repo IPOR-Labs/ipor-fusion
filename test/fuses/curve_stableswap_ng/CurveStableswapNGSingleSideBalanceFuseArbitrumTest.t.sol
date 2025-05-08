@@ -17,6 +17,7 @@ import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -95,6 +96,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -109,11 +111,11 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                address(withdrawManager)
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(
@@ -202,7 +204,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         address[] memory fuses = createFuses(fuse);
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
-
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
         PlasmaVault plasmaVault = new PlasmaVault(
@@ -218,11 +220,11 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                address(withdrawManager)
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(
@@ -370,9 +372,13 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             });
     }
 
-    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
+    function setupRoles(
+        PlasmaVault plasmaVault,
+        IporFusionAccessManager accessManager,
+        address withdrawManager
+    ) public {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
     }
 }

@@ -22,6 +22,7 @@ import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalToke
 import {MockDexActionEthereum} from "./MockDexActionEthereum.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract UniversalSwapOnMockDexTest is Test {
     using SafeERC20 for ERC20;
@@ -37,6 +38,7 @@ contract UniversalSwapOnMockDexTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+    address private _withdrawManager;
     address private _swapExecutor;
 
     UniversalTokenSwapperFuse private _universalTokenSwapperFuse;
@@ -58,6 +60,7 @@ contract UniversalSwapOnMockDexTest is Test {
         );
 
         _mockDexActionEthereum = address(new MockDexActionEthereum());
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
         // plasma vault
         _plasmaVault = address(
@@ -74,7 +77,7 @@ contract UniversalSwapOnMockDexTest is Test {
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    _withdrawManager
                 )
             )
         );
@@ -237,7 +240,13 @@ contract UniversalSwapOnMockDexTest is Test {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, _plasmaVault, IporFusionAccessManager(_accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            _plasmaVault,
+            IporFusionAccessManager(_accessManager),
+            _withdrawManager
+        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs_) {

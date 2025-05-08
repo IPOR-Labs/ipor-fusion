@@ -30,6 +30,7 @@ contract CurveIntegrationTest is Test {
     PriceOracleMiddleware private _priceOracleMiddleware;
     PlasmaVault private _plasmaVault;
     IporFusionAccessManager private _accessManager;
+    address private _withdrawManager;
     Erc4626SupplyFuse private _erc4626SupplyFuse;
     Erc4626BalanceFuse private _erc4626BalanceFuse;
     CurveChildLiquidityGaugeSupplyFuse private _curveChildLiquidityGaugeSupplyFuse;
@@ -70,10 +71,10 @@ contract CurveIntegrationTest is Test {
         });
 
         vm.startPrank(TestAddresses.ATOMIST);
-        (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
+        (_plasmaVault, _withdrawManager) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, address(0));
+        _accessManager.setupInitRoles(_plasmaVault, _withdrawManager);
 
         // Grant market substrates for ERC4626 vaults
         bytes32[] memory substrates = new bytes32[](3);
