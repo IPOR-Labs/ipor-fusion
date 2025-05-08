@@ -14,7 +14,7 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVa
 
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
+import {FeeManager, FeeManagerInitData} from "../../contracts/managers/fee/FeeManager.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
@@ -25,10 +25,8 @@ import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
-import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {HighWaterMarkPerformanceFeeStorage} from "../../contracts/managers/fee/FeeManagerStorageLib.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 contract FeeManagerTest is Test {
@@ -944,5 +942,177 @@ contract FeeManagerTest is Test {
 
         assertEq(initialHighWaterMark.updateInterval, 7 days, "Initial interval should be 7 days");
         assertEq(updatedHighWaterMark.updateInterval, 0, "Update interval should be set to zero");
+    }
+
+    function testShouldInitializeFeeManagerWithValidData() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](1);
+        performanceFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: PERFORMANCE_FEE_IN_PERCENTAGE});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: MANAGEMENT_FEE_IN_PERCENTAGE});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when
+        FeeManager feeManager = new FeeManager(initData);
+
+        // then
+        assertEq(feeManager.PLASMA_VAULT(), _plasmaVault, "PLASMA_VAULT should be set correctly");
+        assertEq(
+            feeManager.IPOR_DAO_MANAGEMENT_FEE(),
+            DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            "DAO management fee should be set correctly"
+        );
+        assertEq(
+            feeManager.IPOR_DAO_PERFORMANCE_FEE(),
+            DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            "DAO performance fee should be set correctly"
+        );
+        assertEq(
+            feeManager.getIporDaoFeeRecipientAddress(),
+            _DAO_FEE_RECIPIENT,
+            "DAO fee recipient should be set correctly"
+        );
+
+        RecipientFee[] memory storedPerformanceFees = feeManager.getPerformanceFeeRecipients();
+        assertEq(storedPerformanceFees.length, 1, "Should have one performance fee recipient");
+        assertEq(
+            storedPerformanceFees[0].recipient,
+            _FEE_RECIPIENT_1,
+            "Performance fee recipient should be set correctly"
+        );
+        assertEq(
+            storedPerformanceFees[0].feeValue,
+            PERFORMANCE_FEE_IN_PERCENTAGE,
+            "Performance fee value should be set correctly"
+        );
+
+        RecipientFee[] memory storedManagementFees = feeManager.getManagementFeeRecipients();
+        assertEq(storedManagementFees.length, 1, "Should have one management fee recipient");
+        assertEq(
+            storedManagementFees[0].recipient,
+            _FEE_RECIPIENT_1,
+            "Management fee recipient should be set correctly"
+        );
+        assertEq(
+            storedManagementFees[0].feeValue,
+            MANAGEMENT_FEE_IN_PERCENTAGE,
+            "Management fee value should be set correctly"
+        );
+    }
+
+    function testShouldRevertWhenInitialAuthorityIsZero() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](1);
+        performanceFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: PERFORMANCE_FEE_IN_PERCENTAGE});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: MANAGEMENT_FEE_IN_PERCENTAGE});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: address(0),
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when/then
+        vm.expectRevert(FeeManager.InvalidAuthority.selector);
+        new FeeManager(initData);
+    }
+
+    function testShouldRevertWhenFeeRecipientPerformanceFeesIsZero() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](1);
+        performanceFees[0] = RecipientFee({recipient: address(0), feeValue: PERFORMANCE_FEE_IN_PERCENTAGE});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: MANAGEMENT_FEE_IN_PERCENTAGE});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when/then
+        vm.expectRevert(FeeManager.InvalidFeeRecipientAddress.selector);
+        new FeeManager(initData);
+    }
+
+    function testShouldRevertWhenFeeRecipientManagementFeesIsZero() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](1);
+        performanceFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: PERFORMANCE_FEE_IN_PERCENTAGE});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: address(0), feeValue: MANAGEMENT_FEE_IN_PERCENTAGE});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when/then
+        vm.expectRevert(FeeManager.InvalidFeeRecipientAddress.selector);
+        new FeeManager(initData);
+    }
+
+    function testShouldInitializeWithEmptyFeeRecipients() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](0);
+        RecipientFee[] memory managementFees = new RecipientFee[](0);
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when
+        FeeManager feeManager = new FeeManager(initData);
+
+        // then
+        RecipientFee[] memory storedPerformanceFees = feeManager.getPerformanceFeeRecipients();
+        assertEq(storedPerformanceFees.length, 0, "Should have no performance fee recipients");
+
+        RecipientFee[] memory storedManagementFees = feeManager.getManagementFeeRecipients();
+        assertEq(storedManagementFees.length, 0, "Should have no management fee recipients");
+
+        assertEq(
+            feeManager.getTotalPerformanceFee(),
+            DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            "Total performance fee should equal DAO fee"
+        );
+        assertEq(
+            feeManager.getTotalManagementFee(),
+            DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            "Total management fee should equal DAO fee"
+        );
     }
 }
