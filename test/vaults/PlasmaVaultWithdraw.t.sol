@@ -2025,4 +2025,256 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userThree);
         plasmaVault.transferFrom(userTwo, userOne, amount);
     }
+
+    function testShouldBeAbleToRedeemWhenSomeSharesAreInWithdrawalRequest() public {
+        // given
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alpha = address(0x1);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseAaveV3);
+
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 10 minutes);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfigHelper.createZeroFeeConfig(),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max,
+                withdrawManager
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        amount = 100 * 1e6;
+
+        deal(USDC, address(userOne), amount * 2); // Double the amount to ensure sufficient balance
+        deal(USDC, address(userTwo), amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userTwo);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(userOne);
+        uint256 userOneSharesAmount = plasmaVault.deposit(amount, userOne);
+
+        vm.prank(userTwo);
+        uint256 userTwoSharesAmount = plasmaVault.deposit(amount, userTwo);
+
+        // Set up withdrawal request and release funds
+        vm.prank(atomist);
+        WithdrawManager(withdrawManager).updateWithdrawWindow(1 days);
+
+        uint256 userOneRequestSharesAmount = userOneSharesAmount / 4;
+
+        vm.startPrank(userOne);
+        WithdrawManager(withdrawManager).requestShares(userOneRequestSharesAmount);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 hours);
+
+        vm.prank(alpha);
+        WithdrawManager(withdrawManager).releaseFunds(block.timestamp - 1, userOneRequestSharesAmount); // Release half the shares
+
+        FuseAction[] memory calls = new FuseAction[](1);
+
+        calls[0] = FuseAction(
+            address(supplyFuseAaveV3),
+            abi.encodeWithSignature(
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount + amount / 2, userEModeCategoryId: 1e6})
+            )
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+
+        // Configure instant withdrawal
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory instantWithdrawParams = new bytes32[](2);
+
+        instantWithdrawParams[0] = 0;
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
+            fuse: address(supplyFuseAaveV3),
+            params: instantWithdrawParams
+        });
+
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+
+        vm.warp(block.timestamp + 10 hours);
+
+        uint256 balanceBefore = ERC20(USDC).balanceOf(userTwo);
+
+        // when
+        vm.prank(userTwo);
+        plasmaVault.redeem(userTwoSharesAmount, userTwo, userTwo);
+
+        vm.prank(userOne);
+        plasmaVault.redeemFromRequest(userOneRequestSharesAmount, userOne, userOne);
+
+        // then
+        uint256 balanceAfter = ERC20(USDC).balanceOf(userTwo);
+        assertLt(balanceBefore, balanceAfter, "user two should receive correct amount of assets");
+    }
+
+    function testShouldBeAbleToWithdrawWhenSomeSharesAreInWithdrawalRequest() public {
+        // given
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
+        underlyingToken = USDC;
+        alpha = address(0x1);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        /// @dev Market Aave V3
+        marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
+        );
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
+        );
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(supplyFuseAaveV3);
+
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
+
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 10 minutes);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfigHelper.createZeroFeeConfig(),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max,
+                withdrawManager
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        amount = 100 * 1e6;
+
+        deal(USDC, address(userOne), amount * 2); // Double the amount to ensure sufficient balance
+        deal(USDC, address(userTwo), amount);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userTwo);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+
+        vm.prank(userOne);
+        uint256 userOneSharesAmount = plasmaVault.deposit(amount, userOne);
+
+        vm.prank(userTwo);
+        uint256 userTwoSharesAmount = plasmaVault.deposit(amount, userTwo);
+
+        // Set up withdrawal request and release funds
+        vm.prank(atomist);
+        WithdrawManager(withdrawManager).updateWithdrawWindow(1 days);
+
+        uint256 userOneRequestSharesAmount = userOneSharesAmount / 4;
+
+        vm.startPrank(userOne);
+        WithdrawManager(withdrawManager).requestShares(userOneRequestSharesAmount);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 hours);
+
+        vm.prank(alpha);
+        WithdrawManager(withdrawManager).releaseFunds(block.timestamp - 1, userOneRequestSharesAmount); // Release half the shares
+
+        FuseAction[] memory calls = new FuseAction[](1);
+
+        calls[0] = FuseAction(
+            address(supplyFuseAaveV3),
+            abi.encodeWithSignature(
+                "enter((address,uint256,uint256))",
+                AaveV3SupplyFuseEnterData({asset: USDC, amount: amount + amount / 2, userEModeCategoryId: 1e6})
+            )
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(calls);
+
+        // Configure instant withdrawal
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory instantWithdrawParams = new bytes32[](2);
+
+        instantWithdrawParams[0] = 0;
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
+            fuse: address(supplyFuseAaveV3),
+            params: instantWithdrawParams
+        });
+
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+
+        vm.warp(block.timestamp + 10 hours);
+
+        uint256 balanceBefore = ERC20(USDC).balanceOf(userTwo);
+
+        // when
+        vm.prank(userTwo);
+        plasmaVault.withdraw(amount, userTwo, userTwo);
+
+        // vm.prank(userOne);
+        // plasmaVault.redeemFromRequest(userOneRequestSharesAmount, userOne, userOne);
+
+        // then
+        uint256 balanceAfter = ERC20(USDC).balanceOf(userTwo);
+        assertLt(balanceBefore, balanceAfter, "user two should receive correct amount of assets");
+    }
 }
