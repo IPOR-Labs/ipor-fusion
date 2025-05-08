@@ -2910,8 +2910,12 @@ contract PlasmaVaultMaintenanceTest is Test {
         address user = address(0x555);
 
         // Create vault with minimal configuration
-        PlasmaVault plasmaVault = createTestVault(underlyingToken);
+        (PlasmaVault plasmaVault, WithdrawManager withdrawManager) = createTestVault(underlyingToken);
+        
+        
         IporFusionAccessManager accessManager = IporFusionAccessManager(plasmaVault.authority());
+
+        setupRoles(plasmaVault, accessManager, address(withdrawManager));
 
         // Setup roles and timelocks
         uint64[] memory roles = new uint64[](2);
@@ -2942,12 +2946,12 @@ contract PlasmaVaultMaintenanceTest is Test {
     }
 
     // Helper function to create a test vault with minimal configuration
-    function createTestVault(address underlyingToken_) internal returns (PlasmaVault) {
+    function createTestVault(address underlyingToken_) internal returns (PlasmaVault, WithdrawManager) {
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        return
+        return (
             new PlasmaVault(
                 PlasmaVaultInitData(
                     assetName,
@@ -2961,9 +2965,11 @@ contract PlasmaVaultMaintenanceTest is Test {
                     address(accessManager),
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    withdrawManager
+                    address(withdrawManager)
                 )
-            );
+            ),
+            WithdrawManager(address(withdrawManager))
+        );
     }
 
     function testShouldNotBeAbleToGrantRoleWhenExecutionDaleyTooSmall() public {
