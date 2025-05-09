@@ -163,28 +163,6 @@ library FuseStorageLib {
     bytes32 private constant RAMSES_V2_TOKEN_IDS = 0x1a3831a406f27d4d5d820158b29ce95a1e8e840bf416921917aa388e2461b700;
 
     /**
-     * @dev Storage slot for mapping asset addresses to their corresponding Liquity AddressesRegistry contracts.
-     * @notice Used to resolve the correct registry for each supported Liquity V2 collateral asset.
-     *
-     * Calculation:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.LiquityV2AssetToRegistry")) - 1)) & ~bytes32(uint256(0xff))
-     *
-     * Purpose:
-     * - Centralized and consistent storage of asset-to-registry mappings
-     * - Required for dynamic resolution of contract dependencies
-     *
-     * Usage:
-     * - Populated in the constructor of Liquity-related fuses
-     * - Queried during trove entry and exit operations to route calls correctly
-     *
-     * Security Considerations:
-     * - Must be initialized correctly per asset
-     * - Read-only after construction to avoid state corruption
-     */
-    bytes32 private constant LIQUITY_V2_ASSET_TO_REGISTRY =
-        0x8e8b590a70665ed4dbed4a60961f00125195727cf07220631e8d43343b506500;
-
-    /**
      * @dev Storage slot for managing Liquity V2 Troves position token IDs in the Plasma Vault
      * @notice Tracks and manages Liquity V2 Troves positions held by the vault
      *
@@ -250,11 +228,6 @@ library FuseStorageLib {
         mapping(uint256 tokenId => uint256 index) indexes;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.LiquityV2AssetToRegistry
-    struct LiquityV2AssetToRegistry {
-        mapping(address => address) registryByAsset;
-    }
-
     /// @custom:storage-location erc7201:io.ipor.LiquityV2OwnerIndexes
     struct LiquityV2OwnerIndexes {
         uint256 lastIndex;
@@ -286,12 +259,6 @@ library FuseStorageLib {
     function getRamsesV2TokenIds() internal pure returns (RamsesV2TokenIds storage ramsesV2TokenIds) {
         assembly {
             ramsesV2TokenIds.slot := RAMSES_V2_TOKEN_IDS
-        }
-    }
-
-    function getLiquityV2AssetToRegistry() internal pure returns (LiquityV2AssetToRegistry storage store) {
-        assembly {
-            store.slot := LIQUITY_V2_ASSET_TO_REGISTRY
         }
     }
 

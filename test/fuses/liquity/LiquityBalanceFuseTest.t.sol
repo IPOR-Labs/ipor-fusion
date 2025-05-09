@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
 
 import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/mainnet/LiquityBalanceFuse.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
@@ -15,6 +14,7 @@ contract LiquityBalanceFuseTest is Test {
     Asset[3] private assets;
 
     function setUp() public {
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22375819);
         assets[0] = Asset({
             token: address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // WETH
             name: "WETH"
@@ -30,8 +30,7 @@ contract LiquityBalanceFuseTest is Test {
     }
 
     function testLiquityBalance() external {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22375819);
-        LiquityBalanceFuse liquityBalanceFuse = new LiquityBalanceFuse(541081796814);
+        LiquityBalanceFuse liquityBalanceFuse = new LiquityBalanceFuse(1);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(0x0), address(liquityBalanceFuse));
 
         uint256 initialAmount = 1000 * 1e18;
@@ -43,7 +42,7 @@ contract LiquityBalanceFuseTest is Test {
         deal(tokens[1], address(vaultMock), initialAmount);
         deal(tokens[2], address(vaultMock), initialAmount);
 
-        vaultMock.updateMarketConfiguration(541081796814, tokens);
+        vaultMock.updateMarketConfiguration(1, tokens);
 
         uint256 balanceBefore = vaultMock.balanceOf();
 
