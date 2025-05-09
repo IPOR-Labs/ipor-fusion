@@ -356,13 +356,11 @@ library IporFusionAccessManagerInitializerLibV1 {
             data_.updateRewardsBalanceAccounts.length +
             data_.withdrawManagerRequestFeeManagers.length +
             data_.withdrawManagerWithdrawFeeManagers.length +
-            1 + /// @dev +1 - Rights for the Plasma Vault to role UPDATE_MARKETS_BALANCES_ROLE
-            (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +
-            (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +
-            (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 2) +
-            1 + // Plasma Vault
-            (data_.plasmaVaultAddress.withdrawManager == address(0) ? 0 : 1) +
-            (data_.plasmaVaultAddress.priceOracleMiddlewareManager == address(0) ? 0 : 1); // Price Oracle Middleware Manager
+            (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +       /// @dev +1 TECH_CONTEXT_MANAGER_ROLE
+            (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +  /// @dev +1 TECH_REWARDS_CLAIM_MANAGER_ROLE
+            (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 2) +           /// @dev +2 TECH_PERFORMANCE_FEE_MANAGER_ROLE, TECH_MANAGEMENT_FEE_MANAGER_ROLE
+            2 +                                                                     /// @dev +2 - UPDATE_MARKETS_BALANCES_ROLE, TECH_PLASMA_VAULT_ROLE for Plasma Vault
+            (data_.plasmaVaultAddress.withdrawManager == address(0) ? 0 : 1);       /// @dev +1 TECH_WITHDRAW_MANAGER_ROLE
     }
 
     function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
