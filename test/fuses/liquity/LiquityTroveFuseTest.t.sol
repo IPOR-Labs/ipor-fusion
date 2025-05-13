@@ -3,9 +3,9 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 
-import {LiquityTroveFuse, LiquityTroveEnterData, LiquityTroveExitData} from "../../../contracts/fuses/liquity/mainnet/LiquityTroveFuse.sol";
+import {LiquityTroveFuse, LiquityTroveEnterData, LiquityTroveExitData} from "../../../contracts/fuses/liquity/ethereum/LiquityTroveFuse.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/mainnet/LiquityBalanceFuse.sol";
+import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/ethereum/LiquityBalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
