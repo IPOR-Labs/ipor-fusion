@@ -41,14 +41,15 @@ struct Balances {
 }
 
 struct UniversalTokenSwapperSubstrate {
-    address tokenIn;
-    address tokenOut;
-    uint256 amountIn;
-    UniversalTokenSwapperEthData data;
+    bytes4 functionSelector;
+    // @dev If the signature is 0, then it is an approved target to execute; otherwise, it is the address of the validator.
+    address target;
+    // @dev it is the last 8 bytes of the target address. it is only used for the validation of the target address.
+    bytes8 saltFromTargetAddress;
 }
 
 /// @title This contract is designed to execute every swap operation and check the slippage on any DEX.
-contract UniversalTokenSwapperEthFuse is IFuseCommon {
+contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
     using SafeERC20 for ERC20;
 
     event UniversalTokenSwapperEthFuseEnter(
@@ -151,6 +152,30 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
     }
 
+    /// @notice Converts UniversalTokenSwapperSubstrate to bytes32
+    /// @param substrate_ The substrate to convert
+    /// @return The packed bytes32 representation
+    function toBytes32(UniversalTokenSwapperSubstrate memory substrate_) public pure returns (bytes32) {
+        return
+            bytes32(
+                (uint256(uint32(substrate_.functionSelector)) << 224) |
+                    (uint256(uint160(substrate_.target)) << 64) |
+                    uint256(uint64(substrate_.saltFromTargetAddress))
+            );
+    }
+
+    /// @notice Converts bytes32 back to UniversalTokenSwapperSubstrate
+    /// @param data_ The bytes32 data to convert
+    /// @return The unpacked UniversalTokenSwapperSubstrate
+    function fromBytes32(bytes32 data_) public pure returns (UniversalTokenSwapperSubstrate memory) {
+        return
+            UniversalTokenSwapperSubstrate({
+                functionSelector: bytes4(uint32(uint256(data_) >> 224)),
+                target: address(uint160(uint256(data_) >> 64)),
+                saltFromTargetAddress: bytes8(uint64(uint256(data_)))
+            });
+    }
+
     function _emitUniversalTokenSwapperFuseEnter(
         UniversalTokenSwapperEthEnterData calldata data_,
         uint256 tokenInDelta,
@@ -160,25 +185,88 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     }
 
     function _checkSubstrates(UniversalTokenSwapperEthEnterData calldata data_) private view {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                toBytes32(
+                    UniversalTokenSwapperSubstrate({
+                        functionSelector: bytes4(0),
+                        target: data_.tokenIn,
+                        saltFromTargetAddress: bytes8(0)
+                    })
+                )
+            )
+        ) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
         }
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                toBytes32(
+                    UniversalTokenSwapperSubstrate({
+                        functionSelector: bytes4(0),
+                        target: data_.tokenOut,
+                        saltFromTargetAddress: bytes8(0)
+                    })
+                )
+            )
+        ) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
         }
 
         uint256 targetsLength = data_.data.targets.length;
         for (uint256 i; i < targetsLength; ++i) {
-            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.targets[i])) {
+            if (
+                !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                    MARKET_ID,
+                    toBytes32(
+                        UniversalTokenSwapperSubstrate({
+                            functionSelector: bytes4(0),
+                            target: data_.data.targets[i],
+                            saltFromTargetAddress: bytes8(0)
+                        })
+                    )
+                )
+            ) {
+                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
+            }
+
+            if (
+                !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                    MARKET_ID,
+                    toBytes32(
+                        UniversalTokenSwapperSubstrate({
+                            functionSelector: bytes4(data_.data.callDatas[i]),
+                            target: data_.data.targets[i],
+                            saltFromTargetAddress: getLast8BytesOfAddress(data_.data.targets[i])
+                        })
+                    )
+                )
+            ) {
                 revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
             }
         }
 
         uint256 tokensDustToCheckLength = data_.data.tokensDustToCheck.length;
         for (uint256 i; i < tokensDustToCheckLength; ++i) {
-            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.tokensDustToCheck[i])) {
+            if (
+                !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                    MARKET_ID,
+                    toBytes32(
+                        UniversalTokenSwapperSubstrate({
+                            functionSelector: bytes4(0),
+                            target: data_.data.tokensDustToCheck[i],
+                            saltFromTargetAddress: bytes8(0)
+                        })
+                    )
+                )
+            ) {
                 revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.tokensDustToCheck[i]);
             }
         }
+    }
+
+    function getLast8BytesOfAddress(address addr_) public pure returns (bytes8) {
+        return bytes8(uint64(uint160(addr_)));
     }
 }
