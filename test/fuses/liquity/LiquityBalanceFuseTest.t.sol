@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 
-import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/mainnet/LiquityBalanceFuse.sol";
+import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/ethereum/LiquityBalanceFuse.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract LiquityBalanceFuseTest is Test {
