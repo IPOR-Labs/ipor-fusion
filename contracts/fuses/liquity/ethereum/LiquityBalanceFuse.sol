@@ -9,14 +9,16 @@ import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol"
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {IporMath} from "../../../libraries/math/IporMath.sol";
 
+/// @title Fuse for Liquity protocol responsible for calculating the balance of the Plasma Vault in Liquity protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the address registries of Liquity protocol that are used in the Liquity protocol for a given MARKET_ID
 contract LiquityBalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
     uint256 public immutable MARKET_ID;
 
     uint256 private constant LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS = 18;
 
-    constructor(uint256 marketId_) {
-        MARKET_ID = marketId_;
+    constructor(uint256 marketId) {
+        MARKET_ID = marketId;
     }
 
     // The balance is composed of the value of the Plasma Vault in USD

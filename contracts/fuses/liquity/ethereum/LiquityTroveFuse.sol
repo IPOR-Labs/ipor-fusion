@@ -13,14 +13,16 @@ import {ITroveManager} from "./ext/ITroveManager.sol";
 import {LiquityMath} from "./ext/LiquityMath.sol";
 import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @title Fuse for Liquity protocol responsible for calculating the balance of the Plasma Vault in Liquity protocol based on preconfigured market substrates
+/// @dev Substrates in this fuse are the address registries of Liquity protocol that are used in the Liquity protocol for a given MARKET_ID
 struct LiquityTroveEnterData {
     address registry;
-    uint256 _collAmount;
-    uint256 _boldAmount;
-    uint256 _upperHint;
-    uint256 _lowerHint;
-    uint256 _annualInterestRate;
-    uint256 _maxUpfrontFee;
+    uint256 collAmount;
+    uint256 boldAmount;
+    uint256 upperHint;
+    uint256 lowerHint;
+    uint256 annualInterestRate;
+    uint256 maxUpfrontFee;
 }
 
 struct LiquityTroveExitData {
@@ -57,23 +59,21 @@ contract LiquityTroveFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(LiquityTroveEnterData calldata data_) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.registry)) revert InvalidRegistry();
+    function enter(LiquityTroveEnterData calldata data) external {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.registry)) revert InvalidRegistry();
 
-        if (
-            data_._annualInterestRate < MIN_ANNUAL_INTEREST_RATE || data_._annualInterestRate > MAX_ANNUAL_INTEREST_RATE
-        ) {
+        if (data.annualInterestRate < MIN_ANNUAL_INTEREST_RATE || data.annualInterestRate > MAX_ANNUAL_INTEREST_RATE) {
             revert InvalidAnnualInterestRate();
         }
 
         FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
         uint256 newIndex = troveData.lastIndex++;
         IBorrowerOperations borrowerOperations = IBorrowerOperations(
-            IAddressesRegistry(data_.registry).borrowerOperations()
+            IAddressesRegistry(data.registry).borrowerOperations()
         );
 
-        _checkUpfrontFeeAndDebt(data_);
-        address collToken = address(IAddressesRegistry(data_.registry).collToken());
+        _checkUpfrontFeeAndDebt(data);
+        address collToken = address(IAddressesRegistry(data.registry).collToken());
 
         ERC20(collToken).forceApprove(address(borrowerOperations), type(uint256).max);
 
@@ -81,12 +81,12 @@ contract LiquityTroveFuse is IFuseCommon {
         uint256 troveId = borrowerOperations.openTrove(
             address(this),
             newIndex,
-            data_._collAmount,
-            data_._boldAmount,
-            data_._upperHint,
-            data_._lowerHint,
-            data_._annualInterestRate,
-            data_._maxUpfrontFee,
+            data.collAmount,
+            data.boldAmount,
+            data.upperHint,
+            data.lowerHint,
+            data.annualInterestRate,
+            data.maxUpfrontFee,
             address(0), // anybody can add collateral and pay debt
             address(this), // only this contract can withdraw collateral and borrow
             address(this) // this contract is the recipient of the trove funds
@@ -94,26 +94,29 @@ contract LiquityTroveFuse is IFuseCommon {
 
         ERC20(collToken).forceApprove(address(borrowerOperations), 0);
 
-        troveData.idByOwnerIndex[data_.registry][newIndex] = troveId;
+        troveData.idByOwnerIndex[data.registry][newIndex] = troveId;
 
-        emit LiquityTroveFuseEnter(VERSION, data_.registry, newIndex, troveId);
+        emit LiquityTroveFuseEnter(VERSION, data.registry, newIndex, troveId);
     }
 
-    function exit(LiquityTroveExitData calldata data_) external {
+    function exit(LiquityTroveExitData calldata data) external {
+        uint256 len = data.ownerIndexes.length;
+        if (len == 0) return;
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.registry)) revert InvalidRegistry();
         IBorrowerOperations borrowerOperations = IBorrowerOperations(
-            IAddressesRegistry(data_.registry).borrowerOperations()
+            IAddressesRegistry(data.registry).borrowerOperations()
         );
 
-        ITroveManager troveManager = ITroveManager(IAddressesRegistry(data_.registry).troveManager());
-        ERC20 boldToken = ERC20(IAddressesRegistry(data_.registry).boldToken());
+        ITroveManager troveManager = ITroveManager(IAddressesRegistry(data.registry).troveManager());
+        ERC20 boldToken = ERC20(IAddressesRegistry(data.registry).boldToken());
 
         FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
-        uint256 len = data_.ownerIndexes.length;
 
         boldToken.forceApprove(address(borrowerOperations), type(uint256).max);
 
         for (uint256 i; i < len; i++) {
-            uint256 troveId = troveData.idByOwnerIndex[data_.registry][data_.ownerIndexes[i]];
+            uint256 troveId = troveData.idByOwnerIndex[data.registry][data.ownerIndexes[i]];
             if (troveId == 0) continue;
 
             if (troveManager.getLatestTroveData(troveId).entireDebt > boldToken.balanceOf(address(this))) {
@@ -124,49 +127,49 @@ contract LiquityTroveFuse is IFuseCommon {
             }
 
             borrowerOperations.closeTrove(troveId);
-            delete troveData.idByOwnerIndex[data_.registry][data_.ownerIndexes[i]];
+            delete troveData.idByOwnerIndex[data.registry][data.ownerIndexes[i]];
 
-            emit LiquityTroveFuseExit(VERSION, data_.registry, troveId);
+            emit LiquityTroveFuseExit(VERSION, data.registry, troveId);
         }
 
         boldToken.forceApprove(address(borrowerOperations), 0);
     }
 
-    function _calcUpfrontFee(uint256 _debt, uint256 _avgInterestRate) internal pure returns (uint256) {
-        return _calcInterest(_debt * _avgInterestRate, UPFRONT_INTEREST_PERIOD);
+    function _calcUpfrontFee(uint256 debt, uint256 avgInterestRate) internal pure returns (uint256) {
+        return _calcInterest(debt * avgInterestRate, UPFRONT_INTEREST_PERIOD);
     }
 
-    function _calcInterest(uint256 _weightedDebt, uint256 _period) internal pure returns (uint256) {
-        return (_weightedDebt * _period) / ONE_YEAR / DECIMAL_PRECISION;
+    function _calcInterest(uint256 weightedDebt, uint256 period) internal pure returns (uint256) {
+        return (weightedDebt * period) / ONE_YEAR / DECIMAL_PRECISION;
     }
 
-    function _requireUserAcceptsUpfrontFee(uint256 _fee, uint256 _maxFee) internal pure {
-        if (_fee > _maxFee) {
-            revert UpfrontFeeTooHigh(_fee);
+    function _requireUserAcceptsUpfrontFee(uint256 fee, uint256 maxFee) internal pure {
+        if (fee > maxFee) {
+            revert UpfrontFeeTooHigh(fee);
         }
     }
 
-    function _checkUpfrontFeeAndDebt(LiquityTroveEnterData memory data_) internal {
-        IActivePool activePool = IAddressesRegistry(data_.registry).activePool();
+    function _checkUpfrontFeeAndDebt(LiquityTroveEnterData memory data) internal {
+        IActivePool activePool = IAddressesRegistry(data.registry).activePool();
 
-        IActivePool.TroveChange memory _change;
-        _change.collIncrease = data_._collAmount;
-        _change.debtIncrease = data_._boldAmount;
-        _change.newWeightedRecordedDebt = _change.debtIncrease * data_._annualInterestRate;
+        IActivePool.TroveChange memory change;
+        change.collIncrease = data.collAmount;
+        change.debtIncrease = data.boldAmount;
+        change.newWeightedRecordedDebt = change.debtIncrease * data.annualInterestRate;
 
-        uint256 avgInterestRate = activePool.getNewApproxAvgInterestRateFromTroveChange(_change);
-        _change.upfrontFee = _calcUpfrontFee(_change.debtIncrease, avgInterestRate);
-        _requireUserAcceptsUpfrontFee(_change.upfrontFee, data_._maxUpfrontFee);
+        uint256 avgInterestRate = activePool.getNewApproxAvgInterestRateFromTroveChange(change);
+        change.upfrontFee = _calcUpfrontFee(change.debtIncrease, avgInterestRate);
+        _requireUserAcceptsUpfrontFee(change.upfrontFee, data.maxUpfrontFee);
 
-        if (_change.debtIncrease + _change.upfrontFee < MIN_DEBT) {
-            revert DebtBelowMin(_change.debtIncrease + _change.upfrontFee);
+        if (change.debtIncrease + change.upfrontFee < MIN_DEBT) {
+            revert DebtBelowMin(change.debtIncrease + change.upfrontFee);
         }
-        uint256 mcr = IAddressesRegistry(data_.registry).MCR();
-        (uint256 price, bool newOracleFailureDetected) = IAddressesRegistry(data_.registry).priceFeed().fetchPrice();
+        uint256 mcr = IAddressesRegistry(data.registry).MCR();
+        (uint256 price, bool newOracleFailureDetected) = IAddressesRegistry(data.registry).priceFeed().fetchPrice();
         if (newOracleFailureDetected) {
             revert NewOracleFailureDetected();
         }
-        uint256 icr = LiquityMath._computeCR(data_._collAmount, _change.debtIncrease + _change.upfrontFee, price);
+        uint256 icr = LiquityMath._computeCR(data.collAmount, change.debtIncrease + change.upfrontFee, price);
         if (icr < mcr) {
             revert ICRBelowMCR(icr, mcr);
         }

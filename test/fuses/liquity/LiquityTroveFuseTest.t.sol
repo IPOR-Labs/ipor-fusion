@@ -73,12 +73,12 @@ contract LiquityTroveFuseTest is Test {
 
         LiquityTroveEnterData memory enterData = LiquityTroveEnterData({
             registry: 0x38e1F07b954cFaB7239D7acab49997FBaAD96476,
-            _collAmount: 2000 * 1e18,
-            _boldAmount: 2000 * 1e18,
-            _upperHint: 0,
-            _lowerHint: 0,
-            _annualInterestRate: 1e16,
-            _maxUpfrontFee: 3e18
+            collAmount: 2000 * 1e18,
+            boldAmount: 2000 * 1e18,
+            upperHint: 0,
+            lowerHint: 0,
+            annualInterestRate: 1e16,
+            maxUpfrontFee: 3e18
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
