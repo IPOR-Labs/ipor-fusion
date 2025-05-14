@@ -11,6 +11,7 @@ import {FuseStorageLib} from "../../../libraries/FuseStorageLib.sol";
 import {IActivePool} from "./ext/IActivePool.sol";
 import {ITroveManager} from "./ext/ITroveManager.sol";
 import {LiquityMath} from "./ext/LiquityMath.sol";
+import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
 import "./LiquityConstants.sol";
 
 struct LiquityTroveEnterData {
@@ -45,6 +46,7 @@ contract LiquityTroveFuse is IFuseCommon {
     event LiquityTroveFuseExit(address version, address asset, uint256 troveId);
 
     error InvalidAnnualInterestRate();
+    error InvalidRegistry();
     error UpfrontFeeTooHigh(uint256 fee);
     error DebtBelowMin(uint256 debt);
     error NewOracleFailureDetected();
@@ -57,11 +59,14 @@ contract LiquityTroveFuse is IFuseCommon {
     }
 
     function enter(LiquityTroveEnterData calldata data_) external {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.registry)) revert InvalidRegistry();
+
         if (
             data_._annualInterestRate < MIN_ANNUAL_INTEREST_RATE || data_._annualInterestRate > MAX_ANNUAL_INTEREST_RATE
         ) {
             revert InvalidAnnualInterestRate();
         }
+
         FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
         uint256 newIndex = troveData.lastIndex++;
         IBorrowerOperations borrowerOperations = IBorrowerOperations(

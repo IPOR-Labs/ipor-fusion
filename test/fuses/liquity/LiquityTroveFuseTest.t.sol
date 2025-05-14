@@ -21,6 +21,10 @@ contract LiquityTroveFuseTest is Test {
     address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address internal constant BOLD = 0xb01dd87B29d187F3E3a4Bf6cdAebfb97F3D9aB98;
 
+    address internal constant ETH_REGISTRY = 0x38e1F07b954cFaB7239D7acab49997FBaAD96476;
+    address internal constant WSTETH_REGISTRY = 0x2D4ef56cb626E9a4C90c156018BA9CE269573c61;
+    address internal constant RETH_REGISTRY = 0x3b48169809DD827F22C9e0F2d71ff12Ea7A94a2F;
+
     address private _plasmaVault;
     address private _accessManager;
     address private _priceOracle;
@@ -112,10 +116,12 @@ contract LiquityTroveFuseTest is Test {
     function _setupMarketConfigs() private pure returns (MarketSubstratesConfig[] memory marketConfigs_) {
         marketConfigs_ = new MarketSubstratesConfig[](1);
 
-        bytes32[] memory uniswapTokens = new bytes32[](1);
-        uniswapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(WETH);
+        bytes32[] memory registries = new bytes32[](3);
+        registries[0] = PlasmaVaultConfigLib.addressToBytes32(ETH_REGISTRY);
+        registries[1] = PlasmaVaultConfigLib.addressToBytes32(WSTETH_REGISTRY);
+        registries[2] = PlasmaVaultConfigLib.addressToBytes32(RETH_REGISTRY);
 
-        marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.LIQUITY_V2, uniswapTokens);
+        marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.LIQUITY_V2, registries);
     }
 
     function _setupFuses() private returns (address[] memory fuses) {

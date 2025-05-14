@@ -23,17 +23,11 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
     // The balance is composed of the value of the Plasma Vault in USD
     // The Plasma Vault can contain BOLD (former LUSD), ETH, wstETH, and rETH
     function balanceOf() external view override returns (uint256) {
-        bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        bytes32[] memory registriesRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
-        uint256 len = assetsRaw.length;
+        uint256 len = registriesRaw.length;
 
         if (len == 0) return 0;
-
-        address[3] memory registries = [
-            LiquityConstants.LIQUITY_ETH_ADDRESSES_REGISTRY,
-            LiquityConstants.LIQUITY_WSTETH_ADDRESSES_REGISTRY,
-            LiquityConstants.LIQUITY_RETH_ADDRESSES_REGISTRY
-        ];
 
         int256 balanceTemp;
         uint256 lastGoodPrice;
@@ -43,14 +37,15 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         uint256 boldBalance = IERC20Metadata(LiquityConstants.LIQUITY_BOLD).balanceOf(plasmaVault);
 
         for (uint256 i; i < len; ++i) {
-            address asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
-            priceFeed = IAddressesRegistry(registries[i]).priceFeed();
+            address registry = PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]);
+            IERC20Metadata token = IAddressesRegistry(registry).collToken();
+            priceFeed = IAddressesRegistry(registry).priceFeed();
             lastGoodPrice = priceFeed.lastGoodPrice();
             if (lastGoodPrice == 0) {
                 revert Errors.UnsupportedQuoteCurrencyFromOracle();
             }
-            uint256 decimals = IERC20Metadata(asset).decimals();
-            int256 balance = int256(IERC20Metadata(asset).balanceOf(plasmaVault));
+            uint256 decimals = token.decimals();
+            int256 balance = int256(token.balanceOf(plasmaVault));
             if (balance > 0) {
                 balanceTemp += IporMath.convertToWadInt(
                     balance * int256(lastGoodPrice),
