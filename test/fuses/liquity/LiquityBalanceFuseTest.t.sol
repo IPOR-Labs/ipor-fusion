@@ -12,6 +12,7 @@ contract LiquityBalanceFuseTest is Test {
         string name;
     }
     Asset[3] private assets;
+    address[] private registries;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22375819);
@@ -27,6 +28,10 @@ contract LiquityBalanceFuseTest is Test {
             token: address(0xae78736Cd615f374D3085123A210448E74Fc6393), // rETH
             name: "rETH"
         });
+        registries = new address[](3);
+        registries[0] = address(0x38e1F07b954cFaB7239D7acab49997FBaAD96476); // ETH_REGISTRY
+        registries[1] = address(0x2D4ef56cb626E9a4C90c156018BA9CE269573c61); // WSTETH_REGISTRY
+        registries[2] = address(0x3b48169809DD827F22C9e0F2d71ff12Ea7A94a2F); // RETH_REGISTRY
     }
 
     function testLiquityBalance() external {
@@ -42,7 +47,7 @@ contract LiquityBalanceFuseTest is Test {
         deal(tokens[1], address(vaultMock), initialAmount);
         deal(tokens[2], address(vaultMock), initialAmount);
 
-        vaultMock.updateMarketConfiguration(1, tokens);
+        vaultMock.updateMarketConfiguration(1, registries);
 
         uint256 balanceBefore = vaultMock.balanceOf();
 
