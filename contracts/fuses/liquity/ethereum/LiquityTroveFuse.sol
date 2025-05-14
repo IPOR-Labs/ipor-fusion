@@ -12,7 +12,6 @@ import {IActivePool} from "./ext/IActivePool.sol";
 import {ITroveManager} from "./ext/ITroveManager.sol";
 import {LiquityMath} from "./ext/LiquityMath.sol";
 import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
-import "./LiquityConstants.sol";
 
 struct LiquityTroveEnterData {
     address registry;
@@ -111,7 +110,7 @@ contract LiquityTroveFuse is IFuseCommon {
         FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
         uint256 len = data_.ownerIndexes.length;
 
-        ERC20(LiquityConstants.LIQUITY_BOLD).forceApprove(address(borrowerOperations), type(uint256).max);
+        boldToken.forceApprove(address(borrowerOperations), type(uint256).max);
 
         for (uint256 i; i < len; i++) {
             uint256 troveId = troveData.idByOwnerIndex[data_.registry][data_.ownerIndexes[i]];
@@ -130,7 +129,7 @@ contract LiquityTroveFuse is IFuseCommon {
             emit LiquityTroveFuseExit(VERSION, data_.registry, troveId);
         }
 
-        ERC20(LiquityConstants.LIQUITY_BOLD).forceApprove(address(borrowerOperations), 0);
+        boldToken.forceApprove(address(borrowerOperations), 0);
     }
 
     function _calcUpfrontFee(uint256 _debt, uint256 _avgInterestRate) internal pure returns (uint256) {
