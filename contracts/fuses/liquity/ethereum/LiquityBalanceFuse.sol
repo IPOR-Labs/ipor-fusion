@@ -8,7 +8,6 @@ import {IPriceFeed} from "./ext/IPriceFeed.sol";
 import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {IporMath} from "../../../libraries/math/IporMath.sol";
-import "./LiquityConstants.sol";
 
 contract LiquityBalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
@@ -34,7 +33,8 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         IPriceFeed priceFeed;
         address plasmaVault = address(this);
 
-        uint256 boldBalance = IERC20Metadata(LiquityConstants.LIQUITY_BOLD).balanceOf(plasmaVault);
+        address boldToken = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[0])).boldToken();
+        uint256 boldBalance = IERC20Metadata(boldToken).balanceOf(plasmaVault);
 
         for (uint256 i; i < len; ++i) {
             address registry = PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]);
