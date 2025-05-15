@@ -22,7 +22,7 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
     }
 
     // The balance is composed of the value of the Plasma Vault in USD
-    // The Plasma Vault can contain BOLD (former LUSD), ETH, wstETH, and rETH
+    // The Plasma Vault can contain BOLD (former LUSD), WETH, wstETH, and rETH
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory registriesRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -35,6 +35,7 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         IPriceFeed priceFeed;
         address plasmaVault = address(this);
 
+        // BOLD token is the same for all registries, so we can get it from the first one
         address boldToken = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[0])).boldToken();
         uint256 boldBalance = IERC20Metadata(boldToken).balanceOf(plasmaVault);
 

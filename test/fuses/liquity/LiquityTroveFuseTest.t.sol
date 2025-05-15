@@ -15,10 +15,10 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {LiquityIndexesReader} from "../../../contracts/readers/LiquityIndexesReader.sol";
 
 contract LiquityTroveFuseTest is Test {
     address internal constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address internal constant BOLD = 0xb01dd87B29d187F3E3a4Bf6cdAebfb97F3D9aB98;
 
     address internal constant ETH_REGISTRY = 0x38e1F07b954cFaB7239D7acab49997FBaAD96476;
@@ -31,8 +31,11 @@ contract LiquityTroveFuseTest is Test {
     address private _liquityBalanceFuse;
     LiquityTroveFuse private _liquityTroveFuse;
 
+    LiquityIndexesReader private _reader;
+
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22375819);
+        _reader = new LiquityIndexesReader();
     }
 
     function testLiquityTroveShouldEnter() public {
@@ -93,11 +96,21 @@ contract LiquityTroveFuseTest is Test {
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
+    function testShouldReturnCorrectIndexesAfterEnter() public {
+        testLiquityTroveShouldEnter();
+
+        uint256 lastIndex = _reader.getLastIndex(_plasmaVault);
+        assertEq(lastIndex, 1, "lastIndex should be 1 after one trove entry");
+
+        uint256 troveId = _reader.getTroveId(_plasmaVault, address(this), 0);
+        assertEq(troveId, 0, "Trove ID for index 0 should be 0 for msg.sender");
+    }
+
     function testLiquityTroveShouldExit() public {
         testLiquityTroveShouldEnter();
 
         uint256[] memory ownerIndexes = new uint256[](1);
-        ownerIndexes[0] = 0;
+        ownerIndexes[0] = 1;
         LiquityTroveExitData memory exitData = LiquityTroveExitData(
             0x38e1F07b954cFaB7239D7acab49997FBaAD96476,
             ownerIndexes
