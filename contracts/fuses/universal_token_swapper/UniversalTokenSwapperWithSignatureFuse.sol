@@ -14,7 +14,7 @@ import {SwapExecutorEth, SwapExecutorEthData} from "./SwapExecutorEth.sol";
 /// @notice Data structure used for executing a swap operation.
 /// @param  targets - The array of addresses to which the call will be made.
 /// @param  data - Data to be executed on the targets.
-struct UniversalTokenSwapperEthData {
+struct UniversalTokenSwapperWithSignatureData {
     address[] targets;
     bytes[] callDatas;
     uint256[] ethAmounts;
@@ -26,11 +26,11 @@ struct UniversalTokenSwapperEthData {
 /// @param  tokenOut - The token that will be returned to the plasmaVault after the operation is completed.
 /// @param  amountIn - The amount that needs to be transferred to the swapExecutor for executing swaps.
 /// @param  data - A set of data required to execute token swaps
-struct UniversalTokenSwapperEthEnterData {
+struct UniversalTokenSwapperWithSignatureEnterData {
     address tokenIn;
     address tokenOut;
     uint256 amountIn;
-    UniversalTokenSwapperEthData data;
+    UniversalTokenSwapperWithSignatureData data;
 }
 
 struct Balances {
@@ -41,18 +41,16 @@ struct Balances {
 }
 
 struct UniversalTokenSwapperSubstrate {
+    // @dev For tokenIn and TokenOut and tokenDustToCheck this value is 0
     bytes4 functionSelector;
-    // @dev If the signature is 0, then it is an approved target to execute; otherwise, it is the address of the validator.
     address target;
-    // @dev it is the last 8 bytes of the target address. it is only used for the validation of the target address.
-    bytes8 saltFromTargetAddress;
 }
 
 /// @title This contract is designed to execute every swap operation and check the slippage on any DEX.
-contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
+contract UniversalTokenSwapperWithSignatureFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
-    event UniversalTokenSwapperEthFuseEnter(
+    event UniversalTokenSwapperWithSignatureFuseEnter(
         address version,
         address tokenIn,
         address tokenOut,
@@ -83,7 +81,7 @@ contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
         SLIPPAGE_REVERSE = 1e18 - slippageReverse_;
     }
 
-    function enter(UniversalTokenSwapperEthEnterData calldata data_) external {
+    function enter(UniversalTokenSwapperWithSignatureEnterData calldata data_) external {
         _checkSubstrates(data_);
 
         address plasmaVault = address(this);
@@ -156,12 +154,7 @@ contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
     /// @param substrate_ The substrate to convert
     /// @return The packed bytes32 representation
     function toBytes32(UniversalTokenSwapperSubstrate memory substrate_) public pure returns (bytes32) {
-        return
-            bytes32(
-                (uint256(uint32(substrate_.functionSelector)) << 224) |
-                    (uint256(uint160(substrate_.target)) << 64) |
-                    uint256(uint64(substrate_.saltFromTargetAddress))
-            );
+        return bytes32((uint256(uint32(substrate_.functionSelector)) << 224) | (uint256(uint160(substrate_.target))));
     }
 
     /// @notice Converts bytes32 back to UniversalTokenSwapperSubstrate
@@ -171,30 +164,29 @@ contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
         return
             UniversalTokenSwapperSubstrate({
                 functionSelector: bytes4(uint32(uint256(data_) >> 224)),
-                target: address(uint160(uint256(data_) >> 64)),
-                saltFromTargetAddress: bytes8(uint64(uint256(data_)))
+                target: address(uint160(uint256(data_)))
             });
     }
 
     function _emitUniversalTokenSwapperFuseEnter(
-        UniversalTokenSwapperEthEnterData calldata data_,
+        UniversalTokenSwapperWithSignatureEnterData calldata data_,
         uint256 tokenInDelta,
         uint256 tokenOutDelta
     ) private {
-        emit UniversalTokenSwapperEthFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+        emit UniversalTokenSwapperWithSignatureFuseEnter(
+            VERSION,
+            data_.tokenIn,
+            data_.tokenOut,
+            tokenInDelta,
+            tokenOutDelta
+        );
     }
 
-    function _checkSubstrates(UniversalTokenSwapperEthEnterData calldata data_) private view {
+    function _checkSubstrates(UniversalTokenSwapperWithSignatureEnterData calldata data_) private view {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
-                toBytes32(
-                    UniversalTokenSwapperSubstrate({
-                        functionSelector: bytes4(0),
-                        target: data_.tokenIn,
-                        saltFromTargetAddress: bytes8(0)
-                    })
-                )
+                toBytes32(UniversalTokenSwapperSubstrate({functionSelector: bytes4(0), target: data_.tokenIn}))
             )
         ) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
@@ -202,18 +194,11 @@ contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
-                toBytes32(
-                    UniversalTokenSwapperSubstrate({
-                        functionSelector: bytes4(0),
-                        target: data_.tokenOut,
-                        saltFromTargetAddress: bytes8(0)
-                    })
-                )
+                toBytes32(UniversalTokenSwapperSubstrate({functionSelector: bytes4(0), target: data_.tokenOut}))
             )
         ) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
         }
-
         uint256 targetsLength = data_.data.targets.length;
         for (uint256 i; i < targetsLength; ++i) {
             if (
@@ -221,24 +206,21 @@ contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
                     MARKET_ID,
                     toBytes32(
                         UniversalTokenSwapperSubstrate({
-                            functionSelector: bytes4(0),
-                            target: data_.data.targets[i],
-                            saltFromTargetAddress: bytes8(0)
+                            functionSelector: bytes4(data_.data.callDatas[i][0:4]),
+                            target: data_.data.targets[i]
                         })
                     )
                 )
             ) {
                 revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
             }
-
             if (
                 !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                     MARKET_ID,
                     toBytes32(
                         UniversalTokenSwapperSubstrate({
-                            functionSelector: bytes4(data_.data.callDatas[i]),
-                            target: data_.data.targets[i],
-                            saltFromTargetAddress: getLast8BytesOfAddress(data_.data.targets[i])
+                            functionSelector: bytes4(data_.data.callDatas[i][0:4]),
+                            target: data_.data.targets[i]
                         })
                     )
                 )
@@ -246,7 +228,6 @@ contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
                 revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
             }
         }
-
         uint256 tokensDustToCheckLength = data_.data.tokensDustToCheck.length;
         for (uint256 i; i < tokensDustToCheckLength; ++i) {
             if (
@@ -255,8 +236,7 @@ contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
                     toBytes32(
                         UniversalTokenSwapperSubstrate({
                             functionSelector: bytes4(0),
-                            target: data_.data.tokensDustToCheck[i],
-                            saltFromTargetAddress: bytes8(0)
+                            target: data_.data.tokensDustToCheck[i]
                         })
                     )
                 )
@@ -264,9 +244,5 @@ contract UniversalTokenSwapperEthFuseV2 is IFuseCommon {
                 revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.tokensDustToCheck[i]);
             }
         }
-    }
-
-    function getLast8BytesOfAddress(address addr_) public pure returns (bytes8) {
-        return bytes8(uint64(uint160(addr_)));
     }
 }
