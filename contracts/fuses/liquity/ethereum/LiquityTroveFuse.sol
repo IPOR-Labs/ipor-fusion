@@ -13,6 +13,7 @@ import {ITroveManager} from "./ext/ITroveManager.sol";
 import {LiquityMath} from "./ext/LiquityMath.sol";
 import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
 
+import {console2} from "forge-std/console2.sol";
 /// @title Fuse for Liquity protocol responsible for calculating the balance of the Plasma Vault in Liquity protocol based on preconfigured market substrates
 /// @dev Substrates in this fuse are the address registries of Liquity protocol that are used in the Liquity protocol for a given MARKET_ID
 struct LiquityTroveEnterData {
@@ -68,6 +69,7 @@ contract LiquityTroveFuse is IFuseCommon {
 
         FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
         uint256 newIndex = troveData.lastIndex++;
+
         IBorrowerOperations borrowerOperations = IBorrowerOperations(
             IAddressesRegistry(data.registry).borrowerOperations()
         );
@@ -115,8 +117,9 @@ contract LiquityTroveFuse is IFuseCommon {
 
         boldToken.forceApprove(address(borrowerOperations), type(uint256).max);
 
+        uint256 troveId;
         for (uint256 i; i < len; i++) {
-            uint256 troveId = troveData.idByOwnerIndex[data.registry][data.ownerIndexes[i]];
+            troveId = troveData.idByOwnerIndex[data.registry][data.ownerIndexes[i]];
             if (troveId == 0) continue;
 
             if (troveManager.getLatestTroveData(troveId).entireDebt > boldToken.balanceOf(address(this))) {
