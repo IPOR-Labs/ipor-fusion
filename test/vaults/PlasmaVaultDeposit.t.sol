@@ -20,6 +20,7 @@ import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -181,18 +182,51 @@ contract PlasmaVaultDepositTest is Test {
     }
 
     function _preparePlasmaVaultUsdc(uint256 totalSupplyCap) public returns (PlasmaVault) {
-        address underlyingToken = USDC;
-        address[] memory alphas = new address[](1);
+        // Przenosimy konfigurację marketów do osobnej funkcji
+        MarketSubstratesConfig[] memory marketConfigs = _createMarketConfigs();
 
-        alphas[0] = address(0x1);
+        // Przenosimy konfigurację fuses do osobnej funkcji
+        (address[] memory fuses, MarketBalanceFuseConfig[] memory balanceFuses) = _createFusesConfig();
 
+        // Tworzymy access manager i withdraw manager
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        // Tworzymy i inicjalizujemy vault
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                "IPOR Fusion USDC",
+                "ipfUSDC",
+                USDC,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                fuses,
+                balanceFuses,
+                FeeConfigHelper.createZeroFeeConfig(),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                totalSupplyCap,
+                address(withdrawManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+        return plasmaVault;
+    }
+
+    function _createMarketConfigs() internal pure returns (MarketSubstratesConfig[] memory) {
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
-        /// @dev Market Aave V3
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
+        marketConfigs[1] = MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
+
+        return marketConfigs;
+    }
+
+    function _createFusesConfig() internal returns (address[] memory, MarketBalanceFuseConfig[] memory) {
         AaveV3BalanceFuse balanceFuseAaveV3 = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
@@ -202,8 +236,6 @@ contract PlasmaVaultDepositTest is Test {
             ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
-        /// @dev Market Compound V3
-        marketConfigs[1] = MarketSubstratesConfig(COMPOUND_V3_MARKET_ID, assets);
         CompoundV3BalanceFuse balanceFuseCompoundV3 = new CompoundV3BalanceFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
         CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
 
@@ -215,44 +247,25 @@ contract PlasmaVaultDepositTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
 
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                "IPOR Fusion USDC",
-                "ipfUSDC",
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                totalSupplyCap,
-                address(0)
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager);
-        return plasmaVault;
+        return (fuses, balanceFuses);
     }
 
     function _preparePlasmaVaultDai() public returns (PlasmaVault) {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
         address underlyingToken = DAI;
-        address[] memory alphas = new address[](1);
 
-        address alpha = address(0x1);
-        alphas[0] = alpha;
-
+        // Create market configs array with proper size
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
+        // Create assets array with proper size
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+
+        // Configure market with proper ID and assets
         marketConfigs[0] = MarketSubstratesConfig(AAVE_V3_MARKET_ID, assets);
 
+        // Create and configure fuses
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
@@ -260,13 +273,19 @@ contract PlasmaVaultDepositTest is Test {
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
+        // Configure fuses array
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
 
+        // Configure balance fuses
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuse));
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
+        // Create access manager and withdraw manager
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        // Create and initialize vault
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -280,10 +299,12 @@ contract PlasmaVaultDepositTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                address(withdrawManager)
             )
         );
-        setupRoles(plasmaVault, accessManager);
+
+        // Setup roles
+        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         return plasmaVault;
     }
@@ -704,9 +725,13 @@ contract PlasmaVaultDepositTest is Test {
         return RoleLib.createAccessManager(usersToRoles, redemptionDelay_, vm);
     }
 
-    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
+    function setupRoles(
+        PlasmaVault plasmaVault,
+        IporFusionAccessManager accessManager,
+        address withdrawManager
+    ) public {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
     }
 }

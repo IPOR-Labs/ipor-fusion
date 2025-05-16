@@ -21,6 +21,7 @@ import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.s
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 
 // solhint-disable-next-line max-states-count
 contract PlasmaVaultErc20FusionTest is Test {
@@ -104,7 +105,7 @@ contract PlasmaVaultErc20FusionTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(AAVE_V3_MARKET_ID, address(balanceFuseAaveV3));
 
         accessManager = createAccessManager(usersToRoles, 0);
-
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
         plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -118,11 +119,11 @@ contract PlasmaVaultErc20FusionTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
     }
 
     function testExchangeRateWhenSupplyIsZero() public {
@@ -834,10 +835,14 @@ contract PlasmaVaultErc20FusionTest is Test {
         return RoleLib.createAccessManager(usersToRoles, redemptionDelay_, vm);
     }
 
-    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
+    function setupRoles(
+        PlasmaVault plasmaVault,
+        IporFusionAccessManager accessManager,
+        address withdrawManager
+    ) public {
         address atomist = address(this);
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
     }
 }

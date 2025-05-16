@@ -34,7 +34,7 @@ import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} f
 import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
-
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
     uint256 balanceErc20Before;
@@ -81,6 +81,7 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
 
     address private _plasmaVault;
     address private _accessManager;
+    address private _withdrawManager;
     address private _morphoFlashLoanFuse;
     address private _uniswapV3SwapFuse;
     address private _aaveSupplyFuse;
@@ -158,7 +159,7 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
         FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
-
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
             assetName: "USDC Plasma Vault",
             assetSymbol: "USDC-PV",
@@ -171,7 +172,7 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
             totalSupplyCap: type(uint256).max,
-            withdrawManager: address(0)
+            withdrawManager: _withdrawManager
         });
 
         vm.startPrank(_ATOMIST);
@@ -248,7 +249,7 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
                 contextManager: address(0),

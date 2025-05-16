@@ -150,8 +150,8 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
             balanceOfPlasmaVault
         );
         uint256 sharesToRelease = WithdrawManagerStorageLib.getSharesToRelease();
-
-        if (plasmaVaultBalanceOfUnallocatedShares < sharesToRelease + shares_) {
+        
+        if (sharesToRelease > 0 && plasmaVaultBalanceOfUnallocatedShares < sharesToRelease + shares_) {
             revert WithdrawManagerInvalidSharesToRelease(
                 sharesToRelease,
                 shares_,

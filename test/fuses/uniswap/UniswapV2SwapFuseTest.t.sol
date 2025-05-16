@@ -21,6 +21,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract UniswapV2SwapFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -36,6 +37,7 @@ contract UniswapV2SwapFuseTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+    address private _withdrawManager;
     UniswapV2SwapFuse private _uniswapV2SwapFuse;
 
     function setUp() public {
@@ -49,6 +51,7 @@ contract UniswapV2SwapFuseTest is Test {
         _priceOracle = address(
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
         );
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
         // plasma vault
         _plasmaVault = address(
@@ -65,7 +68,7 @@ contract UniswapV2SwapFuseTest is Test {
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    _withdrawManager
                 )
             )
         );
@@ -266,7 +269,13 @@ contract UniswapV2SwapFuseTest is Test {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, _plasmaVault, IporFusionAccessManager(_accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            _plasmaVault,
+            IporFusionAccessManager(_accessManager),
+            _withdrawManager
+        );
     }
 
     function _getFuses() private returns (address[] memory fuses_) {

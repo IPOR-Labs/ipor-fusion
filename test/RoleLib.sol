@@ -6,7 +6,9 @@ import {Vm} from "forge-std/Test.sol";
 import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
 import {Roles} from "../contracts/libraries/Roles.sol";
-
+import {FeeManager} from "../contracts/managers/fee/FeeManager.sol";
+import {FeeAccount} from "../contracts/managers/fee/FeeAccount.sol";
+import {WithdrawManager} from "../contracts/managers/withdraw/WithdrawManager.sol";
 struct UsersToRoles {
     address superAdmin;
     address atomist;
@@ -74,8 +76,23 @@ library RoleLib {
         UsersToRoles memory usersWithRoles_,
         Vm vm_,
         address plasmaVault_,
-        IporFusionAccessManager accessManager_
+        IporFusionAccessManager accessManager_,
+        address withdrawManager_
     ) public {
+        _setupBasicRoles(usersWithRoles_, vm_, plasmaVault_, accessManager_);
+        _setupFeeManagerRoles(usersWithRoles_, vm_, plasmaVault_, accessManager_);
+        _setupAtomistRoles(usersWithRoles_, vm_, plasmaVault_, accessManager_);
+        _setupPlasmaVaultSpecificRoles(usersWithRoles_, vm_, plasmaVault_, accessManager_);
+        _setupPublicRoles(usersWithRoles_, vm_, plasmaVault_, accessManager_);
+        _setupWithdrawManagerRoles(usersWithRoles_, vm_, plasmaVault_, accessManager_, withdrawManager_);
+    }
+
+    function _setupBasicRoles(
+        UsersToRoles memory usersWithRoles_,
+        Vm vm_,
+        address plasmaVault_,
+        IporFusionAccessManager accessManager_
+    ) private {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.grantRole(Roles.TECH_PLASMA_VAULT_ROLE, plasmaVault_, 0);
 
@@ -96,7 +113,30 @@ library RoleLib {
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, alphaSig, Roles.ALPHA_ROLE);
+    }
 
+    function _setupFeeManagerRoles(
+        UsersToRoles memory usersWithRoles_,
+        Vm vm_,
+        address plasmaVault_,
+        IporFusionAccessManager accessManager_
+    ) private {
+        address feeManager = FeeAccount(PlasmaVaultGovernance(plasmaVault_).getPerformanceFeeData().feeAccount)
+            .FEE_MANAGER();
+
+        bytes4[] memory feeManagerSig = new bytes4[](1);
+        feeManagerSig[0] = FeeManager.updateHighWaterMarkPerformanceFee.selector;
+
+        vm_.prank(usersWithRoles_.superAdmin);
+        accessManager_.setTargetFunctionRole(feeManager, feeManagerSig, Roles.ALPHA_ROLE);
+    }
+
+    function _setupAtomistRoles(
+        UsersToRoles memory usersWithRoles_,
+        Vm vm_,
+        address plasmaVault_,
+        IporFusionAccessManager accessManager_
+    ) private {
         bytes4[] memory atomistsSig = new bytes4[](10);
         atomistsSig[0] = PlasmaVaultGovernance.addBalanceFuse.selector;
         atomistsSig[1] = PlasmaVaultGovernance.addFuses.selector;
@@ -111,7 +151,14 @@ library RoleLib {
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, atomistsSig, Roles.ATOMIST_ROLE);
+    }
 
+    function _setupPlasmaVaultSpecificRoles(
+        UsersToRoles memory usersWithRoles_,
+        Vm vm_,
+        address plasmaVault_,
+        IporFusionAccessManager accessManager_
+    ) private {
         bytes4[] memory plasmaVaultRoles = new bytes4[](3);
         plasmaVaultRoles[0] = IporFusionAccessManager.convertToPublicVault.selector;
         plasmaVaultRoles[1] = IporFusionAccessManager.enableTransferShares.selector;
@@ -132,6 +179,19 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, ownerSig, Roles.OWNER_ROLE);
 
+        bytes4[] memory publicRedeemFromRequestSig = new bytes4[](1);
+        publicRedeemFromRequestSig[0] = PlasmaVault.redeemFromRequest.selector;
+
+        vm_.prank(usersWithRoles_.superAdmin);
+        accessManager_.setTargetFunctionRole(plasmaVault_, publicRedeemFromRequestSig, Roles.PUBLIC_ROLE);
+    }
+
+    function _setupPublicRoles(
+        UsersToRoles memory usersWithRoles_,
+        Vm vm_,
+        address plasmaVault_,
+        IporFusionAccessManager accessManager_
+    ) private {
         bytes4[] memory publicSig = new bytes4[](7);
         publicSig[0] = PlasmaVault.deposit.selector;
         publicSig[1] = PlasmaVault.mint.selector;
@@ -143,5 +203,29 @@ library RoleLib {
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, publicSig, Roles.PUBLIC_ROLE);
+    }
+
+    function _setupWithdrawManagerRoles(
+        UsersToRoles memory usersWithRoles_,
+        Vm vm_,
+        address plasmaVault_,
+        IporFusionAccessManager accessManager_,
+        address withdrawManager_
+    ) private {
+        bytes4[] memory withdrawManagerSig = new bytes4[](2);
+        withdrawManagerSig[0] = WithdrawManager.canWithdrawFromUnallocated.selector;
+        withdrawManagerSig[1] = WithdrawManager.canWithdrawFromRequest.selector;
+
+        bytes4[] memory alphaRoleSig = new bytes4[](1);
+        alphaRoleSig[0] = WithdrawManager.releaseFunds.selector;
+
+        vm_.startPrank(usersWithRoles_.superAdmin);
+        accessManager_.setTargetFunctionRole(withdrawManager_, withdrawManagerSig, Roles.TECH_PLASMA_VAULT_ROLE);
+        accessManager_.setTargetFunctionRole(withdrawManager_, alphaRoleSig, Roles.ALPHA_ROLE);
+        accessManager_.grantRole(Roles.TECH_PLASMA_VAULT_ROLE, plasmaVault_, 0);
+
+        
+        vm_.stopPrank();
+        
     }
 }

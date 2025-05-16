@@ -22,6 +22,7 @@ import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePool
 import {IComet} from "../../contracts/fuses/compound_v3/ext/IComet.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract PlasmaVaultUpdateMarketsBalances is Test {
     address private constant _ATOMIST = address(1111111);
@@ -45,6 +46,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+    address private _withdrawManager;
     address private _aaveFuse;
     address private _compoundFuse;
 
@@ -53,6 +55,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         vm.prank(_USDC_HOLDER);
         ERC20(_USDC).transfer(_USER, 20_000e6);
         _createAccessManager();
+        _createWithdrawManager();
         _createPriceOracle();
         _createPlasmaVault();
         _initAccessManager();
@@ -102,7 +105,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                     accessManager: address(_accessManager),
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     totalSupplyCap: type(uint256).max,
-                    withdrawManager: address(0)
+                    withdrawManager: _withdrawManager
                 })
             )
         );
@@ -150,6 +153,10 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
 
     function _createAccessManager() private {
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
+    }
+
+    function _createWithdrawManager() private {
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
     }
 
     function _createPriceOracle() private {

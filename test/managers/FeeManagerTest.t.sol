@@ -14,7 +14,7 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVa
 
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
+import {FeeManager, FeeManagerInitData} from "../../contracts/managers/fee/FeeManager.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
@@ -25,6 +25,11 @@ import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {HighWaterMarkPerformanceFeeStorage} from "../../contracts/managers/fee/FeeManagerStorageLib.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+
 
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
@@ -59,6 +64,7 @@ contract FeeManagerTest is Test {
         vm.prank(_USDC_HOLDER);
         ERC20(_USDC).transfer(_USER, 20_000e6);
         _createAccessManager();
+        _createWithdrawManager();
         _createPriceOracle();
         _createPlasmaVault();
         _initAccessManager();
@@ -84,7 +90,7 @@ contract FeeManagerTest is Test {
                     accessManager: address(_accessManager),
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     totalSupplyCap: type(uint256).max,
-                    withdrawManager: address(0)
+                    withdrawManager: _withdrawManager
                 })
             )
         );
@@ -144,6 +150,10 @@ contract FeeManagerTest is Test {
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
     }
 
+    function _createWithdrawManager() private {
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
+    }
+
     function _createPriceOracle() private {
         PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
@@ -194,7 +204,7 @@ contract FeeManagerTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
                 contextManager: address(0),
@@ -269,6 +279,9 @@ contract FeeManagerTest is Test {
         //given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
 
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+        feeManager.initialize();
+
         vm.startPrank(_USER);
         ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
         AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
@@ -288,7 +301,7 @@ contract FeeManagerTest is Test {
         uint256 balanceAfter = PlasmaVault(_plasmaVault).balanceOf(performanceAccount);
 
         assertEq(balanceBefore, 0, "balanceBefore should be 0");
-        assertEq(balanceAfter, 68199104783, "balanceAfter should be 68199104783");
+        assertEq(balanceAfter, 88687800000, "balanceAfter should be 88687800000");
     }
 
     function testShouldHarvestPerformance() external {
@@ -321,14 +334,14 @@ contract FeeManagerTest is Test {
         uint256 balanceFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
         uint256 balanceDaoFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
-        assertEq(balancePerformanceAccountBefore, 68199104783, "balancePerformanceAccountBefore should be 68199104783");
+        assertEq(balancePerformanceAccountBefore, 88687800000, "balancePerformanceAccountBefore should be 88687800000");
         assertApproxEqAbs(balancePerformanceAccountAfter, 0, 100, "balancePerformanceAccountAfter should be 0");
 
         assertEq(balanceFeeRecipientBefore, 0, "balanceFeeRecipientBefore should be 0");
-        assertEq(balanceFeeRecipientAfter, 34099552391, "balanceFeeRecipientAfter should be 34099552391");
+        assertEq(balanceFeeRecipientAfter, 44343900000, "balanceFeeRecipientAfter should be 44343900000");
 
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
-        assertEq(balanceDaoFeeRecipientAfter, 34099552391, "balanceDaoFeeRecipientAfter should be 34099552391");
+        assertEq(balanceDaoFeeRecipientAfter, 44343900000, "balanceDaoFeeRecipientAfter should be 44343900000");
     }
 
     function testShouldHarvestPerformanceWhenAtomistSetZero() external {
@@ -369,9 +382,9 @@ contract FeeManagerTest is Test {
 
         assertApproxEqAbs(
             balancePerformanceAccountBefore,
-            34099552356,
+            44343899997,
             100,
-            "balancePerformanceAccountBefore should be 34099552391"
+            "balancePerformanceAccountBefore should be 44343899997"
         );
         assertEq(balancePerformanceAccountAfter, 0, "balancePerformanceAccountAfter should be 0");
 
@@ -381,7 +394,7 @@ contract FeeManagerTest is Test {
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
         assertApproxEqAbs(
             balanceDaoFeeRecipientAfter,
-            34099552391,
+            44343899997,
             100,
             "balanceDaoFeeRecipientAfter should be 34099552392"
         );
@@ -679,9 +692,6 @@ contract FeeManagerTest is Test {
         AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
         vm.stopPrank();
 
-        // Wait for a year and update market balances
-        vm.warp(block.timestamp + 356 days);
-
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.AAVE_V3;
         PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
@@ -706,19 +716,19 @@ contract FeeManagerTest is Test {
         // Updated expected values based on actual implementation
         assertApproxEqAbs(
             balanceRecipient1After,
-            34099552380, // ~9% performance + 0.85% management (after DAO fee)
+            49999900001, // ~9% performance + 0.85% management (after DAO fee)
             100,
             "recipient1 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceRecipient2After,
-            17049776190, // ~4.5% performance + 0.425% management (after DAO fee)
+            24999950000, // ~4.5% performance + 0.425% management (after DAO fee)
             100,
             "recipient2 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceDaoRecipientAfter,
-            34099552380, // Equal to recipient1 (matches actual implementation)
+            49999900001, // Equal to recipient1 (matches actual implementation)
             100,
             "dao should receive correct fee share"
         );
@@ -764,9 +774,6 @@ contract FeeManagerTest is Test {
         AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
         vm.stopPrank();
 
-        // Wait for a year and update market balances
-        vm.warp(block.timestamp + 356 days);
-
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.AAVE_V3;
         PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
@@ -788,13 +795,7 @@ contract FeeManagerTest is Test {
         assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
         assertEq(balanceDaoRecipientBefore, 0, "dao recipient balance before should be 0");
 
-        // Recipient1 only gets performance fee (10%, no management fee)
-        assertApproxEqAbs(
-            balanceRecipient1After,
-            34099552375, // Only 10% performance fee
-            100,
-            "recipient1 should receive only performance fee"
-        );
+        assertApproxEqAbs(balanceRecipient1After, 49999900001, 100, "recipient1 should receive only performance fee");
 
         assertEq(
             balanceRecipient2After,
@@ -803,11 +804,322 @@ contract FeeManagerTest is Test {
         );
 
         // DAO gets both fees
-        assertApproxEqAbs(
-            balanceDaoRecipientAfter,
-            34099552375, // Matches recipient1's share
-            100,
-            "dao should receive correct fee share"
+        assertApproxEqAbs(balanceDaoRecipientAfter, 49999900001, 100, "dao should receive correct fee share");
+    }
+
+    function testShouldNotUpdateHighWaterMarkPerformanceFeeWhenNotOwner() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        feeManager.updateHighWaterMarkPerformanceFee();
+        vm.stopPrank();
+    }
+
+    function testShouldUpdateHighWaterMarkPerformanceFeeWhenOwner() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        // Store initial high water mark
+        uint256 initialHighWaterMark = PlasmaVault(_plasmaVault).convertToAssets(
+            10 ** IERC20Metadata(_plasmaVault).decimals()
+        );
+
+        // Simulate some value change
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
+        AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 30 days);
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.AAVE_V3;
+        PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updateHighWaterMarkPerformanceFee();
+        vm.stopPrank();
+
+        // then
+        uint256 newHighWaterMark = PlasmaVault(_plasmaVault).convertToAssets(
+            10 ** IERC20Metadata(_plasmaVault).decimals()
+        );
+
+        assertGt(newHighWaterMark, initialHighWaterMark, "New high water mark should be greater than initial");
+    }
+
+    function testShouldRevertUpdateHighWaterMarkPerformanceFeeWhenInvalidHighWaterMark() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        // Simulate a scenario where convertToAssets returns 0
+        vm.mockCall(
+            _plasmaVault,
+            abi.encodeWithSelector(IERC4626.convertToAssets.selector, 10 ** IERC20Metadata(_plasmaVault).decimals()),
+            abi.encode(0)
+        );
+
+        bytes memory error = abi.encodeWithSignature("InvalidHighWaterMark()");
+
+        // when
+        vm.startPrank(_ATOMIST);
+        vm.expectRevert(error);
+        feeManager.updateHighWaterMarkPerformanceFee();
+        vm.stopPrank();
+    }
+
+    function testShouldNotUpdateIntervalHighWaterMarkPerformanceFeeWhenNotOwner() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
+
+        // when
+        vm.startPrank(_USER);
+        vm.expectRevert(error);
+        feeManager.updateIntervalHighWaterMarkPerformanceFee(7 days);
+        vm.stopPrank();
+    }
+
+    function testShouldUpdateIntervalHighWaterMarkPerformanceFeeWhenOwner() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        HighWaterMarkPerformanceFeeStorage memory initialHighWaterMark = feeManager
+            .getPlasmaVaultHighWaterMarkPerformanceFee();
+        uint32 newInterval = 7 days;
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updateIntervalHighWaterMarkPerformanceFee(newInterval);
+        vm.stopPrank();
+
+        // then
+        HighWaterMarkPerformanceFeeStorage memory updatedHighWaterMark = feeManager
+            .getPlasmaVaultHighWaterMarkPerformanceFee();
+
+        assertEq(initialHighWaterMark.updateInterval, 0, "Initial interval should be 0");
+        assertEq(updatedHighWaterMark.updateInterval, newInterval, "Update interval should be updated to new value");
+    }
+
+    function testShouldUpdateIntervalHighWaterMarkPerformanceFeeToZero() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        feeManager.initialize();
+
+        // First set non-zero interval
+        vm.startPrank(_ATOMIST);
+        feeManager.updateIntervalHighWaterMarkPerformanceFee(7 days);
+        vm.stopPrank();
+
+        HighWaterMarkPerformanceFeeStorage memory initialHighWaterMark = feeManager
+            .getPlasmaVaultHighWaterMarkPerformanceFee();
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updateIntervalHighWaterMarkPerformanceFee(0);
+        vm.stopPrank();
+
+        // then
+        HighWaterMarkPerformanceFeeStorage memory updatedHighWaterMark = feeManager
+            .getPlasmaVaultHighWaterMarkPerformanceFee();
+
+        assertEq(initialHighWaterMark.updateInterval, 7 days, "Initial interval should be 7 days");
+        assertEq(updatedHighWaterMark.updateInterval, 0, "Update interval should be set to zero");
+    }
+
+    function testShouldInitializeFeeManagerWithValidData() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](1);
+        performanceFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: PERFORMANCE_FEE_IN_PERCENTAGE});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: MANAGEMENT_FEE_IN_PERCENTAGE});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when
+        FeeManager feeManager = new FeeManager(initData);
+
+        // then
+        assertEq(feeManager.PLASMA_VAULT(), _plasmaVault, "PLASMA_VAULT should be set correctly");
+        assertEq(
+            feeManager.IPOR_DAO_MANAGEMENT_FEE(),
+            DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            "DAO management fee should be set correctly"
+        );
+        assertEq(
+            feeManager.IPOR_DAO_PERFORMANCE_FEE(),
+            DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            "DAO performance fee should be set correctly"
+        );
+        assertEq(
+            feeManager.getIporDaoFeeRecipientAddress(),
+            _DAO_FEE_RECIPIENT,
+            "DAO fee recipient should be set correctly"
+        );
+
+        RecipientFee[] memory storedPerformanceFees = feeManager.getPerformanceFeeRecipients();
+        assertEq(storedPerformanceFees.length, 1, "Should have one performance fee recipient");
+        assertEq(
+            storedPerformanceFees[0].recipient,
+            _FEE_RECIPIENT_1,
+            "Performance fee recipient should be set correctly"
+        );
+        assertEq(
+            storedPerformanceFees[0].feeValue,
+            PERFORMANCE_FEE_IN_PERCENTAGE,
+            "Performance fee value should be set correctly"
+        );
+
+        RecipientFee[] memory storedManagementFees = feeManager.getManagementFeeRecipients();
+        assertEq(storedManagementFees.length, 1, "Should have one management fee recipient");
+        assertEq(
+            storedManagementFees[0].recipient,
+            _FEE_RECIPIENT_1,
+            "Management fee recipient should be set correctly"
+        );
+        assertEq(
+            storedManagementFees[0].feeValue,
+            MANAGEMENT_FEE_IN_PERCENTAGE,
+            "Management fee value should be set correctly"
+        );
+    }
+
+    function testShouldRevertWhenInitialAuthorityIsZero() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](1);
+        performanceFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: PERFORMANCE_FEE_IN_PERCENTAGE});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: MANAGEMENT_FEE_IN_PERCENTAGE});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: address(0),
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when/then
+        vm.expectRevert(FeeManager.InvalidAuthority.selector);
+        new FeeManager(initData);
+    }
+
+    function testShouldRevertWhenFeeRecipientPerformanceFeesIsZero() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](1);
+        performanceFees[0] = RecipientFee({recipient: address(0), feeValue: PERFORMANCE_FEE_IN_PERCENTAGE});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: MANAGEMENT_FEE_IN_PERCENTAGE});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when/then
+        vm.expectRevert(FeeManager.InvalidFeeRecipientAddress.selector);
+        new FeeManager(initData);
+    }
+
+    function testShouldRevertWhenFeeRecipientManagementFeesIsZero() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](1);
+        performanceFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: PERFORMANCE_FEE_IN_PERCENTAGE});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: address(0), feeValue: MANAGEMENT_FEE_IN_PERCENTAGE});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when/then
+        vm.expectRevert(FeeManager.InvalidFeeRecipientAddress.selector);
+        new FeeManager(initData);
+    }
+
+    function testShouldInitializeWithEmptyFeeRecipients() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](0);
+        RecipientFee[] memory managementFees = new RecipientFee[](0);
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when
+        FeeManager feeManager = new FeeManager(initData);
+
+        // then
+        RecipientFee[] memory storedPerformanceFees = feeManager.getPerformanceFeeRecipients();
+        assertEq(storedPerformanceFees.length, 0, "Should have no performance fee recipients");
+
+        RecipientFee[] memory storedManagementFees = feeManager.getManagementFeeRecipients();
+        assertEq(storedManagementFees.length, 0, "Should have no management fee recipients");
+
+        assertEq(
+            feeManager.getTotalPerformanceFee(),
+            DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            "Total performance fee should equal DAO fee"
+        );
+        assertEq(
+            feeManager.getTotalManagementFee(),
+            DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            "Total management fee should equal DAO fee"
         );
     }
 }

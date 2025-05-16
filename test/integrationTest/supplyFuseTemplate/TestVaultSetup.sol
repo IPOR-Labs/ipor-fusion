@@ -7,6 +7,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 abstract contract TestVaultSetup is TestStorage {
     function initPlasmaVault() public {
@@ -18,6 +19,7 @@ abstract contract TestVaultSetup is TestStorage {
         FeeConfig memory feeConfig = setupFeeConfig();
 
         createAccessManager();
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         vm.startPrank(accounts[0]);
         plasmaVault = address(
@@ -34,13 +36,13 @@ abstract contract TestVaultSetup is TestStorage {
                     accessManager,
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    withdrawManager
                 )
             )
         );
         vm.stopPrank();
 
-        setupRoles();
+        setupRoles(withdrawManager);
     }
 
     function initPlasmaVaultCustom(
@@ -53,7 +55,7 @@ abstract contract TestVaultSetup is TestStorage {
         FeeConfig memory feeConfig = setupFeeConfig();
 
         createAccessManager();
-
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
         vm.startPrank(accounts[0]);
         plasmaVault = address(
             new PlasmaVault(
@@ -69,13 +71,13 @@ abstract contract TestVaultSetup is TestStorage {
                     accessManager,
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    withdrawManager
                 )
             )
         );
         vm.stopPrank();
 
-        setupRoles();
+        setupRoles(withdrawManager);
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault
@@ -93,11 +95,17 @@ abstract contract TestVaultSetup is TestStorage {
         accessManager = address(RoleLib.createAccessManager(usersToRoles, 0, vm));
     }
 
-    function setupRoles() private {
+    function setupRoles(address withdrawManager) private {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = accounts[0];
         usersToRoles.atomist = accounts[0];
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, plasmaVault, IporFusionAccessManager(accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            plasmaVault,
+            IporFusionAccessManager(accessManager),
+            withdrawManager
+        );
     }
 
     function setupMarketConfigs() public virtual returns (MarketSubstratesConfig[] memory marketConfigs);

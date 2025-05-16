@@ -25,7 +25,7 @@ import {CallbackHandlerMorpho} from "../../contracts/handlers/callbacks/Callback
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
-
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 contract PlasmaVaultCallbackHandler is Test {
     address private constant _AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
 
@@ -48,6 +48,7 @@ contract PlasmaVaultCallbackHandler is Test {
     MorphoBalanceFuse private _morphoBalanceFuse;
 
     address private _accessManager;
+    address private _withdrawManager;
     address private _plasmaVault;
     AaveV3SupplyFuse private _supplyFuseAaveV3;
     MorphoSupplyWithCallBackDataFuse private _morphoFuse;
@@ -71,7 +72,7 @@ contract PlasmaVaultCallbackHandler is Test {
         alphas[0] = address(this);
 
         _createAccessManager();
-
+        _createWithdrawManager();
         _plasmaVault = address(
             new PlasmaVault(
                 PlasmaVaultInitData(
@@ -86,7 +87,7 @@ contract PlasmaVaultCallbackHandler is Test {
                     _accessManager,
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    _withdrawManager
                 )
             )
         );
@@ -156,6 +157,10 @@ contract PlasmaVaultCallbackHandler is Test {
         _accessManager = address(RoleLib.createAccessManager(usersToRoles, 0, vm));
     }
 
+    function _createWithdrawManager() private {
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
+    }
+
     function _initAccessManager() private {
         IporFusionAccessManager accessManager = IporFusionAccessManager(_accessManager);
         address[] memory initAddress = new address[](1);
@@ -184,7 +189,7 @@ contract PlasmaVaultCallbackHandler is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(this),
-                withdrawManager: address(0),
+                withdrawManager: _withdrawManager,
                 feeManager: address(0),
                 contextManager: address(0),
                 priceOracleMiddlewareManager: address(0)
