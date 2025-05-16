@@ -33,6 +33,8 @@ import {IWETH9} from "./IWETH9.sol";
 import {IstETH} from "./IstETH.sol";
 import {IToken} from "./IToken.sol";
 
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+
 struct VaultBalance {
     uint256 eulerPrimeUsdc;
     uint256 eulerWeth;
@@ -95,6 +97,9 @@ contract EulerCreditMarketTest is Test {
 
         _priceOracle = _createPriceOracle();
 
+        address accessManager = _createAccessManager();
+        address withdrawManager = address(new WithdrawManager(accessManager));
+
         // plasma vault
         vm.startPrank(_ATOMIST);
         _plasmaVault = address(
@@ -108,10 +113,10 @@ contract EulerCreditMarketTest is Test {
                     _setupFuses(),
                     _setupBalanceFuses(),
                     _setupFeeConfig(),
-                    _createAccessManager(),
+                    accessManager,
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    withdrawManager
                 )
             )
         );

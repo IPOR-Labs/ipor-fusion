@@ -123,6 +123,11 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
             for (uint256 i; i < recipientManagementFeesLength; i++) {
                 managementFeeRecipientAddresses[i] = initData_.recipientManagementFees[i].recipient;
+
+                if (initData_.recipientManagementFees[i].recipient == address(0)) {
+                    revert InvalidFeeRecipientAddress();
+                }
+
                 totalManagementFee += initData_.recipientManagementFees[i].feeValue;
                 FeeManagerStorageLib.setManagementFeeRecipientFee(
                     initData_.recipientManagementFees[i].recipient,
@@ -137,6 +142,11 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
             for (uint256 i; i < recipientPerformanceFeesLength; i++) {
                 performanceFeeRecipientAddresses[i] = initData_.recipientPerformanceFees[i].recipient;
+
+                if (initData_.recipientPerformanceFees[i].recipient == address(0)) {
+                    revert InvalidFeeRecipientAddress();
+                }
+
                 totalPerformanceFee += initData_.recipientPerformanceFees[i].feeValue;
                 FeeManagerStorageLib.setPerformanceFeeRecipientFee(
                     initData_.recipientPerformanceFees[i].recipient,

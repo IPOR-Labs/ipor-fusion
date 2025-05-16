@@ -37,6 +37,7 @@ contract InitializeAccessManagerTest is Test {
 
     PriceOracleMiddleware public priceOracleMiddlewareProxy;
     IporFusionAccessManager public accessManager;
+
     PlasmaVault public plasmaVault;
     RewardsClaimManager public rewardsClaimManager;
     WithdrawManager public withdrawManager;
@@ -50,6 +51,7 @@ contract InitializeAccessManagerTest is Test {
         );
 
         accessManager = new IporFusionAccessManager(admin, 0);
+        withdrawManager = new WithdrawManager(address(accessManager));
 
         vm.startPrank(admin);
         plasmaVault = new PlasmaVault(
@@ -65,13 +67,12 @@ contract InitializeAccessManagerTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 type(uint256).max,
-                address(0)
+                address(withdrawManager)
             )
         );
         vm.stopPrank();
 
         rewardsClaimManager = new RewardsClaimManager(address(accessManager), address(plasmaVault));
-        withdrawManager = new WithdrawManager(address(accessManager));
     }
 
     function testShouldSetupAccessManager() public {
@@ -393,6 +394,28 @@ contract InitializeAccessManagerTest is Test {
         vm.expectRevert(error);
         vm.prank(nonManager);
         withdrawManager.updateRequestFee(newFee);
+    }
+
+    function testShouldNotHaveAdminRoleForZeroAddress() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        data.plasmaVaultAddress.withdrawManager = address(withdrawManager);
+        data.plasmaVaultAddress.priceOracleMiddlewareManager = address(priceOracleMiddlewareProxy);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        // when
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        // then
+        (bool isMember, uint32 executionDelay) = accessManager.hasRole(Roles.ADMIN_ROLE, address(0));
+        assertFalse(isMember, "Zero address should not have admin role");
+        assertEq(executionDelay, 0, "Execution delay should be 0 for non-member");
     }
 
     function _generateDataForInitialization() private returns (DataForInitialization memory) {
