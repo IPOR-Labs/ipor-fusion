@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Errors} from "./errors/Errors.sol";
-import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
+import {PlasmaVaultStorageLib, EXECUTE_RUNNING} from "./PlasmaVaultStorageLib.sol";
 import {FusesLib} from "./FusesLib.sol";
 
 /// @title InstantWithdrawalFusesParamsStruct
@@ -888,7 +888,9 @@ library PlasmaVaultLib {
     /// - Transaction boundaries
     /// - Error handling
     function executeStarted() internal {
-        PlasmaVaultStorageLib.getExecutionState().value = 1;
+        assembly {
+            tstore(EXECUTE_RUNNING, 1)
+        }
     }
 
     /// @notice Sets the execution state to finished after Alpha operations
@@ -918,7 +920,9 @@ library PlasmaVaultLib {
     /// - Required for system stability
     /// - Prevents state corruption
     function executeFinished() internal {
-        PlasmaVaultStorageLib.getExecutionState().value = 0;
+        assembly {
+            tstore(EXECUTE_RUNNING, 0)
+        }
     }
 
     /// @notice Checks if an Alpha execution sequence is currently active
@@ -950,7 +954,11 @@ library PlasmaVaultLib {
     /// - Affects state modification permissions
     /// - Used in reentrancy checks
     function isExecutionStarted() internal view returns (bool) {
-        return PlasmaVaultStorageLib.getExecutionState().value == 1;
+        uint256 value;
+        assembly {
+            value := tload(EXECUTE_RUNNING)
+        }
+        return value == 1;
     }
 
     /// @notice Updates the Withdraw Manager address for the vault

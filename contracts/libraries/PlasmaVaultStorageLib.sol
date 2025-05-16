@@ -2,6 +2,42 @@
 pragma solidity 0.8.26;
 
 /**
+ * @dev Storage slot for tracking execution state of vault operations
+ *
+ * Calculation:
+ * keccak256(abi.encode(uint256(keccak256("io.ipor.executeRunning")) - 1)) & ~bytes32(uint256(0xff))
+ *
+ * Purpose:
+ * - Prevents concurrent execution of vault operations
+ * - Enables callback handling during execution
+ * - Acts as a reentrancy guard for execute() operations
+ *
+ * Storage Layout:
+ * - Points to ExecuteState struct containing:
+ *   - value: uint256 flag indicating execution state
+ *     - 0: No execution in progress
+ *   - 1: Execution in progress
+ *
+ * Usage Pattern:
+ * - Set to 1 at start of execute() operation
+ * - Checked during callback handling
+ * - Reset to 0 when execution completes
+ * - Used by PlasmaVault.execute() and callback system
+ *
+ * Integration Points:
+ * - PlasmaVault.execute: Sets/resets execution state
+ * - CallbackHandlerLib: Validates callbacks during execution
+ * - Fallback function: Routes callbacks during execution
+ *
+ * Security Considerations:
+ * - Critical for preventing concurrent operations
+ * - Must be properly reset after execution
+ * - Protects against malicious callbacks
+ * - Part of vault's security architecture
+ */
+bytes32 constant EXECUTE_RUNNING = 0x054644eb87255c1c6a2d10801735f52fa3b9d6e4477dbed74914d03844ab6600;
+
+/**
  * @title Plasma Vault Storage Library
  * @notice Library managing storage layout and access for the PlasmaVault system using ERC-7201 namespaced storage pattern
  * @dev This library is a core component of the PlasmaVault system that:
@@ -606,43 +642,6 @@ library PlasmaVaultStorageLib {
         0x82411e549329f2815579116a6c5e60bff72686c93ab5dba4d06242cfaf968900;
 
     /**
-     * @dev Storage slot for tracking execution state of vault operations
-     * @notice Controls execution flow and prevents concurrent operations in the vault
-     *
-     * Calculation:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.executeRunning")) - 1)) & ~bytes32(uint256(0xff))
-     *
-     * Purpose:
-     * - Prevents concurrent execution of vault operations
-     * - Enables callback handling during execution
-     * - Acts as a reentrancy guard for execute() operations
-     *
-     * Storage Layout:
-     * - Points to ExecuteState struct containing:
-     *   - value: uint256 flag indicating execution state
-     *     - 0: No execution in progress
-     *   - 1: Execution in progress
-     *
-     * Usage Pattern:
-     * - Set to 1 at start of execute() operation
-     * - Checked during callback handling
-     * - Reset to 0 when execution completes
-     * - Used by PlasmaVault.execute() and callback system
-     *
-     * Integration Points:
-     * - PlasmaVault.execute: Sets/resets execution state
-     * - CallbackHandlerLib: Validates callbacks during execution
-     * - Fallback function: Routes callbacks during execution
-     *
-     * Security Considerations:
-     * - Critical for preventing concurrent operations
-     * - Must be properly reset after execution
-     * - Protects against malicious callbacks
-     * - Part of vault's security architecture
-     */
-    bytes32 private constant EXECUTE_RUNNING = 0x054644eb87255c1c6a2d10801735f52fa3b9d6e4477dbed74914d03844ab6600;
-
-    /**
      * @dev Storage slot for callback handler mapping in the Plasma Vault
      * @notice Maps protocol-specific callbacks to their handler contracts
      *
@@ -961,15 +960,6 @@ library PlasmaVaultStorageLib {
     }
 
     /**
-     * @notice Tracks execution state of vault operations
-     * @dev Used as a flag to prevent concurrent execution and manage callbacks
-     * @custom:storage-location erc7201:io.ipor.executeRunning
-     */
-    struct ExecuteState {
-        uint256 value;
-    }
-
-    /**
      * @notice Stores address of the contract managing withdrawal controls
      * @dev Handles withdrawal permissions, schedules and limits
      * @custom:storage-location erc7201:io.ipor.WithdrawManager
@@ -999,12 +989,6 @@ library PlasmaVaultStorageLib {
     function getTotalAssets() internal pure returns (TotalAssets storage totalAssets) {
         assembly {
             totalAssets.slot := PLASMA_VAULT_TOTAL_ASSETS_IN_ALL_MARKETS
-        }
-    }
-
-    function getExecutionState() internal pure returns (ExecuteState storage executeRunning) {
-        assembly {
-            executeRunning.slot := EXECUTE_RUNNING
         }
     }
 
