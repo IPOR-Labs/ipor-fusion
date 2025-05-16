@@ -20,6 +20,7 @@ import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {SwapExecutorEth, SwapExecutorEthData} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
 import {UniversalTokenSwapperWithSignatureFuse, UniversalTokenSwapperWithSignatureEnterData, UniversalTokenSwapperWithSignatureData, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithSignatureFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract UniversalTokenSwapperWithSignatureFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -46,6 +47,7 @@ contract UniversalTokenSwapperWithSignatureFuseTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+    address private _executor;
 
     UniversalTokenSwapperWithSignatureFuse private _universalTokenSwapperFuse;
 
@@ -82,6 +84,8 @@ contract UniversalTokenSwapperWithSignatureFuseTest is Test {
         sources[5] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         PriceOracleMiddleware(_priceOracle).setAssetsPricesSources(assets, sources);
 
+        WithdrawManager withdrawManager = new WithdrawManager(address(_accessManager));
+
         // plasma vault
         _plasmaVault = address(
             new PlasmaVault(
@@ -97,11 +101,11 @@ contract UniversalTokenSwapperWithSignatureFuseTest is Test {
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
                     type(uint256).max,
-                    address(0)
+                    address(withdrawManager)
                 )
             )
         );
-        _setupRoles();
+        _setupRoles(address(withdrawManager));
     }
 
     function testShouldSwapWhenOneHop() external {
@@ -336,7 +340,7 @@ contract UniversalTokenSwapperWithSignatureFuseTest is Test {
 
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
-        callDatas[1] = abi.encodeWithSignature("submitAndDeposit(address)", 0xF62849F9A0B5Bf2913b396098F7c7019b51A820a);
+        callDatas[1] = abi.encodeWithSignature("submitAndDeposit(address)", _executor);
 
         uint256[] memory ethAmounts = new uint256[](2);
         ethAmounts[0] = 0;
@@ -460,11 +464,17 @@ contract UniversalTokenSwapperWithSignatureFuseTest is Test {
         _accessManager = accessManager_;
     }
 
-    function _setupRoles() private {
+    function _setupRoles(address withdrawManager) private {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, _plasmaVault, IporFusionAccessManager(_accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            _plasmaVault,
+            IporFusionAccessManager(_accessManager),
+            withdrawManager
+        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs_) {
@@ -525,10 +535,10 @@ contract UniversalTokenSwapperWithSignatureFuseTest is Test {
 
     function _setupFuses() private returns (address[] memory fuses_) {
         SwapExecutorEth swapExecutor = new SwapExecutorEth(W_ETH);
-
+        _executor = address(swapExecutor);
         _universalTokenSwapperFuse = new UniversalTokenSwapperWithSignatureFuse(
             IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
-            address(swapExecutor),
+            _executor,
             1e18
         );
 
