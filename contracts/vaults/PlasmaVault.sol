@@ -37,7 +37,6 @@ import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
 
-
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
 /// @dev Encapsulates all required parameters for vault setup and protocol integration
@@ -775,7 +774,7 @@ contract PlasmaVault is
         if (sharesToRelease > 0) {
             /// @dev When shares are in withdrawal request, we need to withdraw more assets to cover the shares and use offset
             /// @dev Offset of 0.01% (10001/10000) is added to account for potential rounding errors and price fluctuations during withdrawal
-            assetsToWithdrawFromMarkets = assets_ + convertToAssets(sharesToRelease) * 10001 / 10000;
+            assetsToWithdrawFromMarkets = assets_ + (convertToAssets(sharesToRelease) * 10001) / 10000;
         } else {
             assetsToWithdrawFromMarkets = assets_ + WITHDRAW_FROM_MARKETS_OFFSET;
         }
@@ -883,7 +882,12 @@ contract PlasmaVault is
         return _redeem(shares_, receiver_, owner_, true);
     }
 
-    function _redeem(uint256 shares_, address receiver_, address owner_, bool withFee_) internal returns (uint256 assetsToWithdraw) {
+    function _redeem(
+        uint256 shares_,
+        address receiver_,
+        address owner_,
+        bool withFee_
+    ) internal returns (uint256 assetsToWithdraw) {
         if (shares_ == 0) {
             revert NoSharesToRedeem();
         }
@@ -931,7 +935,7 @@ contract PlasmaVault is
         uint256 redeemAmount = super.redeem(shares_, receiver_, owner_);
 
         _burn(owner_, feeSharesToBurn);
-        
+
         return redeemAmount;
     }
 
@@ -1027,6 +1031,12 @@ contract PlasmaVault is
 
         if (totalSupply >= totalSupplyCap) {
             return 0;
+        }
+
+        uint256 exchangeRate = convertToAssets(10 ** uint256(decimals()));
+
+        if (type(uint256).max / exchangeRate < totalSupplyCap - totalSupply) {
+            return type(uint256).max;
         }
         return convertToAssets(totalSupplyCap - totalSupply);
     }
