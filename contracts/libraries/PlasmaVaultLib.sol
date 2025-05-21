@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Errors} from "./errors/Errors.sol";
-import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
+import {PlasmaVaultStorageLib, ERC20_CAPPED_VALIDATION_FLAG} from "./PlasmaVaultStorageLib.sol";
 import {FusesLib} from "./FusesLib.sol";
 
 /// @title InstantWithdrawalFusesParamsStruct
@@ -826,7 +826,9 @@ library PlasmaVaultLib {
     /// - Deposit availability
     /// - System security
     function setTotalSupplyCapValidation(uint256 flag_) internal {
-        PlasmaVaultStorageLib.getERC20CappedValidationFlag().value = flag_;
+        assembly {
+            tstore(ERC20_CAPPED_VALIDATION_FLAG, flag_)
+        }
     }
 
     /// @notice Checks if the total supply cap validation is enabled
@@ -858,7 +860,11 @@ library PlasmaVaultLib {
     /// - Critical for supply control
     /// - Check before cap-sensitive operations
     function isTotalSupplyCapValidationEnabled() internal view returns (bool) {
-        return PlasmaVaultStorageLib.getERC20CappedValidationFlag().value == 0;
+        uint256 value;
+        assembly {
+            value := tload(ERC20_CAPPED_VALIDATION_FLAG)
+        }
+        return value == 0;
     }
 
     /// @notice Sets the execution state to started for Alpha operations

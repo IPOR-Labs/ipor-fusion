@@ -2,6 +2,36 @@
 pragma solidity 0.8.26;
 
 /**
+ * @dev Storage slot for managing the ERC20 supply cap validation state
+ *  Controls whether total supply cap validation is active or temporarily disabled
+ *
+ * Calculation:
+ * keccak256(abi.encode(uint256(keccak256("io.ipor.Erc20CappedValidationFlag")) - 1)) & ~bytes32(uint256(0xff))
+ *
+ * Purpose:
+ * - Provides a mechanism to temporarily disable supply cap checks
+ * - Essential for special minting operations like fee distribution
+ * - Used by PlasmaVault.sol during performance and management fee minting
+ *
+ * Storage Layout:
+ * - Points to ERC20CappedValidationFlag struct containing:
+ *   - value: flag indicating if cap validation is enabled (0) or disabled (1)
+ *
+ * Usage Pattern:
+ * - Default state: Enabled (0) - enforces supply cap
+ * - Temporarily disabled (1) during:
+ *   - Performance fee minting
+ *   - Management fee minting
+ * - Always re-enabled after special minting operations
+ *
+ * Security Note:
+ * - Critical for maintaining controlled token supply
+ * - Only disabled briefly during authorized fee operations
+ * - Must be properly re-enabled to prevent unlimited minting
+ */
+bytes32 constant ERC20_CAPPED_VALIDATION_FLAG = 0xaef487a7a52e82ae7bbc470b42be72a1d3c066fb83773bf99cce7e6a7df2f900;
+
+/**
  * @title Plasma Vault Storage Library
  * @notice Library managing storage layout and access for the PlasmaVault system using ERC-7201 namespaced storage pattern
  * @dev This library is a core component of the PlasmaVault system that:
@@ -51,6 +81,9 @@ library PlasmaVaultStorageLib {
     bytes32 private constant ERC4626_STORAGE_LOCATION =
         0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00;
 
+    bytes32 private constant MANAGERS_STORAGE_LOCATION =
+        0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e11; // TODO: change to correct value
+
     /**
      * @dev Storage slot for ERC20Capped configuration following ERC-7201 namespaced storage pattern
      * @notice This storage location manages the total supply cap functionality for the vault
@@ -74,37 +107,6 @@ library PlasmaVaultStorageLib {
      */
     bytes32 private constant ERC20_CAPPED_STORAGE_LOCATION =
         0x0f070392f17d5f958cc1ac31867dabecfc5c9758b4a419a200803226d7155d00;
-
-    /**
-     * @dev Storage slot for managing the ERC20 supply cap validation state
-     * @notice Controls whether total supply cap validation is active or temporarily disabled
-     *
-     * Calculation:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.Erc20CappedValidationFlag")) - 1)) & ~bytes32(uint256(0xff))
-     *
-     * Purpose:
-     * - Provides a mechanism to temporarily disable supply cap checks
-     * - Essential for special minting operations like fee distribution
-     * - Used by PlasmaVault.sol during performance and management fee minting
-     *
-     * Storage Layout:
-     * - Points to ERC20CappedValidationFlag struct containing:
-     *   - value: flag indicating if cap validation is enabled (0) or disabled (1)
-     *
-     * Usage Pattern:
-     * - Default state: Enabled (0) - enforces supply cap
-     * - Temporarily disabled (1) during:
-     *   - Performance fee minting
-     *   - Management fee minting
-     * - Always re-enabled after special minting operations
-     *
-     * Security Note:
-     * - Critical for maintaining controlled token supply
-     * - Only disabled briefly during authorized fee operations
-     * - Must be properly re-enabled to prevent unlimited minting
-     */
-    bytes32 private constant ERC20_CAPPED_VALIDATION_FLAG =
-        0xaef487a7a52e82ae7bbc470b42be72a1d3c066fb83773bf99cce7e6a7df2f900;
 
     /**
      * @dev Storage slot for tracking total assets across all markets in the Plasma Vault
@@ -978,6 +980,12 @@ library PlasmaVaultStorageLib {
         address manager;
     }
 
+    struct Managers {
+        mapping(uint256 managerId => address managerAddress) managers;
+        uint256[] managerIds;
+        mapping(uint256 managerId => uint256 index) indexes;
+    }
+
     function getERC4626Storage() internal pure returns (ERC4626Storage storage $) {
         assembly {
             $.slot := ERC4626_STORAGE_LOCATION
@@ -987,12 +995,6 @@ library PlasmaVaultStorageLib {
     function getERC20CappedStorage() internal pure returns (ERC20CappedStorage storage $) {
         assembly {
             $.slot := ERC20_CAPPED_STORAGE_LOCATION
-        }
-    }
-
-    function getERC20CappedValidationFlag() internal pure returns (ERC20CappedValidationFlag storage $) {
-        assembly {
-            $.slot := ERC20_CAPPED_VALIDATION_FLAG
         }
     }
 
@@ -1101,6 +1103,12 @@ library PlasmaVaultStorageLib {
     function getWithdrawManager() internal pure returns (WithdrawManager storage withdrawManager) {
         assembly {
             withdrawManager.slot := WITHDRAW_MANAGER
+        }
+    }
+
+    function getManagers() internal pure returns (Managers storage managers) {
+        assembly {
+            managers.slot := MANAGERS_STORAGE_LOCATION
         }
     }
 }

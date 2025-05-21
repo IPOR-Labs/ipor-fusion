@@ -85,7 +85,7 @@ struct Iterator {
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
-    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
+    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 40;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 5;
@@ -356,11 +356,11 @@ library IporFusionAccessManagerInitializerLibV1 {
             data_.updateRewardsBalanceAccounts.length +
             data_.withdrawManagerRequestFeeManagers.length +
             data_.withdrawManagerWithdrawFeeManagers.length +
-            (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +       /// @dev +1 TECH_CONTEXT_MANAGER_ROLE
-            (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +  /// @dev +1 TECH_REWARDS_CLAIM_MANAGER_ROLE
-            (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 2) +           /// @dev +2 TECH_PERFORMANCE_FEE_MANAGER_ROLE, TECH_MANAGEMENT_FEE_MANAGER_ROLE
-            2 +                                                                     /// @dev +2 - UPDATE_MARKETS_BALANCES_ROLE, TECH_PLASMA_VAULT_ROLE for Plasma Vault
-            (data_.plasmaVaultAddress.withdrawManager == address(0) ? 0 : 1);       /// @dev +1 TECH_WITHDRAW_MANAGER_ROLE
+            (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) + /// @dev +1 TECH_CONTEXT_MANAGER_ROLE
+            (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) + /// @dev +1 TECH_REWARDS_CLAIM_MANAGER_ROLE
+            (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 2) + /// @dev +2 TECH_PERFORMANCE_FEE_MANAGER_ROLE, TECH_MANAGEMENT_FEE_MANAGER_ROLE
+            2 + /// @dev +2 - UPDATE_MARKETS_BALANCES_ROLE, TECH_PLASMA_VAULT_ROLE for Plasma Vault
+            (data_.plasmaVaultAddress.withdrawManager == address(0) ? 0 : 1); /// @dev +1 TECH_WITHDRAW_MANAGER_ROLE
     }
 
     function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
@@ -517,6 +517,13 @@ library IporFusionAccessManagerInitializerLibV1 {
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.FUSE_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.addFuses.selector,
+            minimalExecutionDelay: 0
+        });
+
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.plasmaVault,
+            roleId: Roles.OWNER_ROLE,
+            functionSelector: PlasmaVaultGovernance.addManager.selector,
             minimalExecutionDelay: 0
         });
 

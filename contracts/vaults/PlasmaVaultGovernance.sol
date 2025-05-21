@@ -1692,6 +1692,26 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         FusesLib.addFuse(fuse_);
     }
 
+    // TODO: add tests for this functions
+    /// @dev only owner
+    function addManager(uint256 managerId_, address managerAddress_) external restricted {
+        PlasmaVaultConfigLib.addManager(managerId_, managerAddress_);
+    }
+
+    // TODO: add tests for this functions
+    /// @dev only admin
+    function updateManager(uint256 managerId_, address managerAddress_) external restricted {
+        PlasmaVaultConfigLib.updateManager(managerId_, managerAddress_);
+    }
+
+    function getManager(uint256 managerId_) internal view returns (address) {
+        return PlasmaVaultConfigLib.getManager(managerId_);
+    }
+
+    function getManagerIds() external view returns (uint256[] memory) {
+        return PlasmaVaultConfigLib.getManagerIds();
+    }
+
     /// @notice Internal helper to add a balance fuse
     /// @param marketId_ The ID of the market
     /// @param fuse_ The address of the fuse to add

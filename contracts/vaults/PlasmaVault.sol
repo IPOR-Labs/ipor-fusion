@@ -36,7 +36,7 @@ import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
-
+import {FEE_MANAGER_ID} from "../managers/ManagerIds.sol";
 
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
@@ -345,7 +345,8 @@ contract PlasmaVault is
             })
         );
 
-        PlasmaVaultLib.configurePerformanceFee(feeManagerData.performanceFeeAccount, feeManagerData.performanceFee);
+        PlasmaVaultConfigLib.addManager(FEE_MANAGER_ID, feeManagerData.feeManager);
+
         PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
 
         PlasmaVaultLib.updateManagementFeeData();
@@ -775,7 +776,7 @@ contract PlasmaVault is
         if (sharesToRelease > 0) {
             /// @dev When shares are in withdrawal request, we need to withdraw more assets to cover the shares and use offset
             /// @dev Offset of 0.01% (10001/10000) is added to account for potential rounding errors and price fluctuations during withdrawal
-            assetsToWithdrawFromMarkets = assets_ + convertToAssets(sharesToRelease) * 10001 / 10000;
+            assetsToWithdrawFromMarkets = assets_ + (convertToAssets(sharesToRelease) * 10001) / 10000;
         } else {
             assetsToWithdrawFromMarkets = assets_ + WITHDRAW_FROM_MARKETS_OFFSET;
         }
@@ -883,7 +884,12 @@ contract PlasmaVault is
         return _redeem(shares_, receiver_, owner_, true);
     }
 
-    function _redeem(uint256 shares_, address receiver_, address owner_, bool withFee_) internal returns (uint256 assetsToWithdraw) {
+    function _redeem(
+        uint256 shares_,
+        address receiver_,
+        address owner_,
+        bool withFee_
+    ) internal returns (uint256 assetsToWithdraw) {
         if (shares_ == 0) {
             revert NoSharesToRedeem();
         }
@@ -931,7 +937,7 @@ contract PlasmaVault is
         uint256 redeemAmount = super.redeem(shares_, receiver_, owner_);
 
         _burn(owner_, feeSharesToBurn);
-        
+
         return redeemAmount;
     }
 
@@ -1288,7 +1294,6 @@ contract PlasmaVault is
             .calculateAndUpdatePerformanceFee(
                 actualExchangeRate.toUint128(),
                 totalSupply(),
-                feeData.feeInPercentage,
                 decimals() - _decimalsOffset()
             );
 

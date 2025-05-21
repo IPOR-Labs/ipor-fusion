@@ -5,6 +5,12 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 error FeeManagerStorageLibZeroAddress();
 
+/// @notice Enum representing the type of fee
+enum FeeType {
+    MANAGEMENT,
+    PERFORMANCE
+}
+
 /// @notice Storage structure for DAO fee recipient data
 /// @dev Stores the address that receives IPOR DAO fees
 struct DaoFeeRecipientDataStorage {
@@ -52,6 +58,10 @@ struct HighWaterMarkPerformanceFeeStorage {
     uint32 updateInterval;
 }
 
+struct TotalFeeStorage {
+    mapping(FeeType feeType => uint256 value) totalFees;
+}
+
 /// @title Fee Manager Storage Library
 /// @notice Library for managing fee-related storage in the IPOR Protocol's plasma vault system
 /// @dev Implements diamond storage pattern for fee management including performance, management, and DAO fees
@@ -81,6 +91,9 @@ library FeeManagerStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.high.water.mark.performance.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant HIGH_WATER_MARK_PERFORMANCE_FEE_SLOT =
         0xb9423b11a8779228bace4bf919d779502e12a07e11bd2f782c23aeac55439c00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.total.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant TOTAL_FEE_SLOT = 0xc456e86573d79f7b5b60c9eb824345c471d5390facec19407699845c141b2d00; // TODO: change this to the correct slot
 
     /// @notice Retrieves management fee recipient data storage
     /// @dev Uses assembly to access diamond storage pattern slot
@@ -218,6 +231,14 @@ library FeeManagerStorageLib {
         emit IporDaoFeeRecipientAddressChanged(recipientAddress_);
     }
 
+    function getTotalFee(FeeType feeType_) internal view returns (uint256) {
+        return _totalFeeStorage().totalFees[feeType_];
+    }
+
+    function setTotalFee(FeeType feeType_, uint256 value_) internal {
+        _totalFeeStorage().totalFees[feeType_] = value_;
+    }
+
     function _daoFeeRecipientDataStorage() private pure returns (DaoFeeRecipientDataStorage storage $) {
         assembly {
             $.slot := DAO_FEE_RECIPIENT_DATA_SLOT
@@ -242,6 +263,12 @@ library FeeManagerStorageLib {
     function _highWaterMarkPerformanceFeeStorage() private pure returns (HighWaterMarkPerformanceFeeStorage storage $) {
         assembly {
             $.slot := HIGH_WATER_MARK_PERFORMANCE_FEE_SLOT
+        }
+    }
+
+    function _totalFeeStorage() private pure returns (TotalFeeStorage storage $) {
+        assembly {
+            $.slot := TOTAL_FEE_SLOT
         }
     }
 }
