@@ -450,44 +450,6 @@ library PlasmaVaultStorageLib {
         0x78b5ce597bdb64d5aa30a201c7580beefe408ff13963b5d5f3dce2dc09e89c00;
 
     /**
-     * @dev Storage slot for performance fee data in the Plasma Vault
-     * @notice Stores current performance fee configuration and recipient information
-     *
-     * Calculation:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultPerformanceFeeData")) - 1)) & ~bytes32(uint256(0xff))
-     *
-     * Purpose:
-     * - Manages performance fee settings and collection
-     * - Tracks fee recipient address
-     * - Controls performance-based revenue sharing
-     *
-     * Storage Layout:
-     * - Points to PerformanceFeeData struct containing:
-     *   - feeAccount: address receiving performance fees
-     *   - feeInPercentage: current fee rate (basis points, 1/10000)
-     *
-     * Fee Mechanics:
-     * - Calculated on positive vault performance
-     * - Applied during execute() operations
-     * - Minted as new vault shares to fee recipient
-     * - Charged only on realized gains
-     *
-     * Integration Points:
-     * - PlasmaVault._addPerformanceFee: Fee calculation and minting
-     * - FeeManager: Fee configuration management
-     * - PlasmaVaultGovernance: Fee settings updates
-     *
-     * Security Considerations:
-     * - Only modifiable through governance
-     * - Fee percentage must be within defined limits
-     * - Critical for fair value distribution
-     * - Must maintain valid fee recipient address
-     * - Requires careful handling during share minting
-     */
-    bytes32 private constant PLASMA_VAULT_PERFORMANCE_FEE_DATA =
-        0x9399757a27831a6cfb6cf4cd5c97a908a2f8f41e95a5952fbf83a04e05288400;
-
-    /**
      * @notice Stores management fee configuration and time tracking data
      * @dev Manages continuous fee collection with time-based accrual
      * @custom:storage-location erc7201:io.ipor.PlasmaVaultManagementFeeData
@@ -1069,12 +1031,6 @@ library PlasmaVaultStorageLib {
     function getPriceOracleMiddleware() internal pure returns (PriceOracleMiddleware storage oracle) {
         assembly {
             oracle.slot := PRICE_ORACLE_MIDDLEWARE
-        }
-    }
-
-    function getPerformanceFeeData() internal pure returns (PerformanceFeeData storage performanceFeeData) {
-        assembly {
-            performanceFeeData.slot := PLASMA_VAULT_PERFORMANCE_FEE_DATA
         }
     }
 

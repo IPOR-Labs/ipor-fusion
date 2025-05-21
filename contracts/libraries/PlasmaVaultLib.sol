@@ -334,43 +334,6 @@ library PlasmaVaultLib {
         emit ManagementFeeDataConfigured(feeAccount_, feeInPercentage_);
     }
 
-    /// @notice Gets the performance fee configuration data
-    /// @return performanceFeeData The current performance fee configuration containing:
-    ///         - feeAccount: The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
-    ///         - feeInPercentage: Current fee rate (basis points, 1/10000)
-    /// @dev Retrieves the current performance fee settings from storage
-    ///
-    /// Fee structure:
-    /// - Charged on positive vault performance
-    /// - Fee percentage limited by PERFORMANCE_MAX_FEE_IN_PERCENTAGE (50%)
-    /// - Calculated on realized gains only
-    /// - Applied during execute() operations
-    ///
-    /// Used for:
-    /// - Performance fee calculations
-    /// - Fee realization during profitable operations
-    /// - Performance fee distribution
-    /// - Governance fee adjustments
-    ///
-    /// Integration points:
-    /// - PlasmaVault._addPerformanceFee()
-    /// - PlasmaVault.execute()
-    /// - FeeManager contract
-    /// - Governance configuration
-    ///
-    /// @dev Important: Performance fees:
-    /// - Only charged on positive performance
-    /// - Calculated based on profit since last fee realization
-    /// - Minted as new vault shares
-    /// - Distributed to configured fee recipients
-    function getPerformanceFeeData()
-        internal
-        view
-        returns (PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData)
-    {
-        return PlasmaVaultStorageLib.getPerformanceFeeData();
-    }
-
     /// @notice Configures the performance fee settings for the vault
     /// @param feeAccount_ The address that will receive performance fees
     /// @param feeInPercentage_ The performance fee rate in basis points (100 = 1%)
