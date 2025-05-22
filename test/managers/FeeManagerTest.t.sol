@@ -30,7 +30,6 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 
-
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
     address private constant _ATOMIST = address(1111111);
@@ -652,7 +651,7 @@ contract FeeManagerTest is Test {
         assertEq(feeRecipientAfter, _USER, "feeRecipientAfter should be _USER");
     }
 
-    function testShouldHarvestFeesWithMultipleRecipients() external {
+    function testShouldHarvestFeesWithMultipleRecipientsWhenTransferSharesIsDisabled() external {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
         FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
@@ -731,6 +730,136 @@ contract FeeManagerTest is Test {
             49999900001, // Equal to recipient1 (matches actual implementation)
             100,
             "dao should receive correct fee share"
+        );
+    }
+
+    function testShouldHarvestFeesWithMultipleRecipientsWhenTransferSharesIsDisabledRecipientCanWithdraw() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        // Setup multiple recipient fees
+        RecipientFee[] memory performanceFees = new RecipientFee[](2);
+        performanceFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 1000 // 10%
+        });
+        performanceFees[1] = RecipientFee({
+            recipient: _FEE_RECIPIENT_2,
+            feeValue: 500 // 5%
+        });
+
+        RecipientFee[] memory managementFees = new RecipientFee[](2);
+        managementFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: 100 // 1%
+        });
+        managementFees[1] = RecipientFee({
+            recipient: _FEE_RECIPIENT_2,
+            feeValue: 50 // 0.5%
+        });
+
+        feeManager.initialize();
+
+        // Update fees
+        vm.startPrank(_ATOMIST);
+        feeManager.updatePerformanceFee(performanceFees);
+        feeManager.updateManagementFee(managementFees);
+        vm.stopPrank();
+
+        // Perform actions on plasma vault
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
+        AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
+        vm.stopPrank();
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.AAVE_V3;
+        PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
+
+        uint256 balanceRecipient1Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+        uint256 balanceDaoRecipientBefore = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+
+        // when
+        feeManager.harvestPerformanceFee();
+        feeManager.harvestManagementFee();
+
+        // then
+        uint256 balanceRecipient1After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+        uint256 balanceDaoRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+
+        assertEq(balanceRecipient1Before, 0, "recipient1 balance before should be 0");
+        assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
+        assertEq(balanceDaoRecipientBefore, 0, "dao recipient balance before should be 0");
+
+        // Updated expected values based on actual implementation
+        assertApproxEqAbs(
+            balanceRecipient1After,
+            49999900001, // ~9% performance + 0.85% management (after DAO fee)
+            100,
+            "recipient1 should receive correct fee share"
+        );
+        assertApproxEqAbs(
+            balanceRecipient2After,
+            24999950000, // ~4.5% performance + 0.425% management (after DAO fee)
+            100,
+            "recipient2 should receive correct fee share"
+        );
+        assertApproxEqAbs(
+            balanceDaoRecipientAfter,
+            49999900001, // Equal to recipient1 (matches actual implementation)
+            100,
+            "dao should receive correct fee share"
+        );
+
+        // Test withdrawals
+        uint256 usdcBalanceRecipient1Before = ERC20(_USDC).balanceOf(_FEE_RECIPIENT_1);
+        uint256 usdcBalanceRecipient2Before = ERC20(_USDC).balanceOf(_FEE_RECIPIENT_2);
+        uint256 usdcBalanceDaoBefore = ERC20(_USDC).balanceOf(_DAO_FEE_RECIPIENT);
+
+        // Withdraw shares for recipients
+        vm.startPrank(_FEE_RECIPIENT_1);
+        PlasmaVault(_plasmaVault).redeem(balanceRecipient1After, _FEE_RECIPIENT_1, _FEE_RECIPIENT_1);
+        vm.stopPrank();
+
+        vm.startPrank(_FEE_RECIPIENT_2);
+        PlasmaVault(_plasmaVault).redeem(balanceRecipient2After, _FEE_RECIPIENT_2, _FEE_RECIPIENT_2);
+        vm.stopPrank();
+
+        vm.startPrank(_DAO_FEE_RECIPIENT);
+        PlasmaVault(_plasmaVault).redeem(balanceDaoRecipientAfter, _DAO_FEE_RECIPIENT, _DAO_FEE_RECIPIENT);
+        vm.stopPrank();
+
+        // Check final USDC balances
+        uint256 usdcBalanceRecipient1After = ERC20(_USDC).balanceOf(_FEE_RECIPIENT_1);
+        uint256 usdcBalanceRecipient2After = ERC20(_USDC).balanceOf(_FEE_RECIPIENT_2);
+        uint256 usdcBalanceDaoAfter = ERC20(_USDC).balanceOf(_DAO_FEE_RECIPIENT);
+
+        assertEq(usdcBalanceRecipient1Before, 0, "recipient1 USDC balance before should be 0");
+        assertEq(usdcBalanceRecipient2Before, 0, "recipient2 USDC balance before should be 0");
+        assertEq(usdcBalanceDaoBefore, 0, "dao USDC balance before should be 0");
+
+        assertGt(usdcBalanceRecipient1After, 0, "recipient1 should receive USDC after withdrawal");
+        assertGt(usdcBalanceRecipient2After, 0, "recipient2 should receive USDC after withdrawal");
+        assertGt(usdcBalanceDaoAfter, 0, "dao should receive USDC after withdrawal");
+
+        // Verify shares are burned after withdrawal
+        assertEq(
+            PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1),
+            0,
+            "recipient1 should have no shares after withdrawal"
+        );
+        assertEq(
+            PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2),
+            0,
+            "recipient2 should have no shares after withdrawal"
+        );
+        assertEq(
+            PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT),
+            0,
+            "dao should have no shares after withdrawal"
         );
     }
 
