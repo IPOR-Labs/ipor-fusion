@@ -901,6 +901,69 @@ contract PlasmaVaultMaintenanceTest is Test {
         );
     }
 
+    function testMaxDepositShouldReturnMax() public {
+        // given
+        address underlyingToken = USDC;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
+        );
+        CompoundV3SupplyFuse supplyFuseCompoundV3 = new CompoundV3SupplyFuse(COMPOUND_V3_MARKET_ID, COMET_V3_USDC);
+
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory initialSupplyFuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        PlasmaVault plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                marketConfigs,
+                initialSupplyFuses,
+                balanceFuses,
+                FeeConfigHelper.createZeroFeeConfig(),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                type(uint256).max,
+                withdrawManager
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        address user = address(3456789876543234567898765);
+
+        deal(USDC, user, 100_000_000 * 1e6);
+
+        uint256 amount = 1 * 1e6;
+        deal(USDC, address(this), amount);
+
+        vm.startPrank(user);
+        ERC20(USDC).approve(address(plasmaVault), amount);
+        plasmaVault.deposit(amount, address(this));
+
+        ERC20(USDC).transfer(address(plasmaVault), 100 * 1e6);
+
+        vm.stopPrank();
+
+        // when
+        uint256 maxDeposit = plasmaVault.maxDeposit(user);
+
+        // then
+        assertEq(maxDeposit, type(uint256).max, "Max deposit should be max uint256");
+    }
+
     function testShouldNotAddFusesWhenNotAtomist() public {
         // given
         address underlyingToken = USDC;
@@ -2911,8 +2974,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // Create vault with minimal configuration
         (PlasmaVault plasmaVault, WithdrawManager withdrawManager) = createTestVault(underlyingToken);
-        
-        
+
         IporFusionAccessManager accessManager = IporFusionAccessManager(plasmaVault.authority());
 
         setupRoles(plasmaVault, accessManager, address(withdrawManager));
