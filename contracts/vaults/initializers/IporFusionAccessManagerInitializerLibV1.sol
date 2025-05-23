@@ -292,6 +292,13 @@ library IporFusionAccessManagerInitializerLibV1 {
                 executionDelay: 0
             });
             ++index;
+
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
+                account: data_.plasmaVaultAddress.feeManager,
+                executionDelay: 0
+            });
+            ++index;
         }
 
         if (data_.plasmaVaultAddress.contextManager != address(0)) {
@@ -358,7 +365,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             data_.withdrawManagerWithdrawFeeManagers.length +
             (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +       /// @dev +1 TECH_CONTEXT_MANAGER_ROLE
             (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +  /// @dev +1 TECH_REWARDS_CLAIM_MANAGER_ROLE
-            (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 2) +           /// @dev +2 TECH_PERFORMANCE_FEE_MANAGER_ROLE, TECH_MANAGEMENT_FEE_MANAGER_ROLE
+            (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 3) +           /// @dev +2 TECH_PERFORMANCE_FEE_MANAGER_ROLE, TECH_MANAGEMENT_FEE_MANAGER_ROLE, TECH_VAULT_TRANSFER_SHARES_ROLE
             2 +                                                                     /// @dev +2 - UPDATE_MARKETS_BALANCES_ROLE, TECH_PLASMA_VAULT_ROLE for Plasma Vault
             (data_.plasmaVaultAddress.withdrawManager == address(0) ? 0 : 1);       /// @dev +1 TECH_WITHDRAW_MANAGER_ROLE
     }
@@ -493,7 +500,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         /// @dev The shares in this vault are transferable, hence we assign the PUBLIC_ROLE.
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.PUBLIC_ROLE,
+            roleId: Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
             functionSelector: IERC20.transfer.selector,
             minimalExecutionDelay: 0
         });
@@ -501,7 +508,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         /// @dev The shares in this vault are transferable, hence we assign the PUBLIC_ROLE.
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.PUBLIC_ROLE,
+            roleId: Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
             functionSelector: IERC20.transferFrom.selector,
             minimalExecutionDelay: 0
         });
