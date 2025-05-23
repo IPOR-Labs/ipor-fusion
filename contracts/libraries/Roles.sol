@@ -36,6 +36,9 @@ library Roles {
     /// @dev System role that can only be assigned to WithdrawManager contract. Set during initialization and cannot be changed afterward
     uint64 public constant TECH_WITHDRAW_MANAGER_ROLE = 6;
 
+    /// @notice Technical role for limit transfer and transferFrom methods in the Vault contract
+    uint64 public constant TECH_VAULT_TRANSFER_SHARES_ROLE = 7;
+
     /// @notice Account with this role has rights to manage the PlasmaVault. It recommended to use MultiSig contract for this role.
     /// @dev Managed by Owner
     uint64 public constant ATOMIST_ROLE = 100;
