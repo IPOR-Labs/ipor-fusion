@@ -1286,11 +1286,9 @@ contract PlasmaVault is
             return;
         }
 
-        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
-
         uint256 actualExchangeRate = convertToAssets(10 ** uint256(decimals()));
 
-        (address recipient, uint256 feeShares) = FeeManager(FeeAccount(feeData.feeAccount).FEE_MANAGER())
+        (address recipient, uint256 feeShares) = FeeManager(PlasmaVaultConfigLib.getManager(FEE_MANAGER_ID))
             .calculateAndUpdatePerformanceFee(
                 actualExchangeRate.toUint128(),
                 totalSupply(),

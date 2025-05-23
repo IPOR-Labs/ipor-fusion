@@ -9,6 +9,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {WrappedPlasmaVaultStorageLib, PerformanceFeeData} from "./WrappedPlasmaVaultStorageLib.sol";
 
 contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -604,7 +605,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      * @custom:security Restricted to contract owner
      */
     function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external onlyOwner {
-        PlasmaVaultLib.configurePerformanceFee(feeAccount_, feeInPercentage_);
+        WrappedPlasmaVaultStorageLib.configurePerformanceFee(feeAccount_, feeInPercentage_);
     }
 
     /**
@@ -667,8 +668,8 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      * @return feeData Performance fee configuration struct containing recipient and rate information
      * @custom:security View function, no state modifications
      */
-    function getPerformanceFeeData() external view returns (PlasmaVaultStorageLib.PerformanceFeeData memory feeData) {
-        feeData = PlasmaVaultLib.getPerformanceFeeData();
+    function getPerformanceFeeData() external view returns (PerformanceFeeData memory feeData) {
+        feeData = WrappedPlasmaVaultStorageLib.getPerformanceFeeData();
     }
 
     /**
@@ -912,7 +913,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         uint256 performanceFeeWhenManagementFeeIsMinted = modifiedTotalAssets_ > lastTotalAssets
             ? Math.mulDiv(
                 modifiedTotalAssets_ - lastTotalAssets,
-                PlasmaVaultLib.getPerformanceFeeData().feeInPercentage,
+                WrappedPlasmaVaultStorageLib.getPerformanceFeeData().feeInPercentage,
                 FEE_PERCENTAGE_DECIMALS_MULTIPLIER
             )
             : 0;
@@ -1051,7 +1052,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         if (totalAssetsAfter < totalAssetsBefore_) {
             return;
         }
-        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
+        PerformanceFeeData memory feeData = WrappedPlasmaVaultStorageLib.getPerformanceFeeData();
         uint256 fee = Math.mulDiv(
             totalAssetsAfter - totalAssetsBefore_,
             feeData.feeInPercentage,

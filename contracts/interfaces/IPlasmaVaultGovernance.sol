@@ -42,10 +42,6 @@ interface IPlasmaVaultGovernance {
     /// @return The address of the Price Oracle Middleware
     function getPriceOracleMiddleware() external view returns (address);
 
-    /// @notice Returns the performance fee configuration data of the Plasma Vault
-    /// @return feeData The performance fee configuration data, see PerformanceFeeData struct
-    function getPerformanceFeeData() external view returns (PlasmaVaultStorageLib.PerformanceFeeData memory feeData);
-
     /// @notice Returns the management fee configuration data of the Plasma Vault
     /// @return feeData The management fee configuration data, see ManagementFeeData struct
     function getManagementFeeData() external view returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData);
@@ -120,12 +116,6 @@ interface IPlasmaVaultGovernance {
     /// @notice Sets the Price Oracle Middleware address
     /// @param priceOracleMiddleware_ The address of the Price Oracle Middleware
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external;
-
-    /// @notice Configures the performance fee
-    /// @param feeAccount_ The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
-    /// @param feeInPercentage_ The fee in percentage represented in 2 decimals, example 100% = 10000, 1% = 100, 0.01% = 1
-    /// @dev feeAccount_ can be also EOA address or MultiSig address, in this case it will receive the performance fee directly
-    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external;
 
     /// @notice Configures the management fee
     /// @param feeAccount_ The address of the technical Management Fee Account that will receive the management fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager

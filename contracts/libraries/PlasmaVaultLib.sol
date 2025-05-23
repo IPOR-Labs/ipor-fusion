@@ -334,55 +334,6 @@ library PlasmaVaultLib {
         emit ManagementFeeDataConfigured(feeAccount_, feeInPercentage_);
     }
 
-    /// @notice Configures the performance fee settings for the vault
-    /// @param feeAccount_ The address that will receive performance fees
-    /// @param feeInPercentage_ The performance fee rate in basis points (100 = 1%)
-    /// @dev Updates fee configuration and emits event
-    ///
-    /// Parameter requirements:
-    /// - feeAccount_: Must be non-zero address. The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
-    /// - feeInPercentage_: Must not exceed PERFORMANCE_MAX_FEE_IN_PERCENTAGE (50%)
-    ///
-    /// Fee account types:
-    /// - FeeManager contract: Distributes fees to IPOR DAO and other recipients
-    /// - EOA/MultiSig: Receives fees directly without distribution
-    /// - Technical account: Temporary fee collection before distribution
-    ///
-    /// Fee percentage format:
-    /// - Uses 2 decimal places (basis points)
-    /// - Examples:
-    ///   - 10000 = 100%
-    ///   - 100 = 1%
-    ///   - 1 = 0.01%
-    ///
-    /// Security considerations:
-    /// - Only callable by authorized governance functions
-    /// - Validates fee percentage against maximum limit
-    /// - Emits event for tracking changes
-    /// - Critical for vault incentive structure
-    ///
-    /// @dev Important: Changes affect:
-    /// - Profit sharing calculations
-    /// - Alpha incentive alignment
-    /// - Vault performance metrics
-    /// - Revenue distribution model
-    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) internal {
-        if (feeAccount_ == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        if (feeInPercentage_ > PERFORMANCE_MAX_FEE_IN_PERCENTAGE) {
-            revert InvalidPerformanceFee(feeInPercentage_);
-        }
-
-        PlasmaVaultStorageLib.PerformanceFeeData storage performanceFeeData = PlasmaVaultStorageLib
-            .getPerformanceFeeData();
-
-        performanceFeeData.feeAccount = feeAccount_;
-        performanceFeeData.feeInPercentage = feeInPercentage_.toUint16();
-
-        emit PerformanceFeeDataConfigured(feeAccount_, feeInPercentage_);
-    }
-
     /// @notice Updates the management fee timestamp for fee accrual tracking
     /// @dev Updates lastUpdateTimestamp to current block timestamp for fee calculations
     ///

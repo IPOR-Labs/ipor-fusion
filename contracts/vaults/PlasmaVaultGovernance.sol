@@ -324,51 +324,6 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return PlasmaVaultLib.getPriceOracleMiddleware();
     }
 
-    /// @notice Gets the performance fee configuration data
-    /// @dev Retrieves current performance fee settings from PlasmaVaultLib
-    ///
-    /// Fee Structure:
-    /// - Charged on positive vault performance
-    /// - Maximum fee capped at 50% (PERFORMANCE_MAX_FEE_IN_PERCENTAGE)
-    /// - Calculated on realized gains only
-    /// - Applied during execute() operations
-    ///
-    /// Configuration Data:
-    /// - feeAccount: Address receiving performance fees
-    /// - feeInPercentage: Current fee rate (basis points)
-    /// - Percentage uses 2 decimal places (100 = 1%)
-    /// - Minted as new vault shares
-    ///
-    /// Integration Context:
-    /// - Used by PlasmaVault._addPerformanceFee()
-    /// - Critical for profit sharing calculations
-    /// - Part of vault incentive structure
-    /// - Affects share price computations
-    ///
-    /// Use Cases:
-    /// - Fee calculation validation
-    /// - Performance monitoring
-    /// - Revenue distribution
-    /// - Alpha incentive alignment
-    ///
-    /// Related Components:
-    /// - FeeManager: Fee distribution
-    /// - Performance Tracking System
-    /// - Share Price Calculator
-    /// - Governance Configuration
-    ///
-    /// @return feeData The current performance fee configuration
-    /// @custom:access External view
-    /// @custom:security Non-privileged view function
-    function getPerformanceFeeData()
-        external
-        view
-        override
-        returns (PlasmaVaultStorageLib.PerformanceFeeData memory feeData)
-    {
-        feeData = PlasmaVaultLib.getPerformanceFeeData();
-    }
-
     /// @notice Gets the management fee configuration data
     /// @dev Retrieves current management fee settings from PlasmaVaultLib
     ///
@@ -1109,53 +1064,6 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         }
 
         PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
-    }
-
-    /// @notice Configures the performance fee settings
-    /// @dev Updates performance fee configuration while enforcing system constraints
-    ///
-    /// Fee System:
-    /// - Performance fees charged on positive vault returns
-    /// - Maximum fee capped at PERFORMANCE_MAX_FEE_IN_PERCENTAGE (50%)
-    /// - Fees realized during profitable operations
-    /// - Minted as new vault shares
-    ///
-    /// Parameter Requirements:
-    /// - feeAccount_: Non-zero address for fee collection
-    /// - feeInPercentage_: Must not exceed 50% (5000 basis points)
-    /// - Uses basis points (100 = 1%)
-    /// - Percentage precision: 2 decimals
-    ///
-    /// Fee Account Types:
-    /// - FeeManager contract: Distributes to IPOR DAO
-    /// - EOA/MultiSig: Direct fee collection
-    /// - Technical account: Temporary collection
-    /// - Protocol treasury: Revenue distribution
-    ///
-    /// Integration Context:
-    /// - Used by PlasmaVault._addPerformanceFee()
-    /// - Affects share price calculations
-    /// - Part of profit sharing system
-    /// - Critical for vault economics
-    ///
-    /// Security Considerations:
-    /// - Only callable by TECH_PERFORMANCE_FEE_MANAGER_ROLE
-    /// - Validates fee percentage limits
-    /// - Prevents zero address fee recipient
-    /// - Critical for revenue integrity
-    ///
-    /// Related Components:
-    /// - FeeManager: Distribution logic
-    /// - Performance Tracking
-    /// - Share Price Calculator
-    /// - Profit Assessment System
-    ///
-    /// @param feeAccount_ Address to receive performance fees
-    /// @param feeInPercentage_ Fee percentage with 2 decimals (100 = 1%)
-    /// @custom:access TECH_PERFORMANCE_FEE_MANAGER_ROLE restricted
-    /// @custom:security Critical for vault revenue model
-    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external override restricted {
-        PlasmaVaultLib.configurePerformanceFee(feeAccount_, feeInPercentage_);
     }
 
     /// @notice Configures the management fee settings
