@@ -2,16 +2,16 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {UniversalTokenSwapperWithSignatureFuse, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithSignatureFuse.sol";
+import {UniversalTokenSwapperWithVerificationFuse, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol";
 
-contract UniversalTokenSwapperWithSignatureFuseTest is Test {
-    UniversalTokenSwapperWithSignatureFuse public swapper;
+contract UniversalTokenSwapperWithVerificationFuseTest is Test {
+    UniversalTokenSwapperWithVerificationFuse public swapper;
     address public constant EXECUTOR = address(0x1234);
     uint256 public constant MARKET_ID = 1;
     uint256 public constant SLIPPAGE_REVERSE = 0.05e18; // 5% slippage
 
     function setUp() public {
-        swapper = new UniversalTokenSwapperWithSignatureFuse(MARKET_ID, EXECUTOR, SLIPPAGE_REVERSE);
+        swapper = new UniversalTokenSwapperWithVerificationFuse(MARKET_ID, EXECUTOR, SLIPPAGE_REVERSE);
     }
 
     function testShouldConvertSubstrateToBytes32AndBack() public {

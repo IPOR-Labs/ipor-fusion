@@ -18,11 +18,11 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
 import {SwapExecutorEth, SwapExecutorEthData} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
-import {UniversalTokenSwapperWithSignatureFuse, UniversalTokenSwapperWithSignatureEnterData, UniversalTokenSwapperWithSignatureData, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithSignatureFuse.sol";
+import {UniversalTokenSwapperWithVerificationFuse, UniversalTokenSwapperWithSignatureEnterData, UniversalTokenSwapperWithSignatureData, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
-contract UniversalTokenSwapperWithSignatureFuseTest is Test {
+contract UniversalTokenSwapperWithVerificationFuseTest is Test {
     using SafeERC20 for ERC20;
 
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
@@ -49,7 +49,7 @@ contract UniversalTokenSwapperWithSignatureFuseTest is Test {
     address private _accessManager;
     address private _executor;
 
-    UniversalTokenSwapperWithSignatureFuse private _universalTokenSwapperFuse;
+    UniversalTokenSwapperWithVerificationFuse private _universalTokenSwapperFuse;
 
     ///@dev this value is from the UniversalRouter contract https://github.com/Uniswap/universal-router/blob/main/contracts/libraries/Commands.sol
     uint256 private constant _V3_SWAP_EXACT_IN = 0x00;
@@ -442,7 +442,7 @@ contract UniversalTokenSwapperWithSignatureFuseTest is Test {
         // when
         vm.expectRevert(
             abi.encodeWithSelector(
-                UniversalTokenSwapperWithSignatureFuse.UniversalTokenSwapperFuseUnsupportedAsset.selector,
+                UniversalTokenSwapperWithVerificationFuse.UniversalTokenSwapperFuseUnsupportedAsset.selector,
                 ROCKET_DEPOSIT_POOL_ADDRESS
             )
         );
@@ -536,7 +536,7 @@ contract UniversalTokenSwapperWithSignatureFuseTest is Test {
     function _setupFuses() private returns (address[] memory fuses_) {
         SwapExecutorEth swapExecutor = new SwapExecutorEth(W_ETH);
         _executor = address(swapExecutor);
-        _universalTokenSwapperFuse = new UniversalTokenSwapperWithSignatureFuse(
+        _universalTokenSwapperFuse = new UniversalTokenSwapperWithVerificationFuse(
             IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
             _executor,
             1e18

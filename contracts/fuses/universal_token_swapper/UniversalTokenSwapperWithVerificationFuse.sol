@@ -33,6 +33,11 @@ struct UniversalTokenSwapperWithSignatureEnterData {
     UniversalTokenSwapperWithSignatureData data;
 }
 
+/// @notice Data structure used for tracking token balances during swap operations.
+/// @param  tokenInBalanceBefore - The balance of input token before the swap operation.
+/// @param  tokenOutBalanceBefore - The balance of output token before the swap operation.
+/// @param  tokenInBalanceAfter - The balance of input token after the swap operation.
+/// @param  tokenOutBalanceAfter - The balance of output token after the swap operation.
 struct Balances {
     uint256 tokenInBalanceBefore;
     uint256 tokenOutBalanceBefore;
@@ -40,17 +45,19 @@ struct Balances {
     uint256 tokenOutBalanceAfter;
 }
 
+/// @notice Data structure used for substrate verification in token swaps.
+/// @param  functionSelector - The function selector to be called on the target contract, For tokenIn and TokenOut and tokenDustToCheck this value is 0
+/// @param  target - The address of the contract to be called.
 struct UniversalTokenSwapperSubstrate {
-    // @dev For tokenIn and TokenOut and tokenDustToCheck this value is 0
     bytes4 functionSelector;
     address target;
 }
 
 /// @title This contract is designed to execute every swap operation and check the slippage on any DEX.
-contract UniversalTokenSwapperWithSignatureFuse is IFuseCommon {
+contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
-    event UniversalTokenSwapperWithSignatureFuseEnter(
+    event UniversalTokenSwapperWithVerificationFuseEnter(
         address version,
         address tokenIn,
         address tokenOut,
@@ -173,7 +180,7 @@ contract UniversalTokenSwapperWithSignatureFuse is IFuseCommon {
         uint256 tokenInDelta,
         uint256 tokenOutDelta
     ) private {
-        emit UniversalTokenSwapperWithSignatureFuseEnter(
+        emit UniversalTokenSwapperWithVerificationFuseEnter(
             VERSION,
             data_.tokenIn,
             data_.tokenOut,
