@@ -14,7 +14,7 @@ import {SwapExecutorEth, SwapExecutorEthData} from "./SwapExecutorEth.sol";
 /// @notice Data structure used for executing a swap operation.
 /// @param  targets - The array of addresses to which the call will be made.
 /// @param  data - Data to be executed on the targets.
-struct UniversalTokenSwapperWithSignatureData {
+struct UniversalTokenSwapperWithVerificationData {
     address[] targets;
     bytes[] callDatas;
     uint256[] ethAmounts;
@@ -26,11 +26,11 @@ struct UniversalTokenSwapperWithSignatureData {
 /// @param  tokenOut - The token that will be returned to the plasmaVault after the operation is completed.
 /// @param  amountIn - The amount that needs to be transferred to the swapExecutor for executing swaps.
 /// @param  data - A set of data required to execute token swaps
-struct UniversalTokenSwapperWithSignatureEnterData {
+struct UniversalTokenSwapperWithVerificationEnterData {
     address tokenIn;
     address tokenOut;
     uint256 amountIn;
-    UniversalTokenSwapperWithSignatureData data;
+    UniversalTokenSwapperWithVerificationData data;
 }
 
 /// @notice Data structure used for tracking token balances during swap operations.
@@ -88,7 +88,7 @@ contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
         SLIPPAGE_REVERSE = 1e18 - slippageReverse_;
     }
 
-    function enter(UniversalTokenSwapperWithSignatureEnterData calldata data_) external {
+    function enter(UniversalTokenSwapperWithVerificationEnterData calldata data_) external {
         _checkSubstrates(data_);
 
         address plasmaVault = address(this);
@@ -176,7 +176,7 @@ contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
     }
 
     function _emitUniversalTokenSwapperFuseEnter(
-        UniversalTokenSwapperWithSignatureEnterData calldata data_,
+        UniversalTokenSwapperWithVerificationEnterData calldata data_,
         uint256 tokenInDelta,
         uint256 tokenOutDelta
     ) private {
@@ -189,7 +189,7 @@ contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
         );
     }
 
-    function _checkSubstrates(UniversalTokenSwapperWithSignatureEnterData calldata data_) private view {
+    function _checkSubstrates(UniversalTokenSwapperWithVerificationEnterData calldata data_) private view {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,

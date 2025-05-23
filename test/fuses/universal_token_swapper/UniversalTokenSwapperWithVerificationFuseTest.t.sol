@@ -18,7 +18,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
 import {SwapExecutorEth, SwapExecutorEthData} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
-import {UniversalTokenSwapperWithVerificationFuse, UniversalTokenSwapperWithSignatureEnterData, UniversalTokenSwapperWithSignatureData, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol";
+import {UniversalTokenSwapperWithVerificationFuse, UniversalTokenSwapperWithVerificationEnterData, UniversalTokenSwapperWithVerificationData, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
@@ -141,17 +141,18 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
         uint256[] memory ethAmounts = new uint256[](2);
         address[] memory dustToCheck = new address[](0);
 
-        UniversalTokenSwapperWithSignatureEnterData memory enterData = UniversalTokenSwapperWithSignatureEnterData({
-            tokenIn: USDC,
-            tokenOut: USDT,
-            amountIn: depositAmount,
-            data: UniversalTokenSwapperWithSignatureData({
-                targets: targets,
-                callDatas: callDatas,
-                ethAmounts: ethAmounts,
-                tokensDustToCheck: dustToCheck
-            })
-        });
+        UniversalTokenSwapperWithVerificationEnterData
+            memory enterData = UniversalTokenSwapperWithVerificationEnterData({
+                tokenIn: USDC,
+                tokenOut: USDT,
+                amountIn: depositAmount,
+                data: UniversalTokenSwapperWithVerificationData({
+                    targets: targets,
+                    callDatas: callDatas,
+                    ethAmounts: ethAmounts,
+                    tokensDustToCheck: dustToCheck
+                })
+            });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
@@ -210,17 +211,18 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
         address[] memory dustToCheck = new address[](1);
         dustToCheck[0] = STETH;
 
-        UniversalTokenSwapperWithSignatureEnterData memory enterData = UniversalTokenSwapperWithSignatureEnterData({
-            tokenIn: W_ETH,
-            tokenOut: STETH,
-            amountIn: 10 ether,
-            data: UniversalTokenSwapperWithSignatureData({
-                targets: targets,
-                callDatas: callDatas,
-                ethAmounts: ethAmounts,
-                tokensDustToCheck: dustToCheck
-            })
-        });
+        UniversalTokenSwapperWithVerificationEnterData
+            memory enterData = UniversalTokenSwapperWithVerificationEnterData({
+                tokenIn: W_ETH,
+                tokenOut: STETH,
+                amountIn: 10 ether,
+                data: UniversalTokenSwapperWithVerificationData({
+                    targets: targets,
+                    callDatas: callDatas,
+                    ethAmounts: ethAmounts,
+                    tokensDustToCheck: dustToCheck
+                })
+            });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
@@ -281,17 +283,18 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
         address[] memory dustToCheck = new address[](1);
         dustToCheck[0] = ETHX;
 
-        UniversalTokenSwapperWithSignatureEnterData memory enterData = UniversalTokenSwapperWithSignatureEnterData({
-            tokenIn: W_ETH,
-            tokenOut: ETHX,
-            amountIn: 10 ether,
-            data: UniversalTokenSwapperWithSignatureData({
-                targets: targets,
-                callDatas: callDatas,
-                ethAmounts: ethAmounts,
-                tokensDustToCheck: dustToCheck
-            })
-        });
+        UniversalTokenSwapperWithVerificationEnterData
+            memory enterData = UniversalTokenSwapperWithVerificationEnterData({
+                tokenIn: W_ETH,
+                tokenOut: ETHX,
+                amountIn: 10 ether,
+                data: UniversalTokenSwapperWithVerificationData({
+                    targets: targets,
+                    callDatas: callDatas,
+                    ethAmounts: ethAmounts,
+                    tokensDustToCheck: dustToCheck
+                })
+            });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
@@ -349,17 +352,18 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
         address[] memory dustToCheck = new address[](1);
         dustToCheck[0] = SFRXETH;
 
-        UniversalTokenSwapperWithSignatureEnterData memory enterData = UniversalTokenSwapperWithSignatureEnterData({
-            tokenIn: W_ETH,
-            tokenOut: SFRXETH,
-            amountIn: 10 ether,
-            data: UniversalTokenSwapperWithSignatureData({
-                targets: targets,
-                callDatas: callDatas,
-                ethAmounts: ethAmounts,
-                tokensDustToCheck: dustToCheck
-            })
-        });
+        UniversalTokenSwapperWithVerificationEnterData
+            memory enterData = UniversalTokenSwapperWithVerificationEnterData({
+                tokenIn: W_ETH,
+                tokenOut: SFRXETH,
+                amountIn: 10 ether,
+                data: UniversalTokenSwapperWithVerificationData({
+                    targets: targets,
+                    callDatas: callDatas,
+                    ethAmounts: ethAmounts,
+                    tokensDustToCheck: dustToCheck
+                })
+            });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
@@ -418,17 +422,18 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
         address[] memory dustToCheck = new address[](1);
         dustToCheck[0] = RETH;
 
-        UniversalTokenSwapperWithSignatureEnterData memory enterData = UniversalTokenSwapperWithSignatureEnterData({
-            tokenIn: W_ETH,
-            tokenOut: RETH,
-            amountIn: 10 ether,
-            data: UniversalTokenSwapperWithSignatureData({
-                targets: targets,
-                callDatas: callDatas,
-                ethAmounts: ethAmounts,
-                tokensDustToCheck: dustToCheck
-            })
-        });
+        UniversalTokenSwapperWithVerificationEnterData
+            memory enterData = UniversalTokenSwapperWithVerificationEnterData({
+                tokenIn: W_ETH,
+                tokenOut: RETH,
+                amountIn: 10 ether,
+                data: UniversalTokenSwapperWithVerificationData({
+                    targets: targets,
+                    callDatas: callDatas,
+                    ethAmounts: ethAmounts,
+                    tokensDustToCheck: dustToCheck
+                })
+            });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
