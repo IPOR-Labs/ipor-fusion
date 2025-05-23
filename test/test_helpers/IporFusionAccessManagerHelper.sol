@@ -8,6 +8,7 @@ import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {TestAddresses} from "./TestAddresses.sol";
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
+import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
 
 /// @title IporFusionAccessManagerHelper
 /// @notice Helper library for setting up roles in IporFusionAccessManager
@@ -115,8 +116,7 @@ library IporFusionAccessManagerHelper {
                 accessManager: address(accessManager_),
                 rewardsClaimManager: PlasmaVaultGovernance(address(plasmaVault_)).getRewardsClaimManagerAddress(),
                 withdrawManager: withdrawManager_,
-                feeManager: FeeAccount(PlasmaVaultGovernance(address(plasmaVault_)).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER(),
+                feeManager: PlasmaVaultGovernance(address(plasmaVault_)).getManager(FEE_MANAGER_ID),
                 contextManager: address(contextManager),
                 priceOracleMiddlewareManager: address(0)
             })

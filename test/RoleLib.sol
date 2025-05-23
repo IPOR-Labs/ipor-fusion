@@ -9,6 +9,7 @@ import {Roles} from "../contracts/libraries/Roles.sol";
 import {FeeManager} from "../contracts/managers/fee/FeeManager.sol";
 import {FeeAccount} from "../contracts/managers/fee/FeeAccount.sol";
 import {WithdrawManager} from "../contracts/managers/withdraw/WithdrawManager.sol";
+import {FEE_MANAGER_ID} from "../contracts/managers/ManagerIds.sol";
 struct UsersToRoles {
     address superAdmin;
     address atomist;
@@ -115,8 +116,7 @@ library RoleLib {
         address plasmaVault_,
         IporFusionAccessManager accessManager_
     ) private {
-        address feeManager = FeeAccount(PlasmaVaultGovernance(plasmaVault_).getPerformanceFeeData().feeAccount)
-            .FEE_MANAGER();
+        address feeManager = PlasmaVaultGovernance(plasmaVault_).getManager(FEE_MANAGER_ID);
 
         bytes4[] memory feeManagerSig = new bytes4[](1);
         feeManagerSig[0] = FeeManager.updateHighWaterMarkPerformanceFee.selector;

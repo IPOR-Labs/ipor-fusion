@@ -26,6 +26,7 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
 
 interface IGAUGE {
     function rewards(uint256 index) external view returns (address);
@@ -398,8 +399,7 @@ contract RamsesClaimFuseTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
                 withdrawManager: address(0),
-                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER(),
+                feeManager: PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID),
                 contextManager: address(0),
                 priceOracleMiddlewareManager: address(0)
             })

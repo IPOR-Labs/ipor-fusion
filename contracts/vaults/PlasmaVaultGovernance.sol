@@ -1612,7 +1612,7 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         PlasmaVaultConfigLib.updateManager(managerId_, managerAddress_);
     }
 
-    function getManager(uint256 managerId_) internal view returns (address) {
+    function getManager(uint256 managerId_) external view returns (address) {
         return PlasmaVaultConfigLib.getManager(managerId_);
     }
 

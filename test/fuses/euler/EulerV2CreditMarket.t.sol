@@ -34,6 +34,7 @@ import {IstETH} from "./IstETH.sol";
 import {IToken} from "./IToken.sol";
 
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
 
 struct VaultBalance {
     uint256 eulerPrimeUsdc;
@@ -234,8 +235,7 @@ contract EulerCreditMarketTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
-                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER(),
+                feeManager: PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID),
                 contextManager: address(0),
                 priceOracleMiddlewareManager: address(0)
             })

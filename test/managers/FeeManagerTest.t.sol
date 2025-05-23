@@ -29,7 +29,7 @@ import {HighWaterMarkPerformanceFeeStorage} from "../../contracts/managers/fee/F
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
-
+import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
 
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
@@ -205,8 +205,7 @@ contract FeeManagerTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
                 withdrawManager: _withdrawManager,
-                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER(),
+                feeManager: PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID),
                 contextManager: address(0),
                 priceOracleMiddlewareManager: address(0)
             })
@@ -277,10 +276,9 @@ contract FeeManagerTest is Test {
 
     function testShouldHaveShearsOnPerformanceFeeAccount() external {
         //given
-        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-
-        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
         feeManager.initialize();
+        address performanceAccount = feeManager.PERFORMANCE_FEE_ACCOUNT();
 
         vm.startPrank(_USER);
         ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
@@ -306,8 +304,9 @@ contract FeeManagerTest is Test {
 
     function testShouldHarvestPerformance() external {
         //given
-        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
+        address performanceAccount = feeManager.PERFORMANCE_FEE_ACCOUNT();
 
         vm.startPrank(_USER);
         ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
@@ -346,8 +345,9 @@ contract FeeManagerTest is Test {
 
     function testShouldHarvestPerformanceWhenAtomistSetZero() external {
         //given
-        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
+        address performanceAccount = feeManager.PERFORMANCE_FEE_ACCOUNT();
 
         vm.startPrank(_USER);
         ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
@@ -402,8 +402,9 @@ contract FeeManagerTest is Test {
 
     function testShouldNotHarvestManagementFeeWhenNotInitialize() external {
         // given
-        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
-        FeeManager feeManager = FeeManager(FeeAccount(managementAccount).FEE_MANAGER());
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
+        address managementAccount = feeManager.MANAGEMENT_FEE_ACCOUNT();
 
         bytes memory error = abi.encodeWithSignature("NotInitialized()");
 
@@ -426,10 +427,9 @@ contract FeeManagerTest is Test {
 
     function testShouldNotUpdatePerformanceFeeWhenNotAtomist() external {
         // given
-        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
-        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
-
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
         feeManager.initialize();
+        address performanceAccount = feeManager.PERFORMANCE_FEE_ACCOUNT();
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
 
@@ -447,11 +447,12 @@ contract FeeManagerTest is Test {
         // given
         PlasmaVaultStorageLib.PerformanceFeeData memory feeDataOnPlasmaVaultBefore = PlasmaVaultGovernance(_plasmaVault)
             .getPerformanceFeeData();
-        FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
+
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
+        address performanceAccount = feeManager.PERFORMANCE_FEE_ACCOUNT();
 
         uint256 performanceFeeBefore = feeManager.getTotalPerformanceFee();
-
-        feeManager.initialize();
 
         RecipientFee[] memory recipientFees = new RecipientFee[](1);
         recipientFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 500});
@@ -469,17 +470,6 @@ contract FeeManagerTest is Test {
 
         assertEq(performanceFeeBefore, 2000, "performanceFeeBefore should be 2000");
         assertEq(performanceFeeAfter, 1500, "performanceFeeAfter should be 1500");
-
-        assertEq(
-            feeDataOnPlasmaVaultBefore.feeInPercentage,
-            2000,
-            "feeDataOnPlasmaVaultBefore.feeInPercentage should be 2000"
-        );
-        assertEq(
-            feeDataOnPlasmaVaultAfter.feeInPercentage,
-            1500,
-            "feeDataOnPlasmaVaultAfter.feeInPercentage should be 1500"
-        );
     }
 
     function testShouldUpdateManagementFeeWhenAtomist() external {

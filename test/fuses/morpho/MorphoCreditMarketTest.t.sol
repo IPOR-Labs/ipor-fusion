@@ -28,6 +28,7 @@ import {IWETH9} from "./IWETH9.sol";
 import {IstETH} from "./IstETH.sol";
 import {IWstETH} from "./IWstETH.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
 
 contract MorphoCreditMarketTest is Test {
     address private constant _W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -217,8 +218,7 @@ contract MorphoCreditMarketTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
-                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER(),
+                feeManager: PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID),
                 contextManager: address(0),
                 priceOracleMiddlewareManager: address(0)
             })

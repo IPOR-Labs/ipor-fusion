@@ -17,6 +17,7 @@ import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PriceOracleMiddlewareManagerLib} from "../../contracts/managers/price/PriceOracleMiddlewareManagerLib.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
 
 contract PriceOracleMiddlewareManagerTest is Test {
     address private constant _DAO = address(1111111);
@@ -147,8 +148,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
                 withdrawManager: _withdrawManager,
-                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER(),
+                feeManager: PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID),
                 contextManager: address(0),
                 priceOracleMiddlewareManager: _priceOracleMiddlewareManager
             })
