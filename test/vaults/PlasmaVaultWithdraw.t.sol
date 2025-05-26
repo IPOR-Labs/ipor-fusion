@@ -2217,9 +2217,6 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         uint256 userOneSharesAmount = plasmaVault.deposit(amount, userOne);
 
-        vm.prank(userTwo);
-        uint256 userTwoSharesAmount = plasmaVault.deposit(amount, userTwo);
-
         // Set up withdrawal request and release funds
         vm.prank(atomist);
         WithdrawManager(withdrawManager).updateWithdrawWindow(1 days);

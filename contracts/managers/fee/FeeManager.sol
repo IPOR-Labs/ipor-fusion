@@ -5,7 +5,6 @@ import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {FeeAccount} from "./FeeAccount.sol";
-import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {RecipientFee} from "./FeeManagerFactory.sol";
 import {FeeManagerStorageLib, FeeRecipientDataStorage} from "./FeeManagerStorageLib.sol";
 import {HighWaterMarkPerformanceFeeStorage, HighWaterMarkPerformanceFeeStorage} from "./FeeManagerStorageLib.sol";
@@ -152,7 +151,7 @@ contract FeeManager is AccessManagedUpgradeable {
 
         /// @dev Plasma Vault fees are the sum of all recipients fees + DAO fee, respectively for performance and management fees.
         /// @dev Values stored in FeeManager have to be equal to the values stored in PlasmaVault
-        FeeManagerStorageLib.setPlasmaVaultTotalPerformanceFee(totalPerformanceFee);
+        FeeManagerStorageLib.setTotalFee(FeeType.PERFORMANCE, totalPerformanceFee);
         FeeManagerStorageLib.setPlasmaVaultTotalManagementFee(totalManagementFee);
     }
 
@@ -557,7 +556,6 @@ contract FeeManager is AccessManagedUpgradeable {
     ) internal returns (uint256) {
         uint256 decimals = IERC4626(PLASMA_VAULT).decimals();
         uint256 numberOfDecimals = 10 ** decimals;
-
         uint256 percentToTransferToDao_ = (daoFee_ * numberOfDecimals) / totalFee_;
         uint256 transferAmountToDao_ = Math.mulDiv(feeBalance_, percentToTransferToDao_, numberOfDecimals);
 

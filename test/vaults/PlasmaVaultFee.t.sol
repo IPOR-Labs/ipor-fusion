@@ -21,8 +21,8 @@ import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGov
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
-import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
 
 interface AavePool {
     function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -156,8 +156,8 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
 
         /// @dev user one deposit
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -194,7 +194,7 @@ contract PlasmaVaultFeeTest is Test {
         );
 
         vm.startPrank(alpha);
-        FeeManager(FeeAccount(performanceFeeManager).FEE_MANAGER()).updateHighWaterMarkPerformanceFee();
+        feeManager.updateHighWaterMarkPerformanceFee();
 
         plasmaVault.execute(calls);
         vm.stopPrank();
@@ -373,6 +373,28 @@ contract PlasmaVaultFeeTest is Test {
         assertEq(performanceFeeManagerBalanceOfAssets, 0);
     }
 
+    function _createInstantWithdrawConfig(
+        address supplyFuseAaveV3_,
+        address supplyFuseCompoundV3_
+    ) internal pure returns (InstantWithdrawalFusesParamsStruct[] memory) {
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
+        bytes32[] memory instantWithdrawParams = new bytes32[](2);
+        instantWithdrawParams[0] = 0;
+        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
+            fuse: supplyFuseAaveV3_,
+            params: instantWithdrawParams
+        });
+
+        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
+            fuse: supplyFuseCompoundV3_,
+            params: instantWithdrawParams
+        });
+
+        return instantWithdrawFuses;
+    }
+
     function testShouldInstantWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3AndCalculatePerformanceFee() public {
         //given
         performanceFeeInPercentage = 500;
@@ -445,11 +467,11 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
 
         vm.startPrank(alpha);
-        FeeManager(FeeAccount(performanceFeeManager).FEE_MANAGER()).updateHighWaterMarkPerformanceFee();
+        feeManager.updateHighWaterMarkPerformanceFee();
         vm.stopPrank();
 
         //user one
@@ -492,23 +514,10 @@ contract PlasmaVaultFeeTest is Test {
         plasmaVault.execute(calls);
         vm.stopPrank();
 
-        /// @dev prepare instant withdraw config
-        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
-        bytes32[] memory instantWithdrawParams = new bytes32[](2);
-        instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-
-        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
-            fuse: address(supplyFuseAaveV3),
-            params: instantWithdrawParams
-        });
-
-        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
-            fuse: address(supplyFuseCompoundV3),
-            params: instantWithdrawParams
-        });
-
-        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+        /// @dev configure instant withdraw
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(
+            _createInstantWithdrawConfig(address(supplyFuseAaveV3), address(supplyFuseCompoundV3))
+        );
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -604,7 +613,7 @@ contract PlasmaVaultFeeTest is Test {
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
-        ERC20(USDC).transfer(address(userOne), amount);
+        ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
         vm.prank(userOne);
         ERC20(USDC).approve(address(plasmaVault), 2 * amount);
         vm.prank(userOne);
@@ -641,23 +650,10 @@ contract PlasmaVaultFeeTest is Test {
         vm.prank(alpha);
         plasmaVault.execute(calls);
 
-        /// @dev prepare instant withdraw config
-        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
-        bytes32[] memory instantWithdrawParams = new bytes32[](2);
-        instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-
-        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
-            fuse: address(supplyFuseAaveV3),
-            params: instantWithdrawParams
-        });
-
-        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
-            fuse: address(supplyFuseCompoundV3),
-            params: instantWithdrawParams
-        });
-
-        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+        /// @dev configure instant withdraw
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(
+            _createInstantWithdrawConfig(address(supplyFuseAaveV3), address(supplyFuseCompoundV3))
+        );
 
         //when
         vm.prank(userOne);
@@ -793,23 +789,10 @@ contract PlasmaVaultFeeTest is Test {
         vm.prank(alpha);
         plasmaVault.execute(calls);
 
-        /// @dev prepare instant withdraw config
-        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
-        bytes32[] memory instantWithdrawParams = new bytes32[](2);
-        instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-
-        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
-            fuse: address(supplyFuseAaveV3),
-            params: instantWithdrawParams
-        });
-
-        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
-            fuse: address(supplyFuseCompoundV3),
-            params: instantWithdrawParams
-        });
-
-        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+        /// @dev configure instant withdraw
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(
+            _createInstantWithdrawConfig(address(supplyFuseAaveV3), address(supplyFuseCompoundV3))
+        );
 
         //when
         vm.prank(userOne);
@@ -945,23 +928,10 @@ contract PlasmaVaultFeeTest is Test {
         vm.prank(alpha);
         plasmaVault.execute(calls);
 
-        /// @dev prepare instant withdraw config
-        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](2);
-        bytes32[] memory instantWithdrawParams = new bytes32[](2);
-        instantWithdrawParams[0] = 0;
-        instantWithdrawParams[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-
-        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
-            fuse: address(supplyFuseAaveV3),
-            params: instantWithdrawParams
-        });
-
-        instantWithdrawFuses[1] = InstantWithdrawalFusesParamsStruct({
-            fuse: address(supplyFuseCompoundV3),
-            params: instantWithdrawParams
-        });
-
-        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+        /// @dev configure instant withdraw
+        IPlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(
+            _createInstantWithdrawConfig(address(supplyFuseAaveV3), address(supplyFuseCompoundV3))
+        );
 
         /// @dev move time to gather interest
         vm.warp(block.timestamp + 365 days);
@@ -1056,8 +1026,8 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
 
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
@@ -1120,7 +1090,7 @@ contract PlasmaVaultFeeTest is Test {
 
         assertEq(userOneBalanceOfAssets, 32270080, "userOneBalanceOfAssets on plasma vault");
         assertEq(userTwoBalanceOfAssets, 107566934, "userTwoBalanceOfAssets on plasma vault");
-        assertApproxEqAbs(plasmaVault.balanceOf(performanceFeeManager), 79970000, 1, "daoBalanceOfAssets aprox");
+        assertApproxEqAbs(plasmaVault.balanceOf(address(feeManager)), 79970000, 1, "daoBalanceOfAssets aprox");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -1321,8 +1291,10 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
+        performanceFeeManager = address(feeManager);
+        managementFeeManager = address(feeManager);
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
@@ -1427,8 +1399,10 @@ contract PlasmaVaultFeeTest is Test {
         amount = 100 * 1e6;
         sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
+        performanceFeeManager = address(feeManager);
+        managementFeeManager = address(feeManager);
 
         vm.warp(block.timestamp);
 
@@ -1740,8 +1714,10 @@ contract PlasmaVaultFeeTest is Test {
 
         amount = 100 * 1e6;
 
-        performanceFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID));
+        feeManager.initialize();
+        performanceFeeManager = address(feeManager);
+        managementFeeManager = address(feeManager);
 
         vm.warp(block.timestamp);
 
@@ -1835,7 +1811,7 @@ contract PlasmaVaultFeeTest is Test {
         recipientManagementFees[0] = RecipientFee({recipient: recipient, feeValue: managementFeeInPercentage});
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,

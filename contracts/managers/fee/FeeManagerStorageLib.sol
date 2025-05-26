@@ -23,12 +23,6 @@ event IporDaoFeeRecipientAddressChanged(address indexed newRecipient);
 event HighWaterMarkPerformanceFeeUpdated(uint128 highWaterMark);
 event HighWaterMarkPerformanceFeeUpdateIntervalUpdated(uint32 updateInterval);
 
-/// @notice Storage structure for total performance fee in plasma vault
-/// @dev Value stored with 2 decimal precision (10000 = 100%)
-struct PlasmaVaultTotalPerformanceFeeStorage {
-    uint256 value;
-}
-
 /// @notice Storage structure for total management fee in plasma vault
 /// @dev Value stored with 2 decimal precision (10000 = 100%)
 struct PlasmaVaultTotalManagementFeeStorage {
@@ -72,10 +66,6 @@ library FeeManagerStorageLib {
     bytes32 private constant DAO_FEE_RECIPIENT_DATA_SLOT =
         0xaf522f71ce1f2b5702c38f667fa2366c184e3c6dd86ab049ad3b02fec741fd00;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.total.performance.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant TOTAL_PERFORMANCE_FEE_SLOT =
-        0x91a7fd667a02d876183d5e3c0caf915fa5c0b6847afae1b6a2261f7bce984500;
-
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.total.management.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant TOTAL_MANAGEMENT_FEE_SLOT =
         0xcf56f35f42e69dcdff0b7b1f2e356cc5f92476bed919f8df0cdbf41f78aa1f00;
@@ -116,7 +106,7 @@ library FeeManagerStorageLib {
     /// @notice Gets the total performance fee percentage for the plasma vault
     /// @return Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     function getPlasmaVaultTotalPerformanceFee() internal view returns (uint256) {
-        return _totalPerformanceFeeStorage().value;
+        return _totalFeeStorage().totalFees[FeeType.PERFORMANCE];
     }
 
     /// @notice Gets the high water mark performance fee percentage for the plasma vault
@@ -140,13 +130,6 @@ library FeeManagerStorageLib {
         HighWaterMarkPerformanceFeeStorage storage $ = _highWaterMarkPerformanceFeeStorage();
         $.updateInterval = updateInterval_;
         emit HighWaterMarkPerformanceFeeUpdateIntervalUpdated(updateInterval_);
-    }
-
-    /// @notice Sets the total performance fee percentage for the plasma vault
-    /// @dev Updates the total performance fee that will be distributed among recipients
-    /// @param fee_ Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
-    function setPlasmaVaultTotalPerformanceFee(uint256 fee_) internal {
-        _totalPerformanceFeeStorage().value = fee_;
     }
 
     /// @notice Gets the total management fee percentage for the plasma vault
@@ -242,12 +225,6 @@ library FeeManagerStorageLib {
     function _daoFeeRecipientDataStorage() private pure returns (DaoFeeRecipientDataStorage storage $) {
         assembly {
             $.slot := DAO_FEE_RECIPIENT_DATA_SLOT
-        }
-    }
-
-    function _totalPerformanceFeeStorage() private pure returns (PlasmaVaultTotalPerformanceFeeStorage storage $) {
-        assembly {
-            $.slot := TOTAL_PERFORMANCE_FEE_SLOT
         }
     }
 

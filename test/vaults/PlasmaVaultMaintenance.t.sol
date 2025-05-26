@@ -65,9 +65,6 @@ contract PlasmaVaultMaintenanceTest is Test {
     function testShouldNotConfigureInstantWithdrawalFusesFuseNotSupported() public {
         // given
         UsersToRoles memory usersToRoles;
-        address[] memory performanceFeeManagers = new address[](1);
-        performanceFeeManagers[0] = address(0x777);
-        usersToRoles.performanceFeeManagers = performanceFeeManagers;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
@@ -106,9 +103,6 @@ contract PlasmaVaultMaintenanceTest is Test {
     function testShouldConfigureInstantWithdrawalFusesFuseNotSupported() public {
         // given
         UsersToRoles memory usersToRoles;
-        address[] memory performanceFeeManagers = new address[](1);
-        performanceFeeManagers[0] = address(0x777);
-        usersToRoles.performanceFeeManagers = performanceFeeManagers;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
@@ -149,46 +143,6 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         assertEq(instantWithdrawFuses.length, 1);
         assertEq(instantWithdrawFuses[0], supportedFuse);
-    }
-
-    function testShouldConfigurePerformanceFeeData() public {
-        // given
-
-        UsersToRoles memory usersToRoles;
-        address[] memory performanceFeeManagers = new address[](1);
-        performanceFeeManagers[0] = address(0x777);
-        usersToRoles.performanceFeeManagers = performanceFeeManagers;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
-        address withdrawManager = address(new WithdrawManager(address(accessManager)));
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                "IPOR Fusion DAI",
-                "ipfDAI",
-                DAI,
-                address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                withdrawManager
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
-
-        // when
-        vm.prank(address(0x777));
-        IPlasmaVaultGovernance(address(plasmaVault)).configurePerformanceFee(address(0x555), 55);
-
-        // then
-        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
-            .getPerformanceFeeData();
-        assertEq(feeData.feeAccount, address(0x555));
-        assertEq(feeData.feeInPercentage, 55);
     }
 
     function testShouldConfigureManagementFeeData() public {
@@ -264,42 +218,6 @@ contract PlasmaVaultMaintenanceTest is Test {
         vm.expectRevert(error);
         vm.prank(address(0x555));
         IPlasmaVaultGovernance(address(plasmaVault)).configureManagementFee(address(0x555), 501);
-    }
-
-    function testShouldNotCinfigurePerformanceFeeDataBecauseOfCap() public {
-        // given
-        UsersToRoles memory usersToRoles;
-        address[] memory performanceFeeManagers = new address[](1);
-        performanceFeeManagers[0] = address(0x777);
-        usersToRoles.performanceFeeManagers = performanceFeeManagers;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
-        address withdrawManager = address(new WithdrawManager(address(accessManager)));
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                "IPOR Fusion DAI",
-                "ipfDAI",
-                DAI,
-                address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                withdrawManager
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
-
-        bytes memory error = abi.encodeWithSignature("InvalidPerformanceFee(uint256)", 5001);
-
-        // when
-        vm.expectRevert(error);
-        vm.prank(address(0x777));
-        IPlasmaVaultGovernance(address(plasmaVault)).configurePerformanceFee(address(0x555), 5001);
     }
 
     function testShouldConfigureManagementFeeDataWhenTimelock() public {
@@ -440,144 +358,6 @@ contract PlasmaVaultMaintenanceTest is Test {
         // when
         vm.expectRevert(error);
         vm.prank(address(0x555));
-        accessManager.execute(target, data);
-    }
-
-    function testShouldConfigurePerformanceFeeDataWhenTimelock() public {
-        // given
-        UsersToRoles memory usersToRoles;
-        address[] memory performanceFeeManagers = new address[](1);
-        performanceFeeManagers[0] = address(0x555);
-        usersToRoles.performanceFeeManagers = performanceFeeManagers;
-        usersToRoles.feeTimelock = 1 days;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
-        address withdrawManager = address(new WithdrawManager(address(accessManager)));
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                "IPOR Fusion DAI",
-                "ipfDAI",
-                DAI,
-                address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                withdrawManager
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
-
-        address target = address(plasmaVault);
-        bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x555), 55);
-
-        vm.prank(address(0x555));
-        accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
-
-        vm.warp(block.timestamp + 1 days);
-
-        // when
-        vm.prank(address(0x555));
-        accessManager.execute(target, data);
-
-        // then
-        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
-            .getPerformanceFeeData();
-        assertEq(feeData.feeAccount, address(0x555));
-        assertEq(feeData.feeInPercentage, 55);
-    }
-
-    function testShouldRevertWhenConfigurePerformanceFeeDontPassTimelock() public {
-        // given
-        UsersToRoles memory usersToRoles;
-        address[] memory performanceFeeManagers = new address[](1);
-        performanceFeeManagers[0] = address(0x777);
-        usersToRoles.performanceFeeManagers = performanceFeeManagers;
-        usersToRoles.feeTimelock = 1 days;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
-        address withdrawManager = address(new WithdrawManager(address(accessManager)));
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                "IPOR Fusion DAI",
-                "ipfDAI",
-                DAI,
-                address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                withdrawManager
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
-
-        address target = address(plasmaVault);
-        bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x777), 55);
-
-        vm.prank(address(0x777));
-        (bytes32 operationId, ) = accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
-
-        vm.warp(block.timestamp + 1 hours);
-
-        bytes memory error = abi.encodeWithSignature("AccessManagerNotReady(bytes32)", operationId);
-
-        // when
-        vm.expectRevert(error);
-        vm.prank(address(0x777));
-        IPlasmaVaultGovernance(address(plasmaVault)).configurePerformanceFee(address(0x777), 55);
-    }
-
-    function testShouldRevertWhenConfigurePerformanceFeeCallWithoutShouldExecute() public {
-        // given
-        UsersToRoles memory usersToRoles;
-        address[] memory performanceFeeManagers = new address[](1);
-        performanceFeeManagers[0] = address(0x777);
-        usersToRoles.performanceFeeManagers = performanceFeeManagers;
-        usersToRoles.feeTimelock = 1 days;
-        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
-        address withdrawManager = address(new WithdrawManager(address(accessManager)));
-
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                "IPOR Fusion DAI",
-                "ipfDAI",
-                DAI,
-                address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                withdrawManager
-            )
-        );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
-
-        address target = address(plasmaVault);
-        bytes memory data = abi.encodeWithSignature("configurePerformanceFee(address,uint256)", address(0x777), 55);
-
-        vm.prank(address(0x777));
-        (bytes32 operationId, ) = accessManager.schedule(target, data, uint48(block.timestamp + 1 days));
-
-        vm.warp(block.timestamp + 1 hours);
-
-        bytes memory error = abi.encodeWithSignature("AccessManagerNotReady(bytes32)", operationId);
-
-        // when
-        vm.expectRevert(error);
-        vm.prank(address(0x777));
         accessManager.execute(target, data);
     }
 
@@ -2911,8 +2691,7 @@ contract PlasmaVaultMaintenanceTest is Test {
 
         // Create vault with minimal configuration
         (PlasmaVault plasmaVault, WithdrawManager withdrawManager) = createTestVault(underlyingToken);
-        
-        
+
         IporFusionAccessManager accessManager = IporFusionAccessManager(plasmaVault.authority());
 
         setupRoles(plasmaVault, accessManager, address(withdrawManager));

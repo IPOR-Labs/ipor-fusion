@@ -14,7 +14,6 @@ struct UsersToRoles {
     address superAdmin;
     address atomist;
     address[] alphas;
-    address[] performanceFeeManagers;
     address[] managementFeeManagers;
     uint32 feeTimelock;
 }
@@ -34,8 +33,6 @@ library RoleLib {
         vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(Roles.ALPHA_ROLE, Roles.ATOMIST_ROLE);
         vm.prank(usersWithRoles.superAdmin);
-        accessManager.setRoleAdmin(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
-        vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
 
         vm.prank(usersWithRoles.superAdmin);
@@ -50,15 +47,6 @@ library RoleLib {
         for (uint256 i; i < usersWithRoles.alphas.length; i++) {
             vm.prank(usersWithRoles.atomist);
             accessManager.grantRole(Roles.ALPHA_ROLE, usersWithRoles.alphas[i], 0);
-        }
-
-        for (uint256 i; i < usersWithRoles.performanceFeeManagers.length; i++) {
-            vm.prank(usersWithRoles.atomist);
-            accessManager.grantRole(
-                Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
-                usersWithRoles.performanceFeeManagers[i],
-                usersWithRoles.feeTimelock
-            );
         }
 
         for (uint256 i; i < usersWithRoles.managementFeeManagers.length; i++) {
