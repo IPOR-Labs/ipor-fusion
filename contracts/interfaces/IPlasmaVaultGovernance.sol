@@ -42,10 +42,6 @@ interface IPlasmaVaultGovernance {
     /// @return The address of the Price Oracle Middleware
     function getPriceOracleMiddleware() external view returns (address);
 
-    /// @notice Returns the management fee configuration data of the Plasma Vault
-    /// @return feeData The management fee configuration data, see ManagementFeeData struct
-    function getManagementFeeData() external view returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData);
-
     /// @notice Returns the address of the Ipor Fusion Access Manager
     /// @return The address of the Ipor Fusion Access Manager
     function getAccessManagerAddress() external view returns (address);

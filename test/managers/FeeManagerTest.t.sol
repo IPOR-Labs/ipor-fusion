@@ -220,7 +220,8 @@ contract FeeManagerTest is Test {
 
     function testShouldHaveSharesOnManagementFeeAccount() external {
         //given
-        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
+        address managementAccount = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID))
+            .MANAGEMENT_FEE_ACCOUNT();
 
         uint256 balanceBefore = PlasmaVault(_plasmaVault).balanceOf(managementAccount);
 
@@ -242,8 +243,9 @@ contract FeeManagerTest is Test {
 
     function testShouldHarvestManagementFee() external {
         //given
-        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
-        FeeManager feeManager = FeeManager(FeeAccount(managementAccount).FEE_MANAGER());
+        address managementAccount = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID))
+            .MANAGEMENT_FEE_ACCOUNT();
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
 
         vm.warp(block.timestamp + 356 days);
         vm.startPrank(_USER);
@@ -411,8 +413,7 @@ contract FeeManagerTest is Test {
 
     function testShouldNotHarvestPerformanceFeeWhenNotInitialize() external {
         // given
-        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
-        FeeManager feeManager = FeeManager(FeeAccount(managementAccount).FEE_MANAGER());
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
 
         bytes memory error = abi.encodeWithSignature("NotInitialized()");
 
@@ -466,9 +467,7 @@ contract FeeManagerTest is Test {
     // todo: fix this test when MANAGEMENT fixed
     function stestShouldUpdateManagementFeeWhenAtomist() external {
         // given
-        PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultBefore = PlasmaVaultGovernance(_plasmaVault)
-            .getManagementFeeData();
-        FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
 
         uint256 managementFeeBefore = feeManager.getTotalManagementFee();
 
@@ -483,34 +482,21 @@ contract FeeManagerTest is Test {
         vm.stopPrank();
 
         // then
-        PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
-            .getManagementFeeData();
 
         uint256 managementFeeAfter = feeManager.getTotalManagementFee();
 
         assertEq(managementFeeBefore, 500, "managementFeeBefore should be 500");
         assertEq(managementFeeAfter, 350, "managementFeeAfter should be 350");
-
-        assertEq(
-            feeDataOnPlasmaVaultBefore.feeInPercentage,
-            500,
-            "feeDataOnPlasmaVaultBefore.feeInPercentage should be 500"
-        );
-        assertEq(
-            feeDataOnPlasmaVaultAfter.feeInPercentage,
-            350,
-            "feeDataOnPlasmaVaultAfter.feeInPercentage should be 350"
-        );
     }
 
     // todo: fix this test when MANAGEMENT fixed
     function stestShouldUpdateManagementFeeToZeroWhenAtomist() external {
         // given
-        PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultBefore = PlasmaVaultGovernance(_plasmaVault)
-            .getManagementFeeData();
-        FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
+        FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
 
         feeManager.initialize();
+
+        uint256 managementFeeBefore = feeManager.getTotalManagementFee();
 
         vm.warp(block.timestamp + 356 days);
         vm.startPrank(_USER);
@@ -541,19 +527,10 @@ contract FeeManagerTest is Test {
         uint256 feeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
         uint256 daoFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
-        PlasmaVaultStorageLib.ManagementFeeData memory feeDataOnPlasmaVaultAfter = PlasmaVaultGovernance(_plasmaVault)
-            .getManagementFeeData();
+        uint256 managementFeeAfter = feeManager.getTotalManagementFee();
 
-        assertEq(
-            feeDataOnPlasmaVaultBefore.feeInPercentage,
-            500,
-            "feeDataOnPlasmaVaultBefore.feeInPercentage should be 500"
-        );
-        assertEq(
-            feeDataOnPlasmaVaultAfter.feeInPercentage,
-            300,
-            "feeDataOnPlasmaVaultAfter.feeInPercentage should be 300"
-        );
+        assertEq(managementFeeBefore, 500, "managementFeeBefore should be 500");
+        assertEq(managementFeeAfter, 300, "managementFeeAfter should be 300");
 
         assertEq(feeRecipientBefore, 19506849280, "feeRecipientBefore should be 19506849280");
         assertEq(daoFeeRecipientBefore, 29260273920, "daoFeeRecipientBefore should be 29260273920");

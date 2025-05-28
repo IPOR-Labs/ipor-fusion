@@ -347,9 +347,6 @@ contract PlasmaVault is
 
         PlasmaVaultConfigLib.addManager(FEE_MANAGER_ID, feeManagerData.feeManager);
 
-        PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
-
-        PlasmaVaultLib.updateManagementFeeData();
         if (initData_.withdrawManager == address(0)) {
             revert WithdrawManagerNotSet();
         }
@@ -1309,11 +1306,11 @@ contract PlasmaVault is
     }
 
     function _realizeManagementFee() internal {
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
+        FeeManager feeManager = FeeManager(PlasmaVaultConfigLib.getManager(FEE_MANAGER_ID));
 
-        uint256 unrealizedFeeInUnderlying = getUnrealizedManagementFee();
-
-        PlasmaVaultLib.updateManagementFeeData();
+        (uint256 unrealizedFeeInUnderlying, address feeAccount) = feeManager.calculateAndUpdateManagementFee(
+            _getGrossTotalAssets()
+        );
 
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
 
@@ -1325,7 +1322,7 @@ contract PlasmaVault is
         /// @dev total supply cap validation is disabled for fee minting
         PlasmaVaultLib.setTotalSupplyCapValidation(1);
 
-        _mint(feeData.feeAccount, unrealizedFeeInShares);
+        _mint(feeAccount, unrealizedFeeInShares);
 
         /// @dev total supply cap validation is enabled when fee minting is finished
         PlasmaVaultLib.setTotalSupplyCapValidation(0);
@@ -1543,23 +1540,8 @@ contract PlasmaVault is
     }
 
     function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
-
-        uint256 blockTimestamp = block.timestamp;
-
-        if (
-            feeData.feeInPercentage == 0 ||
-            feeData.lastUpdateTimestamp == 0 ||
-            blockTimestamp <= feeData.lastUpdateTimestamp
-        ) {
-            return 0;
-        }
         return
-            Math.mulDiv(
-                totalAssets_ * (blockTimestamp - feeData.lastUpdateTimestamp),
-                feeData.feeInPercentage,
-                365 days * FEE_PERCENTAGE_DECIMALS_MULTIPLIER
-            );
+            FeeManager(PlasmaVaultConfigLib.getManager(FEE_MANAGER_ID)).calculateUnrealizedManagementFee(totalAssets_);
     }
 
     /**

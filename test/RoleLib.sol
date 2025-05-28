@@ -85,12 +85,6 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.grantRole(Roles.TECH_PLASMA_VAULT_ROLE, plasmaVault_, 0);
 
-        bytes4[] memory managementFeeSig = new bytes4[](1);
-        managementFeeSig[0] = PlasmaVaultGovernance.configureManagementFee.selector;
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setTargetFunctionRole(plasmaVault_, managementFeeSig, Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE);
-
         bytes4[] memory alphaSig = new bytes4[](1);
         alphaSig[0] = PlasmaVault.execute.selector;
 

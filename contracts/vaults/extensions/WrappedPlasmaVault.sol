@@ -5,15 +5,17 @@ import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC2
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {WrappedPlasmaVaultStorageLib, PerformanceFeeData} from "./WrappedPlasmaVaultStorageLib.sol";
+import {WrappedPlasmaVaultStorageLib, PerformanceFeeData, ManagementFeeData} from "./WrappedPlasmaVaultStorageLib.sol";
 
 contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using Math for uint256;
+    using SafeCast for uint256;
 
     error ZeroPlasmaVaultAddress();
     error ZeroAssetAddress();
@@ -21,15 +23,19 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     error ZeroReceiverAddress();
     error ZeroSharesMint();
     error ZeroAssetsWithdraw();
+    error InvalidManagementFee(uint256 feeInPercentage);
+    error WrongAddress();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event PerformanceFeeAdded(uint256 fee, uint256 feeInShares);
+    event ManagementFeeDataConfigured(address feeAccount, uint256 feeInPercentage);
 
     /// @notice The underlying PlasmaVault contract
     address public immutable PLASMA_VAULT;
     uint256 private immutable _SHARE_SCALE_MULTIPLIER; /// @dev 10^_decimalsOffset() multiplier for share scaling in ERC4626
 
     uint256 private constant FEE_PERCENTAGE_DECIMALS_MULTIPLIER = 1e4; /// @dev 10000 = 100% (2 decimal places for fee percentage)
+    uint256 public constant MANAGEMENT_MAX_FEE_IN_PERCENTAGE = 500; /// @dev Hard CAP for the management fee in percentage - 5%
 
     /// @notice Stores the total assets value from the last operation (deposit/withdraw/mint/redeem)
     /// @dev Used for performance fee calculations to track asset value changes between operations
@@ -540,40 +546,6 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     }
 
     /**
-     * @notice Configures the management fee parameters for the vault
-     * @dev Updates management fee recipient and percentage through PlasmaVaultLib
-     *
-     * Configuration Flow:
-     * 1. Parameter Validation
-     *    - Validates fee account address
-     *    - Verifies fee percentage within limits
-     *    - Ensures configuration consistency
-     *
-     * 2. State Updates
-     *    - Updates fee recipient address
-     *    - Sets new fee percentage
-     *    - Persists configuration in storage
-     *
-     * 3. Fee System Impact
-     *    - Affects future fee calculations
-     *    - Influences share price computations
-     *    - Updates fee accrual parameters
-     *
-     * Security Features:
-     * - Owner-only access control
-     * - Parameter validation
-     * - State consistency checks
-     * - Safe fee calculations
-     *
-     * @param feeAccount_ Address to receive the management fees
-     * @param feeInPercentage_ Management fee percentage with 2 decimal places (10000 = 100%)
-     * @custom:security Restricted to contract owner
-     */
-    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external onlyOwner {
-        PlasmaVaultLib.configureManagementFee(feeAccount_, feeInPercentage_);
-    }
-
-    /**
      * @notice Configures the performance fee parameters for the vault
      * @dev Updates performance fee recipient and percentage through PlasmaVaultLib
      *
@@ -606,6 +578,22 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      */
     function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external onlyOwner {
         WrappedPlasmaVaultStorageLib.configurePerformanceFee(feeAccount_, feeInPercentage_);
+    }
+
+    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external onlyOwner {
+        if (feeAccount_ == address(0)) {
+            revert WrongAddress();
+        }
+        if (feeInPercentage_ > MANAGEMENT_MAX_FEE_IN_PERCENTAGE) {
+            revert InvalidManagementFee(feeInPercentage_);
+        }
+
+        ManagementFeeData storage managementFeeData = WrappedPlasmaVaultStorageLib.getManagementFeeData();
+
+        managementFeeData.feeAccount = feeAccount_;
+        managementFeeData.feeInPercentage = feeInPercentage_.toUint16();
+
+        emit ManagementFeeDataConfigured(feeAccount_, feeInPercentage_);
     }
 
     /**
@@ -698,8 +686,8 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      * @return feeData Management fee configuration struct containing recipient, rate, and timing information
      * @custom:security View function, no state modifications
      */
-    function getManagementFeeData() external view returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData) {
-        feeData = PlasmaVaultLib.getManagementFeeData();
+    function getManagementFeeData() external view returns (ManagementFeeData memory feeData) {
+        feeData = WrappedPlasmaVaultStorageLib.getManagementFeeData();
     }
 
     /**
@@ -1004,7 +992,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      * @custom:security Internal view function with safe math
      */
     function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
+        ManagementFeeData memory feeData = WrappedPlasmaVaultStorageLib.getManagementFeeData();
 
         uint256 blockTimestamp = block.timestamp;
 
@@ -1032,10 +1020,10 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     }
 
     function _realizeManagementFee() internal {
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
+        ManagementFeeData memory feeData = WrappedPlasmaVaultStorageLib.getManagementFeeData();
         uint256 unrealizedFeeInUnderlying = getUnrealizedManagementFee();
 
-        PlasmaVaultLib.updateManagementFeeData();
+        WrappedPlasmaVaultStorageLib.updateManagementFeeData();
 
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
 

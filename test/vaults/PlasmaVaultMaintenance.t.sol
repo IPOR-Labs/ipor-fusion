@@ -22,6 +22,8 @@ import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGov
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
+import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -178,10 +180,9 @@ contract PlasmaVaultMaintenanceTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).configureManagementFee(address(0x555), 55);
 
         // then
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
-            .getManagementFeeData();
-        assertEq(feeData.feeAccount, address(0x555));
-        assertEq(feeData.feeInPercentage, 55);
+        uint256 managementFee = FeeManager(IPlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID))
+            .getTotalManagementFee();
+        assertEq(managementFee, 55);
     }
 
     function testShouldNotConfigureManagementFeeDataBecauseOfCap() public {
@@ -263,10 +264,9 @@ contract PlasmaVaultMaintenanceTest is Test {
         accessManager.execute(target, data);
 
         // then
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = IPlasmaVaultGovernance(address(plasmaVault))
-            .getManagementFeeData();
-        assertEq(feeData.feeAccount, address(0x555));
-        assertEq(feeData.feeInPercentage, 55);
+        uint256 managementFee = FeeManager(IPlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID))
+            .getTotalManagementFee();
+        assertEq(managementFee, 55);
     }
 
     function testShouldRevertWhenConfigureManagementFeeDontPassTimelock() public {

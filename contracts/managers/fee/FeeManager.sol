@@ -85,6 +85,8 @@ contract FeeManager is AccessManagedUpgradeable {
     /// @notice Performance fee percentage for IPOR DAO (10000 = 100%, 100 = 1%)
     uint256 public immutable IPOR_DAO_PERFORMANCE_FEE;
 
+    uint256 private constant FEE_PERCENTAGE_DECIMALS_MULTIPLIER = 1e4; /// @dev 10000 = 100% (2 decimal places for fee percentage)
+
     modifier onlyInitialized() {
         if (_getInitializedVersion() != INITIALIZED_VERSION) {
             revert NotInitialized();
@@ -569,6 +571,34 @@ contract FeeManager is AccessManagedUpgradeable {
         }
 
         return feeBalance_ > transferAmountToDao_ ? feeBalance_ - transferAmountToDao_ : 0;
+    }
+
+    function calculateUnrealizedManagementFee(uint256 totalAssets_) public view returns (uint256) {
+        uint256 totalFee = FeeManagerStorageLib.getTotalFee(FeeType.MANAGEMENT);
+        uint256 lastUpdate = FeeManagerStorageLib.getTotalFeeLastUpdate(FeeType.MANAGEMENT);
+
+        uint256 blockTimestamp = block.timestamp;
+
+        if (totalFee == 0 || lastUpdate == 0 || blockTimestamp <= lastUpdate) {
+            return 0;
+        }
+        return
+            Math.mulDiv(
+                totalAssets_ * (blockTimestamp - lastUpdate),
+                totalFee,
+                365 days * FEE_PERCENTAGE_DECIMALS_MULTIPLIER
+            );
+    }
+
+    function calculateAndUpdateManagementFee(
+        uint256 totalAssets_
+    ) public returns (uint256 feeAssets, address feeAccount) {
+        if (msg.sender != PLASMA_VAULT) {
+            revert NotPlasmaVault();
+        }
+        feeAssets = calculateUnrealizedManagementFee(totalAssets_);
+        feeAccount = MANAGEMENT_FEE_ACCOUNT;
+        FeeManagerStorageLib.updateTotalFeeLastUpdate(FeeType.MANAGEMENT);
     }
 
     /// @notice Internal function to emit harvest events

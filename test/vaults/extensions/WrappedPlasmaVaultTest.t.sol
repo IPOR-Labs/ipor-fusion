@@ -688,9 +688,8 @@ contract WrappedPlasmaVaulttTest is Test {
         wPlasmaVault.configureManagementFee(expectedFeeAccount, expectedFeePercentage);
 
         // then
-        PlasmaVaultStorageLib.ManagementFeeData memory feeData = wPlasmaVault.getManagementFeeData();
-        assertEq(feeData.feeAccount, expectedFeeAccount, "Fee account should be set correctly");
-        assertEq(feeData.feeInPercentage, expectedFeePercentage, "Fee percentage should be set to 2%");
+        uint256 managementFee = wPlasmaVault.getManagementFee();
+        assertEq(managementFee, expectedFeePercentage, "Fee percentage should be set to 2%");
     }
 
     function testShouldRevertWhenNonOwnerConfiguresManagementFee() public {

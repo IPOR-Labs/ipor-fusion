@@ -450,14 +450,6 @@ library PlasmaVaultStorageLib {
         0x78b5ce597bdb64d5aa30a201c7580beefe408ff13963b5d5f3dce2dc09e89c00;
 
     /**
-     * @notice Stores management fee configuration and time tracking data
-     * @dev Manages continuous fee collection with time-based accrual
-     * @custom:storage-location erc7201:io.ipor.PlasmaVaultManagementFeeData
-     */
-    bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
-        0x239dd7e43331d2af55e2a25a6908f3bcec2957025f1459db97dcdc37c0003f00;
-
-    /**
      * @dev Storage slot for rewards claim manager address
      * @notice Stores the address of the contract managing external protocol rewards
      *
@@ -895,27 +887,6 @@ library PlasmaVaultStorageLib {
     }
 
     /**
-     * @notice Stores performance fee configuration and recipient data
-     * @dev Manages fee percentage and recipient account for performance-based fees
-     * @custom:storage-location erc7201:io.ipor.PlasmaVaultPerformanceFeeData
-     */
-    struct PerformanceFeeData {
-        address feeAccount;
-        uint16 feeInPercentage;
-    }
-
-    /**
-     * @notice Stores management fee configuration and time tracking data
-     * @dev Manages continuous fee collection with time-based accrual
-     * @custom:storage-location erc7201:io.ipor.PlasmaVaultManagementFeeData
-     */
-    struct ManagementFeeData {
-        address feeAccount;
-        uint16 feeInPercentage;
-        uint32 lastUpdateTimestamp;
-    }
-
-    /**
      * @notice Stores address of price oracle middleware for asset valuations
      * @dev Provides standardized price feed access for vault operations
      * @custom:storage-location erc7201:io.ipor.PriceOracleMiddleware
@@ -1031,12 +1002,6 @@ library PlasmaVaultStorageLib {
     function getPriceOracleMiddleware() internal pure returns (PriceOracleMiddleware storage oracle) {
         assembly {
             oracle.slot := PRICE_ORACLE_MIDDLEWARE
-        }
-    }
-
-    function getManagementFeeData() internal pure returns (ManagementFeeData storage managementFeeData) {
-        assembly {
-            managementFeeData.slot := PLASMA_VAULT_MANAGEMENT_FEE_DATA
         }
     }
 

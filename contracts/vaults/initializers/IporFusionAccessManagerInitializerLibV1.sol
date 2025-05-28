@@ -85,7 +85,7 @@ struct Iterator {
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 19;
-    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
+    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 38;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 5;
@@ -542,13 +542,6 @@ library IporFusionAccessManagerInitializerLibV1 {
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.FUSE_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.removeBalanceFuse.selector,
-            minimalExecutionDelay: 0
-        });
-
-        rolesToFunction[_next(iterator)] = RoleToFunction({
-            target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE,
-            functionSelector: PlasmaVaultGovernance.configureManagementFee.selector,
             minimalExecutionDelay: 0
         });
 

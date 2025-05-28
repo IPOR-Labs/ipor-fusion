@@ -8,6 +8,11 @@ struct PerformanceFeeData {
     address feeAccount;
     uint16 feeInPercentage;
 }
+struct ManagementFeeData {
+    address feeAccount;
+    uint16 feeInPercentage;
+    uint32 lastUpdateTimestamp;
+}
 
 library WrappedPlasmaVaultStorageLib {
     using SafeCast for uint256;
@@ -19,6 +24,9 @@ library WrappedPlasmaVaultStorageLib {
 
     bytes32 private constant PLASMA_VAULT_PERFORMANCE_FEE_DATA =
         0x9399757a27831a6cfb6cf4cd5c97a908a2f8f41e95a5952fbf83a04e05288400;
+
+    bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
+        0x239dd7e43331d2af55e2a25a6908f3bcec2957025f1459db97dcdc37c0003f00;
 
     uint256 public constant PERFORMANCE_MAX_FEE_IN_PERCENTAGE = 5000;
 
@@ -46,5 +54,16 @@ library WrappedPlasmaVaultStorageLib {
         assembly {
             performanceFeeData.slot := PLASMA_VAULT_PERFORMANCE_FEE_DATA
         }
+    }
+
+    function getManagementFeeData() internal pure returns (ManagementFeeData storage managementFeeData) {
+        assembly {
+            managementFeeData.slot := PLASMA_VAULT_MANAGEMENT_FEE_DATA
+        }
+    }
+
+    function updateManagementFeeData() internal {
+        ManagementFeeData storage feeData = getManagementFeeData();
+        feeData.lastUpdateTimestamp = block.timestamp.toUint32();
     }
 }

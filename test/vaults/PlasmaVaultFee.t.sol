@@ -1869,7 +1869,8 @@ contract PlasmaVaultFeeTest is Test {
         vm.warp(block.timestamp + 365 days);
 
         //solhint-disable-next-line
-        managementFeeManager = PlasmaVaultGovernance(address(plasmaVault)).getManagementFeeData().feeAccount;
+        managementFeeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID))
+            .MANAGEMENT_FEE_ACCOUNT();
 
         uint256 managementFeeAfter365DayBeforeMaxRedeem = plasmaVault.getUnrealizedManagementFee();
         vm.startPrank(userOne);

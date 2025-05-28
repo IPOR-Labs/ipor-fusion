@@ -54,6 +54,7 @@ struct HighWaterMarkPerformanceFeeStorage {
 
 struct TotalFeeStorage {
     mapping(FeeType feeType => uint256 value) totalFees;
+    mapping(FeeType feeType => uint256 lastUpdate) lastUpdate;
 }
 
 /// @title Fee Manager Storage Library
@@ -218,8 +219,17 @@ library FeeManagerStorageLib {
         return _totalFeeStorage().totalFees[feeType_];
     }
 
+    function getTotalFeeLastUpdate(FeeType feeType_) internal view returns (uint256) {
+        return _totalFeeStorage().lastUpdate[feeType_];
+    }
+
+    function updateTotalFeeLastUpdate(FeeType feeType_) internal {
+        _totalFeeStorage().lastUpdate[feeType_] = block.timestamp;
+    }
+
     function setTotalFee(FeeType feeType_, uint256 value_) internal {
         _totalFeeStorage().totalFees[feeType_] = value_;
+        _totalFeeStorage().lastUpdate[feeType_] = block.timestamp;
     }
 
     function _daoFeeRecipientDataStorage() private pure returns (DaoFeeRecipientDataStorage storage $) {
