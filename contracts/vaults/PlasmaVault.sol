@@ -251,8 +251,16 @@ contract PlasmaVault is
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
-    address public immutable PLASMA_VAULT_BASE;
+    address public PLASMA_VAULT_BASE;
     uint256 private immutable _SHARE_SCALE_MULTIPLIER; /// @dev 10^_decimalsOffset() multiplier for share scaling in ERC4626
+
+    // /// @notice Constructor with initialization for direct deployment
+    // /// @dev Used when deploying directly without proxy
+    // /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
+    constructor(PlasmaVaultInitData memory initData_) {
+        _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
+        _initialize(initData_);
+    }
 
     /// @notice Initializes the Plasma Vault with core configuration and protocol integrations
     /// @dev Sets up ERC4626 vault, fuse system, and security parameters
@@ -286,12 +294,18 @@ contract PlasmaVault is
     /// - Market substrate compatibility
     ///
     /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
-    constructor(PlasmaVaultInitData memory initData_) ERC20Upgradeable() ERC4626Upgradeable() initializer {
+    function initialize(PlasmaVaultInitData memory initData_) external initializer {
+        _initialize(initData_);
+    }
+
+    /// @notice Internal initialization function used by both initialize and constructor
+    /// @dev Contains the core initialization logic
+    /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
+    function _initialize(PlasmaVaultInitData memory initData_) internal {
         super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
         super.__ERC4626_init(IERC20(initData_.underlyingToken));
 
-        _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
-
+        // _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSelector(
