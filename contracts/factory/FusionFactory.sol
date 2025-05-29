@@ -81,6 +81,8 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     struct FusionAddresses {
         address plasmaVault;
         address plasmaVaultBase;
+        address plasmaVaultMarkets;
+        address plasmaVaultFees;
         address accessManager;
         address feeManager;
         address rewardsManager;
@@ -160,19 +162,22 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
             assetSymbol: assetSymbol_,
             underlyingToken: underlyingToken_,
             priceOracleMiddleware: priceOracleMiddleware,
-            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            fuses: new address[](0),
-            balanceFuses: new MarketBalanceFuseConfig[](0),
+            // marketSubstratesConfigs: new MarketSubstratesConfig[](0),
+            // fuses: new address[](0),
+            // balanceFuses: new MarketBalanceFuseConfig[](0),
             feeConfig: FeeConfig({
                 feeFactory: feeManagerFactory,
                 iporDaoManagementFee: iporDaoManagementFee,
                 iporDaoPerformanceFee: iporDaoPerformanceFee,
-                iporDaoFeeRecipientAddress: iporDaoFeeRecipient,
-                recipientManagementFees: new RecipientFee[](0),
-                recipientPerformanceFees: new RecipientFee[](0)
+                iporDaoFeeRecipientAddress: iporDaoFeeRecipient
+                // ,
+                // recipientManagementFees: new RecipientFee[](0),
+                // recipientPerformanceFees: new RecipientFee[](0)
             }),
             accessManager: fusionAddresses.accessManager,
             plasmaVaultBase: fusionAddresses.plasmaVaultBase,
+            plasmaVaultMarkets: fusionAddresses.plasmaVaultMarkets,
+            plasmaVaultFees: fusionAddresses.plasmaVaultFees,
             totalSupplyCap: type(uint256).max,
             withdrawManager: fusionAddresses.withdrawManager
         });

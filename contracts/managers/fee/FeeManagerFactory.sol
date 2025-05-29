@@ -28,10 +28,10 @@ struct FeeConfig {
     address iporDaoFeeRecipientAddress;
     /// @notice List of additional management fee recipients and their allocations
     /// @dev Total of all management fees (including DAO) must not exceed 100%
-    RecipientFee[] recipientManagementFees;
+    // RecipientFee[] recipientManagementFees;
     /// @notice List of additional performance fee recipients and their allocations
     /// @dev Total of all performance fees (including DAO) must not exceed 100%
-    RecipientFee[] recipientPerformanceFees;
+    // RecipientFee[] recipientPerformanceFees;
 }
 
 /// @notice Data structure containing deployed fee manager details
