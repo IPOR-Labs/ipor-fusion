@@ -176,8 +176,8 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
             }),
             accessManager: fusionAddresses.accessManager,
             plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-            plasmaVaultMarkets: fusionAddresses.plasmaVaultMarkets,
-            plasmaVaultFees: fusionAddresses.plasmaVaultFees,
+            // plasmaVaultMarkets: fusionAddresses.plasmaVaultMarkets,
+            // plasmaVaultFees: fusionAddresses.plasmaVaultFees,
             totalSupplyCap: type(uint256).max,
             withdrawManager: fusionAddresses.withdrawManager
         });

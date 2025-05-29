@@ -5,14 +5,14 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
-import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
-import {IFuseCommon} from "../fuses/IFuseCommon.sol";
-import {DataToCheck, MarketToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
-import {IporMath} from "../libraries/math/IporMath.sol";
-import {FusesLib} from "../libraries/FusesLib.sol";
-import {IPriceOracleMiddleware} from "../price_oracle/IPriceOracleMiddleware.sol";
+import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
+import {IFuseCommon} from "../../fuses/IFuseCommon.sol";
+import {DataToCheck, MarketToCheck} from "../../libraries/AssetDistributionProtectionLib.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
+import {FusesLib} from "../../libraries/FusesLib.sol";
+import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 
-contract PlasmaVaultMarkets {
+library PlasmaVaultMarketsLib {
     using Address for address;
     // using SafeCast for uint256;
     // using Address for address;
