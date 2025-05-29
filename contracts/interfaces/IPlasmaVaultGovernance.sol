@@ -154,4 +154,9 @@ interface IPlasmaVaultGovernance {
     /// @param rolesIds_ The roles for which the minimal execution delay is set
     /// @param delays_ The minimal execution delays for the specified roles
     function setMinimalExecutionDelaysForRoles(uint64[] calldata rolesIds_, uint256[] calldata delays_) external;
+
+    /// @notice Returns the manager address for the given manager id
+    /// @param managerId_ The id of the manager
+    /// @return The address of the manager
+    function getManager(uint256 managerId_) external view returns (address);
 }
