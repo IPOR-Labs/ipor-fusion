@@ -7,7 +7,6 @@ import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 /// @title PlasmaVaultFactory
 /// @notice Factory contract for creating PlasmaVault instances using minimal proxy pattern
 contract PlasmaVaultFactory {
-
     event PlasmaVaultCreated(address plasmaVault, string assetName, string assetSymbol, address underlyingToken);
 
     /// @notice Creates a new PlasmaVault using minimal proxy pattern

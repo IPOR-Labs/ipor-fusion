@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
@@ -14,12 +13,14 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 
 library PlasmaVaultMarketsLib {
     using Address for address;
-    // using SafeCast for uint256;
-    // using Address for address;
-
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
-    function updateMarketsBalances(uint256[] memory markets_, address assetAddress_, uint256 decimals_, uint256 decimalsOffset_) public returns (DataToCheck memory dataToCheck) {
+    function updateMarketsBalances(
+        uint256[] memory markets_,
+        address assetAddress_,
+        uint256 decimals_,
+        uint256 decimalsOffset_
+    ) public returns (DataToCheck memory dataToCheck) {
         uint256 wadBalanceAmountInUSD;
         // DataToCheck memory dataToCheck;
         address balanceFuse;
@@ -67,7 +68,11 @@ library PlasmaVaultMarketsLib {
         emit MarketBalancesUpdated(markets, deltasInUnderlying);
     }
 
-    function withdrawFromMarkets(address assetAddress_, uint256 assets_, uint256 vaultCurrentBalanceUnderlying_) public returns (uint256[] memory markets) {
+    function withdrawFromMarkets(
+        address assetAddress_,
+        uint256 assets_,
+        uint256 vaultCurrentBalanceUnderlying_
+    ) public returns (uint256[] memory markets) {
         uint256 left;
         uint256 marketIndex;
         uint256 fuseMarketId;

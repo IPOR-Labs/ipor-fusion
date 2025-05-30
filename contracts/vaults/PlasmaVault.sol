@@ -14,14 +14,11 @@ import {IporMath} from "../libraries/math/IporMath.sol";
 import {IPlasmaVault, FuseAction} from "../interfaces/IPlasmaVault.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
-import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 import {IPriceOracleMiddleware} from "../price_oracle/IPriceOracleMiddleware.sol";
 import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
 import {AccessManagedUpgradeable} from "../managers/access/AccessManagedUpgradeable.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
-import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManager.sol";
-import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {AssetDistributionProtectionLib, DataToCheck} from "../libraries/AssetDistributionProtectionLib.sol";
 import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {FusesLib} from "../libraries/FusesLib.sol";
@@ -97,14 +94,13 @@ struct PlasmaVaultInitData {
     /// @notice Address of the base contract providing common functionality
     /// @dev Implements core vault logic through delegatecall
     address plasmaVaultBase;
-
     /// @notice Address of the markets contract
     /// @dev Handles market-specific operations and balance tracking
     // address plasmaVaultMarkets;
     /// @notice Address of the fees contract
     /// @dev Manages performance and management fees
     // address plasmaVaultFees;
-    
+
     /// @notice Initial maximum total supply cap in underlying token decimals
     /// @dev Controls maximum vault size and deposit limits
     // uint256 totalSupplyCap;
@@ -243,7 +239,6 @@ contract PlasmaVault is
     /// @dev 10 attempts to withdraw from markets in case of rounding issues
     uint256 private constant REDEEM_ATTEMPTS = 10;
     uint256 public constant DEFAULT_SLIPPAGE_IN_PERCENTAGE = 2;
-    
 
     error NoSharesToRedeem();
     error NoSharesToMint();
@@ -340,7 +335,6 @@ contract PlasmaVault is
         PlasmaVaultLib.updateWithdrawManager(initData_.withdrawManager);
     }
 
-  
     /// @notice Fallback function handling delegatecall execution and callbacks
     /// @dev Routes execution between callback handling and base contract delegation
     ///
@@ -1277,9 +1271,13 @@ contract PlasmaVault is
         if (totalAssetsAfter < totalAssetsBefore_) {
             return;
         }
-         
+
         (address recipient, uint256 feeShares) = PlasmaVaultFeesLib.prepareForAddPerformanceFee(
-            totalSupply(), decimals(), _decimalsOffset(), convertToAssets(10 ** uint256(decimals())));
+            totalSupply(),
+            decimals(),
+            _decimalsOffset(),
+            convertToAssets(10 ** uint256(decimals()))
+        );
 
         if (recipient == address(0) || feeShares == 0) {
             return;
@@ -1295,7 +1293,9 @@ contract PlasmaVault is
     }
 
     function _realizeManagementFee() internal {
-        (address recipient, uint256 unrealizedFeeInUnderlying) = PlasmaVaultFeesLib.prepareForRealizeManagementFee(_getGrossTotalAssets());
+        (address recipient, uint256 unrealizedFeeInUnderlying) = PlasmaVaultFeesLib.prepareForRealizeManagementFee(
+            _getGrossTotalAssets()
+        );
 
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
 
@@ -1329,7 +1329,11 @@ contract PlasmaVault is
         }
 
         if (assets_ >= vaultCurrentBalanceUnderlying_) {
-            uint256[] memory markets = PlasmaVaultMarketsLib.withdrawFromMarkets(asset(), assets_, vaultCurrentBalanceUnderlying_);
+            uint256[] memory markets = PlasmaVaultMarketsLib.withdrawFromMarkets(
+                asset(),
+                assets_,
+                vaultCurrentBalanceUnderlying_
+            );
 
             _updateMarketsBalances(markets);
         }
@@ -1338,15 +1342,17 @@ contract PlasmaVault is
     /// @notice Update balances in the vault for markets touched by the fuses during the execution of all FuseActions
     /// @param markets_ Array of market ids touched by the fuses in the FuseActions
     function _updateMarketsBalances(uint256[] memory markets_) internal {
-
-        DataToCheck memory dataToCheck = PlasmaVaultMarketsLib.updateMarketsBalances(markets_, asset(), decimals(), _decimalsOffset());
+        DataToCheck memory dataToCheck = PlasmaVaultMarketsLib.updateMarketsBalances(
+            markets_,
+            asset(),
+            decimals(),
+            _decimalsOffset()
+        );
 
         dataToCheck.totalBalanceInVault = _getGrossTotalAssets();
 
         AssetDistributionProtectionLib.checkLimits(dataToCheck);
-
     }
-
 
     function _checkIfExistsMarket(uint256[] memory markets_, uint256 marketId_) internal pure returns (bool exists) {
         for (uint256 i; i < markets_.length; ++i) {
@@ -1371,7 +1377,6 @@ contract PlasmaVault is
         }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
     }
-
 
     /**
      * @dev Reverts if the caller is not allowed to call the function identified by a selector. Panics if the calldata
@@ -1465,5 +1470,4 @@ contract PlasmaVault is
                 ? shares.mulDiv(1, _SHARE_SCALE_MULTIPLIER, rounding)
                 : shares.mulDiv(totalAssets() + 1, supply + _SHARE_SCALE_MULTIPLIER, rounding);
     }
-
 }

@@ -8,22 +8,20 @@ import {PriceManagerFactory} from "./PriceManagerFactory.sol";
 import {PlasmaVaultFactory} from "./PlasmaVaultFactory.sol";
 import {AccessManagerFactory} from "./AccessManagerFactory.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {FeeConfig} from "../managers/fee/FeeManagerFactory.sol";
 import {DataForInitialization} from "../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {PlasmaVaultInitData, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../vaults/PlasmaVault.sol";
+import {PlasmaVaultInitData} from "../vaults/PlasmaVault.sol";
 import {IporFusionAccessManagerInitializerLibV1} from "../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManager.sol";
 import {FeeManager} from "../managers/fee/FeeManager.sol";
-import {RecipientFee} from "../managers/fee/FeeManagerFactory.sol";
+
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {FeeAccount} from "../managers/fee/FeeAccount.sol";
 import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {IporFusionMarkets} from "../libraries/IporFusionMarkets.sol";
-
 
 /// @title FusionFactory
 /// @notice Factory contract for creating and managing Fusion Managers
@@ -70,13 +68,14 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     error InvalidFactoryAddress();
     error InvalidFeeValue();
     error InvalidAddress();
+    error BurnRequestFeeFuseNotSet();
+    error BalanceFuseBurnRequestFeeNotSet();
 
     struct FusionInstance {
         string assetName;
         string assetSymbol;
         address underlyingToken;
         address initialOwner;
-        
         address plasmaVault;
         address plasmaVaultBase;
         address accessManager;
@@ -85,7 +84,6 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
         address withdrawManager;
         address priceManager;
         address contextManager;
-        
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -104,7 +102,7 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     /// @param plasmaVaultFactory_ Address of the PlasmaVaultFactory
     /// @param accessManagerFactory_ Address of the AccessManagerFactory
     /// @param priceOracleMiddleware_ Default price oracle middleware address
-    
+
     function initialize(
         address rewardsManagerFactory_,
         address feeManagerFactory_,
@@ -157,65 +155,72 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
         fusionAddresses.plasmaVaultBase = plasmaVaultBase;
 
         fusionAddresses.accessManager = AccessManagerFactory(accessManagerFactory).getInstance(
-            address(this), 
+            address(this),
             redemptionDelayInSeconds
         );
+        fusionAddresses.withdrawManager = WithdrawManagerFactory(withdrawManagerFactory).getInstance(
+            fusionAddresses.accessManager
+        );
+        fusionAddresses.priceManager = PriceManagerFactory(priceManagerFactory).getInstance(
+            fusionAddresses.accessManager,
+            priceOracleMiddleware
+        );
 
-        fusionAddresses.withdrawManager = WithdrawManagerFactory(withdrawManagerFactory).getInstance(fusionAddresses.accessManager);
-        fusionAddresses.priceManager = PriceManagerFactory(priceManagerFactory).getInstance(fusionAddresses.accessManager, priceOracleMiddleware);
-
-        PlasmaVaultInitData memory initData = PlasmaVaultInitData({
-            assetName: assetName_,
-            assetSymbol: assetSymbol_,
-            underlyingToken: underlyingToken_,
-            priceOracleMiddleware: priceOracleMiddleware,
-            // marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            // fuses: new address[](0),
-            // balanceFuses: new MarketBalanceFuseConfig[](0),
-            feeConfig: FeeConfig({
-                feeFactory: feeManagerFactory,
-                iporDaoManagementFee: iporDaoManagementFee,
-                iporDaoPerformanceFee: iporDaoPerformanceFee,
-                iporDaoFeeRecipientAddress: iporDaoFeeRecipient
-                // ,
-                // recipientManagementFees: new RecipientFee[](0),
-                // recipientPerformanceFees: new RecipientFee[](0)
-            }),
-            accessManager: fusionAddresses.accessManager,
-            plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-            // totalSupplyCap: type(uint256).max,
-            withdrawManager: fusionAddresses.withdrawManager
-        });
-
-        fusionAddresses.plasmaVault = PlasmaVaultFactory(plasmaVaultFactory).getInstance(initData);
-        fusionAddresses.rewardsManager = RewardsManagerFactory(rewardsManagerFactory).getInstance(fusionAddresses.accessManager, fusionAddresses.plasmaVault);
+        fusionAddresses.plasmaVault = PlasmaVaultFactory(plasmaVaultFactory).getInstance(
+            PlasmaVaultInitData({
+                assetName: assetName_,
+                assetSymbol: assetSymbol_,
+                underlyingToken: underlyingToken_,
+                priceOracleMiddleware: priceOracleMiddleware,
+                feeConfig: FeeConfig({
+                    feeFactory: feeManagerFactory,
+                    iporDaoManagementFee: iporDaoManagementFee,
+                    iporDaoPerformanceFee: iporDaoPerformanceFee,
+                    iporDaoFeeRecipientAddress: iporDaoFeeRecipient
+                }),
+                accessManager: fusionAddresses.accessManager,
+                plasmaVaultBase: fusionAddresses.plasmaVaultBase,
+                withdrawManager: fusionAddresses.withdrawManager
+            })
+        );
+        fusionAddresses.rewardsManager = RewardsManagerFactory(rewardsManagerFactory).getInstance(
+            fusionAddresses.accessManager,
+            fusionAddresses.plasmaVault
+        );
 
         address[] memory approvedAddresses = new address[](1);
         approvedAddresses[0] = fusionAddresses.plasmaVault;
 
-        fusionAddresses.contextManager = ContextManagerFactory(contextManagerFactory).getInstance(fusionAddresses.accessManager, approvedAddresses);
+        fusionAddresses.contextManager = ContextManagerFactory(contextManagerFactory).getInstance(
+            fusionAddresses.accessManager,
+            approvedAddresses
+        );
 
-         PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
             fusionAddresses.plasmaVault
         ).getPerformanceFeeData();
 
         fusionAddresses.feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
 
-
         IRewardsClaimManager(fusionAddresses.rewardsManager).setupVestingTime(vestingPeriodInSeconds);
 
-        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).setRewardsClaimManagerAddress(fusionAddresses.rewardsManager);
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).setRewardsClaimManagerAddress(
+            fusionAddresses.rewardsManager
+        );
 
         WithdrawManager(fusionAddresses.withdrawManager).updateWithdrawWindow(withdrawWindowInSeconds);
         WithdrawManager(fusionAddresses.withdrawManager).updatePlasmaVaultAddress(fusionAddresses.plasmaVault);
 
-        require(burnRequestFeeFuse != address(0), "Burn request fee fuse is not set");
+        if (burnRequestFeeFuse == address(0)) revert BurnRequestFeeFuseNotSet();
         address[] memory fuses = new address[](1);
         fuses[0] = burnRequestFeeFuse;
         IPlasmaVaultGovernance(fusionAddresses.plasmaVault).addFuses(fuses);
 
-        require(balanceFuseBurnRequestFee != address(0), "Balance fuse burn request fee is not set");
-        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).addBalanceFuse(IporFusionMarkets.ZERO_BALANCE_MARKET, balanceFuseBurnRequestFee);
+        if (balanceFuseBurnRequestFee == address(0)) revert BalanceFuseBurnRequestFeeNotSet();
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).addBalanceFuse(
+            IporFusionMarkets.ZERO_BALANCE_MARKET,
+            balanceFuseBurnRequestFee
+        );
 
         FeeManager(fusionAddresses.feeManager).initialize();
 
@@ -230,8 +235,6 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         return fusionAddresses;
     }
-
-    
 
     /// @notice Updates the default price oracle middleware address
     /// @param newPriceOracleMiddleware_ New price oracle middleware address
@@ -268,5 +271,4 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     /// @dev Required by the OZ UUPS module
     /// @param newImplementation Address of the new implementation
     function _authorizeUpgrade(address newImplementation) internal override {}
-    
 }

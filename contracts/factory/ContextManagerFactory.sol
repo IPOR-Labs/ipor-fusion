@@ -12,7 +12,10 @@ contract ContextManagerFactory {
     /// @param accessManager_ The initial authority address for access control
     /// @param approvedTargets_ The addresses of the approved targets
     /// @return contextManager Address of the newly created ContextManager
-    function getInstance(address accessManager_, address[] memory approvedTargets_) external returns (address contextManager) {
+    function getInstance(
+        address accessManager_,
+        address[] memory approvedTargets_
+    ) external returns (address contextManager) {
         contextManager = address(new ContextManager(accessManager_, approvedTargets_));
         emit ContextManagerCreated(contextManager);
     }

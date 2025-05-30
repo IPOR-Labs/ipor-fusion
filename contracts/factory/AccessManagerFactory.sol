@@ -12,7 +12,7 @@ contract AccessManagerFactory {
     /// @notice Creates a new IporFusionAccessManager
     /// @return accessManager Address of the newly created IporFusionAccessManager
     function getInstance(
-        address initialAuthority_, 
+        address initialAuthority_,
         uint256 redemptionDelayInSeconds_
     ) external returns (address accessManager) {
         accessManager = address(new IporFusionAccessManager(initialAuthority_, redemptionDelayInSeconds_));

@@ -6,7 +6,6 @@ import {PriceOracleMiddlewareManager} from "../managers/price/PriceOracleMiddlew
 /// @title PriceManagerFactory
 /// @notice Factory contract for creating PriceManager instances
 contract PriceManagerFactory {
-
     event PriceManagerCreated(address priceManager, address priceOracleMiddleware);
 
     /// @notice Creates a new PriceOracleMiddlewareManager
