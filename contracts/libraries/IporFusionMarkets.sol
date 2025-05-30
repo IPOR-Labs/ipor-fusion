@@ -75,6 +75,8 @@ library IporFusionMarkets {
     /// @dev Compound V3 market WETH
     uint256 public constant COMPOUND_V3_WETH = 26;
 
+    uint256 public constant HARVEST_HARD_WORK = 27;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
