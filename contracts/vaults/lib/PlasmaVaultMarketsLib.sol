@@ -19,7 +19,7 @@ library PlasmaVaultMarketsLib {
 
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
-    function _updateMarketsBalances(uint256[] memory markets_, address assetAddress_, uint256 decimals_, uint256 decimalsOffset_) public returns (DataToCheck memory dataToCheck) {
+    function updateMarketsBalances(uint256[] memory markets_, address assetAddress_, uint256 decimals_, uint256 decimalsOffset_) public returns (DataToCheck memory dataToCheck) {
         uint256 wadBalanceAmountInUSD;
         // DataToCheck memory dataToCheck;
         address balanceFuse;
@@ -67,7 +67,7 @@ library PlasmaVaultMarketsLib {
         emit MarketBalancesUpdated(markets, deltasInUnderlying);
     }
 
-    function _withdrawFromMarkets(address assetAddress_, uint256 assets_, uint256 vaultCurrentBalanceUnderlying_) public returns (uint256[] memory markets) {
+    function withdrawFromMarkets(address assetAddress_, uint256 assets_, uint256 vaultCurrentBalanceUnderlying_) public returns (uint256[] memory markets) {
         uint256 left;
         uint256 marketIndex;
         uint256 fuseMarketId;
@@ -110,7 +110,7 @@ library PlasmaVaultMarketsLib {
         }
     }
 
-    function _checkBalanceFusesDependencies(uint256[] memory markets_) internal view returns (uint256[] memory) {
+    function _checkBalanceFusesDependencies(uint256[] memory markets_) private view returns (uint256[] memory) {
         uint256 marketsLength = markets_.length;
         if (marketsLength == 0) {
             return markets_;
@@ -153,7 +153,7 @@ library PlasmaVaultMarketsLib {
         return _getUniqueElements(marketsChecked);
     }
 
-    function _checkIfExistsMarket(uint256[] memory markets_, uint256 marketId_) internal pure returns (bool exists) {
+    function _checkIfExistsMarket(uint256[] memory markets_, uint256 marketId_) private pure returns (bool exists) {
         for (uint256 i; i < markets_.length; ++i) {
             if (markets_[i] == 0) {
                 break;
@@ -165,7 +165,7 @@ library PlasmaVaultMarketsLib {
         }
     }
 
-    function _increaseArray(uint256[] memory arr_, uint256 newSize_) internal pure returns (uint256[] memory) {
+    function _increaseArray(uint256[] memory arr_, uint256 newSize_) private pure returns (uint256[] memory) {
         uint256[] memory result = new uint256[](newSize_);
         for (uint256 i; i < arr_.length; ++i) {
             result[i] = arr_[i];

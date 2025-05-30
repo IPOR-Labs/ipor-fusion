@@ -107,7 +107,7 @@ struct PlasmaVaultInitData {
     
     /// @notice Initial maximum total supply cap in underlying token decimals
     /// @dev Controls maximum vault size and deposit limits
-    uint256 totalSupplyCap;
+    // uint256 totalSupplyCap;
     /// @notice Address of the withdraw manager contract
     /// @dev Controls withdrawal permissions and limits, zero address disables managed withdrawals
     address withdrawManager;
@@ -281,7 +281,8 @@ contract PlasmaVault is
                 IPlasmaVaultBase.init.selector,
                 initData_.assetName,
                 initData_.accessManager,
-                initData_.totalSupplyCap
+                type(uint256).max /// @dev default total supply cap is max uint256
+                // initData_.totalSupplyCap
             )
         );
 
@@ -1116,14 +1117,7 @@ contract PlasmaVault is
     function totalAssets() public view virtual override returns (uint256) {
         uint256 grossTotalAssets = _getGrossTotalAssets();
 
-        // uint256 unrealizedManagementFee = abi.decode(PLASMA_VAULT_FEES.functionStaticCall(
-        //     abi.encodeWithSelector(
-        //         PlasmaVaultFees._getUnrealizedManagementFee.selector,
-        //         grossTotalAssets
-        //     )
-        // ), (uint256));
-
-        uint256 unrealizedManagementFee = PlasmaVaultFeesLib._getUnrealizedManagementFee(grossTotalAssets);
+        uint256 unrealizedManagementFee = PlasmaVaultFeesLib.getUnrealizedManagementFee(grossTotalAssets);
 
         if (unrealizedManagementFee >= grossTotalAssets) {
             return 0;
@@ -1186,13 +1180,7 @@ contract PlasmaVault is
     /// @return uint256 Unrealized management fee in underlying token decimals
     /// @custom:access Public view function, no role restrictions
     function getUnrealizedManagementFee() public view returns (uint256) {
-        // return abi.decode(
-        //     PLASMA_VAULT_FEES.functionStaticCall(
-        //         abi.encodeWithSelector(PlasmaVaultFees._getUnrealizedManagementFee.selector, _getGrossTotalAssets())
-        //     ),
-        //     (uint256)
-        // );
-        return PlasmaVaultFeesLib._getUnrealizedManagementFee(_getGrossTotalAssets());
+        return PlasmaVaultFeesLib.getUnrealizedManagementFee(_getGrossTotalAssets());
     }
 
     /// @notice Reserved function for PlasmaVaultBase delegatecall operations
@@ -1290,20 +1278,8 @@ contract PlasmaVault is
             return;
         }
          
-        // (address recipient, uint256 feeShares) = abi.decode(
-        //     PLASMA_VAULT_FEES.functionDelegateCall(
-        //         abi.encodeWithSelector(
-        //             PlasmaVaultFees._prepareForAddPerformanceFee.selector,
-        //             totalSupply(),
-        //             decimals(),
-        //             _decimalsOffset(),
-        //             convertToAssets(10 ** uint256(decimals()))
-        //         )
-        //     ),
-        //     (address, uint256)
-        // );
-
-        (address recipient, uint256 feeShares) = PlasmaVaultFeesLib._prepareForAddPerformanceFee(totalSupply(), decimals(), _decimalsOffset(), convertToAssets(10 ** uint256(decimals())));
+        (address recipient, uint256 feeShares) = PlasmaVaultFeesLib.prepareForAddPerformanceFee(
+            totalSupply(), decimals(), _decimalsOffset(), convertToAssets(10 ** uint256(decimals())));
 
         if (recipient == address(0) || feeShares == 0) {
             return;
@@ -1319,18 +1295,7 @@ contract PlasmaVault is
     }
 
     function _realizeManagementFee() internal {
-
-        // (address recipient, uint256 unrealizedFeeInUnderlying) = abi.decode(
-        //     PLASMA_VAULT_FEES.functionDelegateCall(
-        //         abi.encodeWithSelector(
-        //             PlasmaVaultFees._prepareForRealizeManagementFee.selector,
-        //             _getGrossTotalAssets()
-        //         )
-        //     ),
-        //     (address, uint256)
-        // );
-
-        (address recipient, uint256 unrealizedFeeInUnderlying) = PlasmaVaultFeesLib._prepareForRealizeManagementFee(_getGrossTotalAssets());
+        (address recipient, uint256 unrealizedFeeInUnderlying) = PlasmaVaultFeesLib.prepareForRealizeManagementFee(_getGrossTotalAssets());
 
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
 
@@ -1364,16 +1329,7 @@ contract PlasmaVault is
         }
 
         if (assets_ >= vaultCurrentBalanceUnderlying_) {
-            // uint256[] memory markets = abi.decode(PLASMA_VAULT_MARKETS.functionDelegateCall(
-            //     abi.encodeWithSelector(
-            //         PlasmaVaultMarkets._withdrawFromMarkets.selector,
-            //         asset(),
-            //         assets_,
-            //         vaultCurrentBalanceUnderlying_
-            //     )
-            // ), (uint256[]));
-
-            uint256[] memory markets = PlasmaVaultMarketsLib._withdrawFromMarkets(asset(), assets_, vaultCurrentBalanceUnderlying_);
+            uint256[] memory markets = PlasmaVaultMarketsLib.withdrawFromMarkets(asset(), assets_, vaultCurrentBalanceUnderlying_);
 
             _updateMarketsBalances(markets);
         }
@@ -1383,16 +1339,7 @@ contract PlasmaVault is
     /// @param markets_ Array of market ids touched by the fuses in the FuseActions
     function _updateMarketsBalances(uint256[] memory markets_) internal {
 
-        // DataToCheck memory dataToCheck = abi.decode(PLASMA_VAULT_MARKETS.functionDelegateCall(
-        //     abi.encodeWithSelector(
-        //         PlasmaVaultMarkets._updateMarketsBalances.selector,
-        //         markets_,
-        //         asset(),
-        //         decimals(),
-        //         _decimalsOffset()
-        //     )
-        // ), (DataToCheck));
-        DataToCheck memory dataToCheck = PlasmaVaultMarketsLib._updateMarketsBalances(markets_, asset(), decimals(), _decimalsOffset());
+        DataToCheck memory dataToCheck = PlasmaVaultMarketsLib.updateMarketsBalances(markets_, asset(), decimals(), _decimalsOffset());
 
         dataToCheck.totalBalanceInVault = _getGrossTotalAssets();
 

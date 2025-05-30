@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {RewardsClaimManagerFactory} from "./RewardsClaimManagerFactory.sol";
+import {RewardsManagerFactory} from "./RewardsManagerFactory.sol";
 import {WithdrawManagerFactory} from "./WithdrawManagerFactory.sol";
 import {ContextManagerFactory} from "./ContextManagerFactory.sol";
-import {PriceOracleMiddlewareManagerFactory} from "./PriceOracleMiddlewareManagerFactory.sol";
+import {PriceManagerFactory} from "./PriceManagerFactory.sol";
 import {PlasmaVaultFactory} from "./PlasmaVaultFactory.sol";
-import {IporFusionAccessManagerFactory} from "./IporFusionAccessManagerFactory.sol";
+import {AccessManagerFactory} from "./AccessManagerFactory.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {FeeConfig} from "../managers/fee/FeeManagerFactory.sol";
@@ -20,20 +20,24 @@ import {RecipientFee} from "../managers/fee/FeeManagerFactory.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {FeeAccount} from "../managers/fee/FeeAccount.sol";
+import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
+import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
+import {IporFusionMarkets} from "../libraries/IporFusionMarkets.sol";
+
 
 /// @title FusionFactory
 /// @notice Factory contract for creating and managing Fusion Managers
 /// @dev This contract is responsible for deploying and initializing various manager contracts
 contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     /// @notice Addresses of the individual manager factories
-    address public rewardsClaimManagerFactory;
+    address public rewardsManagerFactory;
     address public feeManagerFactory;
     address public withdrawManagerFactory;
     address public contextManagerFactory;
-    address public priceOracleMiddlewareManagerFactory;
+    address public priceManagerFactory;
     address public plasmaVaultFactory;
     address public plasmaVaultBase;
-    address public iporFusionAccessManagerFactory;
+    address public accessManagerFactory;
 
     /// @notice Default price oracle middleware address
     address public priceOracleMiddleware;
@@ -44,26 +48,15 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     /// @notice Default IPOR DAO fee recipient address
     address public iporDaoFeeRecipient;
 
-    /// @notice Emitted when a new RewardsClaimManager is created
-    event RewardsClaimManagerCreated(address indexed manager, address indexed plasmaVault);
+    /// @notice Default redemption delay in seconds
+    uint256 public redemptionDelayInSeconds; // default 1 second
 
-    /// @notice Emitted when a new FeeManager is created
-    event FeeManagerCreated(address indexed manager, address indexed plasmaVault);
+    uint256 public withdrawWindowInSeconds; // default 24 hours
 
-    /// @notice Emitted when a new WithdrawManager is created
-    event WithdrawManagerCreated(address indexed manager);
+    uint256 public vestingPeriodInSeconds; // default 2 weeks
 
-    /// @notice Emitted when a new ContextManager is created
-    event ContextManagerCreated(address indexed manager);
-
-    /// @notice Emitted when a new PriceOracleMiddlewareManager is created
-    event PriceOracleMiddlewareManagerCreated(address indexed manager, address indexed priceOracleMiddleware);
-
-    /// @notice Emitted when a new PlasmaVault is created
-    event PlasmaVaultCreated(address indexed vault, address indexed underlyingToken);
-
-    /// @notice Emitted when a new IporFusionAccessManager is created
-    event IporFusionAccessManagerCreated(address indexed manager);
+    address public balanceFuseBurnRequestFee;
+    address public burnRequestFeeFuse;
 
     /// @notice Emitted when default price oracle middleware is updated
     event PriceOracleMiddlewareUpdated(address indexed newPriceOracleMiddleware);
@@ -78,11 +71,14 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     error InvalidFeeValue();
     error InvalidAddress();
 
-    struct FusionAddresses {
+    struct FusionInstance {
+        string assetName;
+        string assetSymbol;
+        address underlyingToken;
+        address initialOwner;
+        
         address plasmaVault;
         address plasmaVaultBase;
-        address plasmaVaultMarkets;
-        address plasmaVaultFees;
         address accessManager;
         address feeManager;
         address rewardsManager;
@@ -100,44 +96,46 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     }
 
     /// @notice Initializes the FusionFactory contract
-    /// @param rewardsClaimManagerFactory_ Address of the RewardsClaimManagerFactory
+    /// @param rewardsManagerFactory_ Address of the RewardsManagerFactory
     /// @param feeManagerFactory_ Address of the FeeManagerFactory
     /// @param withdrawManagerFactory_ Address of the WithdrawManagerFactory
     /// @param contextManagerFactory_ Address of the ContextManagerFactory
-    /// @param priceOracleMiddlewareManagerFactory_ Address of the PriceOracleMiddlewareManagerFactory
+    /// @param priceManagerFactory_ Address of the PriceManagerFactory
     /// @param plasmaVaultFactory_ Address of the PlasmaVaultFactory
-    /// @param iporFusionAccessManagerFactory_ Address of the IporFusionAccessManagerFactory
+    /// @param accessManagerFactory_ Address of the AccessManagerFactory
     /// @param priceOracleMiddleware_ Default price oracle middleware address
     
     function initialize(
-        address rewardsClaimManagerFactory_,
+        address rewardsManagerFactory_,
         address feeManagerFactory_,
         address withdrawManagerFactory_,
         address contextManagerFactory_,
-        address priceOracleMiddlewareManagerFactory_,
+        address priceManagerFactory_,
         address plasmaVaultFactory_,
-        address iporFusionAccessManagerFactory_,
+        address accessManagerFactory_,
         address priceOracleMiddleware_
     ) external initializer {
         __Ownable_init(msg.sender);
 
-        if (rewardsClaimManagerFactory_ == address(0)) revert InvalidFactoryAddress();
+        if (rewardsManagerFactory_ == address(0)) revert InvalidFactoryAddress();
         if (feeManagerFactory_ == address(0)) revert InvalidFactoryAddress();
         if (withdrawManagerFactory_ == address(0)) revert InvalidFactoryAddress();
         if (contextManagerFactory_ == address(0)) revert InvalidFactoryAddress();
-        if (priceOracleMiddlewareManagerFactory_ == address(0)) revert InvalidFactoryAddress();
+        if (priceManagerFactory_ == address(0)) revert InvalidFactoryAddress();
         if (plasmaVaultFactory_ == address(0)) revert InvalidFactoryAddress();
-        if (iporFusionAccessManagerFactory_ == address(0)) revert InvalidFactoryAddress();
+        if (accessManagerFactory_ == address(0)) revert InvalidFactoryAddress();
         if (priceOracleMiddleware_ == address(0)) revert InvalidAddress();
 
-        rewardsClaimManagerFactory = rewardsClaimManagerFactory_;
+        rewardsManagerFactory = rewardsManagerFactory_;
         feeManagerFactory = feeManagerFactory_;
         withdrawManagerFactory = withdrawManagerFactory_;
         contextManagerFactory = contextManagerFactory_;
-        priceOracleMiddlewareManagerFactory = priceOracleMiddlewareManagerFactory_;
+        priceManagerFactory = priceManagerFactory_;
         plasmaVaultFactory = plasmaVaultFactory_;
-        iporFusionAccessManagerFactory = iporFusionAccessManagerFactory_;
+        accessManagerFactory = accessManagerFactory_;
         priceOracleMiddleware = priceOracleMiddleware_;
+
+        redemptionDelayInSeconds = 1; // TODO: change to default value
     }
 
     /// @notice Creates a complete PlasmaVault setup with all necessary managers
@@ -146,16 +144,25 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     /// @param underlyingToken_ Address of the token that the vault accepts for deposits
     /// @param owner_ The owner address for access control
     /// @return fusionAddresses The addresses of the created managers
-    function createCompletePlasmaVault(
+    function getInstance(
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,
         address owner_
-    ) external returns (FusionAddresses memory fusionAddresses) {
+    ) external returns (FusionInstance memory fusionAddresses) {
+        fusionAddresses.assetName = assetName_;
+        fusionAddresses.assetSymbol = assetSymbol_;
+        fusionAddresses.underlyingToken = underlyingToken_;
+        fusionAddresses.initialOwner = owner_;
         fusionAddresses.plasmaVaultBase = plasmaVaultBase;
-        fusionAddresses.accessManager = _createIporFusionAccessManager(address(this));
-        fusionAddresses.withdrawManager = _createWithdrawManager(fusionAddresses.accessManager);
-        fusionAddresses.priceManager = _createPriceOracleMiddlewareManager(fusionAddresses.accessManager, priceOracleMiddleware);
+
+        fusionAddresses.accessManager = AccessManagerFactory(accessManagerFactory).getInstance(
+            address(this), 
+            redemptionDelayInSeconds
+        );
+
+        fusionAddresses.withdrawManager = WithdrawManagerFactory(withdrawManagerFactory).getInstance(fusionAddresses.accessManager);
+        fusionAddresses.priceManager = PriceManagerFactory(priceManagerFactory).getInstance(fusionAddresses.accessManager, priceOracleMiddleware);
 
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
             assetName: assetName_,
@@ -176,19 +183,17 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
             }),
             accessManager: fusionAddresses.accessManager,
             plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-            // plasmaVaultMarkets: fusionAddresses.plasmaVaultMarkets,
-            // plasmaVaultFees: fusionAddresses.plasmaVaultFees,
-            totalSupplyCap: type(uint256).max,
+            // totalSupplyCap: type(uint256).max,
             withdrawManager: fusionAddresses.withdrawManager
         });
 
-        fusionAddresses.plasmaVault = _createPlasmaVault(initData);
-        fusionAddresses.rewardsManager = _createRewardsManager(fusionAddresses.accessManager, fusionAddresses.plasmaVault);
+        fusionAddresses.plasmaVault = PlasmaVaultFactory(plasmaVaultFactory).getInstance(initData);
+        fusionAddresses.rewardsManager = RewardsManagerFactory(rewardsManagerFactory).getInstance(fusionAddresses.accessManager, fusionAddresses.plasmaVault);
 
         address[] memory approvedAddresses = new address[](1);
         approvedAddresses[0] = fusionAddresses.plasmaVault;
 
-        fusionAddresses.contextManager = _createContextManager(fusionAddresses.accessManager, approvedAddresses);
+        fusionAddresses.contextManager = ContextManagerFactory(contextManagerFactory).getInstance(fusionAddresses.accessManager, approvedAddresses);
 
          PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
             fusionAddresses.plasmaVault
@@ -196,13 +201,28 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         fusionAddresses.feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
 
-        // Prepare access data with owner
+
+        IRewardsClaimManager(fusionAddresses.rewardsManager).setupVestingTime(vestingPeriodInSeconds);
+
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).setRewardsClaimManagerAddress(fusionAddresses.rewardsManager);
+
+        WithdrawManager(fusionAddresses.withdrawManager).updateWithdrawWindow(withdrawWindowInSeconds);
+        WithdrawManager(fusionAddresses.withdrawManager).updatePlasmaVaultAddress(fusionAddresses.plasmaVault);
+
+        require(burnRequestFeeFuse != address(0), "Burn request fee fuse is not set");
+        address[] memory fuses = new address[](1);
+        fuses[0] = burnRequestFeeFuse;
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).addFuses(fuses);
+
+        require(balanceFuseBurnRequestFee != address(0), "Balance fuse burn request fee is not set");
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).addBalanceFuse(IporFusionMarkets.ZERO_BALANCE_MARKET, balanceFuseBurnRequestFee);
+
+        FeeManager(fusionAddresses.feeManager).initialize();
+
         DataForInitialization memory accessData;
         accessData.isPublic = false;
         accessData.owners = new address[](1);
         accessData.owners[0] = owner_;
-
-        FeeManager(fusionAddresses.feeManager).initialize();
 
         IporFusionAccessManager(fusionAddresses.accessManager).initialize(
             IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
@@ -248,71 +268,5 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
     /// @dev Required by the OZ UUPS module
     /// @param newImplementation Address of the new implementation
     function _authorizeUpgrade(address newImplementation) internal override {}
-
-    /// @notice Creates a new RewardsClaimManager
-    /// @param accessManager_ The initial authority address for access control
-    /// @param plasmaVault_ Address of the plasma vault
-    /// @return Address of the newly created RewardsClaimManager
-    function _createRewardsManager(address accessManager_, address plasmaVault_) private returns (address) {
-        address manager = RewardsClaimManagerFactory(rewardsClaimManagerFactory).createRewardsClaimManager(
-            accessManager_,
-            plasmaVault_
-        );
-        emit RewardsClaimManagerCreated(manager, plasmaVault_);
-        return manager;
-    }
-
-    /// @notice Creates a new WithdrawManager
-    /// @param accessManager_ The initial authority address for access control
-    /// @return Address of the newly created WithdrawManager
-    function _createWithdrawManager(address accessManager_) private returns (address) {
-        address manager = WithdrawManagerFactory(withdrawManagerFactory).createWithdrawManager(
-            accessManager_
-        );
-        emit WithdrawManagerCreated(manager);
-        return manager;
-    }
-
-    /// @notice Creates a new ContextManager
-    /// @param accessManager_ The initial authority address for access control
-    /// @return Address of the newly created ContextManager
-    function _createContextManager(address accessManager_, address[] memory approvedTargets_) private returns (address) {
-        address manager = ContextManagerFactory(contextManagerFactory).createContextManager(accessManager_, approvedTargets_);
-        emit ContextManagerCreated(manager);
-        return manager;
-    }
-
-    /// @notice Creates a new PriceOracleMiddlewareManager
-    /// @param accessManager_ The initial authority address for access control
-    /// @param priceOracleMiddleware_ Address of the price oracle middleware
-    /// @return Address of the newly created PriceOracleMiddlewareManager
-    function _createPriceOracleMiddlewareManager(
-        address accessManager_,
-        address priceOracleMiddleware_
-    ) private returns (address) {
-        address manager = PriceOracleMiddlewareManagerFactory(priceOracleMiddlewareManagerFactory)
-            .createPriceOracleMiddlewareManager(accessManager_, priceOracleMiddleware_);
-        emit PriceOracleMiddlewareManagerCreated(manager, priceOracleMiddleware_);
-        return manager;
-    }
-
-    /// @notice Creates a new PlasmaVault
-    /// @param initData_ The initialization data for the PlasmaVault
-    /// @return Address of the newly created PlasmaVault
-    function _createPlasmaVault(PlasmaVaultInitData memory initData_) private returns (address) {
-        address vault = PlasmaVaultFactory(plasmaVaultFactory).createPlasmaVault(initData_);
-        emit PlasmaVaultCreated(vault, initData_.underlyingToken);
-        return vault;
-    }
-
-    /// @notice Creates a new IporFusionAccessManager
-    /// @param initialAuthority_ The initial authority address for access control
-    /// @return Address of the newly created IporFusionAccessManager
-    function _createIporFusionAccessManager(address initialAuthority_) private returns (address) {
-        address manager = IporFusionAccessManagerFactory(iporFusionAccessManagerFactory).createIporFusionAccessManager(
-            initialAuthority_
-        );
-        emit IporFusionAccessManagerCreated(manager);
-        return manager;
-    }
+    
 }

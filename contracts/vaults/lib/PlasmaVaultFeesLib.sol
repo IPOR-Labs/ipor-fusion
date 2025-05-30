@@ -13,7 +13,7 @@ library PlasmaVaultFeesLib {
     
     uint256 private constant FEE_PERCENTAGE_DECIMALS_MULTIPLIER = 1e4; /// @dev 10000 = 100% (2 decimal places for fee percentage)
 
-    function _prepareForAddPerformanceFee(uint256 totalSupply_, uint256 decimals_, uint256 decimalsOffset_, uint256 actualExchangeRate_) internal returns (address recipient, uint256 feeShares) {
+    function prepareForAddPerformanceFee(uint256 totalSupply_, uint256 decimals_, uint256 decimalsOffset_, uint256 actualExchangeRate_) internal returns (address recipient, uint256 feeShares) {
         
         PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
 
@@ -27,18 +27,18 @@ library PlasmaVaultFeesLib {
 
     }
 
-    function _prepareForRealizeManagementFee(uint256 totalAssetsBefore_) internal returns (address recipient, uint256 unrealizedFeeInUnderlying) {
+    function prepareForRealizeManagementFee(uint256 totalAssetsBefore_) internal returns (address recipient, uint256 unrealizedFeeInUnderlying) {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
 
         recipient = feeData.feeAccount;
 
-        unrealizedFeeInUnderlying = _getUnrealizedManagementFee(totalAssetsBefore_);
+        unrealizedFeeInUnderlying = getUnrealizedManagementFee(totalAssetsBefore_);
 
         PlasmaVaultLib.updateManagementFeeData();
 
     }
 
-    function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
+    function getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
 
         uint256 blockTimestamp = block.timestamp;
