@@ -270,5 +270,6 @@ contract FusionFactory is UUPSUpgradeable, OwnableUpgradeable {
 
     /// @dev Required by the OZ UUPS module
     /// @param newImplementation Address of the new implementation
+    //TODO: add owner
     function _authorizeUpgrade(address newImplementation) internal override {}
 }

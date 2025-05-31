@@ -8,7 +8,7 @@ import {PriceOracleMiddlewareManager} from "../managers/price/PriceOracleMiddlew
 contract PriceManagerFactory {
     event PriceManagerCreated(address priceManager, address priceOracleMiddleware);
 
-    /// @notice Creates a new PriceOracleMiddlewareManager
+    /// @notice Creates a new Price§Manager
     /// @param accessManager_ The initial authority address for access control
     /// @param priceOracleMiddleware_ Address of the price oracle middleware
     /// @return priceManager Address of the newly created PriceOracleMiddlewareManager
