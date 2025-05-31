@@ -26,6 +26,7 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -857,15 +858,17 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 assetSymbol: "PLASMA",
                 underlyingToken: USDM,
                 priceOracleMiddleware: address(priceOracleMiddlewareProxy),
-                marketSubstratesConfigs: _setupMarketConfigs(),
-                fuses: fuses,
-                balanceFuses: _setupBalanceFuses(),
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                totalSupplyCap: type(uint256).max,
                 withdrawManager: address(withdrawManager)
             })
+        );
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
         );
     }
 

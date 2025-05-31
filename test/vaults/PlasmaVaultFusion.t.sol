@@ -22,6 +22,7 @@ import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 // solhint-disable-next-line max-states-count
 contract PlasmaVaultErc20FusionTest is Test {
@@ -112,17 +113,18 @@ contract PlasmaVaultErc20FusionTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
     }
 

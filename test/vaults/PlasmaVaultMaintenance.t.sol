@@ -22,6 +22,7 @@ import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGov
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -77,13 +78,9 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
@@ -118,13 +115,9 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
@@ -167,13 +160,9 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
@@ -206,13 +195,9 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
@@ -245,13 +230,9 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
@@ -281,13 +262,9 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
@@ -319,16 +296,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
+
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
@@ -368,16 +342,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
+        
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
@@ -414,17 +385,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address target = address(plasmaVault);
@@ -459,17 +426,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address target = address(plasmaVault);
@@ -507,17 +470,12 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address target = address(plasmaVault);
@@ -552,16 +510,13 @@ contract PlasmaVaultMaintenanceTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
+
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
@@ -611,17 +566,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         // then
         assertTrue(
             IPlasmaVaultGovernance(address(plasmaVault)).isBalanceFuseSupported(
@@ -659,17 +615,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         //when
         IPlasmaVaultGovernance(address(plasmaVault)).addBalanceFuse(AAVE_V3_MARKET_ID, address(balanceFuse));
 
@@ -709,17 +666,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         // then
         assertTrue(
             IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(fuse)),
@@ -756,17 +714,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address[] memory newSupplyFuses = new address[](2);
@@ -820,17 +779,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
@@ -929,17 +889,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address user = address(3456789876543234567898765);
@@ -992,15 +953,17 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -1055,17 +1018,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
@@ -1135,13 +1099,9 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
@@ -1216,17 +1176,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         //when
@@ -1271,17 +1232,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address[] memory newSupplyFuses = new address[](2);
@@ -1334,17 +1296,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                supplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            supplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
@@ -1396,17 +1360,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address[] memory fuses = new address[](1);
@@ -1464,17 +1429,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
-
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address[] memory newSupplyFuses = new address[](1);
@@ -1520,17 +1486,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address newPriceOracleMiddleware = address(new PriceOracleMiddlewareMock(USD, 8, address(0)));
@@ -1571,17 +1539,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(USD_WRONG, 6, address(0)));
@@ -1629,17 +1599,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(address(0x777), 8, address(0)));
@@ -1687,17 +1659,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         address newPriceOracle = address(new PriceOracleMiddlewareMock(USD, 8, address(0)));
@@ -1771,18 +1745,20 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetName,
                 assetSymbol,
                 underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
+                address(priceOracleMiddlewareProxy),    
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
@@ -1815,17 +1791,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bool isMarketsLimitsActivatedBefore = IPlasmaVaultGovernance(address(plasmaVault)).isMarketsLimitsActivated();
@@ -1863,13 +1841,9 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
@@ -1914,17 +1888,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
@@ -1960,17 +1936,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
@@ -2006,17 +1984,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         uint256 limitBefore = IPlasmaVaultGovernance(address(plasmaVault)).getMarketLimit(AAVE_V3_MARKET_ID);
@@ -2057,17 +2037,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", alpha);
@@ -2100,17 +2082,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bool isClosedBefore = accessManager.isTargetClosed(address(plasmaVault));
@@ -2148,17 +2132,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
         vm.prank(atomist);
         accessManager.updateTargetClosed(address(plasmaVault), true);
@@ -2198,17 +2184,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bytes4[] memory sig = new bytes4[](2);
@@ -2290,17 +2278,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bytes4[] memory sig = new bytes4[](2);
@@ -2394,15 +2384,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -2488,17 +2481,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bytes4[] memory sig = new bytes4[](2);
@@ -2584,17 +2579,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         bytes4[] memory sig = new bytes4[](2);
@@ -2692,15 +2689,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -2791,17 +2791,19 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         uint64[] memory roles = new uint64[](2);
@@ -2851,15 +2853,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -2927,15 +2932,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -3013,25 +3021,21 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        return (
-            new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault(
                 PlasmaVaultInitData(
                     assetName,
                     assetSymbol,
                     underlyingToken_,
                     address(priceOracleMiddlewareProxy),
-                    new MarketSubstratesConfig[](0),
-                    new address[](0),
-                    new MarketBalanceFuseConfig[](0),
                     FeeConfigHelper.createZeroFeeConfig(),
                     address(accessManager),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
-                    address(withdrawManager)
-                )
-            ),
-            WithdrawManager(address(withdrawManager))
+                address(withdrawManager)
+            )
         );
+
+
+        return (plasmaVault, WithdrawManager(address(withdrawManager)));
     }
 
     function testShouldNotBeAbleToGrantRoleWhenExecutionDaleyTooSmall() public {
@@ -3054,15 +3058,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -3116,15 +3123,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            new address[](0),
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -3169,13 +3179,9 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
         );
@@ -3208,15 +3214,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -3271,15 +3280,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            new address[](0),
+            new MarketBalanceFuseConfig[](0),
+            marketConfigs
         );
 
         // when
@@ -3322,15 +3334,18 @@ contract PlasmaVaultMaintenanceTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                initialSupplyFuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);

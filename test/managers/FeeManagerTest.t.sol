@@ -29,6 +29,7 @@ import {HighWaterMarkPerformanceFeeStorage} from "../../contracts/managers/fee/F
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
@@ -82,17 +83,34 @@ contract FeeManagerTest is Test {
                     assetSymbol: "PLASMA",
                     underlyingToken: _USDC,
                     priceOracleMiddleware: _priceOracle,
-                    marketSubstratesConfigs: _setupMarketConfigs(),
-                    fuses: _createFuse(),
-                    balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: address(_accessManager),
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max,
                     withdrawManager: _withdrawManager
                 })
             )
         );
+
+
+         RecipientFee[] memory performanceRecipientFees = new RecipientFee[](1);
+        performanceRecipientFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: PERFORMANCE_FEE_IN_PERCENTAGE
+        });
+
+        RecipientFee[] memory managementRecipientFees = new RecipientFee[](1);
+        managementRecipientFees[0] = RecipientFee({
+            recipient: _FEE_RECIPIENT_1,
+            feeValue: MANAGEMENT_FEE_IN_PERCENTAGE
+        });
+
+       
+        PlasmaVaultConfigurator.setupRecipientFees(
+            address(_plasmaVault),
+            managementRecipientFees,
+            performanceRecipientFees
+        );
+
         vm.stopPrank();
     }
 
@@ -121,27 +139,14 @@ contract FeeManagerTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        RecipientFee[] memory performanceRecipientFees = new RecipientFee[](1);
-        performanceRecipientFees[0] = RecipientFee({
-            recipient: _FEE_RECIPIENT_1,
-            feeValue: PERFORMANCE_FEE_IN_PERCENTAGE
-        });
-
-        RecipientFee[] memory managementRecipientFees = new RecipientFee[](1);
-        managementRecipientFees[0] = RecipientFee({
-            recipient: _FEE_RECIPIENT_1,
-            feeValue: MANAGEMENT_FEE_IN_PERCENTAGE
-        });
-
+        
         address feeManagerFactory = address(new FeeManagerFactory());
 
         feeConfig = FeeConfig({
             feeFactory: feeManagerFactory,
             iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
             iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
-            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
-            recipientManagementFees: managementRecipientFees,
-            recipientPerformanceFees: performanceRecipientFees
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT
         });
     }
 

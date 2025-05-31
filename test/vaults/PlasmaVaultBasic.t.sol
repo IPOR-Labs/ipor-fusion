@@ -21,6 +21,7 @@ import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 contract PlasmaVaultBasicTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -98,17 +99,19 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
@@ -179,17 +182,19 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
@@ -258,17 +263,19 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
         );
 
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
@@ -351,15 +358,18 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
         );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
@@ -437,15 +447,18 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
         );
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
@@ -546,15 +559,18 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -644,16 +660,20 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
         );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
+
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
@@ -742,16 +762,20 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
         );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
+
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
@@ -856,15 +880,18 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -942,15 +969,18 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -1036,15 +1066,18 @@ contract PlasmaVaultBasicTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
