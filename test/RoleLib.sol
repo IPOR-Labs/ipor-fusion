@@ -46,6 +46,11 @@ library RoleLib {
         vm.prank(usersWithRoles.superAdmin);
         accessManager.grantRole(Roles.OWNER_ROLE, usersWithRoles.atomist, 0);
 
+        vm.prank(usersWithRoles.superAdmin);
+        accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, usersWithRoles.atomist, 0);
+
+        
+
         for (uint256 i; i < usersWithRoles.alphas.length; i++) {
             vm.prank(usersWithRoles.atomist);
             accessManager.grantRole(Roles.ALPHA_ROLE, usersWithRoles.alphas[i], 0);
@@ -127,8 +132,10 @@ library RoleLib {
         bytes4[] memory feeManagerSig = new bytes4[](1);
         feeManagerSig[0] = FeeManager.updateHighWaterMarkPerformanceFee.selector;
 
+
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(feeManager, feeManagerSig, Roles.ALPHA_ROLE);
+        
     }
 
     function _setupAtomistRoles(

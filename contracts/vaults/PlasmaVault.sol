@@ -76,15 +76,6 @@ struct PlasmaVaultInitData {
     /// @notice Address of the price oracle middleware for asset valuation
     /// @dev Must support USD as quote currency
     address priceOracleMiddleware;
-    /// @notice Configuration of market-specific substrate mappings
-    /// @dev Defines protocol identifiers for each integrated market
-    // MarketSubstratesConfig[] marketSubstratesConfigs;
-    /// @notice List of protocol integration contracts (fuses)
-    /// @dev Each fuse represents a specific protocol interaction capability
-    // address[] fuses;
-    /// @notice Configuration of market-specific balance tracking fuses
-    /// @dev Maps markets to their designated balance tracking contracts
-    // MarketBalanceFuseConfig[] balanceFuses;
     /// @notice Fee configuration for performance and management fees
     /// @dev Includes fee rates and recipient addresses
     FeeConfig feeConfig;
@@ -94,16 +85,6 @@ struct PlasmaVaultInitData {
     /// @notice Address of the base contract providing common functionality
     /// @dev Implements core vault logic through delegatecall
     address plasmaVaultBase;
-    /// @notice Address of the markets contract
-    /// @dev Handles market-specific operations and balance tracking
-    // address plasmaVaultMarkets;
-    /// @notice Address of the fees contract
-    /// @dev Manages performance and management fees
-    // address plasmaVaultFees;
-
-    /// @notice Initial maximum total supply cap in underlying token decimals
-    /// @dev Controls maximum vault size and deposit limits
-    // uint256 totalSupplyCap;
     /// @notice Address of the withdraw manager contract
     /// @dev Controls withdrawal permissions and limits, zero address disables managed withdrawals
     address withdrawManager;
@@ -254,8 +235,6 @@ contract PlasmaVault is
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
     address public immutable PLASMA_VAULT_BASE;
-    // address public immutable PLASMA_VAULT_MARKETS;
-    // address public immutable PLASMA_VAULT_FEES;
     uint256 private immutable _SHARE_SCALE_MULTIPLIER; /// @dev 10^_decimalsOffset() multiplier for share scaling in ERC4626
 
     // /// @notice Constructor with initialization for direct deployment
@@ -268,16 +247,13 @@ contract PlasmaVault is
         _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
 
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
-        // PLASMA_VAULT_MARKETS = initData_.plasmaVaultMarkets;
-        // PLASMA_VAULT_FEES = initData_.plasmaVaultFees;
-
+        
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSelector(
                 IPlasmaVaultBase.init.selector,
                 initData_.assetName,
                 initData_.accessManager,
                 type(uint256).max /// @dev default total supply cap is max uint256
-                // initData_.totalSupplyCap
             )
         );
 
@@ -289,28 +265,6 @@ contract PlasmaVault is
 
         PlasmaVaultLib.setPriceOracleMiddleware(initData_.priceOracleMiddleware);
 
-        // PLASMA_VAULT_BASE.functionDelegateCall(
-        //     abi.encodeWithSelector(PlasmaVaultGovernance.addFuses.selector, initData_.fuses)
-        // );
-
-        // for (uint256 i; i < initData_.balanceFuses.length; ++i) {
-        //     // @dev in the moment of construction deployer has rights to add balance fuses
-        //     PLASMA_VAULT_BASE.functionDelegateCall(
-        //         abi.encodeWithSelector(
-        //             IPlasmaVaultGovernance.addBalanceFuse.selector,
-        //             initData_.balanceFuses[i].marketId,
-        //             initData_.balanceFuses[i].fuse
-        //         )
-        //     );
-        // }
-
-        // for (uint256 i; i < initData_.marketSubstratesConfigs.length; ++i) {
-        //     PlasmaVaultConfigLib.grantMarketSubstrates(
-        //         initData_.marketSubstratesConfigs[i].marketId,
-        //         initData_.marketSubstratesConfigs[i].substrates
-        //     );
-        // }
-
         FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
             FeeManagerInitData({
                 initialAuthority: initData_.accessManager,
@@ -320,8 +274,6 @@ contract PlasmaVault is
                 iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress,
                 recipientManagementFees: new RecipientFee[](0),
                 recipientPerformanceFees: new RecipientFee[](0)
-                // recipientManagementFees: initData_.feeConfig.recipientManagementFees,
-                // recipientPerformanceFees: initData_.feeConfig.recipientPerformanceFees
             })
         );
 

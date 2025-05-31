@@ -64,7 +64,7 @@ library PlasmaVaultHelper {
         // Deploy access manager
         address accessManager = address(new IporFusionAccessManager(params.atomist, 0));
 
-        address withdrawManager = address(new WithdrawManager(accessManager));
+        withdrawManager = address(new WithdrawManager(accessManager));
 
         // Create initialization data for PlasmaVault
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({

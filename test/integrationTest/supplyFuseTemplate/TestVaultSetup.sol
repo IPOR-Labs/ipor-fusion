@@ -20,6 +20,7 @@ abstract contract TestVaultSetup is TestStorage {
         FeeConfig memory feeConfig = setupFeeConfig();
 
         createAccessManager();
+
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         vm.startPrank(accounts[0]);
@@ -37,15 +38,15 @@ abstract contract TestVaultSetup is TestStorage {
                 )
             )
         );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
         vm.stopPrank();
 
+        // Set up roles first
         setupRoles(withdrawManager);
+
+        // Then call setupPlasmaVault
+        vm.startPrank(accounts[0]);
+        PlasmaVaultConfigurator.setupPlasmaVault(address(plasmaVault), fuses, balanceFuses, marketConfigs);
+        vm.stopPrank();
     }
 
     function initPlasmaVaultCustom(
@@ -58,6 +59,7 @@ abstract contract TestVaultSetup is TestStorage {
         FeeConfig memory feeConfig = setupFeeConfig();
 
         createAccessManager();
+
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         vm.startPrank(accounts[0]);
         plasmaVault = address(
@@ -74,15 +76,14 @@ abstract contract TestVaultSetup is TestStorage {
                 )
             )
         );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+
         vm.stopPrank();
 
         setupRoles(withdrawManager);
+
+        vm.startPrank(accounts[0]);
+        PlasmaVaultConfigurator.setupPlasmaVault(address(plasmaVault), fuses, balanceFuses, marketConfigs);
+        vm.stopPrank();
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault
