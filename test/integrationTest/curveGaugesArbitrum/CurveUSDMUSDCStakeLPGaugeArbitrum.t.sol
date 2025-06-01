@@ -865,6 +865,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             })
         );
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
             address(plasmaVault),
             fuses,
             _setupBalanceFuses(),

@@ -664,14 +664,17 @@ contract IporPlasmaVaultRolesTest is Test {
                 address(_withdrawManager)
             )
         );
+        vm.stopPrank();
 
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
             address(_plasmaVault),
             fuses,
             balanceFuses,
             marketConfigs
         );
-        vm.stopPrank();
+        
     }
 
     function _generateRewardsClaimManager() private {

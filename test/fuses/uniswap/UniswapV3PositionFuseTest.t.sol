@@ -85,6 +85,8 @@ contract UniswapV3PositionFuseTest is Test {
             )
         );
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),

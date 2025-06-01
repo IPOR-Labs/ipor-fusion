@@ -123,13 +123,17 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                 )
             )
         );
+        vm.stopPrank();
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
             _setupMarketConfigsErc20()
         );
-        vm.stopPrank();
+       
 
         _initAccessManager();
         _setupDependenceBalance();

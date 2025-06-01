@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
+import {console2} from "forge-std/console2.sol";
 import {TestStorage} from "./TestStorage.sol";
 import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -43,10 +44,14 @@ abstract contract TestVaultSetup is TestStorage {
         // Set up roles first
         setupRoles(withdrawManager);
 
-        // Then call setupPlasmaVault
-        vm.startPrank(accounts[0]);
-        PlasmaVaultConfigurator.setupPlasmaVault(address(plasmaVault), fuses, balanceFuses, marketConfigs);
-        vm.stopPrank();
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            accounts[0],
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
     }
 
     function initPlasmaVaultCustom(
@@ -81,9 +86,14 @@ abstract contract TestVaultSetup is TestStorage {
 
         setupRoles(withdrawManager);
 
-        vm.startPrank(accounts[0]);
-        PlasmaVaultConfigurator.setupPlasmaVault(address(plasmaVault), fuses, balanceFuses, marketConfigs);
-        vm.stopPrank();
+        
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            accounts[0],
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs);
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault

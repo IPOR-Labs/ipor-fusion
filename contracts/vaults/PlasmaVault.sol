@@ -240,7 +240,7 @@ contract PlasmaVault is
     // /// @notice Constructor with initialization for direct deployment
     // /// @dev Used when deploying directly without proxy
     // /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
-    constructor(PlasmaVaultInitData memory initData_) initializer {
+    constructor(PlasmaVaultInitData memory initData_) ERC20Upgradeable() ERC4626Upgradeable() initializer {
         super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
         super.__ERC4626_init(IERC20(initData_.underlyingToken));
 

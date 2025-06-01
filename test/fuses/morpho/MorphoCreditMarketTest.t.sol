@@ -79,13 +79,18 @@ contract MorphoCreditMarketTest is Test {
                 )
             )
         );
+        
+        vm.stopPrank();
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
-        vm.stopPrank();
+
         _initAccessManager();
         _setupDependenceBalance();
 

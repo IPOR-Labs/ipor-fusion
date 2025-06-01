@@ -127,35 +127,15 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             new RecipientFee[](0),
             recipientPerformanceFees
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -280,35 +260,15 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             new RecipientFee[](0),
             recipientPerformanceFees
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -426,35 +386,15 @@ contract PlasmaVaultFeeTest is Test {
         RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
 
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            address(this),
             address(plasmaVault),
             new RecipientFee[](0),
             recipientPerformanceFees
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -587,35 +527,15 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             new RecipientFee[](0),
             recipientPerformanceFees
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -744,35 +664,15 @@ contract PlasmaVaultFeeTest is Test {
         RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
 
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             new RecipientFee[](0),
             recipientPerformanceFees
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -900,35 +800,15 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             new RecipientFee[](0),
             recipientPerformanceFees
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
         sharesAmount = 100 * 10 ** plasmaVault.decimals();
@@ -1055,35 +935,15 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             new RecipientFee[](0),
             recipientPerformanceFees
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1192,35 +1052,15 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             new RecipientFee[](0),
             recipientPerformanceFees
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1328,35 +1168,16 @@ contract PlasmaVaultFeeTest is Test {
         recipientManagementFees[0] = RecipientFee({recipient: address(0x333), feeValue: managementFeeInPercentage});
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
-            recipientManagementFees,
-            new RecipientFee[](0)
+            new RecipientFee[](0),
+            recipientManagementFees
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1437,35 +1258,16 @@ contract PlasmaVaultFeeTest is Test {
         recipientManagementFees[0] = RecipientFee({recipient: address(0x333), feeValue: managementFeeInPercentage});
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-         plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             recipientManagementFees,
             new RecipientFee[](0)
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
         sharesAmount = 100 * 10 ** plasmaVault.decimals();
@@ -1554,25 +1356,7 @@ contract PlasmaVaultFeeTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1655,35 +1439,15 @@ contract PlasmaVaultFeeTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             recipientManagementFees,
             new RecipientFee[](0)
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1762,35 +1526,16 @@ contract PlasmaVaultFeeTest is Test {
         recipientManagementFees[0] = RecipientFee({recipient: address(0x333), feeValue: managementFeeInPercentage});
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
             address(plasmaVault),
             recipientManagementFees,
             new RecipientFee[](0)
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1888,30 +1633,7 @@ contract PlasmaVaultFeeTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-
-        PlasmaVaultConfigurator.setupRecipientFees(
-            address(plasmaVault),
-            recipientManagementFees,
-            new RecipientFee[](0)
-        );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, new address[](0), new MarketSubstratesConfig[](0), new MarketBalanceFuseConfig[](0), withdrawManager);
 
         amount = 10_000 * 1e6;
 
@@ -2010,31 +1732,7 @@ contract PlasmaVaultFeeTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         
-        plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                FeeConfig({
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    feeFactory: address(new FeeManagerFactory()),
-                    iporDaoFeeRecipientAddress: address(0)
-                }),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                address(withdrawManager)
-            )
-        );
-
-        PlasmaVaultConfigurator.setupRecipientFees(
-            address(plasmaVault),
-            recipientManagementFees,
-            new RecipientFee[](0)
-        );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
+        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, new address[](0), new MarketSubstratesConfig[](0), new MarketBalanceFuseConfig[](0), withdrawManager);
 
         amount = 100_000 * 1e6;
 
@@ -2121,5 +1819,38 @@ contract PlasmaVaultFeeTest is Test {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
+    }
+
+     function _setupPlasmaVault(
+        address underlyingToken,
+        IporFusionAccessManager accessManager, 
+        address[] memory initialSupplyFuses, 
+        MarketSubstratesConfig[] memory marketConfigs, 
+        MarketBalanceFuseConfig[] memory balanceFuses, 
+        address withdrawManager) private returns (PlasmaVault plasmaVault) {
+        plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                FeeConfigHelper.createZeroFeeConfig(),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                withdrawManager
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(plasmaVault),
+            initialSupplyFuses,
+            balanceFuses,
+            marketConfigs
+        );
+        
     }
 }

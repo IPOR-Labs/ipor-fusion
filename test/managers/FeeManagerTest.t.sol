@@ -103,15 +103,17 @@ contract FeeManagerTest is Test {
             recipient: _FEE_RECIPIENT_1,
             feeValue: MANAGEMENT_FEE_IN_PERCENTAGE
         });
-
-       
+        vm.stopPrank();
+        
         PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            _ATOMIST,
             address(_plasmaVault),
             managementRecipientFees,
             performanceRecipientFees
         );
 
-        vm.stopPrank();
+        
     }
 
     function _createFuse() private returns (address[] memory) {

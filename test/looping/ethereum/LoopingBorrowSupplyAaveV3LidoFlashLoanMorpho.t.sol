@@ -175,14 +175,17 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
 
         vm.startPrank(_ATOMIST);
         _plasmaVault = address(new PlasmaVault(initData));
+vm.stopPrank();
 
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
             address(_plasmaVault),
             new address[](0),
             new MarketBalanceFuseConfig[](0),
             new MarketSubstratesConfig[](0)
         );
-        vm.stopPrank();
+        
 
         return _plasmaVault;
     }

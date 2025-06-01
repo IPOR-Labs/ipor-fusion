@@ -107,6 +107,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
             )
         );
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
             address(_plasmaVault),
             _createFuse(),
             _setupBalanceFuses(),

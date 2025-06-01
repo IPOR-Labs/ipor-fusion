@@ -119,13 +119,17 @@ contract PlasmaVaultErc20FusionTest is Test {
                 withdrawManager
             )
         );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
             address(plasmaVault),
             fuses,
             balanceFuses,
             marketConfigs
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
     }
 
     function testExchangeRateWhenSupplyIsZero() public {

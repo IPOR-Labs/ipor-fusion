@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
+import {console2} from "forge-std/console2.sol";
+import {Vm} from "forge-std/Test.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {MarketBalanceFuseConfig, MarketSubstratesConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
@@ -9,12 +11,16 @@ import {RecipientFee} from "../../contracts/managers/fee/FeeManager.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 
 library PlasmaVaultConfigurator {
+    
     function setupPlasmaVault(
+        Vm vm,
+        address msgSender,
         address plasmaVault,
         address[] memory fuses,
         MarketBalanceFuseConfig[] memory balanceFuses,
         MarketSubstratesConfig[] memory marketConfigs
     ) external {
+        vm.startPrank(msgSender);
         IPlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
 
         for (uint256 i = 0; i < balanceFuses.length; i++) {
@@ -27,13 +33,17 @@ library PlasmaVaultConfigurator {
                 marketConfigs[i].substrates
             );
         }
+        vm.stopPrank();
     }
 
     function setupRecipientFees(
+        Vm vm,
+        address msgSender,
         address plasmaVault,
         RecipientFee[] memory recipientManagementFees,
         RecipientFee[] memory recipientPerformanceFees
     ) external {
+        vm.startPrank(msgSender);
         PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
             plasmaVault
         ).getPerformanceFeeData();
@@ -42,5 +52,6 @@ library PlasmaVaultConfigurator {
 
         FeeManager(feeManager).updateManagementFee(recipientManagementFees);
         FeeManager(feeManager).updatePerformanceFee(recipientPerformanceFees);
+        vm.stopPrank();
     }
 }

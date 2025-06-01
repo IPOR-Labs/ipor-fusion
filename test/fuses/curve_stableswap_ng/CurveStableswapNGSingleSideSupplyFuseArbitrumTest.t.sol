@@ -122,14 +122,18 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 withdrawManager
             )
         );
+        
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
             address(plasmaVault),
             fuses,
             balanceFuses,
-            marketConfigs
+            marketConfigs  
         );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -208,14 +212,17 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 withdrawManager
             )
         );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
+            address(plasmaVault),
+            fuses,
+            balanceFuses,  
+            marketConfigs
+        );
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -283,14 +290,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
             address(plasmaVault),
             fuses,
-            balanceFuses,
+            balanceFuses,  
             marketConfigs
         );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         _supplyTokens(DAI, address(plasmaVault), 1_000 * 10 ** ERC20(DAI).decimals());
 
@@ -355,14 +364,17 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 withdrawManager
             )
         );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
+            address(plasmaVault),
+            fuses,
+            balanceFuses,  
+            marketConfigs
+        );
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -424,14 +436,17 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 withdrawManager
             )
         );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
             address(plasmaVault),
             fuses,
             balanceFuses,
             marketConfigs
         );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -496,14 +511,17 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 withdrawManager
             )
         );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
             address(plasmaVault),
             fuses,
             balanceFuses,
             marketConfigs
         );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -607,13 +625,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
             address(plasmaVault),
             fuses,
             balanceFuses,
             marketConfigs
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -711,13 +732,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
             address(plasmaVault),
             fuses,
             balanceFuses,
             marketConfigs
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -803,13 +827,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
             address(plasmaVault),
             fuses,
             balanceFuses,
             marketConfigs
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -896,13 +923,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
-        PlasmaVaultConfigurator.setupPlasmaVault(
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
             address(plasmaVault),
             fuses,
             balanceFuses,
             marketConfigs
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 

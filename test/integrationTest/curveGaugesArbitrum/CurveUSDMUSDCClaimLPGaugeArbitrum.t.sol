@@ -537,18 +537,22 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 withdrawManager: address(withdrawManager)
             })
         );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            address(instances.plasmaVault), 
-            fuses,
-            _setupBalanceFuses(),
-            _setupMarketConfigs()
-        );
+        
         RoleLib.setupPlasmaVaultRoles(
             usersToRoles,
             vm,
             address(instances.plasmaVault),
             instances.accessManager,
             withdrawManager
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            ATOMIST,
+            address(instances.plasmaVault),
+            fuses,
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
         );
     }
 

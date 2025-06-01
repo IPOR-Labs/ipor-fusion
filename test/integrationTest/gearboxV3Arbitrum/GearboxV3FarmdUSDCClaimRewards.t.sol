@@ -81,6 +81,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         );
 
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),

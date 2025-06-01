@@ -82,6 +82,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
         );
 
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),

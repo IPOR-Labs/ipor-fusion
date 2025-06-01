@@ -72,13 +72,16 @@ contract MorphoFlashLoanFuseTest is Test {
                 })
             )
         );
+        vm.stopPrank();
+
         PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
             address(_plasmaVault),
             _createFuse(),
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
-        vm.stopPrank();
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
