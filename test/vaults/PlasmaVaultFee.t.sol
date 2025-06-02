@@ -226,7 +226,7 @@ contract PlasmaVaultFeeTest is Test {
 
         assertEq(userOneBalanceOfAssets, 108496109);
         assertEq(userTwoBalanceOfAssets, 108496109);
-        assertEq(plasmaVault.balanceOf(performanceFeeManager), 89834000);
+        assertEq(plasmaVault.balanceOf(feeManager.PERFORMANCE_FEE_ACCOUNT()), 89834000);
     }
 
     function testShouldExitFromTwoMarketsAaveV3SupplyAndCompoundV3SupplyAndCalculatePerformanceFeeTimeIsNotChanged()
@@ -533,7 +533,7 @@ contract PlasmaVaultFeeTest is Test {
 
         assertEq(userOneBalanceOfAssets, 28791034, "userOneBalanceOfAssets");
         assertEq(userTwoBalanceOfAssets, 103791034, "userTwoBalanceOfAssets");
-        assertEq(plasmaVault.balanceOf(performanceFeeManager), 39985000, "daoBalanceOfAssets");
+        assertEq(plasmaVault.balanceOf(feeManager.PERFORMANCE_FEE_ACCOUNT()), 39985000, "daoBalanceOfAssets");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -1088,9 +1088,13 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
 
+        uint256 daoBalanceOfAssets = plasmaVault.balanceOf(
+            FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID)).PERFORMANCE_FEE_ACCOUNT()
+        );
+
         assertEq(userOneBalanceOfAssets, 32270080, "userOneBalanceOfAssets on plasma vault");
         assertEq(userTwoBalanceOfAssets, 107566934, "userTwoBalanceOfAssets on plasma vault");
-        assertApproxEqAbs(plasmaVault.balanceOf(address(feeManager)), 79970000, 1, "daoBalanceOfAssets aprox");
+        assertApproxEqAbs(daoBalanceOfAssets, 79970000, 1, "daoBalanceOfAssets aprox");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -1293,8 +1297,8 @@ contract PlasmaVaultFeeTest is Test {
 
         FeeManager feeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID));
         feeManager.initialize();
-        performanceFeeManager = address(feeManager);
-        managementFeeManager = address(feeManager);
+        performanceFeeManager = feeManager.PERFORMANCE_FEE_ACCOUNT();
+        managementFeeManager = feeManager.MANAGEMENT_FEE_ACCOUNT();
         //user one
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount + 5 * 1e6);
@@ -1401,8 +1405,8 @@ contract PlasmaVaultFeeTest is Test {
 
         FeeManager feeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID));
         feeManager.initialize();
-        performanceFeeManager = address(feeManager);
-        managementFeeManager = address(feeManager);
+        performanceFeeManager = feeManager.PERFORMANCE_FEE_ACCOUNT();
+        managementFeeManager = feeManager.MANAGEMENT_FEE_ACCOUNT();
 
         vm.warp(block.timestamp);
 
@@ -1716,8 +1720,8 @@ contract PlasmaVaultFeeTest is Test {
 
         FeeManager feeManager = FeeManager(PlasmaVaultGovernance(address(plasmaVault)).getManager(FEE_MANAGER_ID));
         feeManager.initialize();
-        performanceFeeManager = address(feeManager);
-        managementFeeManager = address(feeManager);
+        performanceFeeManager = feeManager.PERFORMANCE_FEE_ACCOUNT();
+        managementFeeManager = feeManager.MANAGEMENT_FEE_ACCOUNT();
 
         vm.warp(block.timestamp);
 

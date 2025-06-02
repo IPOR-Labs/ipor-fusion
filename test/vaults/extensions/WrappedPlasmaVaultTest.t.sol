@@ -4,7 +4,6 @@ pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {WrappedPlasmaVault} from "../../../contracts/vaults/extensions/WrappedPlasmaVault.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultStorageLib} from "../../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract WrappedPlasmaVaulttTest is Test {
@@ -688,7 +687,7 @@ contract WrappedPlasmaVaulttTest is Test {
         wPlasmaVault.configureManagementFee(expectedFeeAccount, expectedFeePercentage);
 
         // then
-        uint256 managementFee = wPlasmaVault.getManagementFee();
+        uint256 managementFee = wPlasmaVault.getManagementFeeData().feeInPercentage;
         assertEq(managementFee, expectedFeePercentage, "Fee percentage should be set to 2%");
     }
 

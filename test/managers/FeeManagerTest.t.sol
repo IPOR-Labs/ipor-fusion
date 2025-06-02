@@ -15,12 +15,8 @@ import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVa
 import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FeeManager, FeeManagerInitData} from "../../contracts/managers/fee/FeeManager.sol";
-import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
-
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
-
 import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {AaveV3SupplyFuse} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
@@ -30,7 +26,6 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
-import {console2} from "forge-std/console2.sol";
 
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
@@ -247,13 +242,13 @@ contract FeeManagerTest is Test {
             .MANAGEMENT_FEE_ACCOUNT();
         FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
 
+        feeManager.initialize();
+
         vm.warp(block.timestamp + 356 days);
         vm.startPrank(_USER);
         ERC20(_USDC).approve(_plasmaVault, 1_000e6);
         PlasmaVault(_plasmaVault).deposit(1_000e6, _USER);
         vm.stopPrank();
-
-        feeManager.initialize();
 
         uint256 balanceManagementAccountBefore = PlasmaVault(_plasmaVault).balanceOf(managementAccount);
         uint256 balanceFeeRecipientBefore = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
@@ -426,7 +421,6 @@ contract FeeManagerTest is Test {
         // given
         FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
         feeManager.initialize();
-        address performanceAccount = feeManager.PERFORMANCE_FEE_ACCOUNT();
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
 
@@ -444,7 +438,6 @@ contract FeeManagerTest is Test {
         // given
         FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
         feeManager.initialize();
-        address performanceAccount = feeManager.PERFORMANCE_FEE_ACCOUNT();
 
         uint256 performanceFeeBefore = feeManager.getTotalPerformanceFee();
 
@@ -609,7 +602,6 @@ contract FeeManagerTest is Test {
     function testShouldHarvestFeesWithMultipleRecipients() external {
         // given
         FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
-        address performanceAccount = feeManager.PERFORMANCE_FEE_ACCOUNT();
         feeManager.initialize();
         // Setup multiple recipient fees
         RecipientFee[] memory performanceFees = new RecipientFee[](2);
@@ -632,8 +624,6 @@ contract FeeManagerTest is Test {
             feeValue: 50 // 0.5%
         });
 
-        console2.log("balancePerformanceAccount", PlasmaVault(_plasmaVault).balanceOf(performanceAccount));
-
         // Update fees
         vm.startPrank(_ATOMIST);
         feeManager.updatePerformanceFee(performanceFees);
@@ -654,9 +644,6 @@ contract FeeManagerTest is Test {
         uint256 balanceRecipient2Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
         uint256 balanceDaoRecipientBefore = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
-        console2.log("performanceAccount", feeManager.PERFORMANCE_FEE_ACCOUNT());
-        console2.log("balancePerformanceAccount", PlasmaVault(_plasmaVault).balanceOf(performanceAccount));
-
         // when
         feeManager.harvestPerformanceFee();
         // feeManager.harvestManagementFee();
@@ -665,11 +652,6 @@ contract FeeManagerTest is Test {
         uint256 balanceRecipient1After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
         uint256 balanceRecipient2After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
         uint256 balanceDaoRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
-
-        console2.log("_FEE_RECIPIENT_1", PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1));
-        console2.log("_FEE_RECIPIENT_2", PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2));
-        console2.log("_DAO_FEE_RECIPIENT", PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT));
-        console2.log("sume:", balanceRecipient1After + balanceRecipient2After + balanceDaoRecipientAfter);
 
         assertEq(balanceRecipient1Before, 0, "recipient1 balance before should be 0");
         assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
@@ -699,7 +681,6 @@ contract FeeManagerTest is Test {
     function testShouldHarvestFeesWithZeroFeeRecipients() external {
         // given
         FeeManager feeManager = FeeManager(PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID));
-        address performanceAccount = feeManager.PERFORMANCE_FEE_ACCOUNT();
 
         // Setup recipients with zero fees
         RecipientFee[] memory performanceFees = new RecipientFee[](2);

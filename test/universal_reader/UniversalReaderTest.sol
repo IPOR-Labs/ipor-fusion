@@ -16,7 +16,6 @@ import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} fr
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 
 import {MorphoSupplyFuse} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
 import {MorphoCollateralFuse} from "../../contracts/fuses/morpho/MorphoCollateralFuse.sol";

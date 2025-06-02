@@ -8,10 +8,6 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {MarketSubstratesConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {FeeConfigHelper} from "./FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
-import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
-
-import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 struct DeployMinimalPlasmaVaultParams {
     address underlyingToken;
@@ -24,7 +20,6 @@ struct DeployMinimalPlasmaVaultParams {
 /// @notice Helper library for testing PlasmaVault operations
 /// @dev Contains utility functions to assist with PlasmaVault testing
 library PlasmaVaultHelper {
-    
     /// @notice Deploys a minimal PlasmaVault with basic configuration
     /// @param params Parameters for deployment
     /// @return plasmaVault Address of the deployed PlasmaVault

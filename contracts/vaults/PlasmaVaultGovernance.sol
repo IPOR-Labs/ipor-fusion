@@ -336,7 +336,6 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// Role Management:
     /// - ATOMIST_ROLE: Core governance operations
     /// - FUSE_MANAGER_ROLE: Protocol integration control
-    /// - TECH_MANAGEMENT_FEE_MANAGER_ROLE: Fee configuration
     /// - OWNER_ROLE: System administration
     ///
     /// Integration Context:

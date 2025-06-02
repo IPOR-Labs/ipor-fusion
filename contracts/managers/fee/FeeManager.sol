@@ -154,7 +154,7 @@ contract FeeManager is AccessManagedUpgradeable {
         /// @dev Plasma Vault fees are the sum of all recipients fees + DAO fee, respectively for performance and management fees.
         /// @dev Values stored in FeeManager have to be equal to the values stored in PlasmaVault
         FeeManagerStorageLib.setTotalFee(FeeType.PERFORMANCE, totalPerformanceFee);
-        FeeManagerStorageLib.setPlasmaVaultTotalManagementFee(totalManagementFee);
+        FeeManagerStorageLib.setTotalFee(FeeType.MANAGEMENT, totalManagementFee);
     }
 
     /// @notice Initializes the FeeManager contract by setting up fee account approvals

@@ -52,10 +52,6 @@ library Roles {
     /// @dev Managed by the Atomist
     uint64 public constant PRE_HOOKS_MANAGER_ROLE = 301;
 
-    /// @notice Technical role for the FeeManager contract's management fee operations
-    /// @dev System role that can only be assigned to FeeManager contract. Set during initialization and cannot be changed afterward
-    uint64 public constant TECH_MANAGEMENT_FEE_MANAGER_ROLE = 500;
-
     /// @notice Account with this role has rights to claim rewards from the PlasmaVault using and interacting with the RewardsClaimManager contract
     /// @dev Managed by the Atomist
     uint64 public constant CLAIM_REWARDS_ROLE = 600;

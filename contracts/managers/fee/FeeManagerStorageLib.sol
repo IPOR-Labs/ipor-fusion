@@ -136,7 +136,7 @@ library FeeManagerStorageLib {
     /// @notice Gets the total management fee percentage for the plasma vault
     /// @return Total management fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     function getPlasmaVaultTotalManagementFee() internal view returns (uint256) {
-        return _totalManagementFeeStorage().value;
+        return _totalFeeStorage().totalFees[FeeType.MANAGEMENT];
     }
 
     /// @notice Sets the total management fee percentage for the plasma vault

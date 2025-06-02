@@ -7,7 +7,6 @@ import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.s
 import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
 import {Roles} from "../contracts/libraries/Roles.sol";
 import {FeeManager} from "../contracts/managers/fee/FeeManager.sol";
-import {FeeAccount} from "../contracts/managers/fee/FeeAccount.sol";
 import {WithdrawManager} from "../contracts/managers/withdraw/WithdrawManager.sol";
 import {FEE_MANAGER_ID} from "../contracts/managers/ManagerIds.sol";
 struct UsersToRoles {
@@ -32,8 +31,6 @@ library RoleLib {
 
         vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(Roles.ALPHA_ROLE, Roles.ATOMIST_ROLE);
-        vm.prank(usersWithRoles.superAdmin);
-        accessManager.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
 
         vm.prank(usersWithRoles.superAdmin);
         accessManager.grantRole(Roles.ATOMIST_ROLE, usersWithRoles.atomist, 0);
@@ -47,15 +44,6 @@ library RoleLib {
         for (uint256 i; i < usersWithRoles.alphas.length; i++) {
             vm.prank(usersWithRoles.atomist);
             accessManager.grantRole(Roles.ALPHA_ROLE, usersWithRoles.alphas[i], 0);
-        }
-
-        for (uint256 i; i < usersWithRoles.managementFeeManagers.length; i++) {
-            vm.prank(usersWithRoles.atomist);
-            accessManager.grantRole(
-                Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE,
-                usersWithRoles.managementFeeManagers[i],
-                usersWithRoles.feeTimelock
-            );
         }
 
         return accessManager;
