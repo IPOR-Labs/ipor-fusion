@@ -49,6 +49,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
     address private _priceOracle;
     address private _accessManager;
     address private _withdrawManager;
+    SwapExecutorEth private _swapExecutorEth;
 
     UniversalTokenSwapperEthFuse private _universalTokenSwapperFuse;
 
@@ -352,7 +353,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
 
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
-        callDatas[1] = abi.encodeWithSignature("submitAndDeposit(address)", 0xF62849F9A0B5Bf2913b396098F7c7019b51A820a);
+        callDatas[1] = abi.encodeWithSignature("submitAndDeposit(address)", _swapExecutorEth);
 
         uint256[] memory ethAmounts = new uint256[](2);
         ethAmounts[0] = 0;
@@ -525,11 +526,11 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
     }
 
     function _setupFuses() private returns (address[] memory fuses_) {
-        SwapExecutorEth swapExecutor = new SwapExecutorEth(W_ETH);
+        _swapExecutorEth = new SwapExecutorEth(W_ETH);
 
         _universalTokenSwapperFuse = new UniversalTokenSwapperEthFuse(
             IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
-            address(swapExecutor),
+            address(_swapExecutorEth),
             1e18
         );
 
