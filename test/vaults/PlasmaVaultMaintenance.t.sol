@@ -543,8 +543,6 @@ contract PlasmaVaultMaintenanceTest is Test {
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
 
-        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
-
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
@@ -560,7 +558,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         // when
-        PlasmaVault plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, new MarketSubstratesConfig[](0), new MarketBalanceFuseConfig[](0), withdrawManager);
+        PlasmaVault plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, new MarketSubstratesConfig[](0), balanceFuses, withdrawManager);
         // then
         assertTrue(
             IPlasmaVaultGovernance(address(plasmaVault)).isBalanceFuseSupported(
@@ -1016,7 +1014,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, new address[](0), marketConfigs, balanceFuses, withdrawManager);
+        PlasmaVault plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         //when
         IPlasmaVaultGovernance(address(plasmaVault)).removeFuses(fuses);
@@ -1100,7 +1098,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, new address[](0), marketConfigs, balanceFuses, withdrawManager);
+        PlasmaVault plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, supplyFuses, marketConfigs, balanceFuses, withdrawManager);
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", address(0x777));
 

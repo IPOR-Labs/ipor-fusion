@@ -106,6 +106,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                 })
             )
         );
+        vm.stopPrank();
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
             _ATOMIST,
@@ -114,7 +115,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
-        vm.stopPrank();
+
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {

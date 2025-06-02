@@ -729,8 +729,25 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _createAccessManager();
         _createPlasmaVault();
         _createClaimRewardsManager();
-        _setupPlasmaVault();
+        
         _initAccessManager();
+        _setupPlasmaVault();
+        // RoleLib.setupPlasmaVaultRoles(
+        //     usersToRoles,
+        //     vm,
+        //     address(plasmaVault),
+        //     accessManager,
+        //     withdrawManager
+        // );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(atomist),
+            address(plasmaVault),
+            fuses,
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
+        );
     }
 
     function getMarketId() public view returns (uint256) {
@@ -819,7 +836,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
 
     function _setupPlasmaVault() private {
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
-        vm.startPrank(admin);
+
+        vm.startPrank(address(rewardsClaimManager));
         PlasmaVaultGovernance(address(plasmaVault)).setRewardsClaimManagerAddress(address(rewardsClaimManager));
 
         uint256[] memory marketIds = new uint256[](1);
@@ -864,14 +882,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 withdrawManager: address(withdrawManager)
             })
         );
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            vm,
-            address(this),
-            address(plasmaVault),
-            fuses,
-            _setupBalanceFuses(),
-            _setupMarketConfigs()
-        );
+
+        
     }
 
     function _initAccessManager() private {

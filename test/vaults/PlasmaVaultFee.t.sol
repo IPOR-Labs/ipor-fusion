@@ -1135,7 +1135,6 @@ contract PlasmaVaultFeeTest is Test {
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
@@ -1169,7 +1168,7 @@ contract PlasmaVaultFeeTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
         
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -1178,6 +1177,8 @@ contract PlasmaVaultFeeTest is Test {
             new RecipientFee[](0),
             recipientManagementFees
         );
+
+        PlasmaVaultConfigurator.setupRecipientFees(vm, atomist, address(plasmaVault), recipientManagementFees, new RecipientFee[](0));
 
         amount = 100 * 1e6;
 
@@ -1623,7 +1624,7 @@ contract PlasmaVaultFeeTest is Test {
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
+        
         alpha = address(0x1);
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
@@ -1633,7 +1634,9 @@ contract PlasmaVaultFeeTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, new address[](0), new MarketSubstratesConfig[](0), new MarketBalanceFuseConfig[](0), withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, new address[](0), new MarketSubstratesConfig[](0), new MarketBalanceFuseConfig[](0), withdrawManager);
+
+        PlasmaVaultConfigurator.setupRecipientFees(vm, atomist, address(plasmaVault), recipientManagementFees, new RecipientFee[](0));
 
         amount = 10_000 * 1e6;
 

@@ -101,6 +101,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
                 )
             )
         );
+
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
             address(this),
@@ -109,6 +110,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
+        
         _setupRoles();
     }
 

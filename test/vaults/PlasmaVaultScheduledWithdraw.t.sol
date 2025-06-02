@@ -62,15 +62,16 @@ contract PlasmaVaultScheduledWithdraw is Test {
                 })
             )
         );
+        vm.stopPrank();
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
-            address(this),
+            _ATOMIST,
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
-        vm.stopPrank();
+        
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {

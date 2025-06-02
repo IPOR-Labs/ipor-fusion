@@ -89,6 +89,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     address public constant DEPOSITOR = address(0x2);
     address public constant ATOMIST = address(0x3);
     address[] public alphas;
+    address public withdrawManager;
 
     /// Events
     event CurveGaugeTokenClaimFuseRewardsClaimed(
@@ -432,6 +433,25 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         _createClaimFuse();
         _addClaimFuseToClaimRewardsManager();
         _initAccessManager();
+
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            address(instances.plasmaVault),
+            instances.accessManager,
+            withdrawManager
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(instances.plasmaVault),
+            fuses,
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
+        );
+
+    
     }
 
     function _setupAddresses() private {
@@ -524,7 +544,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _createPlasmaVault() private {
-        address withdrawManager = address(new WithdrawManager(address(instances.accessManager)));
+        withdrawManager = address(new WithdrawManager(address(instances.accessManager)));
         instances.plasmaVault = new PlasmaVault(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",
@@ -538,22 +558,6 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             })
         );
         
-        RoleLib.setupPlasmaVaultRoles(
-            usersToRoles,
-            vm,
-            address(instances.plasmaVault),
-            instances.accessManager,
-            withdrawManager
-        );
-
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            vm,
-            ATOMIST,
-            address(instances.plasmaVault),
-            fuses,
-            _setupBalanceFuses(),
-            _setupMarketConfigs()
-        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {

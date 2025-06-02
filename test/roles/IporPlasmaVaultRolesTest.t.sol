@@ -668,7 +668,7 @@ contract IporPlasmaVaultRolesTest is Test {
 
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
-            address(this),
+            _deployer,
             address(_plasmaVault),
             fuses,
             balanceFuses,

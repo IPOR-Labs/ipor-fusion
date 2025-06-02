@@ -307,7 +307,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
@@ -335,7 +334,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -395,7 +394,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -426,7 +424,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         IPlasmaVaultGovernance(address(plasmaVault)).setTotalSupplyCap(sharesAmount);
 
@@ -488,7 +486,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
@@ -523,7 +520,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -594,7 +591,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
@@ -622,7 +618,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -674,7 +670,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
@@ -709,7 +704,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -788,7 +783,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
@@ -824,7 +818,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -933,7 +927,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
@@ -969,7 +962,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
         sharesAmount = 100 * 10 ** plasmaVault.decimals();
@@ -1071,7 +1064,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
@@ -1106,7 +1098,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1207,7 +1199,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
@@ -1235,7 +1226,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1304,7 +1295,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
@@ -1333,7 +1323,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1410,7 +1400,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
@@ -1447,7 +1436,7 @@ contract PlasmaVaultWithdrawTest is Test {
         PlasmaVaultBase plasmaVaultBase = new PlasmaVaultBase();
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1549,7 +1538,6 @@ contract PlasmaVaultWithdrawTest is Test {
     function _preparePlasmaVaultUsdc() public returns (PlasmaVault) {
         string memory assetName = "IPOR Fusion USDC";
         string memory assetSymbol = "ipfUSDC";
-        address underlyingToken = USDC;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1583,14 +1571,13 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
         return plasmaVault;
     }
 
     function _preparePlasmaVaultDai(uint256 redemptionDelay) public returns (PlasmaVault) {
         string memory assetName = "IPOR Fusion DAI";
         string memory assetSymbol = "ipfDAI";
-        address underlyingToken = DAI;
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 
@@ -1615,7 +1602,7 @@ contract PlasmaVaultWithdrawTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(DAI, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         return plasmaVault;
     }
@@ -1819,7 +1806,6 @@ contract PlasmaVaultWithdrawTest is Test {
         // given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
@@ -1847,7 +1833,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 10 minutes);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -1928,7 +1914,6 @@ contract PlasmaVaultWithdrawTest is Test {
         // given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        underlyingToken = USDC;
         alpha = address(0x1);
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
@@ -1956,7 +1941,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 10 minutes);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -2034,6 +2019,7 @@ contract PlasmaVaultWithdrawTest is Test {
     }
 
     function _setupPlasmaVault(
+        address underlyingToken_,
         IporFusionAccessManager accessManager, 
         address[] memory initialSupplyFuses, 
         MarketSubstratesConfig[] memory marketConfigs, 
@@ -2043,7 +2029,7 @@ contract PlasmaVaultWithdrawTest is Test {
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
-                underlyingToken,
+                underlyingToken_,
                 address(priceOracleMiddlewareProxy),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),

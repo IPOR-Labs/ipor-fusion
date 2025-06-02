@@ -30,6 +30,7 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
@@ -91,8 +92,16 @@ contract FeeManagerTest is Test {
             )
         );
 
+         PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
+            _plasmaVault
+        ).getPerformanceFeeData();
 
-         RecipientFee[] memory performanceRecipientFees = new RecipientFee[](1);
+        address feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
+
+        FeeManager(feeManager).initialize();
+
+
+        RecipientFee[] memory performanceRecipientFees = new RecipientFee[](1);
         performanceRecipientFees[0] = RecipientFee({
             recipient: _FEE_RECIPIENT_1,
             feeValue: PERFORMANCE_FEE_IN_PERCENTAGE
