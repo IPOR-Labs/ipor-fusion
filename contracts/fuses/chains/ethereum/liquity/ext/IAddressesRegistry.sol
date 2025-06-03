@@ -6,6 +6,7 @@ import {IBorrowerOperations} from "./IBorrowerOperations.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {IActivePool} from "./IActivePool.sol";
 import {ITroveManager} from "./ITroveManager.sol";
+import {IStabilityPool} from "./IStabilityPool.sol";
 
 interface IAddressesRegistry {
     struct AddressVars {
@@ -27,6 +28,8 @@ interface IAddressesRegistry {
     function boldToken() external view returns (address);
 
     function collToken() external view returns (IERC20Metadata);
+
+    function stabilityPool() external view returns (IStabilityPool);
 
     function priceFeed() external view returns (IPriceFeed);
 
