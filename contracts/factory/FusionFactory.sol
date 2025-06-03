@@ -43,6 +43,7 @@ contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     event RedemptionDelayInSecondsUpdated(uint256 newRedemptionDelayInSeconds);
     event WithdrawWindowInSecondsUpdated(uint256 newWithdrawWindowInSeconds);
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);
+    event PlasmaVaultAdminUpdated(address newPlasmaVaultAdmin);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -73,6 +74,12 @@ contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
         address owner_
     ) external returns (FusionFactoryLib.FusionInstance memory) {
         return FusionFactoryLib.create(assetName_, assetSymbol_, underlyingToken_, owner_);
+    }
+
+    function updatePlasmaVaultAdmin(address newPlasmaVaultAdmin_) external onlyOwner {
+        if (newPlasmaVaultAdmin_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        FusionFactoryStorageLib.getPlasmaVaultAdminSlot().value = newPlasmaVaultAdmin_;
+        emit PlasmaVaultAdminUpdated(newPlasmaVaultAdmin_);
     }
 
     function updateFactoryAddresses(FusionFactoryLib.FactoryAddresses memory newFactoryAddresses_) external onlyOwner {
@@ -153,6 +160,10 @@ contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     function updateVestingPeriodInSeconds(uint256 newVestingPeriodInSeconds_) external onlyOwner {
         FusionFactoryStorageLib.getVestingPeriodInSecondsSlot().value = newVestingPeriodInSeconds_;
         emit VestingPeriodInSecondsUpdated(newVestingPeriodInSeconds_);
+    }
+
+    function getPlasmaVaultAdmin() external view returns (address) {
+        return FusionFactoryStorageLib.getPlasmaVaultAdminSlot().value;
     }
 
     function getFactoryAddresses() external view returns (FusionFactoryLib.FactoryAddresses memory) {

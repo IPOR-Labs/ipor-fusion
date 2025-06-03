@@ -25,6 +25,8 @@ pragma solidity 0.8.26;
  * @custom:security-contact security@ipor.io
  */
 library FusionFactoryStorageLib {
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultAdmin")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant PLASMA_VAULT_ADMIN = 0x0cdfe85e964d1d8957bc2878d4fd994b05803238ec65e8f779a951372893a200;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultFactoryAddress")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PLASMA_VAULT_FACTORY_ADDRESS =
@@ -94,6 +96,12 @@ library FusionFactoryStorageLib {
 
     struct Uint256Type {
         uint256 value;
+    }
+
+    function getPlasmaVaultAdminSlot() internal pure returns (AddressType storage $) {
+        assembly {
+            $.slot := PLASMA_VAULT_ADMIN
+        }
     }
 
     function getPlasmaVaultFactoryAddressSlot() internal pure returns (AddressType storage $) {

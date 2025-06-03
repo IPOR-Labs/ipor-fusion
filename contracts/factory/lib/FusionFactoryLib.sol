@@ -204,8 +204,14 @@ library FusionFactoryLib {
 
         DataForInitialization memory accessData;
         accessData.isPublic = false;
+
+        accessData.admins = new address[](1);
+        accessData.admins[0] = getPlasmaVaultAdmin();
+
         accessData.owners = new address[](1);
         accessData.owners[0] = owner_;
+
+        
 
         IporFusionAccessManager(fusionAddresses.accessManager).initialize(
             IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
@@ -225,6 +231,10 @@ library FusionFactoryLib {
                 contextManagerFactory: FusionFactoryStorageLib.getContextManagerFactoryAddressSlot().value,
                 priceManagerFactory: FusionFactoryStorageLib.getPriceManagerFactoryAddressSlot().value
             });
+    }
+
+    function getPlasmaVaultAdmin() internal view returns (address) {
+        return FusionFactoryStorageLib.getPlasmaVaultAdminSlot().value;
     }
 
     function getPlasmaVaultBaseAddress() internal view returns (address) {

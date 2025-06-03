@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {console2} from "forge-std/console2.sol";
 import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
 import {RewardsManagerFactory} from "../../contracts/factory/RewardsManagerFactory.sol";
@@ -18,6 +19,14 @@ import {BurnRequestFeeFuse} from "../../contracts/fuses/burn_request_fee/BurnReq
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
+
+
+import {Roles} from "../../contracts/libraries/Roles.sol";
 
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
@@ -288,5 +297,180 @@ contract FusionFactoryTest is Test {
         fusionFactory.updateVestingPeriodInSeconds(0);
     }
 
-    
+    function testShouldUpdatePlasmaVaultAdmin() public {
+        // given
+        address newPlasmaVaultAdmin = address(0x1000);
+
+        // when
+        fusionFactory.updatePlasmaVaultAdmin(newPlasmaVaultAdmin);
+
+        // then
+        assertEq(fusionFactory.getPlasmaVaultAdmin(), newPlasmaVaultAdmin);
+    }
+
+    function testShouldCreateVaultWithCorrectAdmin() public {
+        // given
+        address plasmaVaultAdmin = address(0x1000);
+        fusionFactory.updatePlasmaVaultAdmin(plasmaVaultAdmin);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+        (bool hasRole, uint32 delay) = accessManager.hasRole(Roles.ADMIN_ROLE, plasmaVaultAdmin);
+        assertTrue(hasRole);
+        assertEq(delay, 0);
+    }
+
+    function testShouldCreateVaultWithCorrectIporDaoFees() public {
+        // given
+        address iporDaoFeeRecipient = address(0x999);
+        uint256 iporDaoManagementFee = 100;
+        uint256 iporDaoPerformanceFee = 200;
+        fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, iporDaoManagementFee, iporDaoPerformanceFee);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        assertEq(fusionFactory.getIporDaoFeeRecipientAddress(), iporDaoFeeRecipient);
+        assertEq(fusionFactory.getIporDaoManagementFee(), iporDaoManagementFee);
+        assertEq(fusionFactory.getIporDaoPerformanceFee(), iporDaoPerformanceFee);
+    }
+
+
+    function testShouldCreateVaultWithCorrectRedemptionDelay() public {
+        // given
+        uint256 redemptionDelay = 123;
+        fusionFactory.updateRedemptionDelayInSeconds(redemptionDelay);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+    }
+
+    function testShouldCreateVaultWithCorrectWithdrawWindow() public {
+        // given
+        uint256 withdrawWindow = 123;
+        fusionFactory.updateWithdrawWindowInSeconds(withdrawWindow);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset", 
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        WithdrawManager withdrawManager = WithdrawManager(instance.withdrawManager);
+        assertEq(withdrawManager.getWithdrawWindow(), withdrawWindow);
+    }
+
+    function testShouldCreateVaultWithCorrectVestingPeriod() public {
+        // given
+        uint256 vestingPeriod = 123;
+        fusionFactory.updateVestingPeriodInSeconds(vestingPeriod);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset", 
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        RewardsClaimManager rewardsClaimManager = RewardsClaimManager(instance.rewardsManager);
+        assertEq(rewardsClaimManager.getVestingData().vestingTime, vestingPeriod);
+    }
+
+    function testShouldCreateVaultWithCorrectPlasmaVaultBase() public {
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset", 
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        PlasmaVault plasmaVault = PlasmaVault(instance.plasmaVault);
+        assertEq(plasmaVault.PLASMA_VAULT_BASE(), plasmaVaultBase);
+    }
+
+    function testShouldCreateVaultWithCorrectPlasmaVaultOnWithdrawManager() public {
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset", 
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        WithdrawManager withdrawManager = WithdrawManager(instance.withdrawManager);
+        assertEq(withdrawManager.getPlasmaVaultAddress(), instance.plasmaVault);
+    }
+
+    function testShouldCreateVaultWithCorrectRewardsClaimManager() public {
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset", 
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        PlasmaVaultGovernance governanceVault = PlasmaVaultGovernance(instance.plasmaVault);
+        assertEq(governanceVault.getRewardsClaimManagerAddress(), instance.rewardsManager);
+    }
+
+    function testShouldCreateVaultWithCorrectBurnRequestFeeFuse() public {
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset", 
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        PlasmaVaultGovernance governanceVault = PlasmaVaultGovernance(instance.plasmaVault);
+
+
+        assertEq(governanceVault.isBalanceFuseSupported(IporFusionMarkets.ZERO_BALANCE_MARKET, burnRequestFeeBalanceFuse), true);
+
+        address[] memory fuses = governanceVault.getFuses();
+
+        for (uint256 i = 0; i < fuses.length; i++) {
+            if (fuses[i] == burnRequestFeeFuse) {
+                return;
+            }
+        }
+
+        fail();
+    }
+
 }
