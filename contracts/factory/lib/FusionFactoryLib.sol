@@ -38,7 +38,7 @@ library FusionFactoryLib {
     error InvalidOwner();
     error InvalidRedemptionDelay();
     error InvalidWithdrawWindow();
-    error InvalidVestingPeriod();
+    error InvalidIporDaoFeeRecipient();
 
     struct FusionInstance {
         string assetName;
@@ -85,6 +85,13 @@ library FusionFactoryLib {
         if (burnRequestFeeFuse_ == address(0)) revert InvalidAddress();
         if (burnRequestFeeBalanceFuse_ == address(0)) revert InvalidAddress();
 
+        /// @dev default redemption delay is 1 seconds
+        FusionFactoryStorageLib.getRedemptionDelayInSecondsSlot().value = 1 seconds;
+        /// @dev default vesting period is 1 weeks
+        FusionFactoryStorageLib.getVestingPeriodInSecondsSlot().value = 1 weeks;
+        /// @dev default withdraw window is 24 hours
+        FusionFactoryStorageLib.getWithdrawWindowInSecondsSlot().value = 24 hours;
+
         FusionFactoryStorageLib.getPlasmaVaultFactoryAddressSlot().value = factoryAddresses_.plasmaVaultFactory;
         FusionFactoryStorageLib.getAccessManagerFactoryAddressSlot().value = factoryAddresses_.accessManagerFactory;
         FusionFactoryStorageLib.getFeeManagerFactoryAddressSlot().value = factoryAddresses_.feeManagerFactory;
@@ -128,6 +135,12 @@ library FusionFactoryLib {
             FusionFactoryStorageLib.getPriceManagerFactoryAddressSlot().value
         ).create(fusionAddresses.accessManager, getPriceOracleMiddleware());
 
+        address iporDaoFeeRecipientAddress = getIporDaoFeeRecipientAddress();
+
+        if (iporDaoFeeRecipientAddress == address(0)) {
+            revert InvalidAddress();
+        }
+
         fusionAddresses.plasmaVault = PlasmaVaultFactory(
             FusionFactoryStorageLib.getPlasmaVaultFactoryAddressSlot().value
         ).create(
@@ -140,7 +153,7 @@ library FusionFactoryLib {
                         feeFactory: FusionFactoryStorageLib.getFeeManagerFactoryAddressSlot().value,
                         iporDaoManagementFee: getIporDaoManagementFee(),
                         iporDaoPerformanceFee: getIporDaoPerformanceFee(),
-                        iporDaoFeeRecipientAddress: getIporDaoFeeRecipientAddress()
+                        iporDaoFeeRecipientAddress: iporDaoFeeRecipientAddress
                     }),
                     accessManager: fusionAddresses.accessManager,
                     plasmaVaultBase: fusionAddresses.plasmaVaultBase,

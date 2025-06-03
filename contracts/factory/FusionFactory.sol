@@ -151,7 +151,6 @@ contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     }
 
     function updateVestingPeriodInSeconds(uint256 newVestingPeriodInSeconds_) external onlyOwner {
-        if (newVestingPeriodInSeconds_ == 0) revert FusionFactoryLib.InvalidVestingPeriod();
         FusionFactoryStorageLib.getVestingPeriodInSecondsSlot().value = newVestingPeriodInSeconds_;
         emit VestingPeriodInSecondsUpdated(newVestingPeriodInSeconds_);
     }
