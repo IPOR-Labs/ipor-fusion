@@ -36,6 +36,7 @@ library FusionFactoryLib {
     error InvalidAssetSymbol();
     error InvalidUnderlyingToken();
     error InvalidOwner();
+    error InvalidPlasmaVaultAdmin();
     error InvalidRedemptionDelay();
     error InvalidWithdrawWindow();
     error InvalidIporDaoFeeRecipient();
@@ -207,6 +208,10 @@ library FusionFactoryLib {
 
         accessData.admins = new address[](1);
         accessData.admins[0] = getPlasmaVaultAdmin();
+
+        if (accessData.admins[0] == address(0)) {
+            revert InvalidPlasmaVaultAdmin();
+        }
 
         accessData.owners = new address[](1);
         accessData.owners[0] = owner_;

@@ -37,6 +37,7 @@ contract FusionFactoryTest is Test {
     address public burnRequestFeeFuse;
     address public burnRequestFeeBalanceFuse;
     MockERC20 public underlyingToken;
+    address public admin;
     address public owner;
     address public iporDaoFeeRecipient;
 
@@ -57,6 +58,7 @@ contract FusionFactoryTest is Test {
 
         owner = address(0x777);
         iporDaoFeeRecipient = address(0x888);
+        admin = address(0x999);
 
         plasmaVaultBase = address(new PlasmaVaultBase());
         burnRequestFeeFuse = address(new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
@@ -80,6 +82,7 @@ contract FusionFactoryTest is Test {
         fusionFactory = FusionFactory(address(new ERC1967Proxy(address(fusionFactoryImplementation), initData)));
 
         fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, 100, 100);
+        fusionFactory.updatePlasmaVaultAdmin(admin);
     }
 
     function testShouldCreateFusionInstance() public {
