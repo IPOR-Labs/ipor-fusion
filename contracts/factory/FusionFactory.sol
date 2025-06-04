@@ -44,6 +44,9 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
     ) external initializer {
         __FusionFactoryAccessControl_init();
         __UUPSUpgradeable_init();
+
+        if (initialFactoryAdmin_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+
         _grantRole(DEFAULT_ADMIN_ROLE, initialFactoryAdmin_);
 
         FusionFactoryLib.initialize(
@@ -77,11 +80,25 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         address[] memory newPlasmaVaultAdminArray_
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newPlasmaVaultAdminArray_.length == 0) revert FusionFactoryLib.InvalidAddress();
-        for (uint256 i = 0; i < newPlasmaVaultAdminArray_.length; i++) {
+        for (uint256 i; i < newPlasmaVaultAdminArray_.length; i++) {
             if (newPlasmaVaultAdminArray_[i] == address(0)) revert FusionFactoryLib.InvalidAddress();
         }
         FusionFactoryStorageLib.setPlasmaVaultAdminArray(newPlasmaVaultAdminArray_);
         emit PlasmaVaultAdminArrayUpdated(newPlasmaVaultAdminArray_);
+    }
+
+    function updateIporDaoFee(
+        address newIporDaoFeeRecipient_,
+        uint256 newIporDaoManagementFee_,
+        uint256 newIporDaoPerformanceFee_
+    ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
+        if (newIporDaoFeeRecipient_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newIporDaoManagementFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
+        if (newIporDaoPerformanceFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
+        FusionFactoryStorageLib.setIporDaoFeeRecipientAddress(newIporDaoFeeRecipient_);
+        FusionFactoryStorageLib.setIporDaoManagementFee(newIporDaoManagementFee_);
+        FusionFactoryStorageLib.setIporDaoPerformanceFee(newIporDaoPerformanceFee_);
+        emit IporDaoFeeUpdated(newIporDaoFeeRecipient_, newIporDaoManagementFee_, newIporDaoPerformanceFee_);
     }
 
     function updateFactoryAddresses(
@@ -134,20 +151,6 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         if (newBurnRequestFeeBalanceFuse_ == address(0)) revert FusionFactoryLib.InvalidAddress();
         FusionFactoryStorageLib.setBurnRequestFeeBalanceFuseAddress(newBurnRequestFeeBalanceFuse_);
         emit BurnRequestFeeBalanceFuseUpdated(newBurnRequestFeeBalanceFuse_);
-    }
-
-    function updateIporDaoFee(
-        address newIporDaoFeeRecipient_,
-        uint256 newIporDaoManagementFee_,
-        uint256 newIporDaoPerformanceFee_
-    ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
-        if (newIporDaoFeeRecipient_ == address(0)) revert FusionFactoryLib.InvalidAddress();
-        if (newIporDaoManagementFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
-        if (newIporDaoPerformanceFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
-        FusionFactoryStorageLib.setIporDaoFeeRecipientAddress(newIporDaoFeeRecipient_);
-        FusionFactoryStorageLib.setIporDaoManagementFee(newIporDaoManagementFee_);
-        FusionFactoryStorageLib.setIporDaoPerformanceFee(newIporDaoPerformanceFee_);
-        emit IporDaoFeeUpdated(newIporDaoFeeRecipient_, newIporDaoManagementFee_, newIporDaoPerformanceFee_);
     }
 
     function updateRedemptionDelayInSeconds(

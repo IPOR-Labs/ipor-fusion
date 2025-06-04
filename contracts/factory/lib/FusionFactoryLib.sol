@@ -27,6 +27,8 @@ import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
  * @dev This library contains the core functionality for initializing and creating Fusion instances
  */
 library FusionFactoryLib {
+    event FusionInstanceCreated(uint256 index, FusionInstance fusionInstance);
+
     error InvalidFactoryAddress();
     error InvalidFeeValue();
     error InvalidAddress();
@@ -64,6 +66,13 @@ library FusionFactoryLib {
         address burnRequestFeeFuse_,
         address burnRequestFeeBalanceFuse_
     ) internal {
+        if (initialPlasmaVaultAdminArray_.length > 0) {
+            for (uint256 i = 0; i < initialPlasmaVaultAdminArray_.length; i++) {
+                if (initialPlasmaVaultAdminArray_[i] == address(0)) revert InvalidAddress();
+            }
+            FusionFactoryStorageLib.setPlasmaVaultAdminArray(initialPlasmaVaultAdminArray_);
+        }
+
         if (factoryAddresses_.accessManagerFactory == address(0)) revert InvalidFactoryAddress();
         if (factoryAddresses_.plasmaVaultFactory == address(0)) revert InvalidFactoryAddress();
         if (factoryAddresses_.feeManagerFactory == address(0)) revert InvalidFactoryAddress();
@@ -77,12 +86,6 @@ library FusionFactoryLib {
         if (burnRequestFeeFuse_ == address(0)) revert InvalidAddress();
         if (burnRequestFeeBalanceFuse_ == address(0)) revert InvalidAddress();
 
-        if (initialPlasmaVaultAdminArray_.length > 0) {
-            for (uint256 i = 0; i < initialPlasmaVaultAdminArray_.length; i++) {
-                if (initialPlasmaVaultAdminArray_[i] == address(0)) revert InvalidAddress();
-            }
-            FusionFactoryStorageLib.setPlasmaVaultAdminArray(initialPlasmaVaultAdminArray_);
-        }
 
         /// @dev default redemption delay is 1 seconds
         FusionFactoryStorageLib.setRedemptionDelayInSeconds(1 seconds);
@@ -227,6 +230,8 @@ library FusionFactoryLib {
         IporFusionAccessManager(fusionAddresses.accessManager).initialize(
             IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
         );
+
+        emit FusionInstanceCreated(fusionFactoryIndex, fusionAddresses);
 
         return fusionAddresses;
     }

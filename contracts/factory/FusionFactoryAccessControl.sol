@@ -6,12 +6,14 @@ import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgrad
 abstract contract FusionFactoryAccessControl is AccessControlEnumerableUpgradeable {
     /// @notice Role for maintenance manager
     /// @dev Protects:
-    /// - updateVestingPeriodInSeconds()
-    /// - updateWithdrawWindowInSeconds()
-    /// - updateRedemptionDelayInSeconds()
-    /// - updateIporDaoFee()
+    /// - updateFactoryAddresses()
     /// - updatePlasmaVaultBase()
-
+    /// - updatePriceOracleMiddleware()
+    /// - updateBurnRequestFeeFuse()
+    /// - updateBurnRequestFeeBalanceFuse()
+    /// - updateRedemptionDelayInSeconds()
+    /// - updateWithdrawWindowInSeconds()
+    /// - updateVestingPeriodInSeconds()
     /// @dev 0xc92702f3c63b30841ab26169cbd31cea991bdf14238d5ef7a0d75d105d494d30
     bytes32 public constant MAINTENANCE_MANAGER_ROLE = keccak256("MAINTENANCE_MANAGER_ROLE");
 
