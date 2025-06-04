@@ -576,15 +576,12 @@ contract PlasmaVaultMaintenanceTest is Test {
         bytes32[] memory assets = new bytes32[](1);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
 
-        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
-
         AaveV3BalanceFuse balanceFuse = new AaveV3BalanceFuse(
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
 
         address[] memory fuses = new address[](0);
-        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
 
         UsersToRoles memory usersToRoles;
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);

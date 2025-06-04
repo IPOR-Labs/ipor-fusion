@@ -1,36 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {RewardsManagerFactory} from "./RewardsManagerFactory.sol";
-import {WithdrawManagerFactory} from "./WithdrawManagerFactory.sol";
-import {ContextManagerFactory} from "./ContextManagerFactory.sol";
-import {PriceManagerFactory} from "./PriceManagerFactory.sol";
-import {PlasmaVaultFactory} from "./PlasmaVaultFactory.sol";
-import {AccessManagerFactory} from "./AccessManagerFactory.sol";
+
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import {FeeConfig} from "../managers/fee/FeeManagerFactory.sol";
-import {DataForInitialization} from "../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {PlasmaVaultInitData} from "../vaults/PlasmaVault.sol";
-import {IporFusionAccessManagerInitializerLibV1} from "../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManager.sol";
-import {FeeManager} from "../managers/fee/FeeManager.sol";
 import {FusionFactoryStorageLib} from "./lib/FusionFactoryStorageLib.sol";
 
-import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
-import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
-import {FeeAccount} from "../managers/fee/FeeAccount.sol";
-import {IRewardsClaimManager} from "../interfaces/IRewardsClaimManager.sol";
-import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
-import {IporFusionMarkets} from "../libraries/IporFusionMarkets.sol";
 import {FusionFactoryLib} from "./lib/FusionFactoryLib.sol";
+
+import {FusionFactoryAccessControl} from "./FusionFactoryAccessControl.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /// @title FusionFactory
 /// @notice Factory contract for creating and managing Fusion Managers
 /// @dev This contract is responsible for deploying and initializing various manager contracts
-contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
-    event FactoryAddressesUpdated(FusionFactoryLib.FactoryAddresses newFactoryAddresses);
+contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAccessControl {
+    event FactoryAddressesUpdated(FusionFactoryStorageLib.FactoryAddresses newFactoryAddresses);
     event PlasmaVaultBaseUpdated(address newPlasmaVaultBase);
     event PriceOracleMiddlewareUpdated(address newPriceOracleMiddleware);
     event BurnRequestFeeFuseUpdated(address newBurnRequestFeeFuse);
@@ -43,7 +27,15 @@ contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     event RedemptionDelayInSecondsUpdated(uint256 newRedemptionDelayInSeconds);
     event WithdrawWindowInSecondsUpdated(uint256 newWithdrawWindowInSeconds);
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);
-    event PlasmaVaultAdminUpdated(address newPlasmaVaultAdmin);
+    event PlasmaVaultAdminArrayUpdated(address[] newPlasmaVaultAdminArray);
+
+    error InvalidVestingPeriod();
+    error InvalidWithdrawWindow();
+    error InvalidRedemptionDelay();
+    error InvalidIporDaoFeeRecipient();
+    error InvalidIporDaoManagementFee();
+    error InvalidIporDaoPerformanceFee();
+    error InvalidFactoryAddress();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -51,14 +43,20 @@ contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     }
 
     function initialize(
-        FusionFactoryLib.FactoryAddresses memory factoryAddresses_,
+        address initialFactoryAdmin_,
+        address[] memory initialPlasmaVaultAdminArray_,
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses_,
         address plasmaVaultBase_,
         address priceOracleMiddleware_,
         address burnRequestFeeFuse_,
         address burnRequestFeeBalanceFuse_
     ) external initializer {
-        __Ownable_init(msg.sender);
+        __FusionFactoryAccessControl_init();
+        __UUPSUpgradeable_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, initialFactoryAdmin_);
+
         FusionFactoryLib.initialize(
+            initialPlasmaVaultAdminArray_,
             factoryAddresses_,
             plasmaVaultBase_,
             priceOracleMiddleware_,
@@ -76,13 +74,24 @@ contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
         return FusionFactoryLib.create(assetName_, assetSymbol_, underlyingToken_, owner_);
     }
 
-    function updatePlasmaVaultAdmin(address newPlasmaVaultAdmin_) external onlyOwner {
-        if (newPlasmaVaultAdmin_ == address(0)) revert FusionFactoryLib.InvalidAddress();
-        FusionFactoryStorageLib.getPlasmaVaultAdminSlot().value = newPlasmaVaultAdmin_;
-        emit PlasmaVaultAdminUpdated(newPlasmaVaultAdmin_);
+    function pause() external onlyRole(PAUSE_MANAGER_ROLE) {
+        _pause();
     }
 
-    function updateFactoryAddresses(FusionFactoryLib.FactoryAddresses memory newFactoryAddresses_) external onlyOwner {
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
+
+    function updatePlasmaVaultAdminArray(address[] memory newPlasmaVaultAdminArray_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newPlasmaVaultAdminArray_.length == 0) revert FusionFactoryLib.InvalidAddress();
+        for (uint256 i = 0; i < newPlasmaVaultAdminArray_.length; i++) {
+            if (newPlasmaVaultAdminArray_[i] == address(0)) revert FusionFactoryLib.InvalidAddress();
+        }
+        FusionFactoryStorageLib.setPlasmaVaultAdminArray(newPlasmaVaultAdminArray_);
+        emit PlasmaVaultAdminArrayUpdated(newPlasmaVaultAdminArray_);
+    }
+
+    function updateFactoryAddresses(FusionFactoryStorageLib.FactoryAddresses memory newFactoryAddresses_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newFactoryAddresses_.accessManagerFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
         if (newFactoryAddresses_.plasmaVaultFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
         if (newFactoryAddresses_.feeManagerFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
@@ -91,43 +100,40 @@ contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
         if (newFactoryAddresses_.contextManagerFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
         if (newFactoryAddresses_.priceManagerFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
 
-        FusionFactoryStorageLib.getPlasmaVaultFactoryAddressSlot().value = newFactoryAddresses_.plasmaVaultFactory;
-        FusionFactoryStorageLib.getAccessManagerFactoryAddressSlot().value = newFactoryAddresses_.accessManagerFactory;
-        FusionFactoryStorageLib.getFeeManagerFactoryAddressSlot().value = newFactoryAddresses_.feeManagerFactory;
-        FusionFactoryStorageLib.getWithdrawManagerFactoryAddressSlot().value = newFactoryAddresses_
-            .withdrawManagerFactory;
-        FusionFactoryStorageLib.getRewardsManagerFactoryAddressSlot().value = newFactoryAddresses_
-            .rewardsManagerFactory;
-        FusionFactoryStorageLib.getContextManagerFactoryAddressSlot().value = newFactoryAddresses_
-            .contextManagerFactory;
-        FusionFactoryStorageLib.getPriceManagerFactoryAddressSlot().value = newFactoryAddresses_.priceManagerFactory;
+        FusionFactoryStorageLib.setPlasmaVaultFactoryAddress(newFactoryAddresses_.plasmaVaultFactory);
+        FusionFactoryStorageLib.setAccessManagerFactoryAddress(newFactoryAddresses_.accessManagerFactory);
+        FusionFactoryStorageLib.setFeeManagerFactoryAddress(newFactoryAddresses_.feeManagerFactory);
+        FusionFactoryStorageLib.setWithdrawManagerFactoryAddress(newFactoryAddresses_.withdrawManagerFactory);
+        FusionFactoryStorageLib.setRewardsManagerFactoryAddress(newFactoryAddresses_.rewardsManagerFactory);
+        FusionFactoryStorageLib.setContextManagerFactoryAddress(newFactoryAddresses_.contextManagerFactory);
+        FusionFactoryStorageLib.setPriceManagerFactoryAddress(newFactoryAddresses_.priceManagerFactory);
 
         emit FactoryAddressesUpdated(newFactoryAddresses_);
     }
 
-    function updatePlasmaVaultBase(address newPlasmaVaultBase_) external onlyOwner {
+    function updatePlasmaVaultBase(address newPlasmaVaultBase_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newPlasmaVaultBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
-        FusionFactoryStorageLib.getPlasmaVaultBaseAddressSlot().value = newPlasmaVaultBase_;
+        FusionFactoryStorageLib.setPlasmaVaultBaseAddress(newPlasmaVaultBase_);
         emit PlasmaVaultBaseUpdated(newPlasmaVaultBase_);
     }
 
     /// @notice Updates the default price oracle middleware address
     /// @param newPriceOracleMiddleware_ New price oracle middleware address
-    function updatePriceOracleMiddleware(address newPriceOracleMiddleware_) external onlyOwner {
+    function updatePriceOracleMiddleware(address newPriceOracleMiddleware_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newPriceOracleMiddleware_ == address(0)) revert FusionFactoryLib.InvalidAddress();
-        FusionFactoryStorageLib.getPriceOracleMiddlewareSlot().value = newPriceOracleMiddleware_;
+        FusionFactoryStorageLib.setPriceOracleMiddlewareAddress(newPriceOracleMiddleware_);
         emit PriceOracleMiddlewareUpdated(newPriceOracleMiddleware_);
     }
 
-    function updateBurnRequestFeeFuse(address newBurnRequestFeeFuse_) external onlyOwner {
+    function updateBurnRequestFeeFuse(address newBurnRequestFeeFuse_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newBurnRequestFeeFuse_ == address(0)) revert FusionFactoryLib.InvalidAddress();
-        FusionFactoryStorageLib.getBurnRequestFeeFuseAddressSlot().value = newBurnRequestFeeFuse_;
+        FusionFactoryStorageLib.setBurnRequestFeeFuseAddress(newBurnRequestFeeFuse_);
         emit BurnRequestFeeFuseUpdated(newBurnRequestFeeFuse_);
     }
 
-    function updateBurnRequestFeeBalanceFuse(address newBurnRequestFeeBalanceFuse_) external onlyOwner {
+    function updateBurnRequestFeeBalanceFuse(address newBurnRequestFeeBalanceFuse_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newBurnRequestFeeBalanceFuse_ == address(0)) revert FusionFactoryLib.InvalidAddress();
-        FusionFactoryStorageLib.getBurnRequestFeeBalanceFuseAddressSlot().value = newBurnRequestFeeBalanceFuse_;
+        FusionFactoryStorageLib.setBurnRequestFeeBalanceFuseAddress(newBurnRequestFeeBalanceFuse_);
         emit BurnRequestFeeBalanceFuseUpdated(newBurnRequestFeeBalanceFuse_);
     }
 
@@ -135,82 +141,87 @@ contract FusionFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
         address newIporDaoFeeRecipient_,
         uint256 newIporDaoManagementFee_,
         uint256 newIporDaoPerformanceFee_
-    ) external onlyOwner {
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newIporDaoFeeRecipient_ == address(0)) revert FusionFactoryLib.InvalidAddress();
         if (newIporDaoManagementFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
         if (newIporDaoPerformanceFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
-        FusionFactoryStorageLib.getIporDaoFeeRecipientAddressSlot().value = newIporDaoFeeRecipient_;
-        FusionFactoryStorageLib.getIporDaoManagementFeeSlot().value = newIporDaoManagementFee_;
-        FusionFactoryStorageLib.getIporDaoPerformanceFeeSlot().value = newIporDaoPerformanceFee_;
+        FusionFactoryStorageLib.setIporDaoFeeRecipientAddress(newIporDaoFeeRecipient_);
+        FusionFactoryStorageLib.setIporDaoManagementFee(newIporDaoManagementFee_);
+        FusionFactoryStorageLib.setIporDaoPerformanceFee(newIporDaoPerformanceFee_);
         emit IporDaoFeeUpdated(newIporDaoFeeRecipient_, newIporDaoManagementFee_, newIporDaoPerformanceFee_);
     }
 
-    function updateRedemptionDelayInSeconds(uint256 newRedemptionDelayInSeconds_) external onlyOwner {
+    function updateRedemptionDelayInSeconds(uint256 newRedemptionDelayInSeconds_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newRedemptionDelayInSeconds_ == 0) revert FusionFactoryLib.InvalidRedemptionDelay();
-        FusionFactoryStorageLib.getRedemptionDelayInSecondsSlot().value = newRedemptionDelayInSeconds_;
+        FusionFactoryStorageLib.setRedemptionDelayInSeconds(newRedemptionDelayInSeconds_);
         emit RedemptionDelayInSecondsUpdated(newRedemptionDelayInSeconds_);
     }
 
-    function updateWithdrawWindowInSeconds(uint256 newWithdrawWindowInSeconds_) external onlyOwner {
+    function updateWithdrawWindowInSeconds(uint256 newWithdrawWindowInSeconds_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newWithdrawWindowInSeconds_ == 0) revert FusionFactoryLib.InvalidWithdrawWindow();
-        FusionFactoryStorageLib.getWithdrawWindowInSecondsSlot().value = newWithdrawWindowInSeconds_;
+        FusionFactoryStorageLib.setWithdrawWindowInSeconds(newWithdrawWindowInSeconds_);
         emit WithdrawWindowInSecondsUpdated(newWithdrawWindowInSeconds_);
     }
 
-    function updateVestingPeriodInSeconds(uint256 newVestingPeriodInSeconds_) external onlyOwner {
-        FusionFactoryStorageLib.getVestingPeriodInSecondsSlot().value = newVestingPeriodInSeconds_;
+    function updateVestingPeriodInSeconds(uint256 newVestingPeriodInSeconds_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+        if (newVestingPeriodInSeconds_ == 0) revert InvalidVestingPeriod();
+        FusionFactoryStorageLib.setVestingPeriodInSeconds(newVestingPeriodInSeconds_);
         emit VestingPeriodInSecondsUpdated(newVestingPeriodInSeconds_);
     }
 
-    function getPlasmaVaultAdmin() external view returns (address) {
-        return FusionFactoryStorageLib.getPlasmaVaultAdminSlot().value;
+    function getFusionFactoryIndex() external view returns (uint256) {
+        return FusionFactoryStorageLib.getFusionFactoryIndex();
     }
 
-    function getFactoryAddresses() external view returns (FusionFactoryLib.FactoryAddresses memory) {
-        return FusionFactoryLib.getFactoryAddresses();
+    function getPlasmaVaultAdminArray() external view returns (address[] memory) {
+        return FusionFactoryStorageLib.getPlasmaVaultAdminArray();
+    }
+
+    function getFactoryAddresses() external view returns (FusionFactoryStorageLib.FactoryAddresses memory) {
+        return FusionFactoryStorageLib.getFactoryAddresses();
     }
 
     function getPlasmaVaultBaseAddress() external view returns (address) {
-        return FusionFactoryLib.getPlasmaVaultBaseAddress();
+        return FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
     }
 
     function getPriceOracleMiddleware() external view returns (address) {
-        return FusionFactoryLib.getPriceOracleMiddleware();
+        return FusionFactoryStorageLib.getPriceOracleMiddleware();
     }
 
     function getBurnRequestFeeBalanceFuseAddress() external view returns (address) {
-        return FusionFactoryLib.getBurnRequestFeeBalanceFuseAddress();
+        return FusionFactoryStorageLib.getBurnRequestFeeBalanceFuseAddress();
     }
 
     function getBurnRequestFeeFuseAddress() external view returns (address) {
-        return FusionFactoryLib.getBurnRequestFeeFuseAddress();
+        return FusionFactoryStorageLib.getBurnRequestFeeFuseAddress();
     }
 
     function getIporDaoFeeRecipientAddress() external view returns (address) {
-        return FusionFactoryLib.getIporDaoFeeRecipientAddress();
+        return FusionFactoryStorageLib.getIporDaoFeeRecipientAddress();
     }
 
     function getIporDaoManagementFee() external view returns (uint256) {
-        return FusionFactoryLib.getIporDaoManagementFee();
+        return FusionFactoryStorageLib.getIporDaoManagementFee();
     }
 
     function getIporDaoPerformanceFee() external view returns (uint256) {
-        return FusionFactoryLib.getIporDaoPerformanceFee();
+        return FusionFactoryStorageLib.getIporDaoPerformanceFee();
     }
 
     function getRedemptionDelayInSeconds() external view returns (uint256) {
-        return FusionFactoryLib.getRedemptionDelayInSeconds();
+        return FusionFactoryStorageLib.getRedemptionDelayInSeconds();
     }
 
     function getWithdrawWindowInSeconds() external view returns (uint256) {
-        return FusionFactoryLib.getWithdrawWindowInSeconds();
+        return FusionFactoryStorageLib.getWithdrawWindowInSeconds();
     }
 
     function getVestingPeriodInSeconds() external view returns (uint256) {
-        return FusionFactoryLib.getVestingPeriodInSeconds();
+        return FusionFactoryStorageLib.getVestingPeriodInSeconds();
     }
 
     /// @dev Required by the OZ UUPS module
     /// @param newImplementation Address of the new implementation
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

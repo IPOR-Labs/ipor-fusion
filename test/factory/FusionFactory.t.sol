@@ -24,6 +24,7 @@ import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 
 
 import {Roles} from "../../contracts/libraries/Roles.sol";
@@ -31,13 +32,14 @@ import {Roles} from "../../contracts/libraries/Roles.sol";
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
     FusionFactory public fusionFactoryImplementation;
-    FusionFactoryLib.FactoryAddresses public factoryAddresses;
+    FusionFactoryStorageLib.FactoryAddresses public factoryAddresses;
     address public plasmaVaultBase;
     address public priceOracleMiddleware;
     address public burnRequestFeeFuse;
     address public burnRequestFeeBalanceFuse;
     MockERC20 public underlyingToken;
-    address public admin;
+    address public adminOne;
+    address public adminTwo;
     address public owner;
     address public iporDaoFeeRecipient;
 
@@ -46,7 +48,7 @@ contract FusionFactoryTest is Test {
         underlyingToken = new MockERC20("Test Token", "TEST", 18);
 
         // Deploy factory contracts
-        factoryAddresses = FusionFactoryLib.FactoryAddresses({
+        factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
             accessManagerFactory: address(new AccessManagerFactory()),
             plasmaVaultFactory: address(new PlasmaVaultFactory()),
             feeManagerFactory: address(new FeeManagerFactory()),
@@ -58,7 +60,11 @@ contract FusionFactoryTest is Test {
 
         owner = address(0x777);
         iporDaoFeeRecipient = address(0x888);
-        admin = address(0x999);
+        adminOne = address(0x999);
+        adminTwo = address(0x1000);
+        address[] memory plasmaVaultAdminArray = new address[](2);
+        plasmaVaultAdminArray[0] = adminOne;
+        plasmaVaultAdminArray[1] = adminTwo;
 
         plasmaVaultBase = address(new PlasmaVaultBase());
         burnRequestFeeFuse = address(new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
@@ -82,7 +88,12 @@ contract FusionFactoryTest is Test {
         fusionFactory = FusionFactory(address(new ERC1967Proxy(address(fusionFactoryImplementation), initData)));
 
         fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, 100, 100);
-        fusionFactory.updatePlasmaVaultAdmin(admin);
+        fusionFactory.updatePlasmaVaultAdminArray(plasmaVaultAdminArray);
+    }
+
+    function testXXX() public {
+        bytes32 index = keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryIndex")) - 1)) & ~bytes32(uint256(0xff));
+        console2.logBytes32(index);
     }
 
     function testShouldCreateFusionInstance() public {
@@ -126,7 +137,7 @@ contract FusionFactoryTest is Test {
 
     function testShouldUpdateFactoryAddresses() public {
         // given
-        FusionFactoryLib.FactoryAddresses memory newFactoryAddresses = FusionFactoryLib.FactoryAddresses({
+        FusionFactoryStorageLib.FactoryAddresses memory newFactoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
             accessManagerFactory: address(new AccessManagerFactory()),
             plasmaVaultFactory: address(new PlasmaVaultFactory()),
             feeManagerFactory: address(new FeeManagerFactory()),
@@ -140,7 +151,7 @@ contract FusionFactoryTest is Test {
         fusionFactory.updateFactoryAddresses(newFactoryAddresses);
 
         // then
-        FusionFactoryLib.FactoryAddresses memory updatedAddresses = fusionFactory.getFactoryAddresses();
+        FusionFactoryStorageLib.FactoryAddresses memory updatedAddresses = fusionFactory.getFactoryAddresses();
         assertEq(updatedAddresses.accessManagerFactory, newFactoryAddresses.accessManagerFactory);
         assertEq(updatedAddresses.plasmaVaultFactory, newFactoryAddresses.plasmaVaultFactory);
         assertEq(updatedAddresses.feeManagerFactory, newFactoryAddresses.feeManagerFactory);
@@ -232,7 +243,7 @@ contract FusionFactoryTest is Test {
 
     function testShouldRevertWhenUpdatingFactoryAddressesWithZeroAddress() public {
         // given
-        FusionFactoryLib.FactoryAddresses memory newFactoryAddresses = FusionFactoryLib.FactoryAddresses({
+        FusionFactoryStorageLib.FactoryAddresses memory newFactoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
             accessManagerFactory: address(0),
             plasmaVaultFactory: address(new PlasmaVaultFactory()),
             feeManagerFactory: address(new FeeManagerFactory()),
@@ -302,19 +313,27 @@ contract FusionFactoryTest is Test {
 
     function testShouldUpdatePlasmaVaultAdmin() public {
         // given
-        address newPlasmaVaultAdmin = address(0x1000);
+        address[] memory newPlasmaVaultAdminArray = new address[](2);
+        newPlasmaVaultAdminArray[0] = adminOne;
+        newPlasmaVaultAdminArray[1] = address(0x123);
+
 
         // when
-        fusionFactory.updatePlasmaVaultAdmin(newPlasmaVaultAdmin);
+        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
 
         // then
-        assertEq(fusionFactory.getPlasmaVaultAdmin(), newPlasmaVaultAdmin);
+        address[] memory updatedPlasmaVaultAdminArray = fusionFactory.getPlasmaVaultAdminArray();
+        assertEq(updatedPlasmaVaultAdminArray[0], newPlasmaVaultAdminArray[0]);
+        assertEq(updatedPlasmaVaultAdminArray[1], newPlasmaVaultAdminArray[1]);
     }
 
     function testShouldCreateVaultWithCorrectAdmin() public {
         // given
-        address plasmaVaultAdmin = address(0x1000);
-        fusionFactory.updatePlasmaVaultAdmin(plasmaVaultAdmin);
+        address[] memory newPlasmaVaultAdminArray = new address[](2);
+        newPlasmaVaultAdminArray[0] = address(0x321);
+        newPlasmaVaultAdminArray[1] = address(0x123);
+        
+        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
@@ -326,9 +345,12 @@ contract FusionFactoryTest is Test {
 
         // then
         IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
-        (bool hasRole, uint32 delay) = accessManager.hasRole(Roles.ADMIN_ROLE, plasmaVaultAdmin);
-        assertTrue(hasRole);
-        assertEq(delay, 0);
+        (bool hasRoleOne, uint32 delayOne) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[0]);
+        (bool hasRoleTwo, uint32 delayTwo) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[1]);
+        assertTrue(hasRoleOne);
+        assertTrue(hasRoleTwo);
+        assertEq(delayOne, 0);
+        assertEq(delayTwo, 0);
     }
 
     function testShouldCreateVaultWithCorrectIporDaoFees() public {

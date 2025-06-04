@@ -1433,7 +1433,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
-        PlasmaVaultBase plasmaVaultBase = new PlasmaVaultBase();
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         
         plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
@@ -1536,8 +1535,8 @@ contract PlasmaVaultWithdrawTest is Test {
     }
 
     function _preparePlasmaVaultUsdc() public returns (PlasmaVault) {
-        string memory assetName = "IPOR Fusion USDC";
-        string memory assetSymbol = "ipfUSDC";
+        assetName = "IPOR Fusion USDC";
+        assetSymbol = "ipfUSDC";
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](2);
 
@@ -1576,8 +1575,8 @@ contract PlasmaVaultWithdrawTest is Test {
     }
 
     function _preparePlasmaVaultDai(uint256 redemptionDelay) public returns (PlasmaVault) {
-        string memory assetName = "IPOR Fusion DAI";
-        string memory assetSymbol = "ipfDAI";
+        assetName = "IPOR Fusion DAI";
+        assetSymbol = "ipfDAI";
 
         MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](1);
 

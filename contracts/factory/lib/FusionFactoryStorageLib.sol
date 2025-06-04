@@ -25,8 +25,34 @@ pragma solidity 0.8.26;
  * @custom:security-contact security@ipor.io
  */
 library FusionFactoryStorageLib {
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultAdmin")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant PLASMA_VAULT_ADMIN = 0x0cdfe85e964d1d8957bc2878d4fd994b05803238ec65e8f779a951372893a200;
+    struct FactoryAddresses {
+        address accessManagerFactory;
+        address plasmaVaultFactory;
+        address feeManagerFactory;
+        address withdrawManagerFactory;
+        address rewardsManagerFactory;
+        address contextManagerFactory;
+        address priceManagerFactory;
+    }
+
+    struct AddressType {
+        address value;
+    }
+
+    struct Uint256Type {
+        uint256 value;
+    }
+
+    struct AddressArrayType {
+        address[] value;
+    }
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryIndex")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant FUSION_FACTORY_INDEX = 0x0cdfe85e964d1d8957bc2878d4fd994b05803238ec65e8f779a951372893a200;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultAdminArray")) - 1)) & ~bytes32(uint256(0xff))
+    //TODO: change to PlasmaVaultAdminArray
+    bytes32 private constant PLASMA_VAULT_ADMIN_ARRAY = 0x0cdfe85e964d1d8957bc2878d4fd994b05803238ec65e8f779a951372893a200;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultFactoryAddress")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PLASMA_VAULT_FACTORY_ADDRESS =
@@ -90,117 +116,253 @@ library FusionFactoryStorageLib {
     bytes32 private constant VESTING_PERIOD_IN_SECONDS = 0xe7de166eee522f429c14923fb385ff49d6c65d576ad910fc76c16800f269be00;
 
 
-    struct AddressType {
-        address value;
+    function getFactoryAddresses() internal view returns (FactoryAddresses memory) {
+        return
+            FactoryAddresses({
+                accessManagerFactory: _getAccessManagerFactoryAddressSlot().value,
+                plasmaVaultFactory: _getPlasmaVaultFactoryAddressSlot().value,
+                feeManagerFactory: _getFeeManagerFactoryAddressSlot().value,
+                withdrawManagerFactory: _getWithdrawManagerFactoryAddressSlot().value,
+                rewardsManagerFactory: _getRewardsManagerFactoryAddressSlot().value,
+                contextManagerFactory: _getContextManagerFactoryAddressSlot().value,
+                priceManagerFactory: _getPriceManagerFactoryAddressSlot().value
+            });
     }
 
-    struct Uint256Type {
-        uint256 value;
+    function getFusionFactoryIndex() internal view returns (uint256) {
+        return _getFusionFactoryIndexSlot().value;
     }
 
-    function getPlasmaVaultAdminSlot() internal pure returns (AddressType storage $) {
+    function getPlasmaVaultAdminArray() internal view returns (address[] memory) {
+        return _getPlasmaVaultAdminArraySlot().value;
+    }
+
+    function getPlasmaVaultBaseAddress() internal view returns (address) {
+        return _getPlasmaVaultBaseAddressSlot().value;
+    }
+
+    function getPriceOracleMiddleware() internal view returns (address) {
+        return _getPriceOracleMiddlewareSlot().value;
+    }
+
+    function getBurnRequestFeeBalanceFuseAddress() internal view returns (address) {
+        return _getBurnRequestFeeBalanceFuseAddressSlot().value;
+    }
+
+    function getBurnRequestFeeFuseAddress() internal view returns (address) {
+        return _getBurnRequestFeeFuseAddressSlot().value;
+    }
+
+    function getIporDaoFeeRecipientAddress() internal view returns (address) {
+        return _getIporDaoFeeRecipientAddressSlot().value;
+    }
+
+    function getIporDaoManagementFee() internal view returns (uint256) {
+        return _getIporDaoManagementFeeSlot().value;
+    }
+
+    function getIporDaoPerformanceFee() internal view returns (uint256) {
+        return _getIporDaoPerformanceFeeSlot().value;
+    }
+
+    function getRedemptionDelayInSeconds() internal view returns (uint256) {
+        return _getRedemptionDelayInSecondsSlot().value;
+    }
+
+    function getWithdrawWindowInSeconds() internal view returns (uint256) {
+        return _getWithdrawWindowInSecondsSlot().value;
+    }
+
+    function getVestingPeriodInSeconds() internal view returns (uint256) {
+        return _getVestingPeriodInSecondsSlot().value;
+    }
+
+    function setFusionFactoryIndex(uint256 value) internal {
+        _getFusionFactoryIndexSlot().value = value;
+    }
+
+    function setPlasmaVaultAdminArray(address[] memory value) internal {
+        _getPlasmaVaultAdminArraySlot().value = value;
+    }
+
+    function setPlasmaVaultFactoryAddress(address value) internal {
+        _getPlasmaVaultFactoryAddressSlot().value = value;
+    }
+
+    function setAccessManagerFactoryAddress(address value) internal {
+        _getAccessManagerFactoryAddressSlot().value = value;
+    }
+
+    function setFeeManagerFactoryAddress(address value) internal {
+        _getFeeManagerFactoryAddressSlot().value = value;
+    }
+
+    function setWithdrawManagerFactoryAddress(address value) internal {
+        _getWithdrawManagerFactoryAddressSlot().value = value;
+    }
+
+    function setRewardsManagerFactoryAddress(address value) internal {
+        _getRewardsManagerFactoryAddressSlot().value = value;
+    }
+
+    function setContextManagerFactoryAddress(address value) internal {
+        _getContextManagerFactoryAddressSlot().value = value;
+    }
+
+    function setPriceManagerFactoryAddress(address value) internal {
+        _getPriceManagerFactoryAddressSlot().value = value;
+    }
+
+    function setPlasmaVaultBaseAddress(address value) internal {
+        _getPlasmaVaultBaseAddressSlot().value = value;
+    }
+
+    function setPriceOracleMiddlewareAddress(address value) internal {
+        _getPriceOracleMiddlewareSlot().value = value;
+    }
+
+    function setBurnRequestFeeBalanceFuseAddress(address value) internal {
+        _getBurnRequestFeeBalanceFuseAddressSlot().value = value;
+    }
+
+    function setBurnRequestFeeFuseAddress(address value) internal {
+        _getBurnRequestFeeFuseAddressSlot().value = value;
+    }
+
+    function setIporDaoFeeRecipientAddress(address value) internal {
+        _getIporDaoFeeRecipientAddressSlot().value = value;
+    }
+
+    function setIporDaoManagementFee(uint256 value) internal {
+        _getIporDaoManagementFeeSlot().value = value;
+    }
+
+    function setIporDaoPerformanceFee(uint256 value) internal {
+        _getIporDaoPerformanceFeeSlot().value = value;
+    }
+
+    function setRedemptionDelayInSeconds(uint256 value) internal {
+        _getRedemptionDelayInSecondsSlot().value = value;
+    }
+
+    function setWithdrawWindowInSeconds(uint256 value) internal {
+        _getWithdrawWindowInSecondsSlot().value = value;
+    }
+
+    function setVestingPeriodInSeconds(uint256 value) internal {
+        _getVestingPeriodInSecondsSlot().value = value;
+    }
+
+
+    function _getFusionFactoryIndexSlot() private pure returns (Uint256Type storage $) {
         assembly {
-            $.slot := PLASMA_VAULT_ADMIN
+            $.slot := FUSION_FACTORY_INDEX
         }
     }
 
-    function getPlasmaVaultFactoryAddressSlot() internal pure returns (AddressType storage $) {
+    function _getPlasmaVaultAdminArraySlot() private pure returns (AddressArrayType storage $) {
+        assembly {
+            $.slot := PLASMA_VAULT_ADMIN_ARRAY
+        }
+    }
+
+    function _getPlasmaVaultFactoryAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := PLASMA_VAULT_FACTORY_ADDRESS
         }
     }
 
-    function getAccessManagerFactoryAddressSlot() internal pure returns (AddressType storage $) {
+    function _getAccessManagerFactoryAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := ACCESS_MANAGER_FACTORY_ADDRESS
         }
     }
 
-    function getFeeManagerFactoryAddressSlot() internal pure returns (AddressType storage $) {
+    function _getFeeManagerFactoryAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := FEE_MANAGER_FACTORY_ADDRESS
         }
     }
 
-    function getRewardsManagerFactoryAddressSlot() internal pure returns (AddressType storage $) {
+    function _getRewardsManagerFactoryAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := REWARDS_MANAGER_FACTORY_ADDRESS
         }
     }
 
-    function getWithdrawManagerFactoryAddressSlot() internal pure returns (AddressType storage $) {
+    function _getWithdrawManagerFactoryAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := WITHDRAW_MANAGER_FACTORY_ADDRESS
         }
     }
 
-    function getContextManagerFactoryAddressSlot() internal pure returns (AddressType storage $) {
+    function _getContextManagerFactoryAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := CONTEXT_MANAGER_FACTORY_ADDRESS
         }
     }
 
-    function getPriceManagerFactoryAddressSlot() internal pure returns (AddressType storage $) {
+    function _getPriceManagerFactoryAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := PRICE_MANAGER_FACTORY_ADDRESS
         }
     }
 
-    function getPlasmaVaultBaseAddressSlot() internal pure returns (AddressType storage $) {
+    function _getPlasmaVaultBaseAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := PLASMA_VAULT_BASE_ADDRESS
         }
     }
 
-    function getPriceOracleMiddlewareSlot() internal pure returns (AddressType storage $) {
+    function _getPriceOracleMiddlewareSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := PRICE_ORACLE_MIDDLEWARE_ADDRESS
         }
     }
 
-    function getBurnRequestFeeBalanceFuseAddressSlot() internal pure returns (AddressType storage $) {
+    function _getBurnRequestFeeBalanceFuseAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := BURNR_REQUEST_FEE_BALANCE_FUSE_ADDRESS
         }
     }
 
-    function getBurnRequestFeeFuseAddressSlot() internal pure returns (AddressType storage $) {
+    function _getBurnRequestFeeFuseAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := BURN_REQUEST_FEE_FUSE_ADDRESS
         }
     }
 
-    function getIporDaoFeeRecipientAddressSlot() internal pure returns (AddressType storage $) {
+    function _getIporDaoFeeRecipientAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := IPOR_DAO_FEE_RECIPIENT_ADDRESS
         }
     }
 
-    function getIporDaoManagementFeeSlot() internal pure returns (Uint256Type storage $) {
+    function _getIporDaoManagementFeeSlot() private pure returns (Uint256Type storage $) {
         assembly {
             $.slot := IPOR_DAO_MANAGEMENT_FEE
         }
     }
 
-    function getIporDaoPerformanceFeeSlot() internal pure returns (Uint256Type storage $) {
+    function _getIporDaoPerformanceFeeSlot() private pure returns (Uint256Type storage $) {
         assembly {
             $.slot := IPOR_DAO_PERFORMANCE_FEE
         }
     }
 
-    function getRedemptionDelayInSecondsSlot() internal pure returns (Uint256Type storage $) {
+    function _getRedemptionDelayInSecondsSlot() private pure returns (Uint256Type storage $) {
         assembly {
             $.slot := REDEMPTION_DELAY_IN_SECONDS
         }
     }
 
-    function getWithdrawWindowInSecondsSlot() internal pure returns (Uint256Type storage $) {
+    function _getWithdrawWindowInSecondsSlot() private pure returns (Uint256Type storage $) {
         assembly {
             $.slot := WITHDRAW_WINDOW_IN_SECONDS
         }
     }
 
-    function getVestingPeriodInSecondsSlot() internal pure returns (Uint256Type storage $) {
+    function _getVestingPeriodInSecondsSlot() private pure returns (Uint256Type storage $) {
         assembly {
             $.slot := VESTING_PERIOD_IN_SECONDS
         }

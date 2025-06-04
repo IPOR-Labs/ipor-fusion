@@ -16,7 +16,6 @@ import {MoonwellSupplyFuseEnterData} from "../../../contracts/fuses/moonwell/Moo
 import {MoonwellEnableMarketFuseEnterData, MoonwellEnableMarketFuseExitData} from "../../../contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol";
 import {MoonwellBorrowFuseEnterData, MoonwellBorrowFuseExitData} from "../../../contracts/fuses/moonwell/MoonwellBorrowFuse.sol";
 import {MoonWellAddresses} from "../../test_helpers/MoonwellHelper.sol";
-import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 
 contract MoonwellBorowFlowBaseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
