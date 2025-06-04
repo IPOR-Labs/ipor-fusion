@@ -12,7 +12,7 @@ pragma solidity 0.8.26;
  * Storage Components:
  * - Factory addresses (rewards, fee, withdraw, context, price, plasma vault, access)
  * - Price oracle middleware
- * - Fee configuration (IPOR DAO management and performance fees)
+ * - Fee configuration (DAO management and performance fees)
  * - Redemption and withdrawal timing parameters
  * - Burn request fee configuration
  *
@@ -21,8 +21,6 @@ pragma solidity 0.8.26;
  * - Each storage struct has a unique namespace derived from its purpose
  * - Critical for maintaining storage integrity in upgradeable contracts
  * - Storage slots are carefully chosen and must not be modified
- *
- * @custom:security-contact security@ipor.io
  */
 library FusionFactoryStorageLib {
     struct FactoryAddresses {
@@ -99,15 +97,15 @@ library FusionFactoryStorageLib {
         0xf011e505a711b4f906e6e0cfcd988c477cb335d6eb81d8284628276cae32ab00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoFeeRecipientAddress")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant IPOR_DAO_FEE_RECIPIENT_ADDRESS =
+    bytes32 private constant DAO_FEE_RECIPIENT_ADDRESS =
         0xe26401adf3cefb9a94bf1fba47a8129fd18fd2e2e83de494ce289a832073a500;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoManagementFee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant IPOR_DAO_MANAGEMENT_FEE =
+    bytes32 private constant DAO_MANAGEMENT_FEE =
         0x8fc808da4bdddf1c57ae4d57b8d77cb4183e940f6bb88a2aecb349605eb51800;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoPerformanceFee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant IPOR_DAO_PERFORMANCE_FEE =
+    bytes32 private constant DAO_PERFORMANCE_FEE =
         0x3d6b96d1c7d5b94a3af077c0baedb5f7745382ef440582d67ffa3542d73b9f00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.RedemptionDelayInSeconds")) - 1)) & ~bytes32(uint256(0xff))
@@ -159,16 +157,16 @@ library FusionFactoryStorageLib {
         return _getBurnRequestFeeFuseAddressSlot().value;
     }
 
-    function getIporDaoFeeRecipientAddress() internal view returns (address) {
-        return _getIporDaoFeeRecipientAddressSlot().value;
+    function getDaoFeeRecipientAddress() internal view returns (address) {
+        return _getDaoFeeRecipientAddressSlot().value;
     }
 
-    function getIporDaoManagementFee() internal view returns (uint256) {
-        return _getIporDaoManagementFeeSlot().value;
+    function getDaoManagementFee() internal view returns (uint256) {
+        return _getDaoManagementFeeSlot().value;
     }
 
-    function getIporDaoPerformanceFee() internal view returns (uint256) {
-        return _getIporDaoPerformanceFeeSlot().value;
+    function getDaoPerformanceFee() internal view returns (uint256) {
+        return _getDaoPerformanceFeeSlot().value;
     }
 
     function getRedemptionDelayInSeconds() internal view returns (uint256) {
@@ -236,16 +234,16 @@ library FusionFactoryStorageLib {
         _getBurnRequestFeeFuseAddressSlot().value = value;
     }
 
-    function setIporDaoFeeRecipientAddress(address value) internal {
-        _getIporDaoFeeRecipientAddressSlot().value = value;
+    function setDaoFeeRecipientAddress(address value) internal {
+        _getDaoFeeRecipientAddressSlot().value = value;
     }
 
-    function setIporDaoManagementFee(uint256 value) internal {
-        _getIporDaoManagementFeeSlot().value = value;
+    function setDaoManagementFee(uint256 value) internal {
+        _getDaoManagementFeeSlot().value = value;
     }
 
-    function setIporDaoPerformanceFee(uint256 value) internal {
-        _getIporDaoPerformanceFeeSlot().value = value;
+    function setDaoPerformanceFee(uint256 value) internal {
+        _getDaoPerformanceFeeSlot().value = value;
     }
 
     function setRedemptionDelayInSeconds(uint256 value) internal {
@@ -338,21 +336,21 @@ library FusionFactoryStorageLib {
         }
     }
 
-    function _getIporDaoFeeRecipientAddressSlot() private pure returns (AddressType storage $) {
+    function _getDaoFeeRecipientAddressSlot() private pure returns (AddressType storage $) {
         assembly {
-            $.slot := IPOR_DAO_FEE_RECIPIENT_ADDRESS
+            $.slot := DAO_FEE_RECIPIENT_ADDRESS
         }
     }
 
-    function _getIporDaoManagementFeeSlot() private pure returns (Uint256Type storage $) {
+    function _getDaoManagementFeeSlot() private pure returns (Uint256Type storage $) {
         assembly {
-            $.slot := IPOR_DAO_MANAGEMENT_FEE
+            $.slot := DAO_MANAGEMENT_FEE
         }
     }
 
-    function _getIporDaoPerformanceFeeSlot() private pure returns (Uint256Type storage $) {
+    function _getDaoPerformanceFeeSlot() private pure returns (Uint256Type storage $) {
         assembly {
-            $.slot := IPOR_DAO_PERFORMANCE_FEE
+            $.slot := DAO_PERFORMANCE_FEE
         }
     }
 

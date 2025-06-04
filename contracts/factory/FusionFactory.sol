@@ -18,10 +18,10 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
     event PriceOracleMiddlewareUpdated(address newPriceOracleMiddleware);
     event BurnRequestFeeFuseUpdated(address newBurnRequestFeeFuse);
     event BurnRequestFeeBalanceFuseUpdated(address newBurnRequestFeeBalanceFuse);
-    event IporDaoFeeUpdated(
-        address newIporDaoFeeRecipient,
-        uint256 newIporDaoManagementFee,
-        uint256 newIporDaoPerformanceFee
+    event DaoFeeUpdated(
+        address newDaoFeeRecipient,
+        uint256 newDaoManagementFee,
+        uint256 newDaoPerformanceFee
     );
     event RedemptionDelayInSecondsUpdated(uint256 newRedemptionDelayInSeconds);
     event WithdrawWindowInSecondsUpdated(uint256 newWithdrawWindowInSeconds);
@@ -87,18 +87,18 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         emit PlasmaVaultAdminArrayUpdated(newPlasmaVaultAdminArray_);
     }
 
-    function updateIporDaoFee(
-        address newIporDaoFeeRecipient_,
-        uint256 newIporDaoManagementFee_,
-        uint256 newIporDaoPerformanceFee_
+    function updateDaoFee(
+        address newDaoFeeRecipient_,
+        uint256 newDaoManagementFee_,
+        uint256 newDaoPerformanceFee_
     ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
-        if (newIporDaoFeeRecipient_ == address(0)) revert FusionFactoryLib.InvalidAddress();
-        if (newIporDaoManagementFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
-        if (newIporDaoPerformanceFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
-        FusionFactoryStorageLib.setIporDaoFeeRecipientAddress(newIporDaoFeeRecipient_);
-        FusionFactoryStorageLib.setIporDaoManagementFee(newIporDaoManagementFee_);
-        FusionFactoryStorageLib.setIporDaoPerformanceFee(newIporDaoPerformanceFee_);
-        emit IporDaoFeeUpdated(newIporDaoFeeRecipient_, newIporDaoManagementFee_, newIporDaoPerformanceFee_);
+        if (newDaoFeeRecipient_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newDaoManagementFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
+        if (newDaoPerformanceFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
+        FusionFactoryStorageLib.setDaoFeeRecipientAddress(newDaoFeeRecipient_);
+        FusionFactoryStorageLib.setDaoManagementFee(newDaoManagementFee_);
+        FusionFactoryStorageLib.setDaoPerformanceFee(newDaoPerformanceFee_);
+        emit DaoFeeUpdated(newDaoFeeRecipient_, newDaoManagementFee_, newDaoPerformanceFee_);
     }
 
     function updateFactoryAddresses(
@@ -204,16 +204,16 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         return FusionFactoryStorageLib.getBurnRequestFeeFuseAddress();
     }
 
-    function getIporDaoFeeRecipientAddress() external view returns (address) {
-        return FusionFactoryStorageLib.getIporDaoFeeRecipientAddress();
+    function getDaoFeeRecipientAddress() external view returns (address) {
+        return FusionFactoryStorageLib.getDaoFeeRecipientAddress();
     }
 
-    function getIporDaoManagementFee() external view returns (uint256) {
-        return FusionFactoryStorageLib.getIporDaoManagementFee();
+    function getDaoManagementFee() external view returns (uint256) {
+        return FusionFactoryStorageLib.getDaoManagementFee();
     }
 
-    function getIporDaoPerformanceFee() external view returns (uint256) {
-        return FusionFactoryStorageLib.getIporDaoPerformanceFee();
+    function getDaoPerformanceFee() external view returns (uint256) {
+        return FusionFactoryStorageLib.getDaoPerformanceFee();
     }
 
     function getRedemptionDelayInSeconds() external view returns (uint256) {
