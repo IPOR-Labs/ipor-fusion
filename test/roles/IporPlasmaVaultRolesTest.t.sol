@@ -20,6 +20,8 @@ import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
+
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant CHAINLINK_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
@@ -656,17 +658,22 @@ contract IporPlasmaVaultRolesTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(_priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(_withdrawManager)
             )
         );
         vm.stopPrank();
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _deployer,
+            address(_plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
     }
 
     function _generateRewardsClaimManager() private {

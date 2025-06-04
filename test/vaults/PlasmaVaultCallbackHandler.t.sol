@@ -26,6 +26,8 @@ import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
+
 contract PlasmaVaultCallbackHandler is Test {
     address private constant _AAVE_PRICE_ORACLE_MAINNET = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
 
@@ -80,16 +82,21 @@ contract PlasmaVaultCallbackHandler is Test {
                     "TPLASMA",
                     _DAI,
                     address(_priceOracleMiddlewareProxy),
-                    marketConfigs,
-                    _setupFuses(),
-                    balanceFuses,
                     feeConfig,
                     _accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
                     _withdrawManager
                 )
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(_plasmaVault),
+            _setupFuses(),
+            balanceFuses,
+            marketConfigs
         );
 
         _initAccessManager();

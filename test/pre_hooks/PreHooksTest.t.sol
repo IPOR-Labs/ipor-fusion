@@ -17,6 +17,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {UpdateBalancesPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/UpdateBalancesPreHook.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PreHookInfo, PreHooksInfoReader} from "../../contracts/readers/PreHooksInfoReader.sol";
+import {PlasmaVaultMarketsLib} from "../../contracts/vaults/lib/PlasmaVaultMarketsLib.sol";
 
 contract PreHooksTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
@@ -377,7 +378,7 @@ contract PreHooksTest is Test {
         uint256[] memory expectedMarketIds = new uint256[](1);
         expectedMarketIds[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
         vm.expectEmit(true, true, true, true);
-        emit PlasmaVault.MarketBalancesUpdated(expectedMarketIds, 10005297); // delta value will be checked in actual event data
+        emit PlasmaVaultMarketsLib.MarketBalancesUpdated(expectedMarketIds, 10005297); // delta value will be checked in actual event data
 
         _plasmaVault.deposit(depositAmount, _USER);
         vm.stopPrank();
