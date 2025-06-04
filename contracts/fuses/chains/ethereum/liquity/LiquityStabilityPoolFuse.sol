@@ -7,11 +7,7 @@ import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.
 import {IFuseCommon} from "../../../IFuseCommon.sol";
 import {Errors} from "../../../../libraries/errors/Errors.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
-import {IBorrowerOperations} from "./ext/IBorrowerOperations.sol";
 import {FuseStorageLib} from "../../../../libraries/FuseStorageLib.sol";
-import {IActivePool} from "./ext/IActivePool.sol";
-import {ITroveManager} from "./ext/ITroveManager.sol";
-import {LiquityMath} from "./ext/LiquityMath.sol";
 import {PlasmaVaultConfigLib} from "../../../../libraries/PlasmaVaultConfigLib.sol";
 import {IStabilityPool} from "./ext/IStabilityPool.sol";
 
@@ -39,7 +35,7 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
         VERSION = address(this);
         MARKET_ID = marketId_;
         registry = IAddressesRegistry(_registry);
-        stabilityPool = registry.stabilityPool();
+        stabilityPool = IStabilityPool(registry.stabilityPool());
         boldToken = registry.boldToken();
     }
 
