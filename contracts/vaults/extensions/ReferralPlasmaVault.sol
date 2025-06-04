@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import {IPlasmaVault} from "../../interfaces/IPlasmaVault.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -26,21 +25,21 @@ contract ReferralPlasmaVault {
     ///     3. Deposits the assets into the vault
     ///     4. Emits a referral event with the caller as referrer
     /// @param vault_ The address of the ERC4626 vault to deposit into
-    /// @param assets The amount of assets to deposit
-    /// @param receiver The address that will receive the vault shares
+    /// @param assets_ The amount of assets to deposit
+    /// @param receiver_ The address that will receive the vault shares
     /// @param referralCode_ The unique identifier for the referral
-    /// @return shares The amount of vault shares minted to the receiver
+    /// @return The amount of vault shares minted to the receiver
     function deposit(
         address vault_,
-        uint256 assets,
-        address receiver,
+        uint256 assets_,
+        address receiver_,
         bytes32 referralCode_
-    ) external returns (uint256 shares) {
+    ) external returns (uint256) {
         address assetAddress = IERC4626(vault_).asset();
-        IERC20(assetAddress).transferFrom(msg.sender, address(this), assets);
-        IERC20(assetAddress).forceApprove(vault_, assets);
+        IERC20(assetAddress).safeTransferFrom(msg.sender, address(this), assets_);
+        IERC20(assetAddress).forceApprove(vault_, assets_);
 
         emit ReferralEvent(msg.sender, referralCode_);
-        return IERC4626(vault_).deposit(assets, receiver);
+        return IERC4626(vault_).deposit(assets_, receiver_);
     }
 }
