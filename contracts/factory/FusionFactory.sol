@@ -61,7 +61,7 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         string memory assetSymbol_,
         address underlyingToken_,
         address owner_
-    ) external returns (FusionFactoryLib.FusionInstance memory) {
+    ) external whenNotPaused returns (FusionFactoryLib.FusionInstance memory) {
         return FusionFactoryLib.create(assetName_, assetSymbol_, underlyingToken_, owner_);
     }
 

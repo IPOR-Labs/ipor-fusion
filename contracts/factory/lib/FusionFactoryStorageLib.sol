@@ -51,9 +51,8 @@ library FusionFactoryStorageLib {
     bytes32 private constant FUSION_FACTORY_INDEX = 0x7c54bb33443ce94044aec2970018125c202903e78abecda9a8871f0a2e085400;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultAdminArray")) - 1)) & ~bytes32(uint256(0xff))
-    //TODO: change to PlasmaVaultAdminArray
     bytes32 private constant PLASMA_VAULT_ADMIN_ARRAY =
-        0x0cdfe85e964d1d8957bc2878d4fd994b05803238ec65e8f779a951372893a200;
+        0x09e657bd0ea9e1ace5b99e5e8bb556174727dbd9076ea35b667e7736f1584000;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultFactoryAddress")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PLASMA_VAULT_FACTORY_ADDRESS =

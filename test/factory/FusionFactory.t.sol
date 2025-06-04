@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {console2} from "forge-std/console2.sol";
 import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
 import {RewardsManagerFactory} from "../../contracts/factory/RewardsManagerFactory.sol";
@@ -560,5 +559,40 @@ contract FusionFactoryTest is Test {
         }
 
         fail();
+    }
+
+    function testShouldRevertWhenCreatingVaultWhilePaused() public {
+        // given
+        address pauseManager = address(0x123);
+        vm.startPrank(owner);
+        fusionFactory.grantRole(fusionFactory.PAUSE_MANAGER_ROLE(), pauseManager);
+        vm.stopPrank();
+
+        // when
+        vm.startPrank(pauseManager);
+        fusionFactory.pause();
+        vm.stopPrank();
+
+        // then
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        fusionFactory.create("Test Asset", "TEST", address(underlyingToken), owner);
+
+        // when unpaused
+        vm.startPrank(owner);
+        fusionFactory.unpause();
+        vm.stopPrank();
+
+        // then should work again
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        assertEq(instance.assetName, "Test Asset");
+        assertEq(instance.assetSymbol, "TEST");
+        assertEq(instance.underlyingToken, address(underlyingToken));
+        assertEq(instance.initialOwner, owner);
     }
 }
