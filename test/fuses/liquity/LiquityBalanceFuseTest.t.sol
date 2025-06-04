@@ -6,25 +6,12 @@ import {Test} from "forge-std/Test.sol";
 import {LiquityBalanceFuse} from "../../../contracts/fuses/chains/ethereum/liquity/LiquityBalanceFuse.sol";
 import {LiquityStabilityPoolFuse} from "../../../contracts/fuses/chains/ethereum/liquity/LiquityStabilityPoolFuse.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
-import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
-import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
-import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {IAddressesRegistry} from "../../../contracts/fuses/chains/ethereum/liquity/ext/IAddressesRegistry.sol";
 import {IStabilityPool} from "../../../contracts/fuses/chains/ethereum/liquity/ext/IStabilityPool.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract LiquityBalanceFuseTest is Test {
-    struct Asset {
-        address token;
-        string name;
-    }
-
     address internal constant BOLD = 0x6440f144b7e50D6a8439336510312d2F54beB01D;
     address internal constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address internal constant ETH_REGISTRY = 0x20F7C9ad66983F6523a0881d0f82406541417526;
@@ -62,6 +49,7 @@ contract LiquityBalanceFuseTest is Test {
         stabilityPool.offset(100000000, 100 ether);
 
         // trigger update
+        vm.prank(address(vaultMock));
         stabilityPool.provideToSP(1, false);
         // check the balance after liquidation
         uint256 afterLiquidationBalance = vaultMock.balanceOf();
