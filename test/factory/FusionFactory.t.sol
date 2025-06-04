@@ -41,7 +41,7 @@ contract FusionFactoryTest is Test {
     address public daoFeeManager;
     address public maintenanceManager;
     address public owner;
-    address public iporDaoFeeRecipient;
+    address public daoFeeRecipient;
 
     function setUp() public {
         // Deploy mock token
@@ -59,7 +59,7 @@ contract FusionFactoryTest is Test {
         });
 
         owner = address(0x777);
-        iporDaoFeeRecipient = address(0x888);
+        daoFeeRecipient = address(0x888);
         adminOne = address(0x999);
         adminTwo = address(0x1000);
         daoFeeManager = address(0x111);
@@ -96,7 +96,7 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
 
         vm.startPrank(daoFeeManager);
-        fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, 100, 100);
+        fusionFactory.updateDaoFee(daoFeeRecipient, 100, 100);
         vm.stopPrank();
     }
 
@@ -125,21 +125,21 @@ contract FusionFactoryTest is Test {
         assertTrue(instance.feeManager != address(0));
     }
 
-    function testShouldSetupIporDaoFee() public {
+    function testShouldSetupDaoFee() public {
         //given
-        address iporDaoFeeRecipient = address(0x999);
-        uint256 iporDaoManagementFee = 11;
-        uint256 iporDaoPerformanceFee = 12;
+        address daoFeeRecipient = address(0x999);
+        uint256 daoManagementFee = 11;
+        uint256 daoPerformanceFee = 12;
 
         //when
         vm.startPrank(daoFeeManager);
-        fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, iporDaoManagementFee, iporDaoPerformanceFee);
+        fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
         vm.stopPrank();
 
         //then
-        assertEq(fusionFactory.getIporDaoFeeRecipientAddress(), iporDaoFeeRecipient);
-        assertEq(fusionFactory.getIporDaoManagementFee(), iporDaoManagementFee);
-        assertEq(fusionFactory.getIporDaoPerformanceFee(), iporDaoPerformanceFee);
+        assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
+        assertEq(fusionFactory.getDaoManagementFee(), daoManagementFee);
+        assertEq(fusionFactory.getDaoPerformanceFee(), daoPerformanceFee);
     }
 
     function testShouldUpdateFactoryAddresses() public {
@@ -319,7 +319,7 @@ contract FusionFactoryTest is Test {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
         vm.startPrank(daoFeeManager);
-        fusionFactory.updateIporDaoFee(address(0), 100, 100);
+        fusionFactory.updateDaoFee(address(0), 100, 100);
         vm.stopPrank();
     }
 
@@ -327,7 +327,7 @@ contract FusionFactoryTest is Test {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidFeeValue.selector);
         vm.startPrank(daoFeeManager);
-        fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, 10001, 100); // > 10000 (100%)
+        fusionFactory.updateDaoFee(daoFeeRecipient, 10001, 100); // > 10000 (100%)
         vm.stopPrank();
     }
 
@@ -404,12 +404,12 @@ contract FusionFactoryTest is Test {
 
     function testShouldCreateVaultWithCorrectIporDaoFees() public {
         // given
-        address iporDaoFeeRecipient = address(0x999);
-        uint256 iporDaoManagementFee = 100;
-        uint256 iporDaoPerformanceFee = 200;
+        address daoFeeRecipient = address(0x999);
+        uint256 daoManagementFee = 100;
+        uint256 daoPerformanceFee = 200;
 
         vm.startPrank(daoFeeManager);
-        fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, iporDaoManagementFee, iporDaoPerformanceFee);
+        fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
         vm.stopPrank();
 
         // when
@@ -421,9 +421,9 @@ contract FusionFactoryTest is Test {
         );
 
         // then
-        assertEq(fusionFactory.getIporDaoFeeRecipientAddress(), iporDaoFeeRecipient);
-        assertEq(fusionFactory.getIporDaoManagementFee(), iporDaoManagementFee);
-        assertEq(fusionFactory.getIporDaoPerformanceFee(), iporDaoPerformanceFee);
+        assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
+        assertEq(fusionFactory.getDaoManagementFee(), daoManagementFee);
+        assertEq(fusionFactory.getDaoPerformanceFee(), daoPerformanceFee);
     }
 
     function testShouldCreateVaultWithCorrectRedemptionDelay() public {
