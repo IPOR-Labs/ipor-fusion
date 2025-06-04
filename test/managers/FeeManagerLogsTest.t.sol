@@ -42,7 +42,7 @@ contract FeeManagerLogsTest is Test {
         uint256 totalManagementFee = feeManager.getTotalManagementFee();
 
         console2.log("Total Management Fee (in basis points)", totalManagementFee);
-        
+
         // 2. Check Performance Fee
         uint256 totalPerformanceFee = feeManager.getTotalPerformanceFee();
         console2.log("Total Performance Fee (in basis points)", totalPerformanceFee);
@@ -54,12 +54,12 @@ contract FeeManagerLogsTest is Test {
         // 4. Check Fee Accounts
         console2.log("Management Fee Account", managementFeeAccount);
         console2.log("Performance Fee Account", performanceFeeAccount);
-        
+
         // 5. Check Fee Account Balances
         uint256 managementFeeBalance = IERC4626(plasmaVault).balanceOf(managementFeeAccount);
 
         uint256 performanceFeeBalance = IERC4626(plasmaVault).balanceOf(performanceFeeAccount);
-        
+
         console2.log("Management Fee Account Balance", managementFeeBalance);
         console2.log("Performance Fee Account Balance", performanceFeeBalance);
 
@@ -83,7 +83,7 @@ contract FeeManagerLogsTest is Test {
         // PlasmaVault(plasmaVault).withdraw(1e20, holder, holder);
 
         vm.prank(0xf2C6a2225BE9829eD77263b032E3D92C52aE6694);
-        PlasmaVaultGovernance(plasmaVault).setTotalSupplyCap(type(uint256).max/4);
+        PlasmaVaultGovernance(plasmaVault).setTotalSupplyCap(type(uint256).max / 4);
 
         // Deposit from holder
         vm.startPrank(holder);
@@ -93,10 +93,9 @@ contract FeeManagerLogsTest is Test {
         PlasmaVault(plasmaVault).deposit(1e6, holder);
         vm.stopPrank();
 
-
         // // 6. Harvest all fees and check balances after
         // console2.log("\n--- Harvesting All Fees ---");
-        
+
         // // Store initial balances
         uint256 managementBalanceAfter = IERC4626(plasmaVault).balanceOf(managementFeeAccount);
         uint256 performanceBalanceAfter = IERC4626(plasmaVault).balanceOf(performanceFeeAccount);
@@ -107,19 +106,16 @@ contract FeeManagerLogsTest is Test {
         console2.log("\n--- Management Fee Recipients AFTER ---");
         RecipientFee[] memory managementRecipients = feeManager.getManagementFeeRecipients();
         for (uint256 i = 0; i < managementRecipients.length; i++) {
-            
-                console2.log("Recipient:", managementRecipients[i].recipient);
-                console2.log("Fee Value:", managementRecipients[i].feeValue);
-                console2.log("Balance:", IERC4626(plasmaVault).balanceOf(managementRecipients[i].recipient));
-            
+            console2.log("Recipient:", managementRecipients[i].recipient);
+            console2.log("Fee Value:", managementRecipients[i].feeValue);
+            console2.log("Balance:", IERC4626(plasmaVault).balanceOf(managementRecipients[i].recipient));
         }
 
-        // Get and log performance fee recipients  
+        // Get and log performance fee recipients
         console2.log("\n--- Performance Fee Recipients ---");
         RecipientFee[] memory performanceRecipients = feeManager.getPerformanceFeeRecipients();
         for (uint256 i = 0; i < performanceRecipients.length; i++) {
-            console2.log(
-                "Recipient:", performanceRecipients[i].recipient);
+            console2.log("Recipient:", performanceRecipients[i].recipient);
             console2.log("Fee Value:", performanceRecipients[i].feeValue);
             console2.log("Balance:", IERC4626(plasmaVault).balanceOf(performanceRecipients[i].recipient));
         }
@@ -147,7 +143,7 @@ contract FeeManagerLogsTest is Test {
 
         // // Check DAO and recipient balances
         // console2.log("\n--- Checking DAO and Recipient Balances ---");
-        
+
         // // Get DAO fee recipient address
         // address daoFeeRecipient = feeManager.getIporDaoFeeRecipientAddress();
         // console2.log("DAO Fee Recipient:", daoFeeRecipient);
@@ -157,19 +153,16 @@ contract FeeManagerLogsTest is Test {
         console2.log("\n--- Management Fee Recipients AFTER ---");
         managementRecipients = feeManager.getManagementFeeRecipients();
         for (uint256 i = 0; i < managementRecipients.length; i++) {
-            
-                console2.log("Recipient:", managementRecipients[i].recipient);
-                console2.log("Fee Value:", managementRecipients[i].feeValue);
-                console2.log("Balance:", IERC4626(plasmaVault).balanceOf(managementRecipients[i].recipient));
-            
+            console2.log("Recipient:", managementRecipients[i].recipient);
+            console2.log("Fee Value:", managementRecipients[i].feeValue);
+            console2.log("Balance:", IERC4626(plasmaVault).balanceOf(managementRecipients[i].recipient));
         }
 
-        // Get and log performance fee recipients  
+        // Get and log performance fee recipients
         console2.log("\n--- Performance Fee Recipients ---");
         performanceRecipients = feeManager.getPerformanceFeeRecipients();
         for (uint256 i = 0; i < performanceRecipients.length; i++) {
-            console2.log(
-                "Recipient:", performanceRecipients[i].recipient);
+            console2.log("Recipient:", performanceRecipients[i].recipient);
             console2.log("Fee Value:", performanceRecipients[i].feeValue);
             console2.log("Balance:", IERC4626(plasmaVault).balanceOf(performanceRecipients[i].recipient));
         }

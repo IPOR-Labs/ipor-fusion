@@ -428,7 +428,6 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IPlasmaVaultGovernance(address(plasmaVault)).setTotalSupplyCap(sharesAmount);
 
-
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9);
         ERC20(USDC).transfer(address(userOne), amount);
 
@@ -1434,7 +1433,7 @@ contract PlasmaVaultWithdrawTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        
+
         plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
 
         amount = 100 * 1e6;
@@ -2019,11 +2018,12 @@ contract PlasmaVaultWithdrawTest is Test {
 
     function _setupPlasmaVault(
         address underlyingToken_,
-        IporFusionAccessManager accessManager, 
-        address[] memory initialSupplyFuses, 
-        MarketSubstratesConfig[] memory marketConfigs, 
-        MarketBalanceFuseConfig[] memory balanceFuses, 
-        address withdrawManager) private returns (PlasmaVault plasmaVault) {
+        IporFusionAccessManager accessManager,
+        address[] memory initialSupplyFuses,
+        MarketSubstratesConfig[] memory marketConfigs,
+        MarketBalanceFuseConfig[] memory balanceFuses,
+        address withdrawManager
+    ) private returns (PlasmaVault plasmaVault) {
         plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -2047,6 +2047,5 @@ contract PlasmaVaultWithdrawTest is Test {
             balanceFuses,
             marketConfigs
         );
-        
     }
 }

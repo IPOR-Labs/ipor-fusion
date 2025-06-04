@@ -19,7 +19,11 @@ contract RewardsManagerFactory {
     /// @param accessManager_ The address of the access control manager that will have initial authority
     /// @param plasmaVault_ The address of the plasma vault contract that will handle reward distributions
     /// @return rewardsManager The address of the newly deployed RewardsClaimManager instance
-    function create(uint256 index_, address accessManager_, address plasmaVault_) external returns (address rewardsManager) {
+    function create(
+        uint256 index_,
+        address accessManager_,
+        address plasmaVault_
+    ) external returns (address rewardsManager) {
         rewardsManager = address(new RewardsClaimManager(accessManager_, plasmaVault_));
         emit RewardsManagerCreated(index_, rewardsManager, accessManager_, plasmaVault_);
     }

@@ -48,11 +48,12 @@ library FusionFactoryStorageLib {
     }
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryIndex")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant FUSION_FACTORY_INDEX = 0x0cdfe85e964d1d8957bc2878d4fd994b05803238ec65e8f779a951372893a200;
+    bytes32 private constant FUSION_FACTORY_INDEX = 0x7c54bb33443ce94044aec2970018125c202903e78abecda9a8871f0a2e085400;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultAdminArray")) - 1)) & ~bytes32(uint256(0xff))
     //TODO: change to PlasmaVaultAdminArray
-    bytes32 private constant PLASMA_VAULT_ADMIN_ARRAY = 0x0cdfe85e964d1d8957bc2878d4fd994b05803238ec65e8f779a951372893a200;
+    bytes32 private constant PLASMA_VAULT_ADMIN_ARRAY =
+        0x0cdfe85e964d1d8957bc2878d4fd994b05803238ec65e8f779a951372893a200;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultFactoryAddress")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PLASMA_VAULT_FACTORY_ADDRESS =
@@ -91,30 +92,36 @@ library FusionFactoryStorageLib {
         0x6fbe74bad032cccb3ef5e7d7be660790fda329f96cf9462b85accc6e1d7d4100;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.BurnRequestFeeBalanceFuseAddress")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant BURNR_REQUEST_FEE_BALANCE_FUSE_ADDRESS = 0xa0dc2f24541d4bbdc49c383a8746cd6256371b67d8afc882e3ce7e04f721df00;
+    bytes32 private constant BURNR_REQUEST_FEE_BALANCE_FUSE_ADDRESS =
+        0xa0dc2f24541d4bbdc49c383a8746cd6256371b67d8afc882e3ce7e04f721df00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.BurnRequestFeeFuseAddress")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant BURN_REQUEST_FEE_FUSE_ADDRESS = 0xf011e505a711b4f906e6e0cfcd988c477cb335d6eb81d8284628276cae32ab00;
+    bytes32 private constant BURN_REQUEST_FEE_FUSE_ADDRESS =
+        0xf011e505a711b4f906e6e0cfcd988c477cb335d6eb81d8284628276cae32ab00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoFeeRecipientAddress")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant IPOR_DAO_FEE_RECIPIENT_ADDRESS =
         0xe26401adf3cefb9a94bf1fba47a8129fd18fd2e2e83de494ce289a832073a500;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoManagementFee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant IPOR_DAO_MANAGEMENT_FEE = 0x8fc808da4bdddf1c57ae4d57b8d77cb4183e940f6bb88a2aecb349605eb51800;
+    bytes32 private constant IPOR_DAO_MANAGEMENT_FEE =
+        0x8fc808da4bdddf1c57ae4d57b8d77cb4183e940f6bb88a2aecb349605eb51800;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoPerformanceFee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant IPOR_DAO_PERFORMANCE_FEE = 0x3d6b96d1c7d5b94a3af077c0baedb5f7745382ef440582d67ffa3542d73b9f00;
+    bytes32 private constant IPOR_DAO_PERFORMANCE_FEE =
+        0x3d6b96d1c7d5b94a3af077c0baedb5f7745382ef440582d67ffa3542d73b9f00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.RedemptionDelayInSeconds")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant REDEMPTION_DELAY_IN_SECONDS = 0xf5f7bf2a3be534f496ee2079085992e191fe987b91953e0e010e320f6bf8e100;
+    bytes32 private constant REDEMPTION_DELAY_IN_SECONDS =
+        0xf5f7bf2a3be534f496ee2079085992e191fe987b91953e0e010e320f6bf8e100;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.WithdrawWindowInSeconds")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant WITHDRAW_WINDOW_IN_SECONDS = 0x95f9ecba121b4f2a2786b729864c46a5066694903a7462f772cd92093beb0500;
+    bytes32 private constant WITHDRAW_WINDOW_IN_SECONDS =
+        0x95f9ecba121b4f2a2786b729864c46a5066694903a7462f772cd92093beb0500;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.VestingPeriodInSeconds")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant VESTING_PERIOD_IN_SECONDS = 0xe7de166eee522f429c14923fb385ff49d6c65d576ad910fc76c16800f269be00;
-
+    bytes32 private constant VESTING_PERIOD_IN_SECONDS =
+        0xe7de166eee522f429c14923fb385ff49d6c65d576ad910fc76c16800f269be00;
 
     function getFactoryAddresses() internal view returns (FactoryAddresses memory) {
         return
@@ -182,6 +189,7 @@ library FusionFactoryStorageLib {
     }
 
     function setPlasmaVaultAdminArray(address[] memory value) internal {
+        delete _getPlasmaVaultAdminArraySlot().value;
         _getPlasmaVaultAdminArraySlot().value = value;
     }
 
@@ -252,7 +260,6 @@ library FusionFactoryStorageLib {
     function setVestingPeriodInSeconds(uint256 value) internal {
         _getVestingPeriodInSecondsSlot().value = value;
     }
-
 
     function _getFusionFactoryIndexSlot() private pure returns (Uint256Type storage $) {
         assembly {
@@ -367,8 +374,4 @@ library FusionFactoryStorageLib {
             $.slot := VESTING_PERIOD_IN_SECONDS
         }
     }
-
-    
-    
-    
 }

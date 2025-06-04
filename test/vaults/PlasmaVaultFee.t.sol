@@ -127,7 +127,14 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -260,7 +267,14 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -386,7 +400,14 @@ contract PlasmaVaultFeeTest is Test {
         RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -527,7 +548,14 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -660,11 +688,17 @@ contract PlasmaVaultFeeTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        
         RecipientFee[] memory recipientPerformanceFees = new RecipientFee[](1);
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -800,7 +834,14 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -935,7 +976,14 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -1052,7 +1100,14 @@ contract PlasmaVaultFeeTest is Test {
         recipientPerformanceFees[0] = RecipientFee({recipient: address(0x333), feeValue: performanceFeeInPercentage});
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -1169,7 +1224,7 @@ contract PlasmaVaultFeeTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         plasmaVault = _setupPlasmaVault(USDC, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
-        
+
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
             atomist,
@@ -1178,7 +1233,13 @@ contract PlasmaVaultFeeTest is Test {
             recipientManagementFees
         );
 
-        PlasmaVaultConfigurator.setupRecipientFees(vm, atomist, address(plasmaVault), recipientManagementFees, new RecipientFee[](0));
+        PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
+            address(plasmaVault),
+            recipientManagementFees,
+            new RecipientFee[](0)
+        );
 
         amount = 100 * 1e6;
 
@@ -1260,7 +1321,14 @@ contract PlasmaVaultFeeTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
@@ -1357,7 +1425,14 @@ contract PlasmaVaultFeeTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
 
         amount = 100 * 1e6;
 
@@ -1439,9 +1514,16 @@ contract PlasmaVaultFeeTest is Test {
         recipientManagementFees[0] = RecipientFee({recipient: address(0x333), feeValue: managementFeeInPercentage});
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
-        
+
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
+
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
             atomist,
@@ -1527,9 +1609,16 @@ contract PlasmaVaultFeeTest is Test {
         recipientManagementFees[0] = RecipientFee({recipient: address(0x333), feeValue: managementFeeInPercentage});
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
-        
+
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
+
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
             atomist,
@@ -1624,7 +1713,7 @@ contract PlasmaVaultFeeTest is Test {
 
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
-        
+
         alpha = address(0x1);
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
@@ -1633,10 +1722,23 @@ contract PlasmaVaultFeeTest is Test {
         recipientManagementFees[0] = RecipientFee({recipient: address(0x333), feeValue: managementFeeInPercentage});
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        
-        plasmaVault = _setupPlasmaVault(USDC, accessManager, new address[](0), new MarketSubstratesConfig[](0), new MarketBalanceFuseConfig[](0), withdrawManager);
 
-        PlasmaVaultConfigurator.setupRecipientFees(vm, atomist, address(plasmaVault), recipientManagementFees, new RecipientFee[](0));
+        plasmaVault = _setupPlasmaVault(
+            USDC,
+            accessManager,
+            new address[](0),
+            new MarketSubstratesConfig[](0),
+            new MarketBalanceFuseConfig[](0),
+            withdrawManager
+        );
+
+        PlasmaVaultConfigurator.setupRecipientFees(
+            vm,
+            atomist,
+            address(plasmaVault),
+            recipientManagementFees,
+            new RecipientFee[](0)
+        );
 
         amount = 10_000 * 1e6;
 
@@ -1734,8 +1836,15 @@ contract PlasmaVaultFeeTest is Test {
         recipientManagementFees[0] = RecipientFee({recipient: address(0x333), feeValue: managementFeeInPercentage});
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, new address[](0), new MarketSubstratesConfig[](0), new MarketBalanceFuseConfig[](0), withdrawManager);
+
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            new address[](0),
+            new MarketSubstratesConfig[](0),
+            new MarketBalanceFuseConfig[](0),
+            withdrawManager
+        );
 
         amount = 100_000 * 1e6;
 
@@ -1824,13 +1933,14 @@ contract PlasmaVaultFeeTest is Test {
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
     }
 
-     function _setupPlasmaVault(
+    function _setupPlasmaVault(
         address underlyingToken,
-        IporFusionAccessManager accessManager, 
-        address[] memory initialSupplyFuses, 
-        MarketSubstratesConfig[] memory marketConfigs, 
-        MarketBalanceFuseConfig[] memory balanceFuses, 
-        address withdrawManager) private returns (PlasmaVault plasmaVault) {
+        IporFusionAccessManager accessManager,
+        address[] memory initialSupplyFuses,
+        MarketSubstratesConfig[] memory marketConfigs,
+        MarketBalanceFuseConfig[] memory balanceFuses,
+        address withdrawManager
+    ) private returns (PlasmaVault plasmaVault) {
         plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -1854,6 +1964,5 @@ contract PlasmaVaultFeeTest is Test {
             balanceFuses,
             marketConfigs
         );
-        
     }
 }

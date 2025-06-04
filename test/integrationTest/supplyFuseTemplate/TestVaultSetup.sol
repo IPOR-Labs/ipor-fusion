@@ -86,14 +86,14 @@ abstract contract TestVaultSetup is TestStorage {
 
         setupRoles(withdrawManager);
 
-        
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
             accounts[0],
             address(plasmaVault),
             fuses,
             balanceFuses,
-            marketConfigs);
+            marketConfigs
+        );
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault

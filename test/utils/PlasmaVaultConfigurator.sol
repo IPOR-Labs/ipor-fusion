@@ -11,7 +11,6 @@ import {RecipientFee} from "../../contracts/managers/fee/FeeManager.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 
 library PlasmaVaultConfigurator {
-
     function setupPlasmaVault(
         Vm vm,
         address msgSender,
@@ -33,10 +32,9 @@ library PlasmaVaultConfigurator {
                 marketConfigs[i].substrates
             );
         }
-        
-        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
-            plasmaVault
-        ).getPerformanceFeeData();
+
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(plasmaVault)
+            .getPerformanceFeeData();
 
         address feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
 
@@ -53,9 +51,8 @@ library PlasmaVaultConfigurator {
         RecipientFee[] memory recipientPerformanceFees
     ) external {
         vm.startPrank(msgSender);
-        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
-            plasmaVault
-        ).getPerformanceFeeData();
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(plasmaVault)
+            .getPerformanceFeeData();
 
         address feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
 

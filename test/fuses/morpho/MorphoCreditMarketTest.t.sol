@@ -79,7 +79,7 @@ contract MorphoCreditMarketTest is Test {
                 )
             )
         );
-        
+
         vm.stopPrank();
 
         PlasmaVaultConfigurator.setupPlasmaVault(

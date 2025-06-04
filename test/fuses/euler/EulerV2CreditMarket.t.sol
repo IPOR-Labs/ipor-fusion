@@ -119,7 +119,6 @@ contract EulerCreditMarketTest is Test {
         );
         vm.stopPrank();
 
-
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
             _ATOMIST,
@@ -128,7 +127,7 @@ contract EulerCreditMarketTest is Test {
             _setupBalanceFuses(),
             _setupMarketConfigsErc20()
         );
-        
+
         _initAccessManager();
         _setupDependenceBalance();
         _initialDepositIntoPlasmaVault();

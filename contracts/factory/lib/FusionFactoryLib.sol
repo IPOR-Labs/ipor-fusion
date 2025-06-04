@@ -126,19 +126,25 @@ library FusionFactoryLib {
 
         fusionAddresses.plasmaVaultBase = FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
 
-        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.getFactoryAddresses();
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib
+            .getFactoryAddresses();
 
-        fusionAddresses.accessManager = AccessManagerFactory(
-            factoryAddresses.accessManagerFactory
-        ).create(fusionFactoryIndex,address(this), FusionFactoryStorageLib.getRedemptionDelayInSeconds());
+        fusionAddresses.accessManager = AccessManagerFactory(factoryAddresses.accessManagerFactory).create(
+            fusionFactoryIndex,
+            address(this),
+            FusionFactoryStorageLib.getRedemptionDelayInSeconds()
+        );
 
-        fusionAddresses.withdrawManager = WithdrawManagerFactory(
-            factoryAddresses.withdrawManagerFactory
-        ).create(fusionFactoryIndex,fusionAddresses.accessManager);
+        fusionAddresses.withdrawManager = WithdrawManagerFactory(factoryAddresses.withdrawManagerFactory).create(
+            fusionFactoryIndex,
+            fusionAddresses.accessManager
+        );
 
-        fusionAddresses.priceManager = PriceManagerFactory(
-            factoryAddresses.priceManagerFactory
-        ).create(fusionFactoryIndex,fusionAddresses.accessManager, FusionFactoryStorageLib.getPriceOracleMiddleware());
+        fusionAddresses.priceManager = PriceManagerFactory(factoryAddresses.priceManagerFactory).create(
+            fusionFactoryIndex,
+            fusionAddresses.accessManager,
+            FusionFactoryStorageLib.getPriceOracleMiddleware()
+        );
 
         address iporDaoFeeRecipientAddress = FusionFactoryStorageLib.getIporDaoFeeRecipientAddress();
 
@@ -146,36 +152,39 @@ library FusionFactoryLib {
             revert InvalidAddress();
         }
 
-        fusionAddresses.plasmaVault = PlasmaVaultFactory(
-            factoryAddresses.plasmaVaultFactory
-        ).create(fusionFactoryIndex,
-                PlasmaVaultInitData({
-                    assetName: assetName_,
-                    assetSymbol: assetSymbol_,
-                    underlyingToken: underlyingToken_,
-                    priceOracleMiddleware: FusionFactoryStorageLib.getPriceOracleMiddleware(),
-                    feeConfig: FeeConfig({
-                        feeFactory: factoryAddresses.feeManagerFactory,
-                        iporDaoManagementFee: FusionFactoryStorageLib.getIporDaoManagementFee(),
-                        iporDaoPerformanceFee: FusionFactoryStorageLib.getIporDaoPerformanceFee(),
-                        iporDaoFeeRecipientAddress: iporDaoFeeRecipientAddress
-                    }),
-                    accessManager: fusionAddresses.accessManager,
-                    plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-                    withdrawManager: fusionAddresses.withdrawManager
-                })
-            );
+        fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).create(
+            fusionFactoryIndex,
+            PlasmaVaultInitData({
+                assetName: assetName_,
+                assetSymbol: assetSymbol_,
+                underlyingToken: underlyingToken_,
+                priceOracleMiddleware: FusionFactoryStorageLib.getPriceOracleMiddleware(),
+                feeConfig: FeeConfig({
+                    feeFactory: factoryAddresses.feeManagerFactory,
+                    iporDaoManagementFee: FusionFactoryStorageLib.getIporDaoManagementFee(),
+                    iporDaoPerformanceFee: FusionFactoryStorageLib.getIporDaoPerformanceFee(),
+                    iporDaoFeeRecipientAddress: iporDaoFeeRecipientAddress
+                }),
+                accessManager: fusionAddresses.accessManager,
+                plasmaVaultBase: fusionAddresses.plasmaVaultBase,
+                withdrawManager: fusionAddresses.withdrawManager
+            })
+        );
 
-        fusionAddresses.rewardsManager = RewardsManagerFactory(
-            factoryAddresses.rewardsManagerFactory
-        ).create(fusionFactoryIndex,fusionAddresses.accessManager, fusionAddresses.plasmaVault);
+        fusionAddresses.rewardsManager = RewardsManagerFactory(factoryAddresses.rewardsManagerFactory).create(
+            fusionFactoryIndex,
+            fusionAddresses.accessManager,
+            fusionAddresses.plasmaVault
+        );
 
         address[] memory approvedAddresses = new address[](1);
         approvedAddresses[0] = fusionAddresses.plasmaVault;
 
-        fusionAddresses.contextManager = ContextManagerFactory(
-            factoryAddresses.contextManagerFactory
-        ).create(fusionFactoryIndex,fusionAddresses.accessManager, approvedAddresses);
+        fusionAddresses.contextManager = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(
+            fusionFactoryIndex,
+            fusionAddresses.accessManager,
+            approvedAddresses
+        );
 
         PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
             fusionAddresses.plasmaVault
@@ -215,14 +224,10 @@ library FusionFactoryLib {
         accessData.owners = new address[](1);
         accessData.owners[0] = owner_;
 
-        
-
         IporFusionAccessManager(fusionAddresses.accessManager).initialize(
             IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
         );
 
         return fusionAddresses;
     }
-
-    
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {FusionFactoryStorageLib} from "./lib/FusionFactoryStorageLib.sol";
 
@@ -28,14 +27,6 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
     event WithdrawWindowInSecondsUpdated(uint256 newWithdrawWindowInSeconds);
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);
     event PlasmaVaultAdminArrayUpdated(address[] newPlasmaVaultAdminArray);
-
-    error InvalidVestingPeriod();
-    error InvalidWithdrawWindow();
-    error InvalidRedemptionDelay();
-    error InvalidIporDaoFeeRecipient();
-    error InvalidIporDaoManagementFee();
-    error InvalidIporDaoPerformanceFee();
-    error InvalidFactoryAddress();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -82,7 +73,9 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         _unpause();
     }
 
-    function updatePlasmaVaultAdminArray(address[] memory newPlasmaVaultAdminArray_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updatePlasmaVaultAdminArray(
+        address[] memory newPlasmaVaultAdminArray_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newPlasmaVaultAdminArray_.length == 0) revert FusionFactoryLib.InvalidAddress();
         for (uint256 i = 0; i < newPlasmaVaultAdminArray_.length; i++) {
             if (newPlasmaVaultAdminArray_[i] == address(0)) revert FusionFactoryLib.InvalidAddress();
@@ -91,7 +84,9 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         emit PlasmaVaultAdminArrayUpdated(newPlasmaVaultAdminArray_);
     }
 
-    function updateFactoryAddresses(FusionFactoryStorageLib.FactoryAddresses memory newFactoryAddresses_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+    function updateFactoryAddresses(
+        FusionFactoryStorageLib.FactoryAddresses memory newFactoryAddresses_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newFactoryAddresses_.accessManagerFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
         if (newFactoryAddresses_.plasmaVaultFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
         if (newFactoryAddresses_.feeManagerFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
@@ -119,7 +114,9 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
 
     /// @notice Updates the default price oracle middleware address
     /// @param newPriceOracleMiddleware_ New price oracle middleware address
-    function updatePriceOracleMiddleware(address newPriceOracleMiddleware_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+    function updatePriceOracleMiddleware(
+        address newPriceOracleMiddleware_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newPriceOracleMiddleware_ == address(0)) revert FusionFactoryLib.InvalidAddress();
         FusionFactoryStorageLib.setPriceOracleMiddlewareAddress(newPriceOracleMiddleware_);
         emit PriceOracleMiddlewareUpdated(newPriceOracleMiddleware_);
@@ -131,7 +128,9 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         emit BurnRequestFeeFuseUpdated(newBurnRequestFeeFuse_);
     }
 
-    function updateBurnRequestFeeBalanceFuse(address newBurnRequestFeeBalanceFuse_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+    function updateBurnRequestFeeBalanceFuse(
+        address newBurnRequestFeeBalanceFuse_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newBurnRequestFeeBalanceFuse_ == address(0)) revert FusionFactoryLib.InvalidAddress();
         FusionFactoryStorageLib.setBurnRequestFeeBalanceFuseAddress(newBurnRequestFeeBalanceFuse_);
         emit BurnRequestFeeBalanceFuseUpdated(newBurnRequestFeeBalanceFuse_);
@@ -141,7 +140,7 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         address newIporDaoFeeRecipient_,
         uint256 newIporDaoManagementFee_,
         uint256 newIporDaoPerformanceFee_
-    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+    ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
         if (newIporDaoFeeRecipient_ == address(0)) revert FusionFactoryLib.InvalidAddress();
         if (newIporDaoManagementFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
         if (newIporDaoPerformanceFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
@@ -151,20 +150,25 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         emit IporDaoFeeUpdated(newIporDaoFeeRecipient_, newIporDaoManagementFee_, newIporDaoPerformanceFee_);
     }
 
-    function updateRedemptionDelayInSeconds(uint256 newRedemptionDelayInSeconds_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+    function updateRedemptionDelayInSeconds(
+        uint256 newRedemptionDelayInSeconds_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newRedemptionDelayInSeconds_ == 0) revert FusionFactoryLib.InvalidRedemptionDelay();
         FusionFactoryStorageLib.setRedemptionDelayInSeconds(newRedemptionDelayInSeconds_);
         emit RedemptionDelayInSecondsUpdated(newRedemptionDelayInSeconds_);
     }
 
-    function updateWithdrawWindowInSeconds(uint256 newWithdrawWindowInSeconds_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+    function updateWithdrawWindowInSeconds(
+        uint256 newWithdrawWindowInSeconds_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newWithdrawWindowInSeconds_ == 0) revert FusionFactoryLib.InvalidWithdrawWindow();
         FusionFactoryStorageLib.setWithdrawWindowInSeconds(newWithdrawWindowInSeconds_);
         emit WithdrawWindowInSecondsUpdated(newWithdrawWindowInSeconds_);
     }
 
-    function updateVestingPeriodInSeconds(uint256 newVestingPeriodInSeconds_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
-        if (newVestingPeriodInSeconds_ == 0) revert InvalidVestingPeriod();
+    function updateVestingPeriodInSeconds(
+        uint256 newVestingPeriodInSeconds_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         FusionFactoryStorageLib.setVestingPeriodInSeconds(newVestingPeriodInSeconds_);
         emit VestingPeriodInSecondsUpdated(newVestingPeriodInSeconds_);
     }

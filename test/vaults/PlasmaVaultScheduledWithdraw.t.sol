@@ -71,7 +71,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
-        
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {

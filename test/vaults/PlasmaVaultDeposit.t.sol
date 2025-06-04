@@ -209,14 +209,7 @@ contract PlasmaVaultDepositTest is Test {
 
         IPlasmaVaultGovernance(address(plasmaVault)).setTotalSupplyCap(totalSupplyCap);
 
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            vm,
-            atomist,
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
         return plasmaVault;
@@ -309,14 +302,7 @@ contract PlasmaVaultDepositTest is Test {
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            vm,
-            atomist,
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         return plasmaVault;
     }

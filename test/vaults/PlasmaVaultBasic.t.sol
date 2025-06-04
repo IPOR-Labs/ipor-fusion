@@ -96,7 +96,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -160,7 +167,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -223,7 +237,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -300,7 +321,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -370,7 +398,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         amount = 100 * 1e6;
 
@@ -463,7 +498,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         amount = 100 * 1e6;
 
@@ -544,7 +586,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -626,7 +675,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -724,7 +780,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -793,7 +856,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -870,7 +940,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = _setupPlasmaVault(underlyingToken, accessManager, withdrawManager, marketConfigs, balanceFuses, fuses);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -950,7 +1027,6 @@ contract PlasmaVaultBasicTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses,
         address[] memory fuses
     ) public returns (PlasmaVault) {
-
         plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 assetName,
@@ -966,14 +1042,7 @@ contract PlasmaVaultBasicTest is Test {
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            vm,
-            atomist,
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         return plasmaVault;
     }

@@ -133,7 +133,6 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
             _setupBalanceFuses(),
             _setupMarketConfigsErc20()
         );
-       
 
         _initAccessManager();
         _setupDependenceBalance();

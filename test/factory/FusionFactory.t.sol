@@ -26,7 +26,6 @@ import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 
-
 import {Roles} from "../../contracts/libraries/Roles.sol";
 
 contract FusionFactoryTest is Test {
@@ -40,6 +39,8 @@ contract FusionFactoryTest is Test {
     MockERC20 public underlyingToken;
     address public adminOne;
     address public adminTwo;
+    address public daoFeeManager;
+    address public maintenanceManager;
     address public owner;
     address public iporDaoFeeRecipient;
 
@@ -62,6 +63,7 @@ contract FusionFactoryTest is Test {
         iporDaoFeeRecipient = address(0x888);
         adminOne = address(0x999);
         adminTwo = address(0x1000);
+        daoFeeManager = address(0x111);
         address[] memory plasmaVaultAdminArray = new address[](2);
         plasmaVaultAdminArray[0] = adminOne;
         plasmaVaultAdminArray[1] = adminTwo;
@@ -78,7 +80,9 @@ contract FusionFactoryTest is Test {
         // Deploy implementation and proxy for FusionFactory
         fusionFactoryImplementation = new FusionFactory();
         bytes memory initData = abi.encodeWithSignature(
-            "initialize((address,address,address,address,address,address,address),address,address,address,address)",
+            "initialize(address,address[],(address,address,address,address,address,address,address),address,address,address,address)",
+            owner,
+            plasmaVaultAdminArray,
             factoryAddresses,
             plasmaVaultBase,
             priceOracleMiddleware,
@@ -87,13 +91,14 @@ contract FusionFactoryTest is Test {
         );
         fusionFactory = FusionFactory(address(new ERC1967Proxy(address(fusionFactoryImplementation), initData)));
 
-        fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, 100, 100);
-        fusionFactory.updatePlasmaVaultAdminArray(plasmaVaultAdminArray);
-    }
+        vm.startPrank(owner);
+        fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), daoFeeManager);
+        fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), maintenanceManager);
+        vm.stopPrank();
 
-    function testXXX() public {
-        bytes32 index = keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryIndex")) - 1)) & ~bytes32(uint256(0xff));
-        console2.logBytes32(index);
+        vm.startPrank(daoFeeManager);
+        fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, 100, 100);
+        vm.stopPrank();
     }
 
     function testShouldCreateFusionInstance() public {
@@ -126,8 +131,11 @@ contract FusionFactoryTest is Test {
         address iporDaoFeeRecipient = address(0x999);
         uint256 iporDaoManagementFee = 11;
         uint256 iporDaoPerformanceFee = 12;
+
         //when
+        vm.startPrank(daoFeeManager);
         fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, iporDaoManagementFee, iporDaoPerformanceFee);
+        vm.stopPrank();
 
         //then
         assertEq(fusionFactory.getIporDaoFeeRecipientAddress(), iporDaoFeeRecipient);
@@ -148,7 +156,9 @@ contract FusionFactoryTest is Test {
         });
 
         // when
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateFactoryAddresses(newFactoryAddresses);
+        vm.stopPrank();
 
         // then
         FusionFactoryStorageLib.FactoryAddresses memory updatedAddresses = fusionFactory.getFactoryAddresses();
@@ -166,7 +176,9 @@ contract FusionFactoryTest is Test {
         address newPlasmaVaultBase = address(new PlasmaVaultBase());
 
         // when
+        vm.startPrank(maintenanceManager);
         fusionFactory.updatePlasmaVaultBase(newPlasmaVaultBase);
+        vm.stopPrank();
 
         // then
         assertEq(fusionFactory.getPlasmaVaultBaseAddress(), newPlasmaVaultBase);
@@ -180,7 +192,9 @@ contract FusionFactoryTest is Test {
         );
 
         // when
+        vm.startPrank(maintenanceManager);
         fusionFactory.updatePriceOracleMiddleware(newPriceOracleMiddleware);
+        vm.stopPrank();
 
         // then
         assertEq(fusionFactory.getPriceOracleMiddleware(), newPriceOracleMiddleware);
@@ -191,7 +205,9 @@ contract FusionFactoryTest is Test {
         address newBurnRequestFeeFuse = address(new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
 
         // when
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateBurnRequestFeeFuse(newBurnRequestFeeFuse);
+        vm.stopPrank();
 
         // then
         assertEq(fusionFactory.getBurnRequestFeeFuseAddress(), newBurnRequestFeeFuse);
@@ -202,7 +218,9 @@ contract FusionFactoryTest is Test {
         address newBurnRequestFeeBalanceFuse = address(new ZeroBalanceFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
 
         // when
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateBurnRequestFeeBalanceFuse(newBurnRequestFeeBalanceFuse);
+        vm.stopPrank();
 
         // then
         assertEq(fusionFactory.getBurnRequestFeeBalanceFuseAddress(), newBurnRequestFeeBalanceFuse);
@@ -213,7 +231,9 @@ contract FusionFactoryTest is Test {
         uint256 newRedemptionDelay = 3600; // 1 hour
 
         // when
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateRedemptionDelayInSeconds(newRedemptionDelay);
+        vm.stopPrank();
 
         // then
         assertEq(fusionFactory.getRedemptionDelayInSeconds(), newRedemptionDelay);
@@ -224,7 +244,9 @@ contract FusionFactoryTest is Test {
         uint256 newWithdrawWindow = 86400; // 24 hours
 
         // when
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateWithdrawWindowInSeconds(newWithdrawWindow);
+        vm.stopPrank();
 
         // then
         assertEq(fusionFactory.getWithdrawWindowInSeconds(), newWithdrawWindow);
@@ -235,7 +257,9 @@ contract FusionFactoryTest is Test {
         uint256 newVestingPeriod = 604800; // 1 week
 
         // when
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateVestingPeriodInSeconds(newVestingPeriod);
+        vm.stopPrank();
 
         // then
         assertEq(fusionFactory.getVestingPeriodInSeconds(), newVestingPeriod);
@@ -255,60 +279,83 @@ contract FusionFactoryTest is Test {
 
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateFactoryAddresses(newFactoryAddresses);
+        vm.stopPrank();
     }
 
     function testShouldRevertWhenUpdatingPlasmaVaultBaseWithZeroAddress() public {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
+        vm.startPrank(maintenanceManager);
         fusionFactory.updatePlasmaVaultBase(address(0));
+        vm.stopPrank();
     }
 
     function testShouldRevertWhenUpdatingPriceOracleMiddlewareWithZeroAddress() public {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
+        vm.startPrank(maintenanceManager);
         fusionFactory.updatePriceOracleMiddleware(address(0));
+        vm.stopPrank();
     }
 
     function testShouldRevertWhenUpdatingBurnRequestFeeFuseWithZeroAddress() public {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateBurnRequestFeeFuse(address(0));
+        vm.stopPrank();
     }
 
     function testShouldRevertWhenUpdatingBurnRequestFeeBalanceFuseWithZeroAddress() public {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateBurnRequestFeeBalanceFuse(address(0));
+        vm.stopPrank();
     }
 
     function testShouldRevertWhenUpdatingIporDaoFeeWithZeroAddress() public {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
+        vm.startPrank(daoFeeManager);
         fusionFactory.updateIporDaoFee(address(0), 100, 100);
+        vm.stopPrank();
     }
 
     function testShouldRevertWhenUpdatingIporDaoFeeWithInvalidFee() public {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidFeeValue.selector);
+        vm.startPrank(daoFeeManager);
         fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, 10001, 100); // > 10000 (100%)
+        vm.stopPrank();
     }
 
     function testShouldRevertWhenUpdatingRedemptionDelayWithZero() public {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidRedemptionDelay.selector);
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateRedemptionDelayInSeconds(0);
+        vm.stopPrank();
     }
 
     function testShouldRevertWhenUpdatingWithdrawWindowWithZero() public {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidWithdrawWindow.selector);
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateWithdrawWindowInSeconds(0);
+        vm.stopPrank();
     }
 
     function testShouldNotRevertWhenUpdatingVestingPeriodWithZero() public {
         // when/then
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateVestingPeriodInSeconds(0);
+        vm.stopPrank();
+
+        // then
+        assertEq(fusionFactory.getVestingPeriodInSeconds(), 0);
     }
 
     function testShouldUpdatePlasmaVaultAdmin() public {
@@ -317,9 +364,10 @@ contract FusionFactoryTest is Test {
         newPlasmaVaultAdminArray[0] = adminOne;
         newPlasmaVaultAdminArray[1] = address(0x123);
 
-
         // when
+        vm.startPrank(owner);
         fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
+        vm.stopPrank();
 
         // then
         address[] memory updatedPlasmaVaultAdminArray = fusionFactory.getPlasmaVaultAdminArray();
@@ -332,8 +380,10 @@ contract FusionFactoryTest is Test {
         address[] memory newPlasmaVaultAdminArray = new address[](2);
         newPlasmaVaultAdminArray[0] = address(0x321);
         newPlasmaVaultAdminArray[1] = address(0x123);
-        
+
+        vm.startPrank(owner);
         fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
+        vm.stopPrank();
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
@@ -358,7 +408,10 @@ contract FusionFactoryTest is Test {
         address iporDaoFeeRecipient = address(0x999);
         uint256 iporDaoManagementFee = 100;
         uint256 iporDaoPerformanceFee = 200;
+
+        vm.startPrank(daoFeeManager);
         fusionFactory.updateIporDaoFee(iporDaoFeeRecipient, iporDaoManagementFee, iporDaoPerformanceFee);
+        vm.stopPrank();
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
@@ -374,11 +427,13 @@ contract FusionFactoryTest is Test {
         assertEq(fusionFactory.getIporDaoPerformanceFee(), iporDaoPerformanceFee);
     }
 
-
     function testShouldCreateVaultWithCorrectRedemptionDelay() public {
         // given
         uint256 redemptionDelay = 123;
+
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateRedemptionDelayInSeconds(redemptionDelay);
+        vm.stopPrank();
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
@@ -397,11 +452,14 @@ contract FusionFactoryTest is Test {
     function testShouldCreateVaultWithCorrectWithdrawWindow() public {
         // given
         uint256 withdrawWindow = 123;
+
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateWithdrawWindowInSeconds(withdrawWindow);
+        vm.stopPrank();
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
-            "Test Asset", 
+            "Test Asset",
             "TEST",
             address(underlyingToken),
             owner
@@ -415,11 +473,14 @@ contract FusionFactoryTest is Test {
     function testShouldCreateVaultWithCorrectVestingPeriod() public {
         // given
         uint256 vestingPeriod = 123;
+
+        vm.startPrank(maintenanceManager);
         fusionFactory.updateVestingPeriodInSeconds(vestingPeriod);
+        vm.stopPrank();
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
-            "Test Asset", 
+            "Test Asset",
             "TEST",
             address(underlyingToken),
             owner
@@ -433,7 +494,7 @@ contract FusionFactoryTest is Test {
     function testShouldCreateVaultWithCorrectPlasmaVaultBase() public {
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
-            "Test Asset", 
+            "Test Asset",
             "TEST",
             address(underlyingToken),
             owner
@@ -447,7 +508,7 @@ contract FusionFactoryTest is Test {
     function testShouldCreateVaultWithCorrectPlasmaVaultOnWithdrawManager() public {
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
-            "Test Asset", 
+            "Test Asset",
             "TEST",
             address(underlyingToken),
             owner
@@ -461,7 +522,7 @@ contract FusionFactoryTest is Test {
     function testShouldCreateVaultWithCorrectRewardsClaimManager() public {
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
-            "Test Asset", 
+            "Test Asset",
             "TEST",
             address(underlyingToken),
             owner
@@ -469,13 +530,14 @@ contract FusionFactoryTest is Test {
 
         // then
         PlasmaVaultGovernance governanceVault = PlasmaVaultGovernance(instance.plasmaVault);
+
         assertEq(governanceVault.getRewardsClaimManagerAddress(), instance.rewardsManager);
     }
 
     function testShouldCreateVaultWithCorrectBurnRequestFeeFuse() public {
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
-            "Test Asset", 
+            "Test Asset",
             "TEST",
             address(underlyingToken),
             owner
@@ -484,8 +546,10 @@ contract FusionFactoryTest is Test {
         // then
         PlasmaVaultGovernance governanceVault = PlasmaVaultGovernance(instance.plasmaVault);
 
-
-        assertEq(governanceVault.isBalanceFuseSupported(IporFusionMarkets.ZERO_BALANCE_MARKET, burnRequestFeeBalanceFuse), true);
+        assertEq(
+            governanceVault.isBalanceFuseSupported(IporFusionMarkets.ZERO_BALANCE_MARKET, burnRequestFeeBalanceFuse),
+            true
+        );
 
         address[] memory fuses = governanceVault.getFuses();
 
@@ -497,5 +561,4 @@ contract FusionFactoryTest is Test {
 
         fail();
     }
-
 }

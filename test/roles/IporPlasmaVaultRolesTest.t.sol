@@ -674,7 +674,6 @@ contract IporPlasmaVaultRolesTest is Test {
             balanceFuses,
             marketConfigs
         );
-        
     }
 
     function _generateRewardsClaimManager() private {

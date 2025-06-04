@@ -30,7 +30,6 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
-import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 
 contract FeeManagerTest is Test {
     address private constant _DAO = address(9999999);
@@ -85,8 +84,7 @@ contract FeeManagerTest is Test {
             recipient: _FEE_RECIPIENT_1,
             feeValue: MANAGEMENT_FEE_IN_PERCENTAGE
         });
-        
-        
+
         PlasmaVaultConfigurator.setupRecipientFees(
             vm,
             _ATOMIST,
@@ -94,8 +92,6 @@ contract FeeManagerTest is Test {
             managementRecipientFees,
             performanceRecipientFees
         );
-
-        
     }
 
     function _createPlasmaVault() private {
@@ -125,7 +121,6 @@ contract FeeManagerTest is Test {
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
-
     }
 
     function _createFuse() private returns (address[] memory) {
@@ -153,7 +148,6 @@ contract FeeManagerTest is Test {
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
-        
         address feeManagerFactory = address(new FeeManagerFactory());
 
         feeConfig = FeeConfig({
@@ -295,8 +289,6 @@ contract FeeManagerTest is Test {
         //given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
 
-        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
-
         vm.startPrank(_USER);
         ERC20(_USDC).approve(address(AAVE_POOL), 5000e6);
         AAVE_POOL.supply(_USDC, 5000e6, _plasmaVault, 0);
@@ -435,7 +427,6 @@ contract FeeManagerTest is Test {
         FeeManager feeManager = FeeManager(FeeAccount(feeDataOnPlasmaVaultBefore.feeAccount).FEE_MANAGER());
 
         uint256 performanceFeeBefore = feeManager.getTotalPerformanceFee();
-
 
         RecipientFee[] memory recipientFees = new RecipientFee[](1);
         recipientFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 500});
@@ -580,7 +571,6 @@ contract FeeManagerTest is Test {
         // given
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
         FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
-
 
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _USER);
 

@@ -15,14 +15,11 @@ import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 
-
 contract PlasmaVaultTotalSupplyCapTest is Test {
-
     address public plasmaVault = 0x29d322DD088e9b9D1416F43188954F08748fafbb;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22376009);
-       
     }
 
     function testShouldPrintTotalSupplyCap() public {
@@ -32,8 +29,6 @@ contract PlasmaVaultTotalSupplyCapTest is Test {
 
         uint256 totalSupply = vault.totalSupply();
         console2.log("Total Supply:", totalSupply);
-
-        
     }
 
     function testShouldDepositWithdrawAndDepositAgain() public {
@@ -60,10 +55,10 @@ contract PlasmaVaultTotalSupplyCapTest is Test {
         console2.log("Total Supply after deposit:", totalSupplyAfterDeposit);
 
         vm.warp(block.timestamp + 1);
-        
+
         // Withdraw everything
         vault.withdraw(vault.maxWithdraw(userOne), userOne, userOne);
-        
+
         // Check total supply after withdrawal
         uint256 totalSupplyAfterWithdraw = vault.totalSupply();
         console2.log("Total Supply after withdrawal:", totalSupplyAfterWithdraw);
@@ -80,5 +75,4 @@ contract PlasmaVaultTotalSupplyCapTest is Test {
         console2.log("Final Total Supply:", finalTotalSupply);
         vm.stopPrank();
     }
-
 }

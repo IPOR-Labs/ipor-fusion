@@ -19,9 +19,6 @@ import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PreHookInfo, PreHooksInfoReader} from "../../contracts/readers/PreHooksInfoReader.sol";
 import {PlasmaVaultMarketsLib} from "../../contracts/vaults/lib/PlasmaVaultMarketsLib.sol";
 
-
-
-
 contract PreHooksTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;

@@ -38,7 +38,6 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
-
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
     uint256 balanceErc20Before;

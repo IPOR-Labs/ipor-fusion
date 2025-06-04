@@ -86,7 +86,6 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         sources[5] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         PriceOracleMiddleware(_priceOracle).setAssetsPricesSources(assets, sources);
 
-        
         // plasma vault
         _plasmaVault = address(
             new PlasmaVault(
@@ -111,7 +110,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
-        
+
         _setupRoles();
     }
 

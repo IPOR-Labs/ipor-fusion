@@ -247,7 +247,7 @@ contract PlasmaVault is
         _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
 
         PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
-        
+
         PLASMA_VAULT_BASE.functionDelegateCall(
             abi.encodeWithSelector(
                 IPlasmaVaultBase.init.selector,

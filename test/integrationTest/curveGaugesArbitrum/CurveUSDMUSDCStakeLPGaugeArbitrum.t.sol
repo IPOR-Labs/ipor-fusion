@@ -729,7 +729,7 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _createAccessManager();
         _createPlasmaVault();
         _createClaimRewardsManager();
-        
+
         _initAccessManager();
         _setupPlasmaVault();
         // RoleLib.setupPlasmaVaultRoles(
@@ -882,8 +882,6 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 withdrawManager: address(withdrawManager)
             })
         );
-
-        
     }
 
     function _initAccessManager() private {

@@ -13,7 +13,6 @@ import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
-
 struct DeployMinimalPlasmaVaultParams {
     address underlyingToken;
     string underlyingTokenName;
@@ -25,7 +24,6 @@ struct DeployMinimalPlasmaVaultParams {
 /// @notice Helper library for testing PlasmaVault operations
 /// @dev Contains utility functions to assist with PlasmaVault testing
 library PlasmaVaultHelper {
-    
     /// @notice Deploys a minimal PlasmaVault with basic configuration
     /// @param params Parameters for deployment
     /// @return plasmaVault Address of the deployed PlasmaVault
@@ -52,7 +50,6 @@ library PlasmaVaultHelper {
         });
 
         plasmaVault = new PlasmaVault(initData);
-
     }
 
     function deployMinimalPlasmaVaultWithWithdrawManager(
@@ -79,7 +76,6 @@ library PlasmaVaultHelper {
         });
 
         plasmaVault = new PlasmaVault(initData);
-
     }
 
     function accessManagerOf(PlasmaVault plasmaVault_) internal view returns (IporFusionAccessManager) {

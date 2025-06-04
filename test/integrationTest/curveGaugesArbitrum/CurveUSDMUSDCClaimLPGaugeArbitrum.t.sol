@@ -450,8 +450,6 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
-
-    
     }
 
     function _setupAddresses() private {
@@ -557,7 +555,6 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 withdrawManager: address(withdrawManager)
             })
         );
-        
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {

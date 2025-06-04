@@ -16,7 +16,13 @@ contract PlasmaVaultFactory {
     /// @param assetName The name of the underlying asset
     /// @param assetSymbol The symbol of the underlying asset
     /// @param underlyingToken The address of the underlying token contract
-    event PlasmaVaultCreated(uint256 index, address plasmaVault, string assetName, string assetSymbol, address underlyingToken);
+    event PlasmaVaultCreated(
+        uint256 index,
+        address plasmaVault,
+        string assetName,
+        string assetSymbol,
+        address underlyingToken
+    );
 
     /// @notice Creates a new PlasmaVault instance with the specified initialization parameters
     /// @param index_ The index of the PlasmaVault instance
@@ -26,6 +32,12 @@ contract PlasmaVaultFactory {
     /// @dev The initialization data must contain valid parameters for the vault to function correctly
     function create(uint256 index_, PlasmaVaultInitData memory initData_) external returns (address plasmaVault) {
         plasmaVault = address(new PlasmaVault(initData_));
-        emit PlasmaVaultCreated(index_, plasmaVault, initData_.assetName, initData_.assetSymbol, initData_.underlyingToken);
+        emit PlasmaVaultCreated(
+            index_,
+            plasmaVault,
+            initData_.assetName,
+            initData_.assetSymbol,
+            initData_.underlyingToken
+        );
     }
 }
