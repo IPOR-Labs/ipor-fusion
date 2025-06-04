@@ -21,6 +21,7 @@ import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 contract PlasmaVaultBasicTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -50,6 +51,8 @@ contract PlasmaVaultBasicTest is Test {
 
     PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
+
+    PlasmaVault plasmaVault;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19591360);
@@ -92,24 +95,15 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
-        );
 
-        setupRoles(plasmaVault, accessManager, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -173,24 +167,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
         );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -252,24 +236,15 @@ contract PlasmaVaultBasicTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
-        );
 
-        setupRoles(plasmaVault, accessManager, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
+        );
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -345,23 +320,15 @@ contract PlasmaVaultBasicTest is Test {
         balanceFuses[1] = MarketBalanceFuseConfig(COMPOUND_V3_MARKET_ID, address(balanceFuseCompoundV3));
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
+
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -431,23 +398,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -540,24 +498,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
         );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         amount = 100 * 1e6;
 
@@ -638,23 +586,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -736,23 +675,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
         );
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](2);
 
@@ -850,24 +780,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
         );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -936,24 +856,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
         );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -1030,24 +940,14 @@ contract PlasmaVaultBasicTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
-            PlasmaVaultInitData(
-                assetName,
-                assetSymbol,
-                underlyingToken,
-                address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
-                FeeConfigHelper.createZeroFeeConfig(),
-                address(accessManager),
-                address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(withdrawManager)
-            )
+        plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            withdrawManager,
+            marketConfigs,
+            balanceFuses,
+            fuses
         );
-
-        setupRoles(plasmaVault, accessManager, withdrawManager);
 
         FuseAction[] memory calls = new FuseAction[](1);
 
@@ -1117,5 +1017,33 @@ contract PlasmaVaultBasicTest is Test {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
+    }
+
+    function _setupPlasmaVault(
+        address underlyingToken,
+        IporFusionAccessManager accessManager,
+        address withdrawManager,
+        MarketSubstratesConfig[] memory marketConfigs,
+        MarketBalanceFuseConfig[] memory balanceFuses,
+        address[] memory fuses
+    ) public returns (PlasmaVault) {
+        plasmaVault = new PlasmaVault(
+            PlasmaVaultInitData(
+                assetName,
+                assetSymbol,
+                underlyingToken,
+                address(priceOracleMiddlewareProxy),
+                FeeConfigHelper.createZeroFeeConfig(),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                address(withdrawManager)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
+
+        return plasmaVault;
     }
 }

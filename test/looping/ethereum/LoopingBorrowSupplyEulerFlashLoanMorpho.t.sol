@@ -35,6 +35,7 @@ import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapF
 import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 struct VaultBalance {
     uint256 eulerPrimeUsdc;
@@ -115,18 +116,23 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                     "USDC",
                     _USDC,
                     _priceOracle,
-                    _setupMarketConfigsErc20(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
                     _createWithdrawManager()
                 )
             )
         );
         vm.stopPrank();
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigsErc20()
+        );
 
         _initAccessManager();
         _setupDependenceBalance();

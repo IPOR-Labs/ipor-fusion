@@ -1,0 +1,238 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.26;
+
+import {RewardsManagerFactory} from "../RewardsManagerFactory.sol";
+import {WithdrawManagerFactory} from "../WithdrawManagerFactory.sol";
+import {ContextManagerFactory} from "../ContextManagerFactory.sol";
+import {PriceManagerFactory} from "../PriceManagerFactory.sol";
+import {PlasmaVaultFactory} from "../PlasmaVaultFactory.sol";
+import {AccessManagerFactory} from "../AccessManagerFactory.sol";
+import {FusionFactoryStorageLib} from "./FusionFactoryStorageLib.sol";
+import {PlasmaVaultInitData} from "../../vaults/PlasmaVault.sol";
+import {FeeConfig} from "../../managers/fee/FeeManagerFactory.sol";
+import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
+import {DataForInitialization} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {IporFusionAccessManagerInitializerLibV1} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {IPlasmaVaultGovernance} from "../../interfaces/IPlasmaVaultGovernance.sol";
+import {IRewardsClaimManager} from "../../interfaces/IRewardsClaimManager.sol";
+import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
+import {FeeManager} from "../../managers/fee/FeeManager.sol";
+import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
+import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
+import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
+
+/**
+ * @title Fusion Factory Library
+ * @notice Library for managing Fusion Factory initialization and instance creation
+ * @dev This library contains the core functionality for initializing and creating Fusion instances
+ */
+library FusionFactoryLib {
+    event FusionInstanceCreated(uint256 index, FusionInstance fusionInstance);
+
+    error InvalidFactoryAddress();
+    error InvalidFeeValue();
+    error InvalidAddress();
+    error BurnRequestFeeFuseNotSet();
+    error BalanceFuseBurnRequestFeeNotSet();
+    error InvalidAssetName();
+    error InvalidAssetSymbol();
+    error InvalidUnderlyingToken();
+    error InvalidOwner();
+    error InvalidPlasmaVaultAdmin();
+    error InvalidRedemptionDelay();
+    error InvalidWithdrawWindow();
+    error InvalidIporDaoFeeRecipient();
+
+    struct FusionInstance {
+        string assetName;
+        string assetSymbol;
+        address underlyingToken;
+        address initialOwner;
+        address plasmaVault;
+        address plasmaVaultBase;
+        address accessManager;
+        address feeManager;
+        address rewardsManager;
+        address withdrawManager;
+        address contextManager;
+        address priceManager;
+    }
+
+    function initialize(
+        address[] memory initialPlasmaVaultAdminArray_,
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses_,
+        address plasmaVaultBase_,
+        address priceOracleMiddleware_,
+        address burnRequestFeeFuse_,
+        address burnRequestFeeBalanceFuse_
+    ) internal {
+        if (initialPlasmaVaultAdminArray_.length > 0) {
+            for (uint256 i = 0; i < initialPlasmaVaultAdminArray_.length; i++) {
+                if (initialPlasmaVaultAdminArray_[i] == address(0)) revert InvalidAddress();
+            }
+            FusionFactoryStorageLib.setPlasmaVaultAdminArray(initialPlasmaVaultAdminArray_);
+        }
+
+        if (factoryAddresses_.accessManagerFactory == address(0)) revert InvalidFactoryAddress();
+        if (factoryAddresses_.plasmaVaultFactory == address(0)) revert InvalidFactoryAddress();
+        if (factoryAddresses_.feeManagerFactory == address(0)) revert InvalidFactoryAddress();
+        if (factoryAddresses_.withdrawManagerFactory == address(0)) revert InvalidFactoryAddress();
+        if (factoryAddresses_.rewardsManagerFactory == address(0)) revert InvalidFactoryAddress();
+        if (factoryAddresses_.contextManagerFactory == address(0)) revert InvalidFactoryAddress();
+        if (factoryAddresses_.priceManagerFactory == address(0)) revert InvalidFactoryAddress();
+
+        if (plasmaVaultBase_ == address(0)) revert InvalidAddress();
+        if (priceOracleMiddleware_ == address(0)) revert InvalidAddress();
+        if (burnRequestFeeFuse_ == address(0)) revert InvalidAddress();
+        if (burnRequestFeeBalanceFuse_ == address(0)) revert InvalidAddress();
+
+
+        /// @dev default redemption delay is 1 seconds
+        FusionFactoryStorageLib.setRedemptionDelayInSeconds(1 seconds);
+        /// @dev default vesting period is 1 weeks
+        FusionFactoryStorageLib.setVestingPeriodInSeconds(1 weeks);
+        /// @dev default withdraw window is 24 hours
+        FusionFactoryStorageLib.setWithdrawWindowInSeconds(24 hours);
+
+        FusionFactoryStorageLib.setPlasmaVaultFactoryAddress(factoryAddresses_.plasmaVaultFactory);
+        FusionFactoryStorageLib.setAccessManagerFactoryAddress(factoryAddresses_.accessManagerFactory);
+        FusionFactoryStorageLib.setFeeManagerFactoryAddress(factoryAddresses_.feeManagerFactory);
+        FusionFactoryStorageLib.setWithdrawManagerFactoryAddress(factoryAddresses_.withdrawManagerFactory);
+        FusionFactoryStorageLib.setRewardsManagerFactoryAddress(factoryAddresses_.rewardsManagerFactory);
+        FusionFactoryStorageLib.setContextManagerFactoryAddress(factoryAddresses_.contextManagerFactory);
+        FusionFactoryStorageLib.setPriceManagerFactoryAddress(factoryAddresses_.priceManagerFactory);
+
+        FusionFactoryStorageLib.setPlasmaVaultBaseAddress(plasmaVaultBase_);
+        FusionFactoryStorageLib.setPriceOracleMiddlewareAddress(priceOracleMiddleware_);
+
+        FusionFactoryStorageLib.setBurnRequestFeeFuseAddress(burnRequestFeeFuse_);
+        FusionFactoryStorageLib.setBurnRequestFeeBalanceFuseAddress(burnRequestFeeBalanceFuse_);
+    }
+
+    function create(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        address owner_
+    ) public returns (FusionInstance memory fusionAddresses) {
+        if (underlyingToken_ == address(0)) revert InvalidUnderlyingToken();
+        if (owner_ == address(0)) revert InvalidOwner();
+
+        fusionAddresses.assetName = assetName_;
+        fusionAddresses.assetSymbol = assetSymbol_;
+        fusionAddresses.underlyingToken = underlyingToken_;
+        fusionAddresses.initialOwner = owner_;
+
+        uint256 fusionFactoryIndex = FusionFactoryStorageLib.getFusionFactoryIndex();
+        fusionFactoryIndex++;
+        FusionFactoryStorageLib.setFusionFactoryIndex(fusionFactoryIndex);
+
+        fusionAddresses.plasmaVaultBase = FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
+
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib
+            .getFactoryAddresses();
+
+        fusionAddresses.accessManager = AccessManagerFactory(factoryAddresses.accessManagerFactory).create(
+            fusionFactoryIndex,
+            address(this),
+            FusionFactoryStorageLib.getRedemptionDelayInSeconds()
+        );
+
+        fusionAddresses.withdrawManager = WithdrawManagerFactory(factoryAddresses.withdrawManagerFactory).create(
+            fusionFactoryIndex,
+            fusionAddresses.accessManager
+        );
+
+        fusionAddresses.priceManager = PriceManagerFactory(factoryAddresses.priceManagerFactory).create(
+            fusionFactoryIndex,
+            fusionAddresses.accessManager,
+            FusionFactoryStorageLib.getPriceOracleMiddleware()
+        );
+
+        address iporDaoFeeRecipientAddress = FusionFactoryStorageLib.getIporDaoFeeRecipientAddress();
+
+        if (iporDaoFeeRecipientAddress == address(0)) {
+            revert InvalidAddress();
+        }
+
+        fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).create(
+            fusionFactoryIndex,
+            PlasmaVaultInitData({
+                assetName: assetName_,
+                assetSymbol: assetSymbol_,
+                underlyingToken: underlyingToken_,
+                priceOracleMiddleware: FusionFactoryStorageLib.getPriceOracleMiddleware(),
+                feeConfig: FeeConfig({
+                    feeFactory: factoryAddresses.feeManagerFactory,
+                    iporDaoManagementFee: FusionFactoryStorageLib.getIporDaoManagementFee(),
+                    iporDaoPerformanceFee: FusionFactoryStorageLib.getIporDaoPerformanceFee(),
+                    iporDaoFeeRecipientAddress: iporDaoFeeRecipientAddress
+                }),
+                accessManager: fusionAddresses.accessManager,
+                plasmaVaultBase: fusionAddresses.plasmaVaultBase,
+                withdrawManager: fusionAddresses.withdrawManager
+            })
+        );
+
+        fusionAddresses.rewardsManager = RewardsManagerFactory(factoryAddresses.rewardsManagerFactory).create(
+            fusionFactoryIndex,
+            fusionAddresses.accessManager,
+            fusionAddresses.plasmaVault
+        );
+
+        address[] memory approvedAddresses = new address[](1);
+        approvedAddresses[0] = fusionAddresses.plasmaVault;
+
+        fusionAddresses.contextManager = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(
+            fusionFactoryIndex,
+            fusionAddresses.accessManager,
+            approvedAddresses
+        );
+
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
+            fusionAddresses.plasmaVault
+        ).getPerformanceFeeData();
+
+        fusionAddresses.feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
+
+        IRewardsClaimManager(fusionAddresses.rewardsManager).setupVestingTime(
+            FusionFactoryStorageLib.getVestingPeriodInSeconds()
+        );
+
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).setRewardsClaimManagerAddress(
+            fusionAddresses.rewardsManager
+        );
+
+        WithdrawManager(fusionAddresses.withdrawManager).updateWithdrawWindow(
+            FusionFactoryStorageLib.getWithdrawWindowInSeconds()
+        );
+        WithdrawManager(fusionAddresses.withdrawManager).updatePlasmaVaultAddress(fusionAddresses.plasmaVault);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = FusionFactoryStorageLib.getBurnRequestFeeFuseAddress();
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).addFuses(fuses);
+
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).addBalanceFuse(
+            IporFusionMarkets.ZERO_BALANCE_MARKET,
+            FusionFactoryStorageLib.getBurnRequestFeeBalanceFuseAddress()
+        );
+
+        FeeManager(fusionAddresses.feeManager).initialize();
+
+        DataForInitialization memory accessData;
+        accessData.isPublic = false;
+
+        accessData.admins = FusionFactoryStorageLib.getPlasmaVaultAdminArray();
+
+        accessData.owners = new address[](1);
+        accessData.owners[0] = owner_;
+
+        IporFusionAccessManager(fusionAddresses.accessManager).initialize(
+            IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
+        );
+
+        emit FusionInstanceCreated(fusionFactoryIndex, fusionAddresses);
+
+        return fusionAddresses;
+    }
+}

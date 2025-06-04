@@ -34,6 +34,7 @@ import {IstETH} from "./IstETH.sol";
 import {IToken} from "./IToken.sol";
 
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 struct VaultBalance {
     uint256 eulerPrimeUsdc;
@@ -109,18 +110,23 @@ contract EulerCreditMarketTest is Test {
                     "USDC",
                     _USDC,
                     _priceOracle,
-                    _setupMarketConfigsErc20(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
                     accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
                     withdrawManager
                 )
             )
         );
         vm.stopPrank();
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigsErc20()
+        );
 
         _initAccessManager();
         _setupDependenceBalance();

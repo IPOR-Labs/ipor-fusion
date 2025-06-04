@@ -39,6 +39,7 @@ import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
@@ -114,9 +115,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
             iporDaoManagementFee: 0,
             iporDaoPerformanceFee: 0,
             feeFactory: address(new FeeManagerFactory()),
-            iporDaoFeeRecipientAddress: address(0),
-            recipientManagementFees: new RecipientFee[](0),
-            recipientPerformanceFees: new RecipientFee[](0)
+            iporDaoFeeRecipientAddress: address(0)
         });
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
@@ -126,18 +125,15 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
             assetSymbol: "WBTC-PV",
             underlyingToken: _WBTC,
             priceOracleMiddleware: _PRICE_ORACLE_MIDDLEWARE,
-            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            fuses: new address[](0),
-            balanceFuses: new MarketBalanceFuseConfig[](0),
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            totalSupplyCap: type(uint256).max,
             withdrawManager: _withdrawManager
         });
 
         vm.startPrank(_ATOMIST);
         _plasmaVault = address(new PlasmaVault(initData));
+
         vm.stopPrank();
 
         return _plasmaVault;
