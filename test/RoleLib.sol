@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {console2} from "forge-std/console2.sol";
 import {IporFusionAccessManager} from "../contracts/managers/access/IporFusionAccessManager.sol";
 import {Vm} from "forge-std/Test.sol";
 import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.sol";
