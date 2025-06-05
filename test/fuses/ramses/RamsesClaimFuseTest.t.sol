@@ -27,6 +27,7 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 interface IGAUGE {
     function rewards(uint256 index) external view returns (address);
@@ -97,16 +98,21 @@ contract RamsesClaimFuseTest is Test {
                     "pvUSDC",
                     USDC,
                     _priceOracle,
-                    _setupMarketConfigs(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
                     _withdrawManager
                 )
             )
+        );
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs(),
+            true
         );
         _createClaimRewardsManager();
         _setupPlasmaVault();

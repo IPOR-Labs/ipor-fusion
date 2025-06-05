@@ -21,6 +21,8 @@ import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+
 contract UniswapV3SwapFuseTest is Test {
     using SafeERC20 for ERC20;
 
@@ -59,16 +61,21 @@ contract UniswapV3SwapFuseTest is Test {
                     "pvUSDC",
                     USDC,
                     _priceOracle,
-                    _setupMarketConfigs(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
                     _withdrawManager
                 )
             )
+        );
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs(),
+            true
         );
         _setupRoles();
     }

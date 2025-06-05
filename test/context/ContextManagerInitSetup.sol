@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../test_helpers/PlasmaVaultHelper.sol";
 import {TestAddresses} from "../test_helpers/TestAddresses.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -104,6 +105,10 @@ abstract contract ContextManagerInitSetup is Test {
         vm.startPrank(_USER);
         IERC20(_UNDERLYING_TOKEN).approve(address(_plasmaVault), 100e18);
         _plasmaVault.deposit(100e18, _USER);
+        vm.stopPrank();
+
+        vm.startPrank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(_plasmaVault)).enableTransferShares();
         vm.stopPrank();
     }
 

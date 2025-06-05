@@ -26,6 +26,7 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -88,6 +89,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     address public constant DEPOSITOR = address(0x2);
     address public constant ATOMIST = address(0x3);
     address[] public alphas;
+    address public withdrawManager;
 
     /// Events
     event CurveGaugeTokenClaimFuseRewardsClaimed(
@@ -431,6 +433,24 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         _createClaimFuse();
         _addClaimFuseToClaimRewardsManager();
         _initAccessManager();
+
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            address(instances.plasmaVault),
+            instances.accessManager,
+            withdrawManager
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(instances.plasmaVault),
+            fuses,
+            _setupBalanceFuses(),
+            _setupMarketConfigs(),
+            true
+        );
     }
 
     function _setupAddresses() private {
@@ -523,29 +543,18 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
     }
 
     function _createPlasmaVault() private {
-        address withdrawManager = address(new WithdrawManager(address(instances.accessManager)));
+        withdrawManager = address(new WithdrawManager(address(instances.accessManager)));
         instances.plasmaVault = new PlasmaVault(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",
                 underlyingToken: asset,
                 priceOracleMiddleware: address(instances.priceOracleMiddlewareProxy),
-                marketSubstratesConfigs: _setupMarketConfigs(),
-                fuses: fuses,
-                balanceFuses: _setupBalanceFuses(),
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(instances.accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                totalSupplyCap: type(uint256).max,
                 withdrawManager: address(withdrawManager)
             })
-        );
-        RoleLib.setupPlasmaVaultRoles(
-            usersToRoles,
-            vm,
-            address(instances.plasmaVault),
-            instances.accessManager,
-            withdrawManager
         );
     }
 

@@ -29,6 +29,7 @@ import {IstETH} from "./IstETH.sol";
 import {IWstETH} from "./IWstETH.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract MorphoCreditMarketTest is Test {
     address private constant _W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -72,18 +73,26 @@ contract MorphoCreditMarketTest is Test {
                     "wstETH",
                     _WST_ETH,
                     _priceOracle,
-                    _setupMarketConfigs(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
                     accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
                     withdrawManager
                 )
             )
         );
+
         vm.stopPrank();
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs(),
+            true
+        );
+
         _initAccessManager();
         _setupDependenceBalance();
 

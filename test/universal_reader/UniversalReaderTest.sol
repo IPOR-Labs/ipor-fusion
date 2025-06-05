@@ -36,6 +36,7 @@ import {UniversalReader, ReadResult} from "../../contracts/universal_reader/Univ
 import {UpdateWithdrawManager} from "./UpdateWithdrawManager.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
 
 struct PlasmaVaultBalancesBefore {
@@ -124,18 +125,15 @@ contract UniversalReaderTest is Test {
             assetSymbol: "USDC-PV",
             underlyingToken: _USDC,
             priceOracleMiddleware: _priceOracleMiddleware,
-            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            fuses: new address[](0),
-            balanceFuses: new MarketBalanceFuseConfig[](0),
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            totalSupplyCap: type(uint256).max,
             withdrawManager: _withdrawManager
         });
 
         vm.startPrank(_ATOMIST);
         _plasmaVault = address(new PlasmaVault(initData));
+
         vm.stopPrank();
 
         return _plasmaVault;

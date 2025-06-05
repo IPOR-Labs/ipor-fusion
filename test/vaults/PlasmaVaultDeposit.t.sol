@@ -21,6 +21,7 @@ import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGov
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 contract PlasmaVaultDepositTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -199,15 +200,23 @@ contract PlasmaVaultDepositTest is Test {
                 "ipfUSDC",
                 USDC,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                totalSupplyCap,
                 address(withdrawManager)
             )
+        );
+
+        IPlasmaVaultGovernance(address(plasmaVault)).setTotalSupplyCap(totalSupplyCap);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs,
+            true
         );
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -292,19 +301,24 @@ contract PlasmaVaultDepositTest is Test {
                 assetSymbol,
                 underlyingToken,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
         );
 
-        // Setup roles
         setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs,
+            true
+        );
 
         return plasmaVault;
     }

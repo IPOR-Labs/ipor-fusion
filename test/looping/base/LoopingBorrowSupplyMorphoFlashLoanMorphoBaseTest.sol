@@ -39,6 +39,8 @@ import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/Unisw
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+
 import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
@@ -121,18 +123,15 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoBaseTest is Test {
             assetSymbol: "USDC-PV",
             underlyingToken: _USDC,
             priceOracleMiddleware: _priceOracleMiddleware,
-            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            fuses: new address[](0),
-            balanceFuses: new MarketBalanceFuseConfig[](0),
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            totalSupplyCap: type(uint256).max,
             withdrawManager: _withdrawManager
         });
 
         vm.startPrank(_ATOMIST);
         _plasmaVault = address(new PlasmaVault(initData));
+
         vm.stopPrank();
 
         return _plasmaVault;

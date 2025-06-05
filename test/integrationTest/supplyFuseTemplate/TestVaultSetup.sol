@@ -8,6 +8,7 @@ import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 abstract contract TestVaultSetup is TestStorage {
     function initPlasmaVault() public {
@@ -19,6 +20,7 @@ abstract contract TestVaultSetup is TestStorage {
         FeeConfig memory feeConfig = setupFeeConfig();
 
         createAccessManager();
+
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         vm.startPrank(accounts[0]);
@@ -29,20 +31,27 @@ abstract contract TestVaultSetup is TestStorage {
                     "TPLASMA",
                     asset,
                     priceOracle,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
                     feeConfig,
                     accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
                     withdrawManager
                 )
             )
         );
         vm.stopPrank();
 
+        // Set up roles first
         setupRoles(withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            accounts[0],
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs,
+            true
+        );
     }
 
     function initPlasmaVaultCustom(
@@ -55,6 +64,7 @@ abstract contract TestVaultSetup is TestStorage {
         FeeConfig memory feeConfig = setupFeeConfig();
 
         createAccessManager();
+
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         vm.startPrank(accounts[0]);
         plasmaVault = address(
@@ -64,20 +74,27 @@ abstract contract TestVaultSetup is TestStorage {
                     "TPLASMA",
                     asset,
                     priceOracle,
-                    marketConfigs,
-                    fuses,
-                    balanceFuses,
                     feeConfig,
                     accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
                     withdrawManager
                 )
             )
         );
+
         vm.stopPrank();
 
         setupRoles(withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            accounts[0],
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs,
+            true
+        );
     }
 
     /// @dev Setup default  fee configuration for the PlasmaVault

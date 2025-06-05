@@ -7,7 +7,7 @@ import {TestAddresses} from "../test_helpers/TestAddresses.sol";
 import {IERC20} from "../../lib/forge-std/src/interfaces/IERC20.sol";
 import {FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {MoonwellSupplyFuseEnterData, MoonwellSupplyFuse} from "../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
-import {IPlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVault.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {MarketLimit} from "../../contracts/libraries/AssetDistributionProtectionLib.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
