@@ -21,7 +21,10 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
+=======
+>>>>>>> develop
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract MorphoFlashLoanFuseTest is Test {
@@ -81,8 +84,12 @@ contract MorphoFlashLoanFuseTest is Test {
             address(_plasmaVault),
             _createFuse(),
             _setupBalanceFuses(),
+<<<<<<< HEAD
             _setupMarketConfigs(),
             true
+=======
+            _setupMarketConfigs()
+>>>>>>> develop
         );
     }
 

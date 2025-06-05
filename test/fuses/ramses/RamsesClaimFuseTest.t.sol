@@ -26,7 +26,10 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
+=======
+>>>>>>> develop
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 interface IGAUGE {
@@ -111,8 +114,12 @@ contract RamsesClaimFuseTest is Test {
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
+<<<<<<< HEAD
             _setupMarketConfigs(),
             true
+=======
+            _setupMarketConfigs()
+>>>>>>> develop
         );
         _createClaimRewardsManager();
         _setupPlasmaVault();

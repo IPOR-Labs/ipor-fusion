@@ -120,8 +120,12 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             address(plasmaVault),
             fuses,
             balanceFuses,
+<<<<<<< HEAD
             marketConfigs,
             true
+=======
+            marketConfigs
+>>>>>>> develop
         );
 
         FuseAction[] memory calls = new FuseAction[](1);
@@ -229,6 +233,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
+<<<<<<< HEAD
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
             atomist,
@@ -238,6 +243,9 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             marketConfigs,
             true
         );
+=======
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
+>>>>>>> develop
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(

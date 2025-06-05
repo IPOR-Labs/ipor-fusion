@@ -128,8 +128,12 @@ contract PlasmaVaultErc20FusionTest is Test {
             address(plasmaVault),
             fuses,
             balanceFuses,
+<<<<<<< HEAD
             marketConfigs,
             true
+=======
+            marketConfigs
+>>>>>>> develop
         );
     }
 

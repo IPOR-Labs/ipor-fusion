@@ -1042,6 +1042,7 @@ contract PlasmaVaultBasicTest is Test {
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
+<<<<<<< HEAD
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
             atomist,
@@ -1051,6 +1052,9 @@ contract PlasmaVaultBasicTest is Test {
             marketConfigs,
             true
         );
+=======
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
+>>>>>>> develop
 
         return plasmaVault;
     }

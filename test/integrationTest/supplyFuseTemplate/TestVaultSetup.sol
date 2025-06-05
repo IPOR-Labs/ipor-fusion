@@ -49,8 +49,12 @@ abstract contract TestVaultSetup is TestStorage {
             address(plasmaVault),
             fuses,
             balanceFuses,
+<<<<<<< HEAD
             marketConfigs,
             true
+=======
+            marketConfigs
+>>>>>>> develop
         );
     }
 
@@ -92,8 +96,12 @@ abstract contract TestVaultSetup is TestStorage {
             address(plasmaVault),
             fuses,
             balanceFuses,
+<<<<<<< HEAD
             marketConfigs,
             true
+=======
+            marketConfigs
+>>>>>>> develop
         );
     }
 

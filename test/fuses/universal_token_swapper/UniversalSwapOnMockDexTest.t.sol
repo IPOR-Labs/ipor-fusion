@@ -84,8 +84,12 @@ contract UniversalSwapOnMockDexTest is Test {
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
+<<<<<<< HEAD
             _setupMarketConfigs(),
             true
+=======
+            _setupMarketConfigs()
+>>>>>>> develop
         );
         _setupRoles();
     }

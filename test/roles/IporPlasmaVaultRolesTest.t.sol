@@ -664,8 +664,12 @@ contract IporPlasmaVaultRolesTest is Test {
             address(_plasmaVault),
             fuses,
             balanceFuses,
+<<<<<<< HEAD
             marketConfigs,
             true
+=======
+            marketConfigs
+>>>>>>> develop
         );
     }
 

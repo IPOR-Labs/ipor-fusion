@@ -113,8 +113,12 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
             address(_plasmaVault),
             _createFuse(),
             _setupBalanceFuses(),
+<<<<<<< HEAD
             _setupMarketConfigs(),
             true
+=======
+            _setupMarketConfigs()
+>>>>>>> develop
         );
     }
 

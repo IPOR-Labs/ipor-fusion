@@ -22,7 +22,10 @@ import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
+=======
+>>>>>>> develop
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 interface AavePool {
@@ -1697,7 +1700,11 @@ contract PlasmaVaultFeeTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
+<<<<<<< HEAD
         PlasmaVault plasmaVault = _setupPlasmaVault(
+=======
+        plasmaVault = _setupPlasmaVault(
+>>>>>>> develop
             USDC,
             accessManager,
             new address[](0),
@@ -1937,8 +1944,12 @@ contract PlasmaVaultFeeTest is Test {
             address(plasmaVault),
             initialSupplyFuses,
             balanceFuses,
+<<<<<<< HEAD
             marketConfigs,
             true
+=======
+            marketConfigs
+>>>>>>> develop
         );
     }
 }

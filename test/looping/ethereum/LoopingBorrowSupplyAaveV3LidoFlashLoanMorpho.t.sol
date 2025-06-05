@@ -35,8 +35,11 @@ import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} f
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
 
+=======
+>>>>>>> develop
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 struct PlasmaVaultBalancesBefore {
@@ -185,8 +188,12 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
             address(_plasmaVault),
             new address[](0),
             new MarketBalanceFuseConfig[](0),
+<<<<<<< HEAD
             new MarketSubstratesConfig[](0),
             true
+=======
+            new MarketSubstratesConfig[](0)
+>>>>>>> develop
         );
 
         return _plasmaVault;

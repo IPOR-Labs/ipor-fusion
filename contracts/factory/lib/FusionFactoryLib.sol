@@ -20,7 +20,10 @@ import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
+<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../managers/ManagerIds.sol";
+=======
+>>>>>>> develop
 
 /**
  * @title Fusion Factory Library
@@ -87,6 +90,10 @@ library FusionFactoryLib {
         if (burnRequestFeeFuse_ == address(0)) revert InvalidAddress();
         if (burnRequestFeeBalanceFuse_ == address(0)) revert InvalidAddress();
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> develop
         /// @dev default redemption delay is 1 seconds
         FusionFactoryStorageLib.setRedemptionDelayInSeconds(1 seconds);
         /// @dev default vesting period is 1 weeks
@@ -189,7 +196,15 @@ library FusionFactoryLib {
             approvedAddresses
         );
 
+<<<<<<< HEAD
         fusionAddresses.feeManager = IPlasmaVaultGovernance(fusionAddresses.plasmaVault).getManager(FEE_MANAGER_ID);
+=======
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
+            fusionAddresses.plasmaVault
+        ).getPerformanceFeeData();
+
+        fusionAddresses.feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
+>>>>>>> develop
 
         IRewardsClaimManager(fusionAddresses.rewardsManager).setupVestingTime(
             FusionFactoryStorageLib.getVestingPeriodInSeconds()

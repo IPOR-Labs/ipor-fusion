@@ -34,7 +34,10 @@ import {IstETH} from "./IstETH.sol";
 import {IToken} from "./IToken.sol";
 
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
+=======
+>>>>>>> develop
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 struct VaultBalance {
@@ -126,8 +129,12 @@ contract EulerCreditMarketTest is Test {
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
+<<<<<<< HEAD
             _setupMarketConfigsErc20(),
             true
+=======
+            _setupMarketConfigsErc20()
+>>>>>>> develop
         );
 
         _initAccessManager();
