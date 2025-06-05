@@ -24,6 +24,8 @@ import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaim
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
+import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+
 
 import {Roles} from "../../contracts/libraries/Roles.sol";
 
@@ -602,10 +604,7 @@ contract FusionFactoryTest is Test {
 
         // when
         vm.startPrank(owner);
-        fusionFactory.upgradeToAndCall(
-            address(newImplementation),
-            ""
-        );
+        fusionFactory.upgradeToAndCall(address(newImplementation), "");
         vm.stopPrank();
 
         // then
@@ -652,21 +651,25 @@ contract FusionFactoryTest is Test {
             )
         );
         vm.startPrank(nonOwner);
-        fusionFactory.upgradeToAndCall(
-            address(newImplementation),
-            ""
-        );
+        fusionFactory.upgradeToAndCall(address(newImplementation), "");
         vm.stopPrank();
     }
 
-    function skiptestShouldRevertUpgradeToZeroAddress() public {
-        // when/then
-        vm.expectRevert("ERC1967: new implementation is not a contract");
-        vm.startPrank(owner);
-        fusionFactory.upgradeToAndCall(
-            address(0),
-            ""
+    function testShouldCreateVaultAndHaveCorrectPriceManagerOnVault() public {
+        // given
+        
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
         );
-        vm.stopPrank();
+
+        // then
+        IPlasmaVaultGovernance plasmaVaultGovernance = IPlasmaVaultGovernance(instance.plasmaVault);
+        assertEq(plasmaVaultGovernance.getPriceOracleMiddleware(), instance.priceManager);
     }
+
+    
 }
