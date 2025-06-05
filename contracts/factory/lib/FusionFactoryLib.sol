@@ -149,9 +149,9 @@ library FusionFactoryLib {
             FusionFactoryStorageLib.getPriceOracleMiddleware()
         );
 
-        address iporDaoFeeRecipientAddress = FusionFactoryStorageLib.getIporDaoFeeRecipientAddress();
+        address daoFeeRecipientAddress = FusionFactoryStorageLib.getDaoFeeRecipientAddress();
 
-        if (iporDaoFeeRecipientAddress == address(0)) {
+        if (daoFeeRecipientAddress == address(0)) {
             revert InvalidAddress();
         }
 
@@ -164,9 +164,9 @@ library FusionFactoryLib {
                 priceOracleMiddleware: FusionFactoryStorageLib.getPriceOracleMiddleware(),
                 feeConfig: FeeConfig({
                     feeFactory: factoryAddresses.feeManagerFactory,
-                    iporDaoManagementFee: FusionFactoryStorageLib.getIporDaoManagementFee(),
-                    iporDaoPerformanceFee: FusionFactoryStorageLib.getIporDaoPerformanceFee(),
-                    iporDaoFeeRecipientAddress: iporDaoFeeRecipientAddress
+                    iporDaoManagementFee: FusionFactoryStorageLib.getDaoManagementFee(),
+                    iporDaoPerformanceFee: FusionFactoryStorageLib.getDaoPerformanceFee(),
+                    iporDaoFeeRecipientAddress: daoFeeRecipientAddress
                 }),
                 accessManager: fusionAddresses.accessManager,
                 plasmaVaultBase: fusionAddresses.plasmaVaultBase,
