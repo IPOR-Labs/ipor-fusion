@@ -169,7 +169,7 @@ library FusionFactoryLib {
                 assetName: assetName_,
                 assetSymbol: assetSymbol_,
                 underlyingToken: underlyingToken_,
-                priceOracleMiddleware: FusionFactoryStorageLib.getPriceOracleMiddleware(),
+                priceOracleMiddleware: fusionAddresses.priceManager,
                 feeConfig: FeeConfig({
                     feeFactory: factoryAddresses.feeManagerFactory,
                     iporDaoManagementFee: FusionFactoryStorageLib.getDaoManagementFee(),
