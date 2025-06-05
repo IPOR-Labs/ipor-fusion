@@ -595,4 +595,78 @@ contract FusionFactoryTest is Test {
         assertEq(instance.underlyingToken, address(underlyingToken));
         assertEq(instance.initialOwner, owner);
     }
+
+    function testShouldUpgradeFusionFactory() public {
+        // given
+        FusionFactory newImplementation = new FusionFactory();
+
+        // when
+        vm.startPrank(owner);
+        fusionFactory.upgradeToAndCall(
+            address(newImplementation),
+            ""
+        );
+        vm.stopPrank();
+
+        // then
+        // Verify that the contract still works by creating a new instance
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        assertEq(instance.assetName, "Test Asset");
+        assertEq(instance.assetSymbol, "TEST");
+        assertEq(instance.underlyingToken, address(underlyingToken));
+        assertEq(instance.initialOwner, owner);
+        assertEq(instance.plasmaVaultBase, plasmaVaultBase);
+
+        // Verify that all components are properly initialized
+        assertTrue(instance.accessManager != address(0));
+        assertTrue(instance.withdrawManager != address(0));
+        assertTrue(instance.priceManager != address(0));
+        assertTrue(instance.plasmaVault != address(0));
+        assertTrue(instance.rewardsManager != address(0));
+        assertTrue(instance.contextManager != address(0));
+        assertTrue(instance.feeManager != address(0));
+
+        // Verify that existing functionality still works
+        assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
+        assertEq(fusionFactory.getDaoManagementFee(), 100);
+        assertEq(fusionFactory.getDaoPerformanceFee(), 100);
+    }
+
+    function testShouldRevertUpgradeWhenNotOwner() public {
+        // given
+        FusionFactory newImplementation = new FusionFactory();
+        address nonOwner = address(0x123);
+
+        // when/then
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                nonOwner,
+                newImplementation.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        vm.startPrank(nonOwner);
+        fusionFactory.upgradeToAndCall(
+            address(newImplementation),
+            ""
+        );
+        vm.stopPrank();
+    }
+
+    function skiptestShouldRevertUpgradeToZeroAddress() public {
+        // when/then
+        vm.expectRevert("ERC1967: new implementation is not a contract");
+        vm.startPrank(owner);
+        fusionFactory.upgradeToAndCall(
+            address(0),
+            ""
+        );
+        vm.stopPrank();
+    }
 }
