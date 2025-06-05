@@ -69,13 +69,9 @@ contract LiquityStabilityPoolFuseTest is Test {
         ERC20(BOLD).approve(address(plasmaVault), totalBoldInVault);
         plasmaVault.deposit(totalBoldInVault, address(this));
 
-        // enter Stability Pool (no claim)
-        LiquityStabilityPoolFuse.LiquitySPData memory enterData = LiquityStabilityPoolFuse.LiquitySPData({
-            amount: totalBoldToDeposit,
-            doClaim: false
-        });
+        // enter Stability Pool
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((uint256,bool))", enterData));
+        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter(uint256)", totalBoldToDeposit));
         plasmaVault.execute(enterCalls);
 
         // check the balance in PlasmaVault and Stability Pool
@@ -92,12 +88,8 @@ contract LiquityStabilityPoolFuseTest is Test {
     function testLiquityExitFromSB() public {
         testLiquityEnterToSB();
         totalBoldToExit = 100000 * 1e18;
-        LiquityStabilityPoolFuse.LiquitySPData memory exitData = LiquityStabilityPoolFuse.LiquitySPData({
-            amount: totalBoldToExit,
-            doClaim: false
-        });
         FuseAction[] memory exitCalls = new FuseAction[](1);
-        exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((uint256,bool))", exitData));
+        exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit(uint256)", totalBoldToExit));
         plasmaVault.execute(exitCalls);
         uint256 balance = ERC20(BOLD).balanceOf(address(plasmaVault));
         assertEq(
@@ -122,13 +114,9 @@ contract LiquityStabilityPoolFuseTest is Test {
         vm.prank(address(stabilityPool.troveManager()));
         stabilityPool.offset(100000000, 100 ether);
 
-        // enter Stability Pool claiming collateral
-        LiquityStabilityPoolFuse.LiquitySPData memory enterData = LiquityStabilityPoolFuse.LiquitySPData({
-            amount: 1,
-            doClaim: true
-        });
+        // entering again stability pool to trigger collateral claim
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((uint256,bool))", enterData));
+        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter(uint256)", 1));
         plasmaVault.execute(enterCalls);
 
         uint256 balance = ERC20(WETH).balanceOf(address(plasmaVault));

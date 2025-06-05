@@ -22,14 +22,9 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
     IStabilityPool public immutable stabilityPool;
     address public immutable boldToken;
 
-    struct LiquitySPData {
-        uint256 amount;
-        bool doClaim;
-    }
-
     error ZeroAmount();
 
-    event LiquityStabilityPoolFuseEnter(address version, address stabilityPool, uint256 amount, bool doClaim);
+    event LiquityStabilityPoolFuseEnter(address version, address stabilityPool, uint256 amount);
 
     constructor(uint256 marketId_, address _registry) {
         VERSION = address(this);
@@ -39,21 +34,27 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
         boldToken = registry.boldToken();
     }
 
-    function enter(LiquitySPData calldata data) external {
-        if (data.amount == 0) {
-            if (!data.doClaim) revert ZeroAmount();
-            stabilityPool.claimAllCollGains();
-            return;
-        }
+    function enter(uint256 amount) external {
+        if (amount == 0) revert ZeroAmount();
 
-        ERC20(boldToken).forceApprove(address(stabilityPool), data.amount);
-        stabilityPool.provideToSP(data.amount, data.doClaim);
+        ERC20(boldToken).forceApprove(address(stabilityPool), amount);
+        // always claim collateral
+        stabilityPool.provideToSP(amount, true);
         ERC20(boldToken).forceApprove(address(stabilityPool), 0);
 
-        emit LiquityStabilityPoolFuseEnter(VERSION, address(stabilityPool), data.amount, data.doClaim);
+        emit LiquityStabilityPoolFuseEnter(VERSION, address(stabilityPool), amount);
     }
 
-    function exit(LiquitySPData calldata data) external {
-        stabilityPool.withdrawFromSP(data.amount, data.doClaim);
+    function exit(uint256 amount) external {
+        if (amount == 0) {
+            if (stabilityPool.deposits(address(this)) == 0) {
+                // if the vault has no deposits, we call the claimAllCollGains function
+                stabilityPool.claimAllCollGains();
+                return;
+            }
+            revert ZeroAmount();
+        }
+        // always claim collateral
+        stabilityPool.withdrawFromSP(amount, true);
     }
 }
