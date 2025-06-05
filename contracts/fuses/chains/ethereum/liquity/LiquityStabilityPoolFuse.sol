@@ -27,7 +27,7 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
         bool doClaim;
     }
 
-    error InvalidRegistry();
+    error ZeroAmount();
 
     event LiquityStabilityPoolFuseEnter(address version, address stabilityPool, uint256 amount, bool doClaim);
 
@@ -40,6 +40,12 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
     }
 
     function enter(LiquitySPData calldata data) external {
+        if (data.amount == 0) {
+            if (!data.doClaim) revert ZeroAmount();
+            stabilityPool.claimAllCollGains();
+            return;
+        }
+
         ERC20(boldToken).forceApprove(address(stabilityPool), data.amount);
         stabilityPool.provideToSP(data.amount, data.doClaim);
         ERC20(boldToken).forceApprove(address(stabilityPool), 0);
