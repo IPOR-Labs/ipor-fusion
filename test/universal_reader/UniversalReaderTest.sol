@@ -37,10 +37,7 @@ import {UpdateWithdrawManager} from "./UpdateWithdrawManager.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
-<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
-=======
->>>>>>> develop
 
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;

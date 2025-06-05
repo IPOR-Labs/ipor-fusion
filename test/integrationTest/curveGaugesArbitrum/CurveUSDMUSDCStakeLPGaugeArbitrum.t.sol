@@ -746,12 +746,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
             address(plasmaVault),
             fuses,
             _setupBalanceFuses(),
-<<<<<<< HEAD
             _setupMarketConfigs(),
             true
-=======
-            _setupMarketConfigs()
->>>>>>> develop
         );
     }
 

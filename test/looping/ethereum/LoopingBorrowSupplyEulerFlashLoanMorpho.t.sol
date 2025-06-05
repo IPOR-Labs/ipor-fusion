@@ -35,10 +35,7 @@ import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapF
 import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
-<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
-=======
->>>>>>> develop
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 struct VaultBalance {
@@ -135,12 +132,8 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
-<<<<<<< HEAD
             _setupMarketConfigsErc20(),
             true
-=======
-            _setupMarketConfigsErc20()
->>>>>>> develop
         );
 
         _initAccessManager();

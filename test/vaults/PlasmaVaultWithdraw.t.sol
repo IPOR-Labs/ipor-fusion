@@ -2045,12 +2045,8 @@ contract PlasmaVaultWithdrawTest is Test {
             address(plasmaVault),
             initialSupplyFuses,
             balanceFuses,
-<<<<<<< HEAD
             marketConfigs,
             true
-=======
-            marketConfigs
->>>>>>> develop
         );
     }
 }

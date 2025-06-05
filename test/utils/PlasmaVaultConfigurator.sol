@@ -8,10 +8,7 @@ import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {RecipientFee} from "../../contracts/managers/fee/FeeManager.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
-<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
-=======
->>>>>>> develop
 
 library PlasmaVaultConfigurator {
     function setupPlasmaVault(
@@ -20,12 +17,8 @@ library PlasmaVaultConfigurator {
         address plasmaVault,
         address[] memory fuses,
         MarketBalanceFuseConfig[] memory balanceFuses,
-<<<<<<< HEAD
         MarketSubstratesConfig[] memory marketConfigs,
         bool initializeFeeManager
-=======
-        MarketSubstratesConfig[] memory marketConfigs
->>>>>>> develop
     ) external {
         vm.startPrank(msgSender);
         IPlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
@@ -41,20 +34,11 @@ library PlasmaVaultConfigurator {
             );
         }
 
-<<<<<<< HEAD
         address feeManager = IPlasmaVaultGovernance(plasmaVault).getManager(FEE_MANAGER_ID);
 
         if (initializeFeeManager) {
             FeeManager(feeManager).initialize();
         }
-=======
-        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(plasmaVault)
-            .getPerformanceFeeData();
-
-        address feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
-
-        FeeManager(feeManager).initialize();
->>>>>>> develop
 
         vm.stopPrank();
     }
@@ -67,15 +51,8 @@ library PlasmaVaultConfigurator {
         RecipientFee[] memory recipientPerformanceFees
     ) external {
         vm.startPrank(msgSender);
-<<<<<<< HEAD
 
         address feeManager = IPlasmaVaultGovernance(plasmaVault).getManager(FEE_MANAGER_ID);
-=======
-        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(plasmaVault)
-            .getPerformanceFeeData();
-
-        address feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
->>>>>>> develop
 
         FeeManager(feeManager).updateManagementFee(recipientManagementFees);
         FeeManager(feeManager).updatePerformanceFee(recipientPerformanceFees);

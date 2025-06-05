@@ -28,10 +28,7 @@ import {IWETH9} from "./IWETH9.sol";
 import {IstETH} from "./IstETH.sol";
 import {IWstETH} from "./IWstETH.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
-<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
-=======
->>>>>>> develop
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract MorphoCreditMarketTest is Test {
@@ -92,12 +89,8 @@ contract MorphoCreditMarketTest is Test {
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
-<<<<<<< HEAD
             _setupMarketConfigs(),
             true
-=======
-            _setupMarketConfigs()
->>>>>>> develop
         );
 
         _initAccessManager();

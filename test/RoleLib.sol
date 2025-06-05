@@ -32,13 +32,6 @@ library RoleLib {
         vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(Roles.ALPHA_ROLE, Roles.ATOMIST_ROLE);
         vm.prank(usersWithRoles.superAdmin);
-<<<<<<< HEAD
-=======
-        accessManager.setRoleAdmin(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
-        vm.prank(usersWithRoles.superAdmin);
-        accessManager.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
-        vm.prank(usersWithRoles.superAdmin);
->>>>>>> develop
         accessManager.setRoleAdmin(Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, Roles.ATOMIST_ROLE);
 
         vm.prank(usersWithRoles.superAdmin);
@@ -112,21 +105,6 @@ library RoleLib {
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(feeManager, feeManagerSig2, Roles.ATOMIST_ROLE);
-<<<<<<< HEAD
-=======
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setRoleAdmin(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.grantRole(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, feeManager, 0);
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.grantRole(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, feeManager, 0);
->>>>>>> develop
     }
 
     function _setupAtomistRoles(

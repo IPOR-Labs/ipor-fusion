@@ -17,10 +17,7 @@ import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PriceOracleMiddlewareManagerLib} from "../../contracts/managers/price/PriceOracleMiddlewareManagerLib.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
-<<<<<<< HEAD
 import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
-=======
->>>>>>> develop
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 contract PriceOracleMiddlewareManagerTest is Test {
