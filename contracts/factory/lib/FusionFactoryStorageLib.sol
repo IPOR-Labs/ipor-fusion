@@ -101,12 +101,10 @@ library FusionFactoryStorageLib {
         0xe26401adf3cefb9a94bf1fba47a8129fd18fd2e2e83de494ce289a832073a500;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoManagementFee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant DAO_MANAGEMENT_FEE =
-        0x8fc808da4bdddf1c57ae4d57b8d77cb4183e940f6bb88a2aecb349605eb51800;
+    bytes32 private constant DAO_MANAGEMENT_FEE = 0x8fc808da4bdddf1c57ae4d57b8d77cb4183e940f6bb88a2aecb349605eb51800;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoPerformanceFee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant DAO_PERFORMANCE_FEE =
-        0x3d6b96d1c7d5b94a3af077c0baedb5f7745382ef440582d67ffa3542d73b9f00;
+    bytes32 private constant DAO_PERFORMANCE_FEE = 0x3d6b96d1c7d5b94a3af077c0baedb5f7745382ef440582d67ffa3542d73b9f00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.RedemptionDelayInSeconds")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant REDEMPTION_DELAY_IN_SECONDS =
