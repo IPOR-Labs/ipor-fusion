@@ -18,11 +18,7 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
     event PriceOracleMiddlewareUpdated(address newPriceOracleMiddleware);
     event BurnRequestFeeFuseUpdated(address newBurnRequestFeeFuse);
     event BurnRequestFeeBalanceFuseUpdated(address newBurnRequestFeeBalanceFuse);
-    event DaoFeeUpdated(
-        address newDaoFeeRecipient,
-        uint256 newDaoManagementFee,
-        uint256 newDaoPerformanceFee
-    );
+    event DaoFeeUpdated(address newDaoFeeRecipient, uint256 newDaoManagementFee, uint256 newDaoPerformanceFee);
     event RedemptionDelayInSecondsUpdated(uint256 newRedemptionDelayInSeconds);
     event WithdrawWindowInSecondsUpdated(uint256 newWithdrawWindowInSeconds);
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);

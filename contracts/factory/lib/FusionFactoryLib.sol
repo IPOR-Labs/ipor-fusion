@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {RewardsManagerFactory} from "../RewardsManagerFactory.sol";
 import {WithdrawManagerFactory} from "../WithdrawManagerFactory.sol";
 import {ContextManagerFactory} from "../ContextManagerFactory.sol";
@@ -32,6 +33,7 @@ library FusionFactoryLib {
     error InvalidFactoryAddress();
     error InvalidFeeValue();
     error InvalidAddress();
+    error InvalidDaoFeeRecipient();
     error BurnRequestFeeFuseNotSet();
     error BalanceFuseBurnRequestFeeNotSet();
     error InvalidAssetName();
@@ -46,7 +48,10 @@ library FusionFactoryLib {
     struct FusionInstance {
         string assetName;
         string assetSymbol;
+        uint8 assetDecimals;
         address underlyingToken;
+        string underlyingTokenSymbol;
+        uint8 underlyingTokenDecimals;
         address initialOwner;
         address plasmaVault;
         address plasmaVaultBase;
@@ -86,7 +91,6 @@ library FusionFactoryLib {
         if (burnRequestFeeFuse_ == address(0)) revert InvalidAddress();
         if (burnRequestFeeBalanceFuse_ == address(0)) revert InvalidAddress();
 
-
         /// @dev default redemption delay is 1 seconds
         FusionFactoryStorageLib.setRedemptionDelayInSeconds(1 seconds);
         /// @dev default vesting period is 1 weeks
@@ -120,7 +124,11 @@ library FusionFactoryLib {
 
         fusionAddresses.assetName = assetName_;
         fusionAddresses.assetSymbol = assetSymbol_;
+
         fusionAddresses.underlyingToken = underlyingToken_;
+        fusionAddresses.underlyingTokenSymbol = IERC20Metadata(underlyingToken_).symbol();
+        fusionAddresses.underlyingTokenDecimals = IERC20Metadata(underlyingToken_).decimals();
+
         fusionAddresses.initialOwner = owner_;
 
         uint256 fusionFactoryIndex = FusionFactoryStorageLib.getFusionFactoryIndex();
@@ -152,7 +160,7 @@ library FusionFactoryLib {
         address daoFeeRecipientAddress = FusionFactoryStorageLib.getDaoFeeRecipientAddress();
 
         if (daoFeeRecipientAddress == address(0)) {
-            revert InvalidAddress();
+            revert InvalidDaoFeeRecipient();
         }
 
         fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).create(
@@ -173,6 +181,8 @@ library FusionFactoryLib {
                 withdrawManager: fusionAddresses.withdrawManager
             })
         );
+
+        fusionAddresses.assetDecimals = IERC20Metadata(fusionAddresses.plasmaVault).decimals();
 
         fusionAddresses.rewardsManager = RewardsManagerFactory(factoryAddresses.rewardsManagerFactory).create(
             fusionFactoryIndex,
