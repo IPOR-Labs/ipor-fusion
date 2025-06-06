@@ -18,8 +18,6 @@ import {IRewardsClaimManager} from "../../interfaces/IRewardsClaimManager.sol";
 import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
 import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
-import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
-import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
 import {FEE_MANAGER_ID} from "../../managers/ManagerIds.sol";
 
 /**
