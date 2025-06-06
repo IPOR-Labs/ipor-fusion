@@ -21,6 +21,7 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {FEE_MANAGER_ID} from "../../../contracts/managers/ManagerIds.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract MorphoFlashLoanFuseTest is Test {
@@ -80,7 +81,8 @@ contract MorphoFlashLoanFuseTest is Test {
             address(_plasmaVault),
             _createFuse(),
             _setupBalanceFuses(),
-            _setupMarketConfigs()
+            _setupMarketConfigs(),
+            true
         );
     }
 
@@ -161,8 +163,7 @@ contract MorphoFlashLoanFuseTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
                 withdrawManager: address(0),
-                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER(),
+                feeManager: PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID),
                 contextManager: address(0),
                 priceOracleMiddlewareManager: address(0)
             })

@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Errors} from "./errors/Errors.sol";
-import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
+import {PlasmaVaultStorageLib, ERC20_CAPPED_VALIDATION_FLAG} from "./PlasmaVaultStorageLib.sol";
 import {FusesLib} from "./FusesLib.sol";
 
 /// @title InstantWithdrawalFusesParamsStruct
@@ -245,209 +245,6 @@ library PlasmaVaultLib {
         uint256 oldTotalAssetsInUnderlying = PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_];
         PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_] = newTotalAssetsInUnderlying_;
         deltaInUnderlying = newTotalAssetsInUnderlying_.toInt256() - oldTotalAssetsInUnderlying.toInt256();
-    }
-
-    /// @notice Gets the management fee configuration data
-    /// @return managementFeeData The current management fee configuration containing:
-    ///         - feeAccount: Address receiving management fees
-    ///         - feeInPercentage: Current fee rate (basis points, 1/10000)
-    ///         - lastUpdateTimestamp: Last time fees were realized
-    /// @dev Retrieves the current management fee settings from storage
-    ///
-    /// Fee structure:
-    /// - Continuous time-based fee on assets under management (AUM)
-    /// - Fee percentage limited by MANAGEMENT_MAX_FEE_IN_PERCENTAGE (5%)
-    /// - Fees accrue linearly over time
-    /// - Realized during vault operations
-    ///
-    /// Used for:
-    /// - Fee calculations in totalAssets()
-    /// - Fee realization during operations
-    /// - Management fee distribution
-    /// - Governance fee adjustments
-    ///
-    /// Integration points:
-    /// - PlasmaVault._realizeManagementFee()
-    /// - PlasmaVault.totalAssets()
-    /// - FeeManager contract
-    /// - Governance configuration
-    ///
-    /// @dev Important: Management fees:
-    /// - Are calculated based on total vault assets
-    /// - Affect share price calculations
-    /// - Must be realized before major vault operations
-    /// - Are distributed to configured fee recipients
-    function getManagementFeeData()
-        internal
-        view
-        returns (PlasmaVaultStorageLib.ManagementFeeData memory managementFeeData)
-    {
-        return PlasmaVaultStorageLib.getManagementFeeData();
-    }
-
-    /// @notice Configures the management fee settings for the vault
-    /// @param feeAccount_ The address that will receive management fees
-    /// @param feeInPercentage_ The management fee rate in basis points (100 = 1%)
-    /// @dev Updates fee configuration and emits event
-    ///
-    /// Parameter requirements:
-    /// - feeAccount_: Must be non-zero address. The address of the technical Management Fee Account that will receive the management fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
-    /// - feeInPercentage_: Must not exceed MANAGEMENT_MAX_FEE_IN_PERCENTAGE (5%)
-    ///
-    /// Fee account types:
-    /// - FeeManager contract: Distributes fees to IPOR DAO and other recipients
-    /// - EOA/MultiSig: Receives fees directly without distribution
-    /// - Technical account: Temporary fee collection before distribution
-    ///
-    /// Fee percentage format:
-    /// - Uses 2 decimal places (basis points)
-    /// - Examples:
-    ///   - 10000 = 100%
-    ///   - 100 = 1%
-    ///   - 1 = 0.01%
-    ///
-    /// Security considerations:
-    /// - Only callable by authorized governance functions
-    /// - Validates fee percentage against maximum limit
-    /// - Emits event for tracking changes
-    /// - Critical for vault economics
-    ///
-    /// @dev Important: Changes affect:
-    /// - Future fee calculations
-    /// - Share price computations
-    /// - Vault revenue distribution
-    /// - Total asset calculations
-    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) internal {
-        if (feeAccount_ == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        if (feeInPercentage_ > MANAGEMENT_MAX_FEE_IN_PERCENTAGE) {
-            revert InvalidManagementFee(feeInPercentage_);
-        }
-
-        PlasmaVaultStorageLib.ManagementFeeData storage managementFeeData = PlasmaVaultStorageLib
-            .getManagementFeeData();
-
-        managementFeeData.feeAccount = feeAccount_;
-        managementFeeData.feeInPercentage = feeInPercentage_.toUint16();
-
-        emit ManagementFeeDataConfigured(feeAccount_, feeInPercentage_);
-    }
-
-    /// @notice Gets the performance fee configuration data
-    /// @return performanceFeeData The current performance fee configuration containing:
-    ///         - feeAccount: The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
-    ///         - feeInPercentage: Current fee rate (basis points, 1/10000)
-    /// @dev Retrieves the current performance fee settings from storage
-    ///
-    /// Fee structure:
-    /// - Charged on positive vault performance
-    /// - Fee percentage limited by PERFORMANCE_MAX_FEE_IN_PERCENTAGE (50%)
-    /// - Calculated on realized gains only
-    /// - Applied during execute() operations
-    ///
-    /// Used for:
-    /// - Performance fee calculations
-    /// - Fee realization during profitable operations
-    /// - Performance fee distribution
-    /// - Governance fee adjustments
-    ///
-    /// Integration points:
-    /// - PlasmaVault._addPerformanceFee()
-    /// - PlasmaVault.execute()
-    /// - FeeManager contract
-    /// - Governance configuration
-    ///
-    /// @dev Important: Performance fees:
-    /// - Only charged on positive performance
-    /// - Calculated based on profit since last fee realization
-    /// - Minted as new vault shares
-    /// - Distributed to configured fee recipients
-    function getPerformanceFeeData()
-        internal
-        view
-        returns (PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData)
-    {
-        return PlasmaVaultStorageLib.getPerformanceFeeData();
-    }
-
-    /// @notice Configures the performance fee settings for the vault
-    /// @param feeAccount_ The address that will receive performance fees
-    /// @param feeInPercentage_ The performance fee rate in basis points (100 = 1%)
-    /// @dev Updates fee configuration and emits event
-    ///
-    /// Parameter requirements:
-    /// - feeAccount_: Must be non-zero address. The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
-    /// - feeInPercentage_: Must not exceed PERFORMANCE_MAX_FEE_IN_PERCENTAGE (50%)
-    ///
-    /// Fee account types:
-    /// - FeeManager contract: Distributes fees to IPOR DAO and other recipients
-    /// - EOA/MultiSig: Receives fees directly without distribution
-    /// - Technical account: Temporary fee collection before distribution
-    ///
-    /// Fee percentage format:
-    /// - Uses 2 decimal places (basis points)
-    /// - Examples:
-    ///   - 10000 = 100%
-    ///   - 100 = 1%
-    ///   - 1 = 0.01%
-    ///
-    /// Security considerations:
-    /// - Only callable by authorized governance functions
-    /// - Validates fee percentage against maximum limit
-    /// - Emits event for tracking changes
-    /// - Critical for vault incentive structure
-    ///
-    /// @dev Important: Changes affect:
-    /// - Profit sharing calculations
-    /// - Alpha incentive alignment
-    /// - Vault performance metrics
-    /// - Revenue distribution model
-    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) internal {
-        if (feeAccount_ == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        if (feeInPercentage_ > PERFORMANCE_MAX_FEE_IN_PERCENTAGE) {
-            revert InvalidPerformanceFee(feeInPercentage_);
-        }
-
-        PlasmaVaultStorageLib.PerformanceFeeData storage performanceFeeData = PlasmaVaultStorageLib
-            .getPerformanceFeeData();
-
-        performanceFeeData.feeAccount = feeAccount_;
-        performanceFeeData.feeInPercentage = feeInPercentage_.toUint16();
-
-        emit PerformanceFeeDataConfigured(feeAccount_, feeInPercentage_);
-    }
-
-    /// @notice Updates the management fee timestamp for fee accrual tracking
-    /// @dev Updates lastUpdateTimestamp to current block timestamp for fee calculations
-    ///
-    /// Function behavior:
-    /// - Sets lastUpdateTimestamp to current block.timestamp
-    /// - Used to mark points of fee realization
-    /// - Critical for time-based fee calculations
-    ///
-    /// Called during:
-    /// - Fee realization operations
-    /// - Deposit transactions
-    /// - Withdrawal transactions
-    /// - Share minting/burning
-    ///
-    /// Integration points:
-    /// - PlasmaVault._realizeManagementFee()
-    /// - PlasmaVault.deposit()
-    /// - PlasmaVault.withdraw()
-    /// - PlasmaVault.mint()
-    ///
-    /// @dev Important considerations:
-    /// - Must be called after fee realization
-    /// - Affects future fee calculations
-    /// - Uses uint32 for timestamp storage
-    /// - Critical for fee accounting accuracy
-    function updateManagementFeeData() internal {
-        PlasmaVaultStorageLib.ManagementFeeData storage feeData = PlasmaVaultStorageLib.getManagementFeeData();
-        feeData.lastUpdateTimestamp = block.timestamp.toUint32();
     }
 
     /// @notice Gets the ordered list of instant withdrawal fuses
@@ -826,7 +623,9 @@ library PlasmaVaultLib {
     /// - Deposit availability
     /// - System security
     function setTotalSupplyCapValidation(uint256 flag_) internal {
-        PlasmaVaultStorageLib.getERC20CappedValidationFlag().value = flag_;
+        assembly {
+            tstore(ERC20_CAPPED_VALIDATION_FLAG, flag_)
+        }
     }
 
     /// @notice Checks if the total supply cap validation is enabled
@@ -858,7 +657,11 @@ library PlasmaVaultLib {
     /// - Critical for supply control
     /// - Check before cap-sensitive operations
     function isTotalSupplyCapValidationEnabled() internal view returns (bool) {
-        return PlasmaVaultStorageLib.getERC20CappedValidationFlag().value == 0;
+        uint256 value;
+        assembly {
+            value := tload(ERC20_CAPPED_VALIDATION_FLAG)
+        }
+        return value == 0;
     }
 
     /// @notice Sets the execution state to started for Alpha operations

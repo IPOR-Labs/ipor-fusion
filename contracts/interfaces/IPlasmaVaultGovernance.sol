@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
-
-import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../libraries/PlasmaVaultLib.sol";
 import {MarketLimit} from "../libraries/AssetDistributionProtectionLib.sol";
 
@@ -41,14 +39,6 @@ interface IPlasmaVaultGovernance {
     /// @notice Returns the address of the Price Oracle Middleware
     /// @return The address of the Price Oracle Middleware
     function getPriceOracleMiddleware() external view returns (address);
-
-    /// @notice Returns the performance fee configuration data of the Plasma Vault
-    /// @return feeData The performance fee configuration data, see PerformanceFeeData struct
-    function getPerformanceFeeData() external view returns (PlasmaVaultStorageLib.PerformanceFeeData memory feeData);
-
-    /// @notice Returns the management fee configuration data of the Plasma Vault
-    /// @return feeData The management fee configuration data, see ManagementFeeData struct
-    function getManagementFeeData() external view returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData);
 
     /// @notice Returns the address of the Ipor Fusion Access Manager
     /// @return The address of the Ipor Fusion Access Manager
@@ -121,18 +111,6 @@ interface IPlasmaVaultGovernance {
     /// @param priceOracleMiddleware_ The address of the Price Oracle Middleware
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external;
 
-    /// @notice Configures the performance fee
-    /// @param feeAccount_ The address of the technical Performance Fee Account that will receive the performance fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
-    /// @param feeInPercentage_ The fee in percentage represented in 2 decimals, example 100% = 10000, 1% = 100, 0.01% = 1
-    /// @dev feeAccount_ can be also EOA address or MultiSig address, in this case it will receive the performance fee directly
-    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external;
-
-    /// @notice Configures the management fee
-    /// @param feeAccount_ The address of the technical Management Fee Account that will receive the management fee collected by the Plasma Vault and later on distributed to IPOR DAO and recipients by FeeManager
-    /// @param feeInPercentage_ The fee in percentage represented in 2 decimals, example 100% = 10000, 1% = 100, 0.01% = 1
-    /// @dev feeAccount_ can be also EOA address or MultiSig address, in this case it will receive the management fee directly
-    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external;
-
     /// @notice Sets the Rewards Claim Manager address
     /// @param rewardsClaimManagerAddress_ The address of the Rewards Claim Manager
     function setRewardsClaimManagerAddress(address rewardsClaimManagerAddress_) external;
@@ -168,4 +146,9 @@ interface IPlasmaVaultGovernance {
     /// @param rolesIds_ The roles for which the minimal execution delay is set
     /// @param delays_ The minimal execution delays for the specified roles
     function setMinimalExecutionDelaysForRoles(uint64[] calldata rolesIds_, uint256[] calldata delays_) external;
+
+    /// @notice Returns the manager address for the given manager id
+    /// @param managerId_ The id of the manager
+    /// @return The address of the manager
+    function getManager(uint256 managerId_) external view returns (address);
 }

@@ -31,9 +31,11 @@ import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
-import {PlasmaVaultFeesLib} from "./lib/PlasmaVaultFeesLib.sol";
-import {PlasmaVaultMarketsLib} from "./lib/PlasmaVaultMarketsLib.sol";
-import {RecipientFee} from "../managers/fee/FeeManager.sol";
+import {FEE_MANAGER_ID} from "../managers/ManagerIds.sol";
+import {RecipientFee, FeeManager} from "../managers/fee/FeeManager.sol";
+import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultMarketsLib} from "../vaults/lib/PlasmaVaultMarketsLib.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
@@ -211,6 +213,7 @@ contract PlasmaVault is
 {
     using Address for address;
     using Math for uint256;
+    using SafeCast for uint256;
 
     /// @notice ISO-4217 currency code for USD represented as address
     /// @dev 0x348 (840 in decimal) is the ISO-4217 numeric code for USD
@@ -277,10 +280,8 @@ contract PlasmaVault is
             })
         );
 
-        PlasmaVaultLib.configurePerformanceFee(feeManagerData.performanceFeeAccount, feeManagerData.performanceFee);
-        PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
+        PlasmaVaultConfigLib.addManager(FEE_MANAGER_ID, feeManagerData.feeManager);
 
-        PlasmaVaultLib.updateManagementFeeData();
         if (initData_.withdrawManager == address(0)) {
             revert WithdrawManagerNotSet();
         }
@@ -1063,7 +1064,7 @@ contract PlasmaVault is
     function totalAssets() public view virtual override returns (uint256) {
         uint256 grossTotalAssets = _getGrossTotalAssets();
 
-        uint256 unrealizedManagementFee = PlasmaVaultFeesLib.getUnrealizedManagementFee(grossTotalAssets);
+        uint256 unrealizedManagementFee = _getUnrealizedManagementFee(grossTotalAssets);
 
         if (unrealizedManagementFee >= grossTotalAssets) {
             return 0;
@@ -1126,7 +1127,7 @@ contract PlasmaVault is
     /// @return uint256 Unrealized management fee in underlying token decimals
     /// @custom:access Public view function, no role restrictions
     function getUnrealizedManagementFee() public view returns (uint256) {
-        return PlasmaVaultFeesLib.getUnrealizedManagementFee(_getGrossTotalAssets());
+        return _getUnrealizedManagementFee(_getGrossTotalAssets());
     }
 
     /// @notice Reserved function for PlasmaVaultBase delegatecall operations
@@ -1224,12 +1225,14 @@ contract PlasmaVault is
             return;
         }
 
-        (address recipient, uint256 feeShares) = PlasmaVaultFeesLib.prepareForAddPerformanceFee(
-            totalSupply(),
-            decimals(),
-            _decimalsOffset(),
-            convertToAssets(10 ** uint256(decimals()))
-        );
+        uint256 actualExchangeRate = convertToAssets(10 ** uint256(decimals()));
+
+        (address recipient, uint256 feeShares) = FeeManager(PlasmaVaultConfigLib.getManager(FEE_MANAGER_ID))
+            .calculateAndUpdatePerformanceFee(
+                actualExchangeRate.toUint128(),
+                totalSupply(),
+                decimals() - _decimalsOffset()
+            );
 
         if (recipient == address(0) || feeShares == 0) {
             return;
@@ -1245,7 +1248,9 @@ contract PlasmaVault is
     }
 
     function _realizeManagementFee() internal {
-        (address recipient, uint256 unrealizedFeeInUnderlying) = PlasmaVaultFeesLib.prepareForRealizeManagementFee(
+        FeeManager feeManager = FeeManager(PlasmaVaultConfigLib.getManager(FEE_MANAGER_ID));
+
+        (uint256 unrealizedFeeInUnderlying, address feeAccount) = feeManager.calculateAndUpdateManagementFee(
             _getGrossTotalAssets()
         );
 
@@ -1259,7 +1264,7 @@ contract PlasmaVault is
         /// @dev total supply cap validation is disabled for fee minting
         PlasmaVaultLib.setTotalSupplyCapValidation(1);
 
-        _mint(recipient, unrealizedFeeInShares);
+        _mint(feeAccount, unrealizedFeeInShares);
 
         /// @dev total supply cap validation is enabled when fee minting is finished
         PlasmaVaultLib.setTotalSupplyCapValidation(0);
@@ -1328,6 +1333,11 @@ contract PlasmaVault is
                 IRewardsClaimManager(rewardsClaimManagerAddress).balanceOf();
         }
         return IERC20(asset()).balanceOf(address(this)) + PlasmaVaultLib.getTotalAssetsInAllMarkets();
+    }
+
+    function _getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {
+        return
+            FeeManager(PlasmaVaultConfigLib.getManager(FEE_MANAGER_ID)).calculateUnrealizedManagementFee(totalAssets_);
     }
 
     /**

@@ -16,7 +16,6 @@ import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} fr
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 
 import {MorphoSupplyFuse} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
 import {MorphoCollateralFuse} from "../../contracts/fuses/morpho/MorphoCollateralFuse.sol";
@@ -38,6 +37,7 @@ import {UpdateWithdrawManager} from "./UpdateWithdrawManager.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
+import {FEE_MANAGER_ID} from "../../contracts/managers/ManagerIds.sol";
 
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
@@ -216,8 +216,7 @@ contract UniversalReaderTest is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0),
                 withdrawManager: _withdrawManager,
-                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-                    .FEE_MANAGER(),
+                feeManager: PlasmaVaultGovernance(_plasmaVault).getManager(FEE_MANAGER_ID),
                 contextManager: address(0),
                 priceOracleMiddlewareManager: address(0)
             })

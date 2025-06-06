@@ -5,13 +5,12 @@ import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {FeeAccount} from "./FeeAccount.sol";
-import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {RecipientFee} from "./FeeManagerFactory.sol";
 import {FeeManagerStorageLib, FeeRecipientDataStorage} from "./FeeManagerStorageLib.sol";
-import {ContextClient} from "../context/ContextClient.sol";
 import {HighWaterMarkPerformanceFeeStorage, HighWaterMarkPerformanceFeeStorage} from "./FeeManagerStorageLib.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {FeeType} from "./FeeManagerStorageLib.sol";
 
 /// @notice Struct containing initialization data for the fee manager
 /// @param initialAuthority Address of the initial authority
@@ -39,18 +38,12 @@ struct FeeRecipientData {
     address[] recipientAddresses;
 }
 
-/// @notice Enum representing the type of fee
-enum FeeType {
-    MANAGEMENT,
-    PERFORMANCE
-}
-
 /// @title FeeManager
 /// @notice Manages the fees for the IporFusion protocol, including management and performance fees.
 /// Total performance fee percentage is the sum of all recipients performance fees + DAO performance fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
 /// Total management fee percentage is the sum of all recipients management fees + DAO management fee, represented in percentage with 2 decimals, example 10000 is 100%, 100 is 1%
 /// @dev Inherits from AccessManaged for access control.
-contract FeeManager is AccessManagedUpgradeable, ContextClient {
+contract FeeManager is AccessManagedUpgradeable {
     using SafeCast for uint256;
     event HarvestManagementFee(address receiver, uint256 amount);
     event HarvestPerformanceFee(address receiver, uint256 amount);
@@ -91,6 +84,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
     /// @notice Performance fee percentage for IPOR DAO (10000 = 100%, 100 = 1%)
     uint256 public immutable IPOR_DAO_PERFORMANCE_FEE;
+
+    uint256 private constant FEE_PERCENTAGE_DECIMALS_MULTIPLIER = 1e4; /// @dev 10000 = 100% (2 decimal places for fee percentage)
 
     modifier onlyInitialized() {
         if (_getInitializedVersion() != INITIALIZED_VERSION) {
@@ -158,8 +153,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
         /// @dev Plasma Vault fees are the sum of all recipients fees + DAO fee, respectively for performance and management fees.
         /// @dev Values stored in FeeManager have to be equal to the values stored in PlasmaVault
-        FeeManagerStorageLib.setPlasmaVaultTotalPerformanceFee(totalPerformanceFee);
-        FeeManagerStorageLib.setPlasmaVaultTotalManagementFee(totalManagementFee);
+        FeeManagerStorageLib.setTotalFee(FeeType.PERFORMANCE, totalPerformanceFee);
+        FeeManagerStorageLib.setTotalFee(FeeType.MANAGEMENT, totalManagementFee);
     }
 
     /// @notice Initializes the FeeManager contract by setting up fee account approvals
@@ -381,12 +376,10 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         feeData.recipientAddresses = newRecipients;
 
         if (feeType == FeeType.MANAGEMENT) {
-            PlasmaVaultGovernance(PLASMA_VAULT).configureManagementFee(feeAccount, totalFee);
-            FeeManagerStorageLib.setPlasmaVaultTotalManagementFee(totalFee);
+            FeeManagerStorageLib.setTotalFee(FeeType.MANAGEMENT, totalFee);
             emit ManagementFeeUpdated(totalFee, newRecipients, newFees);
         } else {
-            PlasmaVaultGovernance(PLASMA_VAULT).configurePerformanceFee(feeAccount, totalFee);
-            FeeManagerStorageLib.setPlasmaVaultTotalPerformanceFee(totalFee);
+            FeeManagerStorageLib.setTotalFee(FeeType.PERFORMANCE, totalFee);
             emit PerformanceFeeUpdated(totalFee, newRecipients, newFees);
         }
     }
@@ -485,9 +478,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     ///      where fees are only charged on gains above the previous highest value.
     ///      The function can only be called by the plasma vault contract.
     ///
-    /// @param actualExchangeRate_ Current exchange rate between shares and assets
+    /// @param actualExchangeRate_ Current exchange rate between shares and assets in assets decimals
     /// @param totalSupply_ Total supply of vault shares
-    /// @param performanceFee_ Performance fee percentage with 2 decimal precision (10000 = 100%)
     /// @param assetDecimals_ Number of decimals in the underlying asset
     ///
     /// @return recipient Address of the performance fee recipient (PERFORMANCE_FEE_ACCOUNT or address(0))
@@ -508,12 +500,13 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     function calculateAndUpdatePerformanceFee(
         uint128 actualExchangeRate_,
         uint256 totalSupply_,
-        uint256 performanceFee_,
         uint256 assetDecimals_
     ) external returns (address recipient, uint256 feeShares) {
         if (msg.sender != PLASMA_VAULT) {
             revert NotPlasmaVault();
         }
+
+        uint256 totalFee = FeeManagerStorageLib.getTotalFee(FeeType.PERFORMANCE);
 
         HighWaterMarkPerformanceFeeStorage memory highWaterMarkStorage = FeeManagerStorageLib
             .getPlasmaVaultHighWaterMarkPerformanceFee();
@@ -535,7 +528,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
         uint256 delta = actualExchangeRate_ - uint256(highWaterMarkStorage.highWaterMark);
         uint256 sharesToHarvest = Math.mulDiv(totalSupply_, delta, 10 ** assetDecimals_);
-        uint256 feeShares = Math.mulDiv(sharesToHarvest, performanceFee_, 10000);
+        uint256 feeShares = Math.mulDiv(sharesToHarvest, totalFee, 10000);
 
         FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(actualExchangeRate_);
         return (PERFORMANCE_FEE_ACCOUNT, feeShares);
@@ -565,7 +558,6 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     ) internal returns (uint256) {
         uint256 decimals = IERC4626(PLASMA_VAULT).decimals();
         uint256 numberOfDecimals = 10 ** decimals;
-
         uint256 percentToTransferToDao_ = (daoFee_ * numberOfDecimals) / totalFee_;
         uint256 transferAmountToDao_ = Math.mulDiv(feeBalance_, percentToTransferToDao_, numberOfDecimals);
 
@@ -579,6 +571,34 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         }
 
         return feeBalance_ > transferAmountToDao_ ? feeBalance_ - transferAmountToDao_ : 0;
+    }
+
+    function calculateUnrealizedManagementFee(uint256 totalAssets_) public view returns (uint256) {
+        uint256 totalFee = FeeManagerStorageLib.getTotalFee(FeeType.MANAGEMENT);
+        uint256 lastUpdate = FeeManagerStorageLib.getTotalFeeLastUpdate(FeeType.MANAGEMENT);
+
+        uint256 blockTimestamp = block.timestamp;
+
+        if (totalFee == 0 || lastUpdate == 0 || blockTimestamp <= lastUpdate) {
+            return 0;
+        }
+        return
+            Math.mulDiv(
+                totalAssets_ * (blockTimestamp - lastUpdate),
+                totalFee,
+                365 days * FEE_PERCENTAGE_DECIMALS_MULTIPLIER
+            );
+    }
+
+    function calculateAndUpdateManagementFee(
+        uint256 totalAssets_
+    ) public returns (uint256 feeAssets, address feeAccount) {
+        if (msg.sender != PLASMA_VAULT) {
+            revert NotPlasmaVault();
+        }
+        feeAssets = calculateUnrealizedManagementFee(totalAssets_);
+        feeAccount = MANAGEMENT_FEE_ACCOUNT;
+        FeeManagerStorageLib.updateTotalFeeLastUpdate(FeeType.MANAGEMENT);
     }
 
     /// @notice Internal function to emit harvest events
@@ -642,11 +662,5 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         } else {
             revert InvalidHighWaterMark();
         }
-    }
-
-    /// @notice Internal function to get the message sender from context
-    /// @return The address of the message sender
-    function _msgSender() internal view override returns (address) {
-        return _getSenderFromContext();
     }
 }

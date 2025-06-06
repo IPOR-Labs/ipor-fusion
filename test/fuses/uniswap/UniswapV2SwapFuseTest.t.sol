@@ -75,7 +75,8 @@ contract UniswapV2SwapFuseTest is Test {
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
-            _setupMarketConfigs()
+            _setupMarketConfigs(),
+            true
         );
         _setupRoles();
     }

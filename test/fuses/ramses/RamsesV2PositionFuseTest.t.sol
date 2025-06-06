@@ -88,7 +88,8 @@ contract RamsesV2PositionFuseTest is Test {
             address(_plasmaVault),
             _setupFuses(),
             _setupBalanceFuses(),
-            _setupMarketConfigs()
+            _setupMarketConfigs(),
+            true
         );
         _setupRoles();
         _setupDependenceBalance();
