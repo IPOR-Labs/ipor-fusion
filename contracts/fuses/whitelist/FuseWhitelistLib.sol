@@ -92,6 +92,8 @@ library FuseWhitelistLib {
     error InvalidMetadataType(uint256 metadataId);
     /// @notice Thrown when attempting to add metadata to a non-existent fuse
     error FuseNotFound(address fuseAddress);
+    /// @notice Thrown when attempting to add a fuse info with a zero deployment timestamp
+    error ZeroDeploymentTimestamp();
 
     /// @notice Emitted when a new fuse type is added
     /// @param fuseId The ID of the added fuse type
@@ -312,12 +314,16 @@ library FuseWhitelistLib {
     /// @notice Adds basic information about a fuse
     /// @param fuseType_ The type ID of the fuse
     /// @param fuseAddress_ The address of the fuse
+    /// @param deploymentTimestamp_ The timestamp of the fuse deployment
     /// @dev Reverts if:
     /// - fuseAddress_ is zero address
     /// - fuseType_ is invalid
-    function addFuseInfo(uint16 fuseType_, address fuseAddress_) internal {
+    function addFuseInfo(uint16 fuseType_, address fuseAddress_, uint32 deploymentTimestamp_) internal {
         if (fuseAddress_ == address(0)) {
             revert ZeroAddressFuseInfo();
+        }
+        if (deploymentTimestamp_ == 0) {
+            revert ZeroDeploymentTimestamp();
         }
 
         FuseListByAddress storage fuseInfoByAddress = _getFuseListByAddressSlot();
@@ -330,9 +336,9 @@ library FuseWhitelistLib {
         fuseInfoByAddress.fusesByAddress[fuseAddress_].fuseType = fuseType_;
         fuseInfoByAddress.fusesByAddress[fuseAddress_].fuseAddress = fuseAddress_;
         fuseInfoByAddress.fusesByAddress[fuseAddress_].fuseState = 0;
-        fuseInfoByAddress.fusesByAddress[fuseAddress_].timestamp = uint32(block.timestamp);
+        fuseInfoByAddress.fusesByAddress[fuseAddress_].timestamp = deploymentTimestamp_;
 
-        emit FuseInfoAdded(fuseAddress_, fuseType_, uint32(block.timestamp));
+        emit FuseInfoAdded(fuseAddress_, fuseType_, deploymentTimestamp_);
     }
 
     /// @notice Updates the state of a fuse

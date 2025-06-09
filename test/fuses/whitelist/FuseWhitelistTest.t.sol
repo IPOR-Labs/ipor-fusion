@@ -8,6 +8,9 @@ import {FuseWhitelist} from "../../../contracts/fuses/whitelist/FuseWhitelist.so
 import {FuseWhitelistLib} from "../../../contracts/fuses/whitelist/FuseWhitelistLib.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {FuseTypes} from "../../../contracts/fuses/whitelist/FuseTypes.sol";
+import {FuseStatus} from "../../../contracts/fuses/whitelist/FuseStatus.sol";
+import {FuseMetadataTypes} from "../../../contracts/fuses/whitelist/FuseMetadataTypes.sol";
 
 contract FuseWhitelistTest is Test {
     FuseWhitelist private _fuseWhitelist;
@@ -245,6 +248,59 @@ contract FuseWhitelistTest is Test {
         assertTrue(result, "Function should return true");
     }
 
+    function test_AddFuseStates_WithFuseStatusConstants() public {
+        // Arrange
+        uint16[] memory fuseStateIds = FuseStatus.getAllFuseStatuIds();
+        string[] memory fuseStateNames = FuseStatus.getAllFuseStatusNames();
+
+        (uint16[] memory fuseStatesIdsBefore, string[] memory fuseStatesNamesBefore) = _fuseWhitelist.getFuseStates();
+
+        // Act
+        vm.prank(FUSE_STATE_MANAGER_ROLE);
+        bool result = _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
+
+        // Assert
+        assertTrue(result, "Function should return true");
+        (uint16[] memory fuseStatesIdsAfter, string[] memory fuseStatesNamesAfter) = _fuseWhitelist.getFuseStates();
+
+        assertEq(fuseStatesIdsBefore.length, 0, "Fuses states should be empty");
+        assertEq(fuseStatesIdsAfter.length, fuseStateIds.length, "Fuses states should be equal to the input");
+        assertEq(fuseStatesNamesBefore.length, 0, "Fuses names should be empty");
+        assertEq(fuseStatesNamesAfter.length, fuseStateNames.length, "Fuses names should be equal to the input");
+
+        // Verify specific status values
+        assertEq(fuseStatesIdsAfter[0], 0, "Default status ID should be 0");
+        assertEq(fuseStatesIdsAfter[1], 1, "Active status ID should be 1");
+        assertEq(fuseStatesIdsAfter[2], 2, "Deprecated status ID should be 2");
+        assertEq(fuseStatesIdsAfter[3], 3, "Removed status ID should be 3");
+
+        assertEq(fuseStatesNamesAfter[0], "Default", "Default status name should be 'Default'");
+        assertEq(fuseStatesNamesAfter[1], "Active", "Active status name should be 'Active'");
+        assertEq(fuseStatesNamesAfter[2], "Deprecated", "Deprecated status name should be 'Deprecated'");
+        assertEq(fuseStatesNamesAfter[3], "Removed", "Removed status name should be 'Removed'");
+    }
+
+    function test_AddFuseStates_WithFuseStatusConstants_EventEmitted() public {
+        // Arrange
+        uint16[] memory fuseStateIds = FuseStatus.getAllFuseStatuIds();
+        string[] memory fuseStateNames = FuseStatus.getAllFuseStatusNames();
+
+        // Act & Assert
+        vm.startPrank(FUSE_STATE_MANAGER_ROLE);
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.FuseStateAdded(0, "Default");
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.FuseStateAdded(1, "Active");
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.FuseStateAdded(2, "Deprecated");
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.FuseStateAdded(3, "Removed");
+        bool result = _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
+        vm.stopPrank();
+
+        assertTrue(result, "Function should return true");
+    }
+
     function test_AddMetadataTypes_Success() public {
         // Arrange
         uint16[] memory metadataIds = new uint16[](3);
@@ -365,9 +421,13 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
         // Act
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Assert
@@ -408,10 +468,14 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
         // Act & Assert
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.InvalidFuseTypeId.selector, 3));
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
     }
 
@@ -433,10 +497,15 @@ contract FuseWhitelistTest is Test {
         states[1] = 0;
         states[2] = 0;
 
+        uint32[] memory deploymentTimestamps = new uint32[](3);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+        deploymentTimestamps[2] = uint32(block.timestamp);
+
         // Act & Assert
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
         vm.expectRevert(FuseWhitelist.FuseWhitelistInvalidInputLength.selector);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
     }
 
@@ -454,9 +523,11 @@ contract FuseWhitelistTest is Test {
         types[0] = fuseType;
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
 
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Verify initial state
@@ -505,9 +576,11 @@ contract FuseWhitelistTest is Test {
         types[0] = fuseType;
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
 
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act & Assert
@@ -531,9 +604,11 @@ contract FuseWhitelistTest is Test {
         types[0] = fuseType;
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
 
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act & Assert
@@ -562,9 +637,11 @@ contract FuseWhitelistTest is Test {
         types[0] = fuseType;
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
 
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act & Assert
@@ -591,9 +668,11 @@ contract FuseWhitelistTest is Test {
         types[0] = fuseType;
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
 
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Add metadata type
@@ -659,9 +738,11 @@ contract FuseWhitelistTest is Test {
         types[0] = fuseType;
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
 
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         bytes32[] memory metadata = new bytes32[](1);
@@ -688,9 +769,11 @@ contract FuseWhitelistTest is Test {
         types[0] = fuseType;
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
 
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Add metadata type
@@ -732,9 +815,11 @@ contract FuseWhitelistTest is Test {
         types[0] = fuseType;
         uint16[] memory states = new uint16[](1);
         states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
 
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Add metadata type
@@ -932,8 +1017,12 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act
@@ -982,9 +1071,11 @@ contract FuseWhitelistTest is Test {
         types[0] = fuseType;
         uint16[] memory states = new uint16[](1);
         states[0] = fuseState;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
 
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act
@@ -1036,8 +1127,13 @@ contract FuseWhitelistTest is Test {
         states[1] = 0;
         states[2] = 0;
 
+        uint32[] memory deploymentTimestamps = new uint32[](3);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+        deploymentTimestamps[2] = uint32(block.timestamp);
+
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act
@@ -1077,8 +1173,12 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act
@@ -1111,8 +1211,14 @@ contract FuseWhitelistTest is Test {
         states[2] = 0;
         states[3] = 2;
 
+        uint32[] memory deploymentTimestamps = new uint32[](4);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+        deploymentTimestamps[2] = uint32(block.timestamp);
+        deploymentTimestamps[3] = uint32(block.timestamp);
+
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act - Test different combinations
@@ -1151,8 +1257,12 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act
@@ -1179,8 +1289,12 @@ contract FuseWhitelistTest is Test {
         states[0] = 0;
         states[1] = 0;
 
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
         vm.startPrank(ADD_FUSE_MANAGER_ROLE);
-        _fuseWhitelist.addFuses(fuses, types, states);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
         vm.stopPrank();
 
         // Act
@@ -1188,6 +1302,121 @@ contract FuseWhitelistTest is Test {
 
         // Assert
         assertEq(result.length, 0, "Should return empty array for non-existent combination");
+    }
+
+    function test_AddAllFuseTypes_Success() public {
+        // Arrange
+        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseId();
+        string[] memory fuseTypeNames = FuseTypes.getAllFuseName();
+
+        (uint16[] memory fuseTypesIdsBefore, string[] memory fuseTypesNamesBefore) = _fuseWhitelist.getFuseTypes();
+
+        // Act
+        vm.startPrank(FUSE_TYPE_MANAGER_ROLE);
+        bool result = _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
+        vm.stopPrank();
+
+        // Assert
+        assertTrue(result, "Function should return true");
+        (uint16[] memory fuseTypesIdsAfter, string[] memory fuseTypesNamesAfter) = _fuseWhitelist.getFuseTypes();
+
+        assertEq(fuseTypesIdsBefore.length, 0, "Fuses types should be empty before");
+        assertEq(fuseTypesIdsAfter.length, fuseTypeIds.length, "Fuses types should be equal to the input");
+        assertEq(fuseTypesNamesBefore.length, 0, "Fuses names should be empty before");
+        assertEq(fuseTypesNamesAfter.length, fuseTypeNames.length, "Fuses names should be equal to the input");
+
+        // Verify each fuse type was added correctly
+        for (uint256 i = 0; i < fuseTypeIds.length; i++) {
+            string memory description = _fuseWhitelist.getFuseTypeDescription(fuseTypeIds[i]);
+            assertEq(description, fuseTypeNames[i], "Fuse type description should match");
+        }
+    }
+
+    function test_AddAllFuseTypes_EventEmitted() public {
+        // Arrange
+        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseId();
+        string[] memory fuseTypeNames = FuseTypes.getAllFuseName();
+
+        // Act & Assert
+        vm.startPrank(FUSE_TYPE_MANAGER_ROLE);
+        for (uint256 i = 0; i < fuseTypeIds.length; i++) {
+            vm.expectEmit(true, true, true, true);
+            emit FuseWhitelistLib.FuseTypeAdded(fuseTypeIds[i], fuseTypeNames[i]);
+        }
+        bool result = _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
+        vm.stopPrank();
+
+        assertTrue(result, "Function should return true");
+    }
+
+    function test_AddMetadataTypes_WithFuseMetadataTypesConstants() public {
+        // Arrange
+        uint16[] memory metadataIds = FuseMetadataTypes.getAllFuseMetadataTypeIds();
+        string[] memory metadataTypes = FuseMetadataTypes.getAllFuseMetadataTypeNames();
+
+        (uint16[] memory metadataIdsBefore, string[] memory metadataTypesBefore) = _fuseWhitelist.getMetadataTypes();
+
+        // Act
+        vm.prank(FUSE_METADATA_MANAGER_ROLE);
+        bool result = _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
+
+        // Assert
+        assertTrue(result, "Function should return true");
+        (uint16[] memory metadataIdsAfter, string[] memory metadataTypesAfter) = _fuseWhitelist.getMetadataTypes();
+
+        assertEq(metadataIdsBefore.length, 0, "Metadata types should be empty");
+        assertEq(metadataIdsAfter.length, metadataIds.length, "Metadata types should be equal to the input");
+        assertEq(metadataTypesBefore.length, 0, "Metadata names should be empty");
+        assertEq(metadataTypesAfter.length, metadataTypes.length, "Metadata names should be equal to the input");
+
+        // Verify specific metadata type values
+        assertEq(metadataIdsAfter[0], 0, "Audit Status ID should be 0");
+        assertEq(metadataIdsAfter[1], 1, "Substrate Info ID should be 1");
+        assertEq(metadataIdsAfter[2], 2, "Category Info ID should be 2");
+        assertEq(metadataIdsAfter[3], 3, "Abi Version ID should be 3");
+
+        assertEq(metadataTypesAfter[0], "Audit_Status", "Audit Status name should be 'Audit_Status'");
+        assertEq(metadataTypesAfter[1], "Substrate_Info", "Substrate Info name should be 'Substrate_Info'");
+        assertEq(metadataTypesAfter[2], "Category_Info", "Category Info name should be 'Category_Info'");
+        assertEq(metadataTypesAfter[3], "Abi_Version", "Abi Version name should be 'Abi_Version'");
+    }
+
+    function test_AddMetadataTypes_WithFuseMetadataTypesConstants_EventEmitted() public {
+        // Arrange
+        uint16[] memory metadataIds = FuseMetadataTypes.getAllFuseMetadataTypeIds();
+        string[] memory metadataTypes = FuseMetadataTypes.getAllFuseMetadataTypeNames();
+
+        // Act & Assert
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.MetadataTypeAdded(0, "Audit_Status");
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.MetadataTypeAdded(1, "Substrate_Info");
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.MetadataTypeAdded(2, "Category_Info");
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.MetadataTypeAdded(3, "Abi_Version");
+        bool result = _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
+        vm.stopPrank();
+
+        assertTrue(result, "Function should return true");
+    }
+
+    function test_AddMetadataTypes_WithFuseMetadataTypesConstants_Unauthorized() public {
+        // Arrange
+        uint16[] memory metadataIds = FuseMetadataTypes.getAllFuseMetadataTypeIds();
+        string[] memory metadataTypes = FuseMetadataTypes.getAllFuseMetadataTypeNames();
+
+        // Act & Assert
+        vm.prank(address(0x123)); // Random address without role
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                address(0x123),
+                keccak256("FUSE_METADATA_MANAGER_ROLE")
+            )
+        );
+        _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
     }
 
     function addFuseTypesAndStates() public {
