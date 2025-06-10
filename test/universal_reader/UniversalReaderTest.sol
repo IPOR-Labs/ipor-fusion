@@ -256,7 +256,7 @@ contract UniversalReaderTest is Test {
         morphoTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
         morphoTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO_FLASH_LOAN, morphoTokens);
         vm.stopPrank();
 
@@ -291,7 +291,7 @@ contract UniversalReaderTest is Test {
         uniswapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
         uniswapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_SWAP_V3, uniswapTokens);
         vm.stopPrank();
 
@@ -326,7 +326,7 @@ contract UniversalReaderTest is Test {
         bytes32[] memory morphoMarkets = new bytes32[](1);
         morphoMarkets[0] = _MORPHO_WETH_USDC_MARKET_ID;
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO, morphoMarkets);
         vm.stopPrank();
 
@@ -354,7 +354,7 @@ contract UniversalReaderTest is Test {
         dependenceMarkets[1] = dependence; // Uniswap -> ERC20_VAULT_BALANCE
         dependenceMarkets[2] = dependence; // MorphoFlashLoan -> ERC20_VAULT_BALANCE
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
         vm.stopPrank();
     }
@@ -373,7 +373,7 @@ contract UniversalReaderTest is Test {
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.ERC20_VAULT_BALANCE, substrates);
         vm.stopPrank();
     }

@@ -139,7 +139,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
         assets[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.AAVE_V3, assets);
         vm.stopPrank();
 
@@ -150,7 +150,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         dependencies[0] = new uint256[](1);
         dependencies[0][0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).updateDependencyBalanceGraphs(markets, dependencies);
         vm.stopPrank();
     }
@@ -302,7 +302,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         morphoTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
         morphoTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO_FLASH_LOAN, morphoTokens);
         vm.stopPrank();
 
@@ -337,7 +337,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         uniswapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
         uniswapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_SWAP_V3, uniswapTokens);
         vm.stopPrank();
 
@@ -367,7 +367,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         dependenceMarkets[1] = dependence; // Uniswap -> ERC20_VAULT_BALANCE
         dependenceMarkets[2] = dependence; // MorphoFlashLoan -> ERC20_VAULT_BALANCE
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
         vm.stopPrank();
     }
@@ -386,7 +386,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.ERC20_VAULT_BALANCE, substrates);
         vm.stopPrank();
     }

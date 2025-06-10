@@ -42,8 +42,6 @@ contract IporPlasmaVaultRolesTest is Test {
         _generateDataForInitialization();
         _setupPriceOracleMiddleware();
         _generatePlasmaVault();
-        _generateRewardsClaimManager();
-        _initializeAccessManager();
     }
 
     function testShouldAtomistGrantMarketSubstrates() external {
@@ -52,7 +50,7 @@ contract IporPlasmaVaultRolesTest is Test {
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
 
         //when
-        vm.startPrank(_data.atomists[0]);
+        vm.startPrank(_data.fuseManagers[0]);
         IPlasmaVaultGovernance(address(_plasmaVault)).grantMarketSubstrates(IporFusionMarkets.AAVE_V3, substrates);
         vm.stopPrank();
 
@@ -665,10 +663,13 @@ contract IporPlasmaVaultRolesTest is Test {
             )
         );
         vm.stopPrank();
+        _generateRewardsClaimManager();
+
+        _initializeAccessManager();
 
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
-            _deployer,
+            _data.fuseManagers[0],
             address(_plasmaVault),
             fuses,
             balanceFuses,
