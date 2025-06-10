@@ -81,7 +81,9 @@ contract CurveIntegrationTest is Test {
         substrates[0] = bytes32(uint256(uint160(_CURVE_VAULT_1)));
         substrates[1] = bytes32(uint256(uint160(_CURVE_VAULT_2)));
         substrates[2] = bytes32(uint256(uint160(_CURVE_VAULT_3)));
+        vm.stopPrank();
 
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
         PlasmaVaultGovernance(address(_plasmaVault)).grantMarketSubstrates(IporFusionMarkets.ERC4626_0001, substrates);
 
         // Grant market substrates for Curve LP Gauge
@@ -131,7 +133,7 @@ contract CurveIntegrationTest is Test {
         uint256[][] memory dependencyMarkets = new uint256[][](1);
         dependencyMarkets[0] = dependencies;
 
-        vm.startPrank(TestAddresses.ATOMIST);
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
         PlasmaVaultGovernance(address(_plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
         vm.stopPrank();
 

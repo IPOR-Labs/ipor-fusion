@@ -356,7 +356,7 @@ contract ContextManagerWithSignaturePlasmaVaultTest is Test, ContextManagerInitS
 
         ContextDataWithSender[] memory dataWithSignatures = new ContextDataWithSender[](1);
         dataWithSignatures[0] = preperateDataWithSignature(
-            TestAddresses.ATOMIST_PRIVATE_KEY,
+            TestAddresses.FUSE_MANAGER_PRIVATE_KEY,
             block.timestamp + 1000,
             block.number,
             address(_plasmaVault),
@@ -401,7 +401,7 @@ contract ContextManagerWithSignaturePlasmaVaultTest is Test, ContextManagerInitS
 
         ContextDataWithSender[] memory dataWithSignatures = new ContextDataWithSender[](1);
         dataWithSignatures[0] = preperateDataWithSignature(
-            TestAddresses.ATOMIST_PRIVATE_KEY,
+            TestAddresses.FUSE_MANAGER_PRIVATE_KEY,
             block.timestamp + 1000,
             block.number,
             address(_plasmaVault),

@@ -359,7 +359,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
-        vm.startPrank(TestAddresses.ATOMIST);
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
         _contextManager.runWithContext(executeData);
         vm.stopPrank();
 
@@ -409,7 +409,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
-        vm.startPrank(TestAddresses.ATOMIST);
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
         _contextManager.runWithContext(executeData);
         vm.stopPrank();
 
