@@ -64,7 +64,7 @@ contract PreHooksTest is Test {
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = bytes32(uint256(uint160(_DAI)));
 
-        vm.startPrank(TestAddresses.ATOMIST);
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
         _plasmaVault.addSubstratesToMarket(IporFusionMarkets.ERC20_VAULT_BALANCE, substrates);
         vm.stopPrank();
 

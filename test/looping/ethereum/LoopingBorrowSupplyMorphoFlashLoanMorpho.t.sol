@@ -259,7 +259,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
         morphoTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
         morphoTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO_FLASH_LOAN, morphoTokens);
         vm.stopPrank();
 
@@ -294,7 +294,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
         uniswapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
         uniswapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_SWAP_V3, uniswapTokens);
         vm.stopPrank();
 
@@ -329,7 +329,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
         bytes32[] memory morphoMarkets = new bytes32[](1);
         morphoMarkets[0] = _MORPHO_WETH_WBTC_MARKET_ID;
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO, morphoMarkets);
         vm.stopPrank();
 
@@ -357,7 +357,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
         dependenceMarkets[1] = dependence; // Uniswap -> ERC20_VAULT_BALANCE
         dependenceMarkets[2] = dependence; // MorphoFlashLoan -> ERC20_VAULT_BALANCE
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
         vm.stopPrank();
     }
@@ -376,7 +376,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_WBTC);
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.ERC20_VAULT_BALANCE, substrates);
         vm.stopPrank();
     }
