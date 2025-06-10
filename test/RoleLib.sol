@@ -7,13 +7,12 @@ import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.s
 import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
 import {Roles} from "../contracts/libraries/Roles.sol";
 import {FeeManager} from "../contracts/managers/fee/FeeManager.sol";
-import {FeeAccount} from "../contracts/managers/fee/FeeAccount.sol";
 import {WithdrawManager} from "../contracts/managers/withdraw/WithdrawManager.sol";
+import {FEE_MANAGER_ID} from "../contracts/managers/ManagerIds.sol";
 struct UsersToRoles {
     address superAdmin;
     address atomist;
     address[] alphas;
-    address[] performanceFeeManagers;
     address[] managementFeeManagers;
     uint32 feeTimelock;
 }
@@ -33,10 +32,6 @@ library RoleLib {
         vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(Roles.ALPHA_ROLE, Roles.ATOMIST_ROLE);
         vm.prank(usersWithRoles.superAdmin);
-        accessManager.setRoleAdmin(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
-        vm.prank(usersWithRoles.superAdmin);
-        accessManager.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
-        vm.prank(usersWithRoles.superAdmin);
         accessManager.setRoleAdmin(Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE, Roles.ATOMIST_ROLE);
 
         vm.prank(usersWithRoles.superAdmin);
@@ -54,24 +49,6 @@ library RoleLib {
         for (uint256 i; i < usersWithRoles.alphas.length; i++) {
             vm.prank(usersWithRoles.atomist);
             accessManager.grantRole(Roles.ALPHA_ROLE, usersWithRoles.alphas[i], 0);
-        }
-
-        for (uint256 i; i < usersWithRoles.performanceFeeManagers.length; i++) {
-            vm.prank(usersWithRoles.atomist);
-            accessManager.grantRole(
-                Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
-                usersWithRoles.performanceFeeManagers[i],
-                usersWithRoles.feeTimelock
-            );
-        }
-
-        for (uint256 i; i < usersWithRoles.managementFeeManagers.length; i++) {
-            vm.prank(usersWithRoles.atomist);
-            accessManager.grantRole(
-                Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE,
-                usersWithRoles.managementFeeManagers[i],
-                usersWithRoles.feeTimelock
-            );
         }
 
         return accessManager;
@@ -101,18 +78,6 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.grantRole(Roles.TECH_PLASMA_VAULT_ROLE, plasmaVault_, 0);
 
-        bytes4[] memory performanceFeeSig = new bytes4[](1);
-        performanceFeeSig[0] = PlasmaVaultGovernance.configurePerformanceFee.selector;
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setTargetFunctionRole(plasmaVault_, performanceFeeSig, Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE);
-
-        bytes4[] memory managementFeeSig = new bytes4[](1);
-        managementFeeSig[0] = PlasmaVaultGovernance.configureManagementFee.selector;
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setTargetFunctionRole(plasmaVault_, managementFeeSig, Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE);
-
         bytes4[] memory alphaSig = new bytes4[](1);
         alphaSig[0] = PlasmaVault.execute.selector;
 
@@ -126,8 +91,7 @@ library RoleLib {
         address plasmaVault_,
         IporFusionAccessManager accessManager_
     ) private {
-        address feeManager = FeeAccount(PlasmaVaultGovernance(plasmaVault_).getPerformanceFeeData().feeAccount)
-            .FEE_MANAGER();
+        address feeManager = PlasmaVaultGovernance(plasmaVault_).getManager(FEE_MANAGER_ID);
 
         bytes4[] memory feeManagerSig = new bytes4[](1);
         feeManagerSig[0] = FeeManager.updateHighWaterMarkPerformanceFee.selector;
@@ -141,18 +105,6 @@ library RoleLib {
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(feeManager, feeManagerSig2, Roles.ATOMIST_ROLE);
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setRoleAdmin(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, Roles.ATOMIST_ROLE);
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.grantRole(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, feeManager, 0);
-
-        vm_.prank(usersWithRoles_.superAdmin);
-        accessManager_.grantRole(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, feeManager, 0);
     }
 
     function _setupAtomistRoles(

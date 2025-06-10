@@ -6,6 +6,12 @@ import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 /// @title Plasma Vault Configuration Library responsible for managing the configuration of the Plasma Vault
 library PlasmaVaultConfigLib {
     event MarketSubstratesGranted(uint256 marketId, bytes32[] substrates);
+    event ManagerAdded(uint256 managerId, address managerAddress);
+    event ManagerUpdated(uint256 managerId, address managerAddress);
+
+    error ManagerAlreadyExists(uint256 managerId);
+    error ManagerIdCannotBeZero();
+    error ManagerAddressCannotBeZero();
 
     /// @notice Checks if a given asset address is granted as a substrate for a specific market
     /// @dev This function is part of the Plasma Vault's substrate management system that controls which assets can be used in specific markets
@@ -352,6 +358,50 @@ library PlasmaVaultConfigLib {
     /// - getMarketSubstrates(): Returns values that may need conversion
     function bytes32ToAddress(bytes32 substrate_) internal pure returns (address) {
         return address(uint160(uint256(substrate_)));
+    }
+
+    /// @dev can be execute by Owner
+    function addManager(uint256 managerId_, address managerAddress_) internal {
+        if (managerId_ == 0) {
+            revert ManagerIdCannotBeZero();
+        }
+
+        if (managerAddress_ == address(0)) {
+            revert ManagerAddressCannotBeZero();
+        }
+
+        PlasmaVaultStorageLib.Managers storage managers = PlasmaVaultStorageLib.getManagers();
+
+        if (managers.managers[managerId_] != address(0)) {
+            revert ManagerAlreadyExists(managerId_);
+        }
+
+        managers.managers[managerId_] = managerAddress_;
+        managers.managerIds.push(managerId_);
+        managers.indexes[managerId_] = managers.managerIds.length - 1;
+
+        emit ManagerAdded(managerId_, managerAddress_);
+    }
+
+    function updateManager(uint256 managerId_, address managerAddress_) internal {
+        PlasmaVaultStorageLib.Managers storage managers = PlasmaVaultStorageLib.getManagers();
+
+        if (managers.managers[managerId_] == address(0)) {
+            managers.managerIds.push(managerId_);
+            managers.indexes[managerId_] = managers.managerIds.length - 1;
+        }
+
+        managers.managers[managerId_] = managerAddress_;
+
+        emit ManagerUpdated(managerId_, managerAddress_);
+    }
+
+    function getManager(uint256 managerId_) internal view returns (address) {
+        return PlasmaVaultStorageLib.getManagers().managers[managerId_];
+    }
+
+    function getManagerIds() internal view returns (uint256[] memory) {
+        return PlasmaVaultStorageLib.getManagers().managerIds;
     }
 
     /// @notice Gets the market substrates configuration for a specific market

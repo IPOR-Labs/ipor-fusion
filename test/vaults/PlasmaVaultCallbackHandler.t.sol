@@ -96,7 +96,8 @@ contract PlasmaVaultCallbackHandler is Test {
             address(_plasmaVault),
             _setupFuses(),
             balanceFuses,
-            marketConfigs
+            marketConfigs,
+            true
         );
 
         _initAccessManager();

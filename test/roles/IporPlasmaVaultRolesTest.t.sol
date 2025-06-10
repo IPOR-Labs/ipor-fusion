@@ -109,14 +109,6 @@ contract IporPlasmaVaultRolesTest is Test {
 
         vm.prank(_deployer);
         vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE, uint64(11111));
-
-        vm.prank(_deployer);
-        vm.expectRevert(error);
-        _accessManager.setRoleAdmin(Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, uint64(11111));
-
-        vm.prank(_deployer);
-        vm.expectRevert(error);
         _accessManager.setRoleAdmin(Roles.CLAIM_REWARDS_ROLE, uint64(11111));
 
         vm.prank(_deployer);
@@ -673,7 +665,8 @@ contract IporPlasmaVaultRolesTest is Test {
             address(_plasmaVault),
             fuses,
             balanceFuses,
-            marketConfigs
+            marketConfigs,
+            true
         );
     }
 

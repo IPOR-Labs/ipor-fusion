@@ -5,6 +5,12 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 error FeeManagerStorageLibZeroAddress();
 
+/// @notice Enum representing the type of fee
+enum FeeType {
+    MANAGEMENT,
+    PERFORMANCE
+}
+
 /// @notice Storage structure for DAO fee recipient data
 /// @dev Stores the address that receives IPOR DAO fees
 struct DaoFeeRecipientDataStorage {
@@ -16,12 +22,6 @@ event IporDaoFeeRecipientAddressChanged(address indexed newRecipient);
 
 event HighWaterMarkPerformanceFeeUpdated(uint128 highWaterMark);
 event HighWaterMarkPerformanceFeeUpdateIntervalUpdated(uint32 updateInterval);
-
-/// @notice Storage structure for total performance fee in plasma vault
-/// @dev Value stored with 2 decimal precision (10000 = 100%)
-struct PlasmaVaultTotalPerformanceFeeStorage {
-    uint256 value;
-}
 
 /// @notice Storage structure for total management fee in plasma vault
 /// @dev Value stored with 2 decimal precision (10000 = 100%)
@@ -52,6 +52,11 @@ struct HighWaterMarkPerformanceFeeStorage {
     uint32 updateInterval;
 }
 
+struct TotalFeeStorage {
+    mapping(FeeType feeType => uint256 value) totalFees;
+    mapping(FeeType feeType => uint256 lastUpdate) lastUpdate;
+}
+
 /// @title Fee Manager Storage Library
 /// @notice Library for managing fee-related storage in the IPOR Protocol's plasma vault system
 /// @dev Implements diamond storage pattern for fee management including performance, management, and DAO fees
@@ -61,10 +66,6 @@ library FeeManagerStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.dao.fee.recipient.data.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant DAO_FEE_RECIPIENT_DATA_SLOT =
         0xaf522f71ce1f2b5702c38f667fa2366c184e3c6dd86ab049ad3b02fec741fd00;
-
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.total.performance.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant TOTAL_PERFORMANCE_FEE_SLOT =
-        0x91a7fd667a02d876183d5e3c0caf915fa5c0b6847afae1b6a2261f7bce984500;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.total.management.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant TOTAL_MANAGEMENT_FEE_SLOT =
@@ -81,6 +82,9 @@ library FeeManagerStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.high.water.mark.performance.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant HIGH_WATER_MARK_PERFORMANCE_FEE_SLOT =
         0xb9423b11a8779228bace4bf919d779502e12a07e11bd2f782c23aeac55439c00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.total.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant TOTAL_FEE_SLOT = 0xc456e86573d79f7b5b60c9eb824345c471d5390facec19407699845c141b2d00; // TODO: change this to the correct slot
 
     /// @notice Retrieves management fee recipient data storage
     /// @dev Uses assembly to access diamond storage pattern slot
@@ -103,7 +107,7 @@ library FeeManagerStorageLib {
     /// @notice Gets the total performance fee percentage for the plasma vault
     /// @return Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     function getPlasmaVaultTotalPerformanceFee() internal view returns (uint256) {
-        return _totalPerformanceFeeStorage().value;
+        return _totalFeeStorage().totalFees[FeeType.PERFORMANCE];
     }
 
     /// @notice Gets the high water mark performance fee percentage for the plasma vault
@@ -129,17 +133,10 @@ library FeeManagerStorageLib {
         emit HighWaterMarkPerformanceFeeUpdateIntervalUpdated(updateInterval_);
     }
 
-    /// @notice Sets the total performance fee percentage for the plasma vault
-    /// @dev Updates the total performance fee that will be distributed among recipients
-    /// @param fee_ Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
-    function setPlasmaVaultTotalPerformanceFee(uint256 fee_) internal {
-        _totalPerformanceFeeStorage().value = fee_;
-    }
-
     /// @notice Gets the total management fee percentage for the plasma vault
     /// @return Total management fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     function getPlasmaVaultTotalManagementFee() internal view returns (uint256) {
-        return _totalManagementFeeStorage().value;
+        return _totalFeeStorage().totalFees[FeeType.MANAGEMENT];
     }
 
     /// @notice Sets the total management fee percentage for the plasma vault
@@ -218,15 +215,26 @@ library FeeManagerStorageLib {
         emit IporDaoFeeRecipientAddressChanged(recipientAddress_);
     }
 
+    function getTotalFee(FeeType feeType_) internal view returns (uint256) {
+        return _totalFeeStorage().totalFees[feeType_];
+    }
+
+    function getTotalFeeLastUpdate(FeeType feeType_) internal view returns (uint256) {
+        return _totalFeeStorage().lastUpdate[feeType_];
+    }
+
+    function updateTotalFeeLastUpdate(FeeType feeType_) internal {
+        _totalFeeStorage().lastUpdate[feeType_] = block.timestamp;
+    }
+
+    function setTotalFee(FeeType feeType_, uint256 value_) internal {
+        _totalFeeStorage().totalFees[feeType_] = value_;
+        _totalFeeStorage().lastUpdate[feeType_] = block.timestamp;
+    }
+
     function _daoFeeRecipientDataStorage() private pure returns (DaoFeeRecipientDataStorage storage $) {
         assembly {
             $.slot := DAO_FEE_RECIPIENT_DATA_SLOT
-        }
-    }
-
-    function _totalPerformanceFeeStorage() private pure returns (PlasmaVaultTotalPerformanceFeeStorage storage $) {
-        assembly {
-            $.slot := TOTAL_PERFORMANCE_FEE_SLOT
         }
     }
 
@@ -242,6 +250,12 @@ library FeeManagerStorageLib {
     function _highWaterMarkPerformanceFeeStorage() private pure returns (HighWaterMarkPerformanceFeeStorage storage $) {
         assembly {
             $.slot := HIGH_WATER_MARK_PERFORMANCE_FEE_SLOT
+        }
+    }
+
+    function _totalFeeStorage() private pure returns (TotalFeeStorage storage $) {
+        assembly {
+            $.slot := TOTAL_FEE_SLOT
         }
     }
 }

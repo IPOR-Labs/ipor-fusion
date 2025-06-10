@@ -2,6 +2,36 @@
 pragma solidity 0.8.26;
 
 /**
+ * @dev Storage slot for managing the ERC20 supply cap validation state
+ *  Controls whether total supply cap validation is active or temporarily disabled
+ *
+ * Calculation:
+ * keccak256(abi.encode(uint256(keccak256("io.ipor.Erc20CappedValidationFlag")) - 1)) & ~bytes32(uint256(0xff))
+ *
+ * Purpose:
+ * - Provides a mechanism to temporarily disable supply cap checks
+ * - Essential for special minting operations like fee distribution
+ * - Used by PlasmaVault.sol during performance and management fee minting
+ *
+ * Storage Layout:
+ * - Points to ERC20CappedValidationFlag struct containing:
+ *   - value: flag indicating if cap validation is enabled (0) or disabled (1)
+ *
+ * Usage Pattern:
+ * - Default state: Enabled (0) - enforces supply cap
+ * - Temporarily disabled (1) during:
+ *   - Performance fee minting
+ *   - Management fee minting
+ * - Always re-enabled after special minting operations
+ *
+ * Security Note:
+ * - Critical for maintaining controlled token supply
+ * - Only disabled briefly during authorized fee operations
+ * - Must be properly re-enabled to prevent unlimited minting
+ */
+bytes32 constant ERC20_CAPPED_VALIDATION_FLAG = 0xaef487a7a52e82ae7bbc470b42be72a1d3c066fb83773bf99cce7e6a7df2f900;
+
+/**
  * @title Plasma Vault Storage Library
  * @notice Library managing storage layout and access for the PlasmaVault system using ERC-7201 namespaced storage pattern
  * @dev This library is a core component of the PlasmaVault system that:
@@ -51,6 +81,9 @@ library PlasmaVaultStorageLib {
     bytes32 private constant ERC4626_STORAGE_LOCATION =
         0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00;
 
+    bytes32 private constant MANAGERS_STORAGE_LOCATION =
+        0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e11; // TODO: change to correct value
+
     /**
      * @dev Storage slot for ERC20Capped configuration following ERC-7201 namespaced storage pattern
      * @notice This storage location manages the total supply cap functionality for the vault
@@ -74,37 +107,6 @@ library PlasmaVaultStorageLib {
      */
     bytes32 private constant ERC20_CAPPED_STORAGE_LOCATION =
         0x0f070392f17d5f958cc1ac31867dabecfc5c9758b4a419a200803226d7155d00;
-
-    /**
-     * @dev Storage slot for managing the ERC20 supply cap validation state
-     * @notice Controls whether total supply cap validation is active or temporarily disabled
-     *
-     * Calculation:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.Erc20CappedValidationFlag")) - 1)) & ~bytes32(uint256(0xff))
-     *
-     * Purpose:
-     * - Provides a mechanism to temporarily disable supply cap checks
-     * - Essential for special minting operations like fee distribution
-     * - Used by PlasmaVault.sol during performance and management fee minting
-     *
-     * Storage Layout:
-     * - Points to ERC20CappedValidationFlag struct containing:
-     *   - value: flag indicating if cap validation is enabled (0) or disabled (1)
-     *
-     * Usage Pattern:
-     * - Default state: Enabled (0) - enforces supply cap
-     * - Temporarily disabled (1) during:
-     *   - Performance fee minting
-     *   - Management fee minting
-     * - Always re-enabled after special minting operations
-     *
-     * Security Note:
-     * - Critical for maintaining controlled token supply
-     * - Only disabled briefly during authorized fee operations
-     * - Must be properly re-enabled to prevent unlimited minting
-     */
-    bytes32 private constant ERC20_CAPPED_VALIDATION_FLAG =
-        0xaef487a7a52e82ae7bbc470b42be72a1d3c066fb83773bf99cce7e6a7df2f900;
 
     /**
      * @dev Storage slot for tracking total assets across all markets in the Plasma Vault
@@ -446,52 +448,6 @@ library PlasmaVaultStorageLib {
      */
     bytes32 private constant CFG_PLASMA_VAULT_FEE_CONFIG =
         0x78b5ce597bdb64d5aa30a201c7580beefe408ff13963b5d5f3dce2dc09e89c00;
-
-    /**
-     * @dev Storage slot for performance fee data in the Plasma Vault
-     * @notice Stores current performance fee configuration and recipient information
-     *
-     * Calculation:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.PlasmaVaultPerformanceFeeData")) - 1)) & ~bytes32(uint256(0xff))
-     *
-     * Purpose:
-     * - Manages performance fee settings and collection
-     * - Tracks fee recipient address
-     * - Controls performance-based revenue sharing
-     *
-     * Storage Layout:
-     * - Points to PerformanceFeeData struct containing:
-     *   - feeAccount: address receiving performance fees
-     *   - feeInPercentage: current fee rate (basis points, 1/10000)
-     *
-     * Fee Mechanics:
-     * - Calculated on positive vault performance
-     * - Applied during execute() operations
-     * - Minted as new vault shares to fee recipient
-     * - Charged only on realized gains
-     *
-     * Integration Points:
-     * - PlasmaVault._addPerformanceFee: Fee calculation and minting
-     * - FeeManager: Fee configuration management
-     * - PlasmaVaultGovernance: Fee settings updates
-     *
-     * Security Considerations:
-     * - Only modifiable through governance
-     * - Fee percentage must be within defined limits
-     * - Critical for fair value distribution
-     * - Must maintain valid fee recipient address
-     * - Requires careful handling during share minting
-     */
-    bytes32 private constant PLASMA_VAULT_PERFORMANCE_FEE_DATA =
-        0x9399757a27831a6cfb6cf4cd5c97a908a2f8f41e95a5952fbf83a04e05288400;
-
-    /**
-     * @notice Stores management fee configuration and time tracking data
-     * @dev Manages continuous fee collection with time-based accrual
-     * @custom:storage-location erc7201:io.ipor.PlasmaVaultManagementFeeData
-     */
-    bytes32 private constant PLASMA_VAULT_MANAGEMENT_FEE_DATA =
-        0x239dd7e43331d2af55e2a25a6908f3bcec2957025f1459db97dcdc37c0003f00;
 
     /**
      * @dev Storage slot for rewards claim manager address
@@ -931,27 +887,6 @@ library PlasmaVaultStorageLib {
     }
 
     /**
-     * @notice Stores performance fee configuration and recipient data
-     * @dev Manages fee percentage and recipient account for performance-based fees
-     * @custom:storage-location erc7201:io.ipor.PlasmaVaultPerformanceFeeData
-     */
-    struct PerformanceFeeData {
-        address feeAccount;
-        uint16 feeInPercentage;
-    }
-
-    /**
-     * @notice Stores management fee configuration and time tracking data
-     * @dev Manages continuous fee collection with time-based accrual
-     * @custom:storage-location erc7201:io.ipor.PlasmaVaultManagementFeeData
-     */
-    struct ManagementFeeData {
-        address feeAccount;
-        uint16 feeInPercentage;
-        uint32 lastUpdateTimestamp;
-    }
-
-    /**
      * @notice Stores address of price oracle middleware for asset valuations
      * @dev Provides standardized price feed access for vault operations
      * @custom:storage-location erc7201:io.ipor.PriceOracleMiddleware
@@ -978,6 +913,12 @@ library PlasmaVaultStorageLib {
         address manager;
     }
 
+    struct Managers {
+        mapping(uint256 managerId => address managerAddress) managers;
+        uint256[] managerIds;
+        mapping(uint256 managerId => uint256 index) indexes;
+    }
+
     function getERC4626Storage() internal pure returns (ERC4626Storage storage $) {
         assembly {
             $.slot := ERC4626_STORAGE_LOCATION
@@ -987,12 +928,6 @@ library PlasmaVaultStorageLib {
     function getERC20CappedStorage() internal pure returns (ERC20CappedStorage storage $) {
         assembly {
             $.slot := ERC20_CAPPED_STORAGE_LOCATION
-        }
-    }
-
-    function getERC20CappedValidationFlag() internal pure returns (ERC20CappedValidationFlag storage $) {
-        assembly {
-            $.slot := ERC20_CAPPED_VALIDATION_FLAG
         }
     }
 
@@ -1070,18 +1005,6 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    function getPerformanceFeeData() internal pure returns (PerformanceFeeData storage performanceFeeData) {
-        assembly {
-            performanceFeeData.slot := PLASMA_VAULT_PERFORMANCE_FEE_DATA
-        }
-    }
-
-    function getManagementFeeData() internal pure returns (ManagementFeeData storage managementFeeData) {
-        assembly {
-            managementFeeData.slot := PLASMA_VAULT_MANAGEMENT_FEE_DATA
-        }
-    }
-
     function getRewardsClaimManagerAddress()
         internal
         pure
@@ -1101,6 +1024,12 @@ library PlasmaVaultStorageLib {
     function getWithdrawManager() internal pure returns (WithdrawManager storage withdrawManager) {
         assembly {
             withdrawManager.slot := WITHDRAW_MANAGER
+        }
+    }
+
+    function getManagers() internal pure returns (Managers storage managers) {
+        assembly {
+            managers.slot := MANAGERS_STORAGE_LOCATION
         }
     }
 }

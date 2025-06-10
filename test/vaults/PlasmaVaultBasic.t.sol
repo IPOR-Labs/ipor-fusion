@@ -1042,7 +1042,15 @@ contract PlasmaVaultBasicTest is Test {
 
         setupRoles(plasmaVault, accessManager, withdrawManager);
 
-        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            atomist,
+            address(plasmaVault),
+            fuses,
+            balanceFuses,
+            marketConfigs,
+            true
+        );
 
         return plasmaVault;
     }

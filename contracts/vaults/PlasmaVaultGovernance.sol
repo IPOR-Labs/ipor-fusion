@@ -324,96 +324,6 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return PlasmaVaultLib.getPriceOracleMiddleware();
     }
 
-    /// @notice Gets the performance fee configuration data
-    /// @dev Retrieves current performance fee settings from PlasmaVaultLib
-    ///
-    /// Fee Structure:
-    /// - Charged on positive vault performance
-    /// - Maximum fee capped at 50% (PERFORMANCE_MAX_FEE_IN_PERCENTAGE)
-    /// - Calculated on realized gains only
-    /// - Applied during execute() operations
-    ///
-    /// Configuration Data:
-    /// - feeAccount: Address receiving performance fees
-    /// - feeInPercentage: Current fee rate (basis points)
-    /// - Percentage uses 2 decimal places (100 = 1%)
-    /// - Minted as new vault shares
-    ///
-    /// Integration Context:
-    /// - Used by PlasmaVault._addPerformanceFee()
-    /// - Critical for profit sharing calculations
-    /// - Part of vault incentive structure
-    /// - Affects share price computations
-    ///
-    /// Use Cases:
-    /// - Fee calculation validation
-    /// - Performance monitoring
-    /// - Revenue distribution
-    /// - Alpha incentive alignment
-    ///
-    /// Related Components:
-    /// - FeeManager: Fee distribution
-    /// - Performance Tracking System
-    /// - Share Price Calculator
-    /// - Governance Configuration
-    ///
-    /// @return feeData The current performance fee configuration
-    /// @custom:access External view
-    /// @custom:security Non-privileged view function
-    function getPerformanceFeeData()
-        external
-        view
-        override
-        returns (PlasmaVaultStorageLib.PerformanceFeeData memory feeData)
-    {
-        feeData = PlasmaVaultLib.getPerformanceFeeData();
-    }
-
-    /// @notice Gets the management fee configuration data
-    /// @dev Retrieves current management fee settings from PlasmaVaultLib
-    ///
-    /// Fee Structure:
-    /// - Continuous time-based fee on assets under management (AUM)
-    /// - Maximum fee capped at MANAGEMENT_MAX_FEE_IN_PERCENTAGE (5%)
-    /// - Fees accrue linearly over time
-    /// - Realized during vault operations
-    ///
-    /// Configuration Data:
-    /// - feeAccount: Address receiving management fees
-    /// - feeInPercentage: Current fee rate (basis points)
-    /// - lastUpdateTimestamp: Last fee realization time
-    /// - Percentage uses 2 decimal places (100 = 1%)
-    ///
-    /// Integration Context:
-    /// - Used by PlasmaVault._realizeManagementFee()
-    /// - Critical for total assets calculation
-    /// - Part of share price computation
-    /// - Affects fee distribution system
-    ///
-    /// Use Cases:
-    /// - Fee accrual tracking
-    /// - AUM fee calculation
-    /// - Revenue monitoring
-    /// - Operational cost coverage
-    ///
-    /// Related Components:
-    /// - FeeManager: Fee distribution
-    /// - Total Assets Calculator
-    /// - Share Price System
-    /// - Governance Configuration
-    ///
-    /// @return feeData The current management fee configuration
-    /// @custom:access External view
-    /// @custom:security Non-privileged view function
-    function getManagementFeeData()
-        external
-        view
-        override
-        returns (PlasmaVaultStorageLib.ManagementFeeData memory feeData)
-    {
-        feeData = PlasmaVaultLib.getManagementFeeData();
-    }
-
     /// @notice Gets the access manager contract address
     /// @dev Retrieves the address of the contract managing role-based access control
     ///
@@ -426,8 +336,6 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// Role Management:
     /// - ATOMIST_ROLE: Core governance operations
     /// - FUSE_MANAGER_ROLE: Protocol integration control
-    /// - TECH_PERFORMANCE_FEE_MANAGER_ROLE: Fee management
-    /// - TECH_MANAGEMENT_FEE_MANAGER_ROLE: Fee configuration
     /// - OWNER_ROLE: System administration
     ///
     /// Integration Context:
@@ -1111,100 +1019,6 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 
-    /// @notice Configures the performance fee settings
-    /// @dev Updates performance fee configuration while enforcing system constraints
-    ///
-    /// Fee System:
-    /// - Performance fees charged on positive vault returns
-    /// - Maximum fee capped at PERFORMANCE_MAX_FEE_IN_PERCENTAGE (50%)
-    /// - Fees realized during profitable operations
-    /// - Minted as new vault shares
-    ///
-    /// Parameter Requirements:
-    /// - feeAccount_: Non-zero address for fee collection
-    /// - feeInPercentage_: Must not exceed 50% (5000 basis points)
-    /// - Uses basis points (100 = 1%)
-    /// - Percentage precision: 2 decimals
-    ///
-    /// Fee Account Types:
-    /// - FeeManager contract: Distributes to IPOR DAO
-    /// - EOA/MultiSig: Direct fee collection
-    /// - Technical account: Temporary collection
-    /// - Protocol treasury: Revenue distribution
-    ///
-    /// Integration Context:
-    /// - Used by PlasmaVault._addPerformanceFee()
-    /// - Affects share price calculations
-    /// - Part of profit sharing system
-    /// - Critical for vault economics
-    ///
-    /// Security Considerations:
-    /// - Only callable by TECH_PERFORMANCE_FEE_MANAGER_ROLE
-    /// - Validates fee percentage limits
-    /// - Prevents zero address fee recipient
-    /// - Critical for revenue integrity
-    ///
-    /// Related Components:
-    /// - FeeManager: Distribution logic
-    /// - Performance Tracking
-    /// - Share Price Calculator
-    /// - Profit Assessment System
-    ///
-    /// @param feeAccount_ Address to receive performance fees
-    /// @param feeInPercentage_ Fee percentage with 2 decimals (100 = 1%)
-    /// @custom:access TECH_PERFORMANCE_FEE_MANAGER_ROLE restricted
-    /// @custom:security Critical for vault revenue model
-    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external override restricted {
-        PlasmaVaultLib.configurePerformanceFee(feeAccount_, feeInPercentage_);
-    }
-
-    /// @notice Configures the management fee settings
-    /// @dev Updates management fee configuration while enforcing system constraints
-    ///
-    /// Fee System:
-    /// - Continuous time-based fee on assets under management (AUM)
-    /// - Maximum fee capped at MANAGEMENT_MAX_FEE_IN_PERCENTAGE (5%)
-    /// - Fees accrue linearly over time
-    /// - Realized during vault operations
-    ///
-    /// Parameter Requirements:
-    /// - feeAccount_: Non-zero address for fee collection
-    /// - feeInPercentage_: Must not exceed 5% (500 basis points)
-    /// - Uses basis points (100 = 1%)
-    /// - Percentage precision: 2 decimals
-    ///
-    /// Fee Account Types:
-    /// - FeeManager contract: Distributes to IPOR DAO
-    /// - EOA/MultiSig: Direct fee collection
-    /// - Technical account: Temporary collection
-    /// - Protocol treasury: Revenue distribution
-    ///
-    /// Integration Context:
-    /// - Used by PlasmaVault._realizeManagementFee()
-    /// - Critical for total assets calculation
-    /// - Part of share price computation
-    /// - Affects fee distribution system
-    ///
-    /// Security Considerations:
-    /// - Only callable by TECH_MANAGEMENT_FEE_MANAGER_ROLE
-    /// - Validates fee percentage limits
-    /// - Prevents zero address fee recipient
-    /// - Critical for revenue integrity
-    ///
-    /// Related Components:
-    /// - FeeManager: Distribution logic
-    /// - Total Assets Calculator
-    /// - Share Price System
-    /// - Fee Realization Logic
-    ///
-    /// @param feeAccount_ Address to receive management fees
-    /// @param feeInPercentage_ Fee percentage with 2 decimals (100 = 1%)
-    /// @custom:access TECH_REWARDS_CLAIM_MANAGER_ROLE (held by RewardsClaimManager) restricted
-    /// @custom:security Critical for vault revenue model
-    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external override restricted {
-        PlasmaVaultLib.configureManagementFee(feeAccount_, feeInPercentage_);
-    }
-
     /// @notice Sets the rewards claim manager address
     /// @dev Updates rewards manager configuration and emits event
     ///
@@ -1690,6 +1504,26 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
             revert Errors.WrongAddress();
         }
         FusesLib.addFuse(fuse_);
+    }
+
+    // TODO: add tests for this functions
+    /// @dev only owner
+    function addManager(uint256 managerId_, address managerAddress_) external restricted {
+        PlasmaVaultConfigLib.addManager(managerId_, managerAddress_);
+    }
+
+    // TODO: add tests for this functions
+    /// @dev only admin
+    function updateManager(uint256 managerId_, address managerAddress_) external restricted {
+        PlasmaVaultConfigLib.updateManager(managerId_, managerAddress_);
+    }
+
+    function getManager(uint256 managerId_) external view returns (address) {
+        return PlasmaVaultConfigLib.getManager(managerId_);
+    }
+
+    function getManagerIds() external view returns (uint256[] memory) {
+        return PlasmaVaultConfigLib.getManagerIds();
     }
 
     /// @notice Internal helper to add a balance fuse
