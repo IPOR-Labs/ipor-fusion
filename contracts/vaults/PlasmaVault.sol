@@ -999,6 +999,87 @@ contract PlasmaVault is
         return totalSupplyCap - totalSupply;
     }
 
+    /// @notice Internal helper to calculate maximum available shares for withdrawal/redeem
+    /// @dev Common logic used by both maxWithdraw and maxRedeem
+    ///
+    /// Calculation Flow:
+    /// 1. Balance Validation
+    ///    - Gets user's share balance
+    ///    - Checks withdraw manager state
+    ///    - Considers shares to release
+    ///
+    /// 2. Unallocated Assets
+    ///    - Gets vault's unallocated balance
+    ///    - Converts to shares
+    ///    - Ensures sufficient liquidity
+    ///
+    /// @param owner_ Address of the share owner
+    /// @return uint256 Maximum number of shares available for withdrawal/redeem
+    function _calculateMaxAvailableShares(address owner_) internal view returns (uint256) {
+        uint256 userBalance = balanceOf(owner_);
+        if (userBalance == 0) {
+            return 0;
+        }
+
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+        if (withdrawManager == address(0)) {
+            return userBalance;
+        }
+
+        uint256 sharesToRelease = WithdrawManager(withdrawManager).getSharesToRelease();
+        uint256 vaultBalance = IERC20(asset()).balanceOf(address(this));
+        uint256 availableShares = convertToShares(vaultBalance);
+
+        // If there are shares to release, we need to ensure we have enough unallocated balance
+        if (sharesToRelease > 0) {
+            // Calculate how many shares are available for immediate withdrawal
+            uint256 unallocatedShares = availableShares > sharesToRelease ? availableShares - sharesToRelease : 0;
+            return Math.min(userBalance, unallocatedShares);
+        }
+
+        // If no shares to release, user can withdraw their full balance
+        return userBalance;
+    }
+
+    /// @notice Calculates maximum amount of assets that can be withdrawn by an owner
+    /// @dev Overrides ERC4626 maxWithdraw considering unallocated assets and shares to release
+    ///
+    /// This implementation extends ERC4626 standard by:
+    /// 1. Considering unallocated assets to ensure vault liquidity
+    /// 2. Taking into account pending withdrawal requests (shares to release)
+    /// 3. Maintaining backward compatibility with standard ERC4626 when no withdraw manager is present
+    ///
+    /// ERC4626 Compliance:
+    /// - MUST return a limited value if owner is subject to some withdrawal limit or timelock
+    /// - MUST NOT revert
+    ///
+    /// @param owner_ Address of the share owner
+    /// @return uint256 Maximum amount of assets that can be withdrawn
+    /// @custom:access Public view function, no role restrictions
+    function maxWithdraw(address owner_) public view virtual override returns (uint256) {
+        return convertToAssets(_calculateMaxAvailableShares(owner_));
+    }
+
+    /// @notice Calculates maximum number of shares that can be redeemed
+    /// @dev Overrides ERC4626 maxRedeem considering unallocated assets and shares to release
+    ///
+    /// This implementation extends ERC4626 standard by:
+    /// 1. Considering unallocated assets to ensure vault liquidity
+    /// 2. Taking into account pending withdrawal requests (shares to release)
+    /// 3. Maintaining backward compatibility with standard ERC4626 when no withdraw manager is present
+    ///
+    /// ERC4626 Compliance:
+    /// - MUST return a limited value if owner is subject to some withdrawal limit or timelock
+    /// - MUST return balanceOf(owner) if owner is not subject to any withdrawal limit or timelock
+    /// - MUST NOT revert
+    ///
+    /// @param owner_ Address of the share owner
+    /// @return uint256 Maximum number of shares that can be redeemed
+    /// @custom:access Public view function, no role restrictions
+    function maxRedeem(address owner_) public view virtual override returns (uint256) {
+        return _calculateMaxAvailableShares(owner_);
+    }
+
     /// @notice Claims rewards from integrated protocols through fuse contracts
     /// @dev Executes reward claiming operations via delegatecall to fuses
     ///
