@@ -57,6 +57,7 @@ contract PlasmaVaultWithdrawTest is Test {
     PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
     PlasmaVault plasmaVault;
+    WithdrawManager withdrawManager;
 
     event AaveV3SupplyFuseExit(address version, address asset, uint256 amount);
     event CompoundV3SupplyFuseExit(address version, address asset, address market, uint256 amount);
@@ -76,7 +77,7 @@ contract PlasmaVaultWithdrawTest is Test {
         );
     }
 
-    function testShouldBeAbleToRedeemMaxRedeem() public {
+    function testShouldBeAbleToRedeemMaxRedeemWithWithdrawFee() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(0);
 
@@ -93,23 +94,49 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.prank(userOne);
         plasmaVault.deposit(amount, userOne);
 
-        uint256 maxRedeem = plasmaVault.maxRedeem(userOne);
+        WithdrawManager(address(withdrawManager)).updateWithdrawFee(1e16);
 
-        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
-        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+        uint256 maxRedeem = plasmaVault.maxRedeem(userOne);
 
         //when
         vm.prank(userOne);
-            plasmaVault.redeem(maxRedeem, userOne, userOne);
+        plasmaVault.redeem(maxRedeem, userOne, userOne);
 
         //then
-        // uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
-        // uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
+        /// @dev Means that the redeem passed
+        assertTrue(true);
+    }
 
-        // assertEq(vaultTotalAssetsBefore - maxRedeem, vaultTotalAssetsAfter);
-        // assertEq(userVaultBalanceBefore - maxRedeem, userVaultBalanceAfter);
+    function testShouldBeAbleToWithdrawWhenMaxWithdrawWithWithdrawFee() public {
+         //given
+        plasmaVault = _preparePlasmaVaultDai(0);
 
-        // assertEq(vaultTotalAssetsAfter, 0);
+        userOne = address(0x777);
+
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();  
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        WithdrawManager(address(withdrawManager)).updateWithdrawFee(1e16);
+
+        uint256 maxWithdraw = plasmaVault.maxWithdraw(userOne);
+
+        //when
+        vm.prank(userOne);
+        plasmaVault.withdraw(maxWithdraw, userOne, userOne);
+
+        //then
+        /// @dev Means that the redeem passed
+        assertTrue(true);
+        
+        
     }
 
     function stestShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
@@ -1634,9 +1661,9 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, redemptionDelay);
 
-        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+        withdrawManager = new WithdrawManager(address(accessManager));
 
-        plasmaVault = _setupPlasmaVault(DAI, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(DAI, accessManager, fuses, marketConfigs, balanceFuses, address(withdrawManager));
 
         return plasmaVault;
     }
