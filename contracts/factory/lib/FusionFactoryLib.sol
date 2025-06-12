@@ -29,12 +29,11 @@ import {PlasmaVaultAddress} from "../../vaults/initializers/IporFusionAccessMana
  * @dev This library contains the core functionality for initializing and creating Fusion instances
  */
 library FusionFactoryLib {
-
     /// @dev Version of the Fusion Vault, version should be incremented when new features are added to the Fusion Vault
     uint256 private constant _VERSION = 1;
 
     event FusionInstanceCreated(
-        uint256 index, 
+        uint256 index,
         uint256 version,
         string assetName,
         string assetSymbol,
@@ -45,8 +44,8 @@ library FusionFactoryLib {
         address initialOwner,
         address plasmaVault,
         address plasmaVaultBase,
-        address feeManager);
-    
+        address feeManager
+    );
 
     error InvalidFactoryAddress();
     error InvalidFeeValue();
@@ -265,14 +264,14 @@ library FusionFactoryLib {
         accessData.owners[0] = owner_;
 
         accessData.plasmaVaultAddress = PlasmaVaultAddress({
-                plasmaVault: fusionAddresses.plasmaVault,
-                accessManager: fusionAddresses.accessManager,
-                rewardsClaimManager: fusionAddresses.rewardsManager,
-                withdrawManager: fusionAddresses.withdrawManager,
-                feeManager: fusionAddresses.feeManager,
-                contextManager: fusionAddresses.contextManager,
-                priceOracleMiddlewareManager: fusionAddresses.priceManager
-            });
+            plasmaVault: fusionAddresses.plasmaVault,
+            accessManager: fusionAddresses.accessManager,
+            rewardsClaimManager: fusionAddresses.rewardsManager,
+            withdrawManager: fusionAddresses.withdrawManager,
+            feeManager: fusionAddresses.feeManager,
+            contextManager: fusionAddresses.contextManager,
+            priceOracleMiddlewareManager: fusionAddresses.priceManager
+        });
 
         IporFusionAccessManager(fusionAddresses.accessManager).initialize(
             IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
@@ -285,10 +284,10 @@ library FusionFactoryLib {
 
     function _emitEvent(FusionInstance memory fusionAddresses) internal {
         emit FusionInstanceCreated(
-            fusionAddresses.index, 
-            fusionAddresses.version, 
-            fusionAddresses.assetName, 
-            fusionAddresses.assetSymbol, 
+            fusionAddresses.index,
+            fusionAddresses.version,
+            fusionAddresses.assetName,
+            fusionAddresses.assetSymbol,
             fusionAddresses.assetDecimals,
             fusionAddresses.underlyingToken,
             fusionAddresses.underlyingTokenSymbol,
@@ -296,6 +295,7 @@ library FusionFactoryLib {
             fusionAddresses.initialOwner,
             fusionAddresses.plasmaVault,
             fusionAddresses.plasmaVaultBase,
-            fusionAddresses.feeManager);
+            fusionAddresses.feeManager
+        );
     }
 }

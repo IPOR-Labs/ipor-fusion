@@ -84,7 +84,7 @@ contract PlasmaVaultWithdrawTest is Test {
         userOne = address(0x777);
 
         amount = 100 * 1e18;
-        sharesAmount = 100 * 10 ** plasmaVault.decimals();  
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -108,13 +108,13 @@ contract PlasmaVaultWithdrawTest is Test {
     }
 
     function testShouldBeAbleToWithdrawWhenMaxWithdrawWithWithdrawFee() public {
-         //given
+        //given
         plasmaVault = _preparePlasmaVaultDai(0);
 
         userOne = address(0x777);
 
         amount = 100 * 1e18;
-        sharesAmount = 100 * 10 ** plasmaVault.decimals();  
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
 
         deal(DAI, address(userOne), amount);
 
@@ -135,8 +135,6 @@ contract PlasmaVaultWithdrawTest is Test {
         //then
         /// @dev Means that the redeem passed
         assertTrue(true);
-        
-        
     }
 
     function stestShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
@@ -1663,7 +1661,14 @@ contract PlasmaVaultWithdrawTest is Test {
 
         withdrawManager = new WithdrawManager(address(accessManager));
 
-        plasmaVault = _setupPlasmaVault(DAI, accessManager, fuses, marketConfigs, balanceFuses, address(withdrawManager));
+        plasmaVault = _setupPlasmaVault(
+            DAI,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            address(withdrawManager)
+        );
 
         return plasmaVault;
     }

@@ -35,7 +35,6 @@ import {PlasmaVaultFeesLib} from "./lib/PlasmaVaultFeesLib.sol";
 import {PlasmaVaultMarketsLib} from "./lib/PlasmaVaultMarketsLib.sol";
 import {RecipientFee} from "../managers/fee/FeeManager.sol";
 
-
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
 /// @dev Encapsulates all required parameters for vault setup and protocol integration
@@ -729,10 +728,15 @@ contract PlasmaVault is
 
         withdrawnShares = shares - feeSharesToBurn;
 
-        super._withdraw(_msgSender(), receiver_, owner_, assets_ - super.convertToAssets(feeSharesToBurn), withdrawnShares);
+        super._withdraw(
+            _msgSender(),
+            receiver_,
+            owner_,
+            assets_ - super.convertToAssets(feeSharesToBurn),
+            withdrawnShares
+        );
 
         _burn(owner_, feeSharesToBurn);
-
     }
 
     function previewRedeem(uint256 shares_) public view override returns (uint256) {
@@ -750,7 +754,7 @@ contract PlasmaVault is
 
     function previewWithdraw(uint256 assets_) public view override returns (uint256) {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
-        
+
         if (withdrawManager != address(0)) {
             /// @dev get withdraw fee in shares with 18 decimals
             uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
@@ -853,12 +857,11 @@ contract PlasmaVault is
             uint256 sharesToWithdraw = shares_ - feeSharesToBurn;
 
             withdrawnAssets = convertToAssets(sharesToWithdraw);
-            
+
             _withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, sharesToWithdraw);
 
             _burn(owner_, feeSharesToBurn);
         }
-
     }
 
     /// @notice Redeems shares from a previously submitted withdrawal request

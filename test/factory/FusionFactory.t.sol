@@ -752,6 +752,5 @@ contract FusionFactoryTest is Test {
 
         // Share balance should be reduced
         assertEq(finalShareBalance, initialShareBalance - redeemAmount);
-
     }
 }
