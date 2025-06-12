@@ -26,6 +26,7 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
+import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
@@ -752,5 +753,35 @@ contract FusionFactoryTest is Test {
 
         // Share balance should be reduced
         assertEq(finalShareBalance, initialShareBalance - redeemAmount);
+    }
+
+    function testShouldDAOBeConfiguredAfterVaultCreation() public {
+        // given
+        address daoFeeRecipient = address(0x123);
+        uint256 daoManagementFee = 100;
+        uint256 daoPerformanceFee = 100;
+
+        vm.startPrank(owner);
+        fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), daoFeeManager);
+        fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), maintenanceManager);
+        vm.stopPrank();
+
+        vm.startPrank(daoFeeManager);
+        fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
+        vm.stopPrank();
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        FeeManager feeManager = FeeManager(instance.feeManager);
+        assertEq(feeManager.IPOR_DAO_MANAGEMENT_FEE(), daoManagementFee);
+        assertEq(feeManager.IPOR_DAO_PERFORMANCE_FEE(), daoPerformanceFee);
+        assertEq(feeManager.getIporDaoFeeRecipientAddress(), daoFeeRecipient);
     }
 }
