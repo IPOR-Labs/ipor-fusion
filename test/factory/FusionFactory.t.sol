@@ -25,8 +25,6 @@ import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
-
-
 import {Roles} from "../../contracts/libraries/Roles.sol";
 
 contract FusionFactoryTest is Test {
@@ -657,7 +655,7 @@ contract FusionFactoryTest is Test {
 
     function testShouldCreateVaultAndHaveCorrectPriceManagerOnVault() public {
         // given
-        
+
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
@@ -671,5 +669,40 @@ contract FusionFactoryTest is Test {
         assertEq(plasmaVaultGovernance.getPriceOracleMiddleware(), instance.priceManager);
     }
 
-    
+    function testShouldAllowDepositAfterVaultCreation() public {
+        // given
+        uint256 depositAmount = 1000 * 1e18; // 1000 tokens
+        address depositor = address(0x123);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        vm.startPrank(depositor);
+        underlyingToken.mint(depositor, depositAmount);
+        underlyingToken.approve(instance.plasmaVault, depositAmount);
+
+        // Add depositor to whitelist
+        vm.startPrank(owner);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.ATOMIST_ROLE, owner, 0);
+        vm.stopPrank();
+
+        
+        vm.stopPrank();
+        vm.startPrank(owner);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.WHITELIST_ROLE, depositor, 0);
+        vm.stopPrank();
+
+        vm.startPrank(depositor);
+        PlasmaVault(instance.plasmaVault).deposit(depositAmount, depositor);
+        vm.stopPrank();
+
+        // then
+        assertEq(underlyingToken.balanceOf(instance.plasmaVault), depositAmount);
+        assertEq(PlasmaVault(instance.plasmaVault).balanceOf(depositor), depositAmount*100);
+    }
 }

@@ -21,6 +21,7 @@ import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
+import {PlasmaVaultAddress} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 /**
  * @title Fusion Factory Library
@@ -232,10 +233,23 @@ library FusionFactoryLib {
         DataForInitialization memory accessData;
         accessData.isPublic = false;
 
+        accessData.iporDaos = new address[](1);
+        accessData.iporDaos[0] = daoFeeRecipientAddress;
+
         accessData.admins = FusionFactoryStorageLib.getPlasmaVaultAdminArray();
 
         accessData.owners = new address[](1);
         accessData.owners[0] = owner_;
+
+        accessData.plasmaVaultAddress = PlasmaVaultAddress({
+                plasmaVault: fusionAddresses.plasmaVault,
+                accessManager: fusionAddresses.accessManager,
+                rewardsClaimManager: fusionAddresses.rewardsManager,
+                withdrawManager: fusionAddresses.withdrawManager,
+                feeManager: fusionAddresses.feeManager,
+                contextManager: fusionAddresses.contextManager,
+                priceOracleMiddlewareManager: fusionAddresses.priceManager
+            });
 
         IporFusionAccessManager(fusionAddresses.accessManager).initialize(
             IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
