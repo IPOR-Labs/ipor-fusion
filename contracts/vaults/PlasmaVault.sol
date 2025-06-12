@@ -35,6 +35,7 @@ import {PlasmaVaultFeesLib} from "./lib/PlasmaVaultFeesLib.sol";
 import {PlasmaVaultMarketsLib} from "./lib/PlasmaVaultMarketsLib.sol";
 import {RecipientFee} from "../managers/fee/FeeManager.sol";
 
+
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
 /// @dev Encapsulates all required parameters for vault setup and protocol integration
@@ -677,14 +678,14 @@ contract PlasmaVault is
     /// @param assets_ Amount of underlying assets to withdraw
     /// @param receiver_ Address to receive the withdrawn assets
     /// @param owner_ Owner of the vault shares
-    /// @return assetsToWithdraw uint256 Amount of shares burned
+    /// @return withdrawnShares uint256 Amount of shares burned
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access PUBLIC_ROLE with WithdrawManager restrictions if enabled
     function withdraw(
         uint256 assets_,
         address receiver_,
         address owner_
-    ) public override nonReentrant restricted returns (uint256 assetsToWithdraw) {
+    ) public override nonReentrant restricted returns (uint256 withdrawnShares) {
         if (assets_ == 0) {
             revert NoAssetsToWithdraw();
         }
@@ -726,19 +727,12 @@ contract PlasmaVault is
 
         uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares);
 
-        if (feeSharesToBurn > 0) {
-            assetsToWithdraw = assets_ - super.convertToAssets(feeSharesToBurn);
+        withdrawnShares = shares - feeSharesToBurn;
 
-            super._withdraw(_msgSender(), receiver_, owner_, assetsToWithdraw, shares - feeSharesToBurn);
+        super._withdraw(_msgSender(), receiver_, owner_, assets_ - super.convertToAssets(feeSharesToBurn), withdrawnShares);
 
-            _burn(owner_, feeSharesToBurn);
+        _burn(owner_, feeSharesToBurn);
 
-            return assetsToWithdraw;
-        }
-
-        super._withdraw(_msgSender(), receiver_, owner_, assets_, shares);
-
-        return assets_;
     }
 
     function previewRedeem(uint256 shares_) public view override returns (uint256) {
@@ -756,6 +750,7 @@ contract PlasmaVault is
 
     function previewWithdraw(uint256 assets_) public view override returns (uint256) {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+        
         if (withdrawManager != address(0)) {
             /// @dev get withdraw fee in shares with 18 decimals
             uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
@@ -799,20 +794,20 @@ contract PlasmaVault is
     /// @param shares_ Amount of vault shares to redeem
     /// @param receiver_ Address to receive the underlying assets
     /// @param owner_ Owner of the vault shares
-    /// @return uint256 Amount of underlying assets withdrawn
+    /// @return withdrawnAssets uint256 Amount of underlying assets withdrawn
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access PUBLIC_ROLE with WithdrawManager restrictions if enabled
     function redeem(
         uint256 shares_,
         address receiver_,
         address owner_
-    ) public override nonReentrant restricted returns (uint256) {
+    ) public override nonReentrant restricted returns (uint256 withdrawnAssets) {
         uint256 maxShares = maxRedeem(owner_);
         if (shares_ > maxShares) {
             revert ERC4626ExceededMaxRedeem(owner_, shares_, maxShares);
         }
 
-        return _redeem(shares_, receiver_, owner_, true);
+        withdrawnAssets = _redeem(shares_, receiver_, owner_, true);
     }
 
     function _redeem(
@@ -820,7 +815,7 @@ contract PlasmaVault is
         address receiver_,
         address owner_,
         bool withFee_
-    ) internal returns (uint256 assetsToWithdraw) {
+    ) internal returns (uint256 withdrawnAssets) {
         if (shares_ == 0) {
             revert NoSharesToRedeem();
         }
@@ -851,25 +846,19 @@ contract PlasmaVault is
         _addPerformanceFee(totalAssetsBefore);
 
         if (!withFee_) {
-            assetsToWithdraw = convertToAssets(shares_);
-            _withdraw(_msgSender(), receiver_, owner_, assetsToWithdraw, shares_);
-            return assetsToWithdraw;
+            withdrawnAssets = convertToAssets(shares_);
+            _withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, shares_);
+        } else {
+            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
+            uint256 sharesToWithdraw = shares_ - feeSharesToBurn;
+
+            withdrawnAssets = convertToAssets(sharesToWithdraw);
+            
+            _withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, sharesToWithdraw);
+
+            _burn(owner_, feeSharesToBurn);
         }
 
-        uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
-
-        if (feeSharesToBurn == 0) {
-            assetsToWithdraw = convertToAssets(shares_);
-            _withdraw(_msgSender(), receiver_, owner_, assetsToWithdraw, shares_);
-
-            return assetsToWithdraw;
-        }
-
-        uint256 redeemAmount = super.redeem(shares_, receiver_, owner_);
-
-        _burn(owner_, feeSharesToBurn);
-
-        return redeemAmount;
     }
 
     /// @notice Redeems shares from a previously submitted withdrawal request

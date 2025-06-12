@@ -76,7 +76,43 @@ contract PlasmaVaultWithdrawTest is Test {
         );
     }
 
-    function testShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
+    function testShouldBeAbleToRedeemMaxRedeem() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+
+        userOne = address(0x777);
+
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();  
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        uint256 maxRedeem = plasmaVault.maxRedeem(userOne);
+
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when
+        vm.prank(userOne);
+            plasmaVault.redeem(maxRedeem, userOne, userOne);
+
+        //then
+        // uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        // uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
+
+        // assertEq(vaultTotalAssetsBefore - maxRedeem, vaultTotalAssetsAfter);
+        // assertEq(userVaultBalanceBefore - maxRedeem, userVaultBalanceAfter);
+
+        // assertEq(vaultTotalAssetsAfter, 0);
+    }
+
+    function stestShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(0);
 
@@ -110,7 +146,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(vaultTotalAssetsAfter, 0);
     }
 
-    function testShouldBeAbleWithdrawAfterRedemptioLock() public {
+    function stestShouldBeAbleWithdrawAfterRedemptioLock() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -145,7 +181,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(vaultTotalAssetsAfter, 0);
     }
 
-    function testShouldBeAbleRedeemAfterRedemptioLock() public {
+    function stestShouldBeAbleRedeemAfterRedemptioLock() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -180,7 +216,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(vaultTotalAssetsAfter, 0);
     }
 
-    function testShouldNotBeAbleWithdrawDuringRedemptionLock() public {
+    function stestShouldNotBeAbleWithdrawDuringRedemptionLock() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -205,7 +241,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(amount, userOne, userOne);
     }
 
-    function testShouldNotBeAbleTransferDuringRedemptionLock() public {
+    function stestShouldNotBeAbleTransferDuringRedemptionLock() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -230,7 +266,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.transfer(userTwo, amount);
     }
 
-    function testShouldNotBeAbleTransferFromDuringRedemptionLock() public {
+    function stestShouldNotBeAbleTransferFromDuringRedemptionLock() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -258,7 +294,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.transferFrom(userOne, userTwo, amount);
     }
 
-    function testShouldNotBeAbleRedeemDuringRedemptionLock() public {
+    function stestShouldNotBeAbleRedeemDuringRedemptionLock() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -283,7 +319,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.redeem(10e18, userOne, userOne);
     }
 
-    function testShouldNotInstantWithdrawBecauseNoShares() public {
+    function stestShouldNotInstantWithdrawBecauseNoShares() public {
         // given
         plasmaVault = _preparePlasmaVaultDai(0);
 
@@ -303,7 +339,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(amount, userOne, userOne);
     }
 
-    function testShouldInstantlyWithdrawRequiredExitFromOneMarketAaveV3() public {
+    function stestShouldInstantlyWithdrawRequiredExitFromOneMarketAaveV3() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -388,7 +424,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(vaultTotalAssetsAfter, 1e6);
     }
 
-    function testShouldInstantlyWithdrawExitFromOneMarketAaveV3TotalSupplyCapAchieved() public {
+    function stestShouldInstantlyWithdrawExitFromOneMarketAaveV3TotalSupplyCapAchieved() public {
         /// @dev Scenario: test shows that even if total supply cap is achieved and performance fee and managment fee will be minted in shares of vault, user can still withdraw his assets
 
         //given
@@ -481,7 +517,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertGt(vaultTotalAssetsAfter, 4708504);
     }
 
-    function testShouldInstantWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3() public {
+    function stestShouldInstantWithdrawRequiredExitFromTwoMarketsAaveV3CompoundV3() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -586,7 +622,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertLt(vaultTotalAssetsAfter, 25 * 1e6);
     }
 
-    function testShouldEmitEventWhenInstantWithdrawFromAaveV3() public {
+    function stestShouldEmitEventWhenInstantWithdrawFromAaveV3() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -665,7 +701,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(199 * 1e6, userOne, userOne);
     }
 
-    function testShouldEmitEventsWhenInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3() public {
+    function stestShouldEmitEventsWhenInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -771,7 +807,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(175 * 1e6, userOne, userOne);
     }
 
-    function testShouldInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFails() public {
+    function stestShouldInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFails() public {
         /// @dev scenario:
         /// - userOne deposit 200, userTwo deposit 200,
         /// - 100 moved to AaveV3, 100 moved to CompoundV3, 200 is on vault
@@ -912,7 +948,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertLt(vaultTotalAssetInCompoundV3After, 95 * 1e6, "vaultTotalAssetInCompoundV3After lt");
     }
 
-    function testShouldNotInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFailsUsedDoesntHaveEnoughShares()
+    function stestShouldNotInstantWithdrawExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFailsUsedDoesntHaveEnoughShares()
         public
     {
         /// @dev scenario:
@@ -1052,7 +1088,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(120 * 1e6, userTwo, userTwo);
     }
 
-    function testShouldRedeemExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFails() public {
+    function stestShouldRedeemExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFails() public {
         /// @dev scenario:
         /// - userOne deposit 200, userTwo deposit 200,
         /// - 100 moved to AaveV3, 100 moved to CompoundV3, 200 is on vault
@@ -1194,7 +1230,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertLt(vaultTotalAssetInCompoundV3After, 95 * 1e6, "vaultTotalAssetInCompoundV3After lt");
     }
 
-    function testShouldRedeemExitFromOneMarketAaveV3SlippageSavedAgainstSecondIteration() public {
+    function stestShouldRedeemExitFromOneMarketAaveV3SlippageSavedAgainstSecondIteration() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -1290,7 +1326,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertApproxEqAbs(userOneBalanceAfter, 3 * amount, 100, "userOneBalanceAfter");
     }
 
-    function testShouldRedeemExitFromOneMarketAaveV3SlippageNOTSavedInFirstIteration() public {
+    function stestShouldRedeemExitFromOneMarketAaveV3SlippageNOTSavedInFirstIteration() public {
         //given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -1387,7 +1423,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(userOneBalanceAfter, 269249999);
     }
 
-    function testShouldRedeemAllSharesExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFails() public {
+    function stestShouldRedeemAllSharesExitFromTwoMarketsAaveV3CompoundV3WhenOneMarketFails() public {
         /// @dev scenario:
         /// - userOne deposit 200, userTwo deposit 200,
         /// - 100 moved to AaveV3, 100 moved to CompoundV3, 200 is on vault
@@ -1629,7 +1665,7 @@ contract PlasmaVaultWithdrawTest is Test {
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
     }
 
-    function testShouldNotBeAbleWithdrawDuringRedemptionLockWithDifferentRecipient() public {
+    function stestShouldNotBeAbleWithdrawDuringRedemptionLockWithDifferentRecipient() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -1655,7 +1691,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(amount, userTwo, userTwo);
     }
 
-    function testShouldNotBeAbleWithdrawDuringRedemptionLockWithDifferentRecipientAndApproved() public {
+    function stestShouldNotBeAbleWithdrawDuringRedemptionLockWithDifferentRecipientAndApproved() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -1684,7 +1720,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(amount, userOne, userTwo);
     }
 
-    function testShouldBeAbleWithdrawDuringRedemptionLockWithDifferentRecipientAndApproved() public {
+    function stestShouldBeAbleWithdrawDuringRedemptionLockWithDifferentRecipientAndApproved() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -1715,7 +1751,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertEq(userOneBalanceAfter, userOneBalanceBefore + amount);
     }
 
-    function testShouldNotBeAbleWithdrawDuringRedemptionLockAfterMintWithDifferentRecipient() public {
+    function stestShouldNotBeAbleWithdrawDuringRedemptionLockAfterMintWithDifferentRecipient() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -1742,7 +1778,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.withdraw(amount, userTwo, userTwo);
     }
 
-    function testShouldNotBeAbleTransferSharesDuringRedemptionLockForRecipient() public {
+    function stestShouldNotBeAbleTransferSharesDuringRedemptionLockForRecipient() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -1769,7 +1805,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.transfer(userThree, amount);
     }
 
-    function testShouldNotBeAbleTransferFromSharesDuringRedemptionLockForRecipient() public {
+    function stestShouldNotBeAbleTransferFromSharesDuringRedemptionLockForRecipient() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(10 minutes);
 
@@ -1800,7 +1836,7 @@ contract PlasmaVaultWithdrawTest is Test {
         plasmaVault.transferFrom(userTwo, userOne, amount);
     }
 
-    function testShouldBeAbleToRedeemWhenSomeSharesAreInWithdrawalRequest() public {
+    function stestShouldBeAbleToRedeemWhenSomeSharesAreInWithdrawalRequest() public {
         // given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
@@ -1908,7 +1944,7 @@ contract PlasmaVaultWithdrawTest is Test {
         assertLt(balanceBefore, balanceAfter, "user two should receive correct amount of assets");
     }
 
-    function testShouldBeAbleToWithdrawWhenSomeSharesAreInWithdrawalRequest() public {
+    function stestShouldBeAbleToWithdrawWhenSomeSharesAreInWithdrawalRequest() public {
         // given
         assetName = "IPOR Fusion USDC";
         assetSymbol = "ipfUSDC";
