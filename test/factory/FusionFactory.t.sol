@@ -770,7 +770,6 @@ contract FusionFactoryTest is Test {
         fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
         vm.stopPrank();
 
-        
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
