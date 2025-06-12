@@ -97,14 +97,15 @@ contract PlasmaVaultWithdrawTest is Test {
         WithdrawManager(address(withdrawManager)).updateWithdrawFee(1e16);
 
         uint256 maxRedeem = plasmaVault.maxRedeem(userOne);
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
 
         //when
         vm.prank(userOne);
         plasmaVault.redeem(maxRedeem, userOne, userOne);
 
         //then
-        /// @dev Means that the redeem passed
-        assertTrue(true);
+        assertEq(plasmaVault.balanceOf(userOne), 0);
+        assertGt(userVaultBalanceBefore, 0);
     }
 
     function testShouldBeAbleToWithdrawWhenMaxWithdrawWithWithdrawFee() public {
@@ -128,13 +129,15 @@ contract PlasmaVaultWithdrawTest is Test {
 
         uint256 maxWithdraw = plasmaVault.maxWithdraw(userOne);
 
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
         //when
         vm.prank(userOne);
         plasmaVault.withdraw(maxWithdraw, userOne, userOne);
 
         //then
-        /// @dev Means that the redeem passed
-        assertTrue(true);
+        assertEq(plasmaVault.balanceOf(userOne), 0);
+        assertGt(userVaultBalanceBefore, 0);
     }
 
     function testShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
