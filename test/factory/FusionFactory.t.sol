@@ -691,7 +691,6 @@ contract FusionFactoryTest is Test {
         IporFusionAccessManager(instance.accessManager).grantRole(Roles.ATOMIST_ROLE, owner, 0);
         vm.stopPrank();
 
-        
         vm.stopPrank();
         vm.startPrank(owner);
         IporFusionAccessManager(instance.accessManager).grantRole(Roles.WHITELIST_ROLE, depositor, 0);
@@ -703,6 +702,56 @@ contract FusionFactoryTest is Test {
 
         // then
         assertEq(underlyingToken.balanceOf(instance.plasmaVault), depositAmount);
-        assertEq(PlasmaVault(instance.plasmaVault).balanceOf(depositor), depositAmount*100);
+        assertEq(PlasmaVault(instance.plasmaVault).balanceOf(depositor), depositAmount * 100);
+    }
+
+    function testShouldWithdrawAfterVaultCreation() public {
+        // given
+        uint256 depositAmount = 1000 * 1e18; // 1000 tokens
+        address depositor = address(0x123);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // Setup - mint tokens, approve, and add to whitelist
+        underlyingToken.mint(depositor, depositAmount);
+
+        vm.startPrank(owner);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.ATOMIST_ROLE, owner, 0);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.WHITELIST_ROLE, depositor, 0);
+        vm.stopPrank();
+
+        // Deposit tokens
+        vm.startPrank(depositor);
+        underlyingToken.approve(instance.plasmaVault, depositAmount);
+        PlasmaVault(instance.plasmaVault).deposit(depositAmount, depositor);
+
+        vm.warp(block.timestamp + 1);
+
+        // Verify deposit was successful
+        uint256 initialShareBalance = PlasmaVault(instance.plasmaVault).balanceOf(depositor);
+        assertEq(initialShareBalance, depositAmount * 100); // 100 is the conversion rate
+
+        // Direct redeem (instead of request withdraw)
+        uint256 redeemAmount = initialShareBalance / 2; // Redeem half the shares
+        uint256 initialTokenBalance = underlyingToken.balanceOf(depositor);
+
+        // Perform redeem
+        PlasmaVault(instance.plasmaVault).redeem(redeemAmount, depositor, depositor);
+        vm.stopPrank();
+
+        // then
+        // Verify redemption was successful
+        uint256 finalShareBalance = PlasmaVault(instance.plasmaVault).balanceOf(depositor);
+        uint256 finalTokenBalance = underlyingToken.balanceOf(depositor);
+
+        // Share balance should be reduced
+        assertEq(finalShareBalance, initialShareBalance - redeemAmount);
+
     }
 }

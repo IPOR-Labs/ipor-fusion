@@ -29,7 +29,24 @@ import {PlasmaVaultAddress} from "../../vaults/initializers/IporFusionAccessMana
  * @dev This library contains the core functionality for initializing and creating Fusion instances
  */
 library FusionFactoryLib {
-    event FusionInstanceCreated(uint256 index, FusionInstance fusionInstance);
+
+    /// @dev Version of the Fusion Vault, version should be incremented when new features are added to the Fusion Vault
+    uint256 private constant _VERSION = 1;
+
+    event FusionInstanceCreated(
+        uint256 index, 
+        uint256 version,
+        string assetName,
+        string assetSymbol,
+        uint8 assetDecimals,
+        address underlyingToken,
+        string underlyingTokenSymbol,
+        uint8 underlyingTokenDecimals,
+        address initialOwner,
+        address plasmaVault,
+        address plasmaVaultBase,
+        address feeManager);
+    
 
     error InvalidFactoryAddress();
     error InvalidFeeValue();
@@ -47,6 +64,8 @@ library FusionFactoryLib {
     error InvalidIporDaoFeeRecipient();
 
     struct FusionInstance {
+        uint256 index;
+        uint256 version;
         string assetName;
         string assetSymbol;
         uint8 assetDecimals;
@@ -123,6 +142,14 @@ library FusionFactoryLib {
         if (underlyingToken_ == address(0)) revert InvalidUnderlyingToken();
         if (owner_ == address(0)) revert InvalidOwner();
 
+        fusionAddresses.version = _VERSION;
+
+        uint256 fusionFactoryIndex = FusionFactoryStorageLib.getFusionFactoryIndex();
+        fusionFactoryIndex++;
+        FusionFactoryStorageLib.setFusionFactoryIndex(fusionFactoryIndex);
+
+        fusionAddresses.index = fusionFactoryIndex;
+
         fusionAddresses.assetName = assetName_;
         fusionAddresses.assetSymbol = assetSymbol_;
 
@@ -131,10 +158,6 @@ library FusionFactoryLib {
         fusionAddresses.underlyingTokenDecimals = IERC20Metadata(underlyingToken_).decimals();
 
         fusionAddresses.initialOwner = owner_;
-
-        uint256 fusionFactoryIndex = FusionFactoryStorageLib.getFusionFactoryIndex();
-        fusionFactoryIndex++;
-        FusionFactoryStorageLib.setFusionFactoryIndex(fusionFactoryIndex);
 
         fusionAddresses.plasmaVaultBase = FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
 
@@ -255,8 +278,24 @@ library FusionFactoryLib {
             IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
         );
 
-        emit FusionInstanceCreated(fusionFactoryIndex, fusionAddresses);
+        _emitEvent(fusionAddresses);
 
         return fusionAddresses;
+    }
+
+    function _emitEvent(FusionInstance memory fusionAddresses) internal {
+        emit FusionInstanceCreated(
+            fusionAddresses.index, 
+            fusionAddresses.version, 
+            fusionAddresses.assetName, 
+            fusionAddresses.assetSymbol, 
+            fusionAddresses.assetDecimals,
+            fusionAddresses.underlyingToken,
+            fusionAddresses.underlyingTokenSymbol,
+            fusionAddresses.underlyingTokenDecimals,
+            fusionAddresses.initialOwner,
+            fusionAddresses.plasmaVault,
+            fusionAddresses.plasmaVaultBase,
+            fusionAddresses.feeManager);
     }
 }
