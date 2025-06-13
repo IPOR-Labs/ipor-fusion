@@ -144,11 +144,11 @@ contract PlasmaVaultScheduledWithdraw is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
+                rewardsClaimManager: address(0x123),
                 withdrawManager: _withdrawManager,
-                feeManager: address(0),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                feeManager: address(0x123),
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

@@ -45,6 +45,10 @@ library FusionFactoryStorageLib {
         address[] value;
     }
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryVersion")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant FUSION_FACTORY_VERSION =
+        0x12d32eeb1bff59ce950917bf8e830c4c4200d70d78bc80ef73671dd3e0c72000;
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryIndex")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FUSION_FACTORY_INDEX = 0x7c54bb33443ce94044aec2970018125c202903e78abecda9a8871f0a2e085400;
 
@@ -131,6 +135,10 @@ library FusionFactoryStorageLib {
             });
     }
 
+    function getFusionFactoryVersion() internal view returns (uint256) {
+        return _getFusionFactoryVersionSlot().value;
+    }
+
     function getFusionFactoryIndex() internal view returns (uint256) {
         return _getFusionFactoryIndexSlot().value;
     }
@@ -177,6 +185,10 @@ library FusionFactoryStorageLib {
 
     function getVestingPeriodInSeconds() internal view returns (uint256) {
         return _getVestingPeriodInSecondsSlot().value;
+    }
+
+    function setFusionFactoryVersion(uint256 value) internal {
+        _getFusionFactoryVersionSlot().value = value;
     }
 
     function setFusionFactoryIndex(uint256 value) internal {
@@ -254,6 +266,12 @@ library FusionFactoryStorageLib {
 
     function setVestingPeriodInSeconds(uint256 value) internal {
         _getVestingPeriodInSecondsSlot().value = value;
+    }
+
+    function _getFusionFactoryVersionSlot() private pure returns (Uint256Type storage $) {
+        assembly {
+            $.slot := FUSION_FACTORY_VERSION
+        }
     }
 
     function _getFusionFactoryIndexSlot() private pure returns (Uint256Type storage $) {

@@ -402,11 +402,11 @@ contract RamsesClaimFuseTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
-                withdrawManager: address(0),
+                withdrawManager: address(0x123),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
 

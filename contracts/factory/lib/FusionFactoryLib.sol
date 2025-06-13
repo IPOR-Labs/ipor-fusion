@@ -21,6 +21,7 @@ import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
+import {PlasmaVaultAddress} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 /**
  * @title Fusion Factory Library
@@ -28,7 +29,20 @@ import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
  * @dev This library contains the core functionality for initializing and creating Fusion instances
  */
 library FusionFactoryLib {
-    event FusionInstanceCreated(uint256 index, FusionInstance fusionInstance);
+    event FusionInstanceCreated(
+        uint256 index,
+        uint256 version,
+        string assetName,
+        string assetSymbol,
+        uint8 assetDecimals,
+        address underlyingToken,
+        string underlyingTokenSymbol,
+        uint8 underlyingTokenDecimals,
+        address initialOwner,
+        address plasmaVault,
+        address plasmaVaultBase,
+        address feeManager
+    );
 
     error InvalidFactoryAddress();
     error InvalidFeeValue();
@@ -46,6 +60,8 @@ library FusionFactoryLib {
     error InvalidIporDaoFeeRecipient();
 
     struct FusionInstance {
+        uint256 index;
+        uint256 version;
         string assetName;
         string assetSymbol;
         uint8 assetDecimals;
@@ -122,6 +138,14 @@ library FusionFactoryLib {
         if (underlyingToken_ == address(0)) revert InvalidUnderlyingToken();
         if (owner_ == address(0)) revert InvalidOwner();
 
+        fusionAddresses.version = FusionFactoryStorageLib.getFusionFactoryVersion();
+
+        uint256 fusionFactoryIndex = FusionFactoryStorageLib.getFusionFactoryIndex();
+        fusionFactoryIndex++;
+        FusionFactoryStorageLib.setFusionFactoryIndex(fusionFactoryIndex);
+
+        fusionAddresses.index = fusionFactoryIndex;
+
         fusionAddresses.assetName = assetName_;
         fusionAddresses.assetSymbol = assetSymbol_;
 
@@ -130,10 +154,6 @@ library FusionFactoryLib {
         fusionAddresses.underlyingTokenDecimals = IERC20Metadata(underlyingToken_).decimals();
 
         fusionAddresses.initialOwner = owner_;
-
-        uint256 fusionFactoryIndex = FusionFactoryStorageLib.getFusionFactoryIndex();
-        fusionFactoryIndex++;
-        FusionFactoryStorageLib.setFusionFactoryIndex(fusionFactoryIndex);
 
         fusionAddresses.plasmaVaultBase = FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
 
@@ -232,17 +252,47 @@ library FusionFactoryLib {
         DataForInitialization memory accessData;
         accessData.isPublic = false;
 
+        accessData.iporDaos = new address[](1);
+        accessData.iporDaos[0] = daoFeeRecipientAddress;
+
         accessData.admins = FusionFactoryStorageLib.getPlasmaVaultAdminArray();
 
         accessData.owners = new address[](1);
         accessData.owners[0] = owner_;
 
+        accessData.plasmaVaultAddress = PlasmaVaultAddress({
+            plasmaVault: fusionAddresses.plasmaVault,
+            accessManager: fusionAddresses.accessManager,
+            rewardsClaimManager: fusionAddresses.rewardsManager,
+            withdrawManager: fusionAddresses.withdrawManager,
+            feeManager: fusionAddresses.feeManager,
+            contextManager: fusionAddresses.contextManager,
+            priceOracleMiddlewareManager: fusionAddresses.priceManager
+        });
+
         IporFusionAccessManager(fusionAddresses.accessManager).initialize(
             IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
         );
 
-        emit FusionInstanceCreated(fusionFactoryIndex, fusionAddresses);
+        _emitEvent(fusionAddresses);
 
         return fusionAddresses;
+    }
+
+    function _emitEvent(FusionInstance memory fusionAddresses) internal {
+        emit FusionInstanceCreated(
+            fusionAddresses.index,
+            fusionAddresses.version,
+            fusionAddresses.assetName,
+            fusionAddresses.assetSymbol,
+            fusionAddresses.assetDecimals,
+            fusionAddresses.underlyingToken,
+            fusionAddresses.underlyingTokenSymbol,
+            fusionAddresses.underlyingTokenDecimals,
+            fusionAddresses.initialOwner,
+            fusionAddresses.plasmaVault,
+            fusionAddresses.plasmaVaultBase,
+            fusionAddresses.feeManager
+        );
     }
 }

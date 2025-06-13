@@ -16,6 +16,7 @@ import {MoonwellSupplyFuseEnterData} from "../../../contracts/fuses/moonwell/Moo
 import {MoonwellEnableMarketFuseEnterData, MoonwellEnableMarketFuseExitData} from "../../../contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol";
 import {MoonwellBorrowFuseEnterData, MoonwellBorrowFuseExitData} from "../../../contracts/fuses/moonwell/MoonwellBorrowFuse.sol";
 import {MoonWellAddresses} from "../../test_helpers/MoonwellHelper.sol";
+import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 
 contract MoonwellBorowFlowBaseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
@@ -56,7 +57,11 @@ contract MoonwellBorowFlowBaseTest is Test {
         (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, address(0));
+        _accessManager.setupInitRoles(
+            _plasmaVault,
+            address(0x123),
+            address(new RewardsClaimManager(address(_accessManager), address(_plasmaVault)))
+        );
 
         address[] memory mTokens = new address[](3);
         mTokens[0] = TestAddresses.BASE_M_WSTETH;
