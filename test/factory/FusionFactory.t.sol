@@ -785,4 +785,52 @@ contract FusionFactoryTest is Test {
         assertEq(feeManager.IPOR_DAO_PERFORMANCE_FEE(), daoPerformanceFee);
         assertEq(feeManager.getIporDaoFeeRecipientAddress(), daoFeeRecipient);
     }
+
+    function testShouldContainAppropriateTechnicalRolesAfterVaultCreation() public {
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        (bool hasPlasmaVaultRole, ) = accessManager.hasRole(Roles.TECH_PLASMA_VAULT_ROLE, instance.plasmaVault);
+        assertTrue(hasPlasmaVaultRole, "PlasmaVault role not found TECH_PLASMA_VAULT_ROLE");
+
+        (bool hasContextManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_CONTEXT_MANAGER_ROLE,
+            instance.contextManager
+        );
+        assertTrue(hasContextManagerRole, "ContextManager role not found TECH_CONTEXT_MANAGER_ROLE");
+
+        (bool hasWithdrawManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_WITHDRAW_MANAGER_ROLE,
+            instance.withdrawManager
+        );
+        assertTrue(hasWithdrawManagerRole, "WithdrawManager role not found TECH_WITHDRAW_MANAGER_ROLE");
+
+        (bool hasVaultTransferSharesRole, ) = accessManager.hasRole(
+            Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
+            instance.feeManager
+        );
+        assertTrue(hasVaultTransferSharesRole, "VaultTransferShares role not found TECH_VAULT_TRANSFER_SHARES_ROLE");
+
+        (bool hasPerformanceFeeManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
+            instance.feeManager
+        );
+        assertTrue(
+            hasPerformanceFeeManagerRole,
+            "PerformanceFeeManager role not found TECH_PERFORMANCE_FEE_MANAGER_ROLE"
+        );
+
+        (bool hasRewardsClaimManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
+            instance.rewardsManager
+        );
+        assertTrue(hasRewardsClaimManagerRole, "RewardsClaimManager role not found TECH_REWARDS_CLAIM_MANAGER_ROLE");
+    }
 }
