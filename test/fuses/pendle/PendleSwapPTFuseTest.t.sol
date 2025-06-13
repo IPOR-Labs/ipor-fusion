@@ -18,6 +18,9 @@ import {PendleHelper, PendleAddresses} from "../../test_helpers/PendleHelper.sol
 
 import {PendleSwapPTFuse, PendleSwapPTFuseEnterData, PendleSwapPTFuseExitData} from "../../../contracts/fuses/pendle/PendleSwapPTFuse.sol";
 import {PendleRedeemPTAfterMaturityFuse, PendleRedeemPTAfterMaturityFuseEnterData} from "../../../contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol";
+
+import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
+
 contract PendleSwapPTFuseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
     using PlasmaVaultHelper for PlasmaVault;
@@ -58,7 +61,11 @@ contract PendleSwapPTFuseTest is Test {
         (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, address(0));
+        _accessManager.setupInitRoles(
+            _plasmaVault,
+            address(0x123),
+            address(new RewardsClaimManager(address(_accessManager), address(_plasmaVault)))
+        );
         vm.stopPrank();
 
         address[] memory markets = new address[](1);

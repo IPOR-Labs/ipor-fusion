@@ -22,6 +22,8 @@ import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
+import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+
 contract IporPlasmaVaultRolesTest is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant CHAINLINK_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
@@ -602,6 +604,15 @@ contract IporPlasmaVaultRolesTest is Test {
         _data.updateRewardsBalanceAccounts = new address[](2);
         _data.updateRewardsBalanceAccounts[0] = vm.rememberKey(14);
         _data.updateRewardsBalanceAccounts[1] = vm.rememberKey(15);
+        _data.plasmaVaultAddress = PlasmaVaultAddress({
+            plasmaVault: address(0x123),
+            accessManager: address(0x123),
+            rewardsClaimManager: address(0x123),
+            withdrawManager: address(0x123),
+            feeManager: address(0x123),
+            contextManager: address(0x123),
+            priceOracleMiddlewareManager: address(0x123)
+        });
     }
 
     function _setupPriceOracleMiddleware() private {

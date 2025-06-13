@@ -21,6 +21,7 @@ import {CurveChildLiquidityGaugeSupplyFuseEnterData} from "../../../contracts/fu
 import {CurveChildLiquidityGaugeSupplyFuseExitData} from "../../../contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
+import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 
 contract CurveIntegrationTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
@@ -74,7 +75,11 @@ contract CurveIntegrationTest is Test {
         (_plasmaVault, _withdrawManager) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, _withdrawManager);
+        _accessManager.setupInitRoles(
+            _plasmaVault,
+            _withdrawManager,
+            address(new RewardsClaimManager(address(_accessManager), address(_plasmaVault)))
+        );
 
         // Grant market substrates for ERC4626 vaults
         bytes32[] memory substrates = new bytes32[](3);
