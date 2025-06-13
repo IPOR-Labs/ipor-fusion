@@ -13,7 +13,16 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 /// @notice Factory contract for creating and managing Fusion Managers
 /// @dev This contract is responsible for deploying and initializing various manager contracts
 contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAccessControl {
-    event FactoryAddressesUpdated(FusionFactoryStorageLib.FactoryAddresses newFactoryAddresses);
+    event FactoryAddressesUpdated(
+        uint256 version,
+        address accessManagerFactory,
+        address plasmaVaultFactory,
+        address feeManagerFactory,
+        address withdrawManagerFactory,
+        address rewardsManagerFactory,
+        address contextManagerFactory,
+        address priceManagerFactory
+    );
     event PlasmaVaultBaseUpdated(address newPlasmaVaultBase);
     event PriceOracleMiddlewareUpdated(address newPriceOracleMiddleware);
     event BurnRequestFeeFuseUpdated(address newBurnRequestFeeFuse);
@@ -97,7 +106,11 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         emit DaoFeeUpdated(newDaoFeeRecipient_, newDaoManagementFee_, newDaoPerformanceFee_);
     }
 
+    /// @notice Updates the factory addresses
+    /// @param version_ Version of the Fusion Vault, version should be incremented when new features are added to the Fusion Vault
+    /// @param newFactoryAddresses_ New factory addresses
     function updateFactoryAddresses(
+        uint256 version_,
         FusionFactoryStorageLib.FactoryAddresses memory newFactoryAddresses_
     ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newFactoryAddresses_.accessManagerFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
@@ -108,6 +121,7 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         if (newFactoryAddresses_.contextManagerFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
         if (newFactoryAddresses_.priceManagerFactory == address(0)) revert FusionFactoryLib.InvalidAddress();
 
+        FusionFactoryStorageLib.setFusionFactoryVersion(version_);
         FusionFactoryStorageLib.setPlasmaVaultFactoryAddress(newFactoryAddresses_.plasmaVaultFactory);
         FusionFactoryStorageLib.setAccessManagerFactoryAddress(newFactoryAddresses_.accessManagerFactory);
         FusionFactoryStorageLib.setFeeManagerFactoryAddress(newFactoryAddresses_.feeManagerFactory);
@@ -116,7 +130,16 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         FusionFactoryStorageLib.setContextManagerFactoryAddress(newFactoryAddresses_.contextManagerFactory);
         FusionFactoryStorageLib.setPriceManagerFactoryAddress(newFactoryAddresses_.priceManagerFactory);
 
-        emit FactoryAddressesUpdated(newFactoryAddresses_);
+        emit FactoryAddressesUpdated({
+            version: version_,
+            accessManagerFactory: newFactoryAddresses_.accessManagerFactory,
+            plasmaVaultFactory: newFactoryAddresses_.plasmaVaultFactory,
+            feeManagerFactory: newFactoryAddresses_.feeManagerFactory,
+            withdrawManagerFactory: newFactoryAddresses_.withdrawManagerFactory,
+            rewardsManagerFactory: newFactoryAddresses_.rewardsManagerFactory,
+            contextManagerFactory: newFactoryAddresses_.contextManagerFactory,
+            priceManagerFactory: newFactoryAddresses_.priceManagerFactory
+        });
     }
 
     function updatePlasmaVaultBase(address newPlasmaVaultBase_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
@@ -170,6 +193,10 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
     ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         FusionFactoryStorageLib.setVestingPeriodInSeconds(newVestingPeriodInSeconds_);
         emit VestingPeriodInSecondsUpdated(newVestingPeriodInSeconds_);
+    }
+
+    function getFusionFactoryVersion() external view returns (uint256) {
+        return FusionFactoryStorageLib.getFusionFactoryVersion();
     }
 
     function getFusionFactoryIndex() external view returns (uint256) {

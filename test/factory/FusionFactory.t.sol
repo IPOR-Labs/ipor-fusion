@@ -157,7 +157,7 @@ contract FusionFactoryTest is Test {
 
         // when
         vm.startPrank(maintenanceManager);
-        fusionFactory.updateFactoryAddresses(newFactoryAddresses);
+        fusionFactory.updateFactoryAddresses(33, newFactoryAddresses);
         vm.stopPrank();
 
         // then
@@ -169,6 +169,7 @@ contract FusionFactoryTest is Test {
         assertEq(updatedAddresses.rewardsManagerFactory, newFactoryAddresses.rewardsManagerFactory);
         assertEq(updatedAddresses.contextManagerFactory, newFactoryAddresses.contextManagerFactory);
         assertEq(updatedAddresses.priceManagerFactory, newFactoryAddresses.priceManagerFactory);
+        assertEq(fusionFactory.getFusionFactoryVersion(), 33);
     }
 
     function testShouldUpdatePlasmaVaultBase() public {
@@ -280,7 +281,7 @@ contract FusionFactoryTest is Test {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
         vm.startPrank(maintenanceManager);
-        fusionFactory.updateFactoryAddresses(newFactoryAddresses);
+        fusionFactory.updateFactoryAddresses(1, newFactoryAddresses);
         vm.stopPrank();
     }
 
