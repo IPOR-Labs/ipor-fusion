@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {LiquityStabilityPoolFuse} from "../../../contracts/fuses/chains/ethereum/liquity/LiquityStabilityPoolFuse.sol";
 import {LiquityBalanceFuse} from "../../../contracts/fuses/chains/ethereum/liquity/LiquityBalanceFuse.sol";
+import {UniversalTokenSwapperFuse} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -25,6 +26,7 @@ contract LiquityStabilityPoolFuseTest is Test {
     PlasmaVault private plasmaVault;
     LiquityStabilityPoolFuse private sbFuse;
     LiquityBalanceFuse private balanceFuse;
+    UniversalTokenSwapperFuse private swapFuse;
     address private accessManager;
     address private priceOracle;
 
@@ -115,9 +117,9 @@ contract LiquityStabilityPoolFuseTest is Test {
         stabilityPool.offset(100000000, 100 ether);
 
         // entering again stability pool to trigger collateral claim
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter(uint256)", 1));
-        plasmaVault.execute(enterCalls);
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit(uint256)", 1));
+        plasmaVault.execute(exitCalls);
 
         uint256 balance = ERC20(WETH).balanceOf(address(plasmaVault));
         assertGt(balance, 0, "Balance should be greater than zero after claiming collateral");
@@ -134,6 +136,7 @@ contract LiquityStabilityPoolFuseTest is Test {
 
     function _setupFuses() private returns (address[] memory fuses) {
         sbFuse = new LiquityStabilityPoolFuse(IporFusionMarkets.LIQUITY_V2, ETH_REGISTRY);
+        swapFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.LIQUITY_V2, address(plasmaVault), 1e18);
         fuses = new address[](2);
         fuses[0] = address(sbFuse);
     }
