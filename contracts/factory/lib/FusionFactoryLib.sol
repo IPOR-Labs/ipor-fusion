@@ -29,9 +29,6 @@ import {PlasmaVaultAddress} from "../../vaults/initializers/IporFusionAccessMana
  * @dev This library contains the core functionality for initializing and creating Fusion instances
  */
 library FusionFactoryLib {
-    /// @dev Version of the Fusion Vault, version should be incremented when new features are added to the Fusion Vault
-    uint256 private constant _VERSION = 1;
-
     event FusionInstanceCreated(
         uint256 index,
         uint256 version,
@@ -141,7 +138,7 @@ library FusionFactoryLib {
         if (underlyingToken_ == address(0)) revert InvalidUnderlyingToken();
         if (owner_ == address(0)) revert InvalidOwner();
 
-        fusionAddresses.version = _VERSION;
+        fusionAddresses.version = FusionFactoryStorageLib.getFusionFactoryVersion();
 
         uint256 fusionFactoryIndex = FusionFactoryStorageLib.getFusionFactoryIndex();
         fusionFactoryIndex++;
