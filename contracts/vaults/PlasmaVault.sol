@@ -34,6 +34,7 @@ import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
 import {PlasmaVaultFeesLib} from "./lib/PlasmaVaultFeesLib.sol";
 import {PlasmaVaultMarketsLib} from "./lib/PlasmaVaultMarketsLib.sol";
 import {RecipientFee} from "../managers/fee/FeeManager.sol";
+import {WithdrawRequestInfo} from "../managers/withdraw/WithdrawManager.sol";
 
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
@@ -955,20 +956,59 @@ contract PlasmaVault is
         return totalSupplyCap - totalSupply;
     }
 
+    /// @notice Internal helper to get unique market IDs from instant withdrawal fuses
+    /// @param instantWithdrawalFuses_ Array of fuse addresses
+    /// @return uniqueMarkets Array of unique market IDs
+    /// @return uniqueMarketsCount Number of unique markets found
+    function _getUniqueMarketsFromFuses(
+        address[] memory instantWithdrawalFuses_
+    ) internal view returns (uint256[] memory uniqueMarkets, uint256 uniqueMarketsCount) {
+        uniqueMarkets = new uint256[](instantWithdrawalFuses_.length);
+        uniqueMarketsCount = 0;
+
+        for (uint256 i = 0; i < instantWithdrawalFuses_.length; i++) {
+            uint256 marketId = IFuseCommon(instantWithdrawalFuses_[i]).MARKET_ID();
+            bool isDuplicate = false;
+
+            for (uint256 j = 0; j < uniqueMarketsCount; j++) {
+                if (uniqueMarkets[j] == marketId) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+
+            if (!isDuplicate) {
+                uniqueMarkets[uniqueMarketsCount] = marketId;
+                uniqueMarketsCount++;
+            }
+        }
+    }
+
+    /// @notice Internal helper to calculate total available balance including instant withdrawal markets
+    /// @return uint256 Total available balance in underlying token decimals
+    function _calculateTotalAvailableBalance() internal view returns (uint256) {
+        uint256 totalAvailableBalance = IERC20(asset()).balanceOf(address(this));
+
+        address[] memory instantWithdrawalFuses = PlasmaVaultLib.getInstantWithdrawalFuses();
+        (uint256[] memory uniqueMarkets, uint256 uniqueMarketsCount) = _getUniqueMarketsFromFuses(
+            instantWithdrawalFuses
+        );
+
+        // Add balances from unique markets
+        for (uint256 i = 0; i < uniqueMarketsCount; i++) {
+            totalAvailableBalance += PlasmaVaultLib.getTotalAssetsInMarket(uniqueMarkets[i]);
+        }
+
+        return totalAvailableBalance;
+    }
+
     /// @notice Internal helper to calculate maximum available shares for withdrawal/redeem
-    /// @dev Common logic used by both maxWithdraw and maxRedeem
-    ///
-    /// Calculation Flow:
-    /// 1. Balance Validation
-    ///    - Gets user's share balance
-    ///    - Checks withdraw manager state
-    ///    - Considers shares to release
-    ///
-    /// 2. Unallocated Assets
-    ///    - Gets vault's unallocated balance
-    ///    - Converts to shares
-    ///    - Ensures sufficient liquidity
-    ///
+    /// @dev Supports hybrid withdrawal system (both instant and scheduled withdrawals)
+    /// @dev When scheduled withdrawals exist, limits instant withdrawals to protect liquidity
+    /// @dev When no scheduled withdrawals exist, allows full balance withdrawal
+    /// @dev Maintains ERC4626 compliance for both maxWithdraw and maxRedeem
+    /// @dev Considers balances only from markets configured for instant withdrawals
+    /// @dev Includes user's requested shares in WithdrawManager for maxRedeem calculation
     /// @param owner_ Address of the share owner
     /// @return uint256 Maximum number of shares available for withdrawal/redeem
     function _calculateMaxAvailableShares(address owner_) internal view returns (uint256) {
@@ -983,13 +1023,25 @@ contract PlasmaVault is
         }
 
         uint256 sharesToRelease = WithdrawManager(withdrawManager).getSharesToRelease();
-        uint256 vaultBalance = IERC20(asset()).balanceOf(address(this));
-        uint256 availableShares = convertToShares(vaultBalance);
+        WithdrawRequestInfo memory requestInfo = WithdrawManager(withdrawManager).requestInfo(owner_);
+        uint256 availableShares = convertToShares(_calculateTotalAvailableBalance());
 
         // If there are shares to release, we need to ensure we have enough unallocated balance
         if (sharesToRelease > 0) {
             // Calculate how many shares are available for immediate withdrawal
             uint256 unallocatedShares = availableShares > sharesToRelease ? availableShares - sharesToRelease : 0;
+
+            // If user has a withdrawal request, check if it's within the window and can be withdrawn
+            if (requestInfo.shares > 0) {
+                // If withdrawal window has passed or withdrawal is not allowed, don't include requested shares
+                if (block.timestamp > requestInfo.endWithdrawWindowTimestamp || !requestInfo.canWithdraw) {
+                    return Math.min(userBalance, unallocatedShares);
+                }
+                // If within window and can withdraw, include requested shares
+                return Math.min(userBalance, unallocatedShares + requestInfo.shares);
+            }
+
+            // If no withdrawal request, just return unallocated shares
             return Math.min(userBalance, unallocatedShares);
         }
 
