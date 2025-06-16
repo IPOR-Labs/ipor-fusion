@@ -76,7 +76,7 @@ abstract contract ContextManagerInitSetup is Test {
         _rewardsClaimManager = new RewardsClaimManager(address(_accessManager), address(_plasmaVault));
         _plasmaVault.addRewardsClaimManager(address(_rewardsClaimManager));
 
-        _contextManager = _accessManager.setupInitRoles(_plasmaVault, withdrawManager);
+        _contextManager = _accessManager.setupInitRoles(_plasmaVault, withdrawManager, address(_rewardsClaimManager));
 
         address[] memory mTokens = new address[](3);
         mTokens[0] = TestAddresses.BASE_M_WSTETH;

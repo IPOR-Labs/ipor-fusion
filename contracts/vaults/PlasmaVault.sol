@@ -736,7 +736,13 @@ contract PlasmaVault is
             withdrawnShares
         );
 
-        _burn(owner_, feeSharesToBurn);
+        if (feeSharesToBurn > 0) {
+            if (_msgSender() != owner_) {
+                _spendAllowance(owner_, _msgSender(), feeSharesToBurn);
+            }
+
+            _burn(owner_, feeSharesToBurn);
+        }
     }
 
     function previewRedeem(uint256 shares_) public view override returns (uint256) {
@@ -812,56 +818,6 @@ contract PlasmaVault is
         }
 
         withdrawnAssets = _redeem(shares_, receiver_, owner_, true);
-    }
-
-    function _redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_,
-        bool withFee_
-    ) internal returns (uint256 withdrawnAssets) {
-        if (shares_ == 0) {
-            revert NoSharesToRedeem();
-        }
-
-        if (receiver_ == address(0) || owner_ == address(0)) {
-            revert Errors.WrongAddress();
-        }
-
-        /// @dev first realize management fee, then other actions
-        _realizeManagementFee();
-
-        uint256 assets;
-        uint256 vaultCurrentBalanceUnderlying;
-
-        uint256 totalAssetsBefore = totalAssets();
-
-        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
-
-        uint256 assetsToRelease = convertToAssets(WithdrawManager(withdrawManager).getSharesToRelease());
-
-        for (uint256 i; i < REDEEM_ATTEMPTS; ++i) {
-            assets = convertToAssets(shares_);
-            vaultCurrentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
-
-            _withdrawFromMarkets(_includeSlippage(assets) + assetsToRelease, vaultCurrentBalanceUnderlying);
-        }
-
-        _addPerformanceFee(totalAssetsBefore);
-
-        if (!withFee_) {
-            withdrawnAssets = convertToAssets(shares_);
-            _withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, shares_);
-        } else {
-            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
-            uint256 sharesToWithdraw = shares_ - feeSharesToBurn;
-
-            withdrawnAssets = convertToAssets(sharesToWithdraw);
-
-            _withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, sharesToWithdraw);
-
-            _burn(owner_, feeSharesToBurn);
-        }
     }
 
     /// @notice Redeems shares from a previously submitted withdrawal request
@@ -1269,6 +1225,62 @@ contract PlasmaVault is
             calls_[i].fuse.functionDelegateCall(calls_[i].data);
         }
         _updateMarketsBalances(markets);
+    }
+
+    function _redeem(
+        uint256 shares_,
+        address receiver_,
+        address owner_,
+        bool withFee_
+    ) internal returns (uint256 withdrawnAssets) {
+        if (shares_ == 0) {
+            revert NoSharesToRedeem();
+        }
+
+        if (receiver_ == address(0) || owner_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
+        /// @dev first realize management fee, then other actions
+        _realizeManagementFee();
+
+        uint256 assets;
+        uint256 vaultCurrentBalanceUnderlying;
+
+        uint256 totalAssetsBefore = totalAssets();
+
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+
+        uint256 assetsToRelease = convertToAssets(WithdrawManager(withdrawManager).getSharesToRelease());
+
+        for (uint256 i; i < REDEEM_ATTEMPTS; ++i) {
+            assets = convertToAssets(shares_);
+            vaultCurrentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
+
+            _withdrawFromMarkets(_includeSlippage(assets) + assetsToRelease, vaultCurrentBalanceUnderlying);
+        }
+
+        _addPerformanceFee(totalAssetsBefore);
+
+        if (!withFee_) {
+            withdrawnAssets = convertToAssets(shares_);
+            _withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, shares_);
+        } else {
+            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
+            uint256 sharesToWithdraw = shares_ - feeSharesToBurn;
+
+            withdrawnAssets = convertToAssets(sharesToWithdraw);
+
+            super._withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, sharesToWithdraw);
+
+            if (feeSharesToBurn > 0) {
+                if (_msgSender() != owner_) {
+                    _spendAllowance(owner_, _msgSender(), feeSharesToBurn);
+                }
+
+                _burn(owner_, feeSharesToBurn);
+            }
+        }
     }
 
     function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {

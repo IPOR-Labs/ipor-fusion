@@ -18,6 +18,7 @@ import {UpdateBalancesPreHook} from "../../contracts/handlers/pre_hooks/pre_hook
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PreHookInfo, PreHooksInfoReader} from "../../contracts/readers/PreHooksInfoReader.sol";
 import {PlasmaVaultMarketsLib} from "../../contracts/vaults/lib/PlasmaVaultMarketsLib.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 
 contract PreHooksTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
@@ -50,7 +51,11 @@ contract PreHooksTest is Test {
         (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, address(0));
+        _accessManager.setupInitRoles(
+            _plasmaVault,
+            address(0x123),
+            address(new RewardsClaimManager(address(_accessManager), address(_plasmaVault)))
+        );
         vm.stopPrank();
 
         ERC20BalanceFuse erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
