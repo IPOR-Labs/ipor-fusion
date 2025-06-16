@@ -1008,7 +1008,6 @@ contract PlasmaVault is
     /// @dev When no scheduled withdrawals exist, allows full balance withdrawal
     /// @dev Maintains ERC4626 compliance for both maxWithdraw and maxRedeem
     /// @dev Considers balances only from markets configured for instant withdrawals
-    /// @dev Includes user's requested shares in WithdrawManager for maxRedeem calculation
     /// @param owner_ Address of the share owner
     /// @return uint256 Maximum number of shares available for withdrawal/redeem
     function _calculateMaxAvailableShares(address owner_) internal view returns (uint256) {
@@ -1023,30 +1022,14 @@ contract PlasmaVault is
         }
 
         uint256 sharesToRelease = WithdrawManager(withdrawManager).getSharesToRelease();
-        WithdrawRequestInfo memory requestInfo = WithdrawManager(withdrawManager).requestInfo(owner_);
         uint256 availableShares = convertToShares(_calculateTotalAvailableBalance());
 
-        // If there are shares to release, we need to ensure we have enough unallocated balance
         if (sharesToRelease > 0) {
-            // Calculate how many shares are available for immediate withdrawal
             uint256 unallocatedShares = availableShares > sharesToRelease ? availableShares - sharesToRelease : 0;
-
-            // If user has a withdrawal request, check if it's within the window and can be withdrawn
-            if (requestInfo.shares > 0) {
-                // If withdrawal window has passed or withdrawal is not allowed, don't include requested shares
-                if (block.timestamp > requestInfo.endWithdrawWindowTimestamp || !requestInfo.canWithdraw) {
-                    return Math.min(userBalance, unallocatedShares);
-                }
-                // If within window and can withdraw, include requested shares
-                return Math.min(userBalance, unallocatedShares + requestInfo.shares);
-            }
-
-            // If no withdrawal request, just return unallocated shares
             return Math.min(userBalance, unallocatedShares);
         }
 
-        // If no shares to release, user can withdraw their full balance
-        return userBalance;
+        return Math.min(userBalance, availableShares);
     }
 
     /// @notice Calculates maximum amount of assets that can be withdrawn by an owner
