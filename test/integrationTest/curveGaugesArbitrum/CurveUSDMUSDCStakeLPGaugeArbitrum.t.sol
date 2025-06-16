@@ -911,10 +911,10 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 plasmaVault: address(plasmaVault),
                 accessManager: address(accessManager),
                 rewardsClaimManager: address(rewardsClaimManager),
-                withdrawManager: address(0),
-                feeManager: address(0),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                withdrawManager: address(0x123),
+                feeManager: address(0x123),
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
