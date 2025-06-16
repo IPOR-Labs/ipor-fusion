@@ -57,6 +57,7 @@ contract PlasmaVaultWithdrawTest is Test {
     PriceOracleMiddleware public priceOracleMiddlewareProxy;
     UsersToRoles public usersToRoles;
     PlasmaVault plasmaVault;
+    WithdrawManager withdrawManager;
 
     event AaveV3SupplyFuseExit(address version, address asset, uint256 amount);
     event CompoundV3SupplyFuseExit(address version, address asset, address market, uint256 amount);
@@ -74,6 +75,147 @@ contract PlasmaVaultWithdrawTest is Test {
                 new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
             )
         );
+    }
+
+    function testShouldBeAbleToRedeemMaxRedeemWithWithdrawFee() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+
+        userOne = address(0x777);
+
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        WithdrawManager(address(withdrawManager)).updateWithdrawFee(1e16);
+
+        uint256 maxRedeem = plasmaVault.maxRedeem(userOne);
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when
+        vm.prank(userOne);
+        plasmaVault.redeem(maxRedeem, userOne, userOne);
+
+        //then
+        assertEq(plasmaVault.balanceOf(userOne), 0);
+        assertGt(userVaultBalanceBefore, 0);
+    }
+
+    function testShouldBeAbleToWithdrawWhenMaxWithdrawWithWithdrawFee() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+
+        userOne = address(0x777);
+
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        WithdrawManager(address(withdrawManager)).updateWithdrawFee(1e16);
+
+        uint256 maxWithdraw = plasmaVault.maxWithdraw(userOne);
+
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when
+        vm.prank(userOne);
+        plasmaVault.withdraw(maxWithdraw, userOne, userOne);
+
+        //then
+        assertEq(plasmaVault.balanceOf(userOne), 0);
+        assertGt(userVaultBalanceBefore, 0);
+    }
+
+    function testShouldNotBeAbleToRedeemMaxRedeemWithWithdrawFeeByOtherUserWithAllowance() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+
+        userOne = address(0x777);
+        userTwo = address(0x888);
+
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        WithdrawManager(address(withdrawManager)).updateWithdrawFee(1e16);
+
+        uint256 maxRedeem = plasmaVault.maxRedeem(userOne);
+
+        bytes memory error = abi.encodeWithSignature(
+            "ERC20InsufficientAllowance(address,uint256,uint256)",
+            userTwo,
+            0,
+            100e18
+        );
+
+        vm.prank(userOne);
+        plasmaVault.approve(userTwo, maxRedeem - 1e20);
+
+        //when
+        vm.prank(userTwo);
+        //then
+        vm.expectRevert(error);
+        plasmaVault.redeem(maxRedeem, userOne, userOne);
+    }
+
+    function testShouldNotBeAbleToWithdrawMaxWithdrawWithWithdrawFeeByOtherUserWithAllowance() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+
+        userOne = address(0x777);
+        userTwo = address(0x888);
+
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        WithdrawManager(address(withdrawManager)).updateWithdrawFee(1e16);
+
+        uint256 maxWithdraw = plasmaVault.maxWithdraw(userOne);
+
+        bytes memory error = abi.encodeWithSignature(
+            "ERC20InsufficientAllowance(address,uint256,uint256)",
+            userTwo,
+            0,
+            9900e18
+        );
+
+        vm.prank(userOne);
+        plasmaVault.approve(userTwo, plasmaVault.convertToShares(maxWithdraw) - 1e20);
+
+        //when
+        vm.prank(userTwo);
+        //then
+        vm.expectRevert(error);
+        plasmaVault.withdraw(maxWithdraw, userOne, userOne);
     }
 
     function testShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
@@ -1598,9 +1740,16 @@ contract PlasmaVaultWithdrawTest is Test {
 
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, redemptionDelay);
 
-        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+        withdrawManager = new WithdrawManager(address(accessManager));
 
-        plasmaVault = _setupPlasmaVault(DAI, accessManager, fuses, marketConfigs, balanceFuses, withdrawManager);
+        plasmaVault = _setupPlasmaVault(
+            DAI,
+            accessManager,
+            fuses,
+            marketConfigs,
+            balanceFuses,
+            address(withdrawManager)
+        );
 
         return plasmaVault;
     }

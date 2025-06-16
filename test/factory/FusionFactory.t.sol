@@ -833,4 +833,5 @@ contract FusionFactoryTest is Test {
         );
         assertTrue(hasRewardsClaimManagerRole, "RewardsClaimManager role not found TECH_REWARDS_CLAIM_MANAGER_ROLE");
     }
+
 }

@@ -677,14 +677,14 @@ contract PlasmaVault is
     /// @param assets_ Amount of underlying assets to withdraw
     /// @param receiver_ Address to receive the withdrawn assets
     /// @param owner_ Owner of the vault shares
-    /// @return assetsToWithdraw uint256 Amount of shares burned
+    /// @return withdrawnShares uint256 Amount of shares burned
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access PUBLIC_ROLE with WithdrawManager restrictions if enabled
     function withdraw(
         uint256 assets_,
         address receiver_,
         address owner_
-    ) public override nonReentrant restricted returns (uint256 assetsToWithdraw) {
+    ) public override nonReentrant restricted returns (uint256 withdrawnShares) {
         if (assets_ == 0) {
             revert NoAssetsToWithdraw();
         }
@@ -726,19 +726,23 @@ contract PlasmaVault is
 
         uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares);
 
-        if (feeSharesToBurn > 0) {
-            assetsToWithdraw = assets_ - super.convertToAssets(feeSharesToBurn);
+        withdrawnShares = shares - feeSharesToBurn;
 
-            super._withdraw(_msgSender(), receiver_, owner_, assetsToWithdraw, shares - feeSharesToBurn);
+        super._withdraw(
+            _msgSender(),
+            receiver_,
+            owner_,
+            assets_ - super.convertToAssets(feeSharesToBurn),
+            withdrawnShares
+        );
+
+        if (feeSharesToBurn > 0) {
+            if (_msgSender() != owner_) {
+                _spendAllowance(owner_, _msgSender(), feeSharesToBurn);
+            }
 
             _burn(owner_, feeSharesToBurn);
-
-            return assetsToWithdraw;
         }
-
-        super._withdraw(_msgSender(), receiver_, owner_, assets_, shares);
-
-        return assets_;
     }
 
     function previewRedeem(uint256 shares_) public view override returns (uint256) {
@@ -756,6 +760,7 @@ contract PlasmaVault is
 
     function previewWithdraw(uint256 assets_) public view override returns (uint256) {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+
         if (withdrawManager != address(0)) {
             /// @dev get withdraw fee in shares with 18 decimals
             uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
@@ -799,77 +804,20 @@ contract PlasmaVault is
     /// @param shares_ Amount of vault shares to redeem
     /// @param receiver_ Address to receive the underlying assets
     /// @param owner_ Owner of the vault shares
-    /// @return uint256 Amount of underlying assets withdrawn
+    /// @return withdrawnAssets uint256 Amount of underlying assets withdrawn
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access PUBLIC_ROLE with WithdrawManager restrictions if enabled
     function redeem(
         uint256 shares_,
         address receiver_,
         address owner_
-    ) public override nonReentrant restricted returns (uint256) {
+    ) public override nonReentrant restricted returns (uint256 withdrawnAssets) {
         uint256 maxShares = maxRedeem(owner_);
         if (shares_ > maxShares) {
             revert ERC4626ExceededMaxRedeem(owner_, shares_, maxShares);
         }
 
-        return _redeem(shares_, receiver_, owner_, true);
-    }
-
-    function _redeem(
-        uint256 shares_,
-        address receiver_,
-        address owner_,
-        bool withFee_
-    ) internal returns (uint256 assetsToWithdraw) {
-        if (shares_ == 0) {
-            revert NoSharesToRedeem();
-        }
-
-        if (receiver_ == address(0) || owner_ == address(0)) {
-            revert Errors.WrongAddress();
-        }
-
-        /// @dev first realize management fee, then other actions
-        _realizeManagementFee();
-
-        uint256 assets;
-        uint256 vaultCurrentBalanceUnderlying;
-
-        uint256 totalAssetsBefore = totalAssets();
-
-        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
-
-        uint256 assetsToRelease = convertToAssets(WithdrawManager(withdrawManager).getSharesToRelease());
-
-        for (uint256 i; i < REDEEM_ATTEMPTS; ++i) {
-            assets = convertToAssets(shares_);
-            vaultCurrentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
-
-            _withdrawFromMarkets(_includeSlippage(assets) + assetsToRelease, vaultCurrentBalanceUnderlying);
-        }
-
-        _addPerformanceFee(totalAssetsBefore);
-
-        if (!withFee_) {
-            assetsToWithdraw = convertToAssets(shares_);
-            _withdraw(_msgSender(), receiver_, owner_, assetsToWithdraw, shares_);
-            return assetsToWithdraw;
-        }
-
-        uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
-
-        if (feeSharesToBurn == 0) {
-            assetsToWithdraw = convertToAssets(shares_);
-            _withdraw(_msgSender(), receiver_, owner_, assetsToWithdraw, shares_);
-
-            return assetsToWithdraw;
-        }
-
-        uint256 redeemAmount = super.redeem(shares_, receiver_, owner_);
-
-        _burn(owner_, feeSharesToBurn);
-
-        return redeemAmount;
+        withdrawnAssets = _redeem(shares_, receiver_, owner_, true);
     }
 
     /// @notice Redeems shares from a previously submitted withdrawal request
@@ -1196,6 +1144,62 @@ contract PlasmaVault is
             calls_[i].fuse.functionDelegateCall(calls_[i].data);
         }
         _updateMarketsBalances(markets);
+    }
+
+    function _redeem(
+        uint256 shares_,
+        address receiver_,
+        address owner_,
+        bool withFee_
+    ) internal returns (uint256 withdrawnAssets) {
+        if (shares_ == 0) {
+            revert NoSharesToRedeem();
+        }
+
+        if (receiver_ == address(0) || owner_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
+        /// @dev first realize management fee, then other actions
+        _realizeManagementFee();
+
+        uint256 assets;
+        uint256 vaultCurrentBalanceUnderlying;
+
+        uint256 totalAssetsBefore = totalAssets();
+
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+
+        uint256 assetsToRelease = convertToAssets(WithdrawManager(withdrawManager).getSharesToRelease());
+
+        for (uint256 i; i < REDEEM_ATTEMPTS; ++i) {
+            assets = convertToAssets(shares_);
+            vaultCurrentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
+
+            _withdrawFromMarkets(_includeSlippage(assets) + assetsToRelease, vaultCurrentBalanceUnderlying);
+        }
+
+        _addPerformanceFee(totalAssetsBefore);
+
+        if (!withFee_) {
+            withdrawnAssets = convertToAssets(shares_);
+            _withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, shares_);
+        } else {
+            uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
+            uint256 sharesToWithdraw = shares_ - feeSharesToBurn;
+
+            withdrawnAssets = convertToAssets(sharesToWithdraw);
+
+            super._withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, sharesToWithdraw);
+
+            if (feeSharesToBurn > 0) {
+                if (_msgSender() != owner_) {
+                    _spendAllowance(owner_, _msgSender(), feeSharesToBurn);
+                }
+
+                _burn(owner_, feeSharesToBurn);
+            }
+        }
     }
 
     function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {
