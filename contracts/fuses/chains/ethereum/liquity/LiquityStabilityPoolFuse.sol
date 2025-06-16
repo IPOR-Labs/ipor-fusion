@@ -38,8 +38,9 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
         if (amount == 0) revert ZeroAmount();
 
         ERC20(boldToken).forceApprove(address(stabilityPool), amount);
-        // always claim collateral
-        stabilityPool.provideToSP(amount, true);
+        // do not claim collateral when entering so to avoid to swap them now
+        // the principle is that we can empty the vault by entering the stability pool
+        stabilityPool.provideToSP(amount, false);
         ERC20(boldToken).forceApprove(address(stabilityPool), 0);
 
         emit LiquityStabilityPoolFuseEnter(VERSION, address(stabilityPool), amount);
@@ -54,7 +55,8 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
             }
             revert ZeroAmount();
         }
-        // always claim collateral
+        // always claim collateral when exiting, and swap it to BOLD
+        // the principle is that we can close our stability pool position by exiting it
         stabilityPool.withdrawFromSP(amount, true);
     }
 }
