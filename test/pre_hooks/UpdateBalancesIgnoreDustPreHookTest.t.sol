@@ -18,6 +18,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {UpdateBalancesIgnoreDustPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/UpdateBalancesIgnoreDustPreHook.sol";
 import {Erc4626BalanceFuse} from "../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {MockERC4626} from "../test_helpers/MockErc4626.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 
 import {Roles} from "../../contracts/libraries/Roles.sol";
 
@@ -60,7 +61,11 @@ contract UpdateBalancesIgnoreDustPreHookTest is Test {
         (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, address(0));
+        _accessManager.setupInitRoles(
+            _plasmaVault,
+            address(0x123),
+            address(new RewardsClaimManager(address(_accessManager), address(_plasmaVault)))
+        );
         vm.stopPrank();
 
         ERC20BalanceFuse erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);

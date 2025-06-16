@@ -25,9 +25,8 @@ import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
-
-
 import {Roles} from "../../contracts/libraries/Roles.sol";
+import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
@@ -158,7 +157,7 @@ contract FusionFactoryTest is Test {
 
         // when
         vm.startPrank(maintenanceManager);
-        fusionFactory.updateFactoryAddresses(newFactoryAddresses);
+        fusionFactory.updateFactoryAddresses(33, newFactoryAddresses);
         vm.stopPrank();
 
         // then
@@ -170,6 +169,7 @@ contract FusionFactoryTest is Test {
         assertEq(updatedAddresses.rewardsManagerFactory, newFactoryAddresses.rewardsManagerFactory);
         assertEq(updatedAddresses.contextManagerFactory, newFactoryAddresses.contextManagerFactory);
         assertEq(updatedAddresses.priceManagerFactory, newFactoryAddresses.priceManagerFactory);
+        assertEq(fusionFactory.getFusionFactoryVersion(), 33);
     }
 
     function testShouldUpdatePlasmaVaultBase() public {
@@ -281,7 +281,7 @@ contract FusionFactoryTest is Test {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
         vm.startPrank(maintenanceManager);
-        fusionFactory.updateFactoryAddresses(newFactoryAddresses);
+        fusionFactory.updateFactoryAddresses(1, newFactoryAddresses);
         vm.stopPrank();
     }
 
@@ -657,7 +657,7 @@ contract FusionFactoryTest is Test {
 
     function testShouldCreateVaultAndHaveCorrectPriceManagerOnVault() public {
         // given
-        
+
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
@@ -671,5 +671,167 @@ contract FusionFactoryTest is Test {
         assertEq(plasmaVaultGovernance.getPriceOracleMiddleware(), instance.priceManager);
     }
 
-    
+    function testShouldAllowDepositAfterVaultCreation() public {
+        // given
+        uint256 depositAmount = 1000 * 1e18; // 1000 tokens
+        address depositor = address(0x123);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        vm.startPrank(depositor);
+        underlyingToken.mint(depositor, depositAmount);
+        underlyingToken.approve(instance.plasmaVault, depositAmount);
+
+        // Add depositor to whitelist
+        vm.startPrank(owner);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.ATOMIST_ROLE, owner, 0);
+        vm.stopPrank();
+
+        vm.stopPrank();
+        vm.startPrank(owner);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.WHITELIST_ROLE, depositor, 0);
+        vm.stopPrank();
+
+        vm.startPrank(depositor);
+        PlasmaVault(instance.plasmaVault).deposit(depositAmount, depositor);
+        vm.stopPrank();
+
+        // then
+        assertEq(underlyingToken.balanceOf(instance.plasmaVault), depositAmount);
+        assertEq(PlasmaVault(instance.plasmaVault).balanceOf(depositor), depositAmount * 100);
+    }
+
+    function testShouldWithdrawAfterVaultCreation() public {
+        // given
+        uint256 depositAmount = 1000 * 1e18; // 1000 tokens
+        address depositor = address(0x123);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // Setup - mint tokens, approve, and add to whitelist
+        underlyingToken.mint(depositor, depositAmount);
+
+        vm.startPrank(owner);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.ATOMIST_ROLE, owner, 0);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.WHITELIST_ROLE, depositor, 0);
+        vm.stopPrank();
+
+        // Deposit tokens
+        vm.startPrank(depositor);
+        underlyingToken.approve(instance.plasmaVault, depositAmount);
+        PlasmaVault(instance.plasmaVault).deposit(depositAmount, depositor);
+
+        vm.warp(block.timestamp + 1);
+
+        // Verify deposit was successful
+        uint256 initialShareBalance = PlasmaVault(instance.plasmaVault).balanceOf(depositor);
+        assertEq(initialShareBalance, depositAmount * 100); // 100 is the conversion rate
+
+        // Direct redeem (instead of request withdraw)
+        uint256 redeemAmount = initialShareBalance / 2; // Redeem half the shares
+        uint256 initialTokenBalance = underlyingToken.balanceOf(depositor);
+
+        // Perform redeem
+        PlasmaVault(instance.plasmaVault).redeem(redeemAmount, depositor, depositor);
+        vm.stopPrank();
+
+        // then
+        // Verify redemption was successful
+        uint256 finalShareBalance = PlasmaVault(instance.plasmaVault).balanceOf(depositor);
+        uint256 finalTokenBalance = underlyingToken.balanceOf(depositor);
+
+        // Share balance should be reduced
+        assertEq(finalShareBalance, initialShareBalance - redeemAmount);
+    }
+
+    function testShouldDAOBeConfiguredAfterVaultCreation() public {
+        // given
+        address daoFeeRecipient = address(0x123);
+        uint256 daoManagementFee = 100;
+        uint256 daoPerformanceFee = 100;
+
+        vm.startPrank(owner);
+        fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), daoFeeManager);
+        fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), maintenanceManager);
+        vm.stopPrank();
+
+        vm.startPrank(daoFeeManager);
+        fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
+        vm.stopPrank();
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        FeeManager feeManager = FeeManager(instance.feeManager);
+        assertEq(feeManager.IPOR_DAO_MANAGEMENT_FEE(), daoManagementFee);
+        assertEq(feeManager.IPOR_DAO_PERFORMANCE_FEE(), daoPerformanceFee);
+        assertEq(feeManager.getIporDaoFeeRecipientAddress(), daoFeeRecipient);
+    }
+
+    function testShouldContainAppropriateTechnicalRolesAfterVaultCreation() public {
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        (bool hasPlasmaVaultRole, ) = accessManager.hasRole(Roles.TECH_PLASMA_VAULT_ROLE, instance.plasmaVault);
+        assertTrue(hasPlasmaVaultRole, "PlasmaVault role not found TECH_PLASMA_VAULT_ROLE");
+
+        (bool hasContextManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_CONTEXT_MANAGER_ROLE,
+            instance.contextManager
+        );
+        assertTrue(hasContextManagerRole, "ContextManager role not found TECH_CONTEXT_MANAGER_ROLE");
+
+        (bool hasWithdrawManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_WITHDRAW_MANAGER_ROLE,
+            instance.withdrawManager
+        );
+        assertTrue(hasWithdrawManagerRole, "WithdrawManager role not found TECH_WITHDRAW_MANAGER_ROLE");
+
+        (bool hasVaultTransferSharesRole, ) = accessManager.hasRole(
+            Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
+            instance.feeManager
+        );
+        assertTrue(hasVaultTransferSharesRole, "VaultTransferShares role not found TECH_VAULT_TRANSFER_SHARES_ROLE");
+
+        (bool hasPerformanceFeeManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
+            instance.feeManager
+        );
+        assertTrue(
+            hasPerformanceFeeManagerRole,
+            "PerformanceFeeManager role not found TECH_PERFORMANCE_FEE_MANAGER_ROLE"
+        );
+
+        (bool hasRewardsClaimManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
+            instance.rewardsManager
+        );
+        assertTrue(hasRewardsClaimManagerRole, "RewardsClaimManager role not found TECH_REWARDS_CLAIM_MANAGER_ROLE");
+    }
+
 }

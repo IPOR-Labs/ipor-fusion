@@ -238,12 +238,12 @@ contract EulerCreditMarketTest is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                rewardsClaimManager: address(0x123),
+                withdrawManager: address(0x123),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
