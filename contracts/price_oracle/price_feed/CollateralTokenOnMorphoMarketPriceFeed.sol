@@ -16,7 +16,8 @@ contract CollateralTokenOnMorphoMarketPriceFeed is IPriceFeed {
     address public immutable morphoOracle;
     address public immutable collateralToken;
     address public immutable loanToken;
-    address public immutable fusionPriceMiddleware;
+    /// @notice Can be either PriceOracleMiddleware or PriceOracleMiddlewareManager
+    address public immutable priceOracleMiddleware;
 
     uint256 public immutable loanTokenDecimals;
     uint256 public immutable collateralTokenDecimals;
@@ -24,17 +25,21 @@ contract CollateralTokenOnMorphoMarketPriceFeed is IPriceFeed {
     error InvalidMorphoOraclePrice();
     error InvalidPriceOracleMiddleware();
     error InvalidTokenDecimals();
+    error ZeroAddressMorphoOracle();
+    error ZeroAddressCollateralToken();
+    error ZeroAddressLoanToken();
+    error ZeroAddressFusionPriceMiddleware();
 
-    constructor(address _morphoOracle, address _collateralToken, address _loanToken, address _fusionPriceMiddleware) {
-        require(_morphoOracle != address(0), "MorphoOracle is zero address");
-        require(_collateralToken != address(0), "CollateralToken is zero address");
-        require(_loanToken != address(0), "LoanToken is zero address");
-        require(_fusionPriceMiddleware != address(0), "FusionPriceMiddleware is zero address");
+    constructor(address _morphoOracle, address _collateralToken, address _loanToken, address _priceOracleMiddleware) {
+        if (_morphoOracle == address(0)) revert ZeroAddressMorphoOracle();
+        if (_collateralToken == address(0)) revert ZeroAddressCollateralToken();
+        if (_loanToken == address(0)) revert ZeroAddressLoanToken();
+        if (_priceOracleMiddleware == address(0)) revert ZeroAddressFusionPriceMiddleware();
 
         morphoOracle = _morphoOracle;
         collateralToken = _collateralToken;
         loanToken = _loanToken;
-        fusionPriceMiddleware = _fusionPriceMiddleware;
+        priceOracleMiddleware = _priceOracleMiddleware;
         loanTokenDecimals = IERC20Metadata(loanToken).decimals();
         collateralTokenDecimals = IERC20Metadata(collateralToken).decimals();
         if (loanTokenDecimals == 0 || collateralTokenDecimals == 0) {
@@ -54,21 +59,16 @@ contract CollateralTokenOnMorphoMarketPriceFeed is IPriceFeed {
             revert InvalidMorphoOraclePrice();
         }
 
-        (
-            uint256 loanTokenPriceFromFusionPriceMiddleware,
-            uint256 loanTokenDecimalsFromFusionPriceMiddleware
-        ) = IPriceOracleMiddleware(fusionPriceMiddleware).getAssetPrice(loanToken);
+        (uint256 loanTokenPrice, uint256 loanTokenPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
+            .getAssetPrice(loanToken);
 
-        if (loanTokenDecimalsFromFusionPriceMiddleware == 0 || loanTokenDecimalsFromFusionPriceMiddleware == 0) {
+        if (loanTokenPriceDecimals == 0 || loanTokenPriceDecimals == 0) {
             revert InvalidPriceOracleMiddleware();
         }
 
         uint256 price = IporMath.convertToWad(
-            morphoOraclePrice * loanTokenPriceFromFusionPriceMiddleware,
-            MORPHO_PRICE_PRECISION +
-                loanTokenDecimals +
-                loanTokenDecimalsFromFusionPriceMiddleware -
-                collateralTokenDecimals
+            morphoOraclePrice * loanTokenPrice,
+            MORPHO_PRICE_PRECISION + loanTokenDecimals + loanTokenPriceDecimals - collateralTokenDecimals
         );
 
         return (0, price.toInt256(), 0, 0, 0);

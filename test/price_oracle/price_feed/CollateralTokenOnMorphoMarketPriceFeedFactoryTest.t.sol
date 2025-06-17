@@ -40,15 +40,13 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactoryTest is Test {
         );
 
         assertTrue(priceFeed != address(0));
-        assertTrue(factory.isCreator(address(this)));
-        assertEq(factory.creators(0), address(this));
         assertEq(factory.priceFeeds(0), priceFeed);
 
         CollateralTokenOnMorphoMarketPriceFeed feed = CollateralTokenOnMorphoMarketPriceFeed(priceFeed);
         assertEq(address(feed.morphoOracle()), MORPHO_ORACLE);
         assertEq(address(feed.collateralToken()), COLLATERAL_TOKEN);
         assertEq(address(feed.loanToken()), LOAN_TOKEN);
-        assertEq(address(feed.fusionPriceMiddleware()), FUSION_PRICE_MIDDLEWARE);
+        assertEq(address(feed.priceOracleMiddleware()), FUSION_PRICE_MIDDLEWARE);
     }
 
     function testShouldRevertWhenCreatingPriceFeedWithZeroAddress() public {
@@ -113,9 +111,23 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactoryTest is Test {
         vm.prank(creator2);
         factory.createPriceFeed(MORPHO_ORACLE, COLLATERAL_TOKEN, LOAN_TOKEN, FUSION_PRICE_MIDDLEWARE);
 
-        assertTrue(factory.isCreator(creator1));
-        assertTrue(factory.isCreator(creator2));
-        assertEq(factory.creators(0), creator1);
-        assertEq(factory.creators(1), creator2);
+        assertTrue(
+            factory.getPriceFeedAddress(
+                creator1,
+                MORPHO_ORACLE,
+                COLLATERAL_TOKEN,
+                LOAN_TOKEN,
+                FUSION_PRICE_MIDDLEWARE
+            ) != address(0)
+        );
+        assertTrue(
+            factory.getPriceFeedAddress(
+                creator2,
+                MORPHO_ORACLE,
+                COLLATERAL_TOKEN,
+                LOAN_TOKEN,
+                FUSION_PRICE_MIDDLEWARE
+            ) != address(0)
+        );
     }
 }

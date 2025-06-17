@@ -39,23 +39,23 @@ contract CollateralTokenOnMorphoMarketPriceFeedTest is Test {
         assertEq(address(priceFeed.morphoOracle()), MORPHO_ORACLE);
         assertEq(address(priceFeed.collateralToken()), COLLATERAL_TOKEN);
         assertEq(address(priceFeed.loanToken()), LOAN_TOKEN);
-        assertEq(address(priceFeed.fusionPriceMiddleware()), FUSION_PRICE_MIDDLEWARE);
+        assertEq(address(priceFeed.priceOracleMiddleware()), FUSION_PRICE_MIDDLEWARE);
         assertEq(priceFeed.loanTokenDecimals(), loanToken.decimals());
         assertEq(priceFeed.collateralTokenDecimals(), collateralToken.decimals());
     }
 
     function testShouldRevertWhenMorphoOracleIsZeroAddress() public {
-        vm.expectRevert("MorphoOracle is zero address");
+        vm.expectRevert(CollateralTokenOnMorphoMarketPriceFeed.ZeroAddressMorphoOracle.selector);
         new CollateralTokenOnMorphoMarketPriceFeed(address(0), COLLATERAL_TOKEN, LOAN_TOKEN, FUSION_PRICE_MIDDLEWARE);
     }
 
     function testShouldRevertWhenCollateralTokenIsZeroAddress() public {
-        vm.expectRevert("CollateralToken is zero address");
+        vm.expectRevert(CollateralTokenOnMorphoMarketPriceFeed.ZeroAddressCollateralToken.selector);
         new CollateralTokenOnMorphoMarketPriceFeed(MORPHO_ORACLE, address(0), LOAN_TOKEN, FUSION_PRICE_MIDDLEWARE);
     }
 
     function testShouldRevertWhenLoanTokenIsZeroAddress() public {
-        vm.expectRevert("LoanToken is zero address");
+        vm.expectRevert(CollateralTokenOnMorphoMarketPriceFeed.ZeroAddressLoanToken.selector);
         new CollateralTokenOnMorphoMarketPriceFeed(
             MORPHO_ORACLE,
             COLLATERAL_TOKEN,
@@ -65,7 +65,7 @@ contract CollateralTokenOnMorphoMarketPriceFeedTest is Test {
     }
 
     function testShouldRevertWhenFusionPriceMiddlewareIsZeroAddress() public {
-        vm.expectRevert("FusionPriceMiddleware is zero address");
+        vm.expectRevert(CollateralTokenOnMorphoMarketPriceFeed.ZeroAddressFusionPriceMiddleware.selector);
         new CollateralTokenOnMorphoMarketPriceFeed(MORPHO_ORACLE, COLLATERAL_TOKEN, LOAN_TOKEN, address(0));
     }
 

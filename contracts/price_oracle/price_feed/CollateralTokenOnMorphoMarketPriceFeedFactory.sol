@@ -28,22 +28,19 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactory {
     mapping(bytes32 key => PriceFeed priceFeed) private priceFeedsByKeys;
     address[] public priceFeeds;
 
-    mapping(address creator_ => bool) public isCreator;
-    address[] public creators;
-
     function createPriceFeed(
         address morphoOracle_,
         address collateralToken_,
         address loanToken_,
-        address fusionPriceMiddleware_
+        address priceOracleMiddleware_
     ) external returns (address priceFeed) {
         if (morphoOracle_ == address(0)) revert ZeroAddress();
         if (collateralToken_ == address(0)) revert ZeroAddress();
         if (loanToken_ == address(0)) revert ZeroAddress();
-        if (fusionPriceMiddleware_ == address(0)) revert ZeroAddress();
+        if (priceOracleMiddleware_ == address(0)) revert ZeroAddress();
 
         if (
-            getPriceFeed(msg.sender, morphoOracle_, collateralToken_, loanToken_, fusionPriceMiddleware_) != address(0)
+            getPriceFeed(msg.sender, morphoOracle_, collateralToken_, loanToken_, priceOracleMiddleware_) != address(0)
         ) {
             revert PriceFeedAlreadyExists();
         }
@@ -53,21 +50,16 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactory {
                 morphoOracle_,
                 collateralToken_,
                 loanToken_,
-                fusionPriceMiddleware_
+                priceOracleMiddleware_
             )
         );
 
-        if (!isCreator[msg.sender]) {
-            isCreator[msg.sender] = true;
-            creators.push(msg.sender);
-        }
-
-        bytes32 key = generateKey(msg.sender, morphoOracle_, collateralToken_, loanToken_, fusionPriceMiddleware_);
+        bytes32 key = generateKey(msg.sender, morphoOracle_, collateralToken_, loanToken_, priceOracleMiddleware_);
         priceFeedsByKeys[key] = PriceFeed(
             morphoOracle_,
             collateralToken_,
             loanToken_,
-            fusionPriceMiddleware_,
+            priceOracleMiddleware_,
             priceFeed,
             msg.sender
         );
@@ -80,7 +72,7 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactory {
             morphoOracle_,
             collateralToken_,
             loanToken_,
-            fusionPriceMiddleware_
+            priceOracleMiddleware_
         );
 
         return priceFeed;
@@ -91,9 +83,9 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactory {
         address morphoOracle_,
         address collateralToken_,
         address loanToken_,
-        address fusionPriceMiddleware_
+        address priceOracleMiddleware_
     ) external view returns (address) {
-        bytes32 key = generateKey(creator_, morphoOracle_, collateralToken_, loanToken_, fusionPriceMiddleware_);
+        bytes32 key = generateKey(creator_, morphoOracle_, collateralToken_, loanToken_, priceOracleMiddleware_);
         return priceFeedsByKeys[key].priceFeed;
     }
 
@@ -102,9 +94,9 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactory {
         address morphoOracle_,
         address collateralToken_,
         address loanToken_,
-        address fusionPriceMiddleware_
+        address priceOracleMiddleware_
     ) public view returns (address) {
-        bytes32 key = generateKey(creator_, morphoOracle_, collateralToken_, loanToken_, fusionPriceMiddleware_);
+        bytes32 key = generateKey(creator_, morphoOracle_, collateralToken_, loanToken_, priceOracleMiddleware_);
         return priceFeedsByKeys[key].priceFeed;
     }
 
@@ -113,8 +105,8 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactory {
         address morphoOracle_,
         address collateralToken_,
         address loanToken_,
-        address fusionPriceMiddleware_
+        address priceOracleMiddleware_
     ) public pure returns (bytes32) {
-        return keccak256(abi.encode(creator_, morphoOracle_, collateralToken_, loanToken_, fusionPriceMiddleware_));
+        return keccak256(abi.encode(creator_, morphoOracle_, collateralToken_, loanToken_, priceOracleMiddleware_));
     }
 }
