@@ -133,7 +133,8 @@ library FusionFactoryLib {
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,
-        address owner_
+        address owner_,
+        bool withAdmin_
     ) public returns (FusionInstance memory fusionAddresses) {
         if (underlyingToken_ == address(0)) revert InvalidUnderlyingToken();
         if (owner_ == address(0)) revert InvalidOwner();
@@ -255,7 +256,9 @@ library FusionFactoryLib {
         accessData.iporDaos = new address[](1);
         accessData.iporDaos[0] = daoFeeRecipientAddress;
 
-        accessData.admins = FusionFactoryStorageLib.getPlasmaVaultAdminArray();
+        if (withAdmin_) {
+            accessData.admins = FusionFactoryStorageLib.getPlasmaVaultAdminArray();
+        }
 
         accessData.owners = new address[](1);
         accessData.owners[0] = owner_;
