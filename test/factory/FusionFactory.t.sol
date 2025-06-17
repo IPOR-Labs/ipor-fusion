@@ -376,7 +376,7 @@ contract FusionFactoryTest is Test {
         assertEq(updatedPlasmaVaultAdminArray[1], newPlasmaVaultAdminArray[1]);
     }
 
-    function testShouldCreateVaultWithCorrectAdmin() public {
+    function testShouldCreateVaultWithoutAdmin() public {
         // given
         address[] memory newPlasmaVaultAdminArray = new address[](2);
         newPlasmaVaultAdminArray[0] = address(0x321);
@@ -393,6 +393,36 @@ contract FusionFactoryTest is Test {
             address(underlyingToken),
             owner
         );
+
+        // then
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+        (bool hasRoleOne, uint32 delayOne) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[0]);
+        (bool hasRoleTwo, uint32 delayTwo) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[1]);
+        assertFalse(hasRoleOne);
+        assertFalse(hasRoleTwo);
+        assertEq(delayOne, 0);
+        assertEq(delayTwo, 0);
+    }
+
+    function testShouldCreatePremiumVaultWithAdmin() public {
+        // given
+        address[] memory newPlasmaVaultAdminArray = new address[](2);
+        newPlasmaVaultAdminArray[0] = address(0x321);
+        newPlasmaVaultAdminArray[1] = address(0x123);
+
+        vm.startPrank(owner);
+        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
+        vm.stopPrank();
+
+        // when
+        vm.startPrank(owner);
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.createPremium(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+        vm.stopPrank();
 
         // then
         IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
