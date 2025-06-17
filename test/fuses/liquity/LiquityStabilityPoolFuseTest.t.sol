@@ -16,12 +16,27 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IStabilityPool} from "../../../contracts/fuses/chains/ethereum/liquity/ext/IStabilityPool.sol";
 
+contract MockDex {
+    address tokenIn;
+    address tokenOut;
+    constructor(address _tokenIn, address _tokenOut) {
+        tokenIn = _tokenIn;
+        tokenOut = _tokenOut;
+    }
+    function swap(uint256 amountIn, uint256 amountOut) public {
+        ERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+        ERC20(tokenOut).transfer(msg.sender, amountOut);
+    }
+}
+
 contract LiquityStabilityPoolFuseTest is Test {
     address internal constant BOLD = 0x6440f144b7e50D6a8439336510312d2F54beB01D;
     address internal constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address internal constant ETH_REGISTRY = 0x20F7C9ad66983F6523a0881d0f82406541417526;
     address internal constant WSTETH_REGISTRY = 0x8d733F7ea7c23Cbea7C613B6eBd845d46d3aAc54;
     address internal constant RETH_REGISTRY = 0x6106046F031a22713697e04C08B330dDaf3e8789;
+
+    MockDex private mockDex;
 
     PlasmaVault private plasmaVault;
     LiquityStabilityPoolFuse private sbFuse;
@@ -61,6 +76,9 @@ contract LiquityStabilityPoolFuseTest is Test {
                 address(0)
             )
         );
+
+        mockDex = new MockDex(WETH, BOLD);
+        deal(BOLD, address(mockDex), 1e6 * 1e6);
     }
 
     function testLiquityEnterToSB() public {
@@ -125,6 +143,12 @@ contract LiquityStabilityPoolFuseTest is Test {
         assertGt(balance, 0, "Balance should be greater than zero after claiming collateral");
     }
 
+    function testLiquityClaimCollateralThenSwap() public {
+        testLiquityClaimCollateral();
+
+
+    }
+
     function _setupMarketConfigs() private pure returns (MarketSubstratesConfig[] memory marketConfigs_) {
         marketConfigs_ = new MarketSubstratesConfig[](1);
         bytes32[] memory registries = new bytes32[](3);
@@ -139,6 +163,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         swapFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.LIQUITY_V2, address(plasmaVault), 1e18);
         fuses = new address[](2);
         fuses[0] = address(sbFuse);
+        fuses[1] = address(swapFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
