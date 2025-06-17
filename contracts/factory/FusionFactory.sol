@@ -84,7 +84,6 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
     function updatePlasmaVaultAdminArray(
         address[] memory newPlasmaVaultAdminArray_
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (newPlasmaVaultAdminArray_.length == 0) revert FusionFactoryLib.InvalidAddress();
         for (uint256 i; i < newPlasmaVaultAdminArray_.length; i++) {
             if (newPlasmaVaultAdminArray_[i] == address(0)) revert FusionFactoryLib.InvalidAddress();
         }
