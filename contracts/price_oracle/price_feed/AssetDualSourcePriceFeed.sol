@@ -6,10 +6,10 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "../ext/AggregatorV3Interface.sol";
 import {IPriceFeed} from "./IPriceFeed.sol";
 
-/// @title AssetChainlinkPriceFeed
-/// @notice Price feed for any Asset in USD using two Chainlink price feeds
+/// @title AssetOneHopPriceFeed
+/// @notice Price feed for any Asset in USD using two Oracles Aggregator price feeds
 /// @dev Uses AssetX/AssetY and AssetY/USD pairs to calculate AssetX/USD price
-contract AssetChainlinkPriceFeed is IPriceFeed {
+contract AssetDualSourcePriceFeed is IPriceFeed {
     using SafeCast for int256;
     using SafeCast for uint256;
 
@@ -20,38 +20,38 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
     /// @dev Asset for which the price feed is provided
     address public immutable ASSET_X;
 
-    /// @dev Price Oracle for pair ASSET_X/ASSET_Y in Chainlink
-    address public immutable ASSET_X_ASSET_Y_CHAINLINK_FEED;
+    /// @dev Price Oracle for pair ASSET_X/ASSET_Y in Oracles Aggregator
+    address public immutable ASSET_X_ASSET_Y_ORACLE_FEED;
 
-    /// @dev Price Oracle for pair ASSET_Y/USD in Chainlink
-    address public immutable ASSET_Y_USD_CHAINLINK_FEED;
+    /// @dev Price Oracle for pair ASSET_Y/USD in Oracles Aggregator
+    address public immutable ASSET_Y_USD_ORACLE_FEED;
 
     /// @dev Denominator used to normalize price decimals
     uint256 private immutable PRICE_DENOMINATOR;
 
     /// @notice Constructor to initialize the price feed
     /// @param assetX_ Asset for which the price feed is provided in USD
-    /// @param assetXAssetYChainlinkFeed_ Chainlink feed for ASSET_X/ASSET_Y
-    /// @param assetYUsdChainlinkFeed_ Chainlink feed for ASSET_Y/USD
-    constructor(address assetX_, address assetXAssetYChainlinkFeed_, address assetYUsdChainlinkFeed_) {
+    /// @param assetXAssetYOracleFeed_ Oracle feed for ASSET_X/ASSET_Y
+    /// @param assetYUsdOracleFeed_ Oracle feed for ASSET_Y/USD
+    constructor(address assetX_, address assetXAssetYOracleFeed_, address assetYUsdOracleFeed_) {
         if (
-            assetX_ == address(0) || assetXAssetYChainlinkFeed_ == address(0) || assetYUsdChainlinkFeed_ == address(0)
+            assetX_ == address(0) || assetXAssetYOracleFeed_ == address(0) || assetYUsdOracleFeed_ == address(0)
         ) {
             revert ZeroAddress();
         }
 
         ASSET_X = assetX_;
-        ASSET_X_ASSET_Y_CHAINLINK_FEED = assetXAssetYChainlinkFeed_;
-        ASSET_Y_USD_CHAINLINK_FEED = assetYUsdChainlinkFeed_;
+        ASSET_X_ASSET_Y_ORACLE_FEED = assetXAssetYOracleFeed_;
+        ASSET_Y_USD_ORACLE_FEED = assetYUsdOracleFeed_;
 
-        uint256 assetXAssetYChainlinkFeedDecimals = AggregatorV3Interface(ASSET_X_ASSET_Y_CHAINLINK_FEED).decimals();
-        uint256 assetYUsdChainlinkFeedDecimals = AggregatorV3Interface(ASSET_Y_USD_CHAINLINK_FEED).decimals();
+        uint256 assetXAssetYOracleFeedDecimals = AggregatorV3Interface(ASSET_X_ASSET_Y_ORACLE_FEED).decimals();
+        uint256 assetYUsdOracleFeedDecimals = AggregatorV3Interface(ASSET_Y_USD_ORACLE_FEED).decimals();
 
-        if (assetXAssetYChainlinkFeedDecimals > 18 || assetYUsdChainlinkFeedDecimals > 18) {
+        if (assetXAssetYOracleFeedDecimals > 18 || assetYUsdOracleFeedDecimals > 18) {
             revert InvalidDecimals();
         }
 
-        PRICE_DENOMINATOR = 10 ** ((assetXAssetYChainlinkFeedDecimals + assetYUsdChainlinkFeedDecimals) - _decimals());
+        PRICE_DENOMINATOR = 10 ** ((assetXAssetYOracleFeedDecimals + assetYUsdOracleFeedDecimals) - _decimals());
     }
 
     /// @inheritdoc IPriceFeed
@@ -72,7 +72,7 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
             uint256 assetYStartedAt,
             uint256 assetYUpdatedAt,
             uint80 assetYAnsweredInRound
-        ) = AggregatorV3Interface(ASSET_Y_USD_CHAINLINK_FEED).latestRoundData();
+        ) = AggregatorV3Interface(ASSET_Y_USD_ORACLE_FEED).latestRoundData();
 
         (
             uint80 assetXYRoundId,
@@ -80,7 +80,7 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
             uint256 assetXYStartedAt,
             uint256 assetXYUpdatedAt,
             uint80 assetXYAnsweredInRound
-        ) = AggregatorV3Interface(ASSET_X_ASSET_Y_CHAINLINK_FEED).latestRoundData();
+        ) = AggregatorV3Interface(ASSET_X_ASSET_Y_ORACLE_FEED).latestRoundData();
 
         if (assetYPriceInUsd <= 0 || assetXPriceInAssetY <= 0) revert NegativeOrZeroPrice();
 
@@ -93,6 +93,6 @@ contract AssetChainlinkPriceFeed is IPriceFeed {
 
     /// @dev Internal function to return the number of decimals
     function _decimals() internal pure returns (uint8) {
-        return 8;
+        return 18;
     }
 }
