@@ -8,9 +8,9 @@ import {FuseWhitelist} from "../../../contracts/fuses/whitelist/FuseWhitelist.so
 import {FuseWhitelistLib} from "../../../contracts/fuses/whitelist/FuseWhitelistLib.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {FuseTypes} from "../../../contracts/fuses/whitelist/FuseTypes.sol";
-import {FuseStatus} from "../../../contracts/fuses/whitelist/FuseStatus.sol";
-import {FuseMetadataTypes} from "../../../contracts/fuses/whitelist/FuseMetadataTypes.sol";
+import {FuseTypes} from "../../../contracts/deploy/initialization/FuseTypes.sol";
+import {FuseStatus} from "../../../contracts/deploy/initialization/FuseStatus.sol";
+import {FuseMetadataTypes} from "../../../contracts/deploy/initialization/FuseMetadataTypes.sol";
 
 contract FuseWhitelistTest is Test {
     FuseWhitelist private _fuseWhitelist;
