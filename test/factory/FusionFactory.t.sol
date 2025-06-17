@@ -834,4 +834,92 @@ contract FusionFactoryTest is Test {
         assertTrue(hasRewardsClaimManagerRole, "RewardsClaimManager role not found TECH_REWARDS_CLAIM_MANAGER_ROLE");
     }
 
+    function testShouldBeAbleToRemovePlasmaVaultAdmin() public {
+        // given
+        address[] memory initialPlasmaVaultAdminArray = new address[](2);
+        initialPlasmaVaultAdminArray[0] = adminOne;
+        initialPlasmaVaultAdminArray[1] = address(0x123);
+
+        vm.startPrank(owner);
+        fusionFactory.updatePlasmaVaultAdminArray(initialPlasmaVaultAdminArray);
+        vm.stopPrank();
+
+        // when
+        address[] memory newPlasmaVaultAdminArray = new address[](1);
+        newPlasmaVaultAdminArray[0] = adminOne; // Keep only adminOne, remove address(0x123)
+
+        vm.startPrank(owner);
+        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
+        vm.stopPrank();
+
+        // then
+        address[] memory updatedPlasmaVaultAdminArray = fusionFactory.getPlasmaVaultAdminArray();
+        assertEq(updatedPlasmaVaultAdminArray.length, 1, "Should have only one admin");
+        assertEq(updatedPlasmaVaultAdminArray[0], adminOne, "Should keep adminOne");
+    }
+
+    function testShouldBeAbleToRemoveAllPlasmaVaultAdmins() public {
+        // given
+        address[] memory initialPlasmaVaultAdminArray = new address[](2);
+        initialPlasmaVaultAdminArray[0] = adminOne;
+        initialPlasmaVaultAdminArray[1] = address(0x123);
+
+        vm.startPrank(owner);
+        fusionFactory.updatePlasmaVaultAdminArray(initialPlasmaVaultAdminArray);
+        vm.stopPrank();
+
+        address[] memory updatedPlasmaVaultAdminArrayBefore = fusionFactory.getPlasmaVaultAdminArray();
+        assertEq(updatedPlasmaVaultAdminArrayBefore.length, 2, "Should have two admins");
+
+        // when
+        address[] memory newPlasmaVaultAdminArray = new address[](0); // Empty array to remove all admins
+
+        vm.startPrank(owner);
+        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
+        vm.stopPrank();
+
+        // then
+        address[] memory updatedPlasmaVaultAdminArrayAfter = fusionFactory.getPlasmaVaultAdminArray();
+        assertEq(updatedPlasmaVaultAdminArrayAfter.length, 0, "Should have no admins");
+    }
+
+    function testShouldCreateVaultWithoutAdminRoleWhenNoPlasmaVaultAdmins() public {
+        // given
+        address[] memory initialPlasmaVaultAdminArray = new address[](2);
+        initialPlasmaVaultAdminArray[0] = adminOne;
+        initialPlasmaVaultAdminArray[1] = address(0x123);
+
+        vm.startPrank(owner);
+        fusionFactory.updatePlasmaVaultAdminArray(initialPlasmaVaultAdminArray);
+        vm.stopPrank();
+
+        // when
+        address[] memory newPlasmaVaultAdminArray = new address[](0); // Remove all admins
+
+        vm.startPrank(owner);
+        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
+        vm.stopPrank();
+
+        // Create a new vault after removing admins
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            owner
+        );
+
+        // then
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        (bool hasRoleFactory, ) = accessManager.hasRole(Roles.ADMIN_ROLE, address(fusionFactory));
+        (bool hasRoleOne, ) = accessManager.hasRole(Roles.ADMIN_ROLE, adminOne);
+        (bool hasRoleTwo, ) = accessManager.hasRole(Roles.ADMIN_ROLE, address(0x123));
+        (bool hasRoleOwner, ) = accessManager.hasRole(Roles.ADMIN_ROLE, owner);
+
+
+        assertFalse(hasRoleOne, "adminOne should not have admin role");
+        assertFalse(hasRoleTwo, "address(0x123) should not have admin role");
+        assertFalse(hasRoleFactory, "fusionFactory should not have admin role");
+        assertFalse(hasRoleOwner, "owner should not have admin role");
+    }
 }
