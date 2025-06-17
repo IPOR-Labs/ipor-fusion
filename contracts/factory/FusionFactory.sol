@@ -73,7 +73,7 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         return FusionFactoryLib.create(assetName_, assetSymbol_, underlyingToken_, owner_, false);
     }
 
-    function createPremium(
+    function createSupervised(
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,

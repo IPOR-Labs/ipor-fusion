@@ -416,7 +416,7 @@ contract FusionFactoryTest is Test {
 
         // when
         vm.startPrank(owner);
-        FusionFactoryLib.FusionInstance memory instance = fusionFactory.createPremium(
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.createSupervised(
             "Test Asset",
             "TEST",
             address(underlyingToken),
