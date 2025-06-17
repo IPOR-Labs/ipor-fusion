@@ -1,339 +1,339 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-uint16 constant AaveV2_Balance_Fuse_ID = 1;
-string constant AaveV2_Balance_Fuse_Name = "AaveV2_Balance_Fuse";
+uint16 constant AAVEV2_BALANCE_FUSE_ID = 1;
+string constant AAVEV2_BALANCE_FUSE_NAME = "AaveV2_Balance_Fuse";
 
-uint16 constant AaveV2_Supply_Fuse_ID = 2;
-string constant AaveV2_Supply_Fuse_Name = "AaveV2_Supply_Fuse";
+uint16 constant AAVEV2_SUPPLY_FUSE_ID = 2;
+string constant AAVEV2_SUPPLY_FUSE_NAME = "AaveV2_Supply_Fuse";
 
-uint16 constant AaveV3_Balance_Fuse_ID = 3;
-string constant AaveV3_Balance_Fuse_Name = "AaveV3_Balance_Fuse";
+uint16 constant AAVEV3_BALANCE_FUSE_ID = 3;
+string constant AAVEV3_BALANCE_FUSE_NAME = "AaveV3_Balance_Fuse";
 
-uint16 constant AaveV3_Supply_Fuse_ID = 4;
-string constant AaveV3_Supply_Fuse_Name = "AaveV3_Supply_Fuse";
+uint16 constant AAVEV3_SUPPLY_FUSE_ID = 4;
+string constant AAVEV3_SUPPLY_FUSE_NAME = "AaveV3_Supply_Fuse";
 
-uint16 constant AaveV3_Borrow_Fuse_ID = 5;
-string constant AaveV3_Borrow_Fuse_Name = "AaveV3_Borrow_Fuse";
+uint16 constant AAVEV3_BORROW_FUSE_ID = 5;
+string constant AAVEV3_BORROW_FUSE_NAME = "AaveV3_Borrow_Fuse";
 
-uint16 constant Burn_Request_Fee_Fuse_ID = 6;
-string constant Burn_Request_Fee_Fuse_Name = "Burn_Request_Fee_Fuse";
+uint16 constant BURN_REQUEST_FEE_FUSE_ID = 6;
+string constant BURN_REQUEST_FEE_FUSE_NAME = "Burn_Request_Fee_Fuse";
 
-uint16 constant Spark_Balance_Fuse_ID = 7;
-string constant Spark_Balance_Fuse_Name = "Spark_Balance_Fuse";
+uint16 constant SPARK_BALANCE_FUSE_ID = 7;
+string constant SPARK_BALANCE_FUSE_NAME = "Spark_Balance_Fuse";
 
-uint16 constant Spark_Supply_Fuse_ID = 8;
-string constant Spark_Supply_Fuse_Name = "Spark_Supply_Fuse";
+uint16 constant SPARK_SUPPLY_FUSE_ID = 8;
+string constant SPARK_SUPPLY_FUSE_NAME = "Spark_Supply_Fuse";
 
-uint16 constant CompoundV2_Balance_Fuse_ID = 9;
-string constant CompoundV2_Balance_Fuse_Name = "CompoundV2_Balance_Fuse";
+uint16 constant COMPOUNDV2_BALANCE_FUSE_ID = 9;
+string constant COMPOUNDV2_BALANCE_FUSE_NAME = "CompoundV2_Balance_Fuse";
 
-uint16 constant CompoundV2_Supply_Fuse_ID = 10;
-string constant CompoundV2_Supply_Fuse_Name = "CompoundV2_Supply_Fuse";
+uint16 constant COMPOUNDV2_SUPPLY_FUSE_ID = 10;
+string constant COMPOUNDV2_SUPPLY_FUSE_NAME = "CompoundV2_Supply_Fuse";
 
-uint16 constant CompoundV3_Balance_Fuse_ID = 11;
-string constant CompoundV3_Balance_Fuse_Name = "CompoundV3_Balance_Fuse";
+uint16 constant COMPOUNDV3_BALANCE_FUSE_ID = 11;
+string constant COMPOUNDV3_BALANCE_FUSE_NAME = "CompoundV3_Balance_Fuse";
 
-uint16 constant CompoundV3_Supply_Fuse_ID = 12;
-string constant CompoundV3_Supply_Fuse_Name = "CompoundV3_Supply_Fuse";
+uint16 constant COMPOUNDV3_SUPPLY_FUSE_ID = 12;
+string constant COMPOUNDV3_SUPPLY_FUSE_NAME = "CompoundV3_Supply_Fuse";
 
-uint16 constant Curve_Child_Liquidity_Gauge_Balance_Fuse_ID = 13;
-string constant Curve_Child_Liquidity_Gauge_Balance_Fuse_Name = "Curve_Child_Liquidity_Gauge_Balance_Fuse";
+uint16 constant COMPOUNDV3_CLAIM_FUSE_ID = 13;
+string constant COMPOUNDV3_CLAIM_FUSE_NAME = "CompoundV3_Claim_Fuse";
 
-uint16 constant Curve_Child_Liquidity_Gauge_Supply_Fuse_ID = 14;
-string constant Curve_Child_Liquidity_Gauge_Supply_Fuse_Name = "Curve_Child_Liquidity_Gauge_Supply_Fuse";
+uint16 constant CURVE_CHILD_LIQUIDITY_GAUGE_BALANCE_FUSE_ID = 14;
+string constant CURVE_CHILD_LIQUIDITY_GAUGE_BALANCE_FUSE_NAME = "Curve_Child_Liquidity_Gauge_Balance_Fuse";
 
-uint16 constant Curve_Child_Liquidity_Gauge_Erc4626_Balance_Fuse_ID = 15;
-string constant Curve_Child_Liquidity_Gauge_Erc4626_Balance_Fuse_Name = "Curve_Child_Liquidity_Gauge_Erc4626_Balance_Fuse";
+uint16 constant CURVE_CHILD_LIQUIDITY_GAUGE_SUPPLY_FUSE_ID = 15;
+string constant CURVE_CHILD_LIQUIDITY_GAUGE_SUPPLY_FUSE_NAME = "Curve_Child_Liquidity_Gauge_Supply_Fuse";
 
-uint16 constant Curve_Stableswap_NG_Single_Side_Balance_Fuse_ID = 16;
-string constant Curve_Stableswap_NG_Single_Side_Balance_Fuse_Name = "Curve_Stableswap_NG_Single_Side_Balance_Fuse";
+uint16 constant CURVE_CHILD_LIQUIDITY_GAUGE_ERC4626_BALANCE_FUSE_ID = 16;
+string constant CURVE_CHILD_LIQUIDITY_GAUGE_ERC4626_BALANCE_FUSE_NAME = "Curve_Child_Liquidity_Gauge_Erc4626_Balance_Fuse";
 
-uint16 constant Curve_Stableswap_NG_Single_Side_Supply_Fuse_ID = 17;
-string constant Curve_Stableswap_NG_Single_Side_Supply_Fuse_Name = "Curve_Stableswap_NG_Single_Side_Supply_Fuse";
+uint16 constant CURVE_STABLESWAP_NG_SINGLE_SIDE_BALANCE_FUSE_ID = 17;
+string constant CURVE_STABLESWAP_NG_SINGLE_SIDE_BALANCE_FUSE_NAME = "Curve_Stableswap_NG_Single_Side_Balance_Fuse";
 
-uint16 constant ERC20_Balance_Fuse_ID = 18;
-string constant ERC20_Balance_Fuse_Name = "ERC20_Balance_Fuse";
+uint16 constant CURVE_STABLESWAP_NG_SINGLE_SIDE_SUPPLY_FUSE_ID = 18;
+string constant CURVE_STABLESWAP_NG_SINGLE_SIDE_SUPPLY_FUSE_NAME = "Curve_Stableswap_NG_Single_Side_Supply_Fuse";
 
-uint16 constant Erc4626_Balance_Fuse_ID = 19;
-string constant Erc4626_Balance_Fuse_Name = "Erc4626_Balance_Fuse";
+uint16 constant CURVE_GAUGE_TOKEN_CLAIM_FUSE_ID = 19;
+string constant CURVE_GAUGE_TOKEN_CLAIM_FUSE_NAME = "Curve_Gauge_Token_Claim_Fuse";
 
-uint16 constant Erc4626_Supply_Fuse_ID = 20;
-string constant Erc4626_Supply_Fuse_Name = "Erc4626_Supply_Fuse";
+uint16 constant ERC20_BALANCE_FUSE_ID = 20;
+string constant ERC20_BALANCE_FUSE_NAME = "ERC20_Balance_Fuse";
 
-uint16 constant EulerV2_Balance_Fuse_ID = 21;
-string constant EulerV2_Balance_Fuse_Name = "EulerV2_Balance_Fuse";
+uint16 constant ERC4626_BALANCE_FUSE_ID = 21;
+string constant ERC4626_BALANCE_FUSE_NAME = "Erc4626_Balance_Fuse";
 
-uint16 constant EulerV2_Supply_Fuse_ID = 22;
-string constant EulerV2_Supply_Fuse_Name = "EulerV2_Supply_Fuse";
+uint16 constant ERC4626_SUPPLY_FUSE_ID = 22;
+string constant ERC4626_SUPPLY_FUSE_NAME = "Erc4626_Supply_Fuse";
 
-uint16 constant EulerV2_Borrow_Fuse_ID = 23;
-string constant EulerV2_Borrow_Fuse_Name = "EulerV2_Borrow_Fuse";
+uint16 constant EULERV2_BALANCE_FUSE_ID = 23;
+string constant EULERV2_BALANCE_FUSE_NAME = "EulerV2_Balance_Fuse";
 
-uint16 constant EulerV2_Collateral_Fuse_ID = 24;
-string constant EulerV2_Collateral_Fuse_Name = "EulerV2_Collateral_Fuse";
+uint16 constant EULERV2_SUPPLY_FUSE_ID = 24;
+string constant EULERV2_SUPPLY_FUSE_NAME = "EulerV2_Supply_Fuse";
 
-uint16 constant EulerV2_Controller_Fuse_ID = 25;
-string constant EulerV2_Controller_Fuse_Name = "EulerV2_Controller_Fuse";
+uint16 constant EULERV2_BORROW_FUSE_ID = 25;
+string constant EULERV2_BORROW_FUSE_NAME = "EulerV2_Borrow_Fuse";
 
-uint16 constant Fluid_Instadapp_Staking_Balance_Fuse_ID = 26;
-string constant Fluid_Instadapp_Staking_Balance_Fuse_Name = "Fluid_Instadapp_Staking_Balance_Fuse";
+uint16 constant EULERV2_COLLATERAL_FUSE_ID = 26;
+string constant EULERV2_COLLATERAL_FUSE_NAME = "EulerV2_Collateral_Fuse";
 
-uint16 constant Fluid_Instadapp_Staking_Supply_Fuse_ID = 27;
-string constant Fluid_Instadapp_Staking_Supply_Fuse_Name = "Fluid_Instadapp_Staking_Supply_Fuse";
+uint16 constant EULERV2_CONTROLLER_FUSE_ID = 27;
+string constant EULERV2_CONTROLLER_FUSE_NAME = "EulerV2_Controller_Fuse";
 
-uint16 constant GearboxV3_Farm_Balance_Fuse_ID = 28;
-string constant GearboxV3_Farm_Balance_Fuse_Name = "GearboxV3_Farm_Balance_Fuse";
+uint16 constant FLUID_INSTADAPP_STAKING_BALANCE_FUSE_ID = 28;
+string constant FLUID_INSTADAPP_STAKING_BALANCE_FUSE_NAME = "Fluid_Instadapp_Staking_Balance_Fuse";
 
-uint16 constant GearboxV3_Farm_Supply_Fuse_ID = 29;
-string constant GearboxV3_Farm_Supply_Fuse_Name = "GearboxV3_Farm_Supply_Fuse";
+uint16 constant FLUID_INSTADAPP_STAKING_SUPPLY_FUSE_ID = 29;
+string constant FLUID_INSTADAPP_STAKING_SUPPLY_FUSE_NAME = "Fluid_Instadapp_Staking_Supply_Fuse";
 
-uint16 constant Harvest_Do_Hard_Work_Fuse_ID = 30;
-string constant Harvest_Do_Hard_Work_Fuse_Name = "Harvest_Do_Hard_Work_Fuse";
+uint16 constant FLUID_INSTADAPP_CLAIM_FUSE_ID = 30;
+string constant FLUID_INSTADAPP_CLAIM_FUSE_NAME = "Fluid_Instadapp_Claim_Fuse";
 
-uint16 constant Moonwell_Balance_Fuse_ID = 31;
-string constant Moonwell_Balance_Fuse_Name = "Moonwell_Balance_Fuse";
+uint16 constant FLUID_PROOF_CLAIM_FUSE_ID = 31;
+string constant FLUID_PROOF_CLAIM_FUSE_NAME = "Fluid_Proof_Claim_Fuse";
 
-uint16 constant Moonwell_Supply_Fuse_ID = 32;
-string constant Moonwell_Supply_Fuse_Name = "Moonwell_Supply_Fuse";
+uint16 constant GEARBOXV3_FARM_BALANCE_FUSE_ID = 32;
+string constant GEARBOXV3_FARM_BALANCE_FUSE_NAME = "GearboxV3_Farm_Balance_Fuse";
 
-uint16 constant Moonwell_Borrow_Fuse_ID = 33;
-string constant Moonwell_Borrow_Fuse_Name = "Moonwell_Borrow_Fuse";
+uint16 constant GEARBOXV3_FARM_SUPPLY_FUSE_ID = 33;
+string constant GEARBOXV3_FARM_SUPPLY_FUSE_NAME = "GearboxV3_Farm_Supply_Fuse";
 
-uint16 constant Moonwell_Enable_Market_Fuse_ID = 34;
-string constant Moonwell_Enable_Market_Fuse_Name = "Moonwell_Enable_Market_Fuse";
+uint16 constant GEARBOXV3_FARM_D_TOKEN_CLAIM_FUSE_ID = 34;
+string constant GEARBOXV3_FARM_D_TOKEN_CLAIM_FUSE_NAME = "GearboxV3_Farm_D_Token_Claim_Fuse";
 
-uint16 constant Morpho_Balance_Fuse_ID = 35;
-string constant Morpho_Balance_Fuse_Name = "Morpho_Balance_Fuse";
+uint16 constant HARVEST_DO_HARD_WORK_FUSE_ID = 35;
+string constant HARVEST_DO_HARD_WORK_FUSE_NAME = "Harvest_Do_Hard_Work_Fuse";
 
-uint16 constant Morpho_Borrow_Fuse_ID = 36;
-string constant Morpho_Borrow_Fuse_Name = "Morpho_Borrow_Fuse";
+uint16 constant MOONWELL_BALANCE_FUSE_ID = 36;
+string constant MOONWELL_BALANCE_FUSE_NAME = "Moonwell_Balance_Fuse";
 
-uint16 constant Morpho_Collateral_Fuse_ID = 37;
-string constant Morpho_Collateral_Fuse_Name = "Morpho_Collateral_Fuse";
+uint16 constant MOONWELL_SUPPLY_FUSE_ID = 37;
+string constant MOONWELL_SUPPLY_FUSE_NAME = "Moonwell_Supply_Fuse";
 
-uint16 constant Morpho_Flash_Loan_Fuse_ID = 38;
-string constant Morpho_Flash_Loan_Fuse_Name = "Morpho_Flash_Loan_Fuse";
+uint16 constant MOONWELL_BORROW_FUSE_ID = 38;
+string constant MOONWELL_BORROW_FUSE_NAME = "Moonwell_Borrow_Fuse";
 
-uint16 constant Morpho_Supply_Fuse_ID = 39;
-string constant Morpho_Supply_Fuse_Name = "Morpho_Supply_Fuse";
+uint16 constant MOONWELL_ENABLE_MARKET_FUSE_ID = 39;
+string constant MOONWELL_ENABLE_MARKET_FUSE_NAME = "Moonwell_Enable_Market_Fuse";
 
-uint16 constant Morpho_Supply_With_Callback_Data_Fuse_ID = 40;
-string constant Morpho_Supply_With_Callback_Data_Fuse_Name = "Morpho_Supply_With_Callback_Data_Fuse";
+uint16 constant MOONWELL_CLAIM_FUSE_ID = 40;
+string constant MOONWELL_CLAIM_FUSE_NAME = "Moonwell_Claim_Fuse";
 
-uint16 constant Pendle_Redeem_PT_After_Maturity_Fuse_ID = 41;
-string constant Pendle_Redeem_PT_After_Maturity_Fuse_Name = "Pendle_Redeem_PT_After_Maturity_Fuse";
+uint16 constant MORPHO_BALANCE_FUSE_ID = 41;
+string constant MORPHO_BALANCE_FUSE_NAME = "Morpho_Balance_Fuse";
 
-uint16 constant Pendle_Swap_PT_Fuse_ID = 42;
-string constant Pendle_Swap_PT_Fuse_Name = "Pendle_Swap_PT_Fuse";
+uint16 constant MORPHO_BORROW_FUSE_ID = 42;
+string constant MORPHO_BORROW_FUSE_NAME = "Morpho_Borrow_Fuse";
 
-uint16 constant Plasma_Vault_Request_Shares_Fuse_ID = 43;
-string constant Plasma_Vault_Request_Shares_Fuse_Name = "Plasma_Vault_Request_Shares_Fuse";
+uint16 constant MORPHO_COLLATERAL_FUSE_ID = 43;
+string constant MORPHO_COLLATERAL_FUSE_NAME = "Morpho_Collateral_Fuse";
 
-uint16 constant Plasma_Vault_Redeem_From_Request_Fuse_ID = 44;
-string constant Plasma_Vault_Redeem_From_Request_Fuse_Name = "Plasma_Vault_Redeem_From_Request_Fuse";
+uint16 constant MORPHO_FLASH_LOAN_FUSE_ID = 44;
+string constant MORPHO_FLASH_LOAN_FUSE_NAME = "Morpho_Flash_Loan_Fuse";
 
-uint16 constant Ramses_V2_Balance_Fuse_ID = 45;
-string constant Ramses_V2_Balance_Fuse_Name = "Ramses_V2_Balance_Fuse";
+uint16 constant MORPHO_SUPPLY_FUSE_ID = 45;
+string constant MORPHO_SUPPLY_FUSE_NAME = "Morpho_Supply_Fuse";
 
-uint16 constant Ramses_V2_Collect_Fuse_ID = 46;
-string constant Ramses_V2_Collect_Fuse_Name = "Ramses_V2_Collect_Fuse";
+uint16 constant MORPHO_SUPPLY_WITH_CALLBACK_DATA_FUSE_ID = 46;
+string constant MORPHO_SUPPLY_WITH_CALLBACK_DATA_FUSE_NAME = "Morpho_Supply_With_Callback_Data_Fuse";
 
-uint16 constant Ramses_V2_Modify_Position_Fuse_ID = 47;
-string constant Ramses_V2_Modify_Position_Fuse_Name = "Ramses_V2_Modify_Position_Fuse";
+uint16 constant MORPHO_CLAIM_FUSE_ID = 47;
+string constant MORPHO_CLAIM_FUSE_NAME = "Morpho_Claim_Fuse";
 
-uint16 constant Ramses_V2_New_Position_Fuse_ID = 48;
-string constant Ramses_V2_New_Position_Fuse_Name = "Ramses_V2_New_Position_Fuse";
+uint16 constant PENDLE_REDEEM_PT_AFTER_MATURITY_FUSE_ID = 48;
+string constant PENDLE_REDEEM_PT_AFTER_MATURITY_FUSE_NAME = "Pendle_Redeem_PT_After_Maturity_Fuse";
 
-uint16 constant Uniswap_V2_Swap_Fuse_ID = 49;
-string constant Uniswap_V2_Swap_Fuse_Name = "Uniswap_V2_Swap_Fuse";
+uint16 constant PENDLE_SWAP_PT_FUSE_ID = 49;
+string constant PENDLE_SWAP_PT_FUSE_NAME = "Pendle_Swap_PT_Fuse";
 
-uint16 constant Uniswap_V3_Balance_Fuse_ID = 50;
-string constant Uniswap_V3_Balance_Fuse_Name = "Uniswap_V3_Balance_Fuse";
+uint16 constant PLASMA_VAULT_REQUEST_SHARES_FUSE_ID = 50;
+string constant PLASMA_VAULT_REQUEST_SHARES_FUSE_NAME = "Plasma_Vault_Request_Shares_Fuse";
 
-uint16 constant Uniswap_V3_Collect_Fuse_ID = 51;
-string constant Uniswap_V3_Collect_Fuse_Name = "Uniswap_V3_Collect_Fuse";
+uint16 constant PLASMA_VAULT_REDEEM_FROM_REQUEST_FUSE_ID = 51;
+string constant PLASMA_VAULT_REDEEM_FROM_REQUEST_FUSE_NAME = "Plasma_Vault_Redeem_From_Request_Fuse";
 
-uint16 constant Uniswap_V3_Modify_Position_Fuse_ID = 52;
-string constant Uniswap_V3_Modify_Position_Fuse_Name = "Uniswap_V3_Modify_Position_Fuse";
+uint16 constant RAMSES_V2_BALANCE_FUSE_ID = 52;
+string constant RAMSES_V2_BALANCE_FUSE_NAME = "Ramses_V2_Balance_Fuse";
 
-uint16 constant Uniswap_V3_New_Position_Fuse_ID = 53;
-string constant Uniswap_V3_New_Position_Fuse_Name = "Uniswap_V3_New_Position_Fuse";
+uint16 constant RAMSES_V2_COLLECT_FUSE_ID = 53;
+string constant RAMSES_V2_COLLECT_FUSE_NAME = "Ramses_V2_Collect_Fuse";
 
-uint16 constant Uniswap_V3_Swap_Fuse_ID = 54;
-string constant Uniswap_V3_Swap_Fuse_Name = "Uniswap_V3_Swap_Fuse";
+uint16 constant RAMSES_V2_MODIFY_POSITION_FUSE_ID = 54;
+string constant RAMSES_V2_MODIFY_POSITION_FUSE_NAME = "Ramses_V2_Modify_Position_Fuse";
 
-uint16 constant Universal_Token_Swapper_Fuse_ID = 55;
-string constant Universal_Token_Swapper_Fuse_Name = "Universal_Token_Swapper_Fuse";
+uint16 constant RAMSES_V2_NEW_POSITION_FUSE_ID = 55;
+string constant RAMSES_V2_NEW_POSITION_FUSE_NAME = "Ramses_V2_New_Position_Fuse";
 
-uint16 constant Universal_Token_Swapper_Eth_Fuse_ID = 56;
-string constant Universal_Token_Swapper_Eth_Fuse_Name = "Universal_Token_Swapper_Eth_Fuse";
+uint16 constant RAMSES_CLAIM_FUSE_ID = 56;
+string constant RAMSES_CLAIM_FUSE_NAME = "Ramses_Claim_Fuse";
 
-uint16 constant Universal_Token_Swapper_With_Verification_Fuse_ID = 57;
-string constant Universal_Token_Swapper_With_Verification_Fuse_Name = "Universal_Token_Swapper_With_Verification_Fuse";
+uint16 constant UNISWAP_V2_SWAP_FUSE_ID = 57;
+string constant UNISWAP_V2_SWAP_FUSE_NAME = "Uniswap_V2_Swap_Fuse";
 
-uint16 constant CompoundV3_Claim_Fuse_ID = 58;
-string constant CompoundV3_Claim_Fuse_Name = "CompoundV3_Claim_Fuse";
+uint16 constant UNISWAP_V3_BALANCE_FUSE_ID = 58;
+string constant UNISWAP_V3_BALANCE_FUSE_NAME = "Uniswap_V3_Balance_Fuse";
 
-uint16 constant Curve_Gauge_Token_Claim_Fuse_ID = 59;
-string constant Curve_Gauge_Token_Claim_Fuse_Name = "Curve_Gauge_Token_Claim_Fuse";
+uint16 constant UNISWAP_V3_COLLECT_FUSE_ID = 59;
+string constant UNISWAP_V3_COLLECT_FUSE_NAME = "Uniswap_V3_Collect_Fuse";
 
-uint16 constant Fluid_Instadapp_Claim_Fuse_ID = 60;
-string constant Fluid_Instadapp_Claim_Fuse_Name = "Fluid_Instadapp_Claim_Fuse";
+uint16 constant UNISWAP_V3_MODIFY_POSITION_FUSE_ID = 60;
+string constant UNISWAP_V3_MODIFY_POSITION_FUSE_NAME = "Uniswap_V3_Modify_Position_Fuse";
 
-uint16 constant Fluid_Proof_Claim_Fuse_ID = 61;
-string constant Fluid_Proof_Claim_Fuse_Name = "Fluid_Proof_Claim_Fuse";
+uint16 constant UNISWAP_V3_NEW_POSITION_FUSE_ID = 61;
+string constant UNISWAP_V3_NEW_POSITION_FUSE_NAME = "Uniswap_V3_New_Position_Fuse";
 
-uint16 constant GearboxV3_Farm_D_Token_Claim_Fuse_ID = 62;
-string constant GearboxV3_Farm_D_Token_Claim_Fuse_Name = "GearboxV3_Farm_D_Token_Claim_Fuse";
+uint16 constant UNISWAP_V3_SWAP_FUSE_ID = 62;
+string constant UNISWAP_V3_SWAP_FUSE_NAME = "Uniswap_V3_Swap_Fuse";
 
-uint16 constant Moonwell_Claim_Fuse_ID = 63;
-string constant Moonwell_Claim_Fuse_Name = "Moonwell_Claim_Fuse";
+uint16 constant UNIVERSAL_TOKEN_SWAPPER_FUSE_ID = 63;
+string constant UNIVERSAL_TOKEN_SWAPPER_FUSE_NAME = "Universal_Token_Swapper_Fuse";
 
-uint16 constant Morpho_Claim_Fuse_ID = 64;
-string constant Morpho_Claim_Fuse_Name = "Morpho_Claim_Fuse";
+uint16 constant UNIVERSAL_TOKEN_SWAPPER_ETH_FUSE_ID = 64;
+string constant UNIVERSAL_TOKEN_SWAPPER_ETH_FUSE_NAME = "Universal_Token_Swapper_Eth_Fuse";
 
-uint16 constant Ramses_Claim_Fuse_ID = 65;
-string constant Ramses_Claim_Fuse_Name = "Ramses_Claim_Fuse";
+uint16 constant UNIVERSAL_TOKEN_SWAPPER_WITH_VERIFICATION_FUSE_ID = 65;
+string constant UNIVERSAL_TOKEN_SWAPPER_WITH_VERIFICATION_FUSE_NAME = "Universal_Token_Swapper_With_Verification_Fuse";
 
 library FuseTypes {
     function getAllFuseId() internal pure returns (uint16[] memory) {
         uint16[] memory fuseIds = new uint16[](65);
-        fuseIds[0] = AaveV2_Balance_Fuse_ID;
-        fuseIds[1] = AaveV2_Supply_Fuse_ID;
-        fuseIds[2] = AaveV3_Balance_Fuse_ID;
-        fuseIds[3] = AaveV3_Supply_Fuse_ID;
-        fuseIds[4] = AaveV3_Borrow_Fuse_ID;
-        fuseIds[5] = Burn_Request_Fee_Fuse_ID;
-        fuseIds[6] = Spark_Balance_Fuse_ID;
-        fuseIds[7] = Spark_Supply_Fuse_ID;
-        fuseIds[8] = CompoundV2_Balance_Fuse_ID;
-        fuseIds[9] = CompoundV2_Supply_Fuse_ID;
-        fuseIds[10] = CompoundV3_Balance_Fuse_ID;
-        fuseIds[11] = CompoundV3_Supply_Fuse_ID;
-        fuseIds[12] = Curve_Child_Liquidity_Gauge_Balance_Fuse_ID;
-        fuseIds[13] = Curve_Child_Liquidity_Gauge_Supply_Fuse_ID;
-        fuseIds[14] = Curve_Child_Liquidity_Gauge_Erc4626_Balance_Fuse_ID;
-        fuseIds[15] = Curve_Stableswap_NG_Single_Side_Balance_Fuse_ID;
-        fuseIds[16] = Curve_Stableswap_NG_Single_Side_Supply_Fuse_ID;
-        fuseIds[17] = ERC20_Balance_Fuse_ID;
-        fuseIds[18] = Erc4626_Balance_Fuse_ID;
-        fuseIds[19] = Erc4626_Supply_Fuse_ID;
-        fuseIds[20] = EulerV2_Balance_Fuse_ID;
-        fuseIds[21] = EulerV2_Supply_Fuse_ID;
-        fuseIds[22] = EulerV2_Borrow_Fuse_ID;
-        fuseIds[23] = EulerV2_Collateral_Fuse_ID;
-        fuseIds[24] = EulerV2_Controller_Fuse_ID;
-        fuseIds[25] = Fluid_Instadapp_Staking_Balance_Fuse_ID;
-        fuseIds[26] = Fluid_Instadapp_Staking_Supply_Fuse_ID;
-        fuseIds[27] = GearboxV3_Farm_Balance_Fuse_ID;
-        fuseIds[28] = GearboxV3_Farm_Supply_Fuse_ID;
-        fuseIds[29] = Harvest_Do_Hard_Work_Fuse_ID;
-        fuseIds[30] = Moonwell_Balance_Fuse_ID;
-        fuseIds[31] = Moonwell_Supply_Fuse_ID;
-        fuseIds[32] = Moonwell_Borrow_Fuse_ID;
-        fuseIds[33] = Moonwell_Enable_Market_Fuse_ID;
-        fuseIds[34] = Morpho_Balance_Fuse_ID;
-        fuseIds[35] = Morpho_Borrow_Fuse_ID;
-        fuseIds[36] = Morpho_Collateral_Fuse_ID;
-        fuseIds[37] = Morpho_Flash_Loan_Fuse_ID;
-        fuseIds[38] = Morpho_Supply_Fuse_ID;
-        fuseIds[39] = Morpho_Supply_With_Callback_Data_Fuse_ID;
-        fuseIds[40] = Pendle_Redeem_PT_After_Maturity_Fuse_ID;
-        fuseIds[41] = Pendle_Swap_PT_Fuse_ID;
-        fuseIds[42] = Plasma_Vault_Request_Shares_Fuse_ID;
-        fuseIds[43] = Plasma_Vault_Redeem_From_Request_Fuse_ID;
-        fuseIds[44] = Ramses_V2_Balance_Fuse_ID;
-        fuseIds[45] = Ramses_V2_Collect_Fuse_ID;
-        fuseIds[46] = Ramses_V2_Modify_Position_Fuse_ID;
-        fuseIds[47] = Ramses_V2_New_Position_Fuse_ID;
-        fuseIds[48] = Uniswap_V2_Swap_Fuse_ID;
-        fuseIds[49] = Uniswap_V3_Balance_Fuse_ID;
-        fuseIds[50] = Uniswap_V3_Collect_Fuse_ID;
-        fuseIds[51] = Uniswap_V3_Modify_Position_Fuse_ID;
-        fuseIds[52] = Uniswap_V3_New_Position_Fuse_ID;
-        fuseIds[53] = Uniswap_V3_Swap_Fuse_ID;
-        fuseIds[54] = Universal_Token_Swapper_Fuse_ID;
-        fuseIds[55] = Universal_Token_Swapper_Eth_Fuse_ID;
-        fuseIds[56] = Universal_Token_Swapper_With_Verification_Fuse_ID;
-        fuseIds[57] = CompoundV3_Claim_Fuse_ID;
-        fuseIds[58] = Curve_Gauge_Token_Claim_Fuse_ID;
-        fuseIds[59] = Fluid_Instadapp_Claim_Fuse_ID;
-        fuseIds[60] = Fluid_Proof_Claim_Fuse_ID;
-        fuseIds[61] = GearboxV3_Farm_D_Token_Claim_Fuse_ID;
-        fuseIds[62] = Moonwell_Claim_Fuse_ID;
-        fuseIds[63] = Morpho_Claim_Fuse_ID;
-        fuseIds[64] = Ramses_Claim_Fuse_ID;
+        fuseIds[0] = AAVEV2_BALANCE_FUSE_ID;
+        fuseIds[1] = AAVEV2_SUPPLY_FUSE_ID;
+        fuseIds[2] = AAVEV3_BALANCE_FUSE_ID;
+        fuseIds[3] = AAVEV3_SUPPLY_FUSE_ID;
+        fuseIds[4] = AAVEV3_BORROW_FUSE_ID;
+        fuseIds[5] = BURN_REQUEST_FEE_FUSE_ID;
+        fuseIds[6] = SPARK_BALANCE_FUSE_ID;
+        fuseIds[7] = SPARK_SUPPLY_FUSE_ID;
+        fuseIds[8] = COMPOUNDV2_BALANCE_FUSE_ID;
+        fuseIds[9] = COMPOUNDV2_SUPPLY_FUSE_ID;
+        fuseIds[10] = COMPOUNDV3_BALANCE_FUSE_ID;
+        fuseIds[11] = COMPOUNDV3_SUPPLY_FUSE_ID;
+        fuseIds[12] = CURVE_CHILD_LIQUIDITY_GAUGE_BALANCE_FUSE_ID;
+        fuseIds[13] = CURVE_CHILD_LIQUIDITY_GAUGE_SUPPLY_FUSE_ID;
+        fuseIds[14] = CURVE_CHILD_LIQUIDITY_GAUGE_ERC4626_BALANCE_FUSE_ID;
+        fuseIds[15] = CURVE_STABLESWAP_NG_SINGLE_SIDE_BALANCE_FUSE_ID;
+        fuseIds[16] = CURVE_STABLESWAP_NG_SINGLE_SIDE_SUPPLY_FUSE_ID;
+        fuseIds[17] = ERC20_BALANCE_FUSE_ID;
+        fuseIds[18] = ERC4626_BALANCE_FUSE_ID;
+        fuseIds[19] = ERC4626_SUPPLY_FUSE_ID;
+        fuseIds[20] = EULERV2_BALANCE_FUSE_ID;
+        fuseIds[21] = EULERV2_SUPPLY_FUSE_ID;
+        fuseIds[22] = EULERV2_BORROW_FUSE_ID;
+        fuseIds[23] = EULERV2_COLLATERAL_FUSE_ID;
+        fuseIds[24] = EULERV2_CONTROLLER_FUSE_ID;
+        fuseIds[25] = FLUID_INSTADAPP_STAKING_BALANCE_FUSE_ID;
+        fuseIds[26] = FLUID_INSTADAPP_STAKING_SUPPLY_FUSE_ID;
+        fuseIds[27] = GEARBOXV3_FARM_BALANCE_FUSE_ID;
+        fuseIds[28] = GEARBOXV3_FARM_SUPPLY_FUSE_ID;
+        fuseIds[29] = HARVEST_DO_HARD_WORK_FUSE_ID;
+        fuseIds[30] = MOONWELL_BALANCE_FUSE_ID;
+        fuseIds[31] = MOONWELL_SUPPLY_FUSE_ID;
+        fuseIds[32] = MOONWELL_BORROW_FUSE_ID;
+        fuseIds[33] = MOONWELL_ENABLE_MARKET_FUSE_ID;
+        fuseIds[34] = MORPHO_BALANCE_FUSE_ID;
+        fuseIds[35] = MORPHO_BORROW_FUSE_ID;
+        fuseIds[36] = MORPHO_COLLATERAL_FUSE_ID;
+        fuseIds[37] = MORPHO_FLASH_LOAN_FUSE_ID;
+        fuseIds[38] = MORPHO_SUPPLY_FUSE_ID;
+        fuseIds[39] = MORPHO_SUPPLY_WITH_CALLBACK_DATA_FUSE_ID;
+        fuseIds[40] = PENDLE_REDEEM_PT_AFTER_MATURITY_FUSE_ID;
+        fuseIds[41] = PENDLE_SWAP_PT_FUSE_ID;
+        fuseIds[42] = PLASMA_VAULT_REQUEST_SHARES_FUSE_ID;
+        fuseIds[43] = PLASMA_VAULT_REDEEM_FROM_REQUEST_FUSE_ID;
+        fuseIds[44] = RAMSES_V2_BALANCE_FUSE_ID;
+        fuseIds[45] = RAMSES_V2_COLLECT_FUSE_ID;
+        fuseIds[46] = RAMSES_V2_MODIFY_POSITION_FUSE_ID;
+        fuseIds[47] = RAMSES_V2_NEW_POSITION_FUSE_ID;
+        fuseIds[48] = UNISWAP_V2_SWAP_FUSE_ID;
+        fuseIds[49] = UNISWAP_V3_BALANCE_FUSE_ID;
+        fuseIds[50] = UNISWAP_V3_COLLECT_FUSE_ID;
+        fuseIds[51] = UNISWAP_V3_MODIFY_POSITION_FUSE_ID;
+        fuseIds[52] = UNISWAP_V3_NEW_POSITION_FUSE_ID;
+        fuseIds[53] = UNISWAP_V3_SWAP_FUSE_ID;
+        fuseIds[54] = UNIVERSAL_TOKEN_SWAPPER_FUSE_ID;
+        fuseIds[55] = UNIVERSAL_TOKEN_SWAPPER_ETH_FUSE_ID;
+        fuseIds[56] = UNIVERSAL_TOKEN_SWAPPER_WITH_VERIFICATION_FUSE_ID;
+        fuseIds[57] = COMPOUNDV3_CLAIM_FUSE_ID;
+        fuseIds[58] = CURVE_GAUGE_TOKEN_CLAIM_FUSE_ID;
+        fuseIds[59] = FLUID_INSTADAPP_CLAIM_FUSE_ID;
+        fuseIds[60] = FLUID_PROOF_CLAIM_FUSE_ID;
+        fuseIds[61] = GEARBOXV3_FARM_D_TOKEN_CLAIM_FUSE_ID;
+        fuseIds[62] = MOONWELL_CLAIM_FUSE_ID;
+        fuseIds[63] = MORPHO_CLAIM_FUSE_ID;
+        fuseIds[64] = RAMSES_CLAIM_FUSE_ID;
         return fuseIds;
     }
 
     function getAllFuseName() internal pure returns (string[] memory) {
         string[] memory fuseNames = new string[](65);
-        fuseNames[0] = AaveV2_Balance_Fuse_Name;
-        fuseNames[1] = AaveV2_Supply_Fuse_Name;
-        fuseNames[2] = AaveV3_Balance_Fuse_Name;
-        fuseNames[3] = AaveV3_Supply_Fuse_Name;
-        fuseNames[4] = AaveV3_Borrow_Fuse_Name;
-        fuseNames[5] = Burn_Request_Fee_Fuse_Name;
-        fuseNames[6] = Spark_Balance_Fuse_Name;
-        fuseNames[7] = Spark_Supply_Fuse_Name;
-        fuseNames[8] = CompoundV2_Balance_Fuse_Name;
-        fuseNames[9] = CompoundV2_Supply_Fuse_Name;
-        fuseNames[10] = CompoundV3_Balance_Fuse_Name;
-        fuseNames[11] = CompoundV3_Supply_Fuse_Name;
-        fuseNames[12] = Curve_Child_Liquidity_Gauge_Balance_Fuse_Name;
-        fuseNames[13] = Curve_Child_Liquidity_Gauge_Supply_Fuse_Name;
-        fuseNames[14] = Curve_Child_Liquidity_Gauge_Erc4626_Balance_Fuse_Name;
-        fuseNames[15] = Curve_Stableswap_NG_Single_Side_Balance_Fuse_Name;
-        fuseNames[16] = Curve_Stableswap_NG_Single_Side_Supply_Fuse_Name;
-        fuseNames[17] = ERC20_Balance_Fuse_Name;
-        fuseNames[18] = Erc4626_Balance_Fuse_Name;
-        fuseNames[19] = Erc4626_Supply_Fuse_Name;
-        fuseNames[20] = EulerV2_Balance_Fuse_Name;
-        fuseNames[21] = EulerV2_Supply_Fuse_Name;
-        fuseNames[22] = EulerV2_Borrow_Fuse_Name;
-        fuseNames[23] = EulerV2_Collateral_Fuse_Name;
-        fuseNames[24] = EulerV2_Controller_Fuse_Name;
-        fuseNames[25] = Fluid_Instadapp_Staking_Balance_Fuse_Name;
-        fuseNames[26] = Fluid_Instadapp_Staking_Supply_Fuse_Name;
-        fuseNames[27] = GearboxV3_Farm_Balance_Fuse_Name;
-        fuseNames[28] = GearboxV3_Farm_Supply_Fuse_Name;
-        fuseNames[29] = Harvest_Do_Hard_Work_Fuse_Name;
-        fuseNames[30] = Moonwell_Balance_Fuse_Name;
-        fuseNames[31] = Moonwell_Supply_Fuse_Name;
-        fuseNames[32] = Moonwell_Borrow_Fuse_Name;
-        fuseNames[33] = Moonwell_Enable_Market_Fuse_Name;
-        fuseNames[34] = Morpho_Balance_Fuse_Name;
-        fuseNames[35] = Morpho_Borrow_Fuse_Name;
-        fuseNames[36] = Morpho_Collateral_Fuse_Name;
-        fuseNames[37] = Morpho_Flash_Loan_Fuse_Name;
-        fuseNames[38] = Morpho_Supply_Fuse_Name;
-        fuseNames[39] = Morpho_Supply_With_Callback_Data_Fuse_Name;
-        fuseNames[40] = Pendle_Redeem_PT_After_Maturity_Fuse_Name;
-        fuseNames[41] = Pendle_Swap_PT_Fuse_Name;
-        fuseNames[42] = Plasma_Vault_Request_Shares_Fuse_Name;
-        fuseNames[43] = Plasma_Vault_Redeem_From_Request_Fuse_Name;
-        fuseNames[44] = Ramses_V2_Balance_Fuse_Name;
-        fuseNames[45] = Ramses_V2_Collect_Fuse_Name;
-        fuseNames[46] = Ramses_V2_Modify_Position_Fuse_Name;
-        fuseNames[47] = Ramses_V2_New_Position_Fuse_Name;
-        fuseNames[48] = Uniswap_V2_Swap_Fuse_Name;
-        fuseNames[49] = Uniswap_V3_Balance_Fuse_Name;
-        fuseNames[50] = Uniswap_V3_Collect_Fuse_Name;
-        fuseNames[51] = Uniswap_V3_Modify_Position_Fuse_Name;
-        fuseNames[52] = Uniswap_V3_New_Position_Fuse_Name;
-        fuseNames[53] = Uniswap_V3_Swap_Fuse_Name;
-        fuseNames[54] = Universal_Token_Swapper_Fuse_Name;
-        fuseNames[55] = Universal_Token_Swapper_Eth_Fuse_Name;
-        fuseNames[56] = Universal_Token_Swapper_With_Verification_Fuse_Name;
-        fuseNames[57] = CompoundV3_Claim_Fuse_Name;
-        fuseNames[58] = Curve_Gauge_Token_Claim_Fuse_Name;
-        fuseNames[59] = Fluid_Instadapp_Claim_Fuse_Name;
-        fuseNames[60] = Fluid_Proof_Claim_Fuse_Name;
-        fuseNames[61] = GearboxV3_Farm_D_Token_Claim_Fuse_Name;
-        fuseNames[62] = Moonwell_Claim_Fuse_Name;
-        fuseNames[63] = Morpho_Claim_Fuse_Name;
-        fuseNames[64] = Ramses_Claim_Fuse_Name;
+        fuseNames[0] = AAVEV2_BALANCE_FUSE_NAME;
+        fuseNames[1] = AAVEV2_SUPPLY_FUSE_NAME;
+        fuseNames[2] = AAVEV3_BALANCE_FUSE_NAME;
+        fuseNames[3] = AAVEV3_SUPPLY_FUSE_NAME;
+        fuseNames[4] = AAVEV3_BORROW_FUSE_NAME;
+        fuseNames[5] = BURN_REQUEST_FEE_FUSE_NAME;
+        fuseNames[6] = SPARK_BALANCE_FUSE_NAME;
+        fuseNames[7] = SPARK_SUPPLY_FUSE_NAME;
+        fuseNames[8] = COMPOUNDV2_BALANCE_FUSE_NAME;
+        fuseNames[9] = COMPOUNDV2_SUPPLY_FUSE_NAME;
+        fuseNames[10] = COMPOUNDV3_BALANCE_FUSE_NAME;
+        fuseNames[11] = COMPOUNDV3_SUPPLY_FUSE_NAME;
+        fuseNames[12] = CURVE_CHILD_LIQUIDITY_GAUGE_BALANCE_FUSE_NAME;
+        fuseNames[13] = CURVE_CHILD_LIQUIDITY_GAUGE_SUPPLY_FUSE_NAME;
+        fuseNames[14] = CURVE_CHILD_LIQUIDITY_GAUGE_ERC4626_BALANCE_FUSE_NAME;
+        fuseNames[15] = CURVE_STABLESWAP_NG_SINGLE_SIDE_BALANCE_FUSE_NAME;
+        fuseNames[16] = CURVE_STABLESWAP_NG_SINGLE_SIDE_SUPPLY_FUSE_NAME;
+        fuseNames[17] = ERC20_BALANCE_FUSE_NAME;
+        fuseNames[18] = ERC4626_BALANCE_FUSE_NAME;
+        fuseNames[19] = ERC4626_SUPPLY_FUSE_NAME;
+        fuseNames[20] = EULERV2_BALANCE_FUSE_NAME;
+        fuseNames[21] = EULERV2_SUPPLY_FUSE_NAME;
+        fuseNames[22] = EULERV2_BORROW_FUSE_NAME;
+        fuseNames[23] = EULERV2_COLLATERAL_FUSE_NAME;
+        fuseNames[24] = EULERV2_CONTROLLER_FUSE_NAME;
+        fuseNames[25] = FLUID_INSTADAPP_STAKING_BALANCE_FUSE_NAME;
+        fuseNames[26] = FLUID_INSTADAPP_STAKING_SUPPLY_FUSE_NAME;
+        fuseNames[27] = GEARBOXV3_FARM_BALANCE_FUSE_NAME;
+        fuseNames[28] = GEARBOXV3_FARM_SUPPLY_FUSE_NAME;
+        fuseNames[29] = HARVEST_DO_HARD_WORK_FUSE_NAME;
+        fuseNames[30] = MOONWELL_BALANCE_FUSE_NAME;
+        fuseNames[31] = MOONWELL_SUPPLY_FUSE_NAME;
+        fuseNames[32] = MOONWELL_BORROW_FUSE_NAME;
+        fuseNames[33] = MOONWELL_ENABLE_MARKET_FUSE_NAME;
+        fuseNames[34] = MORPHO_BALANCE_FUSE_NAME;
+        fuseNames[35] = MORPHO_BORROW_FUSE_NAME;
+        fuseNames[36] = MORPHO_COLLATERAL_FUSE_NAME;
+        fuseNames[37] = MORPHO_FLASH_LOAN_FUSE_NAME;
+        fuseNames[38] = MORPHO_SUPPLY_FUSE_NAME;
+        fuseNames[39] = MORPHO_SUPPLY_WITH_CALLBACK_DATA_FUSE_NAME;
+        fuseNames[40] = PENDLE_REDEEM_PT_AFTER_MATURITY_FUSE_NAME;
+        fuseNames[41] = PENDLE_SWAP_PT_FUSE_NAME;
+        fuseNames[42] = PLASMA_VAULT_REQUEST_SHARES_FUSE_NAME;
+        fuseNames[43] = PLASMA_VAULT_REDEEM_FROM_REQUEST_FUSE_NAME;
+        fuseNames[44] = RAMSES_V2_BALANCE_FUSE_NAME;
+        fuseNames[45] = RAMSES_V2_COLLECT_FUSE_NAME;
+        fuseNames[46] = RAMSES_V2_MODIFY_POSITION_FUSE_NAME;
+        fuseNames[47] = RAMSES_V2_NEW_POSITION_FUSE_NAME;
+        fuseNames[48] = UNISWAP_V2_SWAP_FUSE_NAME;
+        fuseNames[49] = UNISWAP_V3_BALANCE_FUSE_NAME;
+        fuseNames[50] = UNISWAP_V3_COLLECT_FUSE_NAME;
+        fuseNames[51] = UNISWAP_V3_MODIFY_POSITION_FUSE_NAME;
+        fuseNames[52] = UNISWAP_V3_NEW_POSITION_FUSE_NAME;
+        fuseNames[53] = UNISWAP_V3_SWAP_FUSE_NAME;
+        fuseNames[54] = UNIVERSAL_TOKEN_SWAPPER_FUSE_NAME;
+        fuseNames[55] = UNIVERSAL_TOKEN_SWAPPER_ETH_FUSE_NAME;
+        fuseNames[56] = UNIVERSAL_TOKEN_SWAPPER_WITH_VERIFICATION_FUSE_NAME;
+        fuseNames[57] = COMPOUNDV3_CLAIM_FUSE_NAME;
+        fuseNames[58] = CURVE_GAUGE_TOKEN_CLAIM_FUSE_NAME;
+        fuseNames[59] = FLUID_INSTADAPP_CLAIM_FUSE_NAME;
+        fuseNames[60] = FLUID_PROOF_CLAIM_FUSE_NAME;
+        fuseNames[61] = GEARBOXV3_FARM_D_TOKEN_CLAIM_FUSE_NAME;
+        fuseNames[62] = MOONWELL_CLAIM_FUSE_NAME;
+        fuseNames[63] = MORPHO_CLAIM_FUSE_NAME;
+        fuseNames[64] = RAMSES_CLAIM_FUSE_NAME;
         return fuseNames;
     }
 }
