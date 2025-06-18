@@ -92,7 +92,8 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     function addFuses(
         address[] calldata fuses_,
         uint16[] calldata types_,
-        uint16[] calldata states_
+        uint16[] calldata states_,
+        uint32[] calldata deploymentTimestamps_
     ) external onlyRole(ADD_FUSE_MANAGER_ROLE) returns (bool) {
         uint256 length = fuses_.length;
         if (length != types_.length || length != states_.length) {
@@ -100,7 +101,7 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         }
         for (uint256 i; i < length; i++) {
             FuseWhitelistLib.addFuseToListByType(types_[i], fuses_[i]);
-            FuseWhitelistLib.addFuseInfo(types_[i], fuses_[i]);
+            FuseWhitelistLib.addFuseInfo(types_[i], fuses_[i], deploymentTimestamps_[i]);
             FuseWhitelistLib.addFuseToMarketId(fuses_[i]);
             FuseWhitelistLib.updateFuseState(fuses_[i], states_[i]);
         }
