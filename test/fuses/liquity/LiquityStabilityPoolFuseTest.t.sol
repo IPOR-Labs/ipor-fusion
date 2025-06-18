@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {LiquityStabilityPoolFuse} from "../../../contracts/fuses/chains/ethereum/liquity/LiquityStabilityPoolFuse.sol";
 import {LiquityBalanceFuse} from "../../../contracts/fuses/chains/ethereum/liquity/LiquityBalanceFuse.sol";
-import {UniversalTokenSwapperFuse} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -15,14 +15,17 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IStabilityPool} from "../../../contracts/fuses/chains/ethereum/liquity/ext/IStabilityPool.sol";
+import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 
 contract MockDex {
     address tokenIn;
     address tokenOut;
+
     constructor(address _tokenIn, address _tokenOut) {
         tokenIn = _tokenIn;
         tokenOut = _tokenOut;
     }
+
     function swap(uint256 amountIn, uint256 amountOut) public {
         ERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
         ERC20(tokenOut).transfer(msg.sender, amountOut);
@@ -51,14 +54,21 @@ contract LiquityStabilityPoolFuseTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22631293);
-        address[] memory assets = new address[](1);
+        address[] memory assets = new address[](2);
         assets[0] = BOLD;
+        assets[1] = WETH;
         PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
         implementation.initialize(address(this));
-        address[] memory priceFeeds = new address[](1);
+
+        address[] memory priceFeeds = new address[](2);
         priceFeeds[0] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+        priceFeeds[1] = priceFeeds[0];
+
         implementation.setAssetsPricesSources(assets, priceFeeds);
         priceOracle = address(implementation);
+
+        mockDex = new MockDex(WETH, BOLD);
+        deal(BOLD, address(mockDex), 1e6 * 1e6);
 
         plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -66,7 +76,7 @@ contract LiquityStabilityPoolFuseTest is Test {
                 "pvBOLD",
                 BOLD,
                 priceOracle,
-                _setupMarketConfigs(),
+                _setupMarketConfigs(address(mockDex)),
                 _setupFuses(),
                 _setupBalanceFuses(),
                 _setupFeeConfig(),
@@ -76,9 +86,6 @@ contract LiquityStabilityPoolFuseTest is Test {
                 address(0)
             )
         );
-
-        mockDex = new MockDex(WETH, BOLD);
-        deal(BOLD, address(mockDex), 1e6 * 1e6);
     }
 
     function testLiquityEnterToSB() public {
@@ -146,21 +153,62 @@ contract LiquityStabilityPoolFuseTest is Test {
     function testLiquityClaimCollateralThenSwap() public {
         testLiquityClaimCollateral();
 
+        // Swap WETH to BOLD using the mock dex
+        uint256 amountToSwap = ERC20(WETH).balanceOf(address(plasmaVault));
+        assertGt(amountToSwap, 0, "There should be WETH to swap");
 
+        // create swap data
+        address[] memory targets = new address[](3);
+        targets[0] = WETH;
+        targets[1] = address(mockDex);
+        targets[2] = WETH;
+        bytes[] memory data = new bytes[](3);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", address(mockDex), amountToSwap);
+        data[1] = abi.encodeWithSignature("swap(uint256,uint256)", amountToSwap, 1e10);
+        data[2] = abi.encodeWithSignature("approve(address,uint256)", address(mockDex), 0);
+        UniversalTokenSwapperData memory swapData = UniversalTokenSwapperData({targets: targets, data: data});
+
+        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
+            tokenIn: WETH,
+            tokenOut: BOLD,
+            amountIn: amountToSwap,
+            data: swapData
+        });
+
+        // execute the swap
+        FuseAction[] memory swapCalls = new FuseAction[](1);
+        swapCalls[0] = FuseAction(
+            address(swapFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+        );
+
+        uint256 initialBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
+        plasmaVault.execute(swapCalls);
+
+        // check the balance after swap
+        uint256 boldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
+        assertEq(boldBalance, initialBoldBalance + 1e10, "BOLD should be obtained after the swap");
+        uint256 wethBalance = ERC20(WETH).balanceOf(address(plasmaVault));
+        assertEq(wethBalance, 0, "WETH balance should be zero after the swap");
     }
 
-    function _setupMarketConfigs() private pure returns (MarketSubstratesConfig[] memory marketConfigs_) {
+    function _setupMarketConfigs(
+        address _mockDex
+    ) private pure returns (MarketSubstratesConfig[] memory marketConfigs_) {
         marketConfigs_ = new MarketSubstratesConfig[](1);
-        bytes32[] memory registries = new bytes32[](3);
+        bytes32[] memory registries = new bytes32[](6);
         registries[0] = PlasmaVaultConfigLib.addressToBytes32(ETH_REGISTRY);
         registries[1] = PlasmaVaultConfigLib.addressToBytes32(WSTETH_REGISTRY);
         registries[2] = PlasmaVaultConfigLib.addressToBytes32(RETH_REGISTRY);
+        registries[3] = PlasmaVaultConfigLib.addressToBytes32(WETH);
+        registries[4] = PlasmaVaultConfigLib.addressToBytes32(BOLD);
+        registries[5] = PlasmaVaultConfigLib.addressToBytes32(_mockDex);
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.LIQUITY_V2, registries);
     }
 
     function _setupFuses() private returns (address[] memory fuses) {
         sbFuse = new LiquityStabilityPoolFuse(IporFusionMarkets.LIQUITY_V2, ETH_REGISTRY);
-        swapFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.LIQUITY_V2, address(plasmaVault), 1e18);
+        swapFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.LIQUITY_V2, address(new SwapExecutor()), 1e18);
         fuses = new address[](2);
         fuses[0] = address(sbFuse);
         fuses[1] = address(swapFuse);
