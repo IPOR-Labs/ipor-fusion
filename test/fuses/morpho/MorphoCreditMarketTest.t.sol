@@ -172,7 +172,7 @@ contract MorphoCreditMarketTest is Test {
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
-        MorphoBalanceFuse morphoBalance = new MorphoBalanceFuse(IporFusionMarkets.MORPHO);
+        MorphoBalanceFuse morphoBalance = new MorphoBalanceFuse(IporFusionMarkets.MORPHO, _MORPHO);
         ERC20BalanceFuse erc20Balance = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
 
         balanceFuses_ = new MarketBalanceFuseConfig[](2);
