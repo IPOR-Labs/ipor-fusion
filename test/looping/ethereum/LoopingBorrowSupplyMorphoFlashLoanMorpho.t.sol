@@ -314,7 +314,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
         address morphoSupplyFuse = address(new MorphoSupplyFuse(IporFusionMarkets.MORPHO, _MORPHO));
         address morphoCollateralFuse = address(new MorphoCollateralFuse(IporFusionMarkets.MORPHO, _MORPHO));
         address morphoBorrowFuse = address(new MorphoBorrowFuse(IporFusionMarkets.MORPHO, _MORPHO));
-        address morphoBalanceFuse = address(new MorphoBalanceFuse(IporFusionMarkets.MORPHO));
+        address morphoBalanceFuse = address(new MorphoBalanceFuse(IporFusionMarkets.MORPHO, _MORPHO));
 
         address[] memory fuses = new address[](3);
         fuses[0] = morphoSupplyFuse;
