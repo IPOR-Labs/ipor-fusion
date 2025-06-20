@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {CollateralTokenOnMorphoMarketPriceFeed} from "./CollateralTokenOnMorphoMarketPriceFeed.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {CollateralTokenOnMorphoMarketPriceFeed} from "../../price_oracle/price_feed/CollateralTokenOnMorphoMarketPriceFeed.sol";
 
 struct PriceFeed {
     address morphoOracle;
@@ -12,7 +14,7 @@ struct PriceFeed {
     address creator;
 }
 
-contract CollateralTokenOnMorphoMarketPriceFeedFactory {
+contract CollateralTokenOnMorphoMarketPriceFeedFactory is Ownable2StepUpgradeable, UUPSUpgradeable {
     event PriceFeedCreated(
         address priceFeed,
         address creator,
@@ -27,6 +29,18 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactory {
 
     mapping(bytes32 key => PriceFeed priceFeed) private priceFeedsByKeys;
     address[] public priceFeeds;
+
+    constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initializes the contract
+    /// @param initialOwner_ The address that will own the contract
+    /// @dev Should be a multi-sig wallet for security
+    function initialize(address initialOwner_) external initializer {
+        __Ownable_init(initialOwner_);
+        __UUPSUpgradeable_init();
+    }
 
     function createPriceFeed(
         address morphoOracle_,
@@ -109,4 +123,9 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactory {
     ) public pure returns (bytes32) {
         return keccak256(abi.encode(creator_, morphoOracle_, collateralToken_, loanToken_, priceOracleMiddleware_));
     }
+
+    /// @dev Required by the OZ UUPS module
+    /// @param newImplementation Address of the new implementation
+    //solhint-disable-next-line
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

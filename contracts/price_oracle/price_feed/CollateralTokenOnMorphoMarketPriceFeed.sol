@@ -17,7 +17,7 @@ contract CollateralTokenOnMorphoMarketPriceFeed is IPriceFeed {
     address public immutable collateralToken;
     address public immutable loanToken;
     /// @notice Can be either PriceOracleMiddleware or PriceOracleMiddlewareManager
-    address public immutable priceOracleMiddleware;
+    address public immutable fusionPriceManager;
 
     uint256 public immutable loanTokenDecimals;
     uint256 public immutable collateralTokenDecimals;
@@ -30,16 +30,16 @@ contract CollateralTokenOnMorphoMarketPriceFeed is IPriceFeed {
     error ZeroAddressLoanToken();
     error ZeroAddressFusionPriceMiddleware();
 
-    constructor(address _morphoOracle, address _collateralToken, address _loanToken, address _priceOracleMiddleware) {
+    constructor(address _morphoOracle, address _collateralToken, address _loanToken, address _fusionPriceManager) {
         if (_morphoOracle == address(0)) revert ZeroAddressMorphoOracle();
         if (_collateralToken == address(0)) revert ZeroAddressCollateralToken();
         if (_loanToken == address(0)) revert ZeroAddressLoanToken();
-        if (_priceOracleMiddleware == address(0)) revert ZeroAddressFusionPriceMiddleware();
+        if (_fusionPriceManager == address(0)) revert ZeroAddressFusionPriceMiddleware();
 
         morphoOracle = _morphoOracle;
         collateralToken = _collateralToken;
         loanToken = _loanToken;
-        priceOracleMiddleware = _priceOracleMiddleware;
+        fusionPriceManager = _fusionPriceManager;
         loanTokenDecimals = IERC20Metadata(loanToken).decimals();
         collateralTokenDecimals = IERC20Metadata(collateralToken).decimals();
         if (loanTokenDecimals == 0 || collateralTokenDecimals == 0) {
@@ -59,7 +59,7 @@ contract CollateralTokenOnMorphoMarketPriceFeed is IPriceFeed {
             revert InvalidMorphoOraclePrice();
         }
 
-        (uint256 loanTokenPrice, uint256 loanTokenPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
+        (uint256 loanTokenPrice, uint256 loanTokenPriceDecimals) = IPriceOracleMiddleware(fusionPriceManager)
             .getAssetPrice(loanToken);
 
         if (loanTokenPriceDecimals == 0 || loanTokenPriceDecimals == 0) {

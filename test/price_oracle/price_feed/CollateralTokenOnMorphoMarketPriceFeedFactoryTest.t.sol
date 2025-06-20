@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {CollateralTokenOnMorphoMarketPriceFeedFactory} from "../../../contracts/price_oracle/price_feed/CollateralTokenOnMorphoMarketPriceFeedFactory.sol";
+import {CollateralTokenOnMorphoMarketPriceFeedFactory} from "../../../contracts/factory/price_feed/CollateralTokenOnMorphoMarketPriceFeedFactory.sol";
 import {CollateralTokenOnMorphoMarketPriceFeed} from "../../../contracts/price_oracle/price_feed/CollateralTokenOnMorphoMarketPriceFeed.sol";
 import {IMorphoOracle} from "../../../contracts/price_oracle/price_feed/ext/IMorphoOracle.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
@@ -46,7 +46,7 @@ contract CollateralTokenOnMorphoMarketPriceFeedFactoryTest is Test {
         assertEq(address(feed.morphoOracle()), MORPHO_ORACLE);
         assertEq(address(feed.collateralToken()), COLLATERAL_TOKEN);
         assertEq(address(feed.loanToken()), LOAN_TOKEN);
-        assertEq(address(feed.priceOracleMiddleware()), FUSION_PRICE_MIDDLEWARE);
+        assertEq(address(feed.fusionPriceManager()), FUSION_PRICE_MIDDLEWARE);
     }
 
     function testShouldRevertWhenCreatingPriceFeedWithZeroAddress() public {

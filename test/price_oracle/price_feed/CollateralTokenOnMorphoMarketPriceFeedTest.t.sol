@@ -39,7 +39,7 @@ contract CollateralTokenOnMorphoMarketPriceFeedTest is Test {
         assertEq(address(priceFeed.morphoOracle()), MORPHO_ORACLE);
         assertEq(address(priceFeed.collateralToken()), COLLATERAL_TOKEN);
         assertEq(address(priceFeed.loanToken()), LOAN_TOKEN);
-        assertEq(address(priceFeed.priceOracleMiddleware()), FUSION_PRICE_MIDDLEWARE);
+        assertEq(address(priceFeed.fusionPriceManager()), FUSION_PRICE_MIDDLEWARE);
         assertEq(priceFeed.loanTokenDecimals(), loanToken.decimals());
         assertEq(priceFeed.collateralTokenDecimals(), collateralToken.decimals());
     }
