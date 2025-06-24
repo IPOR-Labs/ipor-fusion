@@ -6,10 +6,10 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "../ext/AggregatorV3Interface.sol";
 import {IPriceFeed} from "./IPriceFeed.sol";
 
-/// @title AssetOneHopPriceFeed
-/// @notice Price feed for any Asset in USD using two Oracles Aggregator price feeds
+/// @title DualCrossReferencePriceFeed
+/// @notice Price feed for any Asset in USD using exactly two cross-referenced Oracle Aggregator price feeds
 /// @dev Uses AssetX/AssetY and AssetY/USD pairs to calculate AssetX/USD price
-contract AssetDualSourcePriceFeed is IPriceFeed {
+contract DualCrossReferencePriceFeed is IPriceFeed {
     using SafeCast for int256;
     using SafeCast for uint256;
 
@@ -34,9 +34,7 @@ contract AssetDualSourcePriceFeed is IPriceFeed {
     /// @param assetXAssetYOracleFeed_ Oracle feed for ASSET_X/ASSET_Y
     /// @param assetYUsdOracleFeed_ Oracle feed for ASSET_Y/USD
     constructor(address assetX_, address assetXAssetYOracleFeed_, address assetYUsdOracleFeed_) {
-        if (
-            assetX_ == address(0) || assetXAssetYOracleFeed_ == address(0) || assetYUsdOracleFeed_ == address(0)
-        ) {
+        if (assetX_ == address(0) || assetXAssetYOracleFeed_ == address(0) || assetYUsdOracleFeed_ == address(0)) {
             revert ZeroAddress();
         }
 

@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {DualCrossReferencePriceFeed} from "../../../contracts/price_oracle/price_feed/DualCrossReferencePriceFeed.sol";
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -16,9 +17,6 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
-import {AssetDualSourcePriceFeed} from "../../../contracts/price_oracle/price_feed/AssetDualSourcePriceFeed.sol";
-
-import {MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
@@ -52,7 +50,7 @@ struct PlasmaVaultBalancesAfter {
     uint256 wethBalanceAfter;
 }
 
-contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
+contract LoopingBorrowSupplyAaveV3FlashLoanMorphoTest is Test {
     using MorphoBalancesLib for IMorpho;
 
     address private constant _WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
@@ -187,7 +185,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         address wbtcBtcFeed = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
         address btcUsdFeed = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
 
-        _wbtcPriceFeed = address(new AssetDualSourcePriceFeed(wbtc, wbtcBtcFeed, btcUsdFeed));
+        _wbtcPriceFeed = address(new DualCrossReferencePriceFeed(wbtc, wbtcBtcFeed, btcUsdFeed));
 
         return address(_wbtcPriceFeed);
     }
