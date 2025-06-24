@@ -53,17 +53,20 @@ contract DualCrossReferencePriceFeedFactoryTest is Test {
     }
 
     function test_Upgrade_NotOwner() public {
+        address caller = address(0x2);
         // given
         address newImplementation = address(new DualCrossReferencePriceFeedFactory());
 
         bytes memory error = abi.encodeWithSelector(
             Ownable.OwnableUnauthorizedAccount.selector,
-            0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496,
+            caller,
             ADMIN
         );
 
         // when/then
         vm.expectRevert(error);
+        vm.startPrank(caller);
         factory.upgradeToAndCall(newImplementation, "");
+        vm.stopPrank();
     }
 }
