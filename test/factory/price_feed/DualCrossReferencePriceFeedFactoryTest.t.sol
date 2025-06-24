@@ -56,7 +56,11 @@ contract DualCrossReferencePriceFeedFactoryTest is Test {
         // given
         address newImplementation = address(new DualCrossReferencePriceFeedFactory());
 
-        bytes memory error = abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this), ADMIN);
+        bytes memory error = abi.encodeWithSelector(
+            Ownable.OwnableUnauthorizedAccount.selector,
+            0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496,
+            ADMIN
+        );
 
         // when/then
         vm.expectRevert(error);
