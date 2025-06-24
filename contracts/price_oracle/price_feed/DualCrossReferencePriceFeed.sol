@@ -29,6 +29,9 @@ contract DualCrossReferencePriceFeed is IPriceFeed {
     /// @dev Denominator used to normalize price decimals
     uint256 private immutable PRICE_DENOMINATOR;
 
+    /// @dev Flag indicating if we need to multiply or divide by the denominator
+    bool private immutable SHOULD_MULTIPLY;
+
     /// @notice Constructor to initialize the price feed
     /// @param assetX_ Asset for which the price feed is provided in USD
     /// @param assetXAssetYOracleFeed_ Oracle feed for ASSET_X/ASSET_Y
@@ -45,11 +48,22 @@ contract DualCrossReferencePriceFeed is IPriceFeed {
         uint256 assetXAssetYOracleFeedDecimals = AggregatorV3Interface(ASSET_X_ASSET_Y_ORACLE_FEED).decimals();
         uint256 assetYUsdOracleFeedDecimals = AggregatorV3Interface(ASSET_Y_USD_ORACLE_FEED).decimals();
 
-        if (assetXAssetYOracleFeedDecimals > 18 || assetYUsdOracleFeedDecimals > 18) {
+        if (assetXAssetYOracleFeedDecimals < 8 || assetYUsdOracleFeedDecimals < 8) {
             revert InvalidDecimals();
         }
 
-        PRICE_DENOMINATOR = 10 ** ((assetXAssetYOracleFeedDecimals + assetYUsdOracleFeedDecimals) - _decimals());
+        uint256 totalFeedDecimals = assetXAssetYOracleFeedDecimals + assetYUsdOracleFeedDecimals;
+        uint256 targetDecimals = _decimals();
+
+        if (totalFeedDecimals >= targetDecimals) {
+            // Need to divide by denominator
+            SHOULD_MULTIPLY = false;
+            PRICE_DENOMINATOR = 10 ** (totalFeedDecimals - targetDecimals);
+        } else {
+            // Need to multiply by denominator
+            SHOULD_MULTIPLY = true;
+            PRICE_DENOMINATOR = 10 ** (targetDecimals - totalFeedDecimals);
+        }
     }
 
     /// @inheritdoc IPriceFeed
@@ -82,9 +96,13 @@ contract DualCrossReferencePriceFeed is IPriceFeed {
 
         if (assetYPriceInUsd <= 0 || assetXPriceInAssetY <= 0) revert NegativeOrZeroPrice();
 
-        price = Math
-            .mulDiv(assetYPriceInUsd.toUint256(), assetXPriceInAssetY.toUint256(), PRICE_DENOMINATOR)
-            .toInt256();
+        uint256 rawPrice = assetYPriceInUsd.toUint256() * assetXPriceInAssetY.toUint256();
+
+        if (SHOULD_MULTIPLY) {
+            price = (rawPrice * PRICE_DENOMINATOR).toInt256();
+        } else {
+            price = Math.mulDiv(rawPrice, 1, PRICE_DENOMINATOR).toInt256();
+        }
 
         return (0, price, Math.min(assetYStartedAt, assetXYStartedAt), Math.min(assetYUpdatedAt, assetXYUpdatedAt), 0);
     }
