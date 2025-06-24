@@ -70,7 +70,16 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         address underlyingToken_,
         address owner_
     ) external whenNotPaused returns (FusionFactoryLib.FusionInstance memory) {
-        return FusionFactoryLib.create(assetName_, assetSymbol_, underlyingToken_, owner_);
+        return FusionFactoryLib.create(assetName_, assetSymbol_, underlyingToken_, owner_, false);
+    }
+
+    function createSupervised(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        address owner_
+    ) external whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) returns (FusionFactoryLib.FusionInstance memory) {
+        return FusionFactoryLib.create(assetName_, assetSymbol_, underlyingToken_, owner_, true);
     }
 
     function pause() external onlyRole(PAUSE_MANAGER_ROLE) {
