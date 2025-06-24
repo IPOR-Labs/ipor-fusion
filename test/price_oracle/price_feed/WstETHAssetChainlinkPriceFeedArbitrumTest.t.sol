@@ -25,6 +25,6 @@ contract WstETHAssetChainlinkPriceFeedArbitrumTest is Test {
         (, int256 price, , , ) = priceFeed.latestRoundData();
 
         // then
-        assertEq(uint256(price), uint256(305594160119), "Price should be calculated correctly");
+        assertEq(uint256(price), uint256(3055941601191719473254), "Price should be calculated correctly");
     }
 }

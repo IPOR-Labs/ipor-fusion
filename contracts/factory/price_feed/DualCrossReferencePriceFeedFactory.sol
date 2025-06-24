@@ -3,13 +3,13 @@ pragma solidity 0.8.26;
 
 import {DualCrossReferencePriceFeed} from "../../price_oracle/price_feed/DualCrossReferencePriceFeed.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title DualCrossReferencePriceFeedFactory
 /// @notice Factory contract for creating price feeds that calculate USD prices by cross-referencing exactly two price feeds
 /// @dev This contract is upgradeable and uses UUPS pattern for upgrades
-contract DualCrossReferencePriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
+contract DualCrossReferencePriceFeedFactory is UUPSUpgradeable, PausableUpgradeable, Ownable2StepUpgradeable {
     /// @notice Emitted when a new dual cross-reference price feed is created
     /// @param priceFeed The address of the newly created price feed
     /// @param assetX The address of the first asset
@@ -44,9 +44,17 @@ contract DualCrossReferencePriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgr
         address assetX_,
         address assetXAssetYOracleFeed_,
         address assetYUsdOracleFeed_
-    ) external returns (address priceFeed) {
+    ) external whenNotPaused returns (address priceFeed) {
         priceFeed = address(new DualCrossReferencePriceFeed(assetX_, assetXAssetYOracleFeed_, assetYUsdOracleFeed_));
         emit DualCrossReferencePriceFeedCreated(priceFeed, assetX_, assetXAssetYOracleFeed_, assetYUsdOracleFeed_);
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /// @notice Authorizes an upgrade to a new implementation

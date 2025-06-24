@@ -946,7 +946,6 @@ contract FusionFactoryTest is Test {
         (bool hasRoleTwo, ) = accessManager.hasRole(Roles.ADMIN_ROLE, address(0x123));
         (bool hasRoleOwner, ) = accessManager.hasRole(Roles.ADMIN_ROLE, owner);
 
-
         assertFalse(hasRoleOne, "adminOne should not have admin role");
         assertFalse(hasRoleTwo, "address(0x123) should not have admin role");
         assertFalse(hasRoleFactory, "fusionFactory should not have admin role");

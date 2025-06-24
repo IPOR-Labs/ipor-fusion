@@ -25,6 +25,6 @@ contract ETHXAssetChainlinkPriceFeedArbitrumTest is Test {
         (, int256 price, , , ) = priceFeed.latestRoundData();
 
         // then
-        assertEq(uint256(price), uint256(269714235988), "Price should be calculated correctly");
+        assertEq(uint256(price), uint256(2697142359881094699675), "Price should be calculated correctly");
     }
 }

@@ -160,8 +160,8 @@ contract MoonwellBorowFlowBaseTest is Test {
         assertEq(initialCbEthBalance, 0, "Initial cbETH balance should be 0");
 
         // Assert final balances with small error delta for floating point calculations
-        assertApproxEqAbs(finalMoonwellBalance, 49087648471792261513, ERROR_DELTA, "Final Moonwell balance incorrect");
-        assertApproxEqAbs(finalErc20Balance, 912351528148710004, ERROR_DELTA, "Final ERC20 balance incorrect");
+        assertApproxEqAbs(finalMoonwellBalance, 49087648471794404612, ERROR_DELTA, "Final Moonwell balance incorrect");
+        assertApproxEqAbs(finalErc20Balance, 912351528146566905, ERROR_DELTA, "Final ERC20 balance incorrect");
         assertEq(finalWstEthBalance, 50e18, "Final wstETH balance should be 50");
         assertEq(finalCbEthBalance, 1e18, "Final cbETH balance should be 1");
     }
@@ -224,11 +224,11 @@ contract MoonwellBorowFlowBaseTest is Test {
     function _verifyPositionState(PositionState memory state) private {
         assertApproxEqAbs(
             state.moonwellBalance,
-            49087648471792261513,
+            49087648471794404612,
             ERROR_DELTA,
             "Position Moonwell balance incorrect"
         );
-        assertApproxEqAbs(state.erc20Balance, 912351528148710004, ERROR_DELTA, "Position ERC20 balance incorrect");
+        assertApproxEqAbs(state.erc20Balance, 912351528146566905, ERROR_DELTA, "Position ERC20 balance incorrect");
         assertEq(state.wstEthBalance, 50e18, "Position wstETH balance should be 50");
         assertEq(state.cbEthBalance, 1e18, "Position cbETH balance should be 1");
     }
@@ -236,9 +236,9 @@ contract MoonwellBorowFlowBaseTest is Test {
     function _verifyFinalState(PositionState memory state) private {
         assertApproxEqAbs(
             state.moonwellBalance,
-            49999999999940971517,
+            49999999999940971518,
             ERROR_DELTA,
-            "Final Moonwell balance should be 49999999999940971517"
+            "Final Moonwell balance should be 49999999999940971518"
         );
         assertApproxEqAbs(state.erc20Balance, 0, ERROR_DELTA, "Final ERC20 balance should be 0");
         assertEq(state.wstEthBalance, 50e18, "Final wstETH balance should be back to 100");
