@@ -2,9 +2,9 @@
 pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "../ext/AggregatorV3Interface.sol";
 import {IPriceFeed} from "./IPriceFeed.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
 
 /// @title DualCrossReferencePriceFeed
 /// @notice Price feed for any Asset in USD using exactly two cross-referenced Oracle Aggregator price feeds
@@ -26,12 +26,6 @@ contract DualCrossReferencePriceFeed is IPriceFeed {
     /// @dev Price Oracle for pair ASSET_Y/USD in Oracles Aggregator
     address public immutable ASSET_Y_USD_ORACLE_FEED;
 
-    /// @dev Denominator used to normalize price decimals
-    uint256 private immutable PRICE_DENOMINATOR;
-
-    /// @dev Flag indicating if we need to multiply or divide by the denominator
-    bool private immutable SHOULD_MULTIPLY;
-
     /// @notice Constructor to initialize the price feed
     /// @param assetX_ Asset for which the price feed is provided in USD
     /// @param assetXAssetYOracleFeed_ Oracle feed for ASSET_X/ASSET_Y
@@ -50,19 +44,6 @@ contract DualCrossReferencePriceFeed is IPriceFeed {
 
         if (assetXAssetYOracleFeedDecimals < 8 || assetYUsdOracleFeedDecimals < 8) {
             revert InvalidDecimals();
-        }
-
-        uint256 totalFeedDecimals = assetXAssetYOracleFeedDecimals + assetYUsdOracleFeedDecimals;
-        uint256 targetDecimals = _decimals();
-
-        if (totalFeedDecimals >= targetDecimals) {
-            // Need to divide by denominator
-            SHOULD_MULTIPLY = false;
-            PRICE_DENOMINATOR = 10 ** (totalFeedDecimals - targetDecimals);
-        } else {
-            // Need to multiply by denominator
-            SHOULD_MULTIPLY = true;
-            PRICE_DENOMINATOR = 10 ** (targetDecimals - totalFeedDecimals);
         }
     }
 
@@ -94,17 +75,17 @@ contract DualCrossReferencePriceFeed is IPriceFeed {
             uint80 assetXYAnsweredInRound
         ) = AggregatorV3Interface(ASSET_X_ASSET_Y_ORACLE_FEED).latestRoundData();
 
-        if (assetYPriceInUsd <= 0 || assetXPriceInAssetY <= 0) revert NegativeOrZeroPrice();
+        if (assetXPriceInAssetY <= 0 || assetYPriceInUsd <= 0) revert NegativeOrZeroPrice();
 
-        uint256 rawPrice = assetYPriceInUsd.toUint256() * assetXPriceInAssetY.toUint256();
+        price = IporMath
+            .convertToWad(
+                assetXPriceInAssetY.toUint256() * assetYPriceInUsd.toUint256(),
+                AggregatorV3Interface(ASSET_X_ASSET_Y_ORACLE_FEED).decimals() +
+                    AggregatorV3Interface(ASSET_Y_USD_ORACLE_FEED).decimals()
+            )
+            .toInt256();
 
-        if (SHOULD_MULTIPLY) {
-            price = (rawPrice * PRICE_DENOMINATOR).toInt256();
-        } else {
-            price = Math.mulDiv(rawPrice, 1, PRICE_DENOMINATOR).toInt256();
-        }
-
-        return (0, price, Math.min(assetYStartedAt, assetXYStartedAt), Math.min(assetYUpdatedAt, assetXYUpdatedAt), 0);
+        return (0, price, 0, 0, 0);
     }
 
     /// @dev Internal function to return the number of decimals

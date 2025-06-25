@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DualCrossReferencePriceFeedFactory} from "../../../contracts/factory/price_feed/DualCrossReferencePriceFeedFactory.sol";
 import {DualCrossReferencePriceFeed} from "../../../contracts/price_oracle/price_feed/DualCrossReferencePriceFeed.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract DualCrossReferencePriceFeedFactoryTest is Test {
     DualCrossReferencePriceFeedFactory public factory;
@@ -58,7 +58,7 @@ contract DualCrossReferencePriceFeedFactoryTest is Test {
         address newImplementation = address(new DualCrossReferencePriceFeedFactory());
 
         bytes memory error = abi.encodeWithSelector(
-            Ownable.OwnableUnauthorizedAccount.selector,
+            OwnableUpgradeable.OwnableUnauthorizedAccount.selector,
             caller,
             ADMIN
         );
