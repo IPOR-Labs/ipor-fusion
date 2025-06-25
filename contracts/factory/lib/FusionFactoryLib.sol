@@ -55,7 +55,6 @@ library FusionFactoryLib {
     error InvalidUnderlyingToken();
     error InvalidOwner();
     error InvalidPlasmaVaultAdmin();
-    error InvalidRedemptionDelay();
     error InvalidWithdrawWindow();
     error InvalidIporDaoFeeRecipient();
 
@@ -107,8 +106,6 @@ library FusionFactoryLib {
         if (burnRequestFeeFuse_ == address(0)) revert InvalidAddress();
         if (burnRequestFeeBalanceFuse_ == address(0)) revert InvalidAddress();
 
-        /// @dev default redemption delay is 1 seconds
-        FusionFactoryStorageLib.setRedemptionDelayInSeconds(1 seconds);
         /// @dev default vesting period is 1 weeks
         FusionFactoryStorageLib.setVestingPeriodInSeconds(1 weeks);
         /// @dev default withdraw window is 24 hours
@@ -133,6 +130,7 @@ library FusionFactoryLib {
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
         address owner_,
         bool withAdmin_
     ) public returns (FusionInstance memory fusionAddresses) {
@@ -164,7 +162,7 @@ library FusionFactoryLib {
         fusionAddresses.accessManager = AccessManagerFactory(factoryAddresses.accessManagerFactory).create(
             fusionFactoryIndex,
             address(this),
-            FusionFactoryStorageLib.getRedemptionDelayInSeconds()
+            redemptionDelayInSeconds_
         );
 
         fusionAddresses.withdrawManager = WithdrawManagerFactory(factoryAddresses.withdrawManagerFactory).create(

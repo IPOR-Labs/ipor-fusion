@@ -102,11 +102,14 @@ contract FusionFactoryTest is Test {
     }
 
     function testShouldCreateFusionInstance() public {
+        //given
+        uint256 redemptionDelay = 1 seconds;
         //when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -227,19 +230,6 @@ contract FusionFactoryTest is Test {
         assertEq(fusionFactory.getBurnRequestFeeBalanceFuseAddress(), newBurnRequestFeeBalanceFuse);
     }
 
-    function testShouldUpdateRedemptionDelayInSeconds() public {
-        // given
-        uint256 newRedemptionDelay = 3600; // 1 hour
-
-        // when
-        vm.startPrank(maintenanceManager);
-        fusionFactory.updateRedemptionDelayInSeconds(newRedemptionDelay);
-        vm.stopPrank();
-
-        // then
-        assertEq(fusionFactory.getRedemptionDelayInSeconds(), newRedemptionDelay);
-    }
-
     function testShouldUpdateWithdrawWindowInSeconds() public {
         // given
         uint256 newWithdrawWindow = 86400; // 24 hours
@@ -333,14 +323,6 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
     }
 
-    function testShouldRevertWhenUpdatingRedemptionDelayWithZero() public {
-        // when/then
-        vm.expectRevert(FusionFactoryLib.InvalidRedemptionDelay.selector);
-        vm.startPrank(maintenanceManager);
-        fusionFactory.updateRedemptionDelayInSeconds(0);
-        vm.stopPrank();
-    }
-
     function testShouldRevertWhenUpdatingWithdrawWindowWithZero() public {
         // when/then
         vm.expectRevert(FusionFactoryLib.InvalidWithdrawWindow.selector);
@@ -378,6 +360,8 @@ contract FusionFactoryTest is Test {
 
     function testShouldCreateVaultWithoutAdmin() public {
         // given
+        uint256 redemptionDelay = 1 seconds;
+
         address[] memory newPlasmaVaultAdminArray = new address[](2);
         newPlasmaVaultAdminArray[0] = address(0x321);
         newPlasmaVaultAdminArray[1] = address(0x123);
@@ -391,6 +375,7 @@ contract FusionFactoryTest is Test {
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -410,16 +395,19 @@ contract FusionFactoryTest is Test {
         newPlasmaVaultAdminArray[0] = address(0x321);
         newPlasmaVaultAdminArray[1] = address(0x123);
 
+        uint256 redemptionDelay = 3 seconds;
+
         vm.startPrank(owner);
         fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
         vm.stopPrank();
 
         // when
-        vm.startPrank(owner);
+        vm.startPrank(maintenanceManager);
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.createSupervised(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
         vm.stopPrank();
@@ -432,10 +420,13 @@ contract FusionFactoryTest is Test {
         assertTrue(hasRoleTwo);
         assertEq(delayOne, 0);
         assertEq(delayTwo, 0);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
     }
 
     function testShouldCreateVaultWithCorrectIporDaoFees() public {
         // given
+        uint256 redemptionDelay = 1 seconds;
+
         address daoFeeRecipient = address(0x999);
         uint256 daoManagementFee = 100;
         uint256 daoPerformanceFee = 200;
@@ -449,6 +440,7 @@ contract FusionFactoryTest is Test {
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -462,15 +454,12 @@ contract FusionFactoryTest is Test {
         // given
         uint256 redemptionDelay = 123;
 
-        vm.startPrank(maintenanceManager);
-        fusionFactory.updateRedemptionDelayInSeconds(redemptionDelay);
-        vm.stopPrank();
-
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -480,7 +469,30 @@ contract FusionFactoryTest is Test {
         assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
     }
 
+    function testShouldCreateVaultWithZeroRedemptionDelay() public {
+        // given
+        uint256 redemptionDelay = 0;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
+    }
+
     function testShouldCreateVaultWithCorrectWithdrawWindow() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
         // given
         uint256 withdrawWindow = 123;
 
@@ -493,6 +505,7 @@ contract FusionFactoryTest is Test {
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -502,6 +515,8 @@ contract FusionFactoryTest is Test {
     }
 
     function testShouldCreateVaultWithCorrectVestingPeriod() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
         // given
         uint256 vestingPeriod = 123;
 
@@ -514,6 +529,7 @@ contract FusionFactoryTest is Test {
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -523,11 +539,15 @@ contract FusionFactoryTest is Test {
     }
 
     function testShouldCreateVaultWithCorrectPlasmaVaultBase() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -537,11 +557,15 @@ contract FusionFactoryTest is Test {
     }
 
     function testShouldCreateVaultWithCorrectPlasmaVaultOnWithdrawManager() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -551,11 +575,15 @@ contract FusionFactoryTest is Test {
     }
 
     function testShouldCreateVaultWithCorrectRewardsClaimManager() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -566,11 +594,15 @@ contract FusionFactoryTest is Test {
     }
 
     function testShouldCreateVaultWithCorrectBurnRequestFeeFuse() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -593,44 +625,10 @@ contract FusionFactoryTest is Test {
         fail();
     }
 
-    function testShouldRevertWhenCreatingVaultWhilePaused() public {
-        // given
-        address pauseManager = address(0x123);
-        vm.startPrank(owner);
-        fusionFactory.grantRole(fusionFactory.PAUSE_MANAGER_ROLE(), pauseManager);
-        vm.stopPrank();
-
-        // when
-        vm.startPrank(pauseManager);
-        fusionFactory.pause();
-        vm.stopPrank();
-
-        // then
-        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
-        fusionFactory.create("Test Asset", "TEST", address(underlyingToken), owner);
-
-        // when unpaused
-        vm.startPrank(owner);
-        fusionFactory.unpause();
-        vm.stopPrank();
-
-        // then should work again
-        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            owner
-        );
-
-        assertEq(instance.assetName, "Test Asset");
-        assertEq(instance.assetSymbol, "TEST");
-        assertEq(instance.underlyingToken, address(underlyingToken));
-        assertEq(instance.initialOwner, owner);
-    }
-
     function testShouldUpgradeFusionFactory() public {
         // given
         FusionFactory newImplementation = new FusionFactory();
+        uint256 redemptionDelay = 1 seconds;
 
         // when
         vm.startPrank(owner);
@@ -643,6 +641,7 @@ contract FusionFactoryTest is Test {
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -687,12 +686,14 @@ contract FusionFactoryTest is Test {
 
     function testShouldCreateVaultAndHaveCorrectPriceManagerOnVault() public {
         // given
+        uint256 redemptionDelay = 1 seconds;
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -705,12 +706,14 @@ contract FusionFactoryTest is Test {
         // given
         uint256 depositAmount = 1000 * 1e18; // 1000 tokens
         address depositor = address(0x123);
+        uint256 redemptionDelay = 1 seconds;
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -739,6 +742,7 @@ contract FusionFactoryTest is Test {
 
     function testShouldWithdrawAfterVaultCreation() public {
         // given
+        uint256 redemptionDelay = 1 seconds;
         uint256 depositAmount = 1000 * 1e18; // 1000 tokens
         address depositor = address(0x123);
 
@@ -747,6 +751,7 @@ contract FusionFactoryTest is Test {
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -788,6 +793,7 @@ contract FusionFactoryTest is Test {
 
     function testShouldDAOBeConfiguredAfterVaultCreation() public {
         // given
+        uint256 redemptionDelay = 1 seconds;
         address daoFeeRecipient = address(0x123);
         uint256 daoManagementFee = 100;
         uint256 daoPerformanceFee = 100;
@@ -806,6 +812,7 @@ contract FusionFactoryTest is Test {
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -817,11 +824,15 @@ contract FusionFactoryTest is Test {
     }
 
     function testShouldContainAppropriateTechnicalRolesAfterVaultCreation() public {
+        //given
+        uint256 redemptionDelay = 1 seconds;
+
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -923,6 +934,8 @@ contract FusionFactoryTest is Test {
         fusionFactory.updatePlasmaVaultAdminArray(initialPlasmaVaultAdminArray);
         vm.stopPrank();
 
+        uint256 redemptionDelay = 1 seconds;
+
         // when
         address[] memory newPlasmaVaultAdminArray = new address[](0); // Remove all admins
 
@@ -935,6 +948,7 @@ contract FusionFactoryTest is Test {
             "Test Asset",
             "TEST",
             address(underlyingToken),
+            redemptionDelay,
             owner
         );
 
@@ -945,7 +959,6 @@ contract FusionFactoryTest is Test {
         (bool hasRoleOne, ) = accessManager.hasRole(Roles.ADMIN_ROLE, adminOne);
         (bool hasRoleTwo, ) = accessManager.hasRole(Roles.ADMIN_ROLE, address(0x123));
         (bool hasRoleOwner, ) = accessManager.hasRole(Roles.ADMIN_ROLE, owner);
-
 
         assertFalse(hasRoleOne, "adminOne should not have admin role");
         assertFalse(hasRoleTwo, "address(0x123) should not have admin role");
