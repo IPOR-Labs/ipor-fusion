@@ -20,6 +20,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
     error ZeroReceiverAddress();
     error ZeroSharesMint();
     error ZeroAssetsWithdraw();
+    error ZeroOwnerAddress();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event PerformanceFeeAdded(uint256 fee, uint256 feeInShares);
@@ -40,10 +41,17 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
      * @param name_ Name of the vault token
      * @param symbol_ Symbol of the vault token
      * @param plasmaVault_ Address of the underlying Plasma Vault that this wrapper will interact with
+     * @param wrappedPlasmaVaultOwner_ Address of the owner of the wrapped Plasma Vault
      * @custom:oz-upgrades-unsafe-allow constructor
      */
-    constructor(string memory name_, string memory symbol_, address plasmaVault_) initializer {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        address plasmaVault_,
+        address wrappedPlasmaVaultOwner_
+    ) initializer {
         if (plasmaVault_ == address(0)) revert ZeroPlasmaVaultAddress();
+        if (wrappedPlasmaVaultOwner_ == address(0)) revert ZeroOwnerAddress();
 
         address asset = ERC4626Upgradeable(plasmaVault_).asset();
 
@@ -51,7 +59,7 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
 
         __ERC4626_init(IERC20(asset));
         __ERC20_init(name_, symbol_);
-        __Ownable_init(msg.sender);
+        __Ownable_init(wrappedPlasmaVaultOwner_);
 
         PLASMA_VAULT = plasmaVault_;
         _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();

@@ -72,7 +72,7 @@ contract WrappedPlasmaVaultFactoryTest is Test {
     function testShouldCreateWrappedPlasmaVault() public {
         // When
 
-        address wrappedVault = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault));
+        address wrappedVault = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault), address(this));
 
         // Then
         assertTrue(wrappedVault != address(0), "Wrapped vault should be created");
@@ -85,10 +85,10 @@ contract WrappedPlasmaVaultFactoryTest is Test {
 
     function testShouldCreateMultipleWrappedPlasmaVaults() public {
         // Create first vault
-        address wrappedVault1 = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault));
+        address wrappedVault1 = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault), address(this));
 
         // Create second vault with different parameters
-        address wrappedVault2 = factory.create("Second Vault", "wSEC", address(plasmaVault));
+        address wrappedVault2 = factory.create("Second Vault", "wSEC", address(plasmaVault), address(this));
 
         // Verify both vaults are different
         assertTrue(wrappedVault1 != wrappedVault2, "Vaults should be different addresses");
@@ -104,7 +104,7 @@ contract WrappedPlasmaVaultFactoryTest is Test {
 
     function testShouldAllowCreate() public {
         // Then: should be able to create vault
-        address wrappedVault = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault));
+        address wrappedVault = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault), address(this));
         assertTrue(wrappedVault != address(0), "Should be able to create vault after unpause");
     }
 
@@ -127,7 +127,7 @@ contract WrappedPlasmaVaultFactoryTest is Test {
         factory.upgradeToAndCall(address(newImplementation), "");
 
         // Verify upgrade was successful by checking that we can still call functions
-        address wrappedVault = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault));
+        address wrappedVault = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault), address(this));
         assertTrue(wrappedVault != address(0), "Should be able to create vault after upgrade");
     }
 
@@ -146,12 +146,12 @@ contract WrappedPlasmaVaultFactoryTest is Test {
     function testShouldRevertCreateWithZeroPlasmaVaultAddress() public {
         // Should revert when creating vault with zero plasma vault address
         vm.expectRevert();
-        factory.create(VAULT_NAME, VAULT_SYMBOL, address(0));
+        factory.create(VAULT_NAME, VAULT_SYMBOL, address(0), address(this));
     }
 
     function testShouldCreateVaultWithEmptyStrings() public {
         // Should be able to create vault with empty name/symbol (though not recommended)
-        address wrappedVault = factory.create("", "", address(plasmaVault));
+        address wrappedVault = factory.create("", "", address(plasmaVault), address(this));
         assertTrue(wrappedVault != address(0), "Should be able to create vault with empty strings");
 
         WrappedPlasmaVault vault = WrappedPlasmaVault(wrappedVault);
@@ -164,7 +164,7 @@ contract WrappedPlasmaVaultFactoryTest is Test {
         string memory longName = "This is a very long name for testing purposes with many characters";
         string memory longSymbol = "VERYLONGSYMBOL";
 
-        address wrappedVault = factory.create(longName, longSymbol, address(plasmaVault));
+        address wrappedVault = factory.create(longName, longSymbol, address(plasmaVault), address(this));
         assertTrue(wrappedVault != address(0), "Should be able to create vault with long strings");
 
         WrappedPlasmaVault vault = WrappedPlasmaVault(wrappedVault);
@@ -174,7 +174,7 @@ contract WrappedPlasmaVaultFactoryTest is Test {
 
     function testShouldMaintainStateAfterUpgrade() public {
         // Create a vault before upgrade
-        address wrappedVault = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault));
+        address wrappedVault = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault), address(this));
 
         // Deploy new implementation and upgrade
         WrappedPlasmaVaultFactory newImplementation = new WrappedPlasmaVaultFactory();
@@ -188,13 +188,46 @@ contract WrappedPlasmaVaultFactoryTest is Test {
         assertEq(vault.PLASMA_VAULT(), address(plasmaVault));
 
         // Verify factory can still create new vaults
-        address newWrappedVault = factory.create("New Vault", "wNEW", address(plasmaVault));
+        address newWrappedVault = factory.create("New Vault", "wNEW", address(plasmaVault), address(this));
         assertTrue(newWrappedVault != address(0), "Should be able to create new vault after upgrade");
     }
 
     function testShouldRevertCreateWhenPlasmaVaultIsInvalid() public {
         // Should revert when plasma vault address is not a contract
         vm.expectRevert();
-        factory.create(VAULT_NAME, VAULT_SYMBOL, user);
+        factory.create(VAULT_NAME, VAULT_SYMBOL, user, address(this));
+    }
+
+    function testShouldSetCorrectOwnerForWrappedPlasmaVault() public {
+        // When: create a wrapped plasma vault with a specific owner
+        address expectedOwner = makeAddr("vaultOwner");
+        address wrappedVault = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault), expectedOwner);
+
+        // Then: verify the owner is set correctly
+        WrappedPlasmaVault vault = WrappedPlasmaVault(wrappedVault);
+        assertEq(vault.owner(), expectedOwner, "Wrapped vault owner should be set correctly");
+    }
+
+    function testShouldSetDifferentOwnersForDifferentVaults() public {
+        // When: create multiple vaults with different owners
+        address owner1 = makeAddr("owner1");
+        address owner2 = makeAddr("owner2");
+
+        address wrappedVault1 = factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault), owner1);
+        address wrappedVault2 = factory.create("Second Vault", "wSEC", address(plasmaVault), owner2);
+
+        // Then: verify each vault has the correct owner
+        WrappedPlasmaVault vault1 = WrappedPlasmaVault(wrappedVault1);
+        WrappedPlasmaVault vault2 = WrappedPlasmaVault(wrappedVault2);
+
+        assertEq(vault1.owner(), owner1, "First vault should have correct owner");
+        assertEq(vault2.owner(), owner2, "Second vault should have correct owner");
+        assertTrue(owner1 != owner2, "Owners should be different");
+    }
+
+    function testShouldRevertCreateWithZeroOwnerAddress() public {
+        // Should revert when creating vault with zero owner address
+        vm.expectRevert(WrappedPlasmaVault.ZeroOwnerAddress.selector);
+        factory.create(VAULT_NAME, VAULT_SYMBOL, address(plasmaVault), address(0));
     }
 }

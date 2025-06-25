@@ -16,7 +16,14 @@ contract WrappedPlasmaVaultFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     /// @param name The name of the wrapped plasma vault
     /// @param symbol The symbol of the wrapped plasma vault
     /// @param plasmaVault The address of the underlying plasma vault
-    event WrappedPlasmaVaultCreated(string name, string symbol, address plasmaVault, address wrappedPlasmaVault);
+    /// @param wrappedPlasmaVaultOwner The address of the owner of the wrapped plasma vault
+    event WrappedPlasmaVaultCreated(
+        string name,
+        string symbol,
+        address plasmaVault,
+        address wrappedPlasmaVaultOwner,
+        address wrappedPlasmaVault
+    );
 
     /// @notice Initializes the factory contract
     /// @dev This function can only be called once during contract deployment
@@ -31,10 +38,11 @@ contract WrappedPlasmaVaultFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     function create(
         string memory name_,
         string memory symbol_,
-        address plasmaVault_
+        address plasmaVault_,
+        address wrappedPlasmaVaultOwner_
     ) external returns (address wrappedPlasmaVault) {
-        wrappedPlasmaVault = address(new WrappedPlasmaVault(name_, symbol_, plasmaVault_));
-        emit WrappedPlasmaVaultCreated(name_, symbol_, plasmaVault_, wrappedPlasmaVault);
+        wrappedPlasmaVault = address(new WrappedPlasmaVault(name_, symbol_, plasmaVault_, wrappedPlasmaVaultOwner_));
+        emit WrappedPlasmaVaultCreated(name_, symbol_, plasmaVault_, wrappedPlasmaVaultOwner_, wrappedPlasmaVault);
     }
 
     /// @notice Authorizes an upgrade to a new implementation
