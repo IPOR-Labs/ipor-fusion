@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {DualCrossReferencePriceFeed} from "../../../contracts/price_oracle/price_feed/DualCrossReferencePriceFeed.sol";
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -16,9 +17,6 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
-import {AssetChainlinkPriceFeed} from "../../../contracts/price_oracle/price_feed/AssetChainlinkPriceFeed.sol";
-
-import {MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
@@ -38,6 +36,12 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
+import {IporFusionAccessControl} from "../../../contracts/price_oracle/IporFusionAccessControl.sol";
+
+import {PriceOracleMiddlewareWithRoles} from "../../../contracts/price_oracle/PriceOracleMiddlewareWithRoles.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
     uint256 balanceErc20Before;
@@ -52,7 +56,7 @@ struct PlasmaVaultBalancesAfter {
     uint256 wethBalanceAfter;
 }
 
-contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
+contract LoopingBorrowSupplyAaveV3FlashLoanMorphoTest is Test {
     using MorphoBalancesLib for IMorpho;
 
     address private constant _WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
@@ -61,7 +65,6 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         0x138eec0e4a1937eb92ebc70043ed539661dd7ed5a89fb92a720b341650288a40;
     address private constant _MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
 
-    address private constant _PRICE_ORACLE_MIDDLEWARE = 0xB7018C15279E0f5990613cc00A91b6032066f2f7;
     address private constant _UNIVERSAL_ROUTER_UNISWAP = 0xEf1c6E67703c7BD7107eed8303Fbe6EC2554BF6B;
 
     address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
@@ -89,6 +92,8 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
     address private _aaveSupplyFuse;
     address private _aaveBorrowFuse;
 
+    address private _priceOracleMiddleware;
+
     uint256 private constant _ERROR_TOLERANCE = 100;
 
     address private _wbtcPriceFeed;
@@ -96,6 +101,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
     function setUp() public {
         // Fork mainnet
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 21069542);
+        _priceOracleMiddleware = deployPriceOracleMiddleware();
         address wbtcPriceFeed = deployWBTCPriceFeed();
         addWBTCPriceFeedToMiddleware(wbtcPriceFeed);
         deployMinimalPlasmaVaultForWBTC();
@@ -155,6 +161,23 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         vm.stopPrank();
     }
 
+    function deployPriceOracleMiddleware() private returns (address) {
+        address implementation = address(new PriceOracleMiddlewareWithRoles(address(0)));
+
+        _priceOracleMiddleware = address(
+            address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", _ATOMIST)))
+        );
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareWithRoles(_priceOracleMiddleware).grantRole(
+            PriceOracleMiddlewareWithRoles(_priceOracleMiddleware).SET_ASSETS_PRICES_SOURCES(),
+            address(this)
+        );
+        vm.stopPrank();
+
+        return _priceOracleMiddleware;
+    }
+
     function deployMinimalPlasmaVaultForWBTC() private returns (address) {
         MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](1);
 
@@ -167,7 +190,7 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
             assetName: "WBTC Plasma Vault",
             assetSymbol: "WBTC-PV",
             underlyingToken: _WBTC,
-            priceOracleMiddleware: _PRICE_ORACLE_MIDDLEWARE,
+            priceOracleMiddleware: _priceOracleMiddleware,
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
@@ -187,24 +210,19 @@ contract LoopingBorrowSupplyAaveFlashLoanMorphoTest is Test {
         address wbtcBtcFeed = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
         address btcUsdFeed = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
 
-        _wbtcPriceFeed = address(new AssetChainlinkPriceFeed(wbtc, wbtcBtcFeed, btcUsdFeed));
+        _wbtcPriceFeed = address(new DualCrossReferencePriceFeed(wbtc, wbtcBtcFeed, btcUsdFeed));
 
         return address(_wbtcPriceFeed);
     }
 
     function addWBTCPriceFeedToMiddleware(address priceFeed) private {
-        address priceOracleMiddleware = 0xB7018C15279E0f5990613cc00A91b6032066f2f7;
-        address priceOracleMiddlewareOwner = 0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569;
-
-        vm.startPrank(priceOracleMiddlewareOwner);
         address[] memory assets = new address[](2);
         assets[0] = _WBTC;
         assets[1] = _WETH;
         address[] memory sources = new address[](2);
         sources[0] = priceFeed;
         sources[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-        PriceOracleMiddleware(priceOracleMiddleware).setAssetsPricesSources(assets, sources);
-        vm.stopPrank();
+        PriceOracleMiddleware(_priceOracleMiddleware).setAssetsPricesSources(assets, sources);
     }
 
     function setupInitialRoles() public {
