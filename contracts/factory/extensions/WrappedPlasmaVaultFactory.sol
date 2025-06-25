@@ -68,9 +68,9 @@ contract WrappedPlasmaVaultFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     ) external returns (address wrappedPlasmaVault) {
         if (plasmaVault_ == address(0)) revert InvalidAddress();
         if (wrappedPlasmaVaultOwner_ == address(0)) revert InvalidAddress();
+
         if (managementFeeAccount_ == address(0)) revert InvalidAddress();
         if (performanceFeeAccount_ == address(0)) revert InvalidAddress();
-
         if (managementFeePercentage_ > 10000) revert InvalidFeePercentage();
         if (performanceFeePercentage_ > 10000) revert InvalidFeePercentage();
 

@@ -518,4 +518,24 @@ contract WrappedPlasmaVaultFactoryTest is Test {
         );
         assertEq(performanceFeeData.feeInPercentage, 0, "Performance fee percentage should be zero");
     }
+
+    function testShouldRevertCreateWithZeroAddressForFeeAccounts() public {
+        // Given: zero addresses for fee accounts with non-zero fee percentages
+        address zeroAddress = address(0);
+        uint256 managementFeePercentage = 250; // 2.5%
+        uint256 performanceFeePercentage = 500; // 5%
+
+        // When & Then: should revert when creating vault with zero addresses for fee accounts
+        vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
+        factory.create(
+            VAULT_NAME,
+            VAULT_SYMBOL,
+            address(plasmaVault),
+            address(this),
+            zeroAddress, // management fee account
+            managementFeePercentage,
+            zeroAddress, // performance fee account
+            performanceFeePercentage
+        );
+    }
 }
