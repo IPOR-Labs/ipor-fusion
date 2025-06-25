@@ -62,16 +62,22 @@ contract CollateralTokenOnMorphoMarketPriceFeed is IPriceFeed {
         (uint256 loanTokenPrice, uint256 loanTokenPriceDecimals) = IPriceOracleMiddleware(fusionPriceManager)
             .getAssetPrice(loanToken);
 
-        if (loanTokenPriceDecimals == 0 || loanTokenPriceDecimals == 0) {
+        if (loanTokenPrice == 0 || loanTokenPriceDecimals == 0) {
             revert InvalidPriceOracleMiddleware();
         }
 
-        uint256 price = IporMath.convertToWad(
-            morphoOraclePrice * loanTokenPrice,
-            MORPHO_PRICE_PRECISION + loanTokenDecimals + loanTokenPriceDecimals - collateralTokenDecimals
+        return (
+            0,
+            IporMath
+                .convertToWad(
+                    morphoOraclePrice * loanTokenPrice,
+                    MORPHO_PRICE_PRECISION + loanTokenDecimals + loanTokenPriceDecimals - collateralTokenDecimals
+                )
+                .toInt256(),
+            0,
+            0,
+            0
         );
-
-        return (0, price.toInt256(), 0, 0, 0);
     }
 
     function decimals() external view override returns (uint8) {
