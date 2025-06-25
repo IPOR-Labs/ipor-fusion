@@ -13,7 +13,6 @@ pragma solidity 0.8.26;
  * - Factory addresses (rewards, fee, withdraw, context, price, plasma vault, access)
  * - Price oracle middleware
  * - Fee configuration (DAO management and performance fees)
- * - Redemption and withdrawal timing parameters
  * - Burn request fee configuration
  *
  * Security Considerations:
@@ -110,10 +109,6 @@ library FusionFactoryStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoPerformanceFee")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant DAO_PERFORMANCE_FEE = 0x3d6b96d1c7d5b94a3af077c0baedb5f7745382ef440582d67ffa3542d73b9f00;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.RedemptionDelayInSeconds")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant REDEMPTION_DELAY_IN_SECONDS =
-        0xf5f7bf2a3be534f496ee2079085992e191fe987b91953e0e010e320f6bf8e100;
-
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.WithdrawWindowInSeconds")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant WITHDRAW_WINDOW_IN_SECONDS =
         0x95f9ecba121b4f2a2786b729864c46a5066694903a7462f772cd92093beb0500;
@@ -173,10 +168,6 @@ library FusionFactoryStorageLib {
 
     function getDaoPerformanceFee() internal view returns (uint256) {
         return _getDaoPerformanceFeeSlot().value;
-    }
-
-    function getRedemptionDelayInSeconds() internal view returns (uint256) {
-        return _getRedemptionDelayInSecondsSlot().value;
     }
 
     function getWithdrawWindowInSeconds() internal view returns (uint256) {
@@ -254,10 +245,6 @@ library FusionFactoryStorageLib {
 
     function setDaoPerformanceFee(uint256 value) internal {
         _getDaoPerformanceFeeSlot().value = value;
-    }
-
-    function setRedemptionDelayInSeconds(uint256 value) internal {
-        _getRedemptionDelayInSecondsSlot().value = value;
     }
 
     function setWithdrawWindowInSeconds(uint256 value) internal {
@@ -367,12 +354,6 @@ library FusionFactoryStorageLib {
     function _getDaoPerformanceFeeSlot() private pure returns (Uint256Type storage $) {
         assembly {
             $.slot := DAO_PERFORMANCE_FEE
-        }
-    }
-
-    function _getRedemptionDelayInSecondsSlot() private pure returns (Uint256Type storage $) {
-        assembly {
-            $.slot := REDEMPTION_DELAY_IN_SECONDS
         }
     }
 
