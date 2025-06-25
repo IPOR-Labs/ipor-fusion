@@ -7,12 +7,11 @@ import {FusionFactoryStorageLib} from "./lib/FusionFactoryStorageLib.sol";
 import {FusionFactoryLib} from "./lib/FusionFactoryLib.sol";
 
 import {FusionFactoryAccessControl} from "./FusionFactoryAccessControl.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /// @title FusionFactory
 /// @notice Factory contract for creating and managing Fusion Managers
 /// @dev This contract is responsible for deploying and initializing various manager contracts
-contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAccessControl {
+contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     event FactoryAddressesUpdated(
         uint256 version,
         address accessManagerFactory,
@@ -28,7 +27,6 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
     event BurnRequestFeeFuseUpdated(address newBurnRequestFeeFuse);
     event BurnRequestFeeBalanceFuseUpdated(address newBurnRequestFeeBalanceFuse);
     event DaoFeeUpdated(address newDaoFeeRecipient, uint256 newDaoManagementFee, uint256 newDaoPerformanceFee);
-    event RedemptionDelayInSecondsUpdated(uint256 newRedemptionDelayInSeconds);
     event WithdrawWindowInSecondsUpdated(uint256 newWithdrawWindowInSeconds);
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);
     event PlasmaVaultAdminArrayUpdated(address[] newPlasmaVaultAdminArray);
@@ -64,30 +62,56 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         );
     }
 
+    /// @notice Creates a new Fusion Vault
+    /// @param assetName_ The name of the asset
+    /// @param assetSymbol_ The symbol of the asset
+    /// @param underlyingToken_ The address of the underlying token
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
+    /// @param owner_ The owner of the Fusion Vault
+    /// @return The Fusion Vault instance
+    /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     function create(
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
         address owner_
-    ) external whenNotPaused returns (FusionFactoryLib.FusionInstance memory) {
-        return FusionFactoryLib.create(assetName_, assetSymbol_, underlyingToken_, owner_, false);
+    ) external returns (FusionFactoryLib.FusionInstance memory) {
+        return
+            FusionFactoryLib.create(
+                assetName_,
+                assetSymbol_,
+                underlyingToken_,
+                redemptionDelayInSeconds_,
+                owner_,
+                false
+            );
     }
 
+    /// @notice Creates a new Fusion Vault with admin role
+    /// @param assetName_ The name of the asset
+    /// @param assetSymbol_ The symbol of the asset
+    /// @param underlyingToken_ The address of the underlying token
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
+    /// @param owner_ The owner of the Fusion Vault
+    /// @return The Fusion Vault instance
+    /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     function createSupervised(
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
         address owner_
-    ) external whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) returns (FusionFactoryLib.FusionInstance memory) {
-        return FusionFactoryLib.create(assetName_, assetSymbol_, underlyingToken_, owner_, true);
-    }
-
-    function pause() external onlyRole(PAUSE_MANAGER_ROLE) {
-        _pause();
-    }
-
-    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _unpause();
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLib.FusionInstance memory) {
+        return
+            FusionFactoryLib.create(
+                assetName_,
+                assetSymbol_,
+                underlyingToken_,
+                redemptionDelayInSeconds_,
+                owner_,
+                true
+            );
     }
 
     function updatePlasmaVaultAdminArray(
@@ -180,14 +204,6 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
         emit BurnRequestFeeBalanceFuseUpdated(newBurnRequestFeeBalanceFuse_);
     }
 
-    function updateRedemptionDelayInSeconds(
-        uint256 newRedemptionDelayInSeconds_
-    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
-        if (newRedemptionDelayInSeconds_ == 0) revert FusionFactoryLib.InvalidRedemptionDelay();
-        FusionFactoryStorageLib.setRedemptionDelayInSeconds(newRedemptionDelayInSeconds_);
-        emit RedemptionDelayInSecondsUpdated(newRedemptionDelayInSeconds_);
-    }
-
     function updateWithdrawWindowInSeconds(
         uint256 newWithdrawWindowInSeconds_
     ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
@@ -245,10 +261,6 @@ contract FusionFactory is UUPSUpgradeable, PausableUpgradeable, FusionFactoryAcc
 
     function getDaoPerformanceFee() external view returns (uint256) {
         return FusionFactoryStorageLib.getDaoPerformanceFee();
-    }
-
-    function getRedemptionDelayInSeconds() external view returns (uint256) {
-        return FusionFactoryStorageLib.getRedemptionDelayInSeconds();
     }
 
     function getWithdrawWindowInSeconds() external view returns (uint256) {
