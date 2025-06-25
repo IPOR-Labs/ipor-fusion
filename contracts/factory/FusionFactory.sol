@@ -66,7 +66,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param assetName_ The name of the asset
     /// @param assetSymbol_ The symbol of the asset
     /// @param underlyingToken_ The address of the underlying token
-    /// @param redeemptionDelayInSeconds_ The redemption delay in seconds
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
@@ -74,7 +74,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,
-        uint256 redeemptionDelayInSeconds_,
+        uint256 redemptionDelayInSeconds_,
         address owner_
     ) external returns (FusionFactoryLib.FusionInstance memory) {
         return
@@ -82,7 +82,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 assetName_,
                 assetSymbol_,
                 underlyingToken_,
-                redeemptionDelayInSeconds_,
+                redemptionDelayInSeconds_,
                 owner_,
                 false
             );
@@ -92,7 +92,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param assetName_ The name of the asset
     /// @param assetSymbol_ The symbol of the asset
     /// @param underlyingToken_ The address of the underlying token
-    /// @param redeemptionDelayInSeconds_ The redemption delay in seconds
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
@@ -100,7 +100,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,
-        uint256 redeemptionDelayInSeconds_,
+        uint256 redemptionDelayInSeconds_,
         address owner_
     ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLib.FusionInstance memory) {
         return
@@ -108,7 +108,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 assetName_,
                 assetSymbol_,
                 underlyingToken_,
-                redeemptionDelayInSeconds_,
+                redemptionDelayInSeconds_,
                 owner_,
                 true
             );
