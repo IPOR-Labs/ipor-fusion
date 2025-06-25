@@ -48,7 +48,11 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         string memory name_,
         string memory symbol_,
         address plasmaVault_,
-        address wrappedPlasmaVaultOwner_
+        address wrappedPlasmaVaultOwner_,
+        address managementFeeAccount_,
+        uint256 managementFeePercentage_,
+        address performanceFeeAccount_,
+        uint256 performanceFeePercentage_
     ) initializer {
         if (plasmaVault_ == address(0)) revert ZeroPlasmaVaultAddress();
         if (wrappedPlasmaVaultOwner_ == address(0)) revert ZeroOwnerAddress();
@@ -60,6 +64,9 @@ contract WrappedPlasmaVault is ERC4626Upgradeable, Ownable2StepUpgradeable, Reen
         __ERC4626_init(IERC20(asset));
         __ERC20_init(name_, symbol_);
         __Ownable_init(wrappedPlasmaVaultOwner_);
+
+        PlasmaVaultLib.configureManagementFee(managementFeeAccount_, managementFeePercentage_);
+        PlasmaVaultLib.configurePerformanceFee(performanceFeeAccount_, performanceFeePercentage_);
 
         PLASMA_VAULT = plasmaVault_;
         _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
