@@ -9,6 +9,12 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 /// @title DualCrossReferencePriceFeed
 /// @notice Price feed for any Asset in USD using exactly two cross-referenced Oracle Aggregator price feeds
 /// @dev Uses AssetX/AssetY and AssetY/USD pairs to calculate AssetX/USD price
+/// @dev Example usage with Chainlink price feeds:
+/// @dev To calculate BTC/USD price using ETH/USD and BTC/ETH feeds:
+/// @dev - assetX: BTC token address (0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599)
+/// @dev - assetXAssetYOracleFeed: BTC/ETH Chainlink price feed (0xdeb288F737066589598e9214E782fa5A8eD689e8)
+/// @dev - assetYUsdOracleFeed: ETH/USD Chainlink price feed (0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419)
+/// @dev The resulting price feed will calculate: BTC/USD = (BTC/ETH) * (ETH/USD)
 contract DualCrossReferencePriceFeed is IPriceFeed {
     using SafeCast for int256;
     using SafeCast for uint256;

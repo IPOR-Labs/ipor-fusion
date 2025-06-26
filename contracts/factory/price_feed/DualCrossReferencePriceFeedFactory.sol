@@ -24,6 +24,11 @@ contract DualCrossReferencePriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgr
     /// @notice Error thrown when an invalid address (zero address) is provided
     error InvalidAddress();
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initializes the factory contract
     /// @dev This function can only be called once during contract deployment
     /// @param initialFactoryAdmin_ The address that will be set as the initial admin of the factory

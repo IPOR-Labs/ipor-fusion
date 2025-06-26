@@ -36,6 +36,11 @@ contract WrappedPlasmaVaultFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
         uint256 performanceFeePercentage
     );
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initializes the factory contract
     /// @dev This function can only be called once during contract deployment
     /// @param initialFactoryAdmin_ The address that will be set as the initial admin of the factory
