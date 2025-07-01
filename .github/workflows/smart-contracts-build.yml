@@ -9,6 +9,8 @@ on:
                 required: true
             BASE_PROVIDER_URL:
                 required: true
+            TAC_PROVIDER_URL:
+                required: true
 
         inputs:
             node-version:
