@@ -88,7 +88,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         );
     }
 
-    function testLiquityEnterToSB() public {
+    function testShouldEnterToLiquitySB() public {
         totalBoldInVault = 300000 * 1e18;
         totalBoldToDeposit = 200000 * 1e18;
         // deposit BOLD to the PlasmaVault
@@ -112,8 +112,8 @@ contract LiquityStabilityPoolFuseTest is Test {
         assertEq(sbBalance, totalBoldToDeposit, "Stability Pool deposits should match the deposited amount");
     }
 
-    function testLiquityExitFromSB() public {
-        testLiquityEnterToSB();
+    function testShouldExitFromLiquitySB() public {
+        testShouldEnterToLiquitySB();
         totalBoldToExit = 100000 * 1e18;
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit(uint256)", totalBoldToExit));
@@ -132,8 +132,8 @@ contract LiquityStabilityPoolFuseTest is Test {
         );
     }
 
-    function testLiquityClaimCollateral() public {
-        testLiquityEnterToSB();
+    function testShouldClaimCollateralFromLiquitySP() public {
+        testShouldEnterToLiquitySB();
 
         IStabilityPool stabilityPool = IStabilityPool(sbFuse.stabilityPool());
 
@@ -150,8 +150,8 @@ contract LiquityStabilityPoolFuseTest is Test {
         assertGt(balance, 0, "Balance should be greater than zero after claiming collateral");
     }
 
-    function testLiquityClaimCollateralThenSwap() public {
-        testLiquityClaimCollateral();
+    function testShouldClaimCollateralFromLiquitySPThenSwap() public {
+        testShouldClaimCollateralFromLiquitySP();
 
         // Swap WETH to BOLD using the mock dex
         uint256 amountToSwap = ERC20(WETH).balanceOf(address(plasmaVault));
