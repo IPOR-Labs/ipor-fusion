@@ -3,11 +3,11 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 
-import {LiquityBalanceFuse} from "../../../contracts/fuses/chains/ethereum/liquity/LiquityBalanceFuse.sol";
+import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/LiquityBalanceFuse.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {IAddressesRegistry} from "../../../contracts/fuses/chains/ethereum/liquity/ext/IAddressesRegistry.sol";
-import {IStabilityPool} from "../../../contracts/fuses/chains/ethereum/liquity/ext/IStabilityPool.sol";
+import {IAddressesRegistry} from "../../../contracts/fuses/liquity/ext/IAddressesRegistry.sol";
+import {IStabilityPool} from "../../../contracts/fuses/liquity/ext/IStabilityPool.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
