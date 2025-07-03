@@ -89,18 +89,20 @@ contract LiquityStabilityPoolFuseTest is Test {
     }
 
     function testShouldEnterToLiquitySB() public {
+        // given
         totalBoldInVault = 300000 * 1e18;
         totalBoldToDeposit = 200000 * 1e18;
-        // deposit BOLD to the PlasmaVault
+
         deal(BOLD, address(this), totalBoldInVault);
         ERC20(BOLD).approve(address(plasmaVault), totalBoldInVault);
         plasmaVault.deposit(totalBoldInVault, address(this));
 
-        // enter Stability Pool
+        // when
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter(uint256)", totalBoldToDeposit));
         plasmaVault.execute(enterCalls);
 
+        // then
         // check the balance in PlasmaVault and Stability Pool
         uint256 balance = ERC20(BOLD).balanceOf(address(plasmaVault));
         assertEq(
@@ -113,11 +115,16 @@ contract LiquityStabilityPoolFuseTest is Test {
     }
 
     function testShouldExitFromLiquitySB() public {
+        // given
         testShouldEnterToLiquitySB();
         totalBoldToExit = 100000 * 1e18;
+
+        // when
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit(uint256)", totalBoldToExit));
         plasmaVault.execute(exitCalls);
+
+        // then
         uint256 balance = ERC20(BOLD).balanceOf(address(plasmaVault));
         assertEq(
             balance,
@@ -133,6 +140,7 @@ contract LiquityStabilityPoolFuseTest is Test {
     }
 
     function testShouldClaimCollateralFromLiquitySP() public {
+        // given
         testShouldEnterToLiquitySB();
 
         IStabilityPool stabilityPool = IStabilityPool(sbFuse.stabilityPool());
@@ -141,23 +149,25 @@ contract LiquityStabilityPoolFuseTest is Test {
         vm.prank(address(stabilityPool.troveManager()));
         stabilityPool.offset(100000000, 100 ether);
 
-        // entering again stability pool to trigger collateral claim
+        // when
         FuseAction[] memory exitCalls = new FuseAction[](1);
+        // exiting from stability pool to trigger collateral claim
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit(uint256)", 1));
         plasmaVault.execute(exitCalls);
 
+        // then
         uint256 balance = ERC20(WETH).balanceOf(address(plasmaVault));
         assertGt(balance, 0, "Balance should be greater than zero after claiming collateral");
     }
 
     function testShouldClaimCollateralFromLiquitySPThenSwap() public {
+        // given
         testShouldClaimCollateralFromLiquitySP();
 
         // Swap WETH to BOLD using the mock dex
         uint256 amountToSwap = ERC20(WETH).balanceOf(address(plasmaVault));
         assertGt(amountToSwap, 0, "There should be WETH to swap");
 
-        // create swap data
         address[] memory targets = new address[](3);
         targets[0] = WETH;
         targets[1] = address(mockDex);
@@ -168,6 +178,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         data[2] = abi.encodeWithSignature("approve(address,uint256)", address(mockDex), 0);
         UniversalTokenSwapperData memory swapData = UniversalTokenSwapperData({targets: targets, data: data});
 
+        // when
         UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
             tokenIn: WETH,
             tokenOut: BOLD,
@@ -175,7 +186,6 @@ contract LiquityStabilityPoolFuseTest is Test {
             data: swapData
         });
 
-        // execute the swap
         FuseAction[] memory swapCalls = new FuseAction[](1);
         swapCalls[0] = FuseAction(
             address(swapFuse),
@@ -185,7 +195,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         uint256 initialBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
         plasmaVault.execute(swapCalls);
 
-        // check the balance after swap
+        // then
         uint256 boldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
         assertEq(boldBalance, initialBoldBalance + 1e10, "BOLD should be obtained after the swap");
         uint256 wethBalance = ERC20(WETH).balanceOf(address(plasmaVault));
