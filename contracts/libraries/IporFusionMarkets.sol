@@ -77,6 +77,9 @@ library IporFusionMarkets {
 
     uint256 public constant HARVEST_HARD_WORK = 27;
 
+    /// @dev Liquity V2 market
+    uint256 public constant LIQUITY_V2 = 28;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
