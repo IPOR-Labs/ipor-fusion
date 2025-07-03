@@ -25,33 +25,31 @@ contract LiquityBalanceFuseTest is Test {
     }
 
     function testShouldUpdateBalanceWhenProvidingAndLiquidatingToLiquity() external {
+        // given
         uint256 initialBalance = vaultMock.balanceOf();
         assertEq(initialBalance, 0, "Initial balance should be zero");
 
-        // deal BOLD to the vault
         deal(BOLD, address(vaultMock), 1000 ether);
         initialBalance = vaultMock.balanceOf();
         assertEq(initialBalance, 1000 ether, "Balance should be 1000 BOLD after dealing");
 
-        // provide BOLD to the stability pool
         IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool());
         vm.startPrank(address(vaultMock));
         ERC20(BOLD).approve(address(stabilityPool), 500 ether);
         stabilityPool.provideToSP(500 ether, false);
         vm.stopPrank();
 
-        // check the balance after providing to the stability pool: it should not change
+        // when
         uint256 afterDepBalance = vaultMock.balanceOf();
         assertEq(afterDepBalance, initialBalance, "Balance should not change after providing to SP");
 
-        // simulate liquidation
         vm.prank(address(stabilityPool.troveManager()));
         stabilityPool.offset(100000000, 100 ether);
 
-        // trigger update
         vm.prank(address(vaultMock));
         stabilityPool.provideToSP(1, false);
-        // check the balance after liquidation
+
+        // then
         uint256 afterLiquidationBalance = vaultMock.balanceOf();
         assertGt(afterLiquidationBalance, afterDepBalance, "Balance should increase after liquidation");
     }
