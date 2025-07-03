@@ -24,7 +24,7 @@ contract LiquityBalanceFuseTest is Test {
         vaultMock = new PlasmaVaultMock(address(0x0), address(liquityBalanceFuse));
     }
 
-    function testLiquityBalance() external {
+    function testShouldUpdateBalanceWhenProvidingAndLiquidatingToLiquity() external {
         uint256 initialBalance = vaultMock.balanceOf();
         assertEq(initialBalance, 0, "Initial balance should be zero");
 
