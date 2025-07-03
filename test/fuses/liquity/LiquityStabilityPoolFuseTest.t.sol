@@ -61,8 +61,8 @@ contract LiquityStabilityPoolFuseTest is Test {
         implementation.initialize(address(this));
 
         address[] memory priceFeeds = new address[](2);
-        priceFeeds[0] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-        priceFeeds[1] = priceFeeds[0];
+        priceFeeds[0] = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6; // we use USDC price feed for BOLD
+        priceFeeds[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419; // WETH price feed
 
         implementation.setAssetsPricesSources(assets, priceFeeds);
         priceOracle = address(implementation);
