@@ -34,6 +34,8 @@ import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/Callb
 import {UniswapV3SwapFuse} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 struct VaultBalance {
     uint256 eulerPrimeUsdc;
@@ -92,7 +94,7 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
-
+    address private _withdrawManager;
     address private _eulerSupplyFuse;
     address private _eulerCollateralFuse;
     address private _eulerControllerFuse;
@@ -114,18 +116,23 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                     "USDC",
                     _USDC,
                     _priceOracle,
-                    _setupMarketConfigsErc20(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
-                    address(0)
+                    _createWithdrawManager()
                 )
             )
         );
         vm.stopPrank();
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigsErc20()
+        );
 
         _initAccessManager();
         _setupDependenceBalance();
@@ -228,6 +235,11 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
         _accessManager = accessManager_;
     }
 
+    function _createWithdrawManager() private returns (address withdrawManager_) {
+        withdrawManager_ = address(new WithdrawManager(address(_accessManager)));
+        _withdrawManager = withdrawManager_;
+    }
+
     function _initAccessManager() private {
         address[] memory initAddress = new address[](3);
         initAddress[0] = address(this);
@@ -257,14 +269,17 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
             updateRewardsBalanceAccounts: initAddress,
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
+            priceOracleMiddlewareManagers: initAddress,
+            preHooksManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                rewardsClaimManager: address(0x123),
+                withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0)
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
 

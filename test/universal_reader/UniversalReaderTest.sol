@@ -36,6 +36,8 @@ import {ReadBalanceFuses} from "../../contracts/universal_reader/ReadBalanceFuse
 import {UniversalReader, ReadResult} from "../../contracts/universal_reader/UniversalReader.sol";
 import {UpdateWithdrawManager} from "./UpdateWithdrawManager.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
@@ -80,6 +82,7 @@ contract UniversalReaderTest is Test {
 
     address private _plasmaVault;
     address private _accessManager;
+    address private _withdrawManager;
     address private _morphoFlashLoanFuse;
     address private _uniswapV3SwapFuse;
     address private _morphoSupplyFuse;
@@ -115,24 +118,22 @@ contract UniversalReaderTest is Test {
         FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
             assetName: "USDC Plasma Vault",
             assetSymbol: "USDC-PV",
             underlyingToken: _USDC,
             priceOracleMiddleware: _priceOracleMiddleware,
-            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            fuses: new address[](0),
-            balanceFuses: new MarketBalanceFuseConfig[](0),
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            totalSupplyCap: type(uint256).max,
-            withdrawManager: address(0)
+            withdrawManager: _withdrawManager
         });
 
         vm.startPrank(_ATOMIST);
         _plasmaVault = address(new PlasmaVault(initData));
+
         vm.stopPrank();
 
         return _plasmaVault;
@@ -208,14 +209,17 @@ contract UniversalReaderTest is Test {
             updateRewardsBalanceAccounts: new address[](0),
             withdrawManagerRequestFeeManagers: new address[](0),
             withdrawManagerWithdrawFeeManagers: new address[](0),
+            priceOracleMiddlewareManagers: new address[](0),
+            preHooksManagers: new address[](0),
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                rewardsClaimManager: address(0x123),
+                withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0)
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
 
@@ -252,7 +256,7 @@ contract UniversalReaderTest is Test {
         morphoTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
         morphoTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO_FLASH_LOAN, morphoTokens);
         vm.stopPrank();
 
@@ -287,7 +291,7 @@ contract UniversalReaderTest is Test {
         uniswapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
         uniswapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_SWAP_V3, uniswapTokens);
         vm.stopPrank();
 
@@ -307,7 +311,7 @@ contract UniversalReaderTest is Test {
         address morphoSupplyFuse = address(new MorphoSupplyFuse(IporFusionMarkets.MORPHO, _MORPHO));
         address morphoCollateralFuse = address(new MorphoCollateralFuse(IporFusionMarkets.MORPHO, _MORPHO));
         address morphoBorrowFuse = address(new MorphoBorrowFuse(IporFusionMarkets.MORPHO, _MORPHO));
-        address morphoBalanceFuse = address(new MorphoBalanceFuse(IporFusionMarkets.MORPHO));
+        address morphoBalanceFuse = address(new MorphoBalanceFuse(IporFusionMarkets.MORPHO, _MORPHO));
 
         address[] memory fuses = new address[](3);
         fuses[0] = morphoSupplyFuse;
@@ -322,7 +326,7 @@ contract UniversalReaderTest is Test {
         bytes32[] memory morphoMarkets = new bytes32[](1);
         morphoMarkets[0] = _MORPHO_WETH_USDC_MARKET_ID;
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO, morphoMarkets);
         vm.stopPrank();
 
@@ -350,7 +354,7 @@ contract UniversalReaderTest is Test {
         dependenceMarkets[1] = dependence; // Uniswap -> ERC20_VAULT_BALANCE
         dependenceMarkets[2] = dependence; // MorphoFlashLoan -> ERC20_VAULT_BALANCE
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
         vm.stopPrank();
     }
@@ -369,7 +373,7 @@ contract UniversalReaderTest is Test {
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.ERC20_VAULT_BALANCE, substrates);
         vm.stopPrank();
     }
@@ -398,10 +402,10 @@ contract UniversalReaderTest is Test {
         address[] memory balanceFuses = abi.decode(readResult.data, (address[]));
 
         assertEq(balanceFuses.length, 4);
-        assertEq(balanceFuses[0], 0xa0Cb889707d426A7A386870A03bc70d1b0697598);
-        assertEq(balanceFuses[1], 0x03A6a84cD762D9707A21605b548aaaB891562aAb);
-        assertEq(balanceFuses[2], 0x2a07706473244BC757E10F2a9E86fB532828afe3);
-        assertEq(balanceFuses[3], 0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9);
+        assertEq(balanceFuses[0], 0x1d1499e622D69689cdf9004d05Ec547d650Ff211);
+        assertEq(balanceFuses[1], 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF);
+        assertEq(balanceFuses[2], 0x3D7Ebc40AF7092E3F1C81F2e996cbA5Cae2090d7);
+        assertEq(balanceFuses[3], 0xc7183455a4C133Ae270771860664b6B7ec320bB1);
     }
 
     function testRevertWhenUnauthorizedCallerTriesToRead() external {

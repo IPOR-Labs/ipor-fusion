@@ -132,9 +132,12 @@ library PreHooksLib {
                 preHooksConfig.selectors.pop();
                 delete preHooksConfig.indexes[selector];
                 delete preHooksConfig.substrates[keccak256(abi.encodePacked(oldImplementation, selector))];
+            } else if (newImplementation != oldImplementation) {
+                delete preHooksConfig.substrates[keccak256(abi.encodePacked(oldImplementation, selector))];
             }
 
             preHooksConfig.hooksImplementation[selector] = newImplementation;
+            preHooksConfig.substrates[keccak256(abi.encodePacked(newImplementation, selector))] = substrates_[i];
 
             emit PreHookImplementationChanged(selector, newImplementation, substrates_[i]);
         }

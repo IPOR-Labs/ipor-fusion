@@ -33,6 +33,9 @@ import {IWETH9} from "./IWETH9.sol";
 import {IstETH} from "./IstETH.sol";
 import {IToken} from "./IToken.sol";
 
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+
 struct VaultBalance {
     uint256 eulerPrimeUsdc;
     uint256 eulerWeth;
@@ -95,6 +98,9 @@ contract EulerCreditMarketTest is Test {
 
         _priceOracle = _createPriceOracle();
 
+        address accessManager = _createAccessManager();
+        address withdrawManager = address(new WithdrawManager(accessManager));
+
         // plasma vault
         vm.startPrank(_ATOMIST);
         _plasmaVault = address(
@@ -104,18 +110,23 @@ contract EulerCreditMarketTest is Test {
                     "USDC",
                     _USDC,
                     _priceOracle,
-                    _setupMarketConfigsErc20(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
-                    _createAccessManager(),
+                    accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
-                    address(0)
+                    withdrawManager
                 )
             )
         );
         vm.stopPrank();
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigsErc20()
+        );
 
         _initAccessManager();
         _setupDependenceBalance();
@@ -222,14 +233,17 @@ contract EulerCreditMarketTest is Test {
             updateRewardsBalanceAccounts: initAddress,
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
+            priceOracleMiddlewareManagers: initAddress,
+            preHooksManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                rewardsClaimManager: address(0x123),
+                withdrawManager: address(0x123),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0)
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

@@ -10,7 +10,7 @@ import {FeeConfigHelper} from "./FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
-
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 struct DeployMinimalPlasmaVaultParams {
@@ -24,53 +24,18 @@ struct DeployMinimalPlasmaVaultParams {
 /// @notice Helper library for testing PlasmaVault operations
 /// @dev Contains utility functions to assist with PlasmaVault testing
 library PlasmaVaultHelper {
-    function constructDefaultDataForInitialization(
-        bool isPublic_,
-        address plasmaVault_,
-        address accessManager_,
-        address claimRewardsManager_,
-        address[] memory initAddress_
-    ) internal view returns (DataForInitialization memory data) {
-        return
-            DataForInitialization({
-                isPublic: isPublic_,
-                iporDaos: initAddress_,
-                admins: initAddress_,
-                owners: initAddress_,
-                atomists: initAddress_,
-                alphas: initAddress_,
-                whitelist: initAddress_,
-                guardians: initAddress_,
-                fuseManagers: initAddress_,
-                claimRewards: initAddress_,
-                transferRewardsManagers: initAddress_,
-                configInstantWithdrawalFusesManagers: initAddress_,
-                updateMarketsBalancesAccounts: initAddress_,
-                updateRewardsBalanceAccounts: initAddress_,
-                withdrawManagerRequestFeeManagers: initAddress_,
-                withdrawManagerWithdrawFeeManagers: initAddress_,
-                plasmaVaultAddress: PlasmaVaultAddress({
-                    plasmaVault: plasmaVault_,
-                    accessManager: accessManager_,
-                    rewardsClaimManager: claimRewardsManager_,
-                    withdrawManager: address(0),
-                    feeManager: FeeAccount(PlasmaVaultGovernance(plasmaVault_).getPerformanceFeeData().feeAccount)
-                        .FEE_MANAGER(),
-                    contextManager: address(0)
-                })
-            });
-    }
     /// @notice Deploys a minimal PlasmaVault with basic configuration
     /// @param params Parameters for deployment
     /// @return plasmaVault Address of the deployed PlasmaVault
     function deployMinimalPlasmaVault(
         DeployMinimalPlasmaVaultParams memory params
-    ) internal returns (PlasmaVault plasmaVault, address noAddress) {
+    ) internal returns (PlasmaVault plasmaVault, address withdrawManager) {
         // Create fee configuration
         FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
         // Deploy access manager
         address accessManager = address(new IporFusionAccessManager(params.atomist, 0));
+        withdrawManager = address(new WithdrawManager(accessManager));
 
         // Create initialization data for PlasmaVault
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
@@ -78,17 +43,13 @@ library PlasmaVaultHelper {
             assetSymbol: string(abi.encodePacked(params.underlyingTokenName, "-PV")),
             underlyingToken: params.underlyingToken,
             priceOracleMiddleware: params.priceOracleMiddleware,
-            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            fuses: new address[](0),
-            balanceFuses: new MarketBalanceFuseConfig[](0),
             feeConfig: feeConfig,
             accessManager: accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            totalSupplyCap: type(uint256).max,
-            withdrawManager: address(0)
+            withdrawManager: withdrawManager
         });
 
-        return (new PlasmaVault(initData), address(0));
+        plasmaVault = new PlasmaVault(initData);
     }
 
     function deployMinimalPlasmaVaultWithWithdrawManager(
@@ -100,7 +61,7 @@ library PlasmaVaultHelper {
         // Deploy access manager
         address accessManager = address(new IporFusionAccessManager(params.atomist, 0));
 
-        address withdrawManager = address(new WithdrawManager(accessManager));
+        withdrawManager = address(new WithdrawManager(accessManager));
 
         // Create initialization data for PlasmaVault
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
@@ -108,17 +69,13 @@ library PlasmaVaultHelper {
             assetSymbol: string(abi.encodePacked(params.underlyingTokenName, "-PV")),
             underlyingToken: params.underlyingToken,
             priceOracleMiddleware: params.priceOracleMiddleware,
-            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            fuses: new address[](0),
-            balanceFuses: new MarketBalanceFuseConfig[](0),
             feeConfig: feeConfig,
             accessManager: accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            totalSupplyCap: type(uint256).max,
             withdrawManager: withdrawManager
         });
 
-        return (new PlasmaVault(initData), withdrawManager);
+        plasmaVault = new PlasmaVault(initData);
     }
 
     function accessManagerOf(PlasmaVault plasmaVault_) internal view returns (IporFusionAccessManager) {

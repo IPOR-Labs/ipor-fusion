@@ -22,6 +22,8 @@ import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePool
 import {IComet} from "../../contracts/fuses/compound_v3/ext/IComet.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 contract PlasmaVaultUpdateMarketsBalances is Test {
     address private constant _ATOMIST = address(1111111);
@@ -45,6 +47,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+    address private _withdrawManager;
     address private _aaveFuse;
     address private _compoundFuse;
 
@@ -53,6 +56,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         vm.prank(_USDC_HOLDER);
         ERC20(_USDC).transfer(_USER, 20_000e6);
         _createAccessManager();
+        _createWithdrawManager();
         _createPriceOracle();
         _createPlasmaVault();
         _initAccessManager();
@@ -95,18 +99,22 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                     assetSymbol: "PLASMA",
                     underlyingToken: _USDC,
                     priceOracleMiddleware: _priceOracle,
-                    marketSubstratesConfigs: _setupMarketConfigs(),
-                    fuses: _createFuse(),
-                    balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: address(_accessManager),
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max,
-                    withdrawManager: address(0)
+                    withdrawManager: _withdrawManager
                 })
             )
         );
         vm.stopPrank();
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
+            address(_plasmaVault),
+            _createFuse(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
+        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
@@ -152,6 +160,10 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         _accessManager = address(new IporFusionAccessManager(_ATOMIST, 0));
     }
 
+    function _createWithdrawManager() private {
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
+    }
+
     function _createPriceOracle() private {
         PriceOracleMiddleware implementation = new PriceOracleMiddleware(0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf);
 
@@ -186,13 +198,16 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
             updateRewardsBalanceAccounts: initAddress,
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
+            priceOracleMiddlewareManagers: initAddress,
+            preHooksManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
-                withdrawManager: address(0),
-                feeManager: address(0),
-                contextManager: address(0)
+                rewardsClaimManager: address(0x123),
+                withdrawManager: address(0x123),
+                feeManager: address(0x123),
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

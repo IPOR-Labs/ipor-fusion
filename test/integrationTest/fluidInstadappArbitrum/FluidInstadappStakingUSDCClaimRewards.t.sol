@@ -23,6 +23,8 @@ import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_i
 import {FluidInstadappClaimFuse} from "../../../contracts/rewards_fuses/fluid_instadapp/FluidInstadappClaimFuse.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract FluidInstadappStakingUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -62,6 +64,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     function _createPlasmaVault() private {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
+
+        address withdrawManager = address(new WithdrawManager(_accessManager));
         _plasmaVault = address(
             new PlasmaVault(
                 PlasmaVaultInitData({
@@ -69,16 +73,21 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                     assetSymbol: "TPLASMA",
                     underlyingToken: USDC,
                     priceOracleMiddleware: _priceOracleMiddlewareProxy,
-                    marketSubstratesConfigs: _setupMarketConfigs(),
-                    fuses: _setupFuses(),
-                    balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: _accessManager,
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max,
-                    withdrawManager: address(0)
+                    withdrawManager: withdrawManager
                 })
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
         );
     }
 
@@ -109,13 +118,16 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
             updateRewardsBalanceAccounts: initAddress,
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
+            priceOracleMiddlewareManagers: initAddress,
+            preHooksManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
-                withdrawManager: address(0),
-                feeManager: address(0),
-                contextManager: address(0)
+                withdrawManager: address(0x123),
+                feeManager: address(0x123),
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
 

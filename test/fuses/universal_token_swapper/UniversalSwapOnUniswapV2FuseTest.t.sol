@@ -19,6 +19,8 @@ import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {SwapExecutor} from "contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract UniversalSwapOnUniswapV2FuseTest is Test {
     using SafeERC20 for ERC20;
@@ -32,6 +34,7 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
     address private constant _UNIVERSAL_ROUTER = 0xEf1c6E67703c7BD7107eed8303Fbe6EC2554BF6B;
 
     address private _plasmaVault;
+    address private _withdrawManager;
     address private _priceOracle;
     address private _accessManager;
     UniversalTokenSwapperFuse private _universalTokenSwapperFuse;
@@ -52,6 +55,8 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
         );
 
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
+
         // plasma vault
         _plasmaVault = address(
             new PlasmaVault(
@@ -60,16 +65,21 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
                     "pvUSDC",
                     USDC,
                     _priceOracle,
-                    _setupMarketConfigs(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
-                    address(0)
+                    _withdrawManager
                 )
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
         );
         _setupRoles();
     }
@@ -388,7 +398,13 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, _plasmaVault, IporFusionAccessManager(_accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            _plasmaVault,
+            IporFusionAccessManager(_accessManager),
+            _withdrawManager
+        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs_) {

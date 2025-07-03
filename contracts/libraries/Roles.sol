@@ -36,6 +36,9 @@ library Roles {
     /// @dev System role that can only be assigned to WithdrawManager contract. Set during initialization and cannot be changed afterward
     uint64 public constant TECH_WITHDRAW_MANAGER_ROLE = 6;
 
+    /// @notice Technical role for limit transfer and transferFrom methods in the Vault contract
+    uint64 public constant TECH_VAULT_TRANSFER_SHARES_ROLE = 7;
+
     /// @notice Account with this role has rights to manage the PlasmaVault. It recommended to use MultiSig contract for this role.
     /// @dev Managed by Owner
     uint64 public constant ATOMIST_ROLE = 100;
@@ -47,6 +50,10 @@ library Roles {
     /// @notice Account with this role has rights to manage the FuseManager contract, add or remove fuses, balance fuses and reward fuses
     /// @dev Managed by the Atomist
     uint64 public constant FUSE_MANAGER_ROLE = 300;
+
+    /// @notice Account with this role has rights to manage the PreHooksManager contract, add or remove pre-hooks
+    /// @dev Managed by the Atomist
+    uint64 public constant PRE_HOOKS_MANAGER_ROLE = 301;
 
     /// @notice Technical role for the FeeManager contract's performance fee operations
     /// @dev System role that can only be assigned to FeeManager contract. Set during initialization and cannot be changed afterward
@@ -91,6 +98,10 @@ library Roles {
     /// @notice Account with this role has rights to update balance in the RewardsClaimManager contract
     /// @dev Managed by the Atomist
     uint64 public constant UPDATE_REWARDS_BALANCE_ROLE = 1100;
+
+    /// @notice Account with this role has rights to manage the PriceOracleMiddlewareManager contract
+    /// @dev Managed by the Atomist
+    uint64 public constant PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE = 1200;
 
     /// @notice Public role, no restrictions
     uint64 public constant PUBLIC_ROLE = type(uint64).max;

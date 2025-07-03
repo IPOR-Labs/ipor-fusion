@@ -34,7 +34,7 @@ library PendleHelper {
         uint256[] memory usePendleOracleMethod,
         Vm vm_
     ) internal returns (PendleAddresses memory pendleAddresses) {
-        vm_.startPrank(TestAddresses.ATOMIST);
+        vm_.startPrank(TestAddresses.FUSE_MANAGER);
         _addSubstratesToMarket(plasmaVault_, markets_);
         _addDependencyGraph(plasmaVault_);
         vm_.stopPrank();

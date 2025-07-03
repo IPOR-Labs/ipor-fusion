@@ -16,6 +16,8 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IStabilityPool} from "../../../contracts/fuses/chains/ethereum/liquity/ext/IStabilityPool.sol";
 import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract MockDex {
     address tokenIn;
@@ -47,6 +49,7 @@ contract LiquityStabilityPoolFuseTest is Test {
     UniversalTokenSwapperFuse private swapFuse;
     address private accessManager;
     address private priceOracle;
+    address private withdrawManager;
 
     uint256 private totalBoldInVault;
     uint256 private totalBoldToDeposit;
@@ -67,6 +70,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         implementation.setAssetsPricesSources(assets, priceFeeds);
         priceOracle = address(implementation);
 
+        withdrawManager = address(new WithdrawManager(accessManager));
         mockDex = new MockDex(WETH, BOLD);
         deal(BOLD, address(mockDex), 1e6 * 1e6);
 
@@ -76,15 +80,20 @@ contract LiquityStabilityPoolFuseTest is Test {
                 "pvBOLD",
                 BOLD,
                 priceOracle,
-                _setupMarketConfigs(address(mockDex)),
-                _setupFuses(),
-                _setupBalanceFuses(),
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs(address(mockDex))
         );
     }
 
@@ -249,6 +258,12 @@ contract LiquityStabilityPoolFuseTest is Test {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), IporFusionAccessManager(accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            address(plasmaVault),
+            IporFusionAccessManager(accessManager),
+            address(0)
+        );
     }
 }

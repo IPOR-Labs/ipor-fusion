@@ -22,6 +22,8 @@ import {GearboxV3FarmDTokenClaimFuse} from "../../../contracts/rewards_fuses/gea
 import {IFarmingPool} from "../../../contracts/fuses/gearbox_v3/ext/IFarmingPool.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract GearboxV3FarmdUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -39,6 +41,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     address private _priceOracleMiddlewareProxy;
     address private _plasmaVault;
     address private _accessManager;
+    address private _withdrawManager;
     address private _claimRewardsManager;
     address private _claimFuse;
 
@@ -61,6 +64,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     function _createPlasmaVault() private {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
         _plasmaVault = address(
             new PlasmaVault(
                 PlasmaVaultInitData({
@@ -68,16 +72,21 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                     assetSymbol: "TPLASMA",
                     underlyingToken: USDC,
                     priceOracleMiddleware: _priceOracleMiddlewareProxy,
-                    marketSubstratesConfigs: _setupMarketConfigs(),
-                    fuses: _setupFuses(),
-                    balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: _accessManager,
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max,
-                    withdrawManager: address(0)
+                    withdrawManager: _withdrawManager
                 })
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
         );
     }
 
@@ -90,6 +99,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         IporFusionAccessManager accessManager = IporFusionAccessManager(_accessManager);
         address[] memory initAddress = new address[](1);
         initAddress[0] = admin;
+
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
         DataForInitialization memory data = DataForInitialization({
             isPublic: false,
@@ -108,13 +119,16 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
             updateRewardsBalanceAccounts: initAddress,
             withdrawManagerRequestFeeManagers: initAddress,
             withdrawManagerWithdrawFeeManagers: initAddress,
+            priceOracleMiddlewareManagers: initAddress,
+            preHooksManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
-                withdrawManager: address(0),
-                feeManager: address(0),
-                contextManager: address(0)
+                withdrawManager: _withdrawManager,
+                feeManager: address(0x123),
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
 

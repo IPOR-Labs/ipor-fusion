@@ -109,8 +109,6 @@ library EulerFuseLib {
     /// @param plasmaVault The address of the plasma vault
     /// @param subAccountId The sub-account identifier
     function generateSubAccountAddress(address plasmaVault, bytes1 subAccountId) internal pure returns (address) {
-        bytes memory plasmaBytes = abi.encodePacked(plasmaVault);
-        plasmaBytes[19] = subAccountId;
-        return address(uint160(bytes20(plasmaBytes)));
+        return address(uint160(plasmaVault) ^ uint160(uint8(subAccountId)));
     }
 }

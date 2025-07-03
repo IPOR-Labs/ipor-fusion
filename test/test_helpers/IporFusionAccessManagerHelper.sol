@@ -28,7 +28,9 @@ library IporFusionAccessManagerHelper {
         address[] updateRewardsBalanceAccounts;
         address[] withdrawManagerRequestFeeManagers;
         address[] withdrawManagerWithdrawFeeManagers;
+        address[] priceOracleMiddlewareManagers;
         address[] whitelist;
+        address[] preHooksManagers;
     }
 
     /// @notice Creates default role addresses using TestAddresses
@@ -64,8 +66,13 @@ library IporFusionAccessManagerHelper {
         roles.configInstantWithdrawalFusesManagers = new address[](1);
         roles.configInstantWithdrawalFusesManagers[0] = TestAddresses.CONFIG_INSTANT_WITHDRAWAL_FUSES_MANAGER;
 
+        roles.updateMarketsBalancesAccounts = new address[](1);
+        roles.updateMarketsBalancesAccounts[0] = TestAddresses.ATOMIST;
+
         roles.whitelist = new address[](0);
 
+        roles.preHooksManagers = new address[](1);
+        roles.preHooksManagers[0] = TestAddresses.ATOMIST;
         return roles;
     }
 
@@ -77,11 +84,14 @@ library IporFusionAccessManagerHelper {
         IporFusionAccessManager accessManager_,
         PlasmaVault plasmaVault_,
         RoleAddresses memory roles_,
-        address withdrawManager_
+        address withdrawManager_,
+        address rewardsClaimManager_
     ) internal returns (ContextManager contextManager) {
         address[] memory approvedAddresses = new address[](1);
         approvedAddresses[0] = address(plasmaVault_);
         contextManager = new ContextManager(address(accessManager_), approvedAddresses);
+
+        PlasmaVaultGovernance(address(plasmaVault_)).setRewardsClaimManagerAddress(address(rewardsClaimManager_));
 
         // Prepare initialization data
         DataForInitialization memory data = DataForInitialization({
@@ -101,6 +111,8 @@ library IporFusionAccessManagerHelper {
             updateRewardsBalanceAccounts: roles_.updateRewardsBalanceAccounts,
             withdrawManagerRequestFeeManagers: roles_.withdrawManagerRequestFeeManagers,
             withdrawManagerWithdrawFeeManagers: roles_.withdrawManagerWithdrawFeeManagers,
+            priceOracleMiddlewareManagers: roles_.priceOracleMiddlewareManagers,
+            preHooksManagers: roles_.preHooksManagers,
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: address(plasmaVault_),
                 accessManager: address(accessManager_),
@@ -108,7 +120,8 @@ library IporFusionAccessManagerHelper {
                 withdrawManager: withdrawManager_,
                 feeManager: FeeAccount(PlasmaVaultGovernance(address(plasmaVault_)).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(contextManager)
+                contextManager: address(contextManager),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
 
@@ -125,8 +138,16 @@ library IporFusionAccessManagerHelper {
     function setupInitRoles(
         IporFusionAccessManager accessManager_,
         PlasmaVault plasmaVault_,
-        address withdrawManager_
+        address withdrawManager_,
+        address rewardsClaimManager_
     ) internal returns (ContextManager contextManager) {
-        return setupInitRoles(accessManager_, plasmaVault_, createDefaultRoleAddresses(), withdrawManager_);
+        return
+            setupInitRoles(
+                accessManager_,
+                plasmaVault_,
+                createDefaultRoleAddresses(),
+                withdrawManager_,
+                rewardsClaimManager_
+            );
     }
 }

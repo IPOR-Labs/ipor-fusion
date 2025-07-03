@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {AssetChainlinkPriceFeed} from "../../../contracts/price_oracle/price_feed/AssetChainlinkPriceFeed.sol";
+import {DualCrossReferencePriceFeed} from "../../../contracts/price_oracle/price_feed/DualCrossReferencePriceFeed.sol";
 
 contract WstETHAssetChainlinkPriceFeedArbitrumTest is Test {
     address public constant WST_ETH = 0x5979D7b546E38E414F7E9822514be443A4800529;
@@ -15,7 +15,7 @@ contract WstETHAssetChainlinkPriceFeedArbitrumTest is Test {
 
     function testShouldReturnPrice() external {
         // given
-        AssetChainlinkPriceFeed priceFeed = new AssetChainlinkPriceFeed(
+        DualCrossReferencePriceFeed priceFeed = new DualCrossReferencePriceFeed(
             WST_ETH,
             WST_ETH_ETH_CHAINLINKG_FEED,
             ETH_USD_CHAINLINKG_FEED
@@ -25,6 +25,6 @@ contract WstETHAssetChainlinkPriceFeedArbitrumTest is Test {
         (, int256 price, , , ) = priceFeed.latestRoundData();
 
         // then
-        assertEq(uint256(price), uint256(305594160119), "Price should be calculated correctly");
+        assertEq(uint256(price), uint256(3055941601191719473254), "Price should be calculated correctly");
     }
 }

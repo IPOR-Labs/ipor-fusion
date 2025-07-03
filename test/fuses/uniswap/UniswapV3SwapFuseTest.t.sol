@@ -20,6 +20,8 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract UniswapV3SwapFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -35,6 +37,7 @@ contract UniswapV3SwapFuseTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+    address private _withdrawManager;
     UniswapV3SwapFuse private _uniswapV3SwapFuse;
 
     function setUp() public {
@@ -49,6 +52,7 @@ contract UniswapV3SwapFuseTest is Test {
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", address(this)))
         );
 
+        _withdrawManager = address(new WithdrawManager(address(_accessManager)));
         // plasma vault
         _plasmaVault = address(
             new PlasmaVault(
@@ -57,16 +61,20 @@ contract UniswapV3SwapFuseTest is Test {
                     "pvUSDC",
                     USDC,
                     _priceOracle,
-                    _setupMarketConfigs(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
                     _createAccessManager(),
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
-                    address(0)
+                    _withdrawManager
                 )
             )
+        );
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
         );
         _setupRoles();
     }
@@ -213,7 +221,13 @@ contract UniswapV3SwapFuseTest is Test {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, _plasmaVault, IporFusionAccessManager(_accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            _plasmaVault,
+            IporFusionAccessManager(_accessManager),
+            _withdrawManager
+        );
     }
 
     function _getFuses() private returns (address[] memory fuses_) {

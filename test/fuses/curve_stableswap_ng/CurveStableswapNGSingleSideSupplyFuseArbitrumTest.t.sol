@@ -17,6 +17,8 @@ import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     struct PlasmaVaultState {
@@ -106,24 +108,24 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -188,6 +190,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -195,18 +198,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -259,6 +260,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         uint256 amount = 100 * 10 ** ERC20(DAI).decimals();
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -266,18 +268,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(DAI, address(plasmaVault), 1_000 * 10 ** ERC20(DAI).decimals());
 
@@ -328,24 +328,24 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -391,6 +391,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         address[] memory fuses = createFuses(fuse);
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         uint256 amount = 0;
 
@@ -400,18 +401,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -458,6 +457,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         address[] memory fuses = createFuses(fuse);
         MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 0;
@@ -469,18 +469,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -569,6 +567,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -576,18 +575,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -670,6 +667,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -677,18 +675,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -759,24 +755,24 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -848,6 +844,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
 
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         PlasmaVault plasmaVault = new PlasmaVault(
             PlasmaVaultInitData(
@@ -855,18 +852,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 "PLASMA",
                 USDM,
                 address(priceOracleMiddlewareProxy),
-                marketConfigs,
-                fuses,
-                balanceFuses,
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                withdrawManager
             )
         );
 
-        setupRoles(plasmaVault, accessManager);
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
 
@@ -991,9 +986,13 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             });
     }
 
-    function setupRoles(PlasmaVault plasmaVault, IporFusionAccessManager accessManager) public {
+    function setupRoles(
+        PlasmaVault plasmaVault,
+        IporFusionAccessManager accessManager,
+        address withdrawManager
+    ) public {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager);
+        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
     }
 }

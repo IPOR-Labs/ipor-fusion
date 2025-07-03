@@ -14,9 +14,7 @@ library FeeConfigHelper {
                 iporDaoManagementFee: 0,
                 iporDaoPerformanceFee: 0,
                 feeFactory: address(new FeeManagerFactory()),
-                iporDaoFeeRecipientAddress: address(0),
-                recipientManagementFees: new RecipientFee[](0),
-                recipientPerformanceFees: new RecipientFee[](0)
+                iporDaoFeeRecipientAddress: address(98989898)
             });
     }
 }
