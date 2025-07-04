@@ -35,9 +35,13 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
         // Get the TAC staking executor address from storage
         address tacStakingExecutor = TacStakingStorageLib.getTacStakingExecutor();
 
+        
         if (tacStakingExecutor == address(0)) {
             return 0;
         }
+
+        /// @dev Take into consideration the balance of the executor in Native token
+        totalBalance += address(tacStakingExecutor).balance;
 
         // For TAC staking, we need to know which validators are supported
         // Since we can't reverse keccak256 hashes, we'll need to know the validators

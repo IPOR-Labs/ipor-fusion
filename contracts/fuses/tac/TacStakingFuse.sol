@@ -2,12 +2,12 @@
 pragma solidity 0.8.26;
 
 import {IFuseCommon} from "../IFuseCommon.sol";
+import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {TacStakingExecutor, StakingExecutorTacEnterData, StakingExecutorTacExitData} from "./TakStakingExecutor.sol";
 import {TacStakingStorageLib} from "./TacStakingStorageLib.sol";
-import {console2} from "forge-std/console2.sol";
 
 struct TacStakingFuseEnterData {
     string validator;
@@ -19,7 +19,7 @@ struct TacStakingFuseExitData {
     uint256 wTacAmount;
 }
 
-contract TacStakingFuse is IFuseCommon {
+contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for IERC20;
 
     error TacStakingFuseInvalidExecutorAddress();
@@ -29,6 +29,7 @@ contract TacStakingFuse is IFuseCommon {
 
     event TacStakingFuseEnter(address version, string validator, uint256 amount);
     event TacStakingFuseExit(address version, string validator, uint256 amount);
+    event TacStakingFuseInstantWithdraw(address version, uint256 amount);
     event TacStakingExecutorCreated(address executor, address plasmaVault, address wTAC, address staking);
 
     address public immutable VERSION;
@@ -78,8 +79,6 @@ contract TacStakingFuse is IFuseCommon {
 
         address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
 
-        console2.log("executor", executor);
-
         if (executor == address(0)) {
             revert TacStakingFuseInvalidExecutorAddress();
         }
@@ -121,4 +120,27 @@ contract TacStakingFuse is IFuseCommon {
 
         emit TacStakingFuseExit(VERSION, data_.validator, data_.wTacAmount);
     }
+
+    /// @notice Handle instant withdrawals
+    /// @dev params[0] - amount in wTAC, params[1] - validator hash (bytes32)
+    /// @param params_ Array of parameters for withdrawal
+    /// @dev Intant withdraw can be done only from TacStakingExecutor
+    function instantWithdraw(bytes32[] calldata params_) external override {
+        uint256 amount = uint256(params_[0]);
+        
+        if (amount == 0) {
+            return;
+        }
+
+        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
+
+        if (executor == address(0)) {
+            revert TacStakingFuseInvalidExecutorAddress();
+        }
+
+        TacStakingExecutor(executor).instantWithdraw(amount);
+
+        emit TacStakingFuseInstantWithdraw(VERSION, amount);
+    }
+
 }

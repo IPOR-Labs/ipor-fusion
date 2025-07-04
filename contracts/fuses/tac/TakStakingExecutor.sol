@@ -5,7 +5,6 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IStaking} from "./ext/IStaking.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title IWETH9 Interface
 /// @notice Interface for Wrapped Ether (WETH) token with deposit and withdraw functionality
@@ -39,6 +38,7 @@ contract TacStakingExecutor {
 
     event TacStakingExecutorEnter(address indexed sender, string validator, uint256 amount);
     event TacStakingExecutorExit(address indexed sender, string validator, uint256 amount);
+    event TacStakingExecutorInstantWithdraw(address indexed sender, uint256 amount);
 
     address public immutable wTAC;
     address public immutable staking;
@@ -66,8 +66,6 @@ contract TacStakingExecutor {
             revert StakingExecutorTacInvalidStakingAddress();
         }
 
-        
-
         plasmaVault = plasmaVault_;
         wTAC = wTAC_;
         staking = staking_;
@@ -87,14 +85,11 @@ contract TacStakingExecutor {
         if (finalAmount == 0) {
             return;
         }
-        console2.log("executor.balance before withdraw", address(this).balance);    
 
         /// @dev get native TAC from wTAC
         IWETH9(wTAC).withdraw(finalAmount);
 
         address delegator = address(this);
-
-        console2.log("delegator.balance after withdraw", delegator.balance);
 
         /// @dev delegate TAC to the validator
         staking.functionCall(abi.encodeWithSelector(IStaking.delegate.selector, delegator, data_.validator, finalAmount));
@@ -130,6 +125,26 @@ contract TacStakingExecutor {
         emit TacStakingExecutorExit(plasmaVault, data_.validator, data_.wTacAmount);
     }
 
-    /// @notice Allows the contract to receive ETH
+    function instantWithdraw(uint256 amount_) external restricted {
+        if (amount_ == 0) {
+            return;
+        }
+
+        uint256 remainingBalance = address(this).balance;
+        
+        uint256 finalAmount = amount_ <= remainingBalance ? amount_ : remainingBalance;
+
+        if (finalAmount == 0) {
+            return;
+        }
+
+        IWETH9(wTAC).withdraw(finalAmount);
+
+        IERC20(wTAC).safeTransfer(plasmaVault, finalAmount);
+
+        emit TacStakingExecutorInstantWithdraw(plasmaVault, finalAmount);
+    }
+
+    /// @notice Allows the contract to receive native token
     receive() external payable {}
 }

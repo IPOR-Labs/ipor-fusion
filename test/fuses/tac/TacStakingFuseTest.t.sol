@@ -9,7 +9,6 @@ import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawMana
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {TacStakingFuse, TacStakingFuseEnterData, TacStakingFuseExitData} from "../../../contracts/fuses/tac/TacStakingFuse.sol";
 import {TacStakingBalanceFuse} from "../../../contracts/fuses/tac/TacStakingBalanceFuse.sol";
-import {TacStakingExecutor} from "../../../contracts/fuses/tac/TakStakingExecutor.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
@@ -36,6 +35,9 @@ import {IStaking, Coin} from "../../../contracts/fuses/tac/ext/IStaking.sol";
 import {IPriceFeed} from "../../../contracts/price_oracle/price_feed/IPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {MockStaking} from "./MockStaking.sol";
+import {TacStakingStorageLib} from "../../../contracts/fuses/tac/TacStakingStorageLib.sol";
+import {TacStakingExecutorAddressReader} from "../../../contracts/readers/TacStakingExecutorAddressReader.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 interface IwTAC is IERC20 {
     function deposit() external payable;
@@ -72,13 +74,15 @@ contract TacStakingFuseTest is Test {
     PlasmaVault plasmaVault;
     TacStakingFuse tacStakingFuse;
     TacStakingBalanceFuse tacStakingBalanceFuse;
-    TacStakingExecutor tacStakingExecutor;
     IporFusionAccessManager accessManager;
     address withdrawManager;
     address priceOracle;
 
     // FusionFactory
     FusionFactory fusionFactory;
+
+    // Reader
+    TacStakingExecutorAddressReader tacStakingExecutorAddressReader;
 
     function setUp() public {
         // Setup fork for TAC network
@@ -105,16 +109,16 @@ contract TacStakingFuseTest is Test {
         // Setup TAC staking balance fuse with real staking contract
         tacStakingBalanceFuse = new TacStakingBalanceFuse(TAC_MARKET_ID, STAKING);
 
+        // Setup reader
+        tacStakingExecutorAddressReader = new TacStakingExecutorAddressReader();
+
         // Setup roles FIRST (before adding fuses)
         _setupRoles();
 
         // Add TAC staking fuses to the vault AFTER roles are set up
         _addTacStakingFuses();
 
-        // Grant PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE to atomist
-        vm.startPrank(atomist);
-        accessManager.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
-        vm.stopPrank();
+        
 
         address[] memory assets = new address[](1);
         assets[0] = wTAC;
@@ -190,10 +194,6 @@ contract TacStakingFuseTest is Test {
         uint256 stakingBalanceAfter = address(STAKING).balance;
         uint256 vaultTotalAssetsAfter = PlasmaVault(address(plasmaVault)).totalAssets();
 
-        // Get the executor address from storage to check delegation
-        address executor = address(0); // This would need to be read from storage in a real test
-        // For now, we'll just verify the operation completed successfully
-
         assertEq(
             stakingBalanceAfter,
             stakingBalanceBefore,
@@ -266,8 +266,295 @@ contract TacStakingFuseTest is Test {
         uint256 vaultTotalAssetsAfter = PlasmaVault(address(plasmaVault)).totalAssets();
 
         assertEq(stakingBalanceAfter, stakingBalanceBefore, "Vault should have received native TAC after unstaking");
-        assertEq(vaultTotalAssetsAfter, vaultTotalAssetsBefore, "Vault total assets should remain unchanged after unstaking");
+        assertEq(
+            vaultTotalAssetsAfter,
+            vaultTotalAssetsBefore,
+            "Vault total assets should remain unchanged after unstaking"
+        );
     }
+
+    function testShouldReceiveNativeTokensAfterUnbondingPeriod() external {
+        // given
+        uint256 stakeAmount = 100;
+
+        address testUser = address(0x333);
+
+        vm.deal(testUser, stakeAmount);
+
+        vm.startPrank(testUser);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, testUser, 0);
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, alpha, 0);
+        vm.stopPrank();
+
+        vm.startPrank(testUser);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(testUser);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(testUser), testUser);
+        vm.stopPrank();
+
+        // Stake TAC
+        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+            validator: VALIDATOR,
+            tacAmount: stakeAmount
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingFuse),
+            abi.encodeWithSignature("enter((string,uint256))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        uint256 vaultTotalAssetsBefore = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 balanceInMarketBefore = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
+
+        // Unstake TAC (initiates unbonding)
+        TacStakingFuseExitData memory exitData = TacStakingFuseExitData({
+            validator: VALIDATOR,
+            wTacAmount: stakeAmount
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("exit((string,uint256))", exitData));
+
+        vm.prank(alpha);
+        plasmaVault.execute(exitCalls);
+
+        uint256 vaultTotalAssetsAfter = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 balanceInMarketAfter = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
+
+        // Get executor address using the reader
+        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+
+        // Record balances before unbonding completion
+        uint256 executorNativeBalanceBefore = executor.balance;
+        uint256 vaultWTacBalanceBefore = IwTAC(wTAC).balanceOf(address(plasmaVault));
+
+        // Simulate completion of unbonding period (21 days)
+        vm.warp(block.timestamp + 21 days);
+
+        // when
+        // Simulate the staking contract transferring native tokens to the executor
+        // This would happen automatically in a real TAC network after the unbonding period
+        vm.deal(executor, executorNativeBalanceBefore + stakeAmount);
+        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(executor, VALIDATOR);
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = TAC_MARKET_ID;
+
+        vm.prank(alpha);
+        PlasmaVault(address(plasmaVault)).updateMarketsBalances(marketIds);
+
+        // then
+        uint256 vaultTotalAssetsAfterUnbonding = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 balanceInMarketAfterUnbonding = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
+
+        assertEq(
+            vaultTotalAssetsAfter,
+            vaultTotalAssetsBefore,
+            "Vault total assets should be equal to the initial balance"
+        );
+        assertEq(
+            balanceInMarketAfter,
+            balanceInMarketBefore,
+            "Balance in market should be equal to the initial balance"
+        );
+
+        assertEq(
+            vaultTotalAssetsAfterUnbonding,
+            vaultTotalAssetsBefore,
+            "Vault total assets should be equal to the initial balance after unbonding period"
+        );
+        assertEq(
+            balanceInMarketAfterUnbonding,
+            balanceInMarketBefore,
+            "Balance in market should be equal to the initial balance after unbonding period"
+        );
+
+        assertGt(vaultTotalAssetsBefore, 0, "Vault total assets should be greater than 0");
+        assertGt(balanceInMarketBefore, 0, "Balance in market should be greater than 0");
+        assertGt(vaultTotalAssetsAfterUnbonding, 0, "Vault total assets should be greater than 0");
+        assertGt(balanceInMarketAfterUnbonding, 0, "Balance in market should be greater than 0");
+    }
+
+    function testShouldIncreaseVaultBalanceWhenTransferNativeTokenToExecutor() external {
+        // given
+        uint256 stakeAmount = 100;
+
+        address testUser = address(0x333);
+
+        vm.deal(testUser, stakeAmount);
+
+        vm.startPrank(testUser);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, testUser, 0);
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, alpha, 0);
+        vm.stopPrank();
+
+        vm.startPrank(testUser);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(testUser);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(testUser), testUser);
+        vm.stopPrank();
+
+        // Get executor address using the reader
+        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+
+        uint256 vaultTotalAssetsBefore = PlasmaVault(address(plasmaVault)).totalAssets();
+
+        // when
+        vm.deal(executor, stakeAmount);
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = TAC_MARKET_ID;
+
+        vm.prank(alpha);
+        PlasmaVault(address(plasmaVault)).updateMarketsBalances(marketIds);
+
+        // then
+        uint256 vaultTotalAssetsAfter = PlasmaVault(address(plasmaVault)).totalAssets();
+
+        assertGt(
+            vaultTotalAssetsAfter,
+            vaultTotalAssetsBefore,
+            "Vault total assets should increase by the stake amount"
+        );
+    }
+
+    function testShouldGetExecutorAddressUsingReader() external {
+        // given - executor is created in setUp()
+
+        // when
+        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+
+        // then
+        assertTrue(executor != address(0), "Executor address should not be zero");
+    }
+
+    function testShouldInstantWithdrawTacSuccessfully() external {
+        // given
+        uint256 stakeAmount = 100;
+
+        // Configure instant withdraw order
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
+        bytes32[] memory instantWithdrawParams = new bytes32[](1);
+        instantWithdrawParams[0] = bytes32(stakeAmount); // amount
+
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
+            fuse: address(tacStakingFuse),
+            params: instantWithdrawParams
+        });
+
+        vm.prank(atomist);
+        PlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+
+
+        address testUser = address(0x333);
+
+        vm.deal(testUser, stakeAmount);
+
+        vm.startPrank(testUser);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, testUser, 0);
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, alpha, 0);
+        vm.stopPrank();
+
+        vm.startPrank(testUser);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(testUser);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(testUser), testUser);
+        vm.stopPrank();
+
+        // Stake TAC
+        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+            validator: VALIDATOR,
+            tacAmount: stakeAmount
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingFuse),
+            abi.encodeWithSignature("enter((string,uint256))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Unstake TAC (initiates unbonding)
+        TacStakingFuseExitData memory exitData = TacStakingFuseExitData({
+            validator: VALIDATOR,
+            wTacAmount: stakeAmount
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("exit((string,uint256))", exitData));
+
+        vm.prank(alpha);
+        plasmaVault.execute(exitCalls);
+
+        // Get executor address using the reader
+        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+
+        // Simulate completion of unbonding period (21 days)
+        vm.warp(block.timestamp + 21 days);
+
+        uint256 executorNativeBalanceBefore = executor.balance;
+
+        // Simulate the staking contract transferring native tokens to the executor
+        // This would happen automatically in a real TAC network after the unbonding period
+        vm.deal(executor, executorNativeBalanceBefore + stakeAmount);
+        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(executor, VALIDATOR);
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = TAC_MARKET_ID;
+
+        vm.prank(alpha);
+        PlasmaVault(address(plasmaVault)).updateMarketsBalances(marketIds);
+
+        uint256 vaultTotalAssetsBefore = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 testUserBalanceBefore = IwTAC(wTAC).balanceOf(testUser);
+
+        uint256 testUserSharesBefore = PlasmaVault(address(plasmaVault)).balanceOf(testUser);
+
+        // when
+        vm.prank(testUser);
+        PlasmaVault(address(plasmaVault)).redeem(testUserSharesBefore-500, testUser, testUser);
+
+        // then
+        uint256 vaultTotalAssetsAfter = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 testUserBalanceAfter = IwTAC(wTAC).balanceOf(testUser);
+
+        assertLt(vaultTotalAssetsAfter, vaultTotalAssetsBefore, "Vault total assets should be less than the initial balance");
+        assertGt(testUserBalanceAfter, testUserBalanceBefore, "Test user balance should be greater than the initial balance");
+    }
+
 
     function _setupFusionFactory() private {
         // Deploy factory contracts
@@ -362,5 +649,14 @@ contract TacStakingFuseTest is Test {
         // Grant fuse manager role to atomist address (needed to add fuses)
         vm.prank(atomist);
         accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+
+        // Grant instant withdrawal fuses role to atomist address (needed to configure instant withdrawal fuses)
+        vm.prank(atomist);
+        accessManager.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
+
+        // Grant PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE to atomist
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
+        vm.stopPrank();
     }
 }

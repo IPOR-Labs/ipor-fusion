@@ -556,6 +556,15 @@ contract MockStaking is IStaking {
         return (emptyResponse, PageResponse("", 0));
     }
 
+
+    /// @dev Simulation action out of staking contract - but possible in TAC EVM
+    function evmMethodRemoveAllUnbondingDelegations(
+        address delegatorAddress,
+        string memory validatorAddress
+    )  external {
+        delete unbondingDelegations[delegatorAddress][validatorAddress];
+    }
+
     /// @dev Helper function to convert address to string
     function _addressToString(address addr) internal pure returns (string memory) {
         bytes memory buffer = new bytes(42);
