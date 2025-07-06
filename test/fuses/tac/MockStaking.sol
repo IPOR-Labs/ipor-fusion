@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 
 import {Vm} from "forge-std/Vm.sol";
 import {TacAddressConverterLib} from "./TacAddressConverterLib.sol";
-import {console2} from "forge-std/console2.sol";
 
 // @dev Allocation represents a single allocation for an IBC fungible token transfer.
 struct ICS20Allocation {
