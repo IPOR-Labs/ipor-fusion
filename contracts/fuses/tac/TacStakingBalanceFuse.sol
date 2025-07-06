@@ -8,19 +8,27 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {IStaking, Coin, UnbondingDelegationOutput} from "./ext/IStaking.sol";
+import {IStaking, Coin, UnbondingDelegationOutput, Validator} from "./ext/IStaking.sol";
 import {TacStakingStorageLib} from "./TacStakingStorageLib.sol";
 
 contract TacStakingBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using Address for address;
 
+    error TacStakingBalanceFuseInvalidWtacAddress();
+
     uint256 public immutable MARKET_ID;
     address public immutable staking;
+    address public immutable wTAC;
 
-    constructor(uint256 marketId_, address staking_) {
+    constructor(uint256 marketId_, address staking_, address wTAC_) {
+        if (wTAC_ == address(0)) {
+            revert TacStakingBalanceFuseInvalidWtacAddress();
+        }
+
         MARKET_ID = marketId_;
         staking = staking_;
+        wTAC = wTAC_;
     }
 
     function balanceOf() external view override returns (uint256) {
@@ -32,32 +40,30 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
 
         uint256 totalBalance = 0;
 
-        // Get the TAC staking executor address from storage
         address tacStakingExecutor = TacStakingStorageLib.getTacStakingExecutor();
 
-        
         if (tacStakingExecutor == address(0)) {
             return 0;
         }
 
+        /// @dev Get price oracle middleware to convert TAC balance to USD
+        address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+
         /// @dev Take into consideration the balance of the executor in Native token
         totalBalance += address(tacStakingExecutor).balance;
 
-        // For TAC staking, we need to know which validators are supported
-        // Since we can't reverse keccak256 hashes, we'll need to know the validators
-        // For now, we'll use a hardcoded list of known validators that should be in substrates
-        string[] memory knownValidators = _getKnownValidators();
+        for (uint256 i = 0; i < substrates.length; ++i) {
+            bytes32 substrate = substrates[i];
 
-        for (uint256 i; i < knownValidators.length; ++i) {
-            string memory validator = knownValidators[i];
-            bytes32 validatorSubstrate = keccak256(bytes(validator));
+            address validatorAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrate);
 
-            // Check if this validator is granted in the market
-            if (PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, validatorSubstrate)) {
-                // Get active delegation balance
+            try IStaking(staking).validator(validatorAddress) returns (Validator memory validator) {
+                string memory operatorAddress = validator.operatorAddress;
+
                 uint256 shares;
                 Coin memory balance;
-                try IStaking(staking).delegation(tacStakingExecutor, validator) returns (
+
+                try IStaking(staking).delegation(tacStakingExecutor, operatorAddress) returns (
                     uint256 _shares,
                     Coin memory _balance
                 ) {
@@ -74,8 +80,8 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
                     totalBalance += balance.amount;
                 }
 
-                // Get unbonding delegation balance
-                try IStaking(staking).unbondingDelegation(tacStakingExecutor, validator) returns (
+                // Get unbonding delegation balance using operator address
+                try IStaking(staking).unbondingDelegation(tacStakingExecutor, operatorAddress) returns (
                     UnbondingDelegationOutput memory unbondingDelegation
                 ) {
                     // Sum up all unbonding entries for this validator
@@ -86,17 +92,21 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
                     // If unbonding delegation query fails, continue with next validator
                     continue;
                 }
+            } catch {
+                // If validator query fails, continue with next substrate
+                continue;
+            }
+        }
+
+        /// @dev Convert TAC balance to USD using price oracle middleware
+        /// @dev Use wTAC address for pricing since native TAC and wTAC have 1:1 relationship
+        if (totalBalance > 0 && priceOracleMiddleware != address(0) && wTAC != address(0)) {
+            (uint256 tacPrice, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(wTAC);
+            if (tacPrice > 0) {
+                totalBalance = IporMath.convertToWad(totalBalance * tacPrice, 18 + priceDecimals);
             }
         }
 
         return totalBalance;
-    }
-
-    function _getKnownValidators() private pure returns (string[] memory) {
-        // This should be configurable or derived from the substrates
-        // For now, we'll return the known validator
-        string[] memory validators = new string[](1);
-        validators[0] = "tac1pdu86gjvnnr2786xtkw2eggxkmrsur0zjm6vxn";
-        return validators;
     }
 }

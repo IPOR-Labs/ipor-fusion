@@ -6,16 +6,19 @@ import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {TacStakingExecutor, StakingExecutorTacEnterData, StakingExecutorTacExitData} from "./TakStakingExecutor.sol";
+import {TacStakingExecutor, StakingExecutorTacEnterData, StakingExecutorTacExitData} from "./TacStakingExecutor.sol";
 import {TacStakingStorageLib} from "./TacStakingStorageLib.sol";
+import {IStaking, Validator, BondStatus} from "./ext/IStaking.sol";
+
+import {console2} from "forge-std/console2.sol";
 
 struct TacStakingFuseEnterData {
-    string validator;
+    address validator;
     uint256 tacAmount;
 }
 
 struct TacStakingFuseExitData {
-    string validator;
+    address validator;
     uint256 wTacAmount;
 }
 
@@ -23,12 +26,15 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for IERC20;
 
     error TacStakingFuseInvalidExecutorAddress();
-    error TacStakingFuseUnsupportedAsset(string action, string validator);
+    error TacStakingFuseSubstrateNotGranted(address validator);
     error TacStakingFuseExecutorAlreadySet();
     error TacStakingFuseOnlyAlpha();
+    error TacStakingFuseUnsupportedValidator(address validator);
+    error TacStakingFuseValidatorJailed(address validator, string operatorAddress);
+    error TacStakingFuseValidatorNotBonded(address validator, string operatorAddress);
 
-    event TacStakingFuseEnter(address version, string validator, uint256 amount);
-    event TacStakingFuseExit(address version, string validator, uint256 amount);
+    event TacStakingFuseEnter(address version, address validator, string operatorAddress, uint256 amount);
+    event TacStakingFuseExit(address version, address validator, string operatorAddress, uint256 amount);
     event TacStakingFuseInstantWithdraw(address version, uint256 amount);
     event TacStakingExecutorCreated(address executor, address plasmaVault, address wTAC, address staking);
 
@@ -73,14 +79,26 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, keccak256(bytes(data_.validator)))) {
-            revert TacStakingFuseUnsupportedAsset("enter", data_.validator);
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.validator)) {
+            revert TacStakingFuseSubstrateNotGranted(data_.validator);
         }
 
         address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
 
         if (executor == address(0)) {
             revert TacStakingFuseInvalidExecutorAddress();
+        }
+
+
+        (string memory operatorAddress, bool isJailed, bool isBonded) = _getValidatorInfo(data_.validator); 
+        
+
+        if (isJailed) {
+            revert TacStakingFuseValidatorJailed(data_.validator, operatorAddress);
+        }
+
+        if (!isBonded) {
+            revert TacStakingFuseValidatorNotBonded(data_.validator, operatorAddress);
         }
 
         uint256 balance = IERC20(wTAC).balanceOf(address(this));
@@ -91,12 +109,14 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
         }
 
         IERC20(wTAC).safeTransfer(executor, finalAmount);
+        console2.log("operatorAddress", operatorAddress);
+        console2.log("validator", data_.validator);
 
-        TacStakingExecutor(executor).enter(
-            StakingExecutorTacEnterData({validator: data_.validator, wTacAmount: finalAmount})
+        TacStakingExecutor(executor).delegate(
+            StakingExecutorTacEnterData({operatorAddress: operatorAddress, wTacAmount: finalAmount})
         );
 
-        emit TacStakingFuseEnter(VERSION, data_.validator, finalAmount);
+        emit TacStakingFuseEnter(VERSION, data_.validator, operatorAddress, finalAmount);
     }
 
     function exit(TacStakingFuseExitData memory data_) external {
@@ -104,8 +124,8 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, keccak256(bytes(data_.validator)))) {
-            revert TacStakingFuseUnsupportedAsset("exit", data_.validator);
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.validator)) {
+            revert TacStakingFuseSubstrateNotGranted(data_.validator);
         }
 
         address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
@@ -114,11 +134,24 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             revert TacStakingFuseInvalidExecutorAddress();
         }
 
-        TacStakingExecutor(executor).exit(
-            StakingExecutorTacExitData({validator: data_.validator, wTacAmount: data_.wTacAmount})
+        (string memory operatorAddress, bool isJailed, bool isBonded) = _getValidatorInfo(data_.validator);
+
+
+        /// TODO: confirm if when exit should be able to exit even if validator is jailed
+        if (isJailed) {
+            revert TacStakingFuseValidatorJailed(data_.validator, operatorAddress);
+        }
+
+        /// TODO: confirm if when exit should be able to exit even if validator is not bonded
+        if (!isBonded) {
+            revert TacStakingFuseValidatorNotBonded(data_.validator, operatorAddress);
+        }
+
+        TacStakingExecutor(executor).undelegate(
+            StakingExecutorTacExitData({operatorAddress: operatorAddress, wTacAmount: data_.wTacAmount})
         );
 
-        emit TacStakingFuseExit(VERSION, data_.validator, data_.wTacAmount);
+        emit TacStakingFuseExit(VERSION, data_.validator, operatorAddress, data_.wTacAmount);
     }
 
     /// @notice Handle instant withdrawals
@@ -127,7 +160,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @dev Intant withdraw can be done only from TacStakingExecutor
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
-        
+
         if (amount == 0) {
             return;
         }
@@ -141,6 +174,26 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
         TacStakingExecutor(executor).instantWithdraw(amount);
 
         emit TacStakingFuseInstantWithdraw(VERSION, amount);
+    }
+
+    /// @notice Withdraw all wTAC from the executor
+    /// @dev Intant withdraw can be done only from TacStakingExecutor
+    function exit() external {
+        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
+        if (executor == address(0)) {
+            revert TacStakingFuseInvalidExecutorAddress();
+        }
+        TacStakingExecutor(executor).exit();
+    }
+
+    function _getValidatorInfo(address validator_) internal view returns (string memory operatorAddress_, bool isJailed_, bool isBonded_) {
+        try IStaking(staking).validator(validator_) returns (Validator memory validator) {
+            isJailed_ = validator.jailed;
+            isBonded_ = validator.status == BondStatus.Bonded;
+            operatorAddress_ = validator.operatorAddress;
+        } catch {
+            revert TacStakingFuseUnsupportedValidator(validator_);
+        }
     }
 
 }

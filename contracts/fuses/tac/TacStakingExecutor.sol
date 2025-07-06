@@ -18,12 +18,12 @@ interface IWETH9 {
 }
 
 struct StakingExecutorTacEnterData {
-    string validator;
+    string operatorAddress;
     uint256 wTacAmount;
 }
 
 struct StakingExecutorTacExitData {
-    string validator;
+    string operatorAddress;
     uint256 wTacAmount;
 }
 
@@ -36,10 +36,11 @@ contract TacStakingExecutor {
     error StakingExecutorTacDelegateFailed();
     error StakingExecutorTacUndelegateFailed();
 
-    event TacStakingExecutorEnter(address indexed sender, string validator, uint256 amount);
-    event TacStakingExecutorExit(address indexed sender, string validator, uint256 amount);
-    event TacStakingExecutorInstantWithdraw(address indexed sender, uint256 amount);
-
+    event TacStakingExecutorDelegate(address plasmaVault, string operatorAddress, uint256 amount);
+    event TacStakingExecutorUndelegate(address plasmaVault, string operatorAddress, uint256 amount);
+    event TacStakingExecutorInstantWithdraw(address plasmaVault, uint256 amount);
+    event TacStakingExecutorExit(address plasmaVault, uint256 amount);
+    
     address public immutable wTAC;
     address public immutable staking;
     address public immutable plasmaVault;
@@ -71,7 +72,7 @@ contract TacStakingExecutor {
         staking = staking_;
     }
 
-    function enter(StakingExecutorTacEnterData memory data_) external restricted {
+    function delegate(StakingExecutorTacEnterData memory data_) external restricted {
         if (data_.wTacAmount == 0) {
             return;
         }
@@ -92,7 +93,7 @@ contract TacStakingExecutor {
         address delegator = address(this);
 
         /// @dev delegate TAC to the validator
-        staking.functionCall(abi.encodeWithSelector(IStaking.delegate.selector, delegator, data_.validator, finalAmount));
+        staking.functionCall(abi.encodeWithSelector(IStaking.delegate.selector, delegator, data_.operatorAddress, finalAmount));
 
         uint256 remainingBalance = address(this).balance;
 
@@ -101,10 +102,10 @@ contract TacStakingExecutor {
             IERC20(wTAC).safeTransfer(plasmaVault, remainingBalance);
         }
 
-        emit TacStakingExecutorEnter(plasmaVault, data_.validator, data_.wTacAmount);
+        emit TacStakingExecutorDelegate(plasmaVault, data_.operatorAddress, data_.wTacAmount);
     }
 
-    function exit(StakingExecutorTacExitData memory data_) external restricted {
+    function undelegate(StakingExecutorTacExitData memory data_) external restricted {
         if (data_.wTacAmount == 0) {
             return;
         }
@@ -112,7 +113,7 @@ contract TacStakingExecutor {
         address plasmaVault = msg.sender;
 
         staking.functionCall(
-            abi.encodeWithSelector(IStaking.undelegate.selector, address(this), data_.validator, data_.wTacAmount)
+            abi.encodeWithSelector(IStaking.undelegate.selector, address(this), data_.operatorAddress, data_.wTacAmount)
         );
 
         uint256 remainingBalance = address(this).balance;
@@ -122,7 +123,7 @@ contract TacStakingExecutor {
             IERC20(wTAC).safeTransfer(plasmaVault, remainingBalance);
         }
 
-        emit TacStakingExecutorExit(plasmaVault, data_.validator, data_.wTacAmount);
+        emit TacStakingExecutorUndelegate(plasmaVault, data_.operatorAddress, data_.wTacAmount);
     }
 
     function instantWithdraw(uint256 amount_) external restricted {
@@ -143,6 +144,18 @@ contract TacStakingExecutor {
         IERC20(wTAC).safeTransfer(plasmaVault, finalAmount);
 
         emit TacStakingExecutorInstantWithdraw(plasmaVault, finalAmount);
+    }
+
+    function exit() external restricted {
+        uint256 remainingBalance = address(this).balance;
+
+        IWETH9(wTAC).withdraw(remainingBalance);
+
+        uint256 remainingWTacBalance = IERC20(wTAC).balanceOf(address(this));
+
+        IERC20(wTAC).safeTransfer(plasmaVault, remainingWTacBalance);
+
+        emit TacStakingExecutorExit(plasmaVault, remainingWTacBalance);
     }
 
     /// @notice Allows the contract to receive native token
