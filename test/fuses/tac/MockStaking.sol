@@ -328,6 +328,8 @@ contract MockStaking is IStaking {
     // Storage to track validators: validatorAddress => validator info
     mapping(address => ValidatorInfo) public validatorsStorage;
 
+    mapping(string operatorAddress => address validatorAddress) public operatorToValidator;
+
     // Array to track all validator addresses for enumeration
     address[] public validatorAddresses;
 
@@ -387,6 +389,8 @@ contract MockStaking is IStaking {
         /// @dev For testing purpose and for simplicity, this value will be the same as the operator address
         string memory operatorAddress = pubkey;
 
+        operatorToValidator[operatorAddress] = validatorAddress;
+
         // Create self-delegation
         DelegationInfo storage selfDelegation = delegations[validatorAddress][operatorAddress];
         selfDelegation.balance = value;
@@ -402,39 +406,7 @@ contract MockStaking is IStaking {
         int256 commissionRate,
         int256 minSelfDelegation
     ) external returns (bool success) {
-        require(validatorsStorage[validatorAddress].exists, "Validator does not exist");
-
-        ValidatorInfo storage validator = validatorsStorage[validatorAddress];
-
-        // Update description if not "[do-not-modify]"
-        if (keccak256(bytes(description.moniker)) != keccak256(bytes("[do-not-modify]"))) {
-            validator.description.moniker = description.moniker;
-        }
-        if (keccak256(bytes(description.identity)) != keccak256(bytes("[do-not-modify]"))) {
-            validator.description.identity = description.identity;
-        }
-        if (keccak256(bytes(description.website)) != keccak256(bytes("[do-not-modify]"))) {
-            validator.description.website = description.website;
-        }
-        if (keccak256(bytes(description.securityContact)) != keccak256(bytes("[do-not-modify]"))) {
-            validator.description.securityContact = description.securityContact;
-        }
-        if (keccak256(bytes(description.details)) != keccak256(bytes("[do-not-modify]"))) {
-            validator.description.details = description.details;
-        }
-
-        // Update commission rate if not -1
-        if (commissionRate != -1) {
-            require(commissionRate >= 0, "Commission rate cannot be negative");
-            validator.commissionRates.rate = uint256(commissionRate);
-        }
-
-        // Update min self delegation if not -1
-        if (minSelfDelegation != -1) {
-            require(minSelfDelegation >= 0, "Min self delegation cannot be negative");
-            validator.minSelfDelegation = uint256(minSelfDelegation);
-        }
-
+        /// @dev Not implemented
         return true;
     }
 
@@ -455,7 +427,8 @@ contract MockStaking is IStaking {
             delegation.shares = amount;
             delegation.exists = true;
         }
-        address validatorAddr = TacAddressConverterLib.stringToAddress(validatorAddress);
+        address validatorAddr = operatorToValidator[validatorAddress];
+
         if (validatorsStorage[validatorAddr].exists) {
             ValidatorInfo storage validator = validatorsStorage[validatorAddr];
             validator.totalDelegated += amount;
@@ -472,19 +445,25 @@ contract MockStaking is IStaking {
         DelegationInfo storage delegation = delegations[delegatorAddress][validatorAddress];
         require(delegation.exists, "No delegation found");
         require(delegation.balance >= amount, "Insufficient delegation balance");
+
         delegation.balance -= amount;
         delegation.shares -= amount;
+
         if (delegation.balance == 0) {
             delegation.exists = false;
         }
-        address validatorAddr = TacAddressConverterLib.stringToAddress(validatorAddress);
+
+        address validatorAddr = operatorToValidator[validatorAddress];
+
         if (validatorsStorage[validatorAddr].exists) {
             ValidatorInfo storage validator = validatorsStorage[validatorAddr];
             validator.totalDelegated -= amount;
             validator.totalShares -= amount;
         }
+
         int64 currentTime = int64(uint64(block.timestamp));
         int64 unbondingCompletionTime = currentTime + int64(uint64(UNBONDING_PERIOD));
+
         UnbondingDelegationEntry memory unbondingEntry = UnbondingDelegationEntry({
             creationHeight: int64(uint64(block.number)),
             completionTime: unbondingCompletionTime,
@@ -520,8 +499,9 @@ contract MockStaking is IStaking {
             dstDelegation.shares = amount;
             dstDelegation.exists = true;
         }
-        address srcValidatorAddr = TacAddressConverterLib.stringToAddress(validatorSrcAddress);
-        address dstValidatorAddr = TacAddressConverterLib.stringToAddress(validatorDstAddress);
+        address srcValidatorAddr = operatorToValidator[validatorSrcAddress];
+        address dstValidatorAddr = operatorToValidator[validatorDstAddress];
+
         if (validatorsStorage[srcValidatorAddr].exists) {
             ValidatorInfo storage srcValidator = validatorsStorage[srcValidatorAddr];
             srcValidator.totalDelegated -= amount;
@@ -561,7 +541,8 @@ contract MockStaking is IStaking {
                     delegation.shares = amount;
                     delegation.exists = true;
                 }
-                address validatorAddr = TacAddressConverterLib.stringToAddress(validatorAddress);
+                address validatorAddr = operatorToValidator[validatorAddress];
+
                 if (validatorsStorage[validatorAddr].exists) {
                     ValidatorInfo storage validator = validatorsStorage[validatorAddr];
                     validator.totalDelegated += amount;
@@ -590,8 +571,17 @@ contract MockStaking is IStaking {
         address delegatorAddress,
         string memory validatorAddress
     ) external view returns (UnbondingDelegationOutput memory unbondingDelegation) {
-        /// @dev Not implemented
-        return UnbondingDelegationOutput("", "", new UnbondingDelegationEntry[](0));
+        UnbondingDelegationEntry[] storage entries = unbondingDelegations[delegatorAddress][validatorAddress];
+
+        /// @dev Notice! This is a mock implementation, real implementation should support fully bech32 convertion.
+        string memory delegatorAddressStr = vm.toString(delegatorAddress);
+
+        return
+            UnbondingDelegationOutput({
+                delegatorAddress: delegatorAddressStr,
+                validatorAddress: validatorAddress,
+                entries: entries
+            });
     }
 
     function validator(address validatorAddress) external view returns (Validator memory validator) {
@@ -637,6 +627,7 @@ contract MockStaking is IStaking {
         string memory srcValidatorAddress,
         string memory dstValidatorAddress
     ) external view returns (RedelegationOutput memory redelegation) {
+        /// @dev Not implemented
         return RedelegationOutput("", "", "", new RedelegationEntry[](0));
     }
 
@@ -646,6 +637,7 @@ contract MockStaking is IStaking {
         string memory dstValidatorAddress,
         PageRequest calldata pageRequest
     ) external view returns (RedelegationResponse[] memory response, PageResponse memory pageResponse) {
+        /// @dev Not implemented
         RedelegationResponse[] memory emptyResponse = new RedelegationResponse[](0);
         return (emptyResponse, PageResponse("", 0));
     }

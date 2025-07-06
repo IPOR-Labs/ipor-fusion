@@ -18,8 +18,8 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
     error TacStakingBalanceFuseInvalidWtacAddress();
 
     uint256 public immutable MARKET_ID;
-    address public immutable staking;
-    address public immutable wTAC;
+    address public immutable W_TAC;
+    address public immutable STAKING;
 
     constructor(uint256 marketId_, address staking_, address wTAC_) {
         if (wTAC_ == address(0)) {
@@ -27,8 +27,8 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
         }
 
         MARKET_ID = marketId_;
-        staking = staking_;
-        wTAC = wTAC_;
+        W_TAC = wTAC_;
+        STAKING = staking_;
     }
 
     function balanceOf() external view override returns (uint256) {
@@ -57,13 +57,13 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
 
             address validatorAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrate);
 
-            try IStaking(staking).validator(validatorAddress) returns (Validator memory validator) {
+            try IStaking(STAKING).validator(validatorAddress) returns (Validator memory validator) {
                 string memory operatorAddress = validator.operatorAddress;
 
                 uint256 shares;
                 Coin memory balance;
 
-                try IStaking(staking).delegation(tacStakingExecutor, operatorAddress) returns (
+                try IStaking(STAKING).delegation(tacStakingExecutor, operatorAddress) returns (
                     uint256 _shares,
                     Coin memory _balance
                 ) {
@@ -81,7 +81,7 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
                 }
 
                 // Get unbonding delegation balance using operator address
-                try IStaking(staking).unbondingDelegation(tacStakingExecutor, operatorAddress) returns (
+                try IStaking(STAKING).unbondingDelegation(tacStakingExecutor, operatorAddress) returns (
                     UnbondingDelegationOutput memory unbondingDelegation
                 ) {
                     // Sum up all unbonding entries for this validator
@@ -100,8 +100,10 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
 
         /// @dev Convert TAC balance to USD using price oracle middleware
         /// @dev Use wTAC address for pricing since native TAC and wTAC have 1:1 relationship
-        if (totalBalance > 0 && priceOracleMiddleware != address(0) && wTAC != address(0)) {
-            (uint256 tacPrice, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(wTAC);
+        if (totalBalance > 0 && priceOracleMiddleware != address(0)) {
+            (uint256 tacPrice, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
+                W_TAC
+            );
             if (tacPrice > 0) {
                 totalBalance = IporMath.convertToWad(totalBalance * tacPrice, 18 + priceDecimals);
             }

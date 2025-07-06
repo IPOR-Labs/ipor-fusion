@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-
 /// @dev Don't use this library for production. It's only for testing purposes.
 library TacAddressConverterLib {
     uint8 private constant BECH32_CHARSET_LENGTH = 32;

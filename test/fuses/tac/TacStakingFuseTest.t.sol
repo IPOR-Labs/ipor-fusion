@@ -110,6 +110,7 @@ contract TacStakingFuseTest is Test {
         // Setup test addresses
         alpha = address(0x555);
         atomist = address(0x777);
+
         user = address(0x333);
 
         // Setup FusionFactory
@@ -167,24 +168,22 @@ contract TacStakingFuseTest is Test {
         // given
         uint256 stakeAmount = 100;
 
-        address testUser = address(0x333);
+        vm.deal(user, stakeAmount);
 
-        vm.deal(testUser, stakeAmount);
-
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).deposit{value: stakeAmount}();
         vm.stopPrank();
 
         vm.startPrank(atomist);
-        accessManager.grantRole(Roles.WHITELIST_ROLE, testUser, 0);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
-        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(testUser), testUser);
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
         TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
@@ -225,24 +224,22 @@ contract TacStakingFuseTest is Test {
         // given
         uint256 stakeAmount = 100;
 
-        address testUser = address(0x333);
+        vm.deal(user, stakeAmount);
 
-        vm.deal(testUser, stakeAmount);
-
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).deposit{value: stakeAmount}();
         vm.stopPrank();
 
         vm.startPrank(atomist);
-        accessManager.grantRole(Roles.WHITELIST_ROLE, testUser, 0);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
-        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(testUser), testUser);
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
         TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
@@ -295,28 +292,26 @@ contract TacStakingFuseTest is Test {
         // given
         uint256 stakeAmount = 100;
 
-        address testUser = address(0x333);
+        vm.deal(user, stakeAmount);
 
-        vm.deal(testUser, stakeAmount);
-
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).deposit{value: stakeAmount}();
         vm.stopPrank();
 
         vm.startPrank(atomist);
-        accessManager.grantRole(Roles.WHITELIST_ROLE, testUser, 0);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
         vm.stopPrank();
 
         vm.startPrank(atomist);
         accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, alpha, 0);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
-        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(testUser), testUser);
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
         // Stake TAC
@@ -413,28 +408,26 @@ contract TacStakingFuseTest is Test {
         // given
         uint256 stakeAmount = 100;
 
-        address testUser = address(0x333);
+        vm.deal(user, stakeAmount);
 
-        vm.deal(testUser, stakeAmount);
-
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).deposit{value: stakeAmount}();
         vm.stopPrank();
 
         vm.startPrank(atomist);
-        accessManager.grantRole(Roles.WHITELIST_ROLE, testUser, 0);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
         vm.stopPrank();
 
         vm.startPrank(atomist);
         accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, alpha, 0);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
-        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(testUser), testUser);
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
         // Get executor address using the reader
@@ -488,28 +481,26 @@ contract TacStakingFuseTest is Test {
         vm.prank(atomist);
         PlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
 
-        address testUser = address(0x333);
+        vm.deal(user, stakeAmount);
 
-        vm.deal(testUser, stakeAmount);
-
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).deposit{value: stakeAmount}();
         vm.stopPrank();
 
         vm.startPrank(atomist);
-        accessManager.grantRole(Roles.WHITELIST_ROLE, testUser, 0);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
         vm.stopPrank();
 
         vm.startPrank(atomist);
         accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, alpha, 0);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
+        vm.startPrank(user);
         IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
         vm.stopPrank();
 
-        vm.startPrank(testUser);
-        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(testUser), testUser);
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
         // Stake TAC
@@ -521,7 +512,7 @@ contract TacStakingFuseTest is Test {
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(tacStakingFuse),
-            abi.encodeWithSignature("enter((string,uint256))", enterData)
+            abi.encodeWithSignature("enter((address,uint256))", enterData)
         );
 
         vm.prank(alpha);
@@ -534,7 +525,10 @@ contract TacStakingFuseTest is Test {
         });
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
-        exitCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("exit((string,uint256))", exitData));
+        exitCalls[0] = FuseAction(
+            address(tacStakingFuse),
+            abi.encodeWithSignature("exit((address,uint256))", exitData)
+        );
 
         vm.prank(alpha);
         plasmaVault.execute(exitCalls);
@@ -559,27 +553,98 @@ contract TacStakingFuseTest is Test {
         PlasmaVault(address(plasmaVault)).updateMarketsBalances(marketIds);
 
         uint256 vaultTotalAssetsBefore = PlasmaVault(address(plasmaVault)).totalAssets();
-        uint256 testUserBalanceBefore = IwTAC(wTAC).balanceOf(testUser);
+        uint256 userBalanceBefore = IwTAC(wTAC).balanceOf(user);
 
-        uint256 testUserSharesBefore = PlasmaVault(address(plasmaVault)).balanceOf(testUser);
+        uint256 userSharesBefore = PlasmaVault(address(plasmaVault)).balanceOf(user);
 
         // when
-        vm.prank(testUser);
-        PlasmaVault(address(plasmaVault)).redeem(testUserSharesBefore - 500, testUser, testUser);
+        vm.prank(user);
+        PlasmaVault(address(plasmaVault)).redeem(userSharesBefore - 500, user, user);
 
         // then
         uint256 vaultTotalAssetsAfter = PlasmaVault(address(plasmaVault)).totalAssets();
-        uint256 testUserBalanceAfter = IwTAC(wTAC).balanceOf(testUser);
+        uint256 userBalanceAfter = IwTAC(wTAC).balanceOf(user);
 
         assertLt(
             vaultTotalAssetsAfter,
             vaultTotalAssetsBefore,
             "Vault total assets should be less than the initial balance"
         );
-        assertGt(
-            testUserBalanceAfter,
-            testUserBalanceBefore,
-            "Test user balance should be greater than the initial balance"
+        assertGt(userBalanceAfter, userBalanceBefore, "User balance should be greater than the initial balance");
+    }
+
+    function testShouldExitExecutorSuccessfully() external {
+        // given
+        uint256 stakeAmount = 100;
+        uint256 nativeAmount = 50;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        // Stake TAC
+        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+            validator: VALIDATOR_ADDRESS,
+            tacAmount: stakeAmount
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingFuse),
+            abi.encodeWithSignature("enter((address,uint256))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Get executor address using the reader
+        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+
+        // Simulate native tokens being sent to executor (e.g., from unbonding completion)
+        vm.deal(executor, nativeAmount);
+
+        // Record balances before exit
+        uint256 executorNativeBalanceBefore = executor.balance;
+        uint256 executorWTacBalanceBefore = IwTAC(wTAC).balanceOf(executor);
+        uint256 vaultWTacBalanceBefore = IwTAC(wTAC).balanceOf(address(plasmaVault));
+
+        // when
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("exit()"));
+
+        vm.prank(alpha);
+        plasmaVault.execute(exitCalls);
+
+        // then
+        uint256 executorNativeBalanceAfter = executor.balance;
+        uint256 executorWTacBalanceAfter = IwTAC(wTAC).balanceOf(executor);
+        uint256 vaultWTacBalanceAfter = IwTAC(wTAC).balanceOf(address(plasmaVault));
+
+        // Executor should have no native tokens left
+        assertEq(executorNativeBalanceAfter, 0, "Executor should have no native tokens after exit");
+
+        // Executor should have no wTAC tokens left
+        assertEq(executorWTacBalanceAfter, 0, "Executor should have no wTAC tokens after exit");
+
+        // Vault should receive all tokens (native converted to wTAC + existing wTAC)
+        assertEq(
+            vaultWTacBalanceAfter,
+            vaultWTacBalanceBefore + executorWTacBalanceBefore + nativeAmount,
+            "Vault should receive all tokens from executor"
         );
     }
 

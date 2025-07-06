@@ -40,15 +40,15 @@ contract TacStakingExecutor {
     event TacStakingExecutorUndelegate(address plasmaVault, string operatorAddress, uint256 amount);
     event TacStakingExecutorInstantWithdraw(address plasmaVault, uint256 amount);
     event TacStakingExecutorExit(address plasmaVault, uint256 amount);
-    
-    address public immutable wTAC;
-    address public immutable staking;
-    address public immutable plasmaVault;
+
+    address public immutable W_TAC;
+    address public immutable STAKING;
+    address public immutable PLASMA_VAULT;
 
     error StakingExecutorTacInvalidPlasmaVaultAddress();
 
     modifier restricted() {
-        if (msg.sender != plasmaVault) {
+        if (msg.sender != PLASMA_VAULT) {
             revert StakingExecutorTacInvalidPlasmaVaultAddress();
         }
         _;
@@ -62,14 +62,14 @@ contract TacStakingExecutor {
         if (wTAC_ == address(0)) {
             revert StakingExecutorTacInvalidTacAddress();
         }
-        
+
         if (staking_ == address(0)) {
             revert StakingExecutorTacInvalidStakingAddress();
         }
 
-        plasmaVault = plasmaVault_;
-        wTAC = wTAC_;
-        staking = staking_;
+        PLASMA_VAULT = plasmaVault_;
+        W_TAC = wTAC_;
+        STAKING = staking_;
     }
 
     function delegate(StakingExecutorTacEnterData memory data_) external restricted {
@@ -79,7 +79,7 @@ contract TacStakingExecutor {
 
         address plasmaVault = msg.sender;
 
-        uint256 executorBalance = IERC20(wTAC).balanceOf(address(this));
+        uint256 executorBalance = IERC20(W_TAC).balanceOf(address(this));
 
         uint256 finalAmount = data_.wTacAmount <= executorBalance ? data_.wTacAmount : executorBalance;
 
@@ -88,18 +88,20 @@ contract TacStakingExecutor {
         }
 
         /// @dev get native TAC from wTAC
-        IWETH9(wTAC).withdraw(finalAmount);
+        IWETH9(W_TAC).withdraw(finalAmount);
 
         address delegator = address(this);
 
         /// @dev delegate TAC to the validator
-        staking.functionCall(abi.encodeWithSelector(IStaking.delegate.selector, delegator, data_.operatorAddress, finalAmount));
+        STAKING.functionCall(
+            abi.encodeWithSelector(IStaking.delegate.selector, delegator, data_.operatorAddress, finalAmount)
+        );
 
         uint256 remainingBalance = address(this).balance;
 
         if (remainingBalance > 0) {
-            IWETH9(wTAC).deposit{value: remainingBalance}();
-            IERC20(wTAC).safeTransfer(plasmaVault, remainingBalance);
+            IWETH9(W_TAC).deposit{value: remainingBalance}();
+            IERC20(W_TAC).safeTransfer(plasmaVault, remainingBalance);
         }
 
         emit TacStakingExecutorDelegate(plasmaVault, data_.operatorAddress, data_.wTacAmount);
@@ -110,52 +112,70 @@ contract TacStakingExecutor {
             return;
         }
 
-        address plasmaVault = msg.sender;
-
-        staking.functionCall(
+        STAKING.functionCall(
             abi.encodeWithSelector(IStaking.undelegate.selector, address(this), data_.operatorAddress, data_.wTacAmount)
         );
 
         uint256 remainingBalance = address(this).balance;
 
         if (remainingBalance > 0) {
-            IWETH9(wTAC).deposit{value: remainingBalance}();
-            IERC20(wTAC).safeTransfer(plasmaVault, remainingBalance);
+            IWETH9(W_TAC).deposit{value: remainingBalance}();
+            IERC20(W_TAC).safeTransfer(PLASMA_VAULT, remainingBalance);
         }
 
-        emit TacStakingExecutorUndelegate(plasmaVault, data_.operatorAddress, data_.wTacAmount);
+        emit TacStakingExecutorUndelegate(PLASMA_VAULT, data_.operatorAddress, data_.wTacAmount);
     }
 
-    function instantWithdraw(uint256 amount_) external restricted {
+    function instantWithdraw(uint256 amount_) external restricted returns (uint256 withdrawnAmount_) {
         if (amount_ == 0) {
-            return;
+            return 0;
         }
 
-        uint256 remainingBalance = address(this).balance;
-        
-        uint256 finalAmount = amount_ <= remainingBalance ? amount_ : remainingBalance;
+        uint256 wTacBalance = IERC20(W_TAC).balanceOf(address(this));
 
-        if (finalAmount == 0) {
-            return;
+        uint256 fromWTac = amount_ <= wTacBalance ? amount_ : wTacBalance;
+
+        uint256 remainingNeeded = amount_ - fromWTac;
+
+        uint256 nativeBalance = address(this).balance;
+
+        uint256 fromNative = remainingNeeded <= nativeBalance ? remainingNeeded : nativeBalance;
+
+        uint256 totalWithdrawable = fromWTac + fromNative;
+
+        if (totalWithdrawable == 0) {
+            return 0;
         }
 
-        IWETH9(wTAC).withdraw(finalAmount);
+        if (fromWTac > 0) {
+            IWETH9(W_TAC).withdraw(fromWTac);
+        }
 
-        IERC20(wTAC).safeTransfer(plasmaVault, finalAmount);
+        if (fromNative > 0) {
+            IWETH9(W_TAC).deposit{value: fromNative}();
+        }
 
-        emit TacStakingExecutorInstantWithdraw(plasmaVault, finalAmount);
+        IERC20(W_TAC).safeTransfer(PLASMA_VAULT, totalWithdrawable);
+
+        withdrawnAmount_ = totalWithdrawable;
+
+        emit TacStakingExecutorInstantWithdraw(PLASMA_VAULT, withdrawnAmount_);
     }
 
     function exit() external restricted {
-        uint256 remainingBalance = address(this).balance;
+        uint256 nativeBalance = address(this).balance;
 
-        IWETH9(wTAC).withdraw(remainingBalance);
+        if (nativeBalance > 0) {
+            IWETH9(W_TAC).deposit{value: nativeBalance}();
+        }
 
-        uint256 remainingWTacBalance = IERC20(wTAC).balanceOf(address(this));
+        uint256 totalWTacBalance = IERC20(W_TAC).balanceOf(address(this));
 
-        IERC20(wTAC).safeTransfer(plasmaVault, remainingWTacBalance);
+        if (totalWTacBalance > 0) {
+            IERC20(W_TAC).safeTransfer(PLASMA_VAULT, totalWTacBalance);
+        }
 
-        emit TacStakingExecutorExit(plasmaVault, remainingWTacBalance);
+        emit TacStakingExecutorExit(PLASMA_VAULT, totalWTacBalance);
     }
 
     /// @notice Allows the contract to receive native token

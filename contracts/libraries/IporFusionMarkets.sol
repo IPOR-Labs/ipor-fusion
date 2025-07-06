@@ -78,7 +78,7 @@ library IporFusionMarkets {
     uint256 public constant HARVEST_HARD_WORK = 27;
 
     /// @dev TAC staking market
-    
+
     uint256 public constant TAC_STAKING = 28;
 
     /// @dev Market 1 for ERC4626 Vault
