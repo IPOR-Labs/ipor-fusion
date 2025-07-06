@@ -6,9 +6,9 @@ pragma solidity 0.8.26;
 /// @dev Implements storage pattern using an isolated storage slot to maintain executor address
 library TacStakingStorageLib {
     /// @dev Storage slot for TAC staking executor address
-    /// @dev Example: 32-byte canonical value for demonstration
+    /// @dev Calculation: keccak256(abi.encode(uint256(keccak256("io.ipor.tac.StakingExecutor")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant TAC_STAKING_EXECUTOR_SLOT =
-        0x1111111111111111111111111111111111111111111111111111111111111111;
+        0xd13ea098e3b10602b694749767b61b6cb8510a0a0332366961bea9fca7c66b00;
 
     /// @dev Structure holding the TAC staking executor address
     /// @custom:storage-location erc7201:io.ipor.tac.staking.executor

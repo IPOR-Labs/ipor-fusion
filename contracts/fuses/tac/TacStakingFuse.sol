@@ -25,8 +25,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
 
     error TacStakingFuseInvalidExecutorAddress();
     error TacStakingFuseSubstrateNotGranted(address validator);
-    error TacStakingFuseExecutorAlreadySet();
-    error TacStakingFuseOnlyAlpha();
+    error TacStakingFuseExecutorAlreadyCreated();
     error TacStakingFuseUnsupportedValidator(address validator);
     error TacStakingFuseValidatorJailed(address validator, string operatorAddress);
     error TacStakingFuseValidatorNotBonded(address validator, string operatorAddress);
@@ -60,7 +59,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
         // Check if executor is already set
         address existingExecutor = TacStakingStorageLib.getTacStakingExecutor();
         if (existingExecutor != address(0)) {
-            revert TacStakingFuseExecutorAlreadySet();
+            revert TacStakingFuseExecutorAlreadyCreated();
         }
 
         // Create new executor with address(this) as plasmaVault

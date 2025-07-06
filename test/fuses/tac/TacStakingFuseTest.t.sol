@@ -158,9 +158,9 @@ contract TacStakingFuseTest is Test {
         FuseAction[] memory createExecutorCalls = new FuseAction[](1);
         createExecutorCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("createExecutor()"));
 
-        // when & then - should revert with TacStakingFuseExecutorAlreadySet error
+        // when & then - should revert with TacStakingFuseExecutorAlreadyCreated error
         vm.prank(alpha);
-        vm.expectRevert(abi.encodeWithSelector(TacStakingFuse.TacStakingFuseExecutorAlreadySet.selector));
+        vm.expectRevert(abi.encodeWithSelector(TacStakingFuse.TacStakingFuseExecutorAlreadyCreated.selector));
         plasmaVault.execute(createExecutorCalls);
     }
 
