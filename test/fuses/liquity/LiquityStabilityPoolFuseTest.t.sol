@@ -14,9 +14,13 @@ import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IStabilityPool} from "../../../contracts/fuses/liquity/ext/IStabilityPool.sol";
 import {IAddressesRegistry} from "../../../contracts/fuses/liquity/ext/IAddressesRegistry.sol";
 import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+import {UniversalReader} from "../../../contracts/universal_reader/UniversalReader.sol";
 
 contract MockDex {
     address tokenIn;
@@ -34,6 +38,7 @@ contract MockDex {
 }
 
 contract LiquityStabilityPoolFuseTest is Test {
+    using Address for address;
     address internal constant BOLD = 0x6440f144b7e50D6a8439336510312d2F54beB01D;
     address internal constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address internal constant ETH_REGISTRY = 0x20F7C9ad66983F6523a0881d0f82406541417526;
@@ -211,6 +216,49 @@ contract LiquityStabilityPoolFuseTest is Test {
         assertEq(boldBalance, initialBoldBalance + 1e10, "BOLD should be obtained after the swap");
         uint256 wethBalance = ERC20(WETH).balanceOf(address(plasmaVault));
         assertEq(wethBalance, 0, "WETH balance should be zero after the swap");
+    }
+
+    function testShouldUpdateBalanceWhenProvidingAndLiquidatingToLiquity() external {
+        // given
+        bytes memory balanceOfCall = abi.encodeWithSignature("balanceOf()");
+        uint256 initialBalance = abi.decode(
+            UniversalReader(address(plasmaVault)).read(address(balanceFuse), balanceOfCall).data,
+            (uint256)
+        );
+        assertEq(initialBalance, 0, "Initial balance should be zero");
+
+        deal(BOLD, address(plasmaVault), 1000 ether);
+        initialBalance = abi.decode(
+            UniversalReader(address(plasmaVault)).read(address(balanceFuse), balanceOfCall).data,
+            (uint256)
+        );
+        assertEq(initialBalance, 1000 ether, "Balance should be 1000 BOLD after dealing");
+
+        IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool());
+        vm.startPrank(address(plasmaVault));
+        ERC20(BOLD).approve(address(stabilityPool), 500 ether);
+        stabilityPool.provideToSP(500 ether, false);
+        vm.stopPrank();
+
+        // when
+        uint256 afterDepBalance = abi.decode(
+            UniversalReader(address(plasmaVault)).read(address(balanceFuse), balanceOfCall).data,
+            (uint256)
+        );
+        assertEq(afterDepBalance, initialBalance, "Balance should not change after providing to SP");
+
+        vm.prank(address(stabilityPool.troveManager()));
+        stabilityPool.offset(100000000, 100 ether);
+
+        vm.prank(address(plasmaVault));
+        stabilityPool.provideToSP(1, false);
+
+        // then
+        uint256 afterLiquidationBalance = abi.decode(
+            UniversalReader(address(plasmaVault)).read(address(balanceFuse), balanceOfCall).data,
+            (uint256)
+        );
+        assertGt(afterLiquidationBalance, afterDepBalance, "Balance should increase after liquidation");
     }
 
     function _setupMarketConfigs(

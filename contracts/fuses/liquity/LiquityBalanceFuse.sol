@@ -46,24 +46,23 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         // BOLD is assumed to be 1:1 pegged to USD, so we can use its balance directly
         uint256 boldBalance = IERC20Metadata(registry.boldToken()).balanceOf(plasmaVault);
 
+        // loop through all registries to calculate stashed collateral and deposits
         for (uint256 i = 0; i < len; ++i) {
             // avoid reassigning the registry if it is the same as the previous one
             if (i > 0) registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
 
-            IPriceFeed priceFeed;
-            try registry.priceFeed() returns (address feed) {
-                priceFeed = IPriceFeed(feed);
+            IStabilityPool stabilityPool;
+            try registry.stabilityPool() returns (address pool) {
+                stabilityPool = IStabilityPool(pool);
             } catch {
-                // this registry does not have a price feed, so we skip it
+                // this registry does not have a stability pool, so we skip it
                 continue;
             }
 
-            lastGoodPrice = priceFeed.lastGoodPrice();
+            lastGoodPrice = IPriceFeed(registry.priceFeed()).lastGoodPrice();
             if (lastGoodPrice == 0) {
                 revert Errors.UnsupportedQuoteCurrencyFromOracle();
             }
-
-            IStabilityPool stabilityPool = IStabilityPool(registry.stabilityPool());
 
             // The stashed collateral in the stability pool, i.e. not yet claimed
             // They are denominated in the collateral token, so we need to convert them to BOLD
