@@ -15,6 +15,7 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IStabilityPool} from "../../../contracts/fuses/liquity/ext/IStabilityPool.sol";
+import {IAddressesRegistry} from "../../../contracts/fuses/liquity/ext/IAddressesRegistry.sol";
 import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 
 contract MockDex {
@@ -98,8 +99,10 @@ contract LiquityStabilityPoolFuseTest is Test {
         plasmaVault.deposit(totalBoldInVault, address(this));
 
         // when
+        LiquityStabilityPoolFuse.LiquityStabilityPoolFuseEnterData memory enterData = LiquityStabilityPoolFuse
+            .LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: totalBoldToDeposit});
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter(uint256)", totalBoldToDeposit));
+        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
         plasmaVault.execute(enterCalls);
 
         // then
@@ -110,7 +113,9 @@ contract LiquityStabilityPoolFuseTest is Test {
             totalBoldInVault - totalBoldToDeposit,
             "Balance should be zero after entering Stability Pool"
         );
-        uint256 sbBalance = IStabilityPool(sbFuse.stabilityPool()).deposits(address(plasmaVault));
+        uint256 sbBalance = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool()).deposits(
+            address(plasmaVault)
+        );
         assertEq(sbBalance, totalBoldToDeposit, "Stability Pool deposits should match the deposited amount");
     }
 
@@ -120,8 +125,10 @@ contract LiquityStabilityPoolFuseTest is Test {
         totalBoldToExit = 100000 * 1e18;
 
         // when
+        LiquityStabilityPoolFuse.LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuse
+            .LiquityStabilityPoolFuseExitData({registry: ETH_REGISTRY, amount: totalBoldToExit});
         FuseAction[] memory exitCalls = new FuseAction[](1);
-        exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit(uint256)", totalBoldToExit));
+        exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
         plasmaVault.execute(exitCalls);
 
         // then
@@ -131,7 +138,9 @@ contract LiquityStabilityPoolFuseTest is Test {
             totalBoldInVault - totalBoldToDeposit + totalBoldToExit,
             "Balance should be equal to the exited amount from Stability Pool"
         );
-        uint256 sbBalance = IStabilityPool(sbFuse.stabilityPool()).deposits(address(plasmaVault));
+        uint256 sbBalance = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool()).deposits(
+            address(plasmaVault)
+        );
         assertEq(
             sbBalance,
             totalBoldToDeposit - totalBoldToExit,
@@ -143,16 +152,18 @@ contract LiquityStabilityPoolFuseTest is Test {
         // given
         testShouldEnterToLiquitySB();
 
-        IStabilityPool stabilityPool = IStabilityPool(sbFuse.stabilityPool());
+        IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool());
 
         // simulate liquidation and trigger update (only prank troveManager here)
         vm.prank(address(stabilityPool.troveManager()));
         stabilityPool.offset(100000000, 100 ether);
 
         // when
+        LiquityStabilityPoolFuse.LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuse
+            .LiquityStabilityPoolFuseExitData({registry: ETH_REGISTRY, amount: 1});
         FuseAction[] memory exitCalls = new FuseAction[](1);
         // exiting from stability pool to trigger collateral claim
-        exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit(uint256)", 1));
+        exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
         plasmaVault.execute(exitCalls);
 
         // then
@@ -210,14 +221,14 @@ contract LiquityStabilityPoolFuseTest is Test {
         registries[0] = PlasmaVaultConfigLib.addressToBytes32(ETH_REGISTRY);
         registries[1] = PlasmaVaultConfigLib.addressToBytes32(WSTETH_REGISTRY);
         registries[2] = PlasmaVaultConfigLib.addressToBytes32(RETH_REGISTRY);
-        registries[3] = PlasmaVaultConfigLib.addressToBytes32(WETH);
-        registries[4] = PlasmaVaultConfigLib.addressToBytes32(BOLD);
-        registries[5] = PlasmaVaultConfigLib.addressToBytes32(_mockDex);
+        registries[3] = PlasmaVaultConfigLib.addressToBytes32(_mockDex);
+        registries[4] = PlasmaVaultConfigLib.addressToBytes32(WETH);
+        registries[5] = PlasmaVaultConfigLib.addressToBytes32(BOLD);
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.LIQUITY_V2, registries);
     }
 
     function _setupFuses() private returns (address[] memory fuses) {
-        sbFuse = new LiquityStabilityPoolFuse(IporFusionMarkets.LIQUITY_V2, ETH_REGISTRY);
+        sbFuse = new LiquityStabilityPoolFuse(IporFusionMarkets.LIQUITY_V2);
         swapFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.LIQUITY_V2, address(new SwapExecutor()), 1e18);
         fuses = new address[](2);
         fuses[0] = address(sbFuse);
@@ -225,7 +236,7 @@ contract LiquityStabilityPoolFuseTest is Test {
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
-        balanceFuse = new LiquityBalanceFuse(IporFusionMarkets.LIQUITY_V2, ETH_REGISTRY);
+        balanceFuse = new LiquityBalanceFuse(IporFusionMarkets.LIQUITY_V2);
         balanceFuses_ = new MarketBalanceFuseConfig[](1);
         balanceFuses_[0] = MarketBalanceFuseConfig(IporFusionMarkets.LIQUITY_V2, address(balanceFuse));
     }

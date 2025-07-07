@@ -20,8 +20,12 @@ contract LiquityBalanceFuseTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22631293);
-        liquityBalanceFuse = new LiquityBalanceFuse(IporFusionMarkets.LIQUITY_V2, ETH_REGISTRY);
+        liquityBalanceFuse = new LiquityBalanceFuse(IporFusionMarkets.LIQUITY_V2);
         vaultMock = new PlasmaVaultMock(address(0x0), address(liquityBalanceFuse));
+
+        address[] memory registries = new address[](1);
+        registries[0] = ETH_REGISTRY;
+        vaultMock.updateMarketConfiguration(IporFusionMarkets.LIQUITY_V2, registries);
     }
 
     function testShouldUpdateBalanceWhenProvidingAndLiquidatingToLiquity() external {

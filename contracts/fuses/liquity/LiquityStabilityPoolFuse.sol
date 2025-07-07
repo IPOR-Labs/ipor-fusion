@@ -5,49 +5,64 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
-import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IStabilityPool} from "./ext/IStabilityPool.sol";
+import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
 
 contract LiquityStabilityPoolFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
     uint256 public immutable MARKET_ID;
-    address public immutable VERSION;
-
-    // We fix only one registry for each vault, to allow more granularity
-    IAddressesRegistry public immutable registry;
-    IStabilityPool public immutable stabilityPool;
-    address public immutable boldToken;
 
     error ZeroAmount();
+    error InvalidMarketId();
+    error UnsupportedSubstrate();
 
-    event LiquityStabilityPoolFuseEnter(address version, address stabilityPool, uint256 amount);
+    event LiquityStabilityPoolFuseEnter(address stabilityPool, uint256 amount);
+    event LiquityStabilityPoolFuseExit(address stabilityPool, uint256 amount);
 
-    constructor(uint256 marketId_, address _registry) {
-        VERSION = address(this);
-        MARKET_ID = marketId_;
-        registry = IAddressesRegistry(_registry);
-        stabilityPool = IStabilityPool(registry.stabilityPool());
-        boldToken = registry.boldToken();
+    struct LiquityStabilityPoolFuseEnterData {
+        address registry;
+        uint256 amount;
     }
 
-    function enter(uint256 amount) external {
-        if (amount == 0) revert ZeroAmount();
+    struct LiquityStabilityPoolFuseExitData {
+        address registry;
+        uint256 amount;
+    }
 
-        ERC20(boldToken).forceApprove(address(stabilityPool), amount);
+    constructor(uint256 marketId) {
+        if (marketId != IporFusionMarkets.LIQUITY_V2) revert InvalidMarketId();
+        MARKET_ID = marketId;
+    }
+
+    function enter(LiquityStabilityPoolFuseEnterData memory data) external {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.registry)) {
+            revert UnsupportedSubstrate();
+        }
+
+        if (data.amount == 0) revert ZeroAmount();
+        IAddressesRegistry registry = IAddressesRegistry(data.registry);
+        IStabilityPool stabilityPool = IStabilityPool(registry.stabilityPool());
+        address boldToken = registry.boldToken();
+
+        ERC20(boldToken).forceApprove(address(stabilityPool), data.amount);
         // do not claim collateral when entering so to avoid to swap them now
         // the principle is that we can empty the vault by entering the stability pool
-        stabilityPool.provideToSP(amount, false);
+        stabilityPool.provideToSP(data.amount, false);
         ERC20(boldToken).forceApprove(address(stabilityPool), 0);
 
-        emit LiquityStabilityPoolFuseEnter(VERSION, address(stabilityPool), amount);
+        emit LiquityStabilityPoolFuseEnter(address(stabilityPool), data.amount);
     }
 
-    function exit(uint256 amount) external {
-        if (amount == 0) {
+    function exit(LiquityStabilityPoolFuseExitData memory data) external {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.registry)) {
+            revert UnsupportedSubstrate();
+        }
+        IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(data.registry).stabilityPool());
+
+        if (data.amount == 0) {
             if (stabilityPool.deposits(address(this)) == 0) {
                 // if the vault has no deposits, we call the claimAllCollGains function
                 stabilityPool.claimAllCollGains();
@@ -57,6 +72,8 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
         }
         // always claim collateral when exiting, and swap it to BOLD
         // the principle is that we can close our stability pool position by exiting it
-        stabilityPool.withdrawFromSP(amount, true);
+        stabilityPool.withdrawFromSP(data.amount, true);
+
+        emit LiquityStabilityPoolFuseExit(address(stabilityPool), data.amount);
     }
 }
