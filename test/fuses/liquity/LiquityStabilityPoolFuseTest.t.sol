@@ -14,7 +14,6 @@ import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IStabilityPool} from "../../../contracts/fuses/liquity/ext/IStabilityPool.sol";
 import {IAddressesRegistry} from "../../../contracts/fuses/liquity/ext/IAddressesRegistry.sol";
 import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
@@ -38,7 +37,6 @@ contract MockDex {
 }
 
 contract LiquityStabilityPoolFuseTest is Test {
-    using Address for address;
     address internal constant BOLD = 0x6440f144b7e50D6a8439336510312d2F54beB01D;
     address internal constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address internal constant ETH_REGISTRY = 0x20F7C9ad66983F6523a0881d0f82406541417526;
