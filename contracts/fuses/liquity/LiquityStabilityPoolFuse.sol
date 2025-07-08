@@ -69,7 +69,7 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
             }
             revert ZeroAmount();
         }
-        // always claim collateral when exiting, and swap it to BOLD
+        // always claim collateral when exiting
         // the principle is that we can close our stability pool position by exiting it
         stabilityPool.withdrawFromSP(data.amount, true);
 

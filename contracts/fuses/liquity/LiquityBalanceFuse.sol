@@ -3,15 +3,15 @@ pragma solidity 0.8.26;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IStabilityPool} from "./ext/IStabilityPool.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {IPriceFeed} from "./ext/IPriceFeed.sol";
 import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
-
-import {console2} from "forge-std/console2.sol";
+import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
+import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
 /// @title Fuse for Liquity protocol responsible for calculating the balance of the Plasma Vault in Liquity protocol based on preconfigured market substrates
 /// @dev Substrates in this fuse are the address registries of Liquity protocol that are used in the Liquity protocol for a given MARKET_ID
@@ -39,44 +39,52 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         if (len == 0) return 0;
 
         int256 collBalance;
-        uint256 totalDeposits;
-        uint256 lastGoodPrice;
-        address plasmaVault = address(this);
+        int256 totalDeposits;
+        uint256 tokenPrice;
         IAddressesRegistry registry;
         IStabilityPool stabilityPool;
         int256 stashedCollateral;
+        address collToken;
+        uint256 tokenDecimals;
+
+        IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
+            PlasmaVaultLib.getPriceOracleMiddleware()
+        );
+        registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[0]));
+
+        (uint256 boldPrice, uint256 boldDecimals) = priceOracleMiddleware.getAssetPrice(registry.boldToken());
 
         // loop through all registries to calculate stashed collateral and deposits
         for (uint256 i; i < len; ++i) {
-            // avoid reassigning the registry if it is the same as the previous one
-            registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
+            if (i > 0) registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
 
-            try registry.stabilityPool() returns (address pool) {
-                stabilityPool = IStabilityPool(pool);
-            } catch {
-                // this registry does not have a stability pool, so we skip it
-                continue;
-            }
+            stabilityPool = IStabilityPool(registry.stabilityPool());
+            collToken = registry.collToken();
 
-            lastGoodPrice = IPriceFeed(registry.priceFeed()).lastGoodPrice();
-            if (lastGoodPrice == 0) {
-                revert Errors.UnsupportedQuoteCurrencyFromOracle();
-            }
+            (tokenPrice, tokenDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
 
             // The stashed collateral in the stability pool, i.e. not yet claimed
-            // They are denominated in the collateral token, so we need to convert them to BOLD
-            stashedCollateral = int256(stabilityPool.stashedColl(plasmaVault));
+            // They are denominated in the collateral token, so we need to convert them to USD
+            stashedCollateral = int256(stabilityPool.stashedColl(address(this)));
             if (stashedCollateral > 0) {
                 collBalance += IporMath.convertToWadInt(
-                    stashedCollateral * int256(lastGoodPrice),
-                    IERC20Metadata(registry.collToken()).decimals() + LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS
+                    stashedCollateral * int256(tokenPrice),
+                    tokenDecimals + LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS
                 );
             }
 
-            // the deposits are added to the balance: they are denominated in BOLD, so no need to convert
-            totalDeposits += stabilityPool.deposits(plasmaVault);
+            // some collateral is already claimed, so we must take it into account
+            collBalance += IporMath.convertToWadInt(
+                int256(IERC20(collToken).balanceOf(address(this))) * int256(tokenPrice),
+                tokenDecimals + LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS
+            );
+
+            totalDeposits += IporMath.convertToWadInt(
+                int256(stabilityPool.deposits(address(this))) * int256(boldPrice),
+                boldDecimals + LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS
+            );
         }
 
-        return collBalance.toUint256() + totalDeposits;
+        return (collBalance + totalDeposits).toUint256();
     }
 }
