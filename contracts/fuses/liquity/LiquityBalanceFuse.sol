@@ -42,14 +42,15 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         uint256 totalDeposits;
         uint256 lastGoodPrice;
         address plasmaVault = address(this);
-        IAddressesRegistry registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[0]));
+        IAddressesRegistry registry;
+        IStabilityPool stabilityPool;
+        int256 stashedCollateral;
 
         // loop through all registries to calculate stashed collateral and deposits
-        for (uint256 i = 0; i < len; ++i) {
+        for (uint256 i; i < len; ++i) {
             // avoid reassigning the registry if it is the same as the previous one
-            if (i > 0) registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
+            registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
 
-            IStabilityPool stabilityPool;
             try registry.stabilityPool() returns (address pool) {
                 stabilityPool = IStabilityPool(pool);
             } catch {
@@ -64,7 +65,7 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
 
             // The stashed collateral in the stability pool, i.e. not yet claimed
             // They are denominated in the collateral token, so we need to convert them to BOLD
-            int256 stashedCollateral = int256(stabilityPool.stashedColl(plasmaVault));
+            stashedCollateral = int256(stabilityPool.stashedColl(plasmaVault));
             if (stashedCollateral > 0) {
                 collBalance += IporMath.convertToWadInt(
                     stashedCollateral * int256(lastGoodPrice),
