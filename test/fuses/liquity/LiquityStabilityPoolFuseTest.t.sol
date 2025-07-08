@@ -20,6 +20,8 @@ import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/Swa
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {UniversalReader} from "../../../contracts/universal_reader/UniversalReader.sol";
+import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 contract MockDex {
     address tokenIn;
@@ -48,6 +50,7 @@ contract LiquityStabilityPoolFuseTest is Test {
     PlasmaVault private plasmaVault;
     LiquityStabilityPoolFuse private sbFuse;
     LiquityBalanceFuse private balanceFuse;
+    // ERC20BalanceFuse private erc20BalanceFuse;
     UniversalTokenSwapperFuse private swapFuse;
     address private accessManager;
     address private priceOracle;
@@ -86,8 +89,7 @@ contract LiquityStabilityPoolFuseTest is Test {
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
-                address(0)
+                address(new WithdrawManager(accessManager))
             )
         );
     }
@@ -101,15 +103,18 @@ contract LiquityStabilityPoolFuseTest is Test {
         ERC20(BOLD).approve(address(plasmaVault), totalBoldInVault);
         plasmaVault.deposit(totalBoldInVault, address(this));
 
+        uint256 assetBefore = plasmaVault.totalAssets();
         // when
         LiquityStabilityPoolFuse.LiquityStabilityPoolFuseEnterData memory enterData = LiquityStabilityPoolFuse
             .LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: totalBoldToDeposit});
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
-        plasmaVault.execute(enterCalls);
+        plasmaVault.execute(enterCalls); // when is is called the liquidity market balance is updated
 
         // then
         // check the balance in PlasmaVault and Stability Pool
+        uint256 assetAfter = plasmaVault.totalAssets();
+
         uint256 balance = ERC20(BOLD).balanceOf(address(plasmaVault));
         assertEq(
             balance,
@@ -120,6 +125,7 @@ contract LiquityStabilityPoolFuseTest is Test {
             address(plasmaVault)
         );
         assertEq(sbBalance, totalBoldToDeposit, "Stability Pool deposits should match the deposited amount");
+        assertApproxEqAbs(assetAfter, assetBefore, 1e20, "Assets should be equal to the initial assets");
     }
 
     function testShouldExitFromLiquitySB() public {
@@ -218,18 +224,11 @@ contract LiquityStabilityPoolFuseTest is Test {
 
     function testShouldUpdateBalanceWhenProvidingAndLiquidatingToLiquity() external {
         // given
-        bytes memory balanceOfCall = abi.encodeWithSignature("balanceOf()");
-        uint256 initialBalance = abi.decode(
-            UniversalReader(address(plasmaVault)).read(address(balanceFuse), balanceOfCall).data,
-            (uint256)
-        );
+        uint256 initialBalance = plasmaVault.totalAssets();
         assertEq(initialBalance, 0, "Initial balance should be zero");
 
         deal(BOLD, address(plasmaVault), 1000 ether);
-        initialBalance = abi.decode(
-            UniversalReader(address(plasmaVault)).read(address(balanceFuse), balanceOfCall).data,
-            (uint256)
-        );
+        initialBalance = plasmaVault.totalAssets();
         assertEq(initialBalance, 1000 ether, "Balance should be 1000 BOLD after dealing");
 
         IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool());
@@ -239,10 +238,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         vm.stopPrank();
 
         // when
-        uint256 afterDepBalance = abi.decode(
-            UniversalReader(address(plasmaVault)).read(address(balanceFuse), balanceOfCall).data,
-            (uint256)
-        );
+        uint256 afterDepBalance = plasmaVault.totalAssets() + _calculateBalance();
         assertEq(afterDepBalance, initialBalance, "Balance should not change after providing to SP");
 
         vm.prank(address(stabilityPool.troveManager()));
@@ -252,30 +248,52 @@ contract LiquityStabilityPoolFuseTest is Test {
         stabilityPool.provideToSP(1, false);
 
         // then
-        uint256 afterLiquidationBalance = abi.decode(
+        uint256 afterLiquidationBalance = plasmaVault.totalAssets() + _calculateBalance();
+        assertGt(afterLiquidationBalance, afterDepBalance, "Balance should increase after liquidation");
+    }
+
+    function _calculateBalance() private view returns (uint256) {
+        bytes memory balanceOfCall = abi.encodeWithSignature("balanceOf()");
+        uint256 balance = abi.decode(
             UniversalReader(address(plasmaVault)).read(address(balanceFuse), balanceOfCall).data,
             (uint256)
         );
-        assertGt(afterLiquidationBalance, afterDepBalance, "Balance should increase after liquidation");
+        return balance;
     }
+
+    // function _calculateErc20Balance() private view returns (uint256) {
+    //     bytes memory balanceOfCall = abi.encodeWithSignature("balanceOf()");
+    //     uint256 balance = abi.decode(
+    //         UniversalReader(address(plasmaVault)).read(address(erc20BalanceFuse), balanceOfCall).data,
+    //         (uint256)
+    //     );
+    //     return balance;
+    // }
 
     function _setupMarketConfigs(
         address _mockDex
     ) private pure returns (MarketSubstratesConfig[] memory marketConfigs_) {
-        marketConfigs_ = new MarketSubstratesConfig[](1);
-        bytes32[] memory registries = new bytes32[](6);
+        marketConfigs_ = new MarketSubstratesConfig[](3);
+        bytes32[] memory registries = new bytes32[](3);
         registries[0] = PlasmaVaultConfigLib.addressToBytes32(ETH_REGISTRY);
         registries[1] = PlasmaVaultConfigLib.addressToBytes32(WSTETH_REGISTRY);
         registries[2] = PlasmaVaultConfigLib.addressToBytes32(RETH_REGISTRY);
-        registries[3] = PlasmaVaultConfigLib.addressToBytes32(_mockDex);
-        registries[4] = PlasmaVaultConfigLib.addressToBytes32(WETH);
-        registries[5] = PlasmaVaultConfigLib.addressToBytes32(BOLD);
+        bytes32[] memory swapperAssets = new bytes32[](3);
+        swapperAssets[0] = PlasmaVaultConfigLib.addressToBytes32(WETH);
+        swapperAssets[1] = PlasmaVaultConfigLib.addressToBytes32(BOLD);
+        swapperAssets[2] = PlasmaVaultConfigLib.addressToBytes32(_mockDex);
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.LIQUITY_V2, registries);
+        marketConfigs_[1] = MarketSubstratesConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, swapperAssets);
     }
 
     function _setupFuses() private returns (address[] memory fuses) {
         sbFuse = new LiquityStabilityPoolFuse(IporFusionMarkets.LIQUITY_V2);
-        swapFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.LIQUITY_V2, address(new SwapExecutor()), 1e18);
+        swapFuse = new UniversalTokenSwapperFuse(
+            IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
+            address(new SwapExecutor()),
+            1e18
+        );
+
         fuses = new address[](2);
         fuses[0] = address(sbFuse);
         fuses[1] = address(swapFuse);
@@ -283,8 +301,11 @@ contract LiquityStabilityPoolFuseTest is Test {
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
         balanceFuse = new LiquityBalanceFuse(IporFusionMarkets.LIQUITY_V2);
-        balanceFuses_ = new MarketBalanceFuseConfig[](1);
+        ZeroBalanceFuse zeroBalance = new ZeroBalanceFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER);
+        // erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
+        balanceFuses_ = new MarketBalanceFuseConfig[](2);
         balanceFuses_[0] = MarketBalanceFuseConfig(IporFusionMarkets.LIQUITY_V2, address(balanceFuse));
+        balanceFuses_[1] = MarketBalanceFuseConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, address(zeroBalance));
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {

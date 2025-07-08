@@ -11,6 +11,8 @@ import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {IPriceFeed} from "./ext/IPriceFeed.sol";
 import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
 
+import {console2} from "forge-std/console2.sol";
+
 /// @title Fuse for Liquity protocol responsible for calculating the balance of the Plasma Vault in Liquity protocol based on preconfigured market substrates
 /// @dev Substrates in this fuse are the address registries of Liquity protocol that are used in the Liquity protocol for a given MARKET_ID
 contract LiquityBalanceFuse is IMarketBalanceFuse {
@@ -41,10 +43,6 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         uint256 lastGoodPrice;
         address plasmaVault = address(this);
         IAddressesRegistry registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[0]));
-
-        // the BOLD balance of the vault, assuming that the BOLD token is the same for all registries
-        // BOLD is assumed to be 1:1 pegged to USD, so we can use its balance directly
-        uint256 boldBalance = IERC20Metadata(registry.boldToken()).balanceOf(plasmaVault);
 
         // loop through all registries to calculate stashed collateral and deposits
         for (uint256 i = 0; i < len; ++i) {
@@ -78,6 +76,6 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
             totalDeposits += stabilityPool.deposits(plasmaVault);
         }
 
-        return collBalance.toUint256() + boldBalance + totalDeposits;
+        return collBalance.toUint256() + totalDeposits;
     }
 }
