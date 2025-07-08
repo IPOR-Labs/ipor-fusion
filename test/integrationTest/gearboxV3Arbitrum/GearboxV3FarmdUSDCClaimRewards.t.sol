@@ -23,6 +23,7 @@ import {IFarmingPool} from "../../../contracts/fuses/gearbox_v3/ext/IFarmingPool
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract GearboxV3FarmdUSDCClaimRewards is Test {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -71,16 +72,21 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                     assetSymbol: "TPLASMA",
                     underlyingToken: USDC,
                     priceOracleMiddleware: _priceOracleMiddlewareProxy,
-                    marketSubstratesConfigs: _setupMarketConfigs(),
-                    fuses: _setupFuses(),
-                    balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: _accessManager,
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max,
                     withdrawManager: _withdrawManager
                 })
             )
+        );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
         );
     }
 
@@ -120,9 +126,9 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                 accessManager: _accessManager,
                 rewardsClaimManager: _claimRewardsManager,
                 withdrawManager: _withdrawManager,
-                feeManager: address(0),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                feeManager: address(0x123),
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
 

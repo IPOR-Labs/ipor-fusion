@@ -15,6 +15,7 @@ import {BurnRequestFeeFuse} from "../../contracts/fuses/burn_request_fee/BurnReq
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 import {UpdateWithdrawManagerMaintenanceFuse, UpdateWithdrawManagerMaintenanceFuseEnterData} from "../../contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol";
 import {UniversalReader, ReadResult} from "../../contracts/universal_reader/UniversalReader.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 contract PlasmaVaultScheduledWithdraw is Test {
     address private constant _ATOMIST = address(1111111);
@@ -54,18 +55,22 @@ contract PlasmaVaultScheduledWithdraw is Test {
                     assetSymbol: "PLASMA",
                     underlyingToken: _USDC,
                     priceOracleMiddleware: _priceOracle,
-                    marketSubstratesConfigs: _setupMarketConfigs(),
-                    fuses: _setupFuses(),
-                    balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: address(_accessManager),
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max,
                     withdrawManager: _withdrawManager
                 })
             )
         );
         vm.stopPrank();
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
+        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
@@ -139,11 +144,11 @@ contract PlasmaVaultScheduledWithdraw is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
+                rewardsClaimManager: address(0x123),
                 withdrawManager: _withdrawManager,
-                feeManager: address(0),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                feeManager: address(0x123),
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

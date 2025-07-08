@@ -37,6 +37,7 @@ import {UniversalReader, ReadResult} from "../../contracts/universal_reader/Univ
 import {UpdateWithdrawManager} from "./UpdateWithdrawManager.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 struct PlasmaVaultBalancesBefore {
     uint256 totalAssetsBefore;
@@ -124,18 +125,15 @@ contract UniversalReaderTest is Test {
             assetSymbol: "USDC-PV",
             underlyingToken: _USDC,
             priceOracleMiddleware: _priceOracleMiddleware,
-            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            fuses: new address[](0),
-            balanceFuses: new MarketBalanceFuseConfig[](0),
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            totalSupplyCap: type(uint256).max,
             withdrawManager: _withdrawManager
         });
 
         vm.startPrank(_ATOMIST);
         _plasmaVault = address(new PlasmaVault(initData));
+
         vm.stopPrank();
 
         return _plasmaVault;
@@ -216,12 +214,12 @@ contract UniversalReaderTest is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
+                rewardsClaimManager: address(0x123),
                 withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
 
@@ -258,7 +256,7 @@ contract UniversalReaderTest is Test {
         morphoTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
         morphoTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO_FLASH_LOAN, morphoTokens);
         vm.stopPrank();
 
@@ -293,7 +291,7 @@ contract UniversalReaderTest is Test {
         uniswapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
         uniswapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_SWAP_V3, uniswapTokens);
         vm.stopPrank();
 
@@ -313,7 +311,7 @@ contract UniversalReaderTest is Test {
         address morphoSupplyFuse = address(new MorphoSupplyFuse(IporFusionMarkets.MORPHO, _MORPHO));
         address morphoCollateralFuse = address(new MorphoCollateralFuse(IporFusionMarkets.MORPHO, _MORPHO));
         address morphoBorrowFuse = address(new MorphoBorrowFuse(IporFusionMarkets.MORPHO, _MORPHO));
-        address morphoBalanceFuse = address(new MorphoBalanceFuse(IporFusionMarkets.MORPHO));
+        address morphoBalanceFuse = address(new MorphoBalanceFuse(IporFusionMarkets.MORPHO, _MORPHO));
 
         address[] memory fuses = new address[](3);
         fuses[0] = morphoSupplyFuse;
@@ -328,7 +326,7 @@ contract UniversalReaderTest is Test {
         bytes32[] memory morphoMarkets = new bytes32[](1);
         morphoMarkets[0] = _MORPHO_WETH_USDC_MARKET_ID;
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.MORPHO, morphoMarkets);
         vm.stopPrank();
 
@@ -356,7 +354,7 @@ contract UniversalReaderTest is Test {
         dependenceMarkets[1] = dependence; // Uniswap -> ERC20_VAULT_BALANCE
         dependenceMarkets[2] = dependence; // MorphoFlashLoan -> ERC20_VAULT_BALANCE
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
         vm.stopPrank();
     }
@@ -375,7 +373,7 @@ contract UniversalReaderTest is Test {
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_USDC);
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.ERC20_VAULT_BALANCE, substrates);
         vm.stopPrank();
     }

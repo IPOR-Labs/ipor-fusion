@@ -23,13 +23,14 @@ contract MorphoBalanceFuse is IMarketBalanceFuse {
     using MorphoBalancesLib for IMorpho;
     using SharesMathLib for uint256;
 
-    IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
+    IMorpho public immutable MORPHO;
     address private constant USD = address(0x0000000000000000000000000000000000000348);
 
     uint256 public immutable MARKET_ID;
 
-    constructor(uint256 marketId_) {
+    constructor(uint256 marketId_, address morpho_) {
         MARKET_ID = marketId_;
+        MORPHO = IMorpho(morpho_);
     }
 
     /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals

@@ -17,6 +17,8 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {UpdateBalancesPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/UpdateBalancesPreHook.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PreHookInfo, PreHooksInfoReader} from "../../contracts/readers/PreHooksInfoReader.sol";
+import {PlasmaVaultMarketsLib} from "../../contracts/vaults/lib/PlasmaVaultMarketsLib.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 
 contract PreHooksTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
@@ -49,7 +51,11 @@ contract PreHooksTest is Test {
         (_plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, address(0));
+        _accessManager.setupInitRoles(
+            _plasmaVault,
+            address(0x123),
+            address(new RewardsClaimManager(address(_accessManager), address(_plasmaVault)))
+        );
         vm.stopPrank();
 
         ERC20BalanceFuse erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
@@ -63,7 +69,7 @@ contract PreHooksTest is Test {
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = bytes32(uint256(uint160(_DAI)));
 
-        vm.startPrank(TestAddresses.ATOMIST);
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
         _plasmaVault.addSubstratesToMarket(IporFusionMarkets.ERC20_VAULT_BALANCE, substrates);
         vm.stopPrank();
 
@@ -377,7 +383,7 @@ contract PreHooksTest is Test {
         uint256[] memory expectedMarketIds = new uint256[](1);
         expectedMarketIds[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
         vm.expectEmit(true, true, true, true);
-        emit PlasmaVault.MarketBalancesUpdated(expectedMarketIds, 10005297); // delta value will be checked in actual event data
+        emit PlasmaVaultMarketsLib.MarketBalancesUpdated(expectedMarketIds, 10005297); // delta value will be checked in actual event data
 
         _plasmaVault.deposit(depositAmount, _USER);
         vm.stopPrank();

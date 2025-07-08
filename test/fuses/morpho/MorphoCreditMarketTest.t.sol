@@ -28,6 +28,7 @@ import {IWETH9} from "./IWETH9.sol";
 import {IstETH} from "./IstETH.sol";
 import {IWstETH} from "./IWstETH.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract MorphoCreditMarketTest is Test {
     address private constant _W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -71,18 +72,25 @@ contract MorphoCreditMarketTest is Test {
                     "wstETH",
                     _WST_ETH,
                     _priceOracle,
-                    _setupMarketConfigs(),
-                    _setupFuses(),
-                    _setupBalanceFuses(),
                     _setupFeeConfig(),
                     accessManager,
                     address(new PlasmaVaultBase()),
-                    type(uint256).max,
                     withdrawManager
                 )
             )
         );
+
         vm.stopPrank();
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
+            address(_plasmaVault),
+            _setupFuses(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
+        );
+
         _initAccessManager();
         _setupDependenceBalance();
 
@@ -164,7 +172,7 @@ contract MorphoCreditMarketTest is Test {
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
-        MorphoBalanceFuse morphoBalance = new MorphoBalanceFuse(IporFusionMarkets.MORPHO);
+        MorphoBalanceFuse morphoBalance = new MorphoBalanceFuse(IporFusionMarkets.MORPHO, _MORPHO);
         ERC20BalanceFuse erc20Balance = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
 
         balanceFuses_ = new MarketBalanceFuseConfig[](2);
@@ -215,12 +223,12 @@ contract MorphoCreditMarketTest is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                rewardsClaimManager: address(0x123),
+                withdrawManager: address(0x123),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

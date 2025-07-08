@@ -17,6 +17,7 @@ import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PriceOracleMiddlewareManagerLib} from "../../contracts/managers/price/PriceOracleMiddlewareManagerLib.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
 contract PriceOracleMiddlewareManagerTest is Test {
     address private constant _DAO = address(1111111);
@@ -71,13 +72,9 @@ contract PriceOracleMiddlewareManagerTest is Test {
             assetSymbol: "USDC-PV",
             underlyingToken: _USDC,
             priceOracleMiddleware: _priceOracleMiddlewareManager,
-            marketSubstratesConfigs: new MarketSubstratesConfig[](0),
-            fuses: new address[](0),
-            balanceFuses: new MarketBalanceFuseConfig[](0),
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            totalSupplyCap: type(uint256).max,
             withdrawManager: _withdrawManager
         });
 
@@ -145,11 +142,11 @@ contract PriceOracleMiddlewareManagerTest is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
+                rewardsClaimManager: address(0x123),
                 withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0),
+                contextManager: address(0x123),
                 priceOracleMiddlewareManager: _priceOracleMiddlewareManager
             })
         });

@@ -26,6 +26,7 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
     struct PlasmaVaultState {
@@ -728,8 +729,25 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
         _createAccessManager();
         _createPlasmaVault();
         _createClaimRewardsManager();
-        _setupPlasmaVault();
+
         _initAccessManager();
+        _setupPlasmaVault();
+        // RoleLib.setupPlasmaVaultRoles(
+        //     usersToRoles,
+        //     vm,
+        //     address(plasmaVault),
+        //     accessManager,
+        //     withdrawManager
+        // );
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(atomist),
+            address(plasmaVault),
+            fuses,
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
+        );
     }
 
     function getMarketId() public view returns (uint256) {
@@ -818,7 +836,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
 
     function _setupPlasmaVault() private {
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
-        vm.startPrank(admin);
+
+        vm.startPrank(address(rewardsClaimManager));
         PlasmaVaultGovernance(address(plasmaVault)).setRewardsClaimManagerAddress(address(rewardsClaimManager));
 
         uint256[] memory marketIds = new uint256[](1);
@@ -857,13 +876,9 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 assetSymbol: "PLASMA",
                 underlyingToken: USDM,
                 priceOracleMiddleware: address(priceOracleMiddlewareProxy),
-                marketSubstratesConfigs: _setupMarketConfigs(),
-                fuses: fuses,
-                balanceFuses: _setupBalanceFuses(),
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                totalSupplyCap: type(uint256).max,
                 withdrawManager: address(withdrawManager)
             })
         );
@@ -896,10 +911,10 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 plasmaVault: address(plasmaVault),
                 accessManager: address(accessManager),
                 rewardsClaimManager: address(rewardsClaimManager),
-                withdrawManager: address(0),
-                feeManager: address(0),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                withdrawManager: address(0x123),
+                feeManager: address(0x123),
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

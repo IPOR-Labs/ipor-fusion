@@ -6,13 +6,16 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+
+import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+
 contract InitializeAccessManagerTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -60,16 +63,13 @@ contract InitializeAccessManagerTest is Test {
                 "ipfDAI",
                 DAI,
                 address(priceOracleMiddlewareProxy),
-                new MarketSubstratesConfig[](0),
-                new address[](0),
-                new MarketBalanceFuseConfig[](0),
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                type(uint256).max,
                 address(withdrawManager)
             )
         );
+
         vm.stopPrank();
 
         rewardsClaimManager = new RewardsClaimManager(address(accessManager), address(plasmaVault));
@@ -434,6 +434,17 @@ contract InitializeAccessManagerTest is Test {
         data.updateRewardsBalanceAccounts = _generateAddresses(100_000_000_000_000, 10);
         data.withdrawManagerRequestFeeManagers = _generateAddresses(1_000_000_000_000_000, 10);
         data.withdrawManagerWithdrawFeeManagers = _generateAddresses(10_000_000_000_000_000, 10);
+
+        /// @dev Dummy addresses as default values
+        data.plasmaVaultAddress = PlasmaVaultAddress({
+            plasmaVault: address(0x123),
+            accessManager: address(0x123),
+            rewardsClaimManager: address(0x123),
+            withdrawManager: address(0x123),
+            feeManager: address(0x123),
+            contextManager: address(0x123),
+            priceOracleMiddlewareManager: address(0x123)
+        });
 
         return data;
     }

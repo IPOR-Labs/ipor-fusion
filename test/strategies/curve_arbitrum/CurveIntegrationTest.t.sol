@@ -21,6 +21,7 @@ import {CurveChildLiquidityGaugeSupplyFuseEnterData} from "../../../contracts/fu
 import {CurveChildLiquidityGaugeSupplyFuseExitData} from "../../../contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
+import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 
 contract CurveIntegrationTest is Test {
     using PlasmaVaultHelper for PlasmaVault;
@@ -74,14 +75,20 @@ contract CurveIntegrationTest is Test {
         (_plasmaVault, _withdrawManager) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
 
         _accessManager = _plasmaVault.accessManagerOf();
-        _accessManager.setupInitRoles(_plasmaVault, _withdrawManager);
+        _accessManager.setupInitRoles(
+            _plasmaVault,
+            _withdrawManager,
+            address(new RewardsClaimManager(address(_accessManager), address(_plasmaVault)))
+        );
 
         // Grant market substrates for ERC4626 vaults
         bytes32[] memory substrates = new bytes32[](3);
         substrates[0] = bytes32(uint256(uint160(_CURVE_VAULT_1)));
         substrates[1] = bytes32(uint256(uint160(_CURVE_VAULT_2)));
         substrates[2] = bytes32(uint256(uint160(_CURVE_VAULT_3)));
+        vm.stopPrank();
 
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
         PlasmaVaultGovernance(address(_plasmaVault)).grantMarketSubstrates(IporFusionMarkets.ERC4626_0001, substrates);
 
         // Grant market substrates for Curve LP Gauge
@@ -131,7 +138,7 @@ contract CurveIntegrationTest is Test {
         uint256[][] memory dependencyMarkets = new uint256[][](1);
         dependencyMarkets[0] = dependencies;
 
-        vm.startPrank(TestAddresses.ATOMIST);
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
         PlasmaVaultGovernance(address(_plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependencyMarkets);
         vm.stopPrank();
 

@@ -21,6 +21,7 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract MorphoFlashLoanFuseTest is Test {
     address private constant _MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
@@ -64,18 +65,23 @@ contract MorphoFlashLoanFuseTest is Test {
                     assetSymbol: "PLASMA",
                     underlyingToken: _USDC,
                     priceOracleMiddleware: _priceOracle,
-                    marketSubstratesConfigs: _setupMarketConfigs(),
-                    fuses: _createFuse(),
-                    balanceFuses: _setupBalanceFuses(),
                     feeConfig: _setupFeeConfig(),
                     accessManager: _accessManager,
                     plasmaVaultBase: address(new PlasmaVaultBase()),
-                    totalSupplyCap: type(uint256).max,
                     withdrawManager: withdrawManager
                 })
             )
         );
         vm.stopPrank();
+
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            _ATOMIST,
+            address(_plasmaVault),
+            _createFuse(),
+            _setupBalanceFuses(),
+            _setupMarketConfigs()
+        );
     }
 
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs) {
@@ -153,12 +159,12 @@ contract MorphoFlashLoanFuseTest is Test {
             plasmaVaultAddress: PlasmaVaultAddress({
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
-                rewardsClaimManager: address(0),
-                withdrawManager: address(0),
+                rewardsClaimManager: address(0x123),
+                withdrawManager: address(0x123),
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
-                contextManager: address(0),
-                priceOracleMiddlewareManager: address(0)
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
             })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1

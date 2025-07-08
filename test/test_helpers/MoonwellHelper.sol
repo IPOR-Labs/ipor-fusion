@@ -33,7 +33,7 @@ library MoonwellHelper {
     ) internal returns (MoonWellAddresses memory moonwellAddresses) {
         MoonWellAddresses memory moonwellAddresses;
 
-        vm_.startPrank(TestAddresses.ATOMIST);
+        vm_.startPrank(TestAddresses.FUSE_MANAGER);
         _addSubstratesToMarket(plasmaVault_, mTokens);
         vm_.stopPrank();
 
@@ -51,7 +51,7 @@ library MoonwellHelper {
         address comptroller_,
         Vm vm_
     ) internal returns (MoonWellAddresses memory moonwellAddresses) {
-        vm_.startPrank(TestAddresses.ATOMIST);
+        vm_.startPrank(TestAddresses.FUSE_MANAGER);
         _addSubstratesToMarket(plasmaVault_, mTokens_);
         _addSubstratesToBalanceERC20Fuse(plasmaVault_, mTokens_);
         _addDependencyGraph(plasmaVault_);

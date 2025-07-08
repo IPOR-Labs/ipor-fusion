@@ -84,6 +84,8 @@ struct Iterator {
 
 /// @title IPOR Fusion Plasma Vault Initializer V1 for IPOR Protocol AMM. Responsible for define access to the Plasma Vault for a given addresses.
 library IporFusionAccessManagerInitializerLibV1 {
+    error InvalidAddress();
+
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
     uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
@@ -107,6 +109,28 @@ library IporFusionAccessManagerInitializerLibV1 {
     function _generateAccountToRoles(
         DataForInitialization memory data_
     ) private pure returns (AccountToRole[] memory accountToRoles) {
+        if (data_.plasmaVaultAddress.plasmaVault == address(0)) {
+            revert InvalidAddress();
+        }
+        if (data_.plasmaVaultAddress.accessManager == address(0)) {
+            revert InvalidAddress();
+        }
+        if (data_.plasmaVaultAddress.rewardsClaimManager == address(0)) {
+            revert InvalidAddress();
+        }
+        if (data_.plasmaVaultAddress.feeManager == address(0)) {
+            revert InvalidAddress();
+        }
+        if (data_.plasmaVaultAddress.contextManager == address(0)) {
+            revert InvalidAddress();
+        }
+        if (data_.plasmaVaultAddress.withdrawManager == address(0)) {
+            revert InvalidAddress();
+        }
+        if (data_.plasmaVaultAddress.priceOracleMiddlewareManager == address(0)) {
+            revert InvalidAddress();
+        }
+
         accountToRoles = _prepareAccountToRoles(data_);
 
         uint256 index;
@@ -121,6 +145,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.iporDaos.length; ++i) {
+            if (data_.iporDaos[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.IPOR_DAO_ROLE,
                 account: data_.iporDaos[i],
@@ -130,6 +157,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.admins.length; ++i) {
+            if (data_.admins[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.ADMIN_ROLE,
                 account: data_.admins[i],
@@ -139,6 +169,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.owners.length; ++i) {
+            if (data_.owners[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.OWNER_ROLE,
                 account: data_.owners[i],
@@ -148,6 +181,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.guardians.length; ++i) {
+            if (data_.guardians[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.GUARDIAN_ROLE,
                 account: data_.guardians[i],
@@ -157,6 +193,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.atomists.length; ++i) {
+            if (data_.atomists[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.ATOMIST_ROLE,
                 account: data_.atomists[i],
@@ -166,6 +205,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.alphas.length; ++i) {
+            if (data_.alphas[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.ALPHA_ROLE,
                 account: data_.alphas[i],
@@ -175,6 +217,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.fuseManagers.length; ++i) {
+            if (data_.fuseManagers[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.FUSE_MANAGER_ROLE,
                 account: data_.fuseManagers[i],
@@ -184,6 +229,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.claimRewards.length; ++i) {
+            if (data_.claimRewards[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.CLAIM_REWARDS_ROLE,
                 account: data_.claimRewards[i],
@@ -193,6 +241,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.transferRewardsManagers.length; ++i) {
+            if (data_.transferRewardsManagers[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.TRANSFER_REWARDS_ROLE,
                 account: data_.transferRewardsManagers[i],
@@ -202,6 +253,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.whitelist.length; ++i) {
+            if (data_.whitelist[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.WHITELIST_ROLE,
                 account: data_.whitelist[i],
@@ -211,6 +265,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.configInstantWithdrawalFusesManagers.length; ++i) {
+            if (data_.configInstantWithdrawalFusesManagers[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE,
                 account: data_.configInstantWithdrawalFusesManagers[i],
@@ -220,6 +277,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.updateMarketsBalancesAccounts.length; ++i) {
+            if (data_.updateMarketsBalancesAccounts[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.UPDATE_MARKETS_BALANCES_ROLE,
                 account: data_.updateMarketsBalancesAccounts[i],
@@ -229,6 +289,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.preHooksManagers.length; ++i) {
+            if (data_.preHooksManagers[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.PRE_HOOKS_MANAGER_ROLE,
                 account: data_.preHooksManagers[i],
@@ -238,6 +301,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         /// @dev Always add UPDATE_MARKETS_BALANCES_ROLE to the Plasma Vault
+
         accountToRoles[index] = AccountToRole({
             roleId: Roles.UPDATE_MARKETS_BALANCES_ROLE,
             account: data_.plasmaVaultAddress.plasmaVault,
@@ -246,6 +310,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         ++index;
 
         for (uint256 i; i < data_.updateRewardsBalanceAccounts.length; ++i) {
+            if (data_.updateRewardsBalanceAccounts[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.UPDATE_REWARDS_BALANCE_ROLE,
                 account: data_.updateRewardsBalanceAccounts[i],
@@ -255,6 +322,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.withdrawManagerRequestFeeManagers.length; ++i) {
+            if (data_.withdrawManagerRequestFeeManagers[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE,
                 account: data_.withdrawManagerRequestFeeManagers[i],
@@ -264,6 +334,9 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         for (uint256 i; i < data_.withdrawManagerWithdrawFeeManagers.length; ++i) {
+            if (data_.withdrawManagerWithdrawFeeManagers[i] == address(0)) {
+                revert InvalidAddress();
+            }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE,
                 account: data_.withdrawManagerWithdrawFeeManagers[i],
@@ -288,6 +361,13 @@ library IporFusionAccessManagerInitializerLibV1 {
             ++index;
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
+                account: data_.plasmaVaultAddress.feeManager,
+                executionDelay: 0
+            });
+            ++index;
+
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
                 account: data_.plasmaVaultAddress.feeManager,
                 executionDelay: 0
             });
@@ -356,11 +436,11 @@ library IporFusionAccessManagerInitializerLibV1 {
             data_.updateRewardsBalanceAccounts.length +
             data_.withdrawManagerRequestFeeManagers.length +
             data_.withdrawManagerWithdrawFeeManagers.length +
-            (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) +       /// @dev +1 TECH_CONTEXT_MANAGER_ROLE
-            (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) +  /// @dev +1 TECH_REWARDS_CLAIM_MANAGER_ROLE
-            (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 2) +           /// @dev +2 TECH_PERFORMANCE_FEE_MANAGER_ROLE, TECH_MANAGEMENT_FEE_MANAGER_ROLE
-            2 +                                                                     /// @dev +2 - UPDATE_MARKETS_BALANCES_ROLE, TECH_PLASMA_VAULT_ROLE for Plasma Vault
-            (data_.plasmaVaultAddress.withdrawManager == address(0) ? 0 : 1);       /// @dev +1 TECH_WITHDRAW_MANAGER_ROLE
+            (data_.plasmaVaultAddress.contextManager == address(0) ? 0 : 1) + /// @dev +1 TECH_CONTEXT_MANAGER_ROLE
+            (data_.plasmaVaultAddress.rewardsClaimManager == address(0) ? 0 : 1) + /// @dev +1 TECH_REWARDS_CLAIM_MANAGER_ROLE
+            (data_.plasmaVaultAddress.feeManager == address(0) ? 0 : 3) + /// @dev +2 TECH_PERFORMANCE_FEE_MANAGER_ROLE, TECH_MANAGEMENT_FEE_MANAGER_ROLE, TECH_VAULT_TRANSFER_SHARES_ROLE
+            2 + /// @dev +2 - UPDATE_MARKETS_BALANCES_ROLE, TECH_PLASMA_VAULT_ROLE for Plasma Vault
+            (data_.plasmaVaultAddress.withdrawManager == address(0) ? 0 : 1); /// @dev +1 TECH_WITHDRAW_MANAGER_ROLE
     }
 
     function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
@@ -493,7 +573,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         /// @dev The shares in this vault are transferable, hence we assign the PUBLIC_ROLE.
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.PUBLIC_ROLE,
+            roleId: Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
             functionSelector: IERC20.transfer.selector,
             minimalExecutionDelay: 0
         });
@@ -501,7 +581,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         /// @dev The shares in this vault are transferable, hence we assign the PUBLIC_ROLE.
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.PUBLIC_ROLE,
+            roleId: Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
             functionSelector: IERC20.transferFrom.selector,
             minimalExecutionDelay: 0
         });
@@ -613,7 +693,7 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.ATOMIST_ROLE,
+            roleId: Roles.FUSE_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.updateDependencyBalanceGraphs.selector,
             minimalExecutionDelay: 0
         });
@@ -634,7 +714,7 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.ATOMIST_ROLE,
+            roleId: Roles.FUSE_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.grantMarketSubstrates.selector,
             minimalExecutionDelay: 0
         });
