@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
-import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IStabilityPool} from "./ext/IStabilityPool.sol";
