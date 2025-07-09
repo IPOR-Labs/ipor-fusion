@@ -111,17 +111,16 @@ contract LiquityStabilityPoolFuseTest is Test {
             _setupMarketConfigs(address(mockDex))
         );
 
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.LIQUITY_V2;
+
         uint256[] memory dependence = new uint256[](1);
         dependence[0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
 
         uint256[][] memory dependenceMarkets = new uint256[][](1);
         dependenceMarkets[0] = dependence; // Liquity -> ERC20_VAULT_BALANCE
 
-        // PlasmaVaultGovernance(address(plasmaVault)).addBalanceFuse(
-        //     IporFusionMarkets.ERC20_VAULT_BALANCE,
-        //     address(erc20BalanceFuse)
-        // );
-        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(dependence, dependenceMarkets);
+        PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
     }
 
     function testShouldEnterToLiquitySB() public {
@@ -310,8 +309,9 @@ contract LiquityStabilityPoolFuseTest is Test {
         swapperAssets[0] = PlasmaVaultConfigLib.addressToBytes32(WETH);
         swapperAssets[1] = PlasmaVaultConfigLib.addressToBytes32(BOLD);
         swapperAssets[2] = PlasmaVaultConfigLib.addressToBytes32(_mockDex);
-        bytes32[] memory erc20Assets = new bytes32[](1);
+        bytes32[] memory erc20Assets = new bytes32[](2);
         erc20Assets[0] = PlasmaVaultConfigLib.addressToBytes32(BOLD);
+        erc20Assets[1] = PlasmaVaultConfigLib.addressToBytes32(WETH);
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.LIQUITY_V2, registries);
         marketConfigs_[1] = MarketSubstratesConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, swapperAssets);
         marketConfigs_[2] = MarketSubstratesConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, erc20Assets);

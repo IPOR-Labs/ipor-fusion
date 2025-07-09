@@ -8,7 +8,6 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IStabilityPool} from "./ext/IStabilityPool.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
-import {IPriceFeed} from "./ext/IPriceFeed.sol";
 import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
@@ -38,12 +37,12 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
 
         if (len == 0) return 0;
 
-        int256 collBalance;
-        int256 totalDeposits;
+        uint256 collBalance;
+        uint256 totalDeposits;
         uint256 tokenPrice;
         IAddressesRegistry registry;
         IStabilityPool stabilityPool;
-        int256 stashedCollateral;
+        uint256 stashedCollateral;
         address collToken;
         uint256 tokenDecimals;
 
@@ -65,26 +64,20 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
 
             // The stashed collateral in the stability pool, i.e. not yet claimed
             // They are denominated in the collateral token, so we need to convert them to USD
-            stashedCollateral = int256(stabilityPool.stashedColl(address(this)));
+            stashedCollateral = stabilityPool.stashedColl(address(this));
             if (stashedCollateral > 0) {
-                collBalance += IporMath.convertToWadInt(
-                    stashedCollateral * int256(tokenPrice),
+                collBalance += IporMath.convertToWad(
+                    stashedCollateral * tokenPrice,
                     tokenDecimals + LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS
                 );
             }
 
-            // some collateral is already claimed, so we must take it into account
-            collBalance += IporMath.convertToWadInt(
-                int256(IERC20(collToken).balanceOf(address(this))) * int256(tokenPrice),
-                tokenDecimals + LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS
-            );
-
-            totalDeposits += IporMath.convertToWadInt(
-                int256(stabilityPool.deposits(address(this))) * int256(boldPrice),
+            totalDeposits += IporMath.convertToWad(
+                stabilityPool.deposits(address(this)) * boldPrice,
                 boldDecimals + LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS
             );
         }
 
-        return (collBalance + totalDeposits).toUint256();
+        return collBalance + totalDeposits;
     }
 }
