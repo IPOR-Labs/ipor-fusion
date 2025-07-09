@@ -6,7 +6,7 @@ import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {TacStakingExecutor} from "./TacStakingExecutor.sol";
+import {TacStakingDelegator} from "./TacStakingDelegator.sol";
 import {TacStakingStorageLib} from "./TacStakingStorageLib.sol";
 import {TacValidatorAddressConverter} from "./TacValidatorAddressConverter.sol";
 
@@ -39,9 +39,9 @@ struct TacStakingFuseRedelegateData {
 contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for IERC20;
 
-    error TacStakingFuseInvalidExecutorAddress();
+    error TacStakingFuseInvalidDelegatorAddress();
     error TacStakingFuseSubstrateNotGranted(string validator);
-    error TacStakingFuseExecutorAlreadyCreated();
+    error TacStakingFuseDelegatorAlreadyCreated();
     error TacStakingFuseArrayLengthMismatch();
     error TacStakingFuseEmptyArray();
     error TacStakingFuseInsufficientBalance();
@@ -55,7 +55,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256[] wTacAmounts
     );
     event TacStakingFuseInstantWithdraw(address version, uint256 amount);
-    event TacStakingExecutorCreated(address executor, address plasmaVault, address wTAC, address staking);
+    event TacStakingDelegatorCreated(address delegator, address plasmaVault, address wTAC, address staking);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -64,10 +64,10 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
 
     constructor(uint256 marketId_, address wTAC_, address staking_) {
         if (wTAC_ == address(0)) {
-            revert TacStakingFuseInvalidExecutorAddress();
+            revert TacStakingFuseInvalidDelegatorAddress();
         }
         if (staking_ == address(0)) {
-            revert TacStakingFuseInvalidExecutorAddress();
+            revert TacStakingFuseInvalidDelegatorAddress();
         }
         VERSION = address(this);
         MARKET_ID = marketId_;
@@ -75,24 +75,24 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
         STAKING = staking_;
     }
 
-    /// @notice Creates a new TacStakingExecutor and stores its address in storage
+    /// @notice Creates a new TacStakingDelegator and stores its address in storage
     /// @dev Only callable by alpha role
-    /// @dev Creates a new TacStakingExecutor and stores its address in storage, can be called only once
-    function createExecutor() external {
-        address existingExecutor = TacStakingStorageLib.getTacStakingExecutor();
+    /// @dev Creates a new TacStakingDelegator and stores its address in storage, can be called only once
+    function createDelegator() external {
+        address existingDelegator = TacStakingStorageLib.getTacStakingDelegator();
 
-        if (existingExecutor != address(0)) {
-            revert TacStakingFuseExecutorAlreadyCreated();
+        if (existingDelegator != address(0)) {
+            revert TacStakingFuseDelegatorAlreadyCreated();
         }
 
-        TacStakingExecutor executor = new TacStakingExecutor(address(this), W_TAC, STAKING);
+        TacStakingDelegator delegator = new TacStakingDelegator(address(this), W_TAC, STAKING);
 
-        TacStakingStorageLib.setTacStakingExecutor(address(executor));
+        TacStakingStorageLib.setTacStakingDelegator(address(delegator));
 
-        emit TacStakingExecutorCreated(address(executor), address(this), W_TAC, STAKING);
+        emit TacStakingDelegatorCreated(address(delegator), address(this), W_TAC, STAKING);
     }
 
-    /// @notice Delegate the balance of the executor to the validators
+    /// @notice Delegate the balance of the delegator to the validators
     /// @dev Only callable by the PlasmaVault contract
     function enter(TacStakingFuseEnterData calldata data_) external {
         if (data_.validatorAddresses.length == 0) {
@@ -103,10 +103,10 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             revert TacStakingFuseArrayLengthMismatch();
         }
 
-        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
+        address payable delegator = payable(TacStakingStorageLib.getTacStakingDelegator());
 
-        if (executor == address(0)) {
-            revert TacStakingFuseInvalidExecutorAddress();
+        if (delegator == address(0)) {
+            revert TacStakingFuseInvalidDelegatorAddress();
         }
 
         uint256 totalWTacAmount = 0;
@@ -122,7 +122,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
         if (totalWTacAmount > IERC20(W_TAC).balanceOf(address(this))) {
             revert TacStakingFuseInsufficientBalance();
         } else {
-            IERC20(W_TAC).safeTransfer(executor, totalWTacAmount);
+            IERC20(W_TAC).safeTransfer(delegator, totalWTacAmount);
         }
 
         for (uint256 i; i < data_.validatorAddresses.length; i++) {
@@ -131,7 +131,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             }
         }
 
-        TacStakingExecutor(executor).delegate(data_.validatorAddresses, data_.wTacAmounts);
+        TacStakingDelegator(delegator).delegate(data_.validatorAddresses, data_.wTacAmounts);
 
         emit TacStakingFuseEnter(VERSION, data_.validatorAddresses, data_.wTacAmounts);
     }
@@ -145,10 +145,10 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             revert TacStakingFuseArrayLengthMismatch();
         }
 
-        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
+        address payable delegator = payable(TacStakingStorageLib.getTacStakingDelegator());
 
-        if (executor == address(0)) {
-            revert TacStakingFuseInvalidExecutorAddress();
+        if (delegator == address(0)) {
+            revert TacStakingFuseInvalidDelegatorAddress();
         }
 
         for (uint256 i = 0; i < data_.validatorAddresses.length; i++) {
@@ -157,7 +157,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             }
         }
 
-        TacStakingExecutor(executor).undelegate(data_.validatorAddresses, data_.wTacAmounts);
+        TacStakingDelegator(delegator).undelegate(data_.validatorAddresses, data_.wTacAmounts);
 
         emit TacStakingFuseExit(VERSION, data_.validatorAddresses, data_.wTacAmounts);
     }
@@ -174,10 +174,10 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             revert TacStakingFuseArrayLengthMismatch();
         }
 
-        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
+        address payable delegator = payable(TacStakingStorageLib.getTacStakingDelegator());
 
-        if (executor == address(0)) {
-            revert TacStakingFuseInvalidExecutorAddress();
+        if (delegator == address(0)) {
+            revert TacStakingFuseInvalidDelegatorAddress();
         }
 
         for (uint256 i; i < data_.validatorSrcAddresses.length; i++) {
@@ -190,7 +190,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             }
         }
 
-        TacStakingExecutor(executor).redelegate(
+        TacStakingDelegator(delegator).redelegate(
             data_.validatorSrcAddresses,
             data_.validatorDstAddresses,
             data_.wTacAmounts
@@ -207,7 +207,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Handle instant withdrawals
     /// @dev params[0] - amount in wTAC, params[1] - validator hash (bytes32)
     /// @param params_ Array of parameters for withdrawal
-    /// @dev Intant withdraw can be done only from TacStakingExecutor
+    /// @dev Intant withdraw can be done only from TacStakingDelegator
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 wTacAmount = uint256(params_[0]);
 
@@ -215,25 +215,25 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
+        address payable delegator = payable(TacStakingStorageLib.getTacStakingDelegator());
 
-        if (executor == address(0)) {
-            revert TacStakingFuseInvalidExecutorAddress();
+        if (delegator == address(0)) {
+            revert TacStakingFuseInvalidDelegatorAddress();
         }
 
-        uint256 withdrawnAmount = TacStakingExecutor(executor).instantWithdraw(wTacAmount);
+        uint256 withdrawnAmount = TacStakingDelegator(delegator).instantWithdraw(wTacAmount);
 
         emit TacStakingFuseInstantWithdraw(VERSION, withdrawnAmount);
     }
 
-    /// @notice Emergency withdraw all wTAC and native TAC from the Executor
-    /// @dev Intant withdraw can be done only from TacStakingExecutor
+    /// @notice Emergency withdraw all wTAC and native TAC from the Delegator
+    /// @dev Intant withdraw can be done only from TacStakingDelegator
     function emergencyExit() external {
-        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
-        if (executor == address(0)) {
-            revert TacStakingFuseInvalidExecutorAddress();
+        address payable delegator = payable(TacStakingStorageLib.getTacStakingDelegator());
+        if (delegator == address(0)) {
+            revert TacStakingFuseInvalidDelegatorAddress();
         }
-        TacStakingExecutor(executor).emergencyExit();
+        TacStakingDelegator(delegator).emergencyExit();
     }
 
     /// @notice Converts a validator address string (Bech32) to two bytes32 values

@@ -2,40 +2,40 @@
 pragma solidity 0.8.26;
 
 /// @title TacStakingStorageLib
-/// @notice Library for managing TAC staking executor storage in Plasma Vault
-/// @dev Implements storage pattern using an isolated storage slot to maintain executor address
+/// @notice Library for managing TAC staking delegator storage in Plasma Vault
+/// @dev Implements storage pattern using an isolated storage slot to maintain delegator address
 library TacStakingStorageLib {
-    /// @dev Storage slot for TAC staking executor address
-    /// @dev Calculation: keccak256(abi.encode(uint256(keccak256("io.ipor.tac.StakingExecutor")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant TAC_STAKING_EXECUTOR_SLOT =
-        0xd13ea098e3b10602b694749767b61b6cb8510a0a0332366961bea9fca7c66b00;
+    /// @dev Storage slot for TAC staking delegator address
+    /// @dev Calculation: keccak256(abi.encode(uint256(keccak256("io.ipor.tac.StakingDelegator")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant TAC_STAKING_DELEGATOR_SLOT =
+        0x9c1f6d08da1531dae93a138bbfefbb261944a0ff1fc704657deda034bea15b18;
 
-    /// @dev Structure holding the TAC staking executor address
-    /// @custom:storage-location erc7201:io.ipor.tac.staking.executor
-    struct TacStakingExecutorStorage {
-        /// @dev The address of the TAC staking executor
-        address executor;
+    /// @dev Structure holding the TAC staking delegator address
+    /// @custom:storage-location erc7201:io.ipor.tac.StakingDelegator
+    struct TacStakingDelegatorStorage {
+        /// @dev The address of the TAC staking delegator
+        address delegator;
     }
 
-    /// @notice Gets the TAC staking executor storage pointer
-    /// @return storagePtr The TacStakingExecutorStorage struct from storage
-    function getTacStakingExecutorStorage() internal pure returns (TacStakingExecutorStorage storage storagePtr) {
+    /// @notice Gets the TAC staking delegator storage pointer
+    /// @return storagePtr The TacStakingDelegatorStorage struct from storage
+    function getTacStakingDelegatorStorage() internal pure returns (TacStakingDelegatorStorage storage storagePtr) {
         assembly {
-            storagePtr.slot := TAC_STAKING_EXECUTOR_SLOT
+            storagePtr.slot := TAC_STAKING_DELEGATOR_SLOT
         }
     }
 
-    /// @notice Sets the TAC staking executor address
-    /// @param executor The address of the TAC staking executor
-    function setTacStakingExecutor(address executor) internal {
-        TacStakingExecutorStorage storage storagePtr = getTacStakingExecutorStorage();
-        storagePtr.executor = executor;
+    /// @notice Sets the TAC staking delegator address
+    /// @param delegator The address of the TAC staking delegator
+    function setTacStakingDelegator(address delegator) internal {
+        TacStakingDelegatorStorage storage storagePtr = getTacStakingDelegatorStorage();
+        storagePtr.delegator = delegator;
     }
 
-    /// @notice Gets the TAC staking executor address
-    /// @return The address of the TAC staking executor
-    function getTacStakingExecutor() internal view returns (address) {
-        TacStakingExecutorStorage storage storagePtr = getTacStakingExecutorStorage();
-        return storagePtr.executor;
+    /// @notice Gets the TAC staking delegator address
+    /// @return The address of the TAC staking delegator
+    function getTacStakingDelegator() internal view returns (address) {
+        TacStakingDelegatorStorage storage storagePtr = getTacStakingDelegatorStorage();
+        return storagePtr.delegator;
     }
 }

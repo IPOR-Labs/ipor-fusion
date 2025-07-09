@@ -7,89 +7,63 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IStaking} from "./ext/IStaking.sol";
 import {IwTAC} from "./ext/IwTAC.sol";
 
-/// @notice Data structure for delegate operation
-/// @param validatorAddress The address of the validator to delegate to
-/// @param wTacAmount The amount of wTAC to delegate
-struct StakingExecutorTacDelegateData {
-    string[] validatorAddresses;
-    uint256[] wTacAmounts;
-}
-
-/// @notice Data structure for redelegate operation
-/// @param validatorSrcAddress The address of the validator to redelegate from
-/// @param validatorDstAddress The address of the validator to redelegate to
-/// @param wTacAmount The amount of wTAC to redelegate
-struct StakingExecutorTacRedelegateData {
-    string validatorSrcAddress;
-    string validatorDstAddress;
-    uint256 wTacAmount;
-}
-
-/// @notice Data structure for undelegate operation
-/// @param validatorAddress The address of the validator to undelegate from
-/// @param wTacAmount The amount of wTAC to undelegate
-// struct StakingExecutorTacUndelegateData {
-//     string[] validatorAddresses;
-//     uint256[] wTacAmounts;
-// }
-
-/// @title TacStakingExecutor
-/// @notice Executor for TAC staking operations in Plasma Vault
+/// @title TacStakingDelegator
+/// @notice Delegator for TAC staking operations on behalf of the PlasmaVault
 /// @dev Handles delegation, redelegation, undelegation, instant withdrawals, and emergency exit
-/// @dev Allows the contract to receive native TAC tokens
 /// @dev Only callable by the PlasmaVault contract
-contract TacStakingExecutor {
+/// @dev Allows the contract to receive native TAC tokens
+contract TacStakingDelegator {
     using Address for address;
     using SafeERC20 for IERC20;
 
-    error StakingExecutorTacInvalidTacAddress();
-    error StakingExecutorTacInvalidStakingAddress();
-    error StakingExecutorTacInvalidArrayLength();
-    error StakingExecutorTacInvalidTargetAddress();
-    error StakingExecutorTacInsufficientBalance();
+    error TacStakingDelegatorInvalidWtacAddress();
+    error TacStakingDelegatorInvalidStakingAddress();
+    error TacStakingDelegatorInvalidArrayLength();
+    error TacStakingDelegatorInvalidTargetAddress();
+    error TacStakingDelegatorInsufficientBalance();
 
-    event TacStakingExecutorDelegate(address plasmaVault, string validatorAddress, uint256 amount);
-    event TacStakingExecutorRedelegate(
+    event TacStakingDelegatorDelegate(address plasmaVault, string validatorAddress, uint256 amount);
+    event TacStakingDelegatorRedelegate(
         address plasmaVault,
         string validatorSrcAddress,
         string validatorDstAddress,
         uint256 amount,
         int64 completionTime
     );
-    event TacStakingExecutorUndelegate(
+    event TacStakingDelegatorUndelegate(
         address plasmaVault,
         string validatorAddress,
         uint256 amount,
         int64 completionTime
     );
-    event TacStakingExecutorInstantWithdraw(address plasmaVault, uint256 amount);
-    event TacStakingExecutorExit(address plasmaVault, uint256 amount);
-    event TacStakingExecutorBatchExecute(address plasmaVault, address[] targets, bytes[] calldatas);
+    event TacStakingDelegatorInstantWithdraw(address plasmaVault, uint256 amount);
+    event TacStakingDelegatorExit(address plasmaVault, uint256 amount);
+    event TacStakingDelegatorBatchExecute(address plasmaVault, address[] targets, bytes[] calldatas);
 
     address public immutable W_TAC;
     address public immutable STAKING;
     address public immutable PLASMA_VAULT;
 
-    error StakingExecutorTacInvalidPlasmaVaultAddress();
+    error TacStakingDelegatorInvalidPlasmaVaultAddress();
 
     modifier onlyPlasmaVault() {
         if (msg.sender != PLASMA_VAULT) {
-            revert StakingExecutorTacInvalidPlasmaVaultAddress();
+            revert TacStakingDelegatorInvalidPlasmaVaultAddress();
         }
         _;
     }
 
     constructor(address plasmaVault_, address wTAC_, address staking_) {
         if (plasmaVault_ == address(0)) {
-            revert StakingExecutorTacInvalidPlasmaVaultAddress();
+            revert TacStakingDelegatorInvalidPlasmaVaultAddress();
         }
 
         if (wTAC_ == address(0)) {
-            revert StakingExecutorTacInvalidTacAddress();
+            revert TacStakingDelegatorInvalidWtacAddress();
         }
 
         if (staking_ == address(0)) {
-            revert StakingExecutorTacInvalidStakingAddress();
+            revert TacStakingDelegatorInvalidStakingAddress();
         }
 
         PLASMA_VAULT = plasmaVault_;
@@ -103,7 +77,7 @@ contract TacStakingExecutor {
         }
 
         if (validatorAddresses_.length != wTacAmounts_.length) {
-            revert StakingExecutorTacInvalidArrayLength();
+            revert TacStakingDelegatorInvalidArrayLength();
         }
 
         uint256 totalWTacAmount = 0;
@@ -114,10 +88,10 @@ contract TacStakingExecutor {
 
         address delegator = address(this);
 
-        uint256 executorBalance = IERC20(W_TAC).balanceOf(delegator);
+        uint256 delegatorBalance = IERC20(W_TAC).balanceOf(delegator);
 
-        if (totalWTacAmount > executorBalance) {
-            revert StakingExecutorTacInsufficientBalance();
+        if (totalWTacAmount > delegatorBalance) {
+            revert TacStakingDelegatorInsufficientBalance();
         }
 
         /// @dev get native TAC from wTAC
@@ -130,7 +104,7 @@ contract TacStakingExecutor {
 
             IStaking(STAKING).delegate(delegator, validatorAddresses_[i], wTacAmounts_[i]);
 
-            emit TacStakingExecutorDelegate(PLASMA_VAULT, validatorAddresses_[i], wTacAmounts_[i]);
+            emit TacStakingDelegatorDelegate(PLASMA_VAULT, validatorAddresses_[i], wTacAmounts_[i]);
         }
 
         _transferRemainingBalance();
@@ -145,7 +119,7 @@ contract TacStakingExecutor {
         }
 
         if (validatorAddresses_.length != wTacAmounts_.length) {
-            revert StakingExecutorTacInvalidArrayLength();
+            revert TacStakingDelegatorInvalidArrayLength();
         }
 
         for (uint256 i; i < validatorAddresses_.length; i++) {
@@ -155,7 +129,7 @@ contract TacStakingExecutor {
 
             int64 completionTime = IStaking(STAKING).undelegate(address(this), validatorAddresses_[i], wTacAmounts_[i]);
 
-            emit TacStakingExecutorUndelegate(PLASMA_VAULT, validatorAddresses_[i], wTacAmounts_[i], completionTime);
+            emit TacStakingDelegatorUndelegate(PLASMA_VAULT, validatorAddresses_[i], wTacAmounts_[i], completionTime);
         }
 
         _transferRemainingBalance();
@@ -174,7 +148,7 @@ contract TacStakingExecutor {
             validatorSrcAddresses_.length != validatorDstAddresses_.length ||
             validatorSrcAddresses_.length != wTacAmounts_.length
         ) {
-            revert StakingExecutorTacInvalidArrayLength();
+            revert TacStakingDelegatorInvalidArrayLength();
         }
 
         for (uint256 i; i < validatorSrcAddresses_.length; i++) {
@@ -189,7 +163,7 @@ contract TacStakingExecutor {
                 wTacAmounts_[i]
             );
 
-            emit TacStakingExecutorRedelegate(
+            emit TacStakingDelegatorRedelegate(
                 PLASMA_VAULT,
                 validatorSrcAddresses_[i],
                 validatorDstAddresses_[i],
@@ -234,7 +208,7 @@ contract TacStakingExecutor {
 
         withdrawnAmount_ = totalWithdrawable;
 
-        emit TacStakingExecutorInstantWithdraw(PLASMA_VAULT, withdrawnAmount_);
+        emit TacStakingDelegatorInstantWithdraw(PLASMA_VAULT, withdrawnAmount_);
     }
 
     function emergencyExit() external onlyPlasmaVault {
@@ -250,10 +224,10 @@ contract TacStakingExecutor {
             IERC20(W_TAC).safeTransfer(PLASMA_VAULT, totalWTacBalance);
         }
 
-        emit TacStakingExecutorExit(PLASMA_VAULT, totalWTacBalance);
+        emit TacStakingDelegatorExit(PLASMA_VAULT, totalWTacBalance);
     }
 
-    /// @notice Execute batch of calls as the executor
+    /// @notice Execute batch of calls as the delegator
     /// @param targets Array of target addresses to call
     /// @param calldatas Array of calldata to execute
     /// @return results Array of return data from each call
@@ -263,20 +237,20 @@ contract TacStakingExecutor {
         bytes[] calldata calldatas
     ) external onlyPlasmaVault returns (bytes[] memory results) {
         if (targets.length != calldatas.length) {
-            revert StakingExecutorTacInvalidArrayLength();
+            revert TacStakingDelegatorInvalidArrayLength();
         }
 
         results = new bytes[](targets.length);
 
         for (uint256 i = 0; i < targets.length; i++) {
             if (targets[i] == address(0)) {
-                revert StakingExecutorTacInvalidTargetAddress();
+                revert TacStakingDelegatorInvalidTargetAddress();
             }
 
             results[i] = targets[i].functionCall(calldatas[i]);
         }
 
-        emit TacStakingExecutorBatchExecute(PLASMA_VAULT, targets, calldatas);
+        emit TacStakingDelegatorBatchExecute(PLASMA_VAULT, targets, calldatas);
     }
 
     function _transferRemainingBalance() internal {

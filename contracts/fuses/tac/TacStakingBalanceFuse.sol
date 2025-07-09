@@ -44,9 +44,9 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
             revert TacStakingBalanceFuseInvalidSubstrateLength();
         }
 
-        address tacStakingExecutor = TacStakingStorageLib.getTacStakingExecutor();
+        address tacStakingDelegator = TacStakingStorageLib.getTacStakingDelegator();
 
-        if (tacStakingExecutor == address(0)) {
+        if (tacStakingDelegator == address(0)) {
             return 0;
         }
 
@@ -75,13 +75,13 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
             validatorAddress = TacValidatorAddressConverter.bytes32ToValidatorAddress(substrates[i], substrates[i + 1]);
 
             if (bytes(validatorAddress).length > 0) {
-                (, balance) = IStaking(STAKING).delegation(tacStakingExecutor, validatorAddress);
+                (, balance) = IStaking(STAKING).delegation(tacStakingDelegator, validatorAddress);
 
                 if (balance.amount > 0) {
                     totalBalance += balance.amount;
                 }
 
-                unbondingDelegation = IStaking(STAKING).unbondingDelegation(tacStakingExecutor, validatorAddress);
+                unbondingDelegation = IStaking(STAKING).unbondingDelegation(tacStakingDelegator, validatorAddress);
 
                 for (uint256 j; j < unbondingDelegation.entries.length; ++j) {
                     totalBalance += unbondingDelegation.entries[j].balance;
@@ -90,7 +90,7 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
         }
 
         /// @dev Take into consideration the balance of the executor in Native token
-        totalBalance += address(tacStakingExecutor).balance;
+        totalBalance += address(tacStakingDelegator).balance;
 
         /// @dev Convert TAC balance to USD using price oracle middleware
         /// @dev Use wTAC address for pricing since native TAC and wTAC have 1:1 relationship

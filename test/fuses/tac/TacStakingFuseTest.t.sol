@@ -36,7 +36,7 @@ import {IPriceFeed} from "../../../contracts/price_oracle/price_feed/IPriceFeed.
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {MockStaking} from "./MockStaking.sol";
 import {TacStakingStorageLib} from "../../../contracts/fuses/tac/TacStakingStorageLib.sol";
-import {TacStakingExecutorAddressReader} from "../../../contracts/readers/TacStakingExecutorAddressReader.sol";
+import {TacStakingDelegatorAddressReader} from "../../../contracts/readers/TacStakingDelegatorAddressReader.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {TacValidatorAddressConverter} from "../../../contracts/fuses/tac/TacValidatorAddressConverter.sol";
@@ -45,10 +45,29 @@ import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 import {TacStakingFuseEnterData, TacStakingFuseExitData, TacStakingFuseRedelegateData} from "../../../contracts/fuses/tac/TacStakingFuse.sol";
+import {TacStakingDelegator} from "../../../contracts/fuses/tac/TacStakingDelegator.sol";
+import {MockMaintenanceStakingFuse} from "./MockMaintenanceStakingFuse.sol";
 
 interface IwTAC is IERC20 {
     function deposit() external payable;
     function withdraw(uint256 wadAmount) external;
+}
+
+/// @notice Mock contract for testing executeBatch functionality
+contract MockBatchTarget {
+    uint256 public value;
+
+    function setValue(uint256 _value) external {
+        value = _value;
+    }
+
+    function getValue() external view returns (uint256) {
+        return value;
+    }
+
+    function revertFunction() external pure {
+        revert("MockBatchTarget: revertFunction called");
+    }
 }
 
 contract MockPriceFeed is IPriceFeed {
@@ -92,7 +111,8 @@ contract TacStakingFuseTest is Test {
 
     FusionFactory fusionFactory;
 
-    TacStakingExecutorAddressReader tacStakingExecutorAddressReader;
+    TacStakingDelegatorAddressReader tacStakingDelegatorAddressReader;
+    MockMaintenanceStakingFuse mockMaintenanceStakingFuse;
 
     string[] validators;
     string[] validatorsSrc;
@@ -134,11 +154,19 @@ contract TacStakingFuseTest is Test {
 
         tacStakingBalanceFuse = new TacStakingBalanceFuse(TAC_MARKET_ID, STAKING, wTAC);
 
-        tacStakingExecutorAddressReader = new TacStakingExecutorAddressReader();
+        tacStakingDelegatorAddressReader = new TacStakingDelegatorAddressReader();
+        mockMaintenanceStakingFuse = new MockMaintenanceStakingFuse(TAC_MARKET_ID);
 
         _setupRoles();
 
         _addTacStakingFuses();
+
+        // Add MockedMaintenanceStakingFuse as a supported fuse for executeBatch tests
+        address[] memory maintenanceFuses = new address[](1);
+        maintenanceFuses[0] = address(mockMaintenanceStakingFuse);
+        vm.startPrank(atomist);
+        PlasmaVaultGovernance(address(plasmaVault)).addFuses(maintenanceFuses);
+        vm.stopPrank();
 
         address[] memory assets = new address[](1);
         assets[0] = wTAC;
@@ -150,10 +178,10 @@ contract TacStakingFuseTest is Test {
         PriceOracleMiddlewareManager(address(priceOracle)).setAssetsPriceSources(assets, sources);
         vm.stopPrank();
 
-        FuseAction[] memory createExecutorCalls = new FuseAction[](1);
-        createExecutorCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("createExecutor()"));
+        FuseAction[] memory createDelegatorCalls = new FuseAction[](1);
+        createDelegatorCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("createDelegator()"));
         vm.prank(alpha);
-        plasmaVault.execute(createExecutorCalls);
+        plasmaVault.execute(createDelegatorCalls);
 
         validators = new string[](1);
         tacAmounts = new uint256[](1);
@@ -163,15 +191,204 @@ contract TacStakingFuseTest is Test {
         wTacAmounts = new uint256[](1);
     }
 
-    function testShouldRevertWhenCreatingExecutorTwice() external {
-        // given - executor is already created in setUp()
-        FuseAction[] memory createExecutorCalls = new FuseAction[](1);
-        createExecutorCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("createExecutor()"));
+    function testShouldRevertWhenCreatingDelegatorTwice() external {
+        // given - delegator is already created in setUp()
+        FuseAction[] memory createDelegatorCalls = new FuseAction[](1);
+        createDelegatorCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("createDelegator()"));
 
-        // when & then - should revert with TacStakingFuseExecutorAlreadyCreated error
+        // when & then - should revert with TacStakingFuseDelegatorAlreadyCreated error
         vm.prank(alpha);
-        vm.expectRevert(abi.encodeWithSelector(TacStakingFuse.TacStakingFuseExecutorAlreadyCreated.selector));
-        plasmaVault.execute(createExecutorCalls);
+        vm.expectRevert(abi.encodeWithSelector(TacStakingFuse.TacStakingFuseDelegatorAlreadyCreated.selector));
+        plasmaVault.execute(createDelegatorCalls);
+    }
+
+    // TacStakingDelegator executeBatch tests
+    function testShouldExecuteBatchSuccessfully() external {
+        // given
+        // Create a mock contract for testing
+        MockBatchTarget mockTarget = new MockBatchTarget();
+
+        address[] memory targets = new address[](2);
+        targets[0] = address(mockTarget);
+        targets[1] = address(mockTarget);
+
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeWithSignature("setValue(uint256)", 42);
+        calldatas[1] = abi.encodeWithSignature("setValue(uint256)", 100);
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when
+        vm.prank(alpha);
+        plasmaVault.execute(executeBatchCalls);
+
+        // then
+        assertEq(mockTarget.value(), 100, "Last call should set the value to 100");
+    }
+
+    function testShouldExecuteBatchWithReturnValues() external {
+        // given
+        MockBatchTarget mockTarget = new MockBatchTarget();
+        mockTarget.setValue(50);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(mockTarget);
+
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSignature("getValue()");
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when
+        vm.prank(alpha);
+        plasmaVault.execute(executeBatchCalls);
+
+        // then - we can't easily get return values through the PlasmaVault execute mechanism
+        // but we can verify the call was successful by checking the mock target state
+        assertEq(mockTarget.value(), 50, "Mock target value should remain unchanged");
+    }
+
+    function testShouldRevertWhenArrayLengthsMismatch() external {
+        // given
+        address[] memory targets = new address[](2);
+        targets[0] = address(0x123);
+        targets[1] = address(0x456);
+
+        bytes[] memory calldatas = new bytes[](1); // Mismatch: only 1 calldata for 2 targets
+        calldatas[0] = abi.encodeWithSignature("someFunction()");
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when & then
+        vm.prank(alpha);
+        vm.expectRevert(abi.encodeWithSelector(TacStakingDelegator.TacStakingDelegatorInvalidArrayLength.selector));
+        plasmaVault.execute(executeBatchCalls);
+    }
+
+    function testShouldRevertWhenTargetAddressIsZero() external {
+        // given
+        address[] memory targets = new address[](1);
+        targets[0] = address(0); // Zero address
+
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSignature("someFunction()");
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when & then
+        vm.prank(alpha);
+        vm.expectRevert(abi.encodeWithSelector(TacStakingDelegator.TacStakingDelegatorInvalidTargetAddress.selector));
+        plasmaVault.execute(executeBatchCalls);
+    }
+
+    function testShouldRevertWhenCalledByNonPlasmaVault() external {
+        // given
+        address[] memory targets = new address[](1);
+        targets[0] = address(0x123);
+
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSignature("someFunction()");
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when & then - should revert when called by non-authorized user
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSignature("AccessManagedUnauthorized(address)", user));
+        plasmaVault.execute(executeBatchCalls);
+    }
+
+    function testShouldExecuteBatchWithEmptyArrays() external {
+        // given
+        address[] memory targets = new address[](0);
+        bytes[] memory calldatas = new bytes[](0);
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when
+        vm.prank(alpha);
+        plasmaVault.execute(executeBatchCalls);
+
+        // then - should execute successfully with empty arrays
+        // We can't easily get return values through the PlasmaVault execute mechanism
+        // but we can verify the call was successful by not reverting
+    }
+
+    function testShouldExecuteBatchWithRevertingCall() external {
+        // given
+        MockBatchTarget mockTarget = new MockBatchTarget();
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(mockTarget);
+
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSignature("revertFunction()");
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when & then - should revert when the target function reverts
+        vm.prank(alpha);
+        vm.expectRevert("MockBatchTarget: revertFunction called");
+        plasmaVault.execute(executeBatchCalls);
+    }
+
+    function testShouldExecuteBatchWithMultipleTargets() external {
+        // given
+        MockBatchTarget mockTarget1 = new MockBatchTarget();
+        MockBatchTarget mockTarget2 = new MockBatchTarget();
+        MockBatchTarget mockTarget3 = new MockBatchTarget();
+
+        address[] memory targets = new address[](3);
+        targets[0] = address(mockTarget1);
+        targets[1] = address(mockTarget2);
+        targets[2] = address(mockTarget3);
+
+        bytes[] memory calldatas = new bytes[](3);
+        calldatas[0] = abi.encodeWithSignature("setValue(uint256)", 10);
+        calldatas[1] = abi.encodeWithSignature("setValue(uint256)", 20);
+        calldatas[2] = abi.encodeWithSignature("setValue(uint256)", 30);
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when
+        vm.prank(alpha);
+        plasmaVault.execute(executeBatchCalls);
+
+        // then
+        assertEq(mockTarget1.value(), 10, "First target should have value 10");
+        assertEq(mockTarget2.value(), 20, "Second target should have value 20");
+        assertEq(mockTarget3.value(), 30, "Third target should have value 30");
     }
 
     function testShouldStakeTacSuccessfully() external {
@@ -373,19 +590,19 @@ contract TacStakingFuseTest is Test {
         uint256 vaultTotalAssetsAfter = PlasmaVault(address(plasmaVault)).totalAssets();
         uint256 balanceInMarketAfter = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
 
-        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
 
-        uint256 executorNativeBalanceBefore = executor.balance;
+        uint256 delegatorNativeBalanceBefore = delegator.balance;
         uint256 vaultWTacBalanceBefore = IwTAC(wTAC).balanceOf(address(plasmaVault));
 
         // Simulate completion of unbonding period (21 days)
         vm.warp(block.timestamp + 21 days);
 
         // when
-        // Simulate the staking contract transferring native tokens to the executor
+        // Simulate the staking contract transferring native tokens to the delegator
         // This would happen automatically in a real TAC network after the unbonding period
-        vm.deal(executor, executorNativeBalanceBefore + stakeAmount);
-        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(executor, VALIDATOR_ADDRESS_SRC_BECH32);
+        vm.deal(delegator, delegatorNativeBalanceBefore + stakeAmount);
+        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = TAC_MARKET_ID;
@@ -426,7 +643,7 @@ contract TacStakingFuseTest is Test {
         assertGt(balanceInMarketAfterUnbonding, 0, "Balance in market should be greater than 0");
     }
 
-    function testShouldIncreaseVaultBalanceWhenTransferNativeTokenToExecutor() external {
+    function testShouldIncreaseVaultBalanceWhenTransferNativeTokenToDelegator() external {
         // given
         uint256 stakeAmount = 100;
 
@@ -452,12 +669,12 @@ contract TacStakingFuseTest is Test {
         PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
-        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
 
         uint256 vaultTotalAssetsBefore = PlasmaVault(address(plasmaVault)).totalAssets();
 
         // when
-        vm.deal(executor, stakeAmount);
+        vm.deal(delegator, stakeAmount);
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = TAC_MARKET_ID;
@@ -475,14 +692,14 @@ contract TacStakingFuseTest is Test {
         );
     }
 
-    function testShouldGetExecutorAddressUsingReader() external {
-        // given - executor is created in setUp()
+    function testShouldGetDelegatorAddressUsingReader() external {
+        // given - delegator is created in setUp()
 
         // when
-        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
 
         // then
-        assertTrue(executor != address(0), "Executor address should not be zero");
+        assertTrue(delegator != address(0), "Delegator address should not be zero");
     }
 
     function testShouldInstantWithdrawTacSuccessfully() external {
@@ -556,17 +773,17 @@ contract TacStakingFuseTest is Test {
         vm.prank(alpha);
         plasmaVault.execute(exitCalls);
 
-        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
 
         // Simulate completion of unbonding period (21 days)
         vm.warp(block.timestamp + 21 days);
 
-        uint256 executorNativeBalanceBefore = executor.balance;
+        uint256 delegatorNativeBalanceBefore = delegator.balance;
 
-        // Simulate the staking contract transferring native tokens to the executor
+        // Simulate the staking contract transferring native tokens to the delegator
         // This would happen automatically in a real TAC network after the unbonding period
-        vm.deal(executor, executorNativeBalanceBefore + stakeAmount);
-        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(executor, VALIDATOR_ADDRESS_SRC_BECH32);
+        vm.deal(delegator, delegatorNativeBalanceBefore + stakeAmount);
+        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = TAC_MARKET_ID;
@@ -595,7 +812,7 @@ contract TacStakingFuseTest is Test {
         assertGt(userBalanceAfter, userBalanceBefore, "User balance should be greater than the initial balance");
     }
 
-    function testShouldExitExecutorSuccessfully() external {
+    function testShouldExitDelegatorSuccessfully() external {
         // given
         uint256 stakeAmount = 100;
         uint256 nativeAmount = 50;
@@ -636,14 +853,14 @@ contract TacStakingFuseTest is Test {
         vm.prank(alpha);
         plasmaVault.execute(enterCalls);
 
-        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
 
-        // Simulate native tokens being sent to executor (e.g., from unbonding completion)
-        vm.deal(executor, nativeAmount);
+        // Simulate native tokens being sent to delegator (e.g., from unbonding completion)
+        vm.deal(delegator, nativeAmount);
 
         // Record balances before exit
-        uint256 executorNativeBalanceBefore = executor.balance;
-        uint256 executorWTacBalanceBefore = IwTAC(wTAC).balanceOf(executor);
+        uint256 delegatorNativeBalanceBefore = delegator.balance;
+        uint256 delegatorWTacBalanceBefore = IwTAC(wTAC).balanceOf(delegator);
         uint256 vaultWTacBalanceBefore = IwTAC(wTAC).balanceOf(address(plasmaVault));
 
         // when
@@ -654,19 +871,19 @@ contract TacStakingFuseTest is Test {
         plasmaVault.execute(exitCalls);
 
         // then
-        uint256 executorNativeBalanceAfter = executor.balance;
-        uint256 executorWTacBalanceAfter = IwTAC(wTAC).balanceOf(executor);
+        uint256 delegatorNativeBalanceAfter = delegator.balance;
+        uint256 delegatorWTacBalanceAfter = IwTAC(wTAC).balanceOf(delegator);
         uint256 vaultWTacBalanceAfter = IwTAC(wTAC).balanceOf(address(plasmaVault));
 
-        assertEq(executorNativeBalanceAfter, 0, "Executor should have no native tokens after exit");
+        assertEq(delegatorNativeBalanceAfter, 0, "Delegator should have no native tokens after exit");
 
-        assertEq(executorWTacBalanceAfter, 0, "Executor should have no wTAC tokens after exit");
+        assertEq(delegatorWTacBalanceAfter, 0, "Delegator should have no wTAC tokens after exit");
 
         // Vault should receive all tokens (native converted to wTAC + existing wTAC)
         assertEq(
             vaultWTacBalanceAfter,
-            vaultWTacBalanceBefore + executorWTacBalanceBefore + nativeAmount,
-            "Vault should receive all tokens from executor"
+            vaultWTacBalanceBefore + delegatorWTacBalanceBefore + nativeAmount,
+            "Vault should receive all tokens from delegator"
         );
     }
 
@@ -874,9 +1091,9 @@ contract TacStakingFuseTest is Test {
         );
 
         // Check delegation before redelegation
-        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
-        (uint256 sharesSrcBefore, ) = IStaking(STAKING).delegation(executor, VALIDATOR_ADDRESS_SRC_BECH32);
-        (uint256 sharesDstBefore, ) = IStaking(STAKING).delegation(executor, VALIDATOR_ADDRESS_DST_BECH32);
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        (uint256 sharesSrcBefore, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
+        (uint256 sharesDstBefore, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_DST_BECH32);
 
         // when
         vm.prank(alpha);
@@ -909,8 +1126,8 @@ contract TacStakingFuseTest is Test {
 
         // Verify that the remaining balance is still delegated to the original validator
         // and the redelegated amount is now with the second validator
-        (uint256 sharesSrc, ) = IStaking(STAKING).delegation(executor, VALIDATOR_ADDRESS_SRC_BECH32);
-        (uint256 sharesDst, ) = IStaking(STAKING).delegation(executor, VALIDATOR_ADDRESS_DST_BECH32);
+        (uint256 sharesSrc, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
+        (uint256 sharesDst, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_DST_BECH32);
 
         assertEq(sharesSrc, stakeAmount - redelegateAmount, "Source validator should have remaining delegation");
 
