@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
@@ -14,7 +13,6 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 /// @title Fuse for Liquity protocol responsible for calculating the balance of the Plasma Vault in Liquity protocol based on preconfigured market substrates
 /// @dev Substrates in this fuse are the address registries of Liquity protocol that are used in the Liquity protocol for a given MARKET_ID
 contract LiquityBalanceFuse is IMarketBalanceFuse {
-    using SafeCast for int256;
     uint256 public immutable MARKET_ID;
 
     uint256 private constant LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS = 18;

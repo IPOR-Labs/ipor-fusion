@@ -19,7 +19,6 @@ import {IAddressesRegistry} from "../../../contracts/fuses/liquity/ext/IAddresse
 import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
-import {UniversalReader} from "../../../contracts/universal_reader/UniversalReader.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
