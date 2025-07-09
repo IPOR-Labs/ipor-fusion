@@ -8,14 +8,16 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {IStaking, Coin, UnbondingDelegationOutput, Validator} from "./ext/IStaking.sol";
+import {IStaking, Coin, UnbondingDelegationOutput} from "./ext/IStaking.sol";
 import {TacStakingStorageLib} from "./TacStakingStorageLib.sol";
-
+import {TacValidatorAddressConverter} from "./TacValidatorAddressConverter.sol";
 contract TacStakingBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using Address for address;
 
     error TacStakingBalanceFuseInvalidWtacAddress();
+    error TacStakingBalanceFuseInvalidPriceOracleMiddleware();
+    error TacStakingBalanceFuseInvalidSubstrateLength();
 
     uint256 public immutable MARKET_ID;
     address public immutable W_TAC;
@@ -38,6 +40,10 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
+        if (substrates.length % 2 != 0) {
+            revert TacStakingBalanceFuseInvalidSubstrateLength();
+        }
+
         uint256 totalBalance = 0;
 
         address tacStakingExecutor = TacStakingStorageLib.getTacStakingExecutor();
@@ -49,21 +55,32 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
         /// @dev Get price oracle middleware to convert TAC balance to USD
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 
-        /// @dev Take into consideration the balance of the executor in Native token
-        totalBalance += address(tacStakingExecutor).balance;
+        if (priceOracleMiddleware == address(0)) {
+            revert TacStakingBalanceFuseInvalidPriceOracleMiddleware();
+        }
 
-        for (uint256 i = 0; i < substrates.length; ++i) {
-            bytes32 substrate = substrates[i];
+        for (uint256 i; i < substrates.length; i += 2) {
+            if (i + 1 >= substrates.length) {
+                break;
+            }
 
-            address validatorAddress = PlasmaVaultConfigLib.bytes32ToAddress(substrate);
+            if (i % 2 != 0) {
+                continue;
+            }
 
-            try IStaking(STAKING).validator(validatorAddress) returns (Validator memory validator) {
-                string memory operatorAddress = validator.operatorAddress;
+            bytes32 substrate1 = substrates[i];
+            bytes32 substrate2 = substrates[i + 1];
 
+            string memory validatorAddress = TacValidatorAddressConverter.bytes32ToValidatorAddress(
+                substrate1,
+                substrate2
+            );
+
+            if (bytes(validatorAddress).length > 0) {
                 uint256 shares;
                 Coin memory balance;
 
-                try IStaking(STAKING).delegation(tacStakingExecutor, operatorAddress) returns (
+                try IStaking(STAKING).delegation(tacStakingExecutor, validatorAddress) returns (
                     uint256 _shares,
                     Coin memory _balance
                 ) {
@@ -75,32 +92,27 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
                 }
 
                 if (balance.amount > 0) {
-                    // For TAC staking, we use the balance amount from the Coin struct
-                    // This represents the actual staked amount in the native token
                     totalBalance += balance.amount;
                 }
 
-                // Get unbonding delegation balance using operator address
-                try IStaking(STAKING).unbondingDelegation(tacStakingExecutor, operatorAddress) returns (
+                try IStaking(STAKING).unbondingDelegation(tacStakingExecutor, validatorAddress) returns (
                     UnbondingDelegationOutput memory unbondingDelegation
                 ) {
-                    // Sum up all unbonding entries for this validator
-                    for (uint256 j = 0; j < unbondingDelegation.entries.length; ++j) {
+                    for (uint256 j; j < unbondingDelegation.entries.length; ++j) {
                         totalBalance += unbondingDelegation.entries[j].balance;
                     }
                 } catch {
-                    // If unbonding delegation query fails, continue with next validator
                     continue;
                 }
-            } catch {
-                // If validator query fails, continue with next substrate
-                continue;
             }
         }
 
+        /// @dev Take into consideration the balance of the executor in Native token
+        totalBalance += address(tacStakingExecutor).balance;
+
         /// @dev Convert TAC balance to USD using price oracle middleware
         /// @dev Use wTAC address for pricing since native TAC and wTAC have 1:1 relationship
-        if (totalBalance > 0 && priceOracleMiddleware != address(0)) {
+        if (totalBalance > 0) {
             (uint256 tacPrice, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
                 W_TAC
             );

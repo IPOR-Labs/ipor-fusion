@@ -1010,7 +1010,6 @@ contract PlasmaVault is
     /// @custom:access Public view function, no role restrictions
     function totalAssets() public view virtual override returns (uint256) {
         uint256 grossTotalAssets = _getGrossTotalAssets();
-
         uint256 unrealizedManagementFee = PlasmaVaultFeesLib.getUnrealizedManagementFee(grossTotalAssets);
 
         if (unrealizedManagementFee >= grossTotalAssets) {

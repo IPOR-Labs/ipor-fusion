@@ -31,7 +31,7 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {BurnRequestFeeFuse} from "../../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {IStaking, Coin} from "../../../contracts/fuses/tac/ext/IStaking.sol";
+import {IStaking, Coin, UnbondingDelegationOutput} from "../../../contracts/fuses/tac/ext/IStaking.sol";
 import {IPriceFeed} from "../../../contracts/price_oracle/price_feed/IPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {MockStaking} from "./MockStaking.sol";
@@ -39,8 +39,12 @@ import {TacStakingStorageLib} from "../../../contracts/fuses/tac/TacStakingStora
 import {TacStakingExecutorAddressReader} from "../../../contracts/readers/TacStakingExecutorAddressReader.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-
+import {TacValidatorAddressConverter} from "../../../contracts/fuses/tac/TacValidatorAddressConverter.sol";
 import {Description, CommissionRates} from "../../../contracts/fuses/tac/ext/IStaking.sol";
+import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
+import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
+import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
+import {TacStakingFuseEnterActionData, TacStakingFuseEnterAction} from "../../../contracts/fuses/tac/TacStakingFuse.sol";
 
 interface IwTAC is IERC20 {
     function deposit() external payable;
@@ -67,17 +71,18 @@ contract TacStakingFuseTest is Test {
     address constant wTAC = 0xB63B9f0eb4A6E6f191529D71d4D88cc8900Df2C9;
 
     /// @dev You can off-chain convert validator address to operator address.
-    string constant VALIDATOR_OPERATOR_ADDRESS = "tac1pdu86gjvnnr2786xtkw2eggxkmrsur0zjm6vxn";
-    address constant VALIDATOR_ADDRESS = 0x78346FF37Ad8B536CE9551DEE5D037058d880300;
+    string constant VALIDATOR_ADDRESS_BECH32 = "tac1pdu86gjvnnr2786xtkw2eggxkmrsur0zjm6vxn";
+    address constant VALIDATOR_ADDRESS_HEX = 0x78346FF37Ad8B536CE9551DEE5D037058d880300;
+
+    string constant SECOND_VALIDATOR_ADDRESS_BECH32 = "tac1pdu86gjvnnr2786xtkw2eggxkmrsur0zjm6vxn3";
+    address constant SECOND_VALIDATOR_ADDRESS_HEX = 0x78346fF37AD8B536CE9551dee5D037058D880302;
 
     uint256 constant TAC_MARKET_ID = IporFusionMarkets.TAC_STAKING;
 
-    // Test addresses
     address alpha;
     address atomist;
     address user;
 
-    // Contracts
     PlasmaVault plasmaVault;
     TacStakingFuse tacStakingFuse;
     TacStakingBalanceFuse tacStakingBalanceFuse;
@@ -85,55 +90,52 @@ contract TacStakingFuseTest is Test {
     address withdrawManager;
     address priceOracle;
 
-    // FusionFactory
     FusionFactory fusionFactory;
 
-    // Reader
     TacStakingExecutorAddressReader tacStakingExecutorAddressReader;
 
+    string[] validators;
+    uint256[] tacAmounts;
+    string[] validatorsExit;
+    uint256[] wTacAmounts;
+
+    IStaking staking;
+
+    uint256 stakeAmount;
+    uint256 redelegateAmount;
+
     function setUp() public {
-        // Setup fork for TAC network
         vm.createSelectFork(vm.envString("TAC_PROVIDER_URL"));
 
-        STAKING = address(new MockStaking());
+        STAKING = address(new MockStaking(vm));
 
-        IStaking staking = IStaking(STAKING);
-        staking.createValidator(
+        IStaking stakingLocal = IStaking(STAKING);
+        stakingLocal.createValidator(
             Description({moniker: "test", identity: "test", website: "test", securityContact: "test", details: "test"}),
             CommissionRates({rate: 1000, maxRate: 1000, maxChangeRate: 1000}),
             0,
-            VALIDATOR_ADDRESS,
-            VALIDATOR_OPERATOR_ADDRESS,
+            VALIDATOR_ADDRESS_HEX,
+            VALIDATOR_ADDRESS_BECH32,
             0
         );
 
-        // Setup test addresses
         alpha = address(0x555);
         atomist = address(0x777);
 
         user = address(0x333);
 
-        // Setup FusionFactory
         _setupFusionFactory();
 
-        // Create vault using FusionFactory
         _createVaultWithFusionFactory();
 
-        // plasmaVault address logged for debugging
-
-        // Setup TAC staking fuse with new constructor parameters
         tacStakingFuse = new TacStakingFuse(TAC_MARKET_ID, wTAC, STAKING);
 
-        // Setup TAC staking balance fuse with real staking contract
         tacStakingBalanceFuse = new TacStakingBalanceFuse(TAC_MARKET_ID, STAKING, wTAC);
 
-        // Setup reader
         tacStakingExecutorAddressReader = new TacStakingExecutorAddressReader();
 
-        // Setup roles FIRST (before adding fuses)
         _setupRoles();
 
-        // Add TAC staking fuses to the vault AFTER roles are set up
         _addTacStakingFuses();
 
         address[] memory assets = new address[](1);
@@ -146,11 +148,15 @@ contract TacStakingFuseTest is Test {
         PriceOracleMiddlewareManager(address(priceOracle)).setAssetsPriceSources(assets, sources);
         vm.stopPrank();
 
-        // Create executor by alpha via vault execute method
         FuseAction[] memory createExecutorCalls = new FuseAction[](1);
         createExecutorCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("createExecutor()"));
         vm.prank(alpha);
         plasmaVault.execute(createExecutorCalls);
+
+        validators = new string[](1);
+        tacAmounts = new uint256[](1);
+        validatorsExit = new string[](1);
+        wTacAmounts = new uint256[](1);
     }
 
     function testShouldRevertWhenCreatingExecutorTwice() external {
@@ -186,15 +192,23 @@ contract TacStakingFuseTest is Test {
         PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
-            validator: VALIDATOR_ADDRESS,
-            tacAmount: stakeAmount
+        validators[0] = VALIDATOR_ADDRESS_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingFuseEnterActionData[] memory actions = new TacStakingFuseEnterActionData[](1);
+        actions[0] = TacStakingFuseEnterActionData({
+            action: TacStakingFuseEnterAction.DELEGATE,
+            validatorSrcAddress: VALIDATOR_ADDRESS_BECH32,
+            validatorDstAddress: "",
+            wTacAmount: stakeAmount
         });
+
+        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({actions: actions});
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(tacStakingFuse),
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter(((uint8,string,string,uint256)[]))", enterData)
         );
 
         uint256 stakingBalanceBefore = address(STAKING).balance;
@@ -242,15 +256,23 @@ contract TacStakingFuseTest is Test {
         PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
-            validator: VALIDATOR_ADDRESS,
-            tacAmount: stakeAmount
+        validators[0] = VALIDATOR_ADDRESS_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingFuseEnterActionData[] memory actions = new TacStakingFuseEnterActionData[](1);
+        actions[0] = TacStakingFuseEnterActionData({
+            action: TacStakingFuseEnterAction.DELEGATE,
+            validatorSrcAddress: VALIDATOR_ADDRESS_BECH32,
+            validatorDstAddress: "",
+            wTacAmount: stakeAmount
         });
+
+        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({actions: actions});
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(tacStakingFuse),
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter(((uint8,string,string,uint256)[]))", enterData)
         );
 
         vm.prank(alpha);
@@ -258,15 +280,18 @@ contract TacStakingFuseTest is Test {
 
         uint256 unstakeAmount = stakeAmount;
 
+        validatorsExit[0] = VALIDATOR_ADDRESS_BECH32;
+        wTacAmounts[0] = unstakeAmount;
+
         TacStakingFuseExitData memory exitData = TacStakingFuseExitData({
-            validator: VALIDATOR_ADDRESS,
-            wTacAmount: unstakeAmount
+            validators: validatorsExit,
+            wTacAmounts: wTacAmounts
         });
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(tacStakingFuse),
-            abi.encodeWithSignature("exit((address,uint256))", exitData)
+            abi.encodeWithSignature("exit((string[],uint256[]))", exitData)
         );
 
         uint256 stakingBalanceBefore = address(STAKING).balance;
@@ -314,16 +339,23 @@ contract TacStakingFuseTest is Test {
         PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
-        // Stake TAC
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
-            validator: VALIDATOR_ADDRESS,
-            tacAmount: stakeAmount
+        validators[0] = VALIDATOR_ADDRESS_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingFuseEnterActionData[] memory actions = new TacStakingFuseEnterActionData[](1);
+        actions[0] = TacStakingFuseEnterActionData({
+            action: TacStakingFuseEnterAction.DELEGATE,
+            validatorSrcAddress: VALIDATOR_ADDRESS_BECH32,
+            validatorDstAddress: "",
+            wTacAmount: stakeAmount
         });
+
+        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({actions: actions});
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(tacStakingFuse),
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter(((uint8,string,string,uint256)[]))", enterData)
         );
 
         vm.prank(alpha);
@@ -333,15 +365,17 @@ contract TacStakingFuseTest is Test {
         uint256 balanceInMarketBefore = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
 
         // Unstake TAC (initiates unbonding)
+        validatorsExit[0] = VALIDATOR_ADDRESS_BECH32;
+        wTacAmounts[0] = stakeAmount;
         TacStakingFuseExitData memory exitData = TacStakingFuseExitData({
-            validator: VALIDATOR_ADDRESS,
-            wTacAmount: stakeAmount
+            validators: validatorsExit,
+            wTacAmounts: wTacAmounts
         });
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(tacStakingFuse),
-            abi.encodeWithSignature("exit((address,uint256))", exitData)
+            abi.encodeWithSignature("exit((string[],uint256[]))", exitData)
         );
 
         vm.prank(alpha);
@@ -350,10 +384,8 @@ contract TacStakingFuseTest is Test {
         uint256 vaultTotalAssetsAfter = PlasmaVault(address(plasmaVault)).totalAssets();
         uint256 balanceInMarketAfter = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
 
-        // Get executor address using the reader
         address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
 
-        // Record balances before unbonding completion
         uint256 executorNativeBalanceBefore = executor.balance;
         uint256 vaultWTacBalanceBefore = IwTAC(wTAC).balanceOf(address(plasmaVault));
 
@@ -364,7 +396,7 @@ contract TacStakingFuseTest is Test {
         // Simulate the staking contract transferring native tokens to the executor
         // This would happen automatically in a real TAC network after the unbonding period
         vm.deal(executor, executorNativeBalanceBefore + stakeAmount);
-        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(executor, VALIDATOR_OPERATOR_ADDRESS);
+        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(executor, VALIDATOR_ADDRESS_BECH32);
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = TAC_MARKET_ID;
@@ -373,7 +405,8 @@ contract TacStakingFuseTest is Test {
         PlasmaVault(address(plasmaVault)).updateMarketsBalances(marketIds);
 
         // then
-        uint256 vaultTotalAssetsAfterUnbonding = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 vaultTotalAssetsAfterUnbonding = PlasmaVault(address(plasmaVault)).totalAssets(); ///????
+
         uint256 balanceInMarketAfterUnbonding = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
 
         assertEq(
@@ -430,7 +463,6 @@ contract TacStakingFuseTest is Test {
         PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
-        // Get executor address using the reader
         address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
 
         uint256 vaultTotalAssetsBefore = PlasmaVault(address(plasmaVault)).totalAssets();
@@ -468,10 +500,9 @@ contract TacStakingFuseTest is Test {
         // given
         uint256 stakeAmount = 100;
 
-        // Configure instant withdraw order
         InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
         bytes32[] memory instantWithdrawParams = new bytes32[](1);
-        instantWithdrawParams[0] = bytes32(stakeAmount); // amount
+        instantWithdrawParams[0] = bytes32(stakeAmount);
 
         instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
             fuse: address(tacStakingFuse),
@@ -503,37 +534,44 @@ contract TacStakingFuseTest is Test {
         PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
-        // Stake TAC
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
-            validator: VALIDATOR_ADDRESS,
-            tacAmount: stakeAmount
+        validators[0] = VALIDATOR_ADDRESS_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingFuseEnterActionData[] memory actions = new TacStakingFuseEnterActionData[](1);
+        actions[0] = TacStakingFuseEnterActionData({
+            action: TacStakingFuseEnterAction.DELEGATE,
+            validatorSrcAddress: VALIDATOR_ADDRESS_BECH32,
+            validatorDstAddress: "",
+            wTacAmount: stakeAmount
         });
+
+        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({actions: actions});
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(tacStakingFuse),
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter(((uint8,string,string,uint256)[]))", enterData)
         );
 
         vm.prank(alpha);
         plasmaVault.execute(enterCalls);
 
-        // Unstake TAC (initiates unbonding)
+        validatorsExit[0] = VALIDATOR_ADDRESS_BECH32;
+        wTacAmounts[0] = stakeAmount;
         TacStakingFuseExitData memory exitData = TacStakingFuseExitData({
-            validator: VALIDATOR_ADDRESS,
-            wTacAmount: stakeAmount
+            validators: validatorsExit,
+            wTacAmounts: wTacAmounts
         });
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(tacStakingFuse),
-            abi.encodeWithSignature("exit((address,uint256))", exitData)
+            abi.encodeWithSignature("exit((string[],uint256[]))", exitData)
         );
 
         vm.prank(alpha);
         plasmaVault.execute(exitCalls);
 
-        // Get executor address using the reader
         address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
 
         // Simulate completion of unbonding period (21 days)
@@ -544,7 +582,7 @@ contract TacStakingFuseTest is Test {
         // Simulate the staking contract transferring native tokens to the executor
         // This would happen automatically in a real TAC network after the unbonding period
         vm.deal(executor, executorNativeBalanceBefore + stakeAmount);
-        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(executor, VALIDATOR_OPERATOR_ADDRESS);
+        MockStaking(STAKING).evmMethodRemoveAllUnbondingDelegations(executor, VALIDATOR_ADDRESS_BECH32);
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = TAC_MARKET_ID;
@@ -597,21 +635,28 @@ contract TacStakingFuseTest is Test {
         vm.stopPrank();
 
         // Stake TAC
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
-            validator: VALIDATOR_ADDRESS,
-            tacAmount: stakeAmount
+        validators[0] = VALIDATOR_ADDRESS_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingFuseEnterActionData[] memory actions = new TacStakingFuseEnterActionData[](1);
+        actions[0] = TacStakingFuseEnterActionData({
+            action: TacStakingFuseEnterAction.DELEGATE,
+            validatorSrcAddress: VALIDATOR_ADDRESS_BECH32,
+            validatorDstAddress: "",
+            wTacAmount: stakeAmount
         });
+
+        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({actions: actions});
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(tacStakingFuse),
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter(((uint8,string,string,uint256)[]))", enterData)
         );
 
         vm.prank(alpha);
         plasmaVault.execute(enterCalls);
 
-        // Get executor address using the reader
         address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
 
         // Simulate native tokens being sent to executor (e.g., from unbonding completion)
@@ -624,7 +669,7 @@ contract TacStakingFuseTest is Test {
 
         // when
         FuseAction[] memory exitCalls = new FuseAction[](1);
-        exitCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("exit()"));
+        exitCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("emergencyExit()"));
 
         vm.prank(alpha);
         plasmaVault.execute(exitCalls);
@@ -634,10 +679,8 @@ contract TacStakingFuseTest is Test {
         uint256 executorWTacBalanceAfter = IwTAC(wTAC).balanceOf(executor);
         uint256 vaultWTacBalanceAfter = IwTAC(wTAC).balanceOf(address(plasmaVault));
 
-        // Executor should have no native tokens left
         assertEq(executorNativeBalanceAfter, 0, "Executor should have no native tokens after exit");
 
-        // Executor should have no wTAC tokens left
         assertEq(executorWTacBalanceAfter, 0, "Executor should have no wTAC tokens after exit");
 
         // Vault should receive all tokens (native converted to wTAC + existing wTAC)
@@ -648,8 +691,271 @@ contract TacStakingFuseTest is Test {
         );
     }
 
+    function testShouldRedelegateTacSuccessfully() external {
+        // given
+        uint256 stakeAmount = 100;
+
+        IStaking staking = IStaking(STAKING);
+        staking.createValidator(
+            Description({
+                moniker: "test2",
+                identity: "test2",
+                website: "test2",
+                securityContact: "test2",
+                details: "test2"
+            }),
+            CommissionRates({rate: 1000, maxRate: 1000, maxChangeRate: 1000}),
+            0,
+            SECOND_VALIDATOR_ADDRESS_HEX,
+            SECOND_VALIDATOR_ADDRESS_BECH32,
+            0
+        );
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        bytes32[] memory secondSubstrates = new bytes32[](4);
+
+        (bytes32 firstSlot2, bytes32 secondSlot2) = TacValidatorAddressConverter.validatorAddressToBytes32(
+            SECOND_VALIDATOR_ADDRESS_BECH32
+        );
+
+        (bytes32 thirdSlot, bytes32 fourthSlot) = TacValidatorAddressConverter.validatorAddressToBytes32(
+            VALIDATOR_ADDRESS_BECH32
+        );
+
+        secondSubstrates[0] = firstSlot2;
+        secondSubstrates[1] = secondSlot2;
+        secondSubstrates[2] = thirdSlot;
+        secondSubstrates[3] = fourthSlot;
+
+        PlasmaVaultGovernance(address(plasmaVault)).grantMarketSubstrates(TAC_MARKET_ID, secondSubstrates);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingFuseEnterActionData[] memory delegateActions = new TacStakingFuseEnterActionData[](1);
+        delegateActions[0] = TacStakingFuseEnterActionData({
+            action: TacStakingFuseEnterAction.DELEGATE,
+            validatorSrcAddress: VALIDATOR_ADDRESS_BECH32,
+            validatorDstAddress: "",
+            wTacAmount: stakeAmount
+        });
+
+        TacStakingFuseEnterData memory delegateData = TacStakingFuseEnterData({actions: delegateActions});
+
+        FuseAction[] memory delegateCalls = new FuseAction[](1);
+        delegateCalls[0] = FuseAction(
+            address(tacStakingFuse),
+            abi.encodeWithSignature("enter(((uint8,string,string,uint256)[]))", delegateData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(delegateCalls);
+
+        uint256 vaultTotalAssetsBeforeRedelegate = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 balanceInMarketBeforeRedelegate = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
+
+        TacStakingFuseEnterActionData[] memory redelegateActions = new TacStakingFuseEnterActionData[](1);
+        redelegateActions[0] = TacStakingFuseEnterActionData({
+            action: TacStakingFuseEnterAction.REDELEGATE,
+            validatorSrcAddress: VALIDATOR_ADDRESS_BECH32,
+            validatorDstAddress: SECOND_VALIDATOR_ADDRESS_BECH32,
+            wTacAmount: stakeAmount
+        });
+
+        TacStakingFuseEnterData memory redelegateData = TacStakingFuseEnterData({actions: redelegateActions});
+
+        FuseAction[] memory redelegateCalls = new FuseAction[](1);
+        redelegateCalls[0] = FuseAction(
+            address(tacStakingFuse),
+            abi.encodeWithSignature("enter(((uint8,string,string,uint256)[]))", redelegateData)
+        );
+
+        // when
+        vm.prank(alpha);
+        plasmaVault.execute(redelegateCalls);
+
+        // then
+        uint256 vaultTotalAssetsAfterRedelegate = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 balanceInMarketAfterRedelegate = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
+
+        assertEq(
+            vaultTotalAssetsAfterRedelegate,
+            vaultTotalAssetsBeforeRedelegate,
+            "Vault total assets should remain unchanged after redelegation"
+        );
+        assertEq(
+            balanceInMarketAfterRedelegate,
+            balanceInMarketBeforeRedelegate,
+            "Balance in market should remain unchanged after redelegation"
+        );
+    }
+
+    function testShouldRedelegateWithPartialAmountSuccessfully() external {
+        // given
+        stakeAmount = 100;
+        redelegateAmount = 50;
+
+        staking = IStaking(STAKING);
+        staking.createValidator(
+            Description({
+                moniker: "test3",
+                identity: "test3",
+                website: "test3",
+                securityContact: "test3",
+                details: "test3"
+            }),
+            CommissionRates({rate: 1000, maxRate: 1000, maxChangeRate: 1000}),
+            0,
+            SECOND_VALIDATOR_ADDRESS_HEX,
+            SECOND_VALIDATOR_ADDRESS_BECH32,
+            0
+        );
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        bytes32[] memory secondSubstrates = new bytes32[](4);
+        (bytes32 firstSlot2, bytes32 secondSlot2) = TacValidatorAddressConverter.validatorAddressToBytes32(
+            SECOND_VALIDATOR_ADDRESS_BECH32
+        );
+        (bytes32 thirdSlot, bytes32 fourthSlot) = TacValidatorAddressConverter.validatorAddressToBytes32(
+            VALIDATOR_ADDRESS_BECH32
+        );
+        secondSubstrates[0] = firstSlot2;
+        secondSubstrates[1] = secondSlot2;
+        secondSubstrates[2] = thirdSlot;
+        secondSubstrates[3] = fourthSlot;
+
+        PlasmaVaultGovernance(address(plasmaVault)).grantMarketSubstrates(TAC_MARKET_ID, secondSubstrates);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingFuseEnterActionData[] memory delegateActions = new TacStakingFuseEnterActionData[](1);
+        delegateActions[0] = TacStakingFuseEnterActionData({
+            action: TacStakingFuseEnterAction.DELEGATE,
+            validatorSrcAddress: VALIDATOR_ADDRESS_BECH32,
+            validatorDstAddress: "",
+            wTacAmount: stakeAmount
+        });
+
+        TacStakingFuseEnterData memory delegateData = TacStakingFuseEnterData({actions: delegateActions});
+
+        FuseAction[] memory delegateCalls = new FuseAction[](1);
+        delegateCalls[0] = FuseAction(
+            address(tacStakingFuse),
+            abi.encodeWithSignature("enter(((uint8,string,string,uint256)[]))", delegateData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(delegateCalls);
+
+        uint256 vaultTotalAssetsBeforeRedelegate = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 balanceInMarketBeforeRedelegate = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
+
+        TacStakingFuseEnterActionData[] memory redelegateActions = new TacStakingFuseEnterActionData[](1);
+        redelegateActions[0] = TacStakingFuseEnterActionData({
+            action: TacStakingFuseEnterAction.REDELEGATE,
+            validatorSrcAddress: VALIDATOR_ADDRESS_BECH32,
+            validatorDstAddress: SECOND_VALIDATOR_ADDRESS_BECH32,
+            wTacAmount: redelegateAmount
+        });
+
+        TacStakingFuseEnterData memory redelegateData = TacStakingFuseEnterData({actions: redelegateActions});
+
+        FuseAction[] memory redelegateCalls = new FuseAction[](1);
+        redelegateCalls[0] = FuseAction(
+            address(tacStakingFuse),
+            abi.encodeWithSignature("enter(((uint8,string,string,uint256)[]))", redelegateData)
+        );
+
+        // Check delegation before redelegation
+        address executor = tacStakingExecutorAddressReader.getTacStakingExecutorAddress(address(plasmaVault));
+        (uint256 sharesSrcBefore, ) = IStaking(STAKING).delegation(executor, VALIDATOR_ADDRESS_BECH32);
+        (uint256 sharesDstBefore, ) = IStaking(STAKING).delegation(executor, SECOND_VALIDATOR_ADDRESS_BECH32);
+        console2.log("Before redelegation - Source validator shares:", sharesSrcBefore);
+        console2.log("Before redelegation - Destination validator shares:", sharesDstBefore);
+
+        // when
+        vm.prank(alpha);
+        plasmaVault.execute(redelegateCalls);
+
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = TAC_MARKET_ID;
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, alpha, 0);
+        vm.stopPrank();
+
+        vm.prank(alpha);
+        plasmaVault.updateMarketsBalances(marketIds);
+
+        // then
+        uint256 vaultTotalAssetsAfterRedelegate = PlasmaVault(address(plasmaVault)).totalAssets();
+        uint256 balanceInMarketAfterRedelegate = PlasmaVault(address(plasmaVault)).totalAssetsInMarket(TAC_MARKET_ID);
+
+        assertEq(
+            vaultTotalAssetsAfterRedelegate,
+            vaultTotalAssetsBeforeRedelegate,
+            "Vault total assets should remain unchanged after partial redelegation"
+        );
+        assertEq(
+            balanceInMarketAfterRedelegate,
+            balanceInMarketBeforeRedelegate,
+            "Balance in market should remain unchanged after partial redelegation"
+        );
+
+        // Verify that the remaining balance is still delegated to the original validator
+        // and the redelegated amount is now with the second validator
+        (uint256 sharesSrc, ) = IStaking(STAKING).delegation(executor, VALIDATOR_ADDRESS_BECH32);
+        (uint256 sharesDst, ) = IStaking(STAKING).delegation(executor, SECOND_VALIDATOR_ADDRESS_BECH32);
+        console2.log("After redelegation - Source validator shares:", sharesSrc);
+        console2.log("After redelegation - Destination validator shares:", sharesDst);
+        console2.log("Expected source validator shares:", stakeAmount - redelegateAmount);
+        console2.log("Expected destination validator shares:", redelegateAmount);
+
+        assertEq(sharesSrc, stakeAmount - redelegateAmount, "Source validator should have remaining delegation");
+
+        assertEq(sharesDst, redelegateAmount, "Destination validator should have redelegated amount");
+    }
+
     function _setupFusionFactory() private {
-        // Deploy factory contracts
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
             accessManagerFactory: address(new AccessManagerFactory()),
             plasmaVaultFactory: address(new PlasmaVaultFactory()),
@@ -672,7 +978,6 @@ contract TacStakingFuseTest is Test {
             )
         );
 
-        // Deploy implementation and proxy for FusionFactory
         FusionFactory implementation = new FusionFactory();
         bytes memory initData = abi.encodeWithSignature(
             "initialize(address,address[],(address,address,address,address,address,address,address),address,address,address,address)",
@@ -686,7 +991,6 @@ contract TacStakingFuseTest is Test {
         );
         fusionFactory = FusionFactory(address(new ERC1967Proxy(address(implementation), initData)));
 
-        // Setup DAO fee
         vm.startPrank(atomist);
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), atomist);
         vm.stopPrank();
@@ -697,16 +1001,14 @@ contract TacStakingFuseTest is Test {
     }
 
     function _createVaultWithFusionFactory() private {
-        // Create vault using FusionFactory
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
             "TAC Staking Vault",
             "tacVault",
             wTAC,
-            1 seconds, // redemption delay
-            atomist // owner
+            1 seconds,
+            atomist
         );
 
-        // Set the plasmaVault from the factory instance
         plasmaVault = PlasmaVault(instance.plasmaVault);
         accessManager = IporFusionAccessManager(instance.accessManager);
         withdrawManager = instance.withdrawManager;
@@ -714,7 +1016,6 @@ contract TacStakingFuseTest is Test {
     }
 
     function _addTacStakingFuses() private {
-        // Add TAC staking fuses to the vault
         address[] memory fuses = new address[](1);
         fuses[0] = address(tacStakingFuse);
 
@@ -722,9 +1023,18 @@ contract TacStakingFuseTest is Test {
         PlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
         PlasmaVaultGovernance(address(plasmaVault)).addBalanceFuse(TAC_MARKET_ID, address(tacStakingBalanceFuse));
 
-        // Grant validator as substrate to the market
-        bytes32[] memory substrates = new bytes32[](1);
-        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(VALIDATOR_ADDRESS);
+        bytes32[] memory substrates = new bytes32[](4);
+        (bytes32 firstSlot, bytes32 secondSlot) = TacValidatorAddressConverter.validatorAddressToBytes32(
+            VALIDATOR_ADDRESS_BECH32
+        );
+        (bytes32 thirdSlot, bytes32 fourthSlot) = TacValidatorAddressConverter.validatorAddressToBytes32(
+            SECOND_VALIDATOR_ADDRESS_BECH32
+        );
+        substrates[0] = firstSlot;
+        substrates[1] = secondSlot;
+        substrates[2] = thirdSlot;
+        substrates[3] = fourthSlot;
+
         PlasmaVaultGovernance(address(plasmaVault)).grantMarketSubstrates(TAC_MARKET_ID, substrates);
         vm.stopPrank();
     }
