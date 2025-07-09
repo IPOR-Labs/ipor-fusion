@@ -268,14 +268,24 @@ contract LiquityStabilityPoolFuseTest is Test {
             .LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: 500 ether});
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
-        plasmaVault.execute(enterCalls); // when is is called the liquidity market balance is updated
+        plasmaVault.execute(enterCalls);
 
         uint256 afterDepBalance = plasmaVault.totalAssets();
         assertEq(afterDepBalance, initialBalance, "Balance should not change after providing to SP");
 
         IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool());
         vm.prank(address(stabilityPool.troveManager()));
-        stabilityPool.offset(1e18, 100 ether);
+        stabilityPool.offset(1e20, 100 ether);
+        uint256 afterLiquidationBalance = plasmaVault.totalAssets();
+        assertEq(afterLiquidationBalance, afterDepBalance, "Balance should be equal after liquidation");
+
+        enterData = LiquityStabilityPoolFuse.LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: 1});
+        enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
+        plasmaVault.execute(enterCalls); // when this is called the stashed collateral is updated
+        uint256 afterLiquidationAndUpdateBalance = plasmaVault.totalAssets();
+
+        assertGt(afterLiquidationAndUpdateBalance, afterLiquidationBalance, "Balance should increase after update");
 
         LiquityStabilityPoolFuse.LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuse
             .LiquityStabilityPoolFuseExitData({registry: ETH_REGISTRY, amount: 1});
@@ -284,26 +294,8 @@ contract LiquityStabilityPoolFuseTest is Test {
         plasmaVault.execute(exitCalls);
 
         // then
-        uint256 afterLiquidationBalance = plasmaVault.totalAssets();
-        assertGt(afterLiquidationBalance, afterDepBalance, "Balance should increase after liquidation");
-    }
-
-    function _calculateBalance() private view returns (uint256) {
-        bytes memory balanceOfCall = abi.encodeWithSignature("balanceOf()");
-        uint256 balance = abi.decode(
-            UniversalReader(address(plasmaVault)).read(address(balanceFuse), balanceOfCall).data,
-            (uint256)
-        );
-        return balance;
-    }
-
-    function _calculateErc20Balance() private view returns (uint256) {
-        bytes memory balanceOfCall = abi.encodeWithSignature("balanceOf()");
-        uint256 balance = abi.decode(
-            UniversalReader(address(plasmaVault)).read(address(erc20BalanceFuse), balanceOfCall).data,
-            (uint256)
-        );
-        return balance;
+        uint256 afterExitBalance = plasmaVault.totalAssets();
+        assertGt(afterExitBalance, afterLiquidationBalance, "Balance should increase after liquidation");
     }
 
     function _setupMarketConfigs(
