@@ -33,7 +33,7 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
         STAKING = staking_;
     }
 
-    function balanceOf() external view override returns (uint256) {
+    function balanceOf() external view override returns (uint256 balanceInUSD) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         if (substrates.length == 0) {
@@ -43,8 +43,6 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
         if (substrates.length % 2 != 0) {
             revert TacStakingBalanceFuseInvalidSubstrateLength();
         }
-
-        uint256 totalBalance = 0;
 
         address tacStakingExecutor = TacStakingStorageLib.getTacStakingExecutor();
 
@@ -59,6 +57,12 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
             revert TacStakingBalanceFuseInvalidPriceOracleMiddleware();
         }
 
+        uint256 totalBalance = 0;
+
+        string memory validatorAddress;
+        Coin memory balance;
+        UnbondingDelegationOutput memory unbondingDelegation;
+
         for (uint256 i; i < substrates.length; i += 2) {
             if (i + 1 >= substrates.length) {
                 break;
@@ -68,41 +72,19 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
                 continue;
             }
 
-            bytes32 substrate1 = substrates[i];
-            bytes32 substrate2 = substrates[i + 1];
-
-            string memory validatorAddress = TacValidatorAddressConverter.bytes32ToValidatorAddress(
-                substrate1,
-                substrate2
-            );
+            validatorAddress = TacValidatorAddressConverter.bytes32ToValidatorAddress(substrates[i], substrates[i + 1]);
 
             if (bytes(validatorAddress).length > 0) {
-                uint256 shares;
-                Coin memory balance;
-
-                try IStaking(STAKING).delegation(tacStakingExecutor, validatorAddress) returns (
-                    uint256 _shares,
-                    Coin memory _balance
-                ) {
-                    shares = _shares;
-                    balance = _balance;
-                } catch {
-                    shares = 0;
-                    balance = Coin("", 0);
-                }
+                (, balance) = IStaking(STAKING).delegation(tacStakingExecutor, validatorAddress);
 
                 if (balance.amount > 0) {
                     totalBalance += balance.amount;
                 }
 
-                try IStaking(STAKING).unbondingDelegation(tacStakingExecutor, validatorAddress) returns (
-                    UnbondingDelegationOutput memory unbondingDelegation
-                ) {
-                    for (uint256 j; j < unbondingDelegation.entries.length; ++j) {
-                        totalBalance += unbondingDelegation.entries[j].balance;
-                    }
-                } catch {
-                    continue;
+                unbondingDelegation = IStaking(STAKING).unbondingDelegation(tacStakingExecutor, validatorAddress);
+
+                for (uint256 j; j < unbondingDelegation.entries.length; ++j) {
+                    totalBalance += unbondingDelegation.entries[j].balance;
                 }
             }
         }
@@ -113,14 +95,11 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
         /// @dev Convert TAC balance to USD using price oracle middleware
         /// @dev Use wTAC address for pricing since native TAC and wTAC have 1:1 relationship
         if (totalBalance > 0) {
-            (uint256 tacPrice, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
-                W_TAC
-            );
-            if (tacPrice > 0) {
-                totalBalance = IporMath.convertToWad(totalBalance * tacPrice, 18 + priceDecimals);
+            (uint256 wTacPrice, uint256 wTacPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
+                .getAssetPrice(W_TAC);
+            if (wTacPrice > 0) {
+                balanceInUSD = IporMath.convertToWad(totalBalance * wTacPrice, 18 + wTacPriceDecimals);
             }
         }
-
-        return totalBalance;
     }
 }

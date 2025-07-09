@@ -6,41 +6,33 @@ import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {TacStakingExecutor, StakingExecutorTacDelegateData, StakingExecutorTacRedelegateData, StakingExecutorTacUndelegateData} from "./TacStakingExecutor.sol";
+import {TacStakingExecutor} from "./TacStakingExecutor.sol";
 import {TacStakingStorageLib} from "./TacStakingStorageLib.sol";
 import {TacValidatorAddressConverter} from "./TacValidatorAddressConverter.sol";
 
-/// @notice Enum to represent the action type for entering the fuse
-/// @dev DELEGATE - delegate to a validator
-/// @dev REDELEGATE - redelegate from one validator to another
-enum TacStakingFuseEnterAction {
-    DELEGATE,
-    REDELEGATE
-}
-
-/// @notice Struct to represent the action data for entering the fuse
-/// @dev action - the action type
-/// @dev validatorSrcAddress - the source validator address
-/// @dev validatorDstAddress - the destination validator address, zero address for delegate
-/// @dev wTacAmount - the amount of TAC to delegate, zero for redelegate
-struct TacStakingFuseEnterActionData {
-    TacStakingFuseEnterAction action;
-    string validatorSrcAddress;
-    string validatorDstAddress;
-    uint256 wTacAmount;
-}
-
-/// @notice Struct to represent the data for entering the fuse
-/// @dev actions - the array of action data
+/// @notice Struct to represent the data for entering the fuse - delegate action
+/// @dev validatorAddresses - the validator addresses
+/// @dev wTacAmounts - the amounts of TAC to delegate
 struct TacStakingFuseEnterData {
-    TacStakingFuseEnterActionData[] actions;
+    string[] validatorAddresses;
+    uint256[] wTacAmounts;
 }
 
-/// @notice Struct to represent the data for exiting the fuse
-/// @dev validators - the array of validator addresses
+/// @notice Struct to represent the data for exiting the fuse - undelegate action
+/// @dev validatorAddresses - the array of validator addresses
 /// @dev wTacAmounts - the array of amounts of wTAC to unstake
 struct TacStakingFuseExitData {
-    string[] validators;
+    string[] validatorAddresses;
+    uint256[] wTacAmounts;
+}
+
+/// @notice Struct to represent the data for redelegate action
+/// @dev validatorSrcAddresses - the source validator addresses
+/// @dev validatorDstAddresses - the destination validator addresses
+/// @dev wTacAmounts - the amounts of TAC to redelegate
+struct TacStakingFuseRedelegateData {
+    string[] validatorSrcAddresses;
+    string[] validatorDstAddresses;
     uint256[] wTacAmounts;
 }
 
@@ -52,16 +44,16 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
     error TacStakingFuseExecutorAlreadyCreated();
     error TacStakingFuseArrayLengthMismatch();
     error TacStakingFuseEmptyArray();
-    error TacStakingFuseInvalidAction();
-    error TacStakingFuseInvalidValidatorDstAddress();
-    event TacStakingFuseEnter(
+    error TacStakingFuseInsufficientBalance();
+
+    event TacStakingFuseEnter(address version, string[] validatorAddresses, uint256[] wTacAmounts);
+    event TacStakingFuseExit(address version, string[] validatorAddresses, uint256[] wTacAmounts);
+    event TacStakingFuseRedelegate(
         address version,
-        TacStakingFuseEnterAction action,
-        string validatorSrcAddress,
-        string validatorDstAddress,
-        uint256 wTacAmount
+        string[] validatorSrcAddresses,
+        string[] validatorDstAddresses,
+        uint256[] wTacAmounts
     );
-    event TacStakingFuseExit(address version, string validator, uint256 amount);
     event TacStakingFuseInstantWithdraw(address version, uint256 amount);
     event TacStakingExecutorCreated(address executor, address plasmaVault, address wTAC, address staking);
 
@@ -85,6 +77,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
 
     /// @notice Creates a new TacStakingExecutor and stores its address in storage
     /// @dev Only callable by alpha role
+    /// @dev Creates a new TacStakingExecutor and stores its address in storage, can be called only once
     function createExecutor() external {
         address existingExecutor = TacStakingStorageLib.getTacStakingExecutor();
 
@@ -99,97 +92,14 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
         emit TacStakingExecutorCreated(address(executor), address(this), W_TAC, STAKING);
     }
 
-    function enter(TacStakingFuseEnterData memory data_) external {
-        if (data_.actions.length == 0) {
+    /// @notice Delegate the balance of the executor to the validators
+    /// @dev Only callable by the PlasmaVault contract
+    function enter(TacStakingFuseEnterData calldata data_) external {
+        if (data_.validatorAddresses.length == 0) {
             revert TacStakingFuseEmptyArray();
         }
 
-        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
-
-        if (executor == address(0)) {
-            revert TacStakingFuseInvalidExecutorAddress();
-        }
-
-        uint256 balance = IERC20(W_TAC).balanceOf(address(this));
-        uint256 remainingBalance = balance;
-
-        /// @dev Transfer wTAC to executor if there's a balance (will be used for DELEGATE actions)
-        if (balance > 0) {
-            IERC20(W_TAC).safeTransfer(executor, balance);
-        }
-
-        for (uint256 i = 0; i < data_.actions.length; i++) {
-            TacStakingFuseEnterActionData memory enterAction = data_.actions[i];
-
-            if (enterAction.wTacAmount == 0) {
-                continue;
-            }
-
-            if (!_validateGrantedSubstrate(enterAction.validatorSrcAddress)) {
-                revert TacStakingFuseSubstrateNotGranted(enterAction.validatorSrcAddress);
-            }
-
-            if (enterAction.action == TacStakingFuseEnterAction.REDELEGATE) {
-                if (bytes(enterAction.validatorDstAddress).length == 0) {
-                    revert TacStakingFuseInvalidValidatorDstAddress();
-                }
-
-                if (!_validateGrantedSubstrate(enterAction.validatorDstAddress)) {
-                    revert TacStakingFuseSubstrateNotGranted(enterAction.validatorDstAddress);
-                }
-
-                TacStakingExecutor(executor).redelegate(
-                    StakingExecutorTacRedelegateData({
-                        validatorSrcAddress: enterAction.validatorSrcAddress,
-                        validatorDstAddress: enterAction.validatorDstAddress,
-                        wTacAmount: enterAction.wTacAmount
-                    })
-                );
-            } else if (enterAction.action == TacStakingFuseEnterAction.DELEGATE) {
-                if (remainingBalance == 0) {
-                    continue;
-                }
-
-                if (bytes(enterAction.validatorDstAddress).length > 0) {
-                    revert TacStakingFuseInvalidValidatorDstAddress();
-                }
-
-                uint256 amountToDelegate = enterAction.wTacAmount <= remainingBalance
-                    ? enterAction.wTacAmount
-                    : remainingBalance;
-
-                TacStakingExecutor(executor).delegate(
-                    StakingExecutorTacDelegateData({
-                        validatorAddress: enterAction.validatorSrcAddress,
-                        wTacAmount: amountToDelegate
-                    })
-                );
-
-                if (amountToDelegate <= remainingBalance) {
-                    remainingBalance -= amountToDelegate;
-                } else {
-                    remainingBalance = 0;
-                }
-            } else {
-                revert TacStakingFuseInvalidAction();
-            }
-
-            emit TacStakingFuseEnter(
-                VERSION,
-                enterAction.action,
-                enterAction.validatorSrcAddress,
-                enterAction.validatorDstAddress,
-                enterAction.wTacAmount
-            );
-        }
-    }
-
-    function exit(TacStakingFuseExitData memory data_) external {
-        if (data_.validators.length == 0) {
-            revert TacStakingFuseEmptyArray();
-        }
-
-        if (data_.validators.length != data_.wTacAmounts.length) {
+        if (data_.validatorAddresses.length != data_.wTacAmounts.length) {
             revert TacStakingFuseArrayLengthMismatch();
         }
 
@@ -199,29 +109,99 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             revert TacStakingFuseInvalidExecutorAddress();
         }
 
-        for (uint256 i = 0; i < data_.validators.length; i++) {
-            if (data_.wTacAmounts[i] == 0) {
-                continue;
-            }
+        uint256 totalWTacAmount = 0;
 
-            if (!_validateGrantedSubstrate(data_.validators[i])) {
-                revert TacStakingFuseSubstrateNotGranted(data_.validators[i]);
-            }
-
-            string[] memory validatorAddresses = new string[](1);
-            validatorAddresses[0] = data_.validators[i];
-            uint256[] memory wTacAmounts = new uint256[](1);
-            wTacAmounts[0] = data_.wTacAmounts[i];
-
-            TacStakingExecutor(executor).undelegate(
-                StakingExecutorTacUndelegateData({
-                    validatorAddress: data_.validators[i],
-                    wTacAmount: data_.wTacAmounts[i]
-                })
-            );
-
-            emit TacStakingFuseExit(VERSION, data_.validators[i], data_.wTacAmounts[i]);
+        for (uint256 i; i < data_.validatorAddresses.length; i++) {
+            totalWTacAmount += data_.wTacAmounts[i];
         }
+
+        if (totalWTacAmount == 0) {
+            return;
+        }
+
+        if (totalWTacAmount > IERC20(W_TAC).balanceOf(address(this))) {
+            revert TacStakingFuseInsufficientBalance();
+        } else {
+            IERC20(W_TAC).safeTransfer(executor, totalWTacAmount);
+        }
+
+        for (uint256 i; i < data_.validatorAddresses.length; i++) {
+            if (!_validateGrantedSubstrate(data_.validatorAddresses[i])) {
+                revert TacStakingFuseSubstrateNotGranted(data_.validatorAddresses[i]);
+            }
+        }
+
+        TacStakingExecutor(executor).delegate(data_.validatorAddresses, data_.wTacAmounts);
+
+        emit TacStakingFuseEnter(VERSION, data_.validatorAddresses, data_.wTacAmounts);
+    }
+
+    function exit(TacStakingFuseExitData memory data_) external {
+        if (data_.validatorAddresses.length == 0) {
+            revert TacStakingFuseEmptyArray();
+        }
+
+        if (data_.validatorAddresses.length != data_.wTacAmounts.length) {
+            revert TacStakingFuseArrayLengthMismatch();
+        }
+
+        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
+
+        if (executor == address(0)) {
+            revert TacStakingFuseInvalidExecutorAddress();
+        }
+
+        for (uint256 i = 0; i < data_.validatorAddresses.length; i++) {
+            if (!_validateGrantedSubstrate(data_.validatorAddresses[i])) {
+                revert TacStakingFuseSubstrateNotGranted(data_.validatorAddresses[i]);
+            }
+        }
+
+        TacStakingExecutor(executor).undelegate(data_.validatorAddresses, data_.wTacAmounts);
+
+        emit TacStakingFuseExit(VERSION, data_.validatorAddresses, data_.wTacAmounts);
+    }
+
+    function redelegate(TacStakingFuseRedelegateData memory data_) external {
+        if (data_.validatorSrcAddresses.length == 0) {
+            return;
+        }
+
+        if (
+            data_.validatorSrcAddresses.length != data_.validatorDstAddresses.length ||
+            data_.validatorSrcAddresses.length != data_.wTacAmounts.length
+        ) {
+            revert TacStakingFuseArrayLengthMismatch();
+        }
+
+        address payable executor = payable(TacStakingStorageLib.getTacStakingExecutor());
+
+        if (executor == address(0)) {
+            revert TacStakingFuseInvalidExecutorAddress();
+        }
+
+        for (uint256 i; i < data_.validatorSrcAddresses.length; i++) {
+            if (!_validateGrantedSubstrate(data_.validatorSrcAddresses[i])) {
+                revert TacStakingFuseSubstrateNotGranted(data_.validatorSrcAddresses[i]);
+            }
+
+            if (!_validateGrantedSubstrate(data_.validatorDstAddresses[i])) {
+                revert TacStakingFuseSubstrateNotGranted(data_.validatorDstAddresses[i]);
+            }
+        }
+
+        TacStakingExecutor(executor).redelegate(
+            data_.validatorSrcAddresses,
+            data_.validatorDstAddresses,
+            data_.wTacAmounts
+        );
+
+        emit TacStakingFuseRedelegate(
+            VERSION,
+            data_.validatorSrcAddresses,
+            data_.validatorDstAddresses,
+            data_.wTacAmounts
+        );
     }
 
     /// @notice Handle instant withdrawals
@@ -229,9 +209,9 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param params_ Array of parameters for withdrawal
     /// @dev Intant withdraw can be done only from TacStakingExecutor
     function instantWithdraw(bytes32[] calldata params_) external override {
-        uint256 amount = uint256(params_[0]);
+        uint256 wTacAmount = uint256(params_[0]);
 
-        if (amount == 0) {
+        if (wTacAmount == 0) {
             return;
         }
 
@@ -241,7 +221,7 @@ contract TacStakingFuse is IFuseCommon, IFuseInstantWithdraw {
             revert TacStakingFuseInvalidExecutorAddress();
         }
 
-        uint256 withdrawnAmount = TacStakingExecutor(executor).instantWithdraw(amount);
+        uint256 withdrawnAmount = TacStakingExecutor(executor).instantWithdraw(wTacAmount);
 
         emit TacStakingFuseInstantWithdraw(VERSION, withdrawnAmount);
     }

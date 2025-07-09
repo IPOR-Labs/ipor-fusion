@@ -490,15 +490,7 @@ contract MockStaking is IStaking {
         string memory validatorDstAddress,
         uint256 amount
     ) external returns (int64 completionTime) {
-        console2.log("MockStaking redelegate called with:");
-        console2.log("  delegatorAddress:", delegatorAddress);
-        console2.log("  validatorSrcAddress:", validatorSrcAddress);
-        console2.log("  validatorDstAddress:", validatorDstAddress);
-        console2.log("  amount:", amount);
-
         DelegationInfo storage srcDelegation = delegations[delegatorAddress][validatorSrcAddress];
-        console2.log("  srcDelegation.exists:", srcDelegation.exists);
-        console2.log("  srcDelegation.balance before:", srcDelegation.balance);
 
         require(srcDelegation.exists, "No delegation found for source validator");
         require(srcDelegation.balance >= amount, "Insufficient delegation balance");
@@ -506,15 +498,11 @@ contract MockStaking is IStaking {
         srcDelegation.balance -= amount;
         srcDelegation.shares -= amount;
 
-        console2.log("  srcDelegation.balance after:", srcDelegation.balance);
-
         if (srcDelegation.balance == 0) {
             srcDelegation.exists = false;
         }
 
         DelegationInfo storage dstDelegation = delegations[delegatorAddress][validatorDstAddress];
-        console2.log("  dstDelegation.exists before:", dstDelegation.exists);
-        console2.log("  dstDelegation.balance before:", dstDelegation.balance);
 
         if (dstDelegation.exists) {
             dstDelegation.balance += amount;
@@ -525,12 +513,8 @@ contract MockStaking is IStaking {
             dstDelegation.exists = true;
         }
 
-        console2.log("  dstDelegation.balance after:", dstDelegation.balance);
-
         address srcValidatorAddr = operatorToValidator[validatorSrcAddress];
         address dstValidatorAddr = operatorToValidator[validatorDstAddress];
-
-        console2.log("srcValidatorAddr.exists", validatorsStorage[srcValidatorAddr].exists);
 
         if (validatorsStorage[srcValidatorAddr].exists) {
             ValidatorInfo storage srcValidator = validatorsStorage[srcValidatorAddr];
