@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
-import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
-import {IporMath} from "../../libraries/math/IporMath.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
+import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IStaking, Coin, UnbondingDelegationOutput} from "./ext/IStaking.sol";
-import {TacStakingStorageLib} from "./TacStakingStorageLib.sol";
-import {TacValidatorAddressConverter} from "./TacValidatorAddressConverter.sol";
+import {TacStakingStorageLib} from "./lib/TacStakingStorageLib.sol";
+import {TacValidatorAddressConverter} from "./lib/TacValidatorAddressConverter.sol";
+
 contract TacStakingBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using Address for address;
@@ -36,11 +37,13 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
     function balanceOf() external view override returns (uint256 balanceInUSD) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
-        if (substrates.length == 0) {
+        uint256 substratesLength = substrates.length;
+
+        if (substratesLength == 0) {
             return 0;
         }
 
-        if (substrates.length % 2 != 0) {
+        if (substratesLength % 2 != 0) {
             revert TacStakingBalanceFuseInvalidSubstrateLength();
         }
 
@@ -63,27 +66,20 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
         Coin memory balance;
         UnbondingDelegationOutput memory unbondingDelegation;
 
-        for (uint256 i; i < substrates.length; i += 2) {
-            if (i + 1 >= substrates.length) {
-                break;
-            }
+        uint256 entriesLength;
 
-            if (i % 2 != 0) {
-                continue;
-            }
-
+        for (uint256 i; i < substratesLength - 1; i += 2) { 
             validatorAddress = TacValidatorAddressConverter.bytes32ToValidatorAddress(substrates[i], substrates[i + 1]);
 
             if (bytes(validatorAddress).length > 0) {
                 (, balance) = IStaking(STAKING).delegation(tacStakingDelegator, validatorAddress);
 
-                if (balance.amount > 0) {
-                    totalBalance += balance.amount;
-                }
+                totalBalance += balance.amount;
 
                 unbondingDelegation = IStaking(STAKING).unbondingDelegation(tacStakingDelegator, validatorAddress);
+                entriesLength = unbondingDelegation.entries.length;
 
-                for (uint256 j; j < unbondingDelegation.entries.length; ++j) {
+                for (uint256 j; j < entriesLength; ++j) {
                     totalBalance += unbondingDelegation.entries[j].balance;
                 }
             }

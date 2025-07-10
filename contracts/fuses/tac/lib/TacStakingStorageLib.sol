@@ -8,7 +8,7 @@ library TacStakingStorageLib {
     /// @dev Storage slot for TAC staking delegator address
     /// @dev Calculation: keccak256(abi.encode(uint256(keccak256("io.ipor.tac.StakingDelegator")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant TAC_STAKING_DELEGATOR_SLOT =
-        0x9c1f6d08da1531dae93a138bbfefbb261944a0ff1fc704657deda034bea15b18;
+        0x2c7f2e6443b388f1a6df5abedafcea539a6d91285825504444df1286873de000;
 
     /// @dev Structure holding the TAC staking delegator address
     /// @custom:storage-location erc7201:io.ipor.tac.StakingDelegator

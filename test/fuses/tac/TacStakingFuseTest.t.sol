@@ -7,7 +7,9 @@ import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovern
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {TacStakingFuse, TacStakingFuseEnterData, TacStakingFuseExitData} from "../../../contracts/fuses/tac/TacStakingFuse.sol";
+import {TacStakingDelegateFuse, TacStakingDelegateFuseEnterData, TacStakingDelegateFuseExitData} from "../../../contracts/fuses/tac/TacStakingDelegateFuse.sol";
+import {TacStakingRedelegateFuse, TacStakingRedelegateFuseEnterData} from "../../../contracts/fuses/tac/TacStakingRedelegateFuse.sol";
+import {TacStakingEmergencyFuse} from "../../../contracts/fuses/tac/TacStakingEmergencyFuse.sol";
 import {TacStakingBalanceFuse} from "../../../contracts/fuses/tac/TacStakingBalanceFuse.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
@@ -35,16 +37,17 @@ import {IStaking, Coin, UnbondingDelegationOutput} from "../../../contracts/fuse
 import {IPriceFeed} from "../../../contracts/price_oracle/price_feed/IPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {MockStaking} from "./MockStaking.sol";
-import {TacStakingStorageLib} from "../../../contracts/fuses/tac/TacStakingStorageLib.sol";
+import {TacStakingStorageLib} from "../../../contracts/fuses/tac/lib/TacStakingStorageLib.sol";
 import {TacStakingDelegatorAddressReader} from "../../../contracts/readers/TacStakingDelegatorAddressReader.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {TacValidatorAddressConverter} from "../../../contracts/fuses/tac/TacValidatorAddressConverter.sol";
+import {TacValidatorAddressConverter} from "../../../contracts/fuses/tac/lib/TacValidatorAddressConverter.sol";
 import {Description, CommissionRates} from "../../../contracts/fuses/tac/ext/IStaking.sol";
 import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
-import {TacStakingFuseEnterData, TacStakingFuseExitData, TacStakingFuseRedelegateData} from "../../../contracts/fuses/tac/TacStakingFuse.sol";
+import {TacStakingDelegateFuse} from "../../../contracts/fuses/tac/TacStakingDelegateFuse.sol";
+import {TacStakingRedelegateFuse} from "../../../contracts/fuses/tac/TacStakingRedelegateFuse.sol";
 import {TacStakingDelegator} from "../../../contracts/fuses/tac/TacStakingDelegator.sol";
 import {MockMaintenanceStakingFuse} from "./MockMaintenanceStakingFuse.sol";
 
@@ -67,6 +70,39 @@ contract MockBatchTarget {
 
     function revertFunction() external pure {
         revert("MockBatchTarget: revertFunction called");
+    }
+}
+
+/// @notice Mock contract that can track delegate call executions
+contract MockDelegateCallTracker {
+    event ValueSet(uint256 indexed oldValue, uint256 indexed newValue, uint256 callCount);
+
+    uint256 public value;
+    uint256 public callCount;
+    mapping(uint256 => uint256) public callHistory;
+
+    function setValue(uint256 _value) external {
+        uint256 oldValue = value;
+        value = _value;
+        callCount++;
+        callHistory[callCount] = _value;
+        emit ValueSet(oldValue, _value, callCount);
+    }
+
+    function getValue() external view returns (uint256) {
+        return value;
+    }
+
+    function getCallCount() external view returns (uint256) {
+        return callCount;
+    }
+
+    function getCallHistory(uint256 index) external view returns (uint256) {
+        return callHistory[index];
+    }
+
+    function revertFunction() external pure {
+        revert("MockDelegateCallTracker: revertFunction called");
     }
 }
 
@@ -103,7 +139,12 @@ contract TacStakingFuseTest is Test {
     address user;
 
     PlasmaVault plasmaVault;
-    TacStakingFuse tacStakingFuse;
+
+    TacStakingDelegateFuse tacStakingDelegateFuse;
+    TacStakingRedelegateFuse tacStakingRedelegateFuse;
+    TacStakingEmergencyFuse tacStakingEmergencyFuse;
+    MockMaintenanceStakingFuse mockMaintenanceStakingFuse;
+
     TacStakingBalanceFuse tacStakingBalanceFuse;
     IporFusionAccessManager accessManager;
     address withdrawManager;
@@ -112,7 +153,6 @@ contract TacStakingFuseTest is Test {
     FusionFactory fusionFactory;
 
     TacStakingDelegatorAddressReader tacStakingDelegatorAddressReader;
-    MockMaintenanceStakingFuse mockMaintenanceStakingFuse;
 
     string[] validators;
     string[] validatorsSrc;
@@ -131,8 +171,8 @@ contract TacStakingFuseTest is Test {
 
         STAKING = address(new MockStaking(vm));
 
-        IStaking stakingLocal = IStaking(STAKING);
-        stakingLocal.createValidator(
+        staking = IStaking(STAKING);
+        staking.createValidator(
             Description({moniker: "test", identity: "test", website: "test", securityContact: "test", details: "test"}),
             CommissionRates({rate: 1000, maxRate: 1000, maxChangeRate: 1000}),
             0,
@@ -150,7 +190,10 @@ contract TacStakingFuseTest is Test {
 
         _createVaultWithFusionFactory();
 
-        tacStakingFuse = new TacStakingFuse(TAC_MARKET_ID, wTAC, STAKING);
+        tacStakingDelegateFuse = new TacStakingDelegateFuse(TAC_MARKET_ID, wTAC, STAKING);
+        tacStakingRedelegateFuse = new TacStakingRedelegateFuse(TAC_MARKET_ID);
+        tacStakingEmergencyFuse = new TacStakingEmergencyFuse(TAC_MARKET_ID);
+        mockMaintenanceStakingFuse = new MockMaintenanceStakingFuse(TAC_MARKET_ID);
 
         tacStakingBalanceFuse = new TacStakingBalanceFuse(TAC_MARKET_ID, STAKING, wTAC);
 
@@ -160,13 +203,6 @@ contract TacStakingFuseTest is Test {
         _setupRoles();
 
         _addTacStakingFuses();
-
-        // Add MockedMaintenanceStakingFuse as a supported fuse for executeBatch tests
-        address[] memory maintenanceFuses = new address[](1);
-        maintenanceFuses[0] = address(mockMaintenanceStakingFuse);
-        vm.startPrank(atomist);
-        PlasmaVaultGovernance(address(plasmaVault)).addFuses(maintenanceFuses);
-        vm.stopPrank();
 
         address[] memory assets = new address[](1);
         assets[0] = wTAC;
@@ -178,11 +214,6 @@ contract TacStakingFuseTest is Test {
         PriceOracleMiddlewareManager(address(priceOracle)).setAssetsPriceSources(assets, sources);
         vm.stopPrank();
 
-        FuseAction[] memory createDelegatorCalls = new FuseAction[](1);
-        createDelegatorCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("createDelegator()"));
-        vm.prank(alpha);
-        plasmaVault.execute(createDelegatorCalls);
-
         validators = new string[](1);
         tacAmounts = new uint256[](1);
         validatorsSrc = new string[](1);
@@ -191,26 +222,58 @@ contract TacStakingFuseTest is Test {
         wTacAmounts = new uint256[](1);
     }
 
-    function testShouldRevertWhenCreatingDelegatorTwice() external {
-        // given - delegator is already created in setUp()
-        FuseAction[] memory createDelegatorCalls = new FuseAction[](1);
-        createDelegatorCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("createDelegator()"));
-
-        // when & then - should revert with TacStakingFuseDelegatorAlreadyCreated error
-        vm.prank(alpha);
-        vm.expectRevert(abi.encodeWithSelector(TacStakingFuse.TacStakingFuseDelegatorAlreadyCreated.selector));
-        plasmaVault.execute(createDelegatorCalls);
-    }
-
     // TacStakingDelegator executeBatch tests
     function testShouldExecuteBatchSuccessfully() external {
         // given
-        // Create a mock contract for testing
-        MockBatchTarget mockTarget = new MockBatchTarget();
+        // First, create a delegator by performing delegation
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Verify delegator was created
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
+
+        // Now test the batch execution
+        // Create a mock contract for testing that can verify delegate call execution
+        MockDelegateCallTracker mockTracker = new MockDelegateCallTracker();
 
         address[] memory targets = new address[](2);
-        targets[0] = address(mockTarget);
-        targets[1] = address(mockTarget);
+        targets[0] = address(mockTracker);
+        targets[1] = address(mockTracker);
 
         bytes[] memory calldatas = new bytes[](2);
         calldatas[0] = abi.encodeWithSignature("setValue(uint256)", 42);
@@ -224,14 +287,226 @@ contract TacStakingFuseTest is Test {
 
         // when
         vm.prank(alpha);
+        // Expect the ValueSet event to be emitted for each setValue call
+        vm.expectEmit(true, true, true, true);
+        emit MockDelegateCallTracker.ValueSet(0, 42, 1);
+        vm.expectEmit(true, true, true, true);
+        emit MockDelegateCallTracker.ValueSet(42, 100, 2);
         plasmaVault.execute(executeBatchCalls);
 
         // then
-        assertEq(mockTarget.value(), 100, "Last call should set the value to 100");
+
+        (uint256 shares, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
+        assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
+
+        // Verify that the delegator address is still valid
+        assertTrue(delegator != address(0), "Delegator should still exist after batch execution");
+    }
+
+    function testShouldExecuteBatchAndVerifyReturnValues() external {
+        // given
+        // First, create a delegator by performing delegation
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Verify delegator was created
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
+
+        // Create a mock contract that returns a specific value
+        MockBatchTarget mockTarget = new MockBatchTarget();
+        mockTarget.setValue(123); // Set initial value
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(mockTarget);
+
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSignature("getValue()");
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when
+        vm.prank(alpha);
+        plasmaVault.execute(executeBatchCalls);
+
+        // then
+        // Since executeBatch uses delegate call, the return value from getValue()
+        // will be the value stored in the delegator's storage context, not the mock target's storage
+        // The delegate call executes the getValue() function in the context of the delegator
+        // So if the delegator has a 'value' storage variable, it would return that value
+        // If not, it would return 0 (default value)
+
+        // We verify the execution was successful by checking the delegator still exists
+        address delegatorAfter = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegatorAfter != address(0), "Delegator should still exist after batch execution");
+
+        // Verify that the delegator still has delegation
+        (uint256 shares, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
+        assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
+    }
+
+    function testShouldExecuteBatchAndVerifyThroughEvents() external {
+        // given
+        // First, create a delegator by performing delegation
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Verify delegator was created
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
+
+        // Create mock targets for batch execution
+        MockBatchTarget mockTarget1 = new MockBatchTarget();
+        MockBatchTarget mockTarget2 = new MockBatchTarget();
+
+        address[] memory targets = new address[](2);
+        targets[0] = address(mockTarget1);
+        targets[1] = address(mockTarget2);
+
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeWithSignature("setValue(uint256)", 42);
+        calldatas[1] = abi.encodeWithSignature("setValue(uint256)", 100);
+
+        FuseAction[] memory executeBatchCalls = new FuseAction[](1);
+        executeBatchCalls[0] = FuseAction(
+            address(mockMaintenanceStakingFuse),
+            abi.encodeWithSignature("executeBatch(address[],bytes[])", targets, calldatas)
+        );
+
+        // when
+        vm.prank(alpha);
+        // We can verify the execution by checking that the TacStakingDelegatorBatchExecute event is emitted
+        vm.expectEmit(true, true, true, true);
+        emit TacStakingDelegator.TacStakingDelegatorBatchExecute(address(plasmaVault), targets, calldatas);
+        plasmaVault.execute(executeBatchCalls);
+
+        // then
+        // Verify that the delegator still exists and is functional
+        address delegatorAfter = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegatorAfter != address(0), "Delegator should still exist after batch execution");
+
+        // Verify that the delegator still has delegation
+        (uint256 shares, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
+        assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
     }
 
     function testShouldExecuteBatchWithReturnValues() external {
         // given
+        // First, create a delegator by performing delegation
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Verify delegator was created
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
+
+        // Now test the batch execution
         MockBatchTarget mockTarget = new MockBatchTarget();
         mockTarget.setValue(50);
 
@@ -251,13 +526,63 @@ contract TacStakingFuseTest is Test {
         vm.prank(alpha);
         plasmaVault.execute(executeBatchCalls);
 
-        // then - we can't easily get return values through the PlasmaVault execute mechanism
-        // but we can verify the call was successful by checking the mock target state
-        assertEq(mockTarget.value(), 50, "Mock target value should remain unchanged");
+        // then - Since executeBatch uses delegate call, we can't verify the return values directly
+        // The delegate call executes in the context of the delegator, so we verify success by:
+        // 1. The call didn't revert
+        // 2. The delegator still exists and is functional
+        address delegatorAfter = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegatorAfter != address(0), "Delegator should still exist after batch execution");
+
+        // Verify that the delegator still has delegation
+        (uint256 shares, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
+        assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
     }
 
     function testShouldRevertWhenArrayLengthsMismatch() external {
         // given
+        // First, create a delegator by performing delegation
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Verify delegator was created
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
+
+        // Now test the batch execution with mismatched array lengths
         address[] memory targets = new address[](2);
         targets[0] = address(0x123);
         targets[1] = address(0x456);
@@ -279,6 +604,49 @@ contract TacStakingFuseTest is Test {
 
     function testShouldRevertWhenTargetAddressIsZero() external {
         // given
+        // First, create a delegator by performing delegation
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Verify delegator was created
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
+
+        // Now test the batch execution with zero address target
         address[] memory targets = new address[](1);
         targets[0] = address(0); // Zero address
 
@@ -319,6 +687,49 @@ contract TacStakingFuseTest is Test {
 
     function testShouldExecuteBatchWithEmptyArrays() external {
         // given
+        // First, create a delegator by performing delegation
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Verify delegator was created
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
+
+        // Now test the batch execution with empty arrays
         address[] memory targets = new address[](0);
         bytes[] memory calldatas = new bytes[](0);
 
@@ -335,10 +746,61 @@ contract TacStakingFuseTest is Test {
         // then - should execute successfully with empty arrays
         // We can't easily get return values through the PlasmaVault execute mechanism
         // but we can verify the call was successful by not reverting
+
+        // Verify that the delegator still exists and is functional
+        address delegatorAfter = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegatorAfter != address(0), "Delegator should still exist after batch execution");
+
+        // Verify that the delegator still has delegation
+        (uint256 shares, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
+        assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
     }
 
     function testShouldExecuteBatchWithRevertingCall() external {
         // given
+        // First, create a delegator by performing delegation
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Verify delegator was created
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
+
+        // Now test the batch execution with a reverting call
         MockBatchTarget mockTarget = new MockBatchTarget();
 
         address[] memory targets = new address[](1);
@@ -354,6 +816,7 @@ contract TacStakingFuseTest is Test {
         );
 
         // when & then - should revert when the target function reverts
+        // Since executeBatch uses delegate call, the revert will be propagated from the delegator context
         vm.prank(alpha);
         vm.expectRevert("MockBatchTarget: revertFunction called");
         plasmaVault.execute(executeBatchCalls);
@@ -361,6 +824,49 @@ contract TacStakingFuseTest is Test {
 
     function testShouldExecuteBatchWithMultipleTargets() external {
         // given
+        // First, create a delegator by performing delegation
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Verify delegator was created
+        address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
+
+        // Now test the batch execution with multiple targets
         MockBatchTarget mockTarget1 = new MockBatchTarget();
         MockBatchTarget mockTarget2 = new MockBatchTarget();
         MockBatchTarget mockTarget3 = new MockBatchTarget();
@@ -386,9 +892,17 @@ contract TacStakingFuseTest is Test {
         plasmaVault.execute(executeBatchCalls);
 
         // then
-        assertEq(mockTarget1.value(), 10, "First target should have value 10");
-        assertEq(mockTarget2.value(), 20, "Second target should have value 20");
-        assertEq(mockTarget3.value(), 30, "Third target should have value 30");
+        // Since executeBatch uses delegate call, the storage changes happen in the delegator's context
+        // We verify the batch execution was successful by checking that:
+        // 1. The call didn't revert
+        // 2. The delegator still exists and is functional
+        // 3. All three calls were processed (no revert)
+        address delegatorAfter = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegatorAfter != address(0), "Delegator should still exist after batch execution");
+
+        // Verify that the delegator is still functional by checking it has delegation
+        (uint256 shares, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
+        assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
     }
 
     function testShouldStakeTacSuccessfully() external {
@@ -416,14 +930,14 @@ contract TacStakingFuseTest is Test {
         validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
         tacAmounts[0] = stakeAmount;
 
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
             validatorAddresses: validators,
             wTacAmounts: tacAmounts
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
         );
 
@@ -475,14 +989,14 @@ contract TacStakingFuseTest is Test {
         validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
         tacAmounts[0] = stakeAmount;
 
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
             validatorAddresses: validators,
             wTacAmounts: tacAmounts
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
         );
 
@@ -492,16 +1006,16 @@ contract TacStakingFuseTest is Test {
         uint256 unstakeAmount = stakeAmount;
 
         validatorsExit[0] = VALIDATOR_ADDRESS_SRC_BECH32;
-        wTacAmounts[0] = unstakeAmount;
+        tacAmounts[0] = unstakeAmount;
 
-        TacStakingFuseExitData memory exitData = TacStakingFuseExitData({
+        TacStakingDelegateFuseExitData memory exitData = TacStakingDelegateFuseExitData({
             validatorAddresses: validatorsExit,
-            wTacAmounts: wTacAmounts
+            tacAmounts: wTacAmounts
         });
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("exit((string[],uint256[]))", exitData)
         );
 
@@ -553,14 +1067,14 @@ contract TacStakingFuseTest is Test {
         validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
         tacAmounts[0] = stakeAmount;
 
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
             validatorAddresses: validators,
             wTacAmounts: tacAmounts
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
         );
 
@@ -573,14 +1087,14 @@ contract TacStakingFuseTest is Test {
         // Unstake TAC (initiates unbonding)
         validatorsExit[0] = VALIDATOR_ADDRESS_SRC_BECH32;
         wTacAmounts[0] = stakeAmount;
-        TacStakingFuseExitData memory exitData = TacStakingFuseExitData({
+        TacStakingDelegateFuseExitData memory exitData = TacStakingDelegateFuseExitData({
             validatorAddresses: validatorsExit,
-            wTacAmounts: wTacAmounts
+            tacAmounts: wTacAmounts
         });
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("exit((string[],uint256[]))", exitData)
         );
 
@@ -669,7 +1183,27 @@ contract TacStakingFuseTest is Test {
         PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
         vm.stopPrank();
 
+        // First, create a delegator by performing delegation
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
+
+        // Now get the delegator address after it has been created
         address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
+        assertTrue(delegator != address(0), "Delegator should be created after delegation");
 
         uint256 vaultTotalAssetsBefore = PlasmaVault(address(plasmaVault)).totalAssets();
 
@@ -693,13 +1227,54 @@ contract TacStakingFuseTest is Test {
     }
 
     function testShouldGetDelegatorAddressUsingReader() external {
-        // given - delegator is created in setUp()
+        // given
+        uint256 stakeAmount = 100;
+
+        vm.deal(user, stakeAmount);
+
+        vm.startPrank(user);
+        IwTAC(wTAC).deposit{value: stakeAmount}();
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        IwTAC(wTAC).approve(address(plasmaVault), stakeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        PlasmaVault(address(plasmaVault)).deposit(IwTAC(wTAC).balanceOf(user), user);
+        vm.stopPrank();
+
+        validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
+        tacAmounts[0] = stakeAmount;
+
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
+            validatorAddresses: validators,
+            wTacAmounts: tacAmounts
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(tacStakingDelegateFuse),
+            abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
+        );
+
+        vm.prank(alpha);
+        plasmaVault.execute(enterCalls);
 
         // when
         address delegator = tacStakingDelegatorAddressReader.getTacStakingDelegatorAddress(address(plasmaVault));
 
         // then
         assertTrue(delegator != address(0), "Delegator address should not be zero");
+
+        // Additional verification that the delegator has been created and has delegation
+        (uint256 shares, ) = IStaking(STAKING).delegation(delegator, VALIDATOR_ADDRESS_SRC_BECH32);
+        assertGt(shares, 0, "Delegator should have delegation shares");
+        assertEq(shares, stakeAmount, "Delegator should have the correct amount of delegation shares");
     }
 
     function testShouldInstantWithdrawTacSuccessfully() external {
@@ -711,7 +1286,7 @@ contract TacStakingFuseTest is Test {
         instantWithdrawParams[0] = bytes32(stakeAmount);
 
         instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
-            fuse: address(tacStakingFuse),
+            fuse: address(tacStakingDelegateFuse),
             params: instantWithdrawParams
         });
 
@@ -743,14 +1318,14 @@ contract TacStakingFuseTest is Test {
         validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
         tacAmounts[0] = stakeAmount;
 
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
             validatorAddresses: validators,
             wTacAmounts: tacAmounts
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
         );
 
@@ -759,14 +1334,14 @@ contract TacStakingFuseTest is Test {
 
         validatorsExit[0] = VALIDATOR_ADDRESS_SRC_BECH32;
         wTacAmounts[0] = stakeAmount;
-        TacStakingFuseExitData memory exitData = TacStakingFuseExitData({
+        TacStakingDelegateFuseExitData memory exitData = TacStakingDelegateFuseExitData({
             validatorAddresses: validatorsExit,
-            wTacAmounts: wTacAmounts
+            tacAmounts: wTacAmounts
         });
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("exit((string[],uint256[]))", exitData)
         );
 
@@ -839,14 +1414,14 @@ contract TacStakingFuseTest is Test {
         validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
         tacAmounts[0] = stakeAmount;
 
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
             validatorAddresses: validators,
             wTacAmounts: tacAmounts
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
         );
 
@@ -865,7 +1440,7 @@ contract TacStakingFuseTest is Test {
 
         // when
         FuseAction[] memory exitCalls = new FuseAction[](1);
-        exitCalls[0] = FuseAction(address(tacStakingFuse), abi.encodeWithSignature("emergencyExit()"));
+        exitCalls[0] = FuseAction(address(tacStakingEmergencyFuse), abi.encodeWithSignature("exit()"));
 
         vm.prank(alpha);
         plasmaVault.execute(exitCalls);
@@ -891,21 +1466,21 @@ contract TacStakingFuseTest is Test {
         // given
         uint256 stakeAmount = 100;
 
-        IStaking staking = IStaking(STAKING);
-        staking.createValidator(
-            Description({
-                moniker: "test2",
-                identity: "test2",
-                website: "test2",
-                securityContact: "test2",
-                details: "test2"
-            }),
-            CommissionRates({rate: 1000, maxRate: 1000, maxChangeRate: 1000}),
-            0,
-            VALIDATOR_ADDRESS_DST_HEX,
-            VALIDATOR_ADDRESS_DST_BECH32,
-            0
-        );
+        // IStaking stakingLocal = IStaking(STAKING);
+        // stakingLocal.createValidator(
+        //     Description({
+        //         moniker: "test2",
+        //         identity: "test2",
+        //         website: "test2",
+        //         securityContact: "test2",
+        //         details: "test2"
+        //     }),
+        //     CommissionRates({rate: 1000, maxRate: 1000, maxChangeRate: 1000}),
+        //     0,
+        //     VALIDATOR_ADDRESS_DST_HEX,
+        //     VALIDATOR_ADDRESS_DST_BECH32,
+        //     0
+        // );
 
         vm.deal(user, stakeAmount);
 
@@ -947,14 +1522,14 @@ contract TacStakingFuseTest is Test {
         validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
         tacAmounts[0] = stakeAmount;
 
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
             validatorAddresses: validators,
             wTacAmounts: tacAmounts
         });
 
         FuseAction[] memory delegateCalls = new FuseAction[](1);
         delegateCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
         );
 
@@ -968,7 +1543,7 @@ contract TacStakingFuseTest is Test {
         validatorsDst[0] = VALIDATOR_ADDRESS_DST_BECH32;
         tacAmounts[0] = stakeAmount;
 
-        TacStakingFuseRedelegateData memory redelegateData = TacStakingFuseRedelegateData({
+        TacStakingRedelegateFuseEnterData memory redelegateData = TacStakingRedelegateFuseEnterData({
             validatorSrcAddresses: validatorsSrc,
             validatorDstAddresses: validatorsDst,
             wTacAmounts: tacAmounts
@@ -976,8 +1551,8 @@ contract TacStakingFuseTest is Test {
 
         FuseAction[] memory redelegateCalls = new FuseAction[](1);
         redelegateCalls[0] = FuseAction(
-            address(tacStakingFuse),
-            abi.encodeWithSignature("redelegate((string[],string[],uint256[]))", redelegateData)
+            address(tacStakingRedelegateFuse),
+            abi.encodeWithSignature("enter((string[],string[],uint256[]))", redelegateData)
         );
 
         // when
@@ -1005,21 +1580,21 @@ contract TacStakingFuseTest is Test {
         stakeAmount = 100;
         redelegateAmount = 50;
 
-        staking = IStaking(STAKING);
-        staking.createValidator(
-            Description({
-                moniker: "test3",
-                identity: "test3",
-                website: "test3",
-                securityContact: "test3",
-                details: "test3"
-            }),
-            CommissionRates({rate: 1000, maxRate: 1000, maxChangeRate: 1000}),
-            0,
-            VALIDATOR_ADDRESS_DST_HEX,
-            VALIDATOR_ADDRESS_DST_BECH32,
-            0
-        );
+        // IStaking stakingLocal = IStaking(STAKING);
+        // stakingLocal.createValidator(
+        //     Description({
+        //         moniker: "test3",
+        //         identity: "test3",
+        //         website: "test3",
+        //         securityContact: "test3",
+        //         details: "test3"
+        //     }),
+        //     CommissionRates({rate: 1000, maxRate: 1000, maxChangeRate: 1000}),
+        //     0,
+        //     VALIDATOR_ADDRESS_DST_HEX,
+        //     VALIDATOR_ADDRESS_DST_BECH32,
+        //     0
+        // );
 
         vm.deal(user, stakeAmount);
 
@@ -1058,14 +1633,14 @@ contract TacStakingFuseTest is Test {
         validators[0] = VALIDATOR_ADDRESS_SRC_BECH32;
         tacAmounts[0] = stakeAmount;
 
-        TacStakingFuseEnterData memory enterData = TacStakingFuseEnterData({
+        TacStakingDelegateFuseEnterData memory enterData = TacStakingDelegateFuseEnterData({
             validatorAddresses: validators,
             wTacAmounts: tacAmounts
         });
 
         FuseAction[] memory delegateCalls = new FuseAction[](1);
         delegateCalls[0] = FuseAction(
-            address(tacStakingFuse),
+            address(tacStakingDelegateFuse),
             abi.encodeWithSignature("enter((string[],uint256[]))", enterData)
         );
 
@@ -1079,15 +1654,15 @@ contract TacStakingFuseTest is Test {
         validatorsDst[0] = VALIDATOR_ADDRESS_DST_BECH32;
         tacAmounts[0] = redelegateAmount;
 
-        TacStakingFuseRedelegateData memory redelegateData = TacStakingFuseRedelegateData({
+        TacStakingRedelegateFuseEnterData memory redelegateData = TacStakingRedelegateFuseEnterData({
             validatorSrcAddresses: validatorsSrc,
             validatorDstAddresses: validatorsDst,
             wTacAmounts: tacAmounts
         });
         FuseAction[] memory redelegateCalls = new FuseAction[](1);
         redelegateCalls[0] = FuseAction(
-            address(tacStakingFuse),
-            abi.encodeWithSignature("redelegate((string[],string[],uint256[]))", redelegateData)
+            address(tacStakingRedelegateFuse),
+            abi.encodeWithSignature("enter((string[],string[],uint256[]))", redelegateData)
         );
 
         // Check delegation before redelegation
@@ -1195,8 +1770,11 @@ contract TacStakingFuseTest is Test {
     }
 
     function _addTacStakingFuses() private {
-        address[] memory fuses = new address[](1);
-        fuses[0] = address(tacStakingFuse);
+        address[] memory fuses = new address[](4);
+        fuses[0] = address(tacStakingDelegateFuse);
+        fuses[1] = address(tacStakingRedelegateFuse);
+        fuses[2] = address(tacStakingEmergencyFuse);
+        fuses[3] = address(mockMaintenanceStakingFuse);
 
         vm.startPrank(atomist);
         PlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);

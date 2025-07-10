@@ -21,6 +21,7 @@ contract TacStakingDelegator {
     error TacStakingDelegatorInvalidArrayLength();
     error TacStakingDelegatorInvalidTargetAddress();
     error TacStakingDelegatorInsufficientBalance();
+    error TacStakingDelegatorInvalidPlasmaVaultAddress();
 
     event TacStakingDelegatorDelegate(address plasmaVault, string validatorAddress, uint256 amount);
     event TacStakingDelegatorRedelegate(
@@ -44,7 +45,7 @@ contract TacStakingDelegator {
     address public immutable STAKING;
     address public immutable PLASMA_VAULT;
 
-    error TacStakingDelegatorInvalidPlasmaVaultAddress();
+    
 
     modifier onlyPlasmaVault() {
         if (msg.sender != PLASMA_VAULT) {
@@ -72,17 +73,19 @@ contract TacStakingDelegator {
     }
 
     function delegate(string[] calldata validatorAddresses_, uint256[] calldata wTacAmounts_) external onlyPlasmaVault {
-        if (validatorAddresses_.length == 0) {
+        uint256 validatorAddressesLength = validatorAddresses_.length;
+
+        if (validatorAddressesLength == 0) {
             return;
         }
 
-        if (validatorAddresses_.length != wTacAmounts_.length) {
+        if (validatorAddressesLength != wTacAmounts_.length) {
             revert TacStakingDelegatorInvalidArrayLength();
         }
 
         uint256 totalWTacAmount = 0;
 
-        for (uint256 i; i < wTacAmounts_.length; i++) {
+        for (uint256 i; i < validatorAddressesLength; i++) {
             totalWTacAmount += wTacAmounts_[i];
         }
 
@@ -97,7 +100,7 @@ contract TacStakingDelegator {
         /// @dev get native TAC from wTAC
         IwTAC(W_TAC).withdraw(totalWTacAmount);
 
-        for (uint256 i; i < validatorAddresses_.length; i++) {
+        for (uint256 i; i < validatorAddressesLength; i++) {
             if (wTacAmounts_[i] == 0) {
                 continue;
             }
@@ -112,24 +115,26 @@ contract TacStakingDelegator {
 
     function undelegate(
         string[] calldata validatorAddresses_,
-        uint256[] calldata wTacAmounts_
+        uint256[] calldata tacAmounts_
     ) external onlyPlasmaVault {
-        if (validatorAddresses_.length == 0) {
+        uint256 validatorAddressesLength = validatorAddresses_.length;
+
+        if (validatorAddressesLength == 0) {
             return;
         }
 
-        if (validatorAddresses_.length != wTacAmounts_.length) {
+        if (validatorAddressesLength != tacAmounts_.length) {
             revert TacStakingDelegatorInvalidArrayLength();
         }
 
-        for (uint256 i; i < validatorAddresses_.length; i++) {
-            if (wTacAmounts_[i] == 0) {
+        for (uint256 i; i < validatorAddressesLength; i++) {
+            if (tacAmounts_[i] == 0) {
                 continue;
             }
 
-            int64 completionTime = IStaking(STAKING).undelegate(address(this), validatorAddresses_[i], wTacAmounts_[i]);
+            int64 completionTime = IStaking(STAKING).undelegate(address(this), validatorAddresses_[i], tacAmounts_[i]);
 
-            emit TacStakingDelegatorUndelegate(PLASMA_VAULT, validatorAddresses_[i], wTacAmounts_[i], completionTime);
+            emit TacStakingDelegatorUndelegate(PLASMA_VAULT, validatorAddresses_[i], tacAmounts_[i], completionTime);
         }
 
         _transferRemainingBalance();
@@ -138,21 +143,23 @@ contract TacStakingDelegator {
     function redelegate(
         string[] calldata validatorSrcAddresses_,
         string[] calldata validatorDstAddresses_,
-        uint256[] calldata wTacAmounts_
+        uint256[] calldata tacAmounts_
     ) external onlyPlasmaVault {
-        if (validatorSrcAddresses_.length == 0) {
+        uint256 validatorSrcAddressesLength = validatorSrcAddresses_.length;
+
+        if (validatorSrcAddressesLength == 0) {
             return;
         }
 
         if (
-            validatorSrcAddresses_.length != validatorDstAddresses_.length ||
-            validatorSrcAddresses_.length != wTacAmounts_.length
+            validatorSrcAddressesLength != validatorDstAddresses_.length ||
+            validatorSrcAddressesLength != tacAmounts_.length
         ) {
             revert TacStakingDelegatorInvalidArrayLength();
         }
 
-        for (uint256 i; i < validatorSrcAddresses_.length; i++) {
-            if (wTacAmounts_[i] == 0) {
+        for (uint256 i; i < validatorSrcAddressesLength; i++) {
+            if (tacAmounts_[i] == 0) {
                 continue;
             }
 
@@ -160,14 +167,14 @@ contract TacStakingDelegator {
                 address(this),
                 validatorSrcAddresses_[i],
                 validatorDstAddresses_[i],
-                wTacAmounts_[i]
+                tacAmounts_[i]
             );
 
             emit TacStakingDelegatorRedelegate(
                 PLASMA_VAULT,
                 validatorSrcAddresses_[i],
                 validatorDstAddresses_[i],
-                wTacAmounts_[i],
+                tacAmounts_[i],
                 completionTime
             );
         }
@@ -194,10 +201,6 @@ contract TacStakingDelegator {
 
         if (totalWithdrawable == 0) {
             return 0;
-        }
-
-        if (fromWTac > 0) {
-            IwTAC(W_TAC).withdraw(fromWTac);
         }
 
         if (fromNative > 0) {
@@ -236,18 +239,20 @@ contract TacStakingDelegator {
         address[] calldata targets,
         bytes[] calldata calldatas
     ) external onlyPlasmaVault returns (bytes[] memory results) {
-        if (targets.length != calldatas.length) {
+        uint256 targetsLength = targets.length;
+
+        if (targetsLength != calldatas.length) {
             revert TacStakingDelegatorInvalidArrayLength();
         }
 
-        results = new bytes[](targets.length);
+        results = new bytes[](targetsLength);
 
-        for (uint256 i = 0; i < targets.length; i++) {
+        for (uint256 i; i < targetsLength; i++) {
             if (targets[i] == address(0)) {
                 revert TacStakingDelegatorInvalidTargetAddress();
             }
 
-            results[i] = targets[i].functionCall(calldatas[i]);
+            results[i] = targets[i].functionDelegateCall(calldatas[i]);
         }
 
         emit TacStakingDelegatorBatchExecute(PLASMA_VAULT, targets, calldatas);
@@ -255,6 +260,7 @@ contract TacStakingDelegator {
 
     function _transferRemainingBalance() internal {
         uint256 remainingBalance = address(this).balance;
+        
         if (remainingBalance > 0) {
             IwTAC(W_TAC).deposit{value: remainingBalance}();
             IERC20(W_TAC).safeTransfer(PLASMA_VAULT, remainingBalance);

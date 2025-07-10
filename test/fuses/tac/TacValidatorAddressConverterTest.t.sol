@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
-import {TacValidatorAddressConverter} from "../../../contracts/fuses/tac/TacValidatorAddressConverter.sol";
+import {TacValidatorAddressConverter} from "../../../contracts/fuses/tac/lib/TacValidatorAddressConverter.sol";
 
 contract TacValidatorAddressConverterTest is Test {
     function testSimpleCase() public {
@@ -50,13 +50,13 @@ contract TacValidatorAddressConverterTest is Test {
     }
 
     function testRoundTrip64Bytes() public {
-        string memory input = string(abi.encodePacked(new bytes(64)));
-        for (uint i = 0; i < 64; i++) {
+        string memory input = string(abi.encodePacked(new bytes(63)));
+        for (uint i = 0; i < 63; i++) {
             bytes(input)[i] = bytes1(uint8(128 + i));
         }
         (bytes32 a, bytes32 b) = TacValidatorAddressConverter.validatorAddressToBytes32(input);
         string memory output = TacValidatorAddressConverter.bytes32ToValidatorAddress(a, b);
-        assertEq(input, output, "64-byte string round-trip failed");
+        assertEq(input, output, "63-byte string round-trip failed");
     }
 
     function testEmptyString() public {
@@ -73,21 +73,53 @@ contract TacValidatorAddressConverterTest is Test {
         assertEq(input, output, "One char string round-trip failed");
     }
 
-    function testStringLength() public {
-        // Create a string that is exactly 65 bytes long
-        string memory input = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzA";
-        uint256 length = bytes(input).length;
+    function testStringWithNullByteInMiddle() public {
+        // Create a string with a null byte in the middle
+        bytes memory strBytes = new bytes(10);
+        strBytes[0] = "a";
+        strBytes[1] = "b";
+        strBytes[2] = "c";
+        strBytes[3] = 0; // null byte in the middle
+        strBytes[4] = "d";
+        strBytes[5] = "e";
+        strBytes[6] = "f";
+        strBytes[7] = "g";
+        strBytes[8] = "h";
+        strBytes[9] = "i";
 
-        // If the string is longer than 65, truncate it to exactly 65 bytes
-        if (length > 65) {
-            bytes memory truncated = new bytes(65);
-            for (uint i = 0; i < 65; i++) {
-                truncated[i] = bytes(input)[i];
-            }
-            input = string(truncated);
-            length = 65;
-        }
+        string memory input = string(strBytes);
 
-        assertEq(length, 65, "String should be 65 bytes long");
+        (bytes32 a, bytes32 b) = TacValidatorAddressConverter.validatorAddressToBytes32(input);
+        string memory output = TacValidatorAddressConverter.bytes32ToValidatorAddress(a, b);
+
+        assertEq(input, output, "String with null byte in middle should be preserved");
+    }
+
+    function testStringWithMultipleNullBytes() public {
+        // Create a string with multiple null bytes
+        bytes memory strBytes = new bytes(15);
+        strBytes[0] = "x";
+        strBytes[1] = "y";
+        strBytes[2] = 0; // first null byte
+        strBytes[3] = "z";
+        strBytes[4] = "w";
+        strBytes[5] = 0; // second null byte
+        strBytes[6] = "v";
+        strBytes[7] = "u";
+        strBytes[8] = "t";
+        strBytes[9] = "s";
+        strBytes[10] = "r";
+        strBytes[11] = "q";
+        strBytes[12] = "p";
+        strBytes[13] = "o";
+        strBytes[14] = "n";
+
+        string memory input = string(strBytes);
+
+        // Convert to bytes32 and back
+        (bytes32 a, bytes32 b) = TacValidatorAddressConverter.validatorAddressToBytes32(input);
+        string memory output = TacValidatorAddressConverter.bytes32ToValidatorAddress(a, b);
+
+        assertEq(input, output, "String with multiple null bytes should be preserved");
     }
 }

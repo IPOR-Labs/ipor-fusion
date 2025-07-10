@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {TacStakingDelegator} from "../../../contracts/fuses/tac/TacStakingDelegator.sol";
-import {TacStakingStorageLib} from "../../../contracts/fuses/tac/TacStakingStorageLib.sol";
+import {TacStakingStorageLib} from "../../../contracts/fuses/tac/lib/TacStakingStorageLib.sol";
 
 contract MockMaintenanceStakingFuse {
     uint256 public immutable MARKET_ID;
