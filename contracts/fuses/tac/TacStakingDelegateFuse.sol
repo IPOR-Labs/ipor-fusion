@@ -90,7 +90,7 @@ contract TacStakingDelegateFuse is IFuseCommon, IFuseInstantWithdraw {
 
         if (totalWTacAmount == 0) {
             return;
-        }        
+        }
 
         if (totalWTacAmount > IERC20(W_TAC).balanceOf(address(this))) {
             revert TacStakingFuseInsufficientBalance();

@@ -68,7 +68,7 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
 
         uint256 entriesLength;
 
-        for (uint256 i; i < substratesLength - 1; i += 2) { 
+        for (uint256 i; i < substratesLength - 1; i += 2) {
             validatorAddress = TacValidatorAddressConverter.bytes32ToValidatorAddress(substrates[i], substrates[i + 1]);
 
             if (bytes(validatorAddress).length > 0) {

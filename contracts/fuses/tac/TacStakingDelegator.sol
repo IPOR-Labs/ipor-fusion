@@ -45,8 +45,6 @@ contract TacStakingDelegator {
     address public immutable STAKING;
     address public immutable PLASMA_VAULT;
 
-    
-
     modifier onlyPlasmaVault() {
         if (msg.sender != PLASMA_VAULT) {
             revert TacStakingDelegatorInvalidPlasmaVaultAddress();
@@ -260,7 +258,7 @@ contract TacStakingDelegator {
 
     function _transferRemainingBalance() internal {
         uint256 remainingBalance = address(this).balance;
-        
+
         if (remainingBalance > 0) {
             IwTAC(W_TAC).deposit{value: remainingBalance}();
             IERC20(W_TAC).safeTransfer(PLASMA_VAULT, remainingBalance);
