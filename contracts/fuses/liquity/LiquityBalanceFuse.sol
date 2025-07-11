@@ -21,7 +21,6 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
     error InvalidMarketId();
 
     constructor(uint256 marketId) {
-        if (marketId != IporFusionMarkets.LIQUITY_V2) revert InvalidMarketId();
         MARKET_ID = marketId;
     }
 

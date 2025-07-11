@@ -46,7 +46,6 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
     event LiquityStabilityPoolFuseExit(address stabilityPool, uint256 amount);
 
     constructor(uint256 marketId) {
-        if (marketId != IporFusionMarkets.LIQUITY_V2) revert InvalidMarketId();
         MARKET_ID = marketId;
     }
 
