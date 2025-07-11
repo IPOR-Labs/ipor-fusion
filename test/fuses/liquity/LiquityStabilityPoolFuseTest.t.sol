@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
-import {LiquityStabilityPoolFuse} from "../../../contracts/fuses/liquity/LiquityStabilityPoolFuse.sol";
+import {LiquityStabilityPoolFuse, LiquityStabilityPoolFuseEnterData, LiquityStabilityPoolFuseExitData} from "../../../contracts/fuses/liquity/LiquityStabilityPoolFuse.sol";
 import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/LiquityBalanceFuse.sol";
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
@@ -132,12 +132,15 @@ contract LiquityStabilityPoolFuseTest is Test {
         plasmaVault.deposit(totalBoldInVault, address(this));
 
         uint256 assetBefore = plasmaVault.totalAssets();
-        // when
-        LiquityStabilityPoolFuse.LiquityStabilityPoolFuseEnterData memory enterData = LiquityStabilityPoolFuse
-            .LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: totalBoldToDeposit});
+        LiquityStabilityPoolFuseEnterData memory enterData = LiquityStabilityPoolFuseEnterData({
+            registry: ETH_REGISTRY,
+            amount: totalBoldToDeposit
+        });
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
-        plasmaVault.execute(enterCalls); // when is is called the liquidity market balance is updated
+
+        // when
+        plasmaVault.execute(enterCalls); // when it is called the liquidity market balance is updated
 
         // then
         // check the balance in PlasmaVault and Stability Pool
@@ -162,8 +165,10 @@ contract LiquityStabilityPoolFuseTest is Test {
         totalBoldToExit = 100000 * 1e18;
 
         // when
-        LiquityStabilityPoolFuse.LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuse
-            .LiquityStabilityPoolFuseExitData({registry: ETH_REGISTRY, amount: totalBoldToExit});
+        LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuseExitData({
+            registry: ETH_REGISTRY,
+            amount: totalBoldToExit
+        });
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
         plasmaVault.execute(exitCalls);
@@ -196,8 +201,10 @@ contract LiquityStabilityPoolFuseTest is Test {
         stabilityPool.offset(1e18, 100 ether);
 
         // when
-        LiquityStabilityPoolFuse.LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuse
-            .LiquityStabilityPoolFuseExitData({registry: ETH_REGISTRY, amount: 1});
+        LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuseExitData({
+            registry: ETH_REGISTRY,
+            amount: 1
+        });
         FuseAction[] memory exitCalls = new FuseAction[](1);
         // exiting from stability pool to trigger collateral claim
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
@@ -262,8 +269,10 @@ contract LiquityStabilityPoolFuseTest is Test {
         assertEq(initialBalance, 1000 ether, "Balance should be 1000 BOLD after dealing");
 
         // when
-        LiquityStabilityPoolFuse.LiquityStabilityPoolFuseEnterData memory enterData = LiquityStabilityPoolFuse
-            .LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: 500 ether});
+        LiquityStabilityPoolFuseEnterData memory enterData = LiquityStabilityPoolFuseEnterData({
+            registry: ETH_REGISTRY,
+            amount: 500 ether
+        });
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
         plasmaVault.execute(enterCalls);
@@ -277,7 +286,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         uint256 afterLiquidationBalance = plasmaVault.totalAssets();
         assertEq(afterLiquidationBalance, afterDepBalance, "Balance should be equal after liquidation");
 
-        enterData = LiquityStabilityPoolFuse.LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: 1});
+        enterData = LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: 1});
         enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
         plasmaVault.execute(enterCalls); // when this is called the stashed collateral is updated
@@ -285,8 +294,10 @@ contract LiquityStabilityPoolFuseTest is Test {
 
         assertGt(afterLiquidationAndUpdateBalance, afterLiquidationBalance, "Balance should increase after update");
 
-        LiquityStabilityPoolFuse.LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuse
-            .LiquityStabilityPoolFuseExitData({registry: ETH_REGISTRY, amount: 1});
+        LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuseExitData({
+            registry: ETH_REGISTRY,
+            amount: 1
+        });
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
         plasmaVault.execute(exitCalls);
