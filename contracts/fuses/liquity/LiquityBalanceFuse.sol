@@ -36,6 +36,11 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         if (len == 0) return 0;
 
         IStabilityPool stabilityPool;
+        IAddressesRegistry registry;
+        address boldToken;
+        uint256 boldPrice;
+        uint256 boldPriceDecimals;
+        uint256 boldDecimals;
         uint256 totalDeposits;
         uint256 totalCollateral;
         address collToken;
@@ -45,13 +50,14 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
         );
-        IAddressesRegistry registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[0]));
-        address boldToken = registry.boldToken();
-        (uint256 boldPrice, uint256 boldPriceDecimals) = priceOracleMiddleware.getAssetPrice(boldToken);
-        uint256 boldDecimals = IERC20Metadata(boldToken).decimals();
 
         for (uint256 i; i < len; ++i) {
-            if (i > 0) registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
+            registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
+            if (i == 0) {
+                boldToken = registry.boldToken();
+                (boldPrice, boldPriceDecimals) = priceOracleMiddleware.getAssetPrice(boldToken);
+                boldDecimals = IERC20Metadata(boldToken).decimals();
+            }
 
             stabilityPool = IStabilityPool(registry.stabilityPool());
             collToken = registry.collToken();

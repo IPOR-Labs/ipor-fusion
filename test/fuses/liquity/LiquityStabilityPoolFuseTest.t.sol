@@ -58,6 +58,7 @@ contract LiquityStabilityPoolFuseTest is Test {
     UniversalTokenSwapperFuse private swapFuse;
     address private accessManager;
     address private priceOracle;
+    address private withdrawManager;
 
     uint256 private totalBoldInVault;
     uint256 private totalBoldToDeposit;
@@ -91,9 +92,6 @@ contract LiquityStabilityPoolFuseTest is Test {
                 "pvBOLD",
                 BOLD,
                 priceOracle,
-                _setupMarketConfigs(address(mockDex)),
-                _setupFuses(),
-                _setupBalanceFuses(),
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
@@ -379,6 +377,12 @@ contract LiquityStabilityPoolFuseTest is Test {
         UsersToRoles memory usersToRoles;
         usersToRoles.superAdmin = address(this);
         usersToRoles.atomist = address(this);
-        RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), IporFusionAccessManager(accessManager));
+        RoleLib.setupPlasmaVaultRoles(
+            usersToRoles,
+            vm,
+            address(plasmaVault),
+            IporFusionAccessManager(accessManager),
+            address(0)
+        );
     }
 }
