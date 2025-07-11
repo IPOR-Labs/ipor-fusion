@@ -140,10 +140,9 @@ contract LiquityStabilityPoolFuseTest is Test {
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
 
         // when
-        plasmaVault.execute(enterCalls); // when it is called the liquidity market balance is updated
+        plasmaVault.execute(enterCalls);
 
         // then
-        // check the balance in PlasmaVault and Stability Pool
         uint256 assetAfter = plasmaVault.totalAssets();
 
         uint256 balance = ERC20(BOLD).balanceOf(address(plasmaVault));
@@ -164,13 +163,13 @@ contract LiquityStabilityPoolFuseTest is Test {
         testShouldEnterToLiquitySB();
         totalBoldToExit = 100000 * 1e18;
 
-        // when
         LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuseExitData({
             registry: ETH_REGISTRY,
             amount: totalBoldToExit
         });
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
+        // when
         plasmaVault.execute(exitCalls);
 
         // then
@@ -200,7 +199,6 @@ contract LiquityStabilityPoolFuseTest is Test {
         vm.prank(address(stabilityPool.troveManager()));
         stabilityPool.offset(1e18, 100 ether);
 
-        // when
         LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuseExitData({
             registry: ETH_REGISTRY,
             amount: 1
@@ -208,6 +206,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         FuseAction[] memory exitCalls = new FuseAction[](1);
         // exiting from stability pool to trigger collateral claim
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
+        // when
         plasmaVault.execute(exitCalls);
 
         // then
@@ -233,7 +232,6 @@ contract LiquityStabilityPoolFuseTest is Test {
         data[2] = abi.encodeWithSignature("approve(address,uint256)", address(mockDex), 0);
         UniversalTokenSwapperData memory swapData = UniversalTokenSwapperData({targets: targets, data: data});
 
-        // when
         UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
             tokenIn: WETH,
             tokenOut: BOLD,
@@ -248,6 +246,8 @@ contract LiquityStabilityPoolFuseTest is Test {
         );
 
         uint256 initialBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
+
+        // when
         plasmaVault.execute(swapCalls);
 
         // then
@@ -268,30 +268,38 @@ contract LiquityStabilityPoolFuseTest is Test {
         initialBalance = plasmaVault.totalAssets();
         assertEq(initialBalance, 1000 ether, "Balance should be 1000 BOLD after dealing");
 
-        // when
         LiquityStabilityPoolFuseEnterData memory enterData = LiquityStabilityPoolFuseEnterData({
             registry: ETH_REGISTRY,
             amount: 500 ether
         });
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
+
+        // when
         plasmaVault.execute(enterCalls);
 
+        // then
         uint256 afterDepBalance = plasmaVault.totalAssets();
         assertEq(afterDepBalance, initialBalance, "Balance should not change after providing to SP");
 
         IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool());
         vm.prank(address(stabilityPool.troveManager()));
+        // when
         stabilityPool.offset(1e20, 100 ether);
+
+        //then
         uint256 afterLiquidationBalance = plasmaVault.totalAssets();
         assertEq(afterLiquidationBalance, afterDepBalance, "Balance should be equal after liquidation");
 
         enterData = LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: 1});
         enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
-        plasmaVault.execute(enterCalls); // when this is called the stashed collateral is updated
-        uint256 afterLiquidationAndUpdateBalance = plasmaVault.totalAssets();
 
+        // when
+        plasmaVault.execute(enterCalls);
+
+        //then
+        uint256 afterLiquidationAndUpdateBalance = plasmaVault.totalAssets();
         assertGt(afterLiquidationAndUpdateBalance, afterLiquidationBalance, "Balance should increase after update");
 
         LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuseExitData({
@@ -300,6 +308,8 @@ contract LiquityStabilityPoolFuseTest is Test {
         });
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
+
+        // when
         plasmaVault.execute(exitCalls);
 
         // then
