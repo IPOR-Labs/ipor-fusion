@@ -53,6 +53,7 @@ contract TacStakingDelegateFuse is IFuseCommon, IFuseInstantWithdraw {
         if (staking_ == address(0)) {
             revert TacStakingFuseInvalidDelegatorAddress();
         }
+
         VERSION = address(this);
         MARKET_ID = marketId_;
         W_TAC = wTAC_;

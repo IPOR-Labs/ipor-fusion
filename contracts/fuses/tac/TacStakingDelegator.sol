@@ -57,6 +57,11 @@ contract TacStakingDelegator {
             revert TacStakingDelegatorInvalidPlasmaVaultAddress();
         }
 
+        /// @dev Only PlasmaVault can create the Delegator
+        if (plasmaVault_ != msg.sender) {
+            revert TacStakingDelegatorInvalidPlasmaVaultAddress();
+        }
+
         if (wTAC_ == address(0)) {
             revert TacStakingDelegatorInvalidWtacAddress();
         }

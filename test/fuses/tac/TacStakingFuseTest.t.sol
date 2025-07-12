@@ -195,7 +195,7 @@ contract TacStakingFuseTest is Test {
         tacStakingEmergencyFuse = new TacStakingEmergencyFuse(TAC_MARKET_ID);
         mockMaintenanceStakingFuse = new MockMaintenanceStakingFuse(TAC_MARKET_ID);
 
-        tacStakingBalanceFuse = new TacStakingBalanceFuse(TAC_MARKET_ID, STAKING, wTAC);
+        tacStakingBalanceFuse = new TacStakingBalanceFuse(TAC_MARKET_ID, wTAC, STAKING);
 
         tacStakingDelegatorAddressReader = new TacStakingDelegatorAddressReader();
         mockMaintenanceStakingFuse = new MockMaintenanceStakingFuse(TAC_MARKET_ID);
