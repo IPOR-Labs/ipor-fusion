@@ -77,10 +77,19 @@ jobs:
 
         steps:
             - name: Checkout
+              if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
               # from tag: v4.2.2
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
               with:
                   submodules: recursive
+
+            - name: Checkout merged PR
+              if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+              # from tag: v4.2.2
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+              with:
+                  submodules: recursive
+                  ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
             - name: Setup Node.js
               # from tag: v4.2.0
