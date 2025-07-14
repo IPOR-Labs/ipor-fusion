@@ -18,15 +18,15 @@ jobs:
 
     notify:
         needs:
-          - authorize
+            - authorize
         uses: ./.github/workflows/notify-slack.yml
         secrets:
             SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
     build:
         needs:
-          - authorize
-          - notify
+            - authorize
+            - notify
         uses: ./.github/workflows/smart-contracts-build.yml
         secrets:
             ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
