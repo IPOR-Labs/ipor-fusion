@@ -8,7 +8,6 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {console2} from "forge-std/console2.sol";
 
 contract CurveStableSwapNGPriceFeed is IPriceFeed {
     using SafeCast for uint256;
