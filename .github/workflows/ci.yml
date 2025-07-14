@@ -7,13 +7,26 @@ on:
             - "**"
 
 jobs:
+    authorize:
+        environment:
+          ${{ github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository &&
+          'external' || 'internal' }}
+        runs-on: ubuntu-latest
+        steps:
+          - run: true
+
     notify:
+        needs:
+          - authorize
         uses: ./.github/workflows/notify-slack.yml
         secrets:
             SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
     build:
-        needs: notify
+        needs:
+          - authorize
+          - notify
         uses: ./.github/workflows/smart-contracts-build.yml
         secrets:
             ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
@@ -27,6 +40,7 @@ jobs:
     report:
         if: ${{ always() }}
         needs:
+            - authorize
             - notify
             - build
         uses: ./.github/workflows/report-slack.yml
