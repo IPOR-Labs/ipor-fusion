@@ -17,6 +17,7 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
     using Address for address;
 
     error TacStakingBalanceFuseInvalidWtacAddress();
+    error TacStakingBalanceFuseInvalidStakingAddress();
     error TacStakingBalanceFuseInvalidPriceOracleMiddleware();
     error TacStakingBalanceFuseInvalidSubstrateLength();
 
@@ -24,9 +25,13 @@ contract TacStakingBalanceFuse is IMarketBalanceFuse {
     address public immutable W_TAC;
     address public immutable STAKING;
 
-    constructor(uint256 marketId_, address staking_, address wTAC_) {
+    constructor(uint256 marketId_, address wTAC_, address staking_) {
         if (wTAC_ == address(0)) {
             revert TacStakingBalanceFuseInvalidWtacAddress();
+        }
+
+        if (staking_ == address(0)) {
+            revert TacStakingBalanceFuseInvalidStakingAddress();
         }
 
         MARKET_ID = marketId_;
