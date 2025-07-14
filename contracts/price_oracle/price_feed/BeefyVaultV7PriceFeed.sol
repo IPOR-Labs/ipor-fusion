@@ -14,6 +14,8 @@ contract BeefyVaultV7PriceFeed is IPriceFeed {
     address public immutable BEFY_VAULT_V7;
     address public immutable PRICE_ORACLE_MIDDLEWARE;
 
+    uint256 public constant PRICE_PER_FULL_SHARE_DECIMALS = 18;
+
     constructor(address _beefyVaultV7, address _priceOracleMiddleware) {
         if (_beefyVaultV7 == address(0) || _priceOracleMiddleware == address(0)) {
             revert ZeroAddress();
@@ -31,7 +33,7 @@ contract BeefyVaultV7PriceFeed is IPriceFeed {
     {
         address asset = address(IBeefyVaultV7(BEFY_VAULT_V7).want());
         IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(PRICE_ORACLE_MIDDLEWARE);
-        (uint256 priceAsset, uint256 decimalsAsset) = priceOracleMiddleware.getAssetPrice(asset);
+        (uint256 priceAsset, uint256 priceAssetDecimals) = priceOracleMiddleware.getAssetPrice(asset);
         if (priceAsset == 0) {
             revert PriceOracleMiddleware_InvalidPrice();
         }
@@ -41,7 +43,10 @@ contract BeefyVaultV7PriceFeed is IPriceFeed {
         }
 
         /// @dev pricePerFullShare has 18 decimals, from documentation and implementation
-        uint256 pricePerShare = IporMath.convertToWad(priceAsset * pricePerFullShare, decimalsAsset + 18);
+        uint256 pricePerShare = IporMath.convertToWad(
+            priceAsset * pricePerFullShare,
+            priceAssetDecimals + PRICE_PER_FULL_SHARE_DECIMALS
+        );
 
         return (0, int256(pricePerShare), 0, 0, 0);
     }

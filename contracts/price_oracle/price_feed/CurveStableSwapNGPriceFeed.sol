@@ -48,11 +48,11 @@ contract CurveStableSwapNGPriceFeed is IPriceFeed {
             revert CurveStableSwapNG_InvalidTotalSupply();
         }
         uint256 coinBalance;
-        uint256[] memory coinsBalances = new uint256[](N_COINS);
+        uint256[] memory coinAmountForOneShareArray = new uint256[](N_COINS);
         for (uint256 i; i < N_COINS; i++) {
-            coinsBalances[i] = Math.mulDiv(
+            coinAmountForOneShareArray[i] = Math.mulDiv(
                 ICurveStableSwapNG(CURVE_STABLE_SWAP_NG).balances(i),
-                10 ** DECIMALS_LP,
+                10 ** DECIMALS_LP, /// @dev DECIMALS_LP is the decimals of the LP token, which is 18 and this is walu of one share
                 totalSupply
             );
         }
@@ -61,15 +61,15 @@ contract CurveStableSwapNGPriceFeed is IPriceFeed {
 
         uint256 totalPrice;
         uint256 coinPrice;
-        uint256 coinDecimals;
+        uint256 coinPriceDecimals;
         for (uint256 i; i < N_COINS; i++) {
-            (coinPrice, coinDecimals) = priceOracleMiddleware.getAssetPrice(coins[i]);
+            (coinPrice, coinPriceDecimals) = priceOracleMiddleware.getAssetPrice(coins[i]);
             if (coinPrice == 0) {
                 revert PriceOracleMiddleware_InvalidPrice();
             }
             totalPrice += IporMath.convertToWad(
-                coinsBalances[i] * coinPrice,
-                coinDecimals + ERC20(coins[i]).decimals()
+                coinAmountForOneShareArray[i] * coinPrice,
+                coinPriceDecimals + ERC20(coins[i]).decimals()
             );
         }
 
