@@ -52,7 +52,7 @@ contract CurveStableSwapNGPriceFeed is IPriceFeed {
         for (uint256 i; i < N_COINS; i++) {
             coinAmountForOneShareArray[i] = Math.mulDiv(
                 ICurveStableSwapNG(CURVE_STABLE_SWAP_NG).balances(i),
-                10 ** DECIMALS_LP, /// @dev DECIMALS_LP is the decimals of the LP token, which is 18 and this is walu of one share
+                10 ** DECIMALS_LP, /// @dev DECIMALS_LP is the decimals of the LP token, which is 18 and this is value of one share
                 totalSupply
             );
         }
