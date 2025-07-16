@@ -57,10 +57,10 @@ contract AerodromeLiquidityFuse is IFuseCommon {
         uint256 liquidity
     );
 
-    constructor(uint256 marketIdInput, address areodromeRouterInput) {
+    constructor(uint256 marketId_, address areodromeRouter_) {
         VERSION = address(this);
-        MARKET_ID = marketIdInput;
-        AREODROME_ROUTER = areodromeRouterInput;
+        MARKET_ID = marketId_;
+        AREODROME_ROUTER = areodromeRouter_;
     }
 
     function enter(AerodromeLiquidityFuseEnterData memory data) external {
@@ -78,11 +78,11 @@ contract AerodromeLiquidityFuse is IFuseCommon {
         }
 
         if (data.amountADesired > 0) {
-            IERC20(data.tokenA).forceApprove(poolAddress, data.amountADesired);
+            IERC20(data.tokenA).forceApprove(AREODROME_ROUTER, data.amountADesired);
         }
 
         if (data.amountBDesired > 0) {
-            IERC20(data.tokenB).forceApprove(poolAddress, data.amountBDesired);
+            IERC20(data.tokenB).forceApprove(AREODROME_ROUTER, data.amountBDesired);
         }
 
         (uint256 amountA, uint256 amountB, uint256 liquidity) = IRouter(AREODROME_ROUTER).addLiquidity(
