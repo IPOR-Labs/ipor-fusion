@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";

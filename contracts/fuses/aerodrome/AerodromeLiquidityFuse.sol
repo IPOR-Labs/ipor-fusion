@@ -68,13 +68,13 @@ contract AerodromeLiquidityFuse is IFuseCommon {
             revert AerodromeLiquidityFuseInvalidToken();
         }
 
+        if (data.amountADesired == 0 && data.amountBDesired == 0) {
+            return;
+        }
+
         address poolAddress = IRouter(AREODROME_ROUTER).poolFor(data.tokenA, data.tokenB, data.stable, address(0));
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, poolAddress)) {
             revert AerodromeLiquidityFuseUnsupportedPool("enter", poolAddress);
-        }
-
-        if (data.amountADesired == 0 && data.amountBDesired == 0) {
-            return;
         }
 
         if (data.amountADesired > 0) {
