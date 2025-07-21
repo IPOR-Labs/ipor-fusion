@@ -10,6 +10,7 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPool} from "./ext/IPool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IGauge} from "./ext/IGauge.sol";
 
 contract AerodromeBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
@@ -36,10 +37,19 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         address pool;
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         uint256 liquidity;
+        address substrate;
 
         for (uint256 i; i < len; ++i) {
-            pool = PlasmaVaultConfigLib.bytes32ToAddress(pools[i]);
-            liquidity = IERC20(pool).balanceOf(address(this));
+            substrate = PlasmaVaultConfigLib.bytes32ToAddress(pools[i]);
+
+            try IGauge(substrate).stakingToken() returns (address stakingToken) {
+                pool = stakingToken;
+                liquidity = IERC20(substrate).balanceOf(address(this));
+            } catch {
+                pool = substrate;
+                liquidity = IERC20(pool).balanceOf(address(this));
+            }
+
             if (liquidity > 0) {
                 balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
                 balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);

@@ -19,9 +19,12 @@ import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AerodromeBalanceFuse} from "../../../contracts/fuses/aerodrome/AerodromeBalanceFuse.sol";
 import {AerodromeClaimFeesFuse, AerodromeClaimFeesFuseEnterData} from "../../../contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol";
 import {AerodromeLiquidityFuse, AerodromeLiquidityFuseEnterData, AerodromeLiquidityFuseExitData} from "../../../contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol";
+import {AerodromeGaugeFuse, AerodromeGaugeFuseEnterData, AerodromeGaugeFuseExitData} from "../../../contracts/fuses/aerodrome/AerodrimeGaugeFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IRouter} from "../../../contracts/fuses/aerodrome/ext/IRouter.sol";
+import {AerodromeGaugeClaimFuse} from "../../../contracts/rewards_fuses/aerodrome/AerodromeGaugeClaimFuse.sol";
+import {IGauge} from "../../../contracts/fuses/aerodrome/ext/IGauge.sol";
 
 import {IWETH9} from "../erc4626/IWETH9.sol";
 
@@ -45,6 +48,9 @@ contract AerodromeFuseTests is Test {
 
     address private constant _fusionFactory = 0x1455717668fA96534f675856347A973fA907e922;
     address private constant _AERODROME_ROUTER = 0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43;
+    /// @dev Aerodrome Gauge address for USDC/WETH stable pool, for 0x3548029694fbB241D45FB24Ba0cd9c9d4E745f16 pool
+    address private constant _AERODROME_GAUGE = 0xaeBA79D1108788E5754Eb30aaC64EB868a3247FC;
+    address private constant _AERODROME_REWARD_TOKEN = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
 
     // Core contracts
     PlasmaVault private _plasmaVault;
@@ -54,6 +60,9 @@ contract AerodromeFuseTests is Test {
     AerodromeBalanceFuse private _aerodromeBalanceFuse;
     AerodromeClaimFeesFuse private _aerodromeClaimFeesFuse;
     AerodromeLiquidityFuse private _aerodromeLiquidityFuse;
+    AerodromeGaugeFuse private _aerodromeGaugeFuse;
+    AerodromeGaugeClaimFuse private _aerodromeGaugeClaimFuse;
+    RewardsClaimManager private _rewardsClaimManager;
 
     function setUp() public {
         // Fork Base network
@@ -73,11 +82,13 @@ contract AerodromeFuseTests is Test {
         _priceOracleMiddleware = PriceOracleMiddleware(fusionInstance.priceManager);
         _accessManager = IporFusionAccessManager(fusionInstance.accessManager);
         _plasmaVaultGovernance = PlasmaVaultGovernance(fusionInstance.plasmaVault);
+        _rewardsClaimManager = RewardsClaimManager(fusionInstance.rewardsManager);
 
         vm.startPrank(_ATOMIST);
         _accessManager.grantRole(Roles.ATOMIST_ROLE, _ATOMIST, 0);
         _accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, _FUSE_MANAGER, 0);
         _accessManager.grantRole(Roles.ALPHA_ROLE, _ALPHA, 0);
+        _accessManager.grantRole(Roles.CLAIM_REWARDS_ROLE, _ALPHA, 0);
         _plasmaVaultGovernance.convertToPublicVault();
         _plasmaVaultGovernance.enableTransferShares();
         vm.stopPrank();
@@ -98,11 +109,16 @@ contract AerodromeFuseTests is Test {
         _aerodromeBalanceFuse = new AerodromeBalanceFuse(IporFusionMarkets.AERODROME);
         _aerodromeClaimFeesFuse = new AerodromeClaimFeesFuse(IporFusionMarkets.AERODROME);
         _aerodromeLiquidityFuse = new AerodromeLiquidityFuse(IporFusionMarkets.AERODROME, _AERODROME_ROUTER);
+        _aerodromeGaugeFuse = new AerodromeGaugeFuse(IporFusionMarkets.AERODROME);
 
-        address[] memory fuses = new address[](2);
+        address[] memory fuses = new address[](3);
         fuses[0] = address(_aerodromeClaimFeesFuse);
         fuses[1] = address(_aerodromeLiquidityFuse);
+        fuses[2] = address(_aerodromeGaugeFuse);
         ERC20BalanceFuse erc20Balance = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
+
+        address[] memory rewardFuses = new address[](1);
+        rewardFuses[0] = address(_aerodromeGaugeClaimFuse);
 
         vm.startPrank(_FUSE_MANAGER);
         _plasmaVaultGovernance.addBalanceFuse(IporFusionMarkets.AERODROME, address(_aerodromeBalanceFuse));
@@ -114,10 +130,11 @@ contract AerodromeFuseTests is Test {
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(_UNDERLYING_TOKEN);
 
-        bytes32[] memory aerodromeSubstrates = new bytes32[](1);
+        bytes32[] memory aerodromeSubstrates = new bytes32[](2);
         aerodromeSubstrates[0] = PlasmaVaultConfigLib.addressToBytes32(
             IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0))
         );
+        aerodromeSubstrates[1] = PlasmaVaultConfigLib.addressToBytes32(_AERODROME_GAUGE);
 
         vm.startPrank(_FUSE_MANAGER);
         _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.AERODROME, aerodromeSubstrates);
@@ -480,5 +497,828 @@ contract AerodromeFuseTests is Test {
         vm.startPrank(_ALPHA);
         _plasmaVault.execute(actions);
         vm.stopPrank();
+    }
+
+    function test_shouldDepositLiquidityToAerodromeGauge() public {
+        // given
+        uint256 amountADesired = 1000e6; // 1000 USDC
+        uint256 amountBDesired = 172503737333611236; // 1 WETH
+        uint256 amountAMin = 990e6; // 990 USDC (1% slippage)
+        uint256 amountBMin = 0; // 0.99 WETH (1% slippage)
+        uint256 deadline = block.timestamp + 3600; // 1 hour
+
+        // Record initial balances
+        uint256 initialVaultBalance = _plasmaVault.totalAssets();
+        uint256 initialUsdcBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 initialWethBalance = IERC20(_WETH).balanceOf(address(_plasmaVault));
+        uint256 initialAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // First, add liquidity to get LP tokens
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        // Execute liquidity addition
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get pool address and LP token balance
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterLiquidityAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Now deposit LP tokens to gauge
+        uint256 gaugeDepositAmount = lpTokenBalance / 2; // Deposit half of LP tokens
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: gaugeDepositAmount
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // then
+        // Verify LP token balance decreased
+        uint256 finalLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        assertLt(finalLpTokenBalance, lpTokenBalance, "LP token balance should have decreased");
+
+        // Verify gauge balance increased
+        uint256 gaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+        assertEq(gaugeBalance, gaugeDepositAmount, "Gauge balance should equal deposited amount");
+
+        // Aerodrome market balance should remain the same (LP tokens are still in the market)
+        uint256 finalAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+        assertApproxEqAbs(
+            finalAerodromeBalance,
+            afterLiquidityAerodromeBalance,
+            ERROR_DELTA,
+            "Aerodrome market balance should remain approximately the same"
+        );
+    }
+
+    function test_shouldRevertWhenGaugeNotGranted() public {
+        // given - Don't grant the gauge substrate
+        uint256 amountADesired = 1000e6;
+        uint256 amountBDesired = 172503737333611236;
+        uint256 amountAMin = 990e6;
+        uint256 amountBMin = 0;
+        uint256 deadline = block.timestamp + 3600;
+
+        // First, add liquidity to get LP tokens
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        // Execute liquidity addition
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get LP token balance
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        // Try to deposit to an unsupported gauge
+        address unsupportedGauge = address(0x1234567890123456789012345678901234567890);
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: unsupportedGauge,
+            amount: lpTokenBalance / 2
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(); // Should revert with AerodromeGaugeFuseUnsupportedGauge error
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+    }
+
+    function test_shouldDepositAllLiquidityToAerodromeGauge() public {
+        // given
+        uint256 amountADesired = 1000e6; // 1000 USDC
+        uint256 amountBDesired = 172503737333611236; // 1 WETH
+        uint256 amountAMin = 990e6; // 990 USDC (1% slippage)
+        uint256 amountBMin = 0; // 0.99 WETH (1% slippage)
+        uint256 deadline = block.timestamp + 3600; // 1 hour
+
+        // Record initial balances
+        uint256 initialVaultBalance = _plasmaVault.totalAssets();
+        uint256 initialUsdcBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 initialWethBalance = IERC20(_WETH).balanceOf(address(_plasmaVault));
+        uint256 initialAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // First, add liquidity to get LP tokens
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        // Execute liquidity addition
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get pool address and LP token balance
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterLiquidityAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Now deposit all LP tokens to gauge
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: lpTokenBalance
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // then
+        // Verify LP token balance is zero
+        uint256 finalLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        assertEq(finalLpTokenBalance, 0, "LP token balance should be zero");
+
+        // Verify gauge balance equals the full LP token amount
+        uint256 gaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+        assertEq(gaugeBalance, lpTokenBalance, "Gauge balance should equal full LP token amount");
+
+        // Aerodrome market balance should remain the same (LP tokens are still in the market via gauge)
+        uint256 finalAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+        assertApproxEqAbs(
+            finalAerodromeBalance,
+            afterLiquidityAerodromeBalance,
+            ERROR_DELTA,
+            "Aerodrome market balance should remain approximately the same"
+        );
+    }
+
+    function test_shouldDepositLiquidityToGaugeTwice() public {
+        // given
+        uint256 amountADesired = 1000e6; // 1000 USDC
+        uint256 amountBDesired = 172503737333611236; // 1 WETH
+        uint256 amountAMin = 990e6; // 990 USDC (1% slippage)
+        uint256 amountBMin = 0; // 0.99 WETH (1% slippage)
+        uint256 deadline = block.timestamp + 3600; // 1 hour
+
+        // Record initial balances
+        uint256 initialVaultBalance = _plasmaVault.totalAssets();
+        uint256 initialUsdcBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 initialWethBalance = IERC20(_WETH).balanceOf(address(_plasmaVault));
+        uint256 initialAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // First, add liquidity to get LP tokens
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        // Execute liquidity addition
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get pool address and LP token balance
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterLiquidityAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // First gauge deposit - half of LP tokens
+        uint256 firstDepositAmount = lpTokenBalance / 2;
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: firstDepositAmount
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // Execute first gauge deposit
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Record balances after first deposit
+        uint256 afterFirstLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterFirstGaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+
+        // Second gauge deposit - remaining LP tokens
+        uint256 secondDepositAmount = afterFirstLpTokenBalance;
+        gaugeEnterData = AerodromeGaugeFuseEnterData({gaugeAddress: _AERODROME_GAUGE, amount: secondDepositAmount});
+
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // Execute second gauge deposit
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // then
+        // Verify final balances
+        uint256 finalLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 finalGaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+
+        // LP token balance should be zero after second deposit
+        assertEq(finalLpTokenBalance, 0, "Final LP token balance should be zero");
+
+        // Gauge balance should equal the full LP token amount
+        assertEq(finalGaugeBalance, lpTokenBalance, "Final gauge balance should equal full LP token amount");
+
+        // Second deposit should have increased gauge balance further
+        assertGt(finalGaugeBalance, afterFirstGaugeBalance, "Second deposit should increase gauge balance further");
+
+        // Aerodrome market balance should remain the same
+        uint256 finalAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+        assertApproxEqAbs(
+            finalAerodromeBalance,
+            afterLiquidityAerodromeBalance,
+            ERROR_DELTA,
+            "Aerodrome market balance should remain approximately the same"
+        );
+    }
+
+    function test_shouldWithdrawLiquidityFromAerodromeGauge() public {
+        // given
+        uint256 amountADesired = 1000e6; // 1000 USDC
+        uint256 amountBDesired = 172503737333611236; // 1 WETH
+        uint256 amountAMin = 990e6; // 990 USDC (1% slippage)
+        uint256 amountBMin = 0; // 0.99 WETH (1% slippage)
+        uint256 deadline = block.timestamp + 3600; // 1 hour
+
+        // Record initial balances
+        uint256 initialVaultBalance = _plasmaVault.totalAssets();
+        uint256 initialUsdcBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 initialWethBalance = IERC20(_WETH).balanceOf(address(_plasmaVault));
+        uint256 initialAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // First, add liquidity to get LP tokens
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        // Execute liquidity addition
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get pool address and LP token balance
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterLiquidityAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Deposit all LP tokens to gauge
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: lpTokenBalance
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // Execute gauge deposit
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Record balances after gauge deposit
+        uint256 afterGaugeDepositLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterGaugeDepositGaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+        uint256 afterGaugeDepositAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Now withdraw half of the LP tokens from gauge
+        uint256 withdrawAmount = lpTokenBalance / 2;
+        AerodromeGaugeFuseExitData memory gaugeExitData = AerodromeGaugeFuseExitData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: withdrawAmount
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // then
+        // Verify LP token balance increased
+        uint256 finalLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        assertGt(finalLpTokenBalance, afterGaugeDepositLpTokenBalance, "LP token balance should have increased");
+
+        // Verify gauge balance decreased
+        uint256 finalGaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+        assertLt(finalGaugeBalance, afterGaugeDepositGaugeBalance, "Gauge balance should have decreased");
+
+        // Verify the withdrawn amount matches
+        assertEq(finalGaugeBalance, lpTokenBalance - withdrawAmount, "Gauge balance should equal remaining amount");
+
+        // Aerodrome market balance should remain the same (LP tokens are still in the market)
+        uint256 finalAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+        assertApproxEqAbs(
+            finalAerodromeBalance,
+            afterGaugeDepositAerodromeBalance,
+            ERROR_DELTA,
+            "Aerodrome market balance should remain approximately the same"
+        );
+    }
+
+    function test_shouldWithdrawAllLiquidityFromAerodromeGauge() public {
+        // given
+        uint256 amountADesired = 1000e6; // 1000 USDC
+        uint256 amountBDesired = 172503737333611236; // 1 WETH
+        uint256 amountAMin = 990e6; // 990 USDC (1% slippage)
+        uint256 amountBMin = 0; // 0.99 WETH (1% slippage)
+        uint256 deadline = block.timestamp + 3600; // 1 hour
+
+        // Record initial balances
+        uint256 initialVaultBalance = _plasmaVault.totalAssets();
+        uint256 initialUsdcBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 initialWethBalance = IERC20(_WETH).balanceOf(address(_plasmaVault));
+        uint256 initialAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // First, add liquidity to get LP tokens
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        // Execute liquidity addition
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get pool address and LP token balance
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterLiquidityAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Deposit all LP tokens to gauge
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: lpTokenBalance
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // Execute gauge deposit
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Record balances after gauge deposit
+        uint256 afterGaugeDepositLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterGaugeDepositGaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+        uint256 afterGaugeDepositAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Now withdraw all LP tokens from gauge
+        AerodromeGaugeFuseExitData memory gaugeExitData = AerodromeGaugeFuseExitData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: lpTokenBalance
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // then
+        // Verify LP token balance is restored to original amount
+        uint256 finalLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        assertEq(finalLpTokenBalance, lpTokenBalance, "LP token balance should be restored to original amount");
+
+        // Verify gauge balance is zero
+        uint256 finalGaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+        assertEq(finalGaugeBalance, 0, "Gauge balance should be zero");
+
+        // Aerodrome market balance should remain the same
+        uint256 finalAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+        assertApproxEqAbs(
+            finalAerodromeBalance,
+            afterGaugeDepositAerodromeBalance,
+            ERROR_DELTA,
+            "Aerodrome market balance should remain approximately the same"
+        );
+    }
+
+    function test_shouldWithdrawLiquidityFromGaugeTwice() public {
+        // given
+        uint256 amountADesired = 1000e6; // 1000 USDC
+        uint256 amountBDesired = 172503737333611236; // 1 WETH
+        uint256 amountAMin = 990e6; // 990 USDC (1% slippage)
+        uint256 amountBMin = 0; // 0.99 WETH (1% slippage)
+        uint256 deadline = block.timestamp + 3600; // 1 hour
+
+        // Record initial balances
+        uint256 initialVaultBalance = _plasmaVault.totalAssets();
+        uint256 initialUsdcBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 initialWethBalance = IERC20(_WETH).balanceOf(address(_plasmaVault));
+        uint256 initialAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // First, add liquidity to get LP tokens
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        // Execute liquidity addition
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get pool address and LP token balance
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterLiquidityAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Deposit all LP tokens to gauge
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: lpTokenBalance
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // Execute gauge deposit
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Record balances after gauge deposit
+        uint256 afterGaugeDepositLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterGaugeDepositGaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+        uint256 afterGaugeDepositAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // First withdrawal - half of LP tokens
+        uint256 firstWithdrawAmount = lpTokenBalance / 2;
+        AerodromeGaugeFuseExitData memory gaugeExitData = AerodromeGaugeFuseExitData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: firstWithdrawAmount
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+        );
+
+        // Execute first withdrawal
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Record balances after first withdrawal
+        uint256 afterFirstWithdrawLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterFirstWithdrawGaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+
+        // Second withdrawal - remaining LP tokens
+        uint256 secondWithdrawAmount = lpTokenBalance - firstWithdrawAmount;
+        gaugeExitData = AerodromeGaugeFuseExitData({gaugeAddress: _AERODROME_GAUGE, amount: secondWithdrawAmount});
+
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+        );
+
+        // Execute second withdrawal
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // then
+        // Verify final balances
+        uint256 finalLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 finalGaugeBalance = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+
+        // LP token balance should be restored to original amount
+        assertEq(finalLpTokenBalance, lpTokenBalance, "Final LP token balance should equal original amount");
+
+        // Gauge balance should be zero
+        assertEq(finalGaugeBalance, 0, "Final gauge balance should be zero");
+
+        // Second withdrawal should have increased LP token balance further
+        assertGt(
+            finalLpTokenBalance,
+            afterFirstWithdrawLpTokenBalance,
+            "Second withdrawal should increase LP token balance further"
+        );
+
+        // Aerodrome market balance should remain the same
+        uint256 finalAerodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+        assertApproxEqAbs(
+            finalAerodromeBalance,
+            afterGaugeDepositAerodromeBalance,
+            ERROR_DELTA,
+            "Aerodrome market balance should remain approximately the same"
+        );
+    }
+
+    function test_shouldRevertWhenGaugeExitNotGranted() public {
+        // given - Don't grant the gauge substrate
+        uint256 amountADesired = 1000e6;
+        uint256 amountBDesired = 172503737333611236;
+        uint256 amountAMin = 990e6;
+        uint256 amountBMin = 0;
+        uint256 deadline = block.timestamp + 3600;
+
+        // First, add liquidity to get LP tokens
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        // Execute liquidity addition
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get LP token balance
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        // Deposit LP tokens to gauge
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: lpTokenBalance
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // Execute gauge deposit
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Try to withdraw from an unsupported gauge
+        address unsupportedGauge = address(0x1234567890123456789012345678901234567890);
+        AerodromeGaugeFuseExitData memory gaugeExitData = AerodromeGaugeFuseExitData({
+            gaugeAddress: unsupportedGauge,
+            amount: lpTokenBalance / 2
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+        );
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(); // Should revert with AerodromeGaugeFuseUnsupportedGauge error
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+    }
+
+    function test_shouldRevertWhenExitAmountIsZero() public {
+        // given
+        uint256 amountADesired = 1000e6;
+        uint256 amountBDesired = 172503737333611236;
+        uint256 amountAMin = 990e6;
+        uint256 amountBMin = 0;
+        uint256 deadline = block.timestamp + 3600;
+
+        // First, add liquidity to get LP tokens
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        // Execute liquidity addition
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get LP token balance
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        // Deposit LP tokens to gauge
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: lpTokenBalance
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        // Execute gauge deposit
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Try to withdraw zero amount
+        AerodromeGaugeFuseExitData memory gaugeExitData = AerodromeGaugeFuseExitData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: 0
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+        );
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(); // Should revert with AerodromeGaugeFuseInvalidAmount error
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+    }
+
+    function test_shouldClaimRewardsFromGauge() public {
+        //given
+        test_shouldDepositAllLiquidityToAerodromeGauge();
+        vm.warp(block.timestamp + 4 days);
+
+        address[] memory gauges = new address[](1);
+        gauges[0] = _AERODROME_GAUGE;
+
+        FuseAction[] memory actions = new FuseAction[](1);
+
+        _aerodromeGaugeClaimFuse = new AerodromeGaugeClaimFuse(IporFusionMarkets.AERODROME);
+
+        actions[0] = FuseAction(address(_aerodromeGaugeClaimFuse), abi.encodeWithSignature("claim(address[])", gauges));
+
+        address[] memory rewardFuses = new address[](1);
+        rewardFuses[0] = address(_aerodromeGaugeClaimFuse);
+
+        vm.startPrank(_FUSE_MANAGER);
+        _rewardsClaimManager.addRewardFuses(rewardFuses);
+        vm.stopPrank();
+
+        uint256 balanceBefore = IERC20(_AERODROME_REWARD_TOKEN).balanceOf(address(_rewardsClaimManager));
+
+        //when
+        vm.startPrank(_ALPHA);
+        _rewardsClaimManager.claimRewards(actions);
+        vm.stopPrank();
+
+        //then
+        uint256 balanceAfter = IERC20(_AERODROME_REWARD_TOKEN).balanceOf(address(_rewardsClaimManager));
+        assertEq(balanceBefore, 0, "Balance should be 0");
+        assertGt(balanceAfter, 0, "Balance should be greater than 0");
     }
 }
