@@ -26,11 +26,9 @@ contract AerodromeGaugeFuse is IFuseCommon {
 
     error AerodromeGaugeFuseUnsupportedGauge(string action, address gaugeAddress);
     error AerodromeGaugeFuseInvalidGauge();
-    error AerodromeGaugeFuseDepositFailed();
-    error AerodromeGaugeFuseWithdrawFailed();
     error AerodromeGaugeFuseInvalidAmount();
 
-    event AerodromeGaugeFuseEnter(address version, address gaugeAddress, uint256 amount, address recipient);
+    event AerodromeGaugeFuseEnter(address version, address gaugeAddress, uint256 amount);
     event AerodromeGaugeFuseExit(address version, address gaugeAddress, uint256 amount);
 
     constructor(uint256 marketId_) {
@@ -73,11 +71,11 @@ contract AerodromeGaugeFuse is IFuseCommon {
 
         IERC20(stakingToken).forceApprove(data_.gaugeAddress, amountToDeposit);
 
-        // Perform the deposit
         IGauge(data_.gaugeAddress).deposit(amountToDeposit);
 
-        // Reset approval
         IERC20(stakingToken).forceApprove(data_.gaugeAddress, 0);
+
+        emit AerodromeGaugeFuseEnter(VERSION, data_.gaugeAddress, amountToDeposit);
     }
 
     function exit(AerodromeGaugeFuseExitData memory data_) external {
@@ -89,7 +87,6 @@ contract AerodromeGaugeFuse is IFuseCommon {
             revert AerodromeGaugeFuseInvalidAmount();
         }
 
-        // Check if the gauge is supported by the vault configuration
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
@@ -113,5 +110,7 @@ contract AerodromeGaugeFuse is IFuseCommon {
         }
 
         IGauge(data_.gaugeAddress).withdraw(amountToWithdraw);
+
+        emit AerodromeGaugeFuseExit(VERSION, data_.gaugeAddress, amountToWithdraw);
     }
 }

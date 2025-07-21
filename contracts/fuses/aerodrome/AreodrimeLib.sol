@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+
 enum AerodromeSubstrateType {
     UNDEFINED,
     Gauge,
@@ -19,6 +21,6 @@ library AerodromeSubstrateLib {
 
     function bytes32ToSubstrate(bytes32 bytes32Substrate) internal pure returns (AerodromeSubstrate memory substrate) {
         substrate.substrateType = AerodromeSubstrateType(uint256(bytes32Substrate) >> 160);
-        substrate.substrateAddress = address(uint160(uint256(bytes32Substrate)));
+        substrate.substrateAddress = PlasmaVaultConfigLib.bytes32ToAddress(bytes32Substrate);
     }
 }

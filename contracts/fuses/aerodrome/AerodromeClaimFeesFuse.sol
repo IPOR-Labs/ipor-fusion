@@ -31,8 +31,9 @@ contract AerodromeClaimFeesFuse is IFuseCommon {
         address poolAddress;
         uint256 claimed0;
         uint256 claimed1;
+        uint256 len = data.pools.length;
 
-        for (uint256 i; i < data.pools.length; i++) {
+        for (uint256 i; i < len; i++) {
             poolAddress = data.pools[i];
             if (
                 !PlasmaVaultConfigLib.isMarketSubstrateGranted(
