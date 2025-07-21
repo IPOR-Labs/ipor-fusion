@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IGauge} from "./ext/IGauge.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodrimeLib.sol";
 
 struct AerodromeGaugeFuseEnterData {
     address gaugeAddress;
@@ -46,8 +47,17 @@ contract AerodromeGaugeFuse is IFuseCommon {
             return;
         }
 
-        // Check if the gauge is supported by the vault configuration
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.gaugeAddress)) {
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                AerodromeSubstrateLib.substrateToBytes32(
+                    AerodromeSubstrate({
+                        substrateAddress: data_.gaugeAddress,
+                        substrateType: AerodromeSubstrateType.Gauge
+                    })
+                )
+            )
+        ) {
             revert AerodromeGaugeFuseUnsupportedGauge("enter", data_.gaugeAddress);
         }
 
@@ -80,7 +90,17 @@ contract AerodromeGaugeFuse is IFuseCommon {
         }
 
         // Check if the gauge is supported by the vault configuration
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.gaugeAddress)) {
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                AerodromeSubstrateLib.substrateToBytes32(
+                    AerodromeSubstrate({
+                        substrateAddress: data_.gaugeAddress,
+                        substrateType: AerodromeSubstrateType.Gauge
+                    })
+                )
+            )
+        ) {
             revert AerodromeGaugeFuseUnsupportedGauge("exit", data_.gaugeAddress);
         }
 

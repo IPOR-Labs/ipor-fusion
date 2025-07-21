@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPool} from "./ext/IPool.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodrimeLib.sol";
 
 struct AerodromeClaimFeesFuseEnterData {
     address[] pools;
@@ -33,7 +34,14 @@ contract AerodromeClaimFeesFuse is IFuseCommon {
 
         for (uint256 i = 0; i < data.pools.length; i++) {
             poolAddress = data.pools[i];
-            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, poolAddress)) {
+            if (
+                !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                    MARKET_ID,
+                    AerodromeSubstrateLib.substrateToBytes32(
+                        AerodromeSubstrate({substrateAddress: poolAddress, substrateType: AerodromeSubstrateType.Pool})
+                    )
+                )
+            ) {
                 revert AerodromeClaimFeesFuseUnsupportedPool("enter", poolAddress);
             }
             (claimed0, claimed1) = IPool(poolAddress).claimFees();

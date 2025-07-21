@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IRouter} from "./ext/IRouter.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodrimeLib.sol";
 
 struct AerodromeLiquidityFuseEnterData {
     address tokenA;
@@ -73,7 +74,14 @@ contract AerodromeLiquidityFuse is IFuseCommon {
         }
 
         address poolAddress = IRouter(AREODROME_ROUTER).poolFor(data.tokenA, data.tokenB, data.stable, address(0));
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, poolAddress)) {
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                AerodromeSubstrateLib.substrateToBytes32(
+                    AerodromeSubstrate({substrateAddress: poolAddress, substrateType: AerodromeSubstrateType.Pool})
+                )
+            )
+        ) {
             revert AerodromeLiquidityFuseUnsupportedPool("enter", poolAddress);
         }
 
@@ -113,7 +121,14 @@ contract AerodromeLiquidityFuse is IFuseCommon {
         }
 
         address poolAddress = IRouter(AREODROME_ROUTER).poolFor(data.tokenA, data.tokenB, data.stable, address(0));
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, poolAddress)) {
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                AerodromeSubstrateLib.substrateToBytes32(
+                    AerodromeSubstrate({substrateAddress: poolAddress, substrateType: AerodromeSubstrateType.Pool})
+                )
+            )
+        ) {
             revert AerodromeLiquidityFuseUnsupportedPool("exit", poolAddress);
         }
 

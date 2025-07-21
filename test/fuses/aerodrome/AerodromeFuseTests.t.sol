@@ -17,6 +17,7 @@ import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AerodromeBalanceFuse} from "../../../contracts/fuses/aerodrome/AerodromeBalanceFuse.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "../../../contracts/fuses/aerodrome/AreodrimeLib.sol";
 import {AerodromeClaimFeesFuse, AerodromeClaimFeesFuseEnterData} from "../../../contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol";
 import {AerodromeLiquidityFuse, AerodromeLiquidityFuseEnterData, AerodromeLiquidityFuseExitData} from "../../../contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol";
 import {AerodromeGaugeFuse, AerodromeGaugeFuseEnterData, AerodromeGaugeFuseExitData} from "../../../contracts/fuses/aerodrome/AerodrimeGaugeFuse.sol";
@@ -131,10 +132,16 @@ contract AerodromeFuseTests is Test {
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(_UNDERLYING_TOKEN);
 
         bytes32[] memory aerodromeSubstrates = new bytes32[](2);
-        aerodromeSubstrates[0] = PlasmaVaultConfigLib.addressToBytes32(
-            IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0))
+
+        aerodromeSubstrates[0] = AerodromeSubstrateLib.substrateToBytes32(
+            AerodromeSubstrate({
+                substrateAddress: IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0)),
+                substrateType: AerodromeSubstrateType.Pool
+            })
         );
-        aerodromeSubstrates[1] = PlasmaVaultConfigLib.addressToBytes32(_AERODROME_GAUGE);
+        aerodromeSubstrates[1] = AerodromeSubstrateLib.substrateToBytes32(
+            AerodromeSubstrate({substrateAddress: _AERODROME_GAUGE, substrateType: AerodromeSubstrateType.Gauge})
+        );
 
         vm.startPrank(_FUSE_MANAGER);
         _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.AERODROME, aerodromeSubstrates);
@@ -1320,5 +1327,234 @@ contract AerodromeFuseTests is Test {
         uint256 balanceAfter = IERC20(_AERODROME_REWARD_TOKEN).balanceOf(address(_rewardsClaimManager));
         assertEq(balanceBefore, 0, "Balance should be 0");
         assertGt(balanceAfter, 0, "Balance should be greater than 0");
+    }
+
+    // ============ Tests for substrateToBytes32 and bytes32ToSubstrate functions ============
+
+    function test_shouldConvertGaugeSubstrateToBytes32AndBack() public {
+        // given
+        address gaugeAddress = _AERODROME_GAUGE;
+        AerodromeSubstrate memory originalSubstrate = AerodromeSubstrate({
+            substrateType: AerodromeSubstrateType.Gauge,
+            substrateAddress: gaugeAddress
+        });
+
+        // when
+        bytes32 encodedSubstrate = AerodromeSubstrateLib.substrateToBytes32(originalSubstrate);
+        AerodromeSubstrate memory decodedSubstrate = AerodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+
+        // then
+        assertEq(
+            uint256(decodedSubstrate.substrateType),
+            uint256(originalSubstrate.substrateType),
+            "Substrate type should match"
+        );
+        assertEq(
+            decodedSubstrate.substrateAddress,
+            originalSubstrate.substrateAddress,
+            "Substrate address should match"
+        );
+    }
+
+    function test_shouldConvertPoolSubstrateToBytes32AndBack() public {
+        // given
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        AerodromeSubstrate memory originalSubstrate = AerodromeSubstrate({
+            substrateType: AerodromeSubstrateType.Pool,
+            substrateAddress: poolAddress
+        });
+
+        // when
+        bytes32 encodedSubstrate = AerodromeSubstrateLib.substrateToBytes32(originalSubstrate);
+        AerodromeSubstrate memory decodedSubstrate = AerodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+
+        // then
+        assertEq(
+            uint256(decodedSubstrate.substrateType),
+            uint256(originalSubstrate.substrateType),
+            "Substrate type should match"
+        );
+        assertEq(
+            decodedSubstrate.substrateAddress,
+            originalSubstrate.substrateAddress,
+            "Substrate address should match"
+        );
+    }
+
+    function test_shouldConvertUndefinedSubstrateToBytes32AndBack() public {
+        // given
+        address someAddress = address(0x1234567890123456789012345678901234567890);
+        AerodromeSubstrate memory originalSubstrate = AerodromeSubstrate({
+            substrateType: AerodromeSubstrateType.UNDEFINED,
+            substrateAddress: someAddress
+        });
+
+        // when
+        bytes32 encodedSubstrate = AerodromeSubstrateLib.substrateToBytes32(originalSubstrate);
+        AerodromeSubstrate memory decodedSubstrate = AerodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+
+        // then
+        assertEq(
+            uint256(decodedSubstrate.substrateType),
+            uint256(originalSubstrate.substrateType),
+            "Substrate type should match"
+        );
+        assertEq(
+            decodedSubstrate.substrateAddress,
+            originalSubstrate.substrateAddress,
+            "Substrate address should match"
+        );
+    }
+
+    function test_shouldConvertZeroAddressSubstrateToBytes32AndBack() public {
+        // given
+        address zeroAddress = address(0);
+        AerodromeSubstrate memory originalSubstrate = AerodromeSubstrate({
+            substrateType: AerodromeSubstrateType.Gauge,
+            substrateAddress: zeroAddress
+        });
+
+        // when
+        bytes32 encodedSubstrate = AerodromeSubstrateLib.substrateToBytes32(originalSubstrate);
+        AerodromeSubstrate memory decodedSubstrate = AerodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+
+        // then
+        assertEq(
+            uint256(decodedSubstrate.substrateType),
+            uint256(originalSubstrate.substrateType),
+            "Substrate type should match"
+        );
+        assertEq(
+            decodedSubstrate.substrateAddress,
+            originalSubstrate.substrateAddress,
+            "Substrate address should match"
+        );
+    }
+
+    function test_shouldConvertMaxAddressSubstrateToBytes32AndBack() public {
+        // given
+        address maxAddress = address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
+        AerodromeSubstrate memory originalSubstrate = AerodromeSubstrate({
+            substrateType: AerodromeSubstrateType.Pool,
+            substrateAddress: maxAddress
+        });
+
+        // when
+        bytes32 encodedSubstrate = AerodromeSubstrateLib.substrateToBytes32(originalSubstrate);
+        AerodromeSubstrate memory decodedSubstrate = AerodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+
+        // then
+        assertEq(
+            uint256(decodedSubstrate.substrateType),
+            uint256(originalSubstrate.substrateType),
+            "Substrate type should match"
+        );
+        assertEq(
+            decodedSubstrate.substrateAddress,
+            originalSubstrate.substrateAddress,
+            "Substrate address should match"
+        );
+    }
+
+    function test_shouldVerifyBytes32EncodingStructure() public {
+        // given
+        address testAddress = address(0x1234567890123456789012345678901234567890);
+        AerodromeSubstrateType testType = AerodromeSubstrateType.Gauge;
+        AerodromeSubstrate memory originalSubstrate = AerodromeSubstrate({
+            substrateType: testType,
+            substrateAddress: testAddress
+        });
+
+        // when
+        bytes32 encodedSubstrate = AerodromeSubstrateLib.substrateToBytes32(originalSubstrate);
+
+        // then
+        // Verify the lower 160 bits contain the address
+        address extractedAddress = address(uint160(uint256(encodedSubstrate)));
+        assertEq(extractedAddress, testAddress, "Address should be in lower 160 bits");
+
+        // Verify the upper bits contain the type
+        uint256 extractedType = uint256(encodedSubstrate) >> 160;
+        assertEq(extractedType, uint256(testType), "Type should be in upper bits");
+    }
+
+    function test_shouldVerifyBytes32DecodingStructure() public {
+        // given
+        address testAddress = makeAddr("testAddress");
+        AerodromeSubstrateType testType = AerodromeSubstrateType.Pool;
+        uint256 encodedValue = uint256(uint160(testAddress)) | (uint256(testType) << 160);
+        bytes32 encodedSubstrate = bytes32(encodedValue);
+
+        // when
+        AerodromeSubstrate memory decodedSubstrate = AerodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+
+        // then
+        assertEq(uint256(decodedSubstrate.substrateType), uint256(testType), "Decoded type should match");
+        assertEq(decodedSubstrate.substrateAddress, testAddress, "Decoded address should match");
+    }
+
+    function test_shouldHandleAllSubstrateTypes() public {
+        // given
+        address testAddress = address(0x1111111111111111111111111111111111111111);
+        AerodromeSubstrateType[] memory types = new AerodromeSubstrateType[](3);
+        types[0] = AerodromeSubstrateType.UNDEFINED;
+        types[1] = AerodromeSubstrateType.Gauge;
+        types[2] = AerodromeSubstrateType.Pool;
+
+        for (uint256 i = 0; i < types.length; i++) {
+            AerodromeSubstrate memory originalSubstrate = AerodromeSubstrate({
+                substrateType: types[i],
+                substrateAddress: testAddress
+            });
+
+            // when
+            bytes32 encodedSubstrate = AerodromeSubstrateLib.substrateToBytes32(originalSubstrate);
+            AerodromeSubstrate memory decodedSubstrate = AerodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+
+            // then
+            assertEq(
+                uint256(decodedSubstrate.substrateType),
+                uint256(originalSubstrate.substrateType),
+                "Substrate type should match for all types"
+            );
+            assertEq(
+                decodedSubstrate.substrateAddress,
+                originalSubstrate.substrateAddress,
+                "Substrate address should match for all types"
+            );
+        }
+    }
+
+    function test_shouldRoundTripMultipleAddresses() public {
+        // given
+        address[] memory testAddresses = new address[](5);
+        testAddresses[0] = address(0x1000000000000000000000000000000000000000);
+        testAddresses[1] = address(0x2000000000000000000000000000000000000000);
+        testAddresses[2] = address(0x3000000000000000000000000000000000000000);
+        testAddresses[3] = address(0x4000000000000000000000000000000000000000);
+        testAddresses[4] = address(0x5000000000000000000000000000000000000000);
+
+        for (uint256 i = 0; i < testAddresses.length; i++) {
+            AerodromeSubstrate memory originalSubstrate = AerodromeSubstrate({
+                substrateType: AerodromeSubstrateType.Gauge,
+                substrateAddress: testAddresses[i]
+            });
+
+            // when
+            bytes32 encodedSubstrate = AerodromeSubstrateLib.substrateToBytes32(originalSubstrate);
+            AerodromeSubstrate memory decodedSubstrate = AerodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+
+            // then
+            assertEq(
+                uint256(decodedSubstrate.substrateType),
+                uint256(originalSubstrate.substrateType),
+                "Substrate type should match for all addresses"
+            );
+            assertEq(
+                decodedSubstrate.substrateAddress,
+                originalSubstrate.substrateAddress,
+                "Substrate address should match for all addresses"
+            );
+        }
     }
 }

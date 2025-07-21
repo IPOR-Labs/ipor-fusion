@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IGauge} from "../../fuses/aerodrome/ext/IGauge.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "../../fuses/aerodrome/AreodrimeLib.sol";
 
 /// @title AerodromeGaugeClaimFuse
 /// @notice This contract handles the claiming of rewards from Aerodrome gauges.
@@ -60,7 +61,14 @@ contract AerodromeGaugeClaimFuse {
     /// @param rewardsClaimManager_ The rewards claim manager address
     function _claim(address gauge_, address rewardsClaimManager_) internal {
         // Check if the gauge is supported by the vault configuration
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, gauge_)) {
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                AerodromeSubstrateLib.substrateToBytes32(
+                    AerodromeSubstrate({substrateAddress: gauge_, substrateType: AerodromeSubstrateType.Gauge})
+                )
+            )
+        ) {
             revert AerodromeGaugeClaimFuseUnsupportedGauge(gauge_);
         }
 

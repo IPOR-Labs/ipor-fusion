@@ -11,6 +11,7 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPool} from "./ext/IPool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IGauge} from "./ext/IGauge.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodrimeLib.sol";
 
 contract AerodromeBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
@@ -37,17 +38,19 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         address pool;
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         uint256 liquidity;
-        address substrate;
+        AerodromeSubstrate memory substrate;
 
         for (uint256 i; i < len; ++i) {
-            substrate = PlasmaVaultConfigLib.bytes32ToAddress(pools[i]);
+            substrate = AerodromeSubstrateLib.bytes32ToSubstrate(pools[i]);
 
-            try IGauge(substrate).stakingToken() returns (address stakingToken) {
-                pool = stakingToken;
-                liquidity = IERC20(substrate).balanceOf(address(this));
-            } catch {
-                pool = substrate;
+            if (substrate.substrateType == AerodromeSubstrateType.Gauge) {
+                pool = IGauge(substrate.substrateAddress).stakingToken();
+                liquidity = IERC20(substrate.substrateAddress).balanceOf(address(this));
+            } else if (substrate.substrateType == AerodromeSubstrateType.Pool) {
+                pool = substrate.substrateAddress;
                 liquidity = IERC20(pool).balanceOf(address(this));
+            } else {
+                continue;
             }
 
             if (liquidity > 0) {
@@ -134,5 +137,21 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         }
 
         return balanceInUsd;
+    }
+
+    function substratesToBytes32(AerodromeSubstrate[] memory substrates) private pure returns (bytes32[] memory) {
+        bytes32[] memory bytes32Substrates = new bytes32[](substrates.length);
+        for (uint256 i; i < substrates.length; ++i) {
+            bytes32Substrates[i] = AerodromeSubstrateLib.substrateToBytes32(substrates[i]);
+        }
+        return bytes32Substrates;
+    }
+
+    function bytes32ToSubstrate(bytes32[] memory bytes32Substrates) private pure returns (AerodromeSubstrate[] memory) {
+        AerodromeSubstrate[] memory substrates = new AerodromeSubstrate[](bytes32Substrates.length);
+        for (uint256 i; i < bytes32Substrates.length; ++i) {
+            substrates[i] = AerodromeSubstrateLib.bytes32ToSubstrate(bytes32Substrates[i]);
+        }
+        return substrates;
     }
 }
