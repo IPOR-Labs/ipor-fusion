@@ -83,6 +83,8 @@ library IporFusionMarkets {
     /// @dev Liquity V2 market
     uint256 public constant LIQUITY_V2 = 29;
 
+    uint256 public constant AERODROME = 30;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
