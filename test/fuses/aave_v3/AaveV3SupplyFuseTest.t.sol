@@ -71,6 +71,50 @@ contract AaveV3SupplyFuseTest is Test {
         );
     }
 
+    function testShouldBeAbleToSupplyAaveV3EvenIfBalanceIsNotEnough() external iterateSupportedTokens {
+        // given
+        AaveV3SupplyFuse fuse = new AaveV3SupplyFuse(1, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
+        PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(0x0));
+
+        uint256 decimals = ERC20(activeTokens.asset).decimals();
+        uint256 amount = 100 * 10 ** decimals;
+        uint256 supplyAmount = 99 * 10 ** decimals;
+
+        _supplyTokensToMockVault(activeTokens.asset, address(vaultMock), supplyAmount);
+
+        uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
+
+        address[] memory assets = new address[](1);
+        assets[0] = activeTokens.asset;
+        vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
+
+        // when
+        vaultMock.enterAaveV3Supply(
+            AaveV3SupplyFuseEnterData({asset: activeTokens.asset, amount: amount, userEModeCategoryId: uint256(300)})
+        );
+
+        // then
+        uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(vaultMock));
+
+        (
+            address aTokenAddress,
+            address stableDebtTokenAddress,
+            address variableDebtTokenAddress
+        ) = AAVE_POOL_DATA_PROVIDER.getReserveTokensAddresses(activeTokens.asset);
+
+        assertEq(balanceAfter, 0, "all assets should be supplied");
+        assertTrue(
+            ERC20(aTokenAddress).balanceOf(address(vaultMock)) >= supplyAmount,
+            "aToken balance should be increased by supplyAmount"
+        );
+        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken balance should be 0");
+        assertEq(
+            ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)),
+            0,
+            "variableDebtToken balance should be 0"
+        );
+    }
+
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
         uint256 dustOnAToken = 10;
