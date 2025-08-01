@@ -11,6 +11,8 @@ on:
                 required: true
             TAC_PROVIDER_URL:
                 required: true
+            INK_PROVIDER_URL:
+                required: true
 
         inputs:
             node-version:
