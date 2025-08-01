@@ -9,6 +9,7 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {IporMath} from "../libraries/math/IporMath.sol";
 import {IPlasmaVault, FuseAction} from "../interfaces/IPlasmaVault.sol";
@@ -318,6 +319,15 @@ contract PlasmaVault is
         } else {
             return PLASMA_VAULT_BASE.functionDelegateCall(msg.data);
         }
+    }
+
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 
     /// @notice Executes a sequence of protocol interactions through fuse contracts
