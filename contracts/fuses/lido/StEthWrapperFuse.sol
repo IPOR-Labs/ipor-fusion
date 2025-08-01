@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IWstETH} from "./ext/IWstETH.sol";
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @dev Fuse for Lido protocol responsible for wrapping and unwrapping stETH
 contract StEthWrapperFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
-    address public constant stETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
-    address public constant wstETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+    address public constant ST_ETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+    address public constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -40,13 +40,13 @@ contract StEthWrapperFuse is IFuseCommon {
         }
         _validateSubstrates("enter");
 
-        uint256 finalAmount = IporMath.min(ERC20(stETH).balanceOf(address(this)), stEthAmount);
+        uint256 finalAmount = IporMath.min(ERC20(ST_ETH).balanceOf(address(this)), stEthAmount);
 
-        ERC20(stETH).forceApprove(address(wstETH), finalAmount);
+        ERC20(ST_ETH).forceApprove(address(WST_ETH), finalAmount);
 
-        uint256 wstEthAmount = IWstETH(wstETH).wrap(finalAmount);
+        uint256 wstEthAmount = IWstETH(WST_ETH).wrap(finalAmount);
 
-        ERC20(stETH).forceApprove(address(wstETH), 0);
+        ERC20(ST_ETH).forceApprove(address(WST_ETH), 0);
 
         emit StEthWrapperFuseEnter(VERSION, finalAmount, wstEthAmount);
     }
@@ -57,9 +57,9 @@ contract StEthWrapperFuse is IFuseCommon {
         }
         _validateSubstrates("exit");
 
-        uint256 finalAmount = IporMath.min(ERC20(wstETH).balanceOf(address(this)), wstEthAmount);
+        uint256 finalAmount = IporMath.min(ERC20(WST_ETH).balanceOf(address(this)), wstEthAmount);
 
-        uint256 stEthAmount = IWstETH(wstETH).unwrap(finalAmount);
+        uint256 stEthAmount = IWstETH(WST_ETH).unwrap(finalAmount);
 
         emit StEthWrapperFuseExit(VERSION, finalAmount, stEthAmount);
     }
@@ -67,11 +67,11 @@ contract StEthWrapperFuse is IFuseCommon {
     function _validateSubstrates(string memory action) internal {
         address underlyingAsset = IERC4626(address(this)).asset();
 
-        if (underlyingAsset != stETH && !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, stETH)) {
-            revert StEthWrapperFuseUnsupportedAsset(action, stETH);
+        if (underlyingAsset != ST_ETH && !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, ST_ETH)) {
+            revert StEthWrapperFuseUnsupportedAsset(action, ST_ETH);
         }
-        if (underlyingAsset != wstETH && !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, wstETH)) {
-            revert StEthWrapperFuseUnsupportedAsset(action, wstETH);
+        if (underlyingAsset != WST_ETH && !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, WST_ETH)) {
+            revert StEthWrapperFuseUnsupportedAsset(action, WST_ETH);
         }
     }
 }

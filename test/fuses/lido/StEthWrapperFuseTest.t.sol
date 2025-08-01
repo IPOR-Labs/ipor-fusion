@@ -213,7 +213,7 @@ contract StEthWrapperFuseTest is Test {
     //********************                              TESTS                                       ********************
     //******************************************************************************************************************
 
-    function testShouldBeAbleToWrap() external {
+    function testShouldBeAbleWrap() external {
         // given
         uint256 stEthToWrap = 50e18;
 
@@ -244,7 +244,7 @@ contract StEthWrapperFuseTest is Test {
         assertApproxEqAbs(plasmaVaultBalanceAfter, 50e18, _errorDelta, "stETH balance before should be 50");
     }
 
-    function testShouldBeAbleSmallerAmountThanRequested() external {
+    function testShouldBeAbleWrapSmallerAmountThanRequested() external {
         // given
         uint256 stEthToWrap = 101e18;
 
@@ -275,7 +275,7 @@ contract StEthWrapperFuseTest is Test {
         assertApproxEqAbs(plasmaVaultBalanceAfter, 0, _errorDelta, "stETH balance before should be 50");
     }
 
-    function testShouldBeAbleToUnwrap() external {
+    function testShouldBeAbleUnwrap() external {
         // given
         uint256 stEthToWrap = 50e18;
 
@@ -308,6 +308,54 @@ contract StEthWrapperFuseTest is Test {
         exitCalls[0] = FuseAction({
             fuse: _stEthWrapperFuse,
             data: abi.encodeWithSignature("exit(uint256)", wstEthBalanceAfter)
+        });
+
+        //when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(exitCalls);
+        vm.stopPrank();
+
+        //then
+        wstEthBalanceAfter = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        plasmaVaultBalanceAfter = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        assertApproxEqAbs(wstEthBalanceAfter, 0, _errorDelta, "invalid wstETH balance");
+        assertApproxEqAbs(plasmaVaultBalanceAfter, 100e18, _errorDelta, "stETH balance before should be 50");
+    }
+
+    function testShouldBeAbleUnwrapSmallerAmountThanRequested() external {
+        // given
+        uint256 stEthToWrap = 50e18;
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+
+        enterCalls[0] = FuseAction({
+            fuse: _stEthWrapperFuse,
+            data: abi.encodeWithSignature("enter(uint256)", stEthToWrap)
+        });
+
+        uint256 wstEthBalanceBefore = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceBefore = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 expectedWstEthAmount = IWstETH(_wstETH_ADDRESS).getWstETHByStETH(stEthToWrap);
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        uint256 wstEthBalanceAfter = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceAfter = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        assertEq(wstEthBalanceBefore, 0, "wstETH balance before should be 0");
+        assertApproxEqAbs(plasmaVaultBalanceBefore, 100e18, _errorDelta, "stETH balance before should be 100");
+        assertApproxEqAbs(wstEthBalanceAfter, expectedWstEthAmount, _errorDelta, "invalid wstETH balance");
+        assertApproxEqAbs(plasmaVaultBalanceAfter, 50e18, _errorDelta, "stETH balance before should be 50");
+
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+
+        exitCalls[0] = FuseAction({
+            fuse: _stEthWrapperFuse,
+            data: abi.encodeWithSignature("exit(uint256)", wstEthBalanceAfter + 10e18)
         });
 
         //when
