@@ -8,6 +8,87 @@ interface ILeafCLGauge {
     /// @notice NonfungiblePositionManager used to create nfts this gauge accepts
     function nft() external view returns (INonfungiblePositionManager);
 
+    /// @notice Address of Velodrome v2 Bridge
+    function bridge() external view returns (address);
+
+    /// @notice Address of the CL pool linked to the gauge
+    function pool() external view returns (ICLPool);
+
+    /// @notice Address of the FeesVotingReward contract linked to the gauge
+    function feesVotingReward() external view returns (address);
+
+    /// @notice Timestamp end of current rewards period
+    function periodFinish() external view returns (uint256);
+
+    /// @notice Current reward rate of rewardToken to distribute per second
+    function rewardRate() external view returns (uint256);
+
+    /// @notice Claimable rewards by tokenId
+    function rewards(uint256 tokenId) external view returns (uint256);
+
+    /// @notice Most recent timestamp tokenId called updateRewards
+    function lastUpdateTime(uint256 tokenId) external view returns (uint256);
+
+    /// @notice View to see the rewardRate given the timestamp of the start of the epoch
+    function rewardRateByEpoch(uint256) external view returns (uint256);
+
+    /// @notice Cached amount of fees generated from the Pool linked to the Gauge of token0
+    function fees0() external view returns (uint256);
+
+    /// @notice Cached amount of fees generated from the Pool linked to the Gauge of token1
+    function fees1() external view returns (uint256);
+
+    /// @notice Cached address of token0, corresponding to token0 of the pool
+    function token0() external view returns (address);
+
+    /// @notice Cached address of token1, corresponding to token1 of the pool
+    function token1() external view returns (address);
+
+    /// @notice Cached tick spacing of the pool.
+    function tickSpacing() external view returns (int24);
+
+    /// @notice Total amount of rewardToken to distribute for the current rewards period
+    function left() external view returns (uint256 _left);
+
+    /// @notice Address of the emissions token
+    function rewardToken() external view returns (address);
+
+    /// @notice To provide compatibility support with the old voter
+    function isPool() external view returns (bool);
+
+    /// @notice Returns the rewardGrowthInside of the position at the last user action (deposit, withdraw, getReward)
+    /// @param tokenId The tokenId of the position
+    /// @return The rewardGrowthInside for the position
+    function rewardGrowthInside(uint256 tokenId) external view returns (uint256);
+
+    /// @notice Returns the claimable rewards for a given account and tokenId
+    /// @dev Throws if account is not the position owner
+    /// @dev pool.updateRewardsGrowthGlobal() needs to be called first, to return the correct claimable rewards
+    /// @param account The address of the user
+    /// @param tokenId The tokenId of the position
+    /// @return The amount of claimable reward
+    function earned(address account, uint256 tokenId) external view returns (uint256);
+
+    /// @notice Retrieve rewards for all tokens owned by an account
+    /// @dev Throws if not called by the voter
+    /// @param account The account of the user
+    function getReward(address account) external;
+
+    /// @notice Retrieve rewards for a tokenId
+    /// @dev Throws if not called by the position owner
+    /// @param tokenId The tokenId of the position
+    function getReward(uint256 tokenId) external;
+
+    /// @notice Notifies gauge of gauge rewards.
+    /// @param amount Amount of gauge rewards (emissions) to notify. Must be greater than 604_800.
+    function notifyRewardAmount(uint256 amount) external;
+
+    /// @dev Notifies gauge of gauge rewards without distributing its fees.
+    ///      Assumes gauge reward tokens is 18 decimals.
+    ///      If not 18 decimals, rewardRate may have rounding issues.
+    /// @param amount Amount of gauge rewards (emissions) to notify. Must be greater than 604_800.
+    function notifyRewardWithoutClaim(uint256 amount) external;
+
     /// @notice Used to deposit a CL position into the gauge
     /// @notice Allows the user to receive emissions instead of fees
     /// @param tokenId The tokenId of the position
@@ -24,12 +105,20 @@ interface ILeafCLGauge {
     /// @return The tokenIds of the staked positions
     function stakedValues(address depositor) external view returns (uint256[] memory);
 
-    /// @notice Cached address of token0, corresponding to token0 of the pool
-    function token0() external view returns (address);
+    /// @notice Fetch a staked tokenId by index
+    /// @param depositor The address of the user
+    /// @param index The index of the staked tokenId
+    /// @return The tokenId of the staked position
+    function stakedByIndex(address depositor, uint256 index) external view returns (uint256);
 
-    /// @notice Cached address of token1, corresponding to token1 of the pool
-    function token1() external view returns (address);
+    /// @notice Check whether a position is staked in the gauge by a certain user
+    /// @param depositor The address of the user
+    /// @param tokenId The tokenId of the position
+    /// @return Whether the position is staked in the gauge
+    function stakedContains(address depositor, uint256 tokenId) external view returns (bool);
 
-    /// @notice Address of the CL pool linked to the gauge
-    function pool() external view returns (ICLPool);
+    /// @notice The amount of positions staked in the gauge by a certain user
+    /// @param depositor The address of the user
+    /// @return The amount of positions staked in the gauge
+    function stakedLength(address depositor) external view returns (uint256);
 }

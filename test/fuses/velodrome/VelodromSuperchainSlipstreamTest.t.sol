@@ -32,6 +32,8 @@ import {INonfungiblePositionManager} from "../../../contracts/fuses/velodrome_su
 import {ILeafCLGauge} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/ILeafCLGauge.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
+import {VelodromSuperchainSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromSuperchainSlipstreamGaugeClaimFuse.sol";
+import {ILeafGauge} from "../../../contracts/fuses/velodrome_superchain/ext/ILeafGauge.sol";
 import {console2} from "forge-std/console2.sol";
 
 /// @title VelodromSuperchainSlipstreamTest
@@ -64,12 +66,14 @@ contract VelodromSuperchainSlipstreamTest is Test {
     PlasmaVaultGovernance private _plasmaVaultGovernance;
     PriceOracleMiddlewareManager private _priceOracleMiddleware;
     IporFusionAccessManager private _accessManager;
+    RewardsClaimManager private _rewardsClaimManager;
 
     VelodromSuperchainSlipstreamNewPositionFuse private _velodromSuperchainSlipstreamNewPositionFuse;
     VelodromSuperchainSlipstreamModifyPositionFuse private _velodromSuperchainSlipstreamModifyPositionFuse;
     VelodromSuperchainSlipstreamLeafCLGauge private _velodromSuperchainSlipstreamLeafCLGauge;
     VelodromSuperchainSlipstreamCollectFuse private _velodromSuperchainSlipstreamCollectFuse;
     VelodromSuperchainSlipstreamBalance private _velodromSuperchainSlipstreamBalance;
+    VelodromSuperchainSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
 
     function setUp() public {
         // Fork Base network
@@ -99,6 +103,7 @@ contract VelodromSuperchainSlipstreamTest is Test {
         _priceOracleMiddleware = PriceOracleMiddlewareManager(fusionInstance.priceManager);
         _accessManager = IporFusionAccessManager(fusionInstance.accessManager);
         _plasmaVaultGovernance = PlasmaVaultGovernance(fusionInstance.plasmaVault);
+        _rewardsClaimManager = RewardsClaimManager(fusionInstance.rewardsManager);
 
         vm.startPrank(_ATOMIST);
         _accessManager.grantRole(Roles.ATOMIST_ROLE, _ATOMIST, 0);
@@ -136,6 +141,10 @@ contract VelodromSuperchainSlipstreamTest is Test {
             _SLIPSTREAM_SUPERCHAIN_VAULT
         );
 
+        _velodromeGaugeClaimFuse = new VelodromSuperchainSlipstreamGaugeClaimFuse(
+            IporFusionMarkets.VELODROME_SUPERCHAIN
+        );
+
         // Setup fuses
         address[] memory fuses = new address[](4);
         fuses[0] = address(_velodromSuperchainSlipstreamNewPositionFuse);
@@ -143,8 +152,12 @@ contract VelodromSuperchainSlipstreamTest is Test {
         fuses[2] = address(_velodromSuperchainSlipstreamLeafCLGauge);
         fuses[3] = address(_velodromSuperchainSlipstreamCollectFuse);
 
+        address[] memory rewardFuses = new address[](1);
+        rewardFuses[0] = address(_velodromeGaugeClaimFuse);
+
         vm.startPrank(_FUSE_MANAGER);
         _plasmaVaultGovernance.addFuses(fuses);
+        _rewardsClaimManager.addRewardFuses(rewardFuses);
 
         _plasmaVaultGovernance.addBalanceFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN,
@@ -155,6 +168,7 @@ contract VelodromSuperchainSlipstreamTest is Test {
             IporFusionMarkets.ERC20_VAULT_BALANCE,
             address(new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE))
         );
+
         vm.stopPrank();
 
         // Setup market substrates
@@ -541,5 +555,32 @@ contract VelodromSuperchainSlipstreamTest is Test {
         );
 
         assertEq(tokenIdsBefore.length + 1, tokenIdsAfter.length, "tokenIdsBefore should be equal to tokenIdsAfter");
+    }
+
+    function test_shouldClaimRewardsFromGauge() public {
+        test_shouldStakeToGauge();
+
+        vm.warp(block.timestamp + 3 days);
+
+        address[] memory gauges = new address[](1);
+        gauges[0] = _VELODROME_GAUGE;
+
+        FuseAction[] memory claimCalls = new FuseAction[](1);
+        claimCalls[0] = FuseAction(
+            address(_velodromeGaugeClaimFuse),
+            abi.encodeWithSignature("claim(address[])", gauges)
+        );
+        address rewardToken = ILeafGauge(_VELODROME_GAUGE).rewardToken();
+        uint256 balanceBefore = IERC20(rewardToken).balanceOf(address(_rewardsClaimManager));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _rewardsClaimManager.claimRewards(claimCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 balanceAfter = IERC20(rewardToken).balanceOf(address(_rewardsClaimManager));
+
+        assertGt(balanceAfter, balanceBefore, "balanceAfter should be greater than balanceBefore");
     }
 }

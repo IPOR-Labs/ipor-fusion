@@ -93,4 +93,9 @@ interface ILeafGauge {
     ///      If not 18 decimals, rewardRate may have rounding issues.
     /// @param amount Amount of rewards to be deposited into gauge
     function notifyRewardWithoutClaim(uint256 amount) external;
+
+    /// @notice Retrieve rewards for a tokenId
+    /// @dev Throws if not called by the position owner
+    /// @param tokenId The tokenId of the position
+    function getReward(uint256 tokenId) external;
 }
