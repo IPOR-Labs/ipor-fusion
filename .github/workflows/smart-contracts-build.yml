@@ -133,6 +133,7 @@ jobs:
                   ARBITRUM_PROVIDER_URL: ${{ secrets.ARBITRUM_PROVIDER_URL }}
                   BASE_PROVIDER_URL: ${{ secrets.BASE_PROVIDER_URL }}
                   TAC_PROVIDER_URL: ${{ secrets.TAC_PROVIDER_URL }}
+                  INK_PROVIDER_URL: ${{ secrets.INK_PROVIDER_URL }}
               run: |
                   forge test ${{ inputs.test-options }} -vvv --ffi
               id: test

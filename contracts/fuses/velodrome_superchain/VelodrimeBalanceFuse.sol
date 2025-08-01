@@ -39,6 +39,7 @@ contract VelodromeBalanceFuse is IMarketBalanceFuse {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         uint256 liquidity;
         VelodromeSubstrate memory substrate;
+
         for (uint256 i; i < len; ++i) {
             substrate = VelodromeSubstrateLib.bytes32ToSubstrate(pools[i]);
 
