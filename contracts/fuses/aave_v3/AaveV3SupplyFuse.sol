@@ -70,15 +70,17 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         IPool aavePool = IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool());
 
-        ERC20(data_.asset).forceApprove(address(aavePool), data_.amount);
+        uint256 finalAmount = IporMath.min(ERC20(data_.asset).balanceOf(address(this)), data_.amount);
 
-        aavePool.supply(data_.asset, data_.amount, address(this), 0);
+        ERC20(data_.asset).forceApprove(address(aavePool), finalAmount);
+
+        aavePool.supply(data_.asset, finalAmount, address(this), 0);
 
         if (data_.userEModeCategoryId <= type(uint8).max) {
             aavePool.setUserEMode(data_.userEModeCategoryId.toUint8());
         }
 
-        emit AaveV3SupplyFuseEnter(VERSION, data_.asset, data_.amount, data_.userEModeCategoryId);
+        emit AaveV3SupplyFuseEnter(VERSION, data_.asset, finalAmount, data_.userEModeCategoryId);
     }
 
     function exit(AaveV3SupplyFuseExitData calldata data_) external {
