@@ -18,7 +18,7 @@ string constant FUSE_METADATA_AUDIT_STATUS_AUDITED_NAME = "Audited";
 uint16 constant FUSE_METADATA_SUBSTRATE_INFO = 1;
 string constant FUSE_METADATA_SUBSTRATE_INFO_NAME = "Substrate_Info";
 
-///@dev (0-deposit, 1-balance, 2-dex, 3-perp, 4-borrow, 5-rewards)
+///@dev (0-deposit, 1-balance, 2-dex, 3-perp, 4-borrow, 5-rewards, 6-collateral, 7-flashloan)
 uint16 constant FUSE_METADATA_CATEGORY_INFO = 2;
 string constant FUSE_METADATA_CATEGORY_INFO_NAME = "Category_Info";
 
@@ -28,6 +28,8 @@ uint16 constant FUSE_METADATA_CATEGORY_INFO_DEX = 2;
 uint16 constant FUSE_METADATA_CATEGORY_INFO_PERPETUAL = 3;
 uint16 constant FUSE_METADATA_CATEGORY_INFO_BORROW = 4;
 uint16 constant FUSE_METADATA_CATEGORY_INFO_REWARDS = 5;
+uint16 constant FUSE_METADATA_CATEGORY_INFO_COLLATERAL = 6;
+uint16 constant FUSE_METADATA_CATEGORY_INFO_FLASHLOAN = 7;
 
 string constant FUSE_METADATA_CATEGORY_INFO_DEPOSIT_NAME = "Deposit";
 string constant FUSE_METADATA_CATEGORY_INFO_BALANCE_NAME = "Balance";
@@ -35,6 +37,8 @@ string constant FUSE_METADATA_CATEGORY_INFO_DEX_NAME = "DEX";
 string constant FUSE_METADATA_CATEGORY_INFO_PERPETUAL_NAME = "Perpetual";
 string constant FUSE_METADATA_CATEGORY_INFO_BORROW_NAME = "Borrow";
 string constant FUSE_METADATA_CATEGORY_INFO_REWARDS_NAME = "Rewards";
+string constant FUSE_METADATA_CATEGORY_INFO_COLLATERAL_NAME = "Collateral";
+string constant FUSE_METADATA_CATEGORY_INFO_FLASHLOAN_NAME = "FlashLoan";
 
 ///@dev (0-v1, 1-v2)
 uint16 constant FUSE_METADATA_ABI_VERSION = 3;
