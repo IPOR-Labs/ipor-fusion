@@ -161,29 +161,6 @@ library FuseStorageLib {
      * - Parallel structure to Uniswap V3 position tracking
      */
     bytes32 private constant RAMSES_V2_TOKEN_IDS = 0x1a3831a406f27d4d5d820158b29ce95a1e8e840bf416921917aa388e2461b700;
-
-    /**
-     * @dev Storage slot for managing Velodrom Superchain Slipstream NFT position token IDs in the Plasma Vault
-     * @notice Tracks and manages Velodrom Superchain Slipstream LP positions held by the vault
-     *
-     * Calculation:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.VelodromSuperchainSlipstreamTokenIds")) - 1)) & ~bytes32(uint256(0xff))
-     *
-     * Purpose:
-     * - Tracks all Velodrom Superchain Slipstream NFT positions owned by the vault
-     * - Enables efficient position management and lookup
-     * - Supports concentrated liquidity position tracking
-     * - Mirrors Uniswap V3-style position management for Velodrome
-     *
-     * Storage Layout:
-     * - Points to VelodromSuperchainSlipstreamTokenIds struct containing:
-     *   - tokenIds: uint256[] array of Velodrom Superchain Slipstream NFT position IDs
-     *   - indexes: mapping(uint256 tokenId => uint256 index) for position lookup
-     *     - Maps each token ID to its index in the tokenIds array
-     **/
-    bytes32 private constant VELODROM_SUPERCHAIN_SLIPSTREAM_TOKEN_IDS =
-        0x87ddd0fd0fbd76fbba3db2c9f52f6e7785cc60b81a7c1c7a4e12be3b88942400;
-
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
         /// @dev fuse address => If index = 0 - is not granted, otherwise - granted
@@ -204,12 +181,6 @@ library FuseStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.RamsesV2TokenIds
     struct RamsesV2TokenIds {
-        uint256[] tokenIds;
-        mapping(uint256 tokenId => uint256 index) indexes;
-    }
-
-    /// @custom:storage-location erc7201:io.ipor.VelodromSuperchainSlipstreamTokenIds
-    struct VelodromSuperchainSlipstreamTokenIds {
         uint256[] tokenIds;
         mapping(uint256 tokenId => uint256 index) indexes;
     }
@@ -239,17 +210,6 @@ library FuseStorageLib {
     function getRamsesV2TokenIds() internal pure returns (RamsesV2TokenIds storage ramsesV2TokenIds) {
         assembly {
             ramsesV2TokenIds.slot := RAMSES_V2_TOKEN_IDS
-        }
-    }
-
-    /// @notice Gets the VelodromSuperchainSlipstreamTokenIds storage pointer
-    function getVelodromSuperchainSlipstreamTokenIds()
-        internal
-        pure
-        returns (VelodromSuperchainSlipstreamTokenIds storage velodromSuperchainSlipstreamTokenIds)
-    {
-        assembly {
-            velodromSuperchainSlipstreamTokenIds.slot := VELODROM_SUPERCHAIN_SLIPSTREAM_TOKEN_IDS
         }
     }
 }

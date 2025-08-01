@@ -122,11 +122,6 @@ contract VelodromSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
-        FuseStorageLib.VelodromSuperchainSlipstreamTokenIds storage tokensIds = FuseStorageLib
-            .getVelodromSuperchainSlipstreamTokenIds();
-        tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
-        tokensIds.tokenIds.push(tokenId);
-
         emit VelodromSuperchainSlipstreamNewPositionFuseEnter(
             VERSION,
             tokenId,
@@ -142,20 +137,10 @@ contract VelodromSuperchainSlipstreamNewPositionFuse is IFuseCommon {
     }
 
     function exit(VelodromSuperchainSlipstreamNewPositionFuseExitData calldata closePositions) public {
-        FuseStorageLib.VelodromSuperchainSlipstreamTokenIds storage tokensIds = FuseStorageLib
-            .getVelodromSuperchainSlipstreamTokenIds();
-
-        uint256 len = tokensIds.tokenIds.length;
-        uint256 tokenIndex;
+        uint256 len = closePositions.tokenIds.length;
 
         for (uint256 i; i < len; i++) {
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
-
-            tokenIndex = tokensIds.indexes[closePositions.tokenIds[i]];
-            if (tokenIndex != len - 1) {
-                tokensIds.tokenIds[tokenIndex] = tokensIds.tokenIds[len - 1];
-            }
-            tokensIds.tokenIds.pop();
 
             emit VelodromSuperchainSlipstreamNewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
         }

@@ -8,6 +8,16 @@ import {VelodromSuperchainSlipstreamSubstrateLib, VelodromSuperchainSlipstreamSu
 import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
+struct VelodromSuperchainSlipstreamLeafCLGaugeEnterData {
+    address gaugeAddress;
+    uint256 tokenId;
+}
+
+struct VelodromSuperchainSlipstreamLeafCLGaugeExitData {
+    address gaugeAddress;
+    uint256 tokenId;
+}
+
 contract VelodromSuperchainSlipstreamLeafCLGauge is IFuseCommon {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -22,65 +32,49 @@ contract VelodromSuperchainSlipstreamLeafCLGauge is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(address gaugeAddress, uint256 tokenId) external {
+    function enter(VelodromSuperchainSlipstreamLeafCLGaugeEnterData calldata data) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 VelodromSuperchainSlipstreamSubstrateLib.substrateToBytes32(
                     VelodromSuperchainSlipstreamSubstrate({
                         substrateType: VelodromSuperchainSlipstreamSubstrateType.Gauge,
-                        substrateAddress: gaugeAddress
+                        substrateAddress: data.gaugeAddress
                     })
                 )
             )
         ) {
-            revert VelodromSuperchainSlipstreamLeafCLGaugeUnsupportedGauge(gaugeAddress);
+            revert VelodromSuperchainSlipstreamLeafCLGaugeUnsupportedGauge(data.gaugeAddress);
         }
 
-        if (tokenId == 0) {
+        if (data.tokenId == 0) {
             return;
         }
 
-        INonfungiblePositionManager(ILeafCLGauge(gaugeAddress).nft()).approve(gaugeAddress, tokenId);
+        INonfungiblePositionManager(ILeafCLGauge(data.gaugeAddress).nft()).approve(data.gaugeAddress, data.tokenId);
 
-        ILeafCLGauge(gaugeAddress).deposit(tokenId);
+        ILeafCLGauge(data.gaugeAddress).deposit(data.tokenId);
 
-        FuseStorageLib.VelodromSuperchainSlipstreamTokenIds storage tokensIds = FuseStorageLib
-            .getVelodromSuperchainSlipstreamTokenIds();
-
-        uint256 tokenIndex = tokensIds.indexes[tokenId];
-        uint256 len = tokensIds.tokenIds.length;
-
-        if (tokenIndex != len - 1) {
-            tokensIds.tokenIds[tokenIndex] = tokensIds.tokenIds[len - 1];
-        }
-        tokensIds.tokenIds.pop();
-
-        emit VelodromSuperchainSlipstreamLeafCLGaugeEnter(gaugeAddress, tokenId);
+        emit VelodromSuperchainSlipstreamLeafCLGaugeEnter(data.gaugeAddress, data.tokenId);
     }
 
-    function exit(address gaugeAddress, uint256 tokenId) external {
+    function exit(VelodromSuperchainSlipstreamLeafCLGaugeExitData calldata data) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 VelodromSuperchainSlipstreamSubstrateLib.substrateToBytes32(
                     VelodromSuperchainSlipstreamSubstrate({
                         substrateType: VelodromSuperchainSlipstreamSubstrateType.Gauge,
-                        substrateAddress: gaugeAddress
+                        substrateAddress: data.gaugeAddress
                     })
                 )
             )
         ) {
-            revert VelodromSuperchainSlipstreamLeafCLGaugeUnsupportedGauge(gaugeAddress);
+            revert VelodromSuperchainSlipstreamLeafCLGaugeUnsupportedGauge(data.gaugeAddress);
         }
 
-        ILeafCLGauge(gaugeAddress).withdraw(tokenId);
+        ILeafCLGauge(data.gaugeAddress).withdraw(data.tokenId);
 
-        FuseStorageLib.VelodromSuperchainSlipstreamTokenIds storage tokensIds = FuseStorageLib
-            .getVelodromSuperchainSlipstreamTokenIds();
-        tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
-        tokensIds.tokenIds.push(tokenId);
-
-        emit VelodromSuperchainSlipstreamLeafCLGaugeExit(gaugeAddress, tokenId);
+        emit VelodromSuperchainSlipstreamLeafCLGaugeExit(data.gaugeAddress, data.tokenId);
     }
 }
