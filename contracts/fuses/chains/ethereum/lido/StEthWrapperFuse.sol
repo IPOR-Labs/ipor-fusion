@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
-import {IporMath} from "../../libraries/math/IporMath.sol";
-import {IFuseCommon} from "../IFuseCommon.sol";
+import {PlasmaVaultConfigLib} from "../../../../libraries/PlasmaVaultConfigLib.sol";
+import {Errors} from "../../../../libraries/errors/Errors.sol";
+import {IporMath} from "../../../../libraries/math/IporMath.sol";
+import {IFuseCommon} from "../../../IFuseCommon.sol";
 import {IWstETH} from "./ext/IWstETH.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
