@@ -13,7 +13,6 @@ import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
 import {PtPriceFeed} from "./price_feed/PtPriceFeed.sol";
 import {IporFusionAccessControl} from "./IporFusionAccessControl.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title Price Oracle Middleware
 /// @notice Contract responsible for providing standardized asset price feeds in USD
@@ -144,7 +143,6 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
         ptPriceFeed = new PtPriceFeed(pendleOracle_, pendleMarket_, twapWindow_, address(this), usePendleOracleMethod_);
 
         (, int256 price, , , ) = ptPriceFeed.latestRoundData();
-        console2.log("price", price);
 
         if (price < expextedPriceAfterDeployment_) {
             int256 priceDelta = expextedPriceAfterDeployment_ - price;

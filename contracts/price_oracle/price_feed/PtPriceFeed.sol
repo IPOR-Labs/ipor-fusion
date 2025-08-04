@@ -8,7 +8,6 @@ import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandard
 import {IPPYLpOracle} from "@pendle/core-v2/contracts/interfaces/IPPYLpOracle.sol";
 import {IPriceOracleMiddleware} from "../IPriceOracleMiddleware.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title Price feed for Pendle Principal Tokens (PT)
 /// @notice Provides price data for PT tokens based on Pendle market rates
@@ -84,10 +83,6 @@ contract PtPriceFeed is IPriceFeed {
             pendleOracle_
         ).getOracleState(pendleMarket_, twapWindow_);
 
-        console2.logBool(increaseCardinalityRequired);
-        console2.logBool(oldestObservationSatisfied);
-        console2.log("cardinalityRequired", cardinalityRequired);
-
         if (increaseCardinalityRequired || !oldestObservationSatisfied) {
             revert PriceOraclePendleOracleNotReady();
         }
@@ -114,10 +109,8 @@ contract PtPriceFeed is IPriceFeed {
 
         uint256 unitPrice;
         if (USE_PENDLE_ORACLE_METHOD == 1) {
-            console2.log("getPtToAssetRate");
             unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), twapWindow);
         } else {
-            console2.log("getPtToSyRate");
             unitPrice = PendlePYOracleLib.getPtToSyRate(IPMarket(PENDLE_MARKET), twapWindow);
         }
 
