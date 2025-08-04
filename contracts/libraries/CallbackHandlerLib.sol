@@ -101,6 +101,15 @@ library CallbackHandlerLib {
     }
 
     /**
+     * @notice Returns the callback handler storage for reading operations
+     * @dev Provides access to the callback handler mapping for external readers
+     * @return The CallbackHandler storage struct containing the callback handler mapping
+     */
+    function getCallbackHandlerStorage() internal view returns (PlasmaVaultStorageLib.CallbackHandler storage) {
+        return PlasmaVaultStorageLib.getCallbackHandler();
+    }
+
+    /**
      * @notice Updates or registers a callback handler in the Plasma Vault system
      * @dev Manages the registration and update of protocol-specific callback handlers
      * - Only callable through PlasmaVaultGovernance by ATOMIST_ROLE
