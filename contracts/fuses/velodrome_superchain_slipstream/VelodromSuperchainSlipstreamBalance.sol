@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
+import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
+import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {VelodromSuperchainSlipstreamSubstrateLib, VelodromSuperchainSlipstreamSubstrateType, VelodromSuperchainSlipstreamSubstrate} from "./VelodromSuperchainSlipstreamLib.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 import {ICLPool, Slot0} from "./ext/ICLPool.sol";
 import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";
 import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
-import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {IporMath} from "../../libraries/math/IporMath.sol";
 
 contract VelodromSuperchainSlipstreamBalance is IMarketBalanceFuse {
     uint256 public immutable MARKET_ID;

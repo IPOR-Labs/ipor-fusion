@@ -3,10 +3,10 @@ pragma solidity 0.8.26;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IRouter} from "./ext/IRouter.sol";
-import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
 import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "./VelodrimeLib.sol";
+import {IRouter} from "./ext/IRouter.sol";
 
 struct VelodromeLiquidityFuseEnterData {
     address tokenA;
