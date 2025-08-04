@@ -5,17 +5,12 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddlewareWithRoles} from "../../contracts/price_oracle/PriceOracleMiddlewareWithRoles.sol";
 import {SDaiPriceFeedEthereum} from "../../contracts/price_oracle/price_feed/chains/ethereum/SDaiPriceFeedEthereum.sol";
-import {console2} from "forge-std/console2.sol";
 
 struct TestItem {
     address market;
     int256 price;
     uint256 usePendleOracleMethod;
     uint256 blockNumber;
-}
-
-interface Market {
-    function increaseObservationsCardinalityNext(uint16 cardinalityNext) external;
 }
 contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
     address private constant CHAINLINK_FEED_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
@@ -33,7 +28,7 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
     TestItem private _activeItem;
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22061720);
         PriceOracleMiddlewareWithRoles implementation = new PriceOracleMiddlewareWithRoles(CHAINLINK_FEED_REGISTRY);
 
         priceOracleMiddlewareProxy = PriceOracleMiddlewareWithRoles(
@@ -45,11 +40,6 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
         vm.stopPrank();
     }
     function testShouldCreateAndAddPtTokenPriceFeed() public activeItem {
-        // Market(_activeItem.market).increaseObservationsCardinalityNext(uint16(29));
-        console2.log("blockNumber", block.number);
-
-        vm.warp(block.timestamp + 1000);
-
         vm.startPrank(ADMIN);
         priceOracleMiddlewareProxy.createAndAddPtTokenPriceFeed(
             PENDLE_ORACLE,
@@ -58,44 +48,38 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
             _activeItem.price,
             _activeItem.usePendleOracleMethod
         );
-
-        console2.log("pendleOracle_ :", PENDLE_ORACLE);
-        console2.log("pendleMarket_ :", _activeItem.market);
-        console2.log("twapWindow_ :", uint32(300));
-        console2.log("expextedPriceAfterDeployment_ :", _activeItem.price);
-        console2.log("usePendleOracleMethod_ :", _activeItem.usePendleOracleMethod);
         vm.stopPrank();
     }
 
     function _getTestItems() private view returns (TestItem[] memory testItems) {
-        testItems = new TestItem[](1);
-        // testItems[0] = TestItem({
-        //     market: 0xB162B764044697cf03617C2EFbcB1f42e31E4766,
-        //     price: int256(84102754),
-        //     usePendleOracleMethod: 0,
-        //     blockNumber: 0
-        // }); // MARCKET_SUSDE
-        // testItems[1] = TestItem({
-        //     market: 0x85667e484a32d884010Cf16427D90049CCf46e97,
-        //     price: int256(97221872),
-        //     usePendleOracleMethod: 0,
-        //     blockNumber: 0
-        // }); // https://app.pendle.finance/trade/markets/0x85667e484a32d884010cf16427d90049ccf46e97/swap?view=pt&chain=ethereum&tab=info
-        // testItems[2] = TestItem({
-        //     market: 0xB451A36c8B6b2EAc77AD0737BA732818143A0E25,
-        //     price: int256(99503847),
-        //     usePendleOracleMethod: 0,
-        //     blockNumber: 0
-        // }); // https://app.pendle.finance/trade/markets/0xb451a36c8b6b2eac77ad0737ba732818143a0e25/swap?view=pt&chain=ethereum&tab=info
-        // testItems[3] = TestItem({
-        //     market: 0x353d0B2EFB5B3a7987fB06D30Ad6160522d08426,
-        //     price: int256(99716640),
-        //     usePendleOracleMethod: 1,
-        //     blockNumber: 0
-        // }); // https://app.pendle.finance/trade/markets/0x353d0b2efb5b3a7987fb06d30ad6160522d08426/swap?view=pt&chain=ethereum
+        testItems = new TestItem[](5);
         testItems[0] = TestItem({
-            market: 0xf4C449d6a2D1840625211769779ADA42857d04dD,
-            price: int256(97310188),
+            market: 0xB162B764044697cf03617C2EFbcB1f42e31E4766,
+            price: int256(84102754),
+            usePendleOracleMethod: 0,
+            blockNumber: 0
+        }); // MARCKET_SUSDE
+        testItems[1] = TestItem({
+            market: 0x85667e484a32d884010Cf16427D90049CCf46e97,
+            price: int256(97221872),
+            usePendleOracleMethod: 0,
+            blockNumber: 0
+        }); // https://app.pendle.finance/trade/markets/0x85667e484a32d884010cf16427d90049ccf46e97/swap?view=pt&chain=ethereum&tab=info
+        testItems[2] = TestItem({
+            market: 0xB451A36c8B6b2EAc77AD0737BA732818143A0E25,
+            price: int256(99503847),
+            usePendleOracleMethod: 0,
+            blockNumber: 0
+        }); // https://app.pendle.finance/trade/markets/0xb451a36c8b6b2eac77ad0737ba732818143a0e25/swap?view=pt&chain=ethereum&tab=info
+        testItems[3] = TestItem({
+            market: 0x353d0B2EFB5B3a7987fB06D30Ad6160522d08426,
+            price: int256(99716640),
+            usePendleOracleMethod: 1,
+            blockNumber: 0
+        }); // https://app.pendle.finance/trade/markets/0x353d0b2efb5b3a7987fb06d30ad6160522d08426/swap?view=pt&chain=ethereum
+        testItems[4] = TestItem({
+            market: 0xC374f7eC85F8C7DE3207a10bB1978bA104bdA3B2,
+            price: int256(182040012762),
             usePendleOracleMethod: 1,
             blockNumber: 0
         }); // https://app.pendle.finance/trade/markets/0xc374f7ec85f8c7de3207a10bb1978ba104bda3b2/swap?view=pt&chain=ethereum&py=input

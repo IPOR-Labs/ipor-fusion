@@ -34,7 +34,6 @@ import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFact
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {VelodromSuperchainSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromSuperchainSlipstreamGaugeClaimFuse.sol";
 import {ILeafGauge} from "../../../contracts/fuses/velodrome_superchain/ext/ILeafGauge.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title VelodromSuperchainSlipstreamTest
 /// @notice Test suite for Velodrom Superchain Slipstream Collect Fuse

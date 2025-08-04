@@ -29,7 +29,6 @@ import {IGauge} from "../../../contracts/fuses/aerodrome/ext/IGauge.sol";
 
 import {IWETH9} from "../erc4626/IWETH9.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title AerodromeFuseTests
 /// @notice Test suite for Aerodrome fuses on Base blockchain
