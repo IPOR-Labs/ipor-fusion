@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -581,21 +581,5 @@ contract VelodromSuperchainSlipstreamTest is Test {
         uint256 balanceAfter = IERC20(rewardToken).balanceOf(address(_rewardsClaimManager));
 
         assertGt(balanceAfter, balanceBefore, "balanceAfter should be greater than balanceBefore");
-    }
-
-    function test_test() public {
-        address token0 = 0x73E0C0d45E048D25Fc26Fa3159b0aA04BfA4Db98;
-        address token1 = 0xaE4EFbc7736f963982aACb17EFA37fCBAb924cB3;
-        int24 tickSpacing = 1;
-
-        address pool = VelodromSuperchainSlipstreamSubstrateLib.getPoolAddress(
-            0x04625B046C69577EfC40e6c0Bb83CDBAfab5a55F,
-            token0,
-            token1,
-            tickSpacing
-        );
-
-        console2.log("pool :", pool);
-        console2.log("pool :", 0x3170b9355F1057F457FEdF4c8074946659Dc92D2);
     }
 }
