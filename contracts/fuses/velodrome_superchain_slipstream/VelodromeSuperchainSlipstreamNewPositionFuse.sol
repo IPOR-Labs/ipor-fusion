@@ -134,13 +134,13 @@ contract VelodromeSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         );
     }
 
-    function exit(VelodromeSuperchainSlipstreamNewPositionFuseExitData calldata closePositions) public {
-        uint256 len = closePositions.tokenIds.length;
+    function exit(VelodromeSuperchainSlipstreamNewPositionFuseExitData calldata closePositions_) public {
+        uint256 len = closePositions_.tokenIds.length;
 
         for (uint256 i; i < len; i++) {
-            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
+            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions_.tokenIds[i]);
 
-            emit VelodromeSuperchainSlipstreamNewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
+            emit VelodromeSuperchainSlipstreamNewPositionFuseExit(VERSION, closePositions_.tokenIds[i]);
         }
     }
 }

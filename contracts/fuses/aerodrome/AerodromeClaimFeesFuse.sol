@@ -27,14 +27,14 @@ contract AerodromeClaimFeesFuse is IFuseCommon {
         MARKET_ID = marketIdInput;
     }
 
-    function enter(AerodromeClaimFeesFuseEnterData memory data) external {
+    function enter(AerodromeClaimFeesFuseEnterData memory data_) external {
         address poolAddress;
         uint256 claimed0;
         uint256 claimed1;
-        uint256 len = data.pools.length;
+        uint256 len = data_.pools.length;
 
         for (uint256 i; i < len; i++) {
-            poolAddress = data.pools[i];
+            poolAddress = data_.pools[i];
             if (
                 !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                     MARKET_ID,

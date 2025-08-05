@@ -31,49 +31,49 @@ contract VelodromeSuperchainSlipstreamLeafCLGaugeFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData calldata data) external {
+    function enter(VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData calldata data_) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32(
                     VelodromeSuperchainSlipstreamSubstrate({
                         substrateType: VelodromeSuperchainSlipstreamSubstrateType.Gauge,
-                        substrateAddress: data.gaugeAddress
+                        substrateAddress: data_.gaugeAddress
                     })
                 )
             )
         ) {
-            revert VelodromeSuperchainSlipstreamLeafCLGaugeUnsupportedGauge(data.gaugeAddress);
+            revert VelodromeSuperchainSlipstreamLeafCLGaugeUnsupportedGauge(data_.gaugeAddress);
         }
 
-        if (data.tokenId == 0) {
+        if (data_.tokenId == 0) {
             return;
         }
 
-        INonfungiblePositionManager(ILeafCLGauge(data.gaugeAddress).nft()).approve(data.gaugeAddress, data.tokenId);
+        INonfungiblePositionManager(ILeafCLGauge(data_.gaugeAddress).nft()).approve(data_.gaugeAddress, data_.tokenId);
 
-        ILeafCLGauge(data.gaugeAddress).deposit(data.tokenId);
+        ILeafCLGauge(data_.gaugeAddress).deposit(data_.tokenId);
 
-        emit VelodromeSuperchainSlipstreamLeafCLGaugeEnter(data.gaugeAddress, data.tokenId);
+        emit VelodromeSuperchainSlipstreamLeafCLGaugeEnter(data_.gaugeAddress, data_.tokenId);
     }
 
-    function exit(VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData calldata data) external {
+    function exit(VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData calldata data_) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32(
                     VelodromeSuperchainSlipstreamSubstrate({
                         substrateType: VelodromeSuperchainSlipstreamSubstrateType.Gauge,
-                        substrateAddress: data.gaugeAddress
+                        substrateAddress: data_.gaugeAddress
                     })
                 )
             )
         ) {
-            revert VelodromeSuperchainSlipstreamLeafCLGaugeUnsupportedGauge(data.gaugeAddress);
+            revert VelodromeSuperchainSlipstreamLeafCLGaugeUnsupportedGauge(data_.gaugeAddress);
         }
 
-        ILeafCLGauge(data.gaugeAddress).withdraw(data.tokenId);
+        ILeafCLGauge(data_.gaugeAddress).withdraw(data_.tokenId);
 
-        emit VelodromeSuperchainSlipstreamLeafCLGaugeExit(data.gaugeAddress, data.tokenId);
+        emit VelodromeSuperchainSlipstreamLeafCLGaugeExit(data_.gaugeAddress, data_.tokenId);
     }
 }

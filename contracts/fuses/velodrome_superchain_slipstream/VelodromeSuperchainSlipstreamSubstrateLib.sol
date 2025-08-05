@@ -20,16 +20,16 @@ library VelodromeSuperchainSlipstreamSubstrateLib {
     error TokensNotSorted();
 
     function substrateToBytes32(
-        VelodromeSuperchainSlipstreamSubstrate memory substrate
+        VelodromeSuperchainSlipstreamSubstrate memory substrate_
     ) internal pure returns (bytes32) {
-        return bytes32(uint256(uint160(substrate.substrateAddress)) | (uint256(substrate.substrateType) << 160));
+        return bytes32(uint256(uint160(substrate_.substrateAddress)) | (uint256(substrate_.substrateType) << 160));
     }
 
     function bytes32ToSubstrate(
-        bytes32 bytes32Substrate
+        bytes32 bytes32Substrate_
     ) internal pure returns (VelodromeSuperchainSlipstreamSubstrate memory substrate) {
-        substrate.substrateType = VelodromeSuperchainSlipstreamSubstrateType(uint256(bytes32Substrate) >> 160);
-        substrate.substrateAddress = PlasmaVaultConfigLib.bytes32ToAddress(bytes32Substrate);
+        substrate.substrateType = VelodromeSuperchainSlipstreamSubstrateType(uint256(bytes32Substrate_) >> 160);
+        substrate.substrateAddress = PlasmaVaultConfigLib.bytes32ToAddress(bytes32Substrate_);
     }
 
     /// @dev Velodrome V3 Pool Key
@@ -52,25 +52,25 @@ library VelodromeSuperchainSlipstreamSubstrateLib {
     }
 
     /// @notice Returns PoolKey: the ordered tokens with the matched fee levels
-    /// @param tokenA The first token of a pool, unsorted
-    /// @param tokenB The second token of a pool, unsorted
-    /// @param tickSpacing The tick spacing of the pool
+    /// @param tokenA_ The first token of a pool, unsorted
+    /// @param tokenB_ The second token of a pool, unsorted
+    /// @param tickSpacing_ The tick spacing of the pool
     /// @return Poolkey The pool details with ordered token0 and token1 assignments
-    function _getPoolKey(address tokenA, address tokenB, int24 tickSpacing) private pure returns (PoolKey memory) {
-        if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
-        return PoolKey({token0: tokenA, token1: tokenB, tickSpacing: tickSpacing});
+    function _getPoolKey(address tokenA_, address tokenB_, int24 tickSpacing_) private pure returns (PoolKey memory) {
+        if (tokenA_ > tokenB_) (tokenA_, tokenB_) = (tokenB_, tokenA_);
+        return PoolKey({token0: tokenA_, token1: tokenB_, tickSpacing: tickSpacing_});
     }
 
     /// @notice Deterministically computes the pool address given the factory and PoolKey
-    /// @param factory The CL factory contract address
-    /// @param key The PoolKey
+    /// @param factory_ The CL factory contract address
+    /// @param key_ The PoolKey
     /// @return pool The contract address of the V3 pool
-    function _computeAddress(address factory, PoolKey memory key) private view returns (address pool) {
-        if (key.token0 >= key.token1) revert TokensNotSorted();
+    function _computeAddress(address factory_, PoolKey memory key_) private view returns (address pool) {
+        if (key_.token0 >= key_.token1) revert TokensNotSorted();
         pool = Clones.predictDeterministicAddress({
-            implementation: ICLFactory(factory).poolImplementation(),
-            salt: keccak256(abi.encode(key.token0, key.token1, key.tickSpacing)),
-            deployer: factory
+            implementation: ICLFactory(factory_).poolImplementation(),
+            salt: keccak256(abi.encode(key_.token0, key_.token1, key_.tickSpacing)),
+            deployer: factory_
         });
     }
 }
