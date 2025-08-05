@@ -11,7 +11,13 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPool} from "./ext/IPool.sol";
 import {ILeafGauge} from "./ext/ILeafGauge.sol";
-import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "./VelodrimeLib.sol";
+import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "./VelodromeLib.sol";
+
+/// @title VelodromeBalanceFuse
+/// @notice Contract responsible for managing Velodrome Basic Vault balance calculations
+/// @dev This contract handles balance tracking for Plasma Vault positions in Velodrome pools and gauges
+/// It calculates total USD value of vault's liquidity positions and accrued fees across multiple Velodrome substrates
+/// The balance calculations support both direct pool positions and staked gauge positions
 
 contract VelodromeBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;

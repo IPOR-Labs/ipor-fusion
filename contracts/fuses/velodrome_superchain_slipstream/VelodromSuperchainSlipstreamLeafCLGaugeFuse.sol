@@ -7,17 +7,17 @@ import {VelodromSuperchainSlipstreamSubstrateLib, VelodromSuperchainSlipstreamSu
 import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
-struct VelodromSuperchainSlipstreamLeafCLGaugeEnterData {
+struct VelodromSuperchainSlipstreamLeafCLGaugeFuseEnterData {
     address gaugeAddress;
     uint256 tokenId;
 }
 
-struct VelodromSuperchainSlipstreamLeafCLGaugeExitData {
+struct VelodromSuperchainSlipstreamLeafCLGaugeFuseExitData {
     address gaugeAddress;
     uint256 tokenId;
 }
 
-contract VelodromSuperchainSlipstreamLeafCLGauge is IFuseCommon {
+contract VelodromSuperchainSlipstreamLeafCLGaugeFuse is IFuseCommon {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
@@ -31,7 +31,7 @@ contract VelodromSuperchainSlipstreamLeafCLGauge is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(VelodromSuperchainSlipstreamLeafCLGaugeEnterData calldata data) external {
+    function enter(VelodromSuperchainSlipstreamLeafCLGaugeFuseEnterData calldata data) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
@@ -57,7 +57,7 @@ contract VelodromSuperchainSlipstreamLeafCLGauge is IFuseCommon {
         emit VelodromSuperchainSlipstreamLeafCLGaugeEnter(data.gaugeAddress, data.tokenId);
     }
 
-    function exit(VelodromSuperchainSlipstreamLeafCLGaugeExitData calldata data) external {
+    function exit(VelodromSuperchainSlipstreamLeafCLGaugeFuseExitData calldata data) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,

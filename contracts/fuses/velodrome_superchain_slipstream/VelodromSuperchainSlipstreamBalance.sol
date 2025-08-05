@@ -60,12 +60,12 @@ contract VelodromSuperchainSlipstreamBalance is IMarketBalanceFuse {
                 sqrtPriceX96 = ICLPool(substrate.substrateAddress).slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = addPrincippal(amount0, amount1, tokenIds[j], sqrtPriceX96);
-                    (amount0, amount1) = addFees(amount0, amount1, tokenIds[j]);
+                    (amount0, amount1) = _addPrincippal(amount0, amount1, tokenIds[j], sqrtPriceX96);
+                    (amount0, amount1) = _addFees(amount0, amount1, tokenIds[j]);
                 }
 
-                balance += conbertToUsd(amount0, token0, priceOracleMiddleware);
-                balance += conbertToUsd(amount1, token1, priceOracleMiddleware);
+                balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
+                balance += _convertToUsd(amount1, token1, priceOracleMiddleware);
             } else if (substrate.substrateType == VelodromSuperchainSlipstreamSubstrateType.Gauge) {
                 tokenIds = ILeafCLGauge(substrate.substrateAddress).stakedValues(address(this));
                 uint256 tokenIdsLen = tokenIds.length;
@@ -74,17 +74,17 @@ contract VelodromSuperchainSlipstreamBalance is IMarketBalanceFuse {
                 sqrtPriceX96 = ILeafCLGauge(substrate.substrateAddress).pool().slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = addPrincippal(amount0, amount1, tokenIds[j], sqrtPriceX96);
+                    (amount0, amount1) = _addPrincippal(amount0, amount1, tokenIds[j], sqrtPriceX96);
                 }
 
-                balance += conbertToUsd(amount0, token0, priceOracleMiddleware);
-                balance += conbertToUsd(amount1, token1, priceOracleMiddleware);
+                balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
+                balance += _convertToUsd(amount1, token1, priceOracleMiddleware);
             }
         }
         return balance;
     }
 
-    function addPrincippal(
+    function _addPrincippal(
         uint256 amount0_,
         uint256 amount1_,
         uint256 tokenId_,
@@ -102,7 +102,7 @@ contract VelodromSuperchainSlipstreamBalance is IMarketBalanceFuse {
         return (newAmount0, newAmount1);
     }
 
-    function addFees(
+    function _addFees(
         uint256 amount0_,
         uint256 amount1_,
         uint256 tokenId_
@@ -118,7 +118,7 @@ contract VelodromSuperchainSlipstreamBalance is IMarketBalanceFuse {
         return (newAmount0, newAmount1);
     }
 
-    function conbertToUsd(
+    function _convertToUsd(
         uint256 amount_,
         address token_,
         address priceOracleMiddleware_

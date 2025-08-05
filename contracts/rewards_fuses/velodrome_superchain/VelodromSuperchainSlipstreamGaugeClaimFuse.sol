@@ -7,7 +7,7 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {ILeafGauge} from "../../fuses/velodrome_superchain/ext/ILeafGauge.sol";
 import {ILeafCLGauge} from "../../fuses/velodrome_superchain_slipstream/ext/ILeafCLGauge.sol";
-import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "../../fuses/velodrome_superchain/VelodrimeLib.sol";
+import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "../../fuses/velodrome_superchain/VelodromeLib.sol";
 
 /// @title VelodromSuperchainSlipstreamGaugeClaimFuse
 /// @notice This contract handles the claiming of rewards from Velodrome gauges.

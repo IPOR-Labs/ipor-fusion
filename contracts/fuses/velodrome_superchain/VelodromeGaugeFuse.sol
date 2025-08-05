@@ -6,16 +6,18 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {ILeafGauge} from "./ext/ILeafGauge.sol";
-import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "./VelodrimeLib.sol";
+import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "./VelodromeLib.sol";
 
 struct VelodromeGaugeFuseEnterData {
     address gaugeAddress;
     uint256 amount;
+    uint256 minAmount;
 }
 
 struct VelodromeGaugeFuseExitData {
     address gaugeAddress;
     uint256 amount;
+    uint256 minAmount;
 }
 
 contract VelodromeGaugeFuse is IFuseCommon {
@@ -27,6 +29,7 @@ contract VelodromeGaugeFuse is IFuseCommon {
     error VelodromeGaugeFuseUnsupportedGauge(string action, address gaugeAddress);
     error VelodromeGaugeFuseInvalidGauge();
     error VelodromeGaugeFuseInvalidAmount();
+    error VelodromeGaugeFuseMinAmountNotMet();
 
     event VelodromeGaugeFuseEnter(address version, address gaugeAddress, uint256 amount);
     event VelodromeGaugeFuseExit(address version, address gaugeAddress, uint256 amount);
@@ -64,6 +67,10 @@ contract VelodromeGaugeFuse is IFuseCommon {
         uint256 balance = IERC20(stakingToken).balanceOf(address(this));
 
         uint256 amountToDeposit = data_.amount > balance ? balance : data_.amount;
+
+        if (amountToDeposit < data_.minAmount) {
+            revert VelodromeGaugeFuseMinAmountNotMet();
+        }
 
         if (amountToDeposit == 0) {
             return;
@@ -104,6 +111,10 @@ contract VelodromeGaugeFuse is IFuseCommon {
         uint256 balance = ILeafGauge(data_.gaugeAddress).balanceOf(address(this));
 
         uint256 amountToWithdraw = data_.amount > balance ? balance : data_.amount;
+
+        if (amountToWithdraw < data_.minAmount) {
+            revert VelodromeGaugeFuseMinAmountNotMet();
+        }
 
         if (amountToWithdraw == 0) {
             return;
