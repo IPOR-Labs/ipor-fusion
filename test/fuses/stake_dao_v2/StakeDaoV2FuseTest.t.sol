@@ -1,0 +1,345 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.26;
+
+import "forge-std/Test.sol";
+import {PlasmaVault, PlasmaVaultInitData, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Roles} from "../../../contracts/libraries/Roles.sol";
+import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
+import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
+import {RewardsManagerFactory} from "../../../contracts/factory/RewardsManagerFactory.sol";
+import {WithdrawManagerFactory} from "../../../contracts/factory/WithdrawManagerFactory.sol";
+import {ContextManagerFactory} from "../../../contracts/factory/ContextManagerFactory.sol";
+import {PriceManagerFactory} from "../../../contracts/factory/PriceManagerFactory.sol";
+import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
+import {AccessManagerFactory} from "../../../contracts/factory/AccessManagerFactory.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {MockERC20} from "../../test_helpers/MockERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {BurnRequestFeeFuse} from "../../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
+import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {IPriceFeed} from "../../../contracts/price_oracle/price_feed/IPriceFeed.sol";
+import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+
+import {TacStakingStorageLib} from "../../../contracts/fuses/tac/lib/TacStakingStorageLib.sol";
+import {TacStakingDelegatorAddressReader} from "../../../contracts/readers/TacStakingDelegatorAddressReader.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {TacValidatorAddressConverter} from "../../../contracts/fuses/tac/lib/TacValidatorAddressConverter.sol";
+import {Description, CommissionRates} from "../../../contracts/fuses/tac/ext/IStaking.sol";
+import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
+import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
+import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
+
+import {StakeDaoV2BalanceFuse} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2BalanceFuse.sol";
+import {StakeDaoV2SupplyFuse, StakeDaoV2SupplyFuseEnterData} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol";
+
+contract StakeDaoV2FuseTest is Test {
+    address constant FUSION_FACTORY = 0x134fCAce7a2C7Ef3dF2479B62f03ddabAEa922d5;
+
+    address constant FUSION_PLASMA_VAULT_OWNER = 0xB0552b6860CE5C0202976Db056b5e3Cc4f9CC765;
+
+    address constant FUSION_ACCESS_MANAGER = 0x19BAf9a25D1a4619Be1f7065c6A8d181a524991D;
+    address constant FUSION_PRICE_MANAGER = 0x40e2d65023ef964A673950Df587cE239Bb1CE43d;
+    address constant FUSION_PLASMA_VAULT_sdSaveUSDC = 0xa4f39ec96B7A2178B381dE9CDc9021fB2490b409;
+
+    address constant STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC = 0x1544E663DD326a6d853a0cc4ceEf0860eb82B287;
+    address constant STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC_UNDERLYING = 0xe07f1151887b8FDC6800f737252f6b91b46b5865;
+
+    address constant STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WETH = 0x2abaD3D0c104fE1C9A412431D070e73108B4eFF8;
+    address constant STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WETH_UNDERLYING = 0xd3cA9BEc3e681b0f578FD87f20eBCf2B7e0bb739;
+
+    address constant STAKEDAO_V2_REWARD_VAULT_LLAMALEND_EYWA = 0x555928DC8973F10f5bbA677d0EBB7cbac968e36A;
+    address constant STAKEDAO_V2_REWARD_VAULT_LLAMALEND_EYWA_UNDERLYING = 0x747A547E48ee52491794b8eA01cd81fc5D59Ad84;
+
+    address constant STAKEDAO_V2_REWARD_VAULT_LLAMALEND_ARB = 0x17E876675258DeE5A7b2e2e14FCFaB44F867896c;
+    address constant STAKEDAO_V2_REWARD_VAULT_LLAMALEND_ARB_UNDERLYING = 0xa6C2E6A83D594e862cDB349396856f7FFE9a979B;
+
+    address constant CHAINLINK_PRICE_FEED_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
+
+    /// @dev https://data.chain.link/feeds/arbitrum/mainnet/crvusd-usd
+    address constant CHAINLINK_PRICE_FEED_CRV_USD = 0x0a32255dd4BB6177C994bAAc73E0606fDD568f66;
+
+    address constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+    address constant CRV_USD = 0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5;
+
+    address user;
+    address atomist;
+    address alpha;
+
+    bytes32[] substrates;
+    address stakeDaoV2SupplyFuse;
+
+    address CRV_USD_HOLDER = 0xB5c6082d3307088C98dA8D79991501E113e6365d;
+
+    ////todo: jak bedzie supply to a amount w crvUSD - to pozwolić alfie przygotowac a w fusie zrobić całą logikę przelewu
+
+    function setUp() public {
+        vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"));
+
+        user = address(0x333);
+        atomist = address(0x777);
+        alpha = address(0x555);
+
+        _setupRoles();
+
+        address[] memory assets = new address[](2);
+        assets[0] = USDC;
+        assets[1] = CRV_USD;
+
+        address[] memory sources = new address[](2);
+        sources[0] = CHAINLINK_PRICE_FEED_USDC;
+        sources[1] = CHAINLINK_PRICE_FEED_CRV_USD;
+
+        vm.startPrank(atomist);
+        PriceOracleMiddlewareManager(FUSION_PRICE_MANAGER).setAssetsPriceSources(assets, sources);
+        vm.stopPrank();
+
+        _addStakeDaoV2Fuses();
+    }
+
+    function test_shouldSupplyToStakeDaoV2() public {}
+
+    function test_shouldDepositToVaultAndRebalanceAssetsProportionallyTo4Vaults() public {
+        // given
+        uint256 depositAmountCrvUSD = 1000e18; // 1000 crvUSD
+        
+
+        /// @dev Simulate that Vault has some crvUSD
+        vm.prank(CRV_USD_HOLDER);
+        IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
+
+
+        // Add user to whitelist
+        vm.prank(atomist);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.WHITELIST_ROLE, user, 0);
+
+        // User deposits to vault
+        // vm.startPrank(user);
+        // IERC20(USDC).approve(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmount);
+        // PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).deposit(depositAmount, user);
+        // vm.stopPrank();
+
+        // Update balances after deposit
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.STAKE_DAO_V2;
+
+        // uint256 totalAssetsAfterDeposit = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssets();
+        // assertGt(totalAssetsAfterDeposit, totalAssetsBefore, "Total assets should increase after deposit");
+
+        // Calculate proportional amounts for 4 vaults (25% each)
+        uint256 amountPerVault = depositAmountCrvUSD / 4;
+
+
+        // Create FuseAction array for rebalancing to 4 vaults
+        FuseAction[] memory actions = new FuseAction[](4);
+
+        // Action 1: Supply to first vault (WBTC)
+        actions[0] = FuseAction(
+            stakeDaoV2SupplyFuse,
+            abi.encodeWithSignature(
+                "enter((address,uint256,uint256))",
+                StakeDaoV2SupplyFuseEnterData({
+                    rewardVault: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC,
+                    lpTokenUnderlyingAmount: amountPerVault,
+                    minLpTokenUnderlyingAmount: (amountPerVault * 99) / 100 // 1% slippage tolerance
+                })
+            )
+        );
+
+        // Action 2: Supply to second vault (WETH)
+        actions[1] = FuseAction(
+            stakeDaoV2SupplyFuse,
+            abi.encodeWithSignature(
+                "enter((address,uint256,uint256))",
+                StakeDaoV2SupplyFuseEnterData({
+                    rewardVault: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WETH,
+                    lpTokenUnderlyingAmount: amountPerVault,
+                    minLpTokenUnderlyingAmount: (amountPerVault * 99) / 100 // 1% slippage tolerance
+                })
+            )
+        );
+
+        // Action 3: Supply to third vault (EYWA)
+        actions[2] = FuseAction(
+            stakeDaoV2SupplyFuse,
+            abi.encodeWithSignature(
+                "enter((address,uint256,uint256))",
+                StakeDaoV2SupplyFuseEnterData({
+                    rewardVault: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_EYWA,
+                    lpTokenUnderlyingAmount: amountPerVault,
+                    minLpTokenUnderlyingAmount: (amountPerVault * 99) / 100 // 1% slippage tolerance
+                })
+            )
+        );
+
+        // Action 4: Supply to fourth vault (ARB)
+        actions[3] = FuseAction(
+            stakeDaoV2SupplyFuse,
+            abi.encodeWithSignature(
+                "enter((address,uint256,uint256))",
+                StakeDaoV2SupplyFuseEnterData({
+                    rewardVault: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_ARB,
+                    lpTokenUnderlyingAmount: amountPerVault,
+                    minLpTokenUnderlyingAmount: (amountPerVault * 99) / 100 // 1% slippage tolerance
+                })
+            )
+        );
+
+        // Record balances before rebalancing
+        // uint256 vaultBalanceBefore = IERC20(USDC).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
+        uint256 totalAssetsInMarketBefore = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssetsInMarket(
+            IporFusionMarkets.STAKE_DAO_V2
+        );
+
+        // Record balance of CRV_USD vault before rebalancing
+        uint256 crvUsdVaultBalanceBefore = IERC20(CRV_USD).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
+        console2.log("CRV_USD vault balance before:", crvUsdVaultBalanceBefore);
+
+        // when - Alpha executes rebalancing
+        vm.startPrank(alpha);
+        PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).execute(actions);
+        vm.stopPrank();
+
+        // Record balance of CRV_USD vault after rebalancing
+        uint256 crvUsdVaultBalanceAfter = IERC20(CRV_USD).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
+        console2.log("CRV_USD vault balance after:", crvUsdVaultBalanceAfter);
+
+        // then - Verify rebalancing results
+        // uint256 vaultBalanceAfter = IERC20(USDC).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
+
+        // console2.log("vaultBalanceAfter", vaultBalanceAfter);
+
+        uint256 totalAssetsInMarketAfter = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssetsInMarket(
+            IporFusionMarkets.STAKE_DAO_V2
+        );
+
+        console2.log("totalAssetsInMarketBefore", totalAssetsInMarketBefore);
+        console2.log("totalAssetsInMarketAfter", totalAssetsInMarketAfter);
+
+        // Vault balance should decrease after rebalancing
+        // assertLt(vaultBalanceAfter, vaultBalanceBefore, "Vault balance should decrease after rebalancing");
+
+        // Total assets in market should increase
+        assertGt(
+            totalAssetsInMarketAfter,
+            totalAssetsInMarketBefore,
+            "Total assets in market should increase after rebalancing"
+        );
+
+        // Verify proportional distribution (approximately 25% each)
+        // uint256 expectedAmountPerVault = totalAssetsAfterDeposit / 4;
+        // uint256 tolerance = expectedAmountPerVault / 100; // 1% tolerance
+
+        // // Check that the total assets in market is approximately 4 times the amount per vault
+        // assertApproxEqAbs(
+        //     totalAssetsInMarketAfter,
+        //     expectedAmountPerVault * 4,
+        //     tolerance * 4,
+        //     "Total assets in market should be approximately 4 times the amount per vault"
+        // );
+
+        // Verify that vault balance decreased by approximately the total rebalanced amount
+        // uint256 expectedBalanceDecrease = expectedAmountPerVault * 4;
+        // assertApproxEqAbs(
+        //     vaultBalanceBefore - vaultBalanceAfter,
+        //     expectedBalanceDecrease,
+        //     tolerance * 4,
+        //     "Vault balance should decrease by approximately the total rebalanced amount"
+        // );
+
+        // Verify total assets remain consistent
+        // uint256 finalTotalAssets = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssets();
+
+        // console.log("finalTotalAssets", finalTotalAssets);
+        // console.log("totalAssetsAfterDeposit", totalAssetsAfterDeposit);
+
+        // assertApproxEqAbs(
+        //     finalTotalAssets,
+        //     totalAssetsAfterDeposit,
+        //     tolerance * 4,
+        //     "Total assets should remain approximately the same after rebalancing"
+        // );
+
+        
+    }
+
+    function _addStakeDaoV2Fuses() private {
+        address[] memory fuses = new address[](1);
+
+        stakeDaoV2SupplyFuse = address(new StakeDaoV2SupplyFuse(IporFusionMarkets.STAKE_DAO_V2));
+        fuses[0] = stakeDaoV2SupplyFuse;
+
+        vm.startPrank(atomist);
+        PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).addFuses(fuses);
+
+        PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).addBalanceFuse(
+            IporFusionMarkets.STAKE_DAO_V2,
+            address(new StakeDaoV2BalanceFuse(IporFusionMarkets.STAKE_DAO_V2))
+        );
+
+        substrates = new bytes32[](4);
+        substrates[0] = bytes32(uint256(uint160(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC)));
+        substrates[1] = bytes32(uint256(uint160(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WETH)));
+        substrates[2] = bytes32(uint256(uint160(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_EYWA)));
+        substrates[3] = bytes32(uint256(uint160(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_ARB)));
+
+        PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).grantMarketSubstrates(
+            IporFusionMarkets.STAKE_DAO_V2,
+            substrates
+        );
+
+        vm.stopPrank();
+    }
+
+    function _setupRoles() private {
+        // Grant atomist role to atomist as owner
+        vm.startPrank(FUSION_PLASMA_VAULT_OWNER);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.ATOMIST_ROLE, atomist, 0);
+        vm.stopPrank();
+
+        vm.startPrank(atomist);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(
+            Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
+            atomist,
+            0
+        );
+        vm.stopPrank();
+
+        // IporFusionAccessManager(STAKEDAO_V2_ACCESS_MANAGER).grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+        // // Grant alpha role to alpha address
+        // accessManagerLlamaLandWbtc.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        // accessManagerLlamaLandWeth.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        // accessManagerLlamaLandEywa.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        // accessManagerLlamaLandArb.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+
+        // // Grant fuse manager role to atomist address (needed to add fuses)
+
+        // accessManagerLlamaLandWeth.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+        // accessManagerLlamaLandEywa.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+        // accessManagerLlamaLandArb.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+
+        // // Grant instant withdrawal fuses role to atomist address (needed to configure instant withdrawal fuses)
+        // accessManagerLlamaLandWbtc.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
+        // accessManagerLlamaLandWeth.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
+        // accessManagerLlamaLandEywa.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
+        // accessManagerLlamaLandArb.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
+
+        // // Grant PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE to atomist
+
+        // accessManagerLlamaLandWeth.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
+        // accessManagerLlamaLandEywa.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
+        // accessManagerLlamaLandArb.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
+        vm.stopPrank();
+    }
+}

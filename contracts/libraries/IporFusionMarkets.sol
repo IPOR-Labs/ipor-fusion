@@ -85,6 +85,11 @@ library IporFusionMarkets {
 
     uint256 public constant AERODROME = 30;
 
+    /// @dev StakeDaoV2 market
+    uint256 public constant STAKE_DAO_V2 = 31;
+    /// @dev StakeDaoV2 rewards market
+    uint256 public constant STAKE_DAO_V2_REWARDS = 32;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
@@ -174,6 +179,10 @@ library IporFusionMarkets {
 
     /// @dev Meta Morpho Market 10
     uint256 public constant META_MORPHO_0010 = 200_010;
+
+    /// @dev Special market ID used to validate balances of substrates (assets) defined in this market.
+    /// @dev This market ID is used only for balance validation purposes and does not represent an actual market.
+    uint256 public constant ASSETS_BALANCE_VALIDATION = type(uint256).max - 1;
 
     /// @dev Market used in cases where the fuse does not require maintaining any balance and there are no dependent balances.
     uint256 public constant ZERO_BALANCE_MARKET = type(uint256).max;
