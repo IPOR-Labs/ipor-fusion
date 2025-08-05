@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPool} from "./ext/IPool.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodrimeLib.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodromeLib.sol";
 
 struct AerodromeClaimFeesFuseEnterData {
     address[] pools;

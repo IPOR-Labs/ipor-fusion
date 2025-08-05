@@ -11,7 +11,7 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPool} from "./ext/IPool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IGauge} from "./ext/IGauge.sol";
-import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodrimeLib.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodromeLib.sol";
 
 contract AerodromeBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;

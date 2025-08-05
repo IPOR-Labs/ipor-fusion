@@ -6,14 +6,14 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
-struct VelodromSuperchainSlipstreamCollectFuseEnterData {
+struct VelodromeSuperchainSlipstreamCollectFuseEnterData {
     uint256[] tokenIds;
 }
 
-contract VelodromSuperchainSlipstreamCollectFuse is IFuseCommon {
+contract VelodromeSuperchainSlipstreamCollectFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    event VelodromSuperchainSlipstreamCollectFuseEnter(
+    event VelodromeSuperchainSlipstreamCollectFuseEnter(
         address version,
         uint256 tokenId,
         uint256 amount0,
@@ -34,7 +34,7 @@ contract VelodromSuperchainSlipstreamCollectFuse is IFuseCommon {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
-    function enter(VelodromSuperchainSlipstreamCollectFuseEnterData calldata data_) public {
+    function enter(VelodromeSuperchainSlipstreamCollectFuseEnterData calldata data_) public {
         uint256 len = data_.tokenIds.length;
 
         if (len == 0) {
@@ -54,7 +54,7 @@ contract VelodromSuperchainSlipstreamCollectFuse is IFuseCommon {
 
             (amount0, amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).collect(params);
 
-            emit VelodromSuperchainSlipstreamCollectFuseEnter(VERSION, params.tokenId, amount0, amount1);
+            emit VelodromeSuperchainSlipstreamCollectFuseEnter(VERSION, params.tokenId, amount0, amount1);
         }
     }
 }
