@@ -209,8 +209,11 @@ library FusionFactoryLib {
             fusionAddresses.plasmaVault
         );
 
-        address[] memory approvedAddresses = new address[](1);
+        address[] memory approvedAddresses = new address[](4);
         approvedAddresses[0] = fusionAddresses.plasmaVault;
+        approvedAddresses[1] = fusionAddresses.withdrawManager;
+        approvedAddresses[2] = fusionAddresses.priceManager;
+        approvedAddresses[3] = fusionAddresses.rewardsManager;
 
         fusionAddresses.contextManager = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(
             fusionFactoryIndex,
