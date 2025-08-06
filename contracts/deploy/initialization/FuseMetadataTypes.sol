@@ -70,4 +70,24 @@ library FuseMetadataTypes {
         fuseMetadataTypeNames[4] = FUSE_METADATA_PROTOCOL_INFO_NAME;
         return fuseMetadataTypeNames;
     }
+
+    function stringToBytes32Array(string memory source) public pure returns (bytes32[] memory) {
+        bytes memory sourceBytes = bytes(source);
+        uint256 sourceLength = sourceBytes.length;
+        uint256 arrayLength = (sourceLength + 31) / 32;
+        bytes32[] memory result = new bytes32[](arrayLength);
+
+        for (uint256 i = 0; i < arrayLength; i++) {
+            bytes32 chunk;
+            for (uint256 j = 0; j < 32; j++) {
+                uint256 index = i * 32 + j;
+                if (index < sourceLength) {
+                    chunk |= bytes32(uint256(uint8(sourceBytes[index])) << (248 - j * 8));
+                }
+            }
+            result[i] = chunk;
+        }
+
+        return result;
+    }
 }
