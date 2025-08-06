@@ -20,7 +20,7 @@ library FuseStatus {
     uint16 public constant FUSE_STATUS_REMOVED_ID = 3;
     string public constant FUSE_STATUS_REMOVED_NAME = "Removed";
 
-    function getAllFuseStatuIds() public pure returns (uint16[] memory) {
+    function getAllFuseStatuIds() internal pure returns (uint16[] memory) {
         uint16[] memory fuseStatuses = new uint16[](4);
         fuseStatuses[0] = FUSE_STATUS_DEFAULT_ID;
         fuseStatuses[1] = FUSE_STATUS_ACTIVE_ID;
@@ -29,7 +29,7 @@ library FuseStatus {
         return fuseStatuses;
     }
 
-    function getAllFuseStatusNames() public pure returns (string[] memory) {
+    function getAllFuseStatusNames() internal pure returns (string[] memory) {
         string[] memory fuseStatusNames = new string[](4);
         fuseStatusNames[0] = FUSE_STATUS_DEFAULT_NAME;
         fuseStatusNames[1] = FUSE_STATUS_ACTIVE_NAME;

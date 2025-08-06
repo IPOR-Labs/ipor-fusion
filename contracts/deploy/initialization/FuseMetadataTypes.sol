@@ -51,7 +51,7 @@ library FuseMetadataTypes {
     string public constant FUSE_METADATA_PROTOCOL_INFO_MORPHO_CODE = "Morpho";
     string public constant FUSE_METADATA_PROTOCOL_INFO_RAMSES_CODE = "Ramses";
 
-    function getAllFuseMetadataTypeIds() public pure returns (uint16[] memory) {
+    function getAllFuseMetadataTypeIds() internal pure returns (uint16[] memory) {
         uint16[] memory fuseMetadataTypeIds = new uint16[](5);
         fuseMetadataTypeIds[0] = FUSE_METADATA_AUDIT_STATUS_ID;
         fuseMetadataTypeIds[1] = FUSE_METADATA_SUBSTRATE_INFO_ID;
@@ -61,7 +61,7 @@ library FuseMetadataTypes {
         return fuseMetadataTypeIds;
     }
 
-    function getAllFuseMetadataTypeNames() public pure returns (string[] memory) {
+    function getAllFuseMetadataTypeNames() internal pure returns (string[] memory) {
         string[] memory fuseMetadataTypeNames = new string[](5);
         fuseMetadataTypeNames[0] = FUSE_METADATA_AUDIT_STATUS_NAME;
         fuseMetadataTypeNames[1] = FUSE_METADATA_SUBSTRATE_INFO_NAME;
