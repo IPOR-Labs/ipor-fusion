@@ -5,14 +5,13 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {ILeafGauge} from "../../fuses/velodrome_superchain/ext/ILeafGauge.sol";
 import {ILeafCLGauge} from "../../fuses/velodrome_superchain_slipstream/ext/ILeafCLGauge.sol";
 import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "../../fuses/velodrome_superchain/VelodromeLib.sol";
 
-/// @title VelodromSuperchainSlipstreamGaugeClaimFuse
+/// @title VelodromeSuperchainSlipstreamGaugeClaimFuse
 /// @notice This contract handles the claiming of rewards from Velodrome gauges.
 /// @dev Claims AERO tokens from specified gauges and transfers them to the rewards claim manager.
-contract VelodromSuperchainSlipstreamGaugeClaimFuse {
+contract VelodromeSuperchainSlipstreamGaugeClaimFuse {
     using SafeERC20 for IERC20;
 
     /// @notice Version of this contract for tracking
@@ -21,7 +20,7 @@ contract VelodromSuperchainSlipstreamGaugeClaimFuse {
     /// @notice Market ID this fuse is associated with
     uint256 public immutable MARKET_ID;
 
-    event VelodromSuperchainSlipstreamGaugeClaimFuseRewardsClaimed(
+    event VelodromeSuperchainSlipstreamGaugeClaimFuseRewardsClaimed(
         address version,
         address gauge,
         address rewardToken,
@@ -29,9 +28,9 @@ contract VelodromSuperchainSlipstreamGaugeClaimFuse {
         address rewardsClaimManager
     );
 
-    error VelodromSuperchainSlipstreamGaugeClaimFuseEmptyArray();
-    error VelodromSuperchainSlipstreamGaugeClaimFuseUnsupportedGauge(address gauge);
-    error VelodromSuperchainSlipstreamGaugeClaimFuseRewardsClaimManagerZeroAddress();
+    error VelodromeSuperchainSlipstreamGaugeClaimFuseEmptyArray();
+    error VelodromeSuperchainSlipstreamGaugeClaimFuseUnsupportedGauge(address gauge);
+    error VelodromeSuperchainSlipstreamGaugeClaimFuseRewardsClaimManagerZeroAddress();
 
     constructor(uint256 marketId_) {
         VERSION = address(this);
@@ -44,12 +43,12 @@ contract VelodromSuperchainSlipstreamGaugeClaimFuse {
         uint256 len = gauges_.length;
 
         if (len == 0) {
-            revert VelodromSuperchainSlipstreamGaugeClaimFuseEmptyArray();
+            revert VelodromeSuperchainSlipstreamGaugeClaimFuseEmptyArray();
         }
 
         address rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
         if (rewardsClaimManager == address(0)) {
-            revert VelodromSuperchainSlipstreamGaugeClaimFuseRewardsClaimManagerZeroAddress();
+            revert VelodromeSuperchainSlipstreamGaugeClaimFuseRewardsClaimManagerZeroAddress();
         }
 
         for (uint256 i; i < len; ++i) {
@@ -70,7 +69,7 @@ contract VelodromSuperchainSlipstreamGaugeClaimFuse {
                 )
             )
         ) {
-            revert VelodromSuperchainSlipstreamGaugeClaimFuseUnsupportedGauge(gauge_);
+            revert VelodromeSuperchainSlipstreamGaugeClaimFuseUnsupportedGauge(gauge_);
         }
 
         address rewardToken = ILeafCLGauge(gauge_).rewardToken();
@@ -95,7 +94,7 @@ contract VelodromSuperchainSlipstreamGaugeClaimFuse {
         if (claimedAmount > 0) {
             IERC20(rewardToken).safeTransfer(rewardsClaimManager_, claimedAmount);
 
-            emit VelodromSuperchainSlipstreamGaugeClaimFuseRewardsClaimed(
+            emit VelodromeSuperchainSlipstreamGaugeClaimFuseRewardsClaimed(
                 VERSION,
                 gauge_,
                 rewardToken,

@@ -7,13 +7,13 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {VelodromSuperchainSlipstreamSubstrateLib, VelodromSuperchainSlipstreamSubstrateType, VelodromSuperchainSlipstreamSubstrate} from "./VelodromSuperchainSlipstreamLib.sol";
+import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
-import {ICLPool, Slot0} from "./ext/ICLPool.sol";
+import {ICLPool} from "./ext/ICLPool.sol";
 import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";
 import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 
-contract VelodromSuperchainSlipstreamBalance is IMarketBalanceFuse {
+contract VelodromeSuperchainSlipstreamBalance is IMarketBalanceFuse {
     uint256 public immutable MARKET_ID;
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
     address public immutable SLIPSTREAM_SUPERCHAIN_VAULT;
@@ -43,12 +43,12 @@ contract VelodromSuperchainSlipstreamBalance is IMarketBalanceFuse {
         }
 
         for (uint256 i; i < len; i++) {
-            VelodromSuperchainSlipstreamSubstrate memory substrate = VelodromSuperchainSlipstreamSubstrateLib
+            VelodromeSuperchainSlipstreamSubstrate memory substrate = VelodromeSuperchainSlipstreamSubstrateLib
                 .bytes32ToSubstrate(grantedSubstrates[i]);
             amount0 = 0;
             amount1 = 0;
 
-            if (substrate.substrateType == VelodromSuperchainSlipstreamSubstrateType.Pool) {
+            if (substrate.substrateType == VelodromeSuperchainSlipstreamSubstrateType.Pool) {
                 tokenIds = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).userPositions(
                     address(this),
                     substrate.substrateAddress
@@ -66,7 +66,7 @@ contract VelodromSuperchainSlipstreamBalance is IMarketBalanceFuse {
 
                 balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
                 balance += _convertToUsd(amount1, token1, priceOracleMiddleware);
-            } else if (substrate.substrateType == VelodromSuperchainSlipstreamSubstrateType.Gauge) {
+            } else if (substrate.substrateType == VelodromeSuperchainSlipstreamSubstrateType.Gauge) {
                 tokenIds = ILeafCLGauge(substrate.substrateAddress).stakedValues(address(this));
                 uint256 tokenIdsLen = tokenIds.length;
                 token0 = ILeafCLGauge(substrate.substrateAddress).token0();

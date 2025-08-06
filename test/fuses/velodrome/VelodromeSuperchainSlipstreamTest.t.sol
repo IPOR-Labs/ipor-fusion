@@ -16,14 +16,14 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
-import {VelodromSuperchainSlipstreamCollectFuse, VelodromSuperchainSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromSuperchainSlipstreamCollectFuse.sol";
+import {VelodromeSuperchainSlipstreamCollectFuse, VelodromeSuperchainSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
 import {INonfungiblePositionManager} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/INonfungiblePositionManager.sol";
-import {VelodromSuperchainSlipstreamNewPositionFuse, VelodromSuperchainSlipstreamNewPositionFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromSuperchainSlipstreamNewPositionFuse.sol";
-import {VelodromSuperchainSlipstreamModifyPositionFuse, VelodromSuperchainSlipstreamModifyPositionFuseEnterData, VelodromSuperchainSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromSuperchainSlipstreamModifyPositionFuse.sol";
-import {VelodromSuperchainSlipstreamLeafCLGaugeFuse, VelodromSuperchainSlipstreamLeafCLGaugeFuseEnterData, VelodromSuperchainSlipstreamLeafCLGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromSuperchainSlipstreamLeafCLGaugeFuse.sol";
-import {VelodromSuperchainSlipstreamCollectFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromSuperchainSlipstreamCollectFuse.sol";
-import {VelodromSuperchainSlipstreamBalance} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromSuperchainSlipstreamBalance.sol";
-import {VelodromSuperchainSlipstreamSubstrateLib, VelodromSuperchainSlipstreamSubstrateType, VelodromSuperchainSlipstreamSubstrate} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromSuperchainSlipstreamLib.sol";
+import {VelodromeSuperchainSlipstreamNewPositionFuse, VelodromeSuperchainSlipstreamNewPositionFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol";
+import {VelodromeSuperchainSlipstreamModifyPositionFuse, VelodromeSuperchainSlipstreamModifyPositionFuseEnterData, VelodromeSuperchainSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol";
+import {VelodromeSuperchainSlipstreamLeafCLGaugeFuse, VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData, VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol";
+import {VelodromeSuperchainSlipstreamCollectFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
+import {VelodromeSuperchainSlipstreamBalance} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalance.sol";
+import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -32,13 +32,13 @@ import {INonfungiblePositionManager} from "../../../contracts/fuses/velodrome_su
 import {ILeafCLGauge} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/ILeafCLGauge.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
-import {VelodromSuperchainSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromSuperchainSlipstreamGaugeClaimFuse.sol";
+import {VelodromeSuperchainSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainSlipstreamGaugeClaimFuse.sol";
 import {ILeafGauge} from "../../../contracts/fuses/velodrome_superchain/ext/ILeafGauge.sol";
 
-/// @title VelodromSuperchainSlipstreamTest
+/// @title VelodromeSuperchainSlipstreamTest
 /// @notice Test suite for Velodrom Superchain Slipstream Collect Fuse
 /// @dev Tests the collection of fees from Velodrom Superchain Slipstream NFT positions
-contract VelodromSuperchainSlipstreamTest is Test {
+contract VelodromeSuperchainSlipstreamTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
     using PlasmaVaultHelper for PlasmaVault;
     using IporFusionAccessManagerHelper for IporFusionAccessManager;
@@ -67,12 +67,12 @@ contract VelodromSuperchainSlipstreamTest is Test {
     IporFusionAccessManager private _accessManager;
     RewardsClaimManager private _rewardsClaimManager;
 
-    VelodromSuperchainSlipstreamNewPositionFuse private _velodromSuperchainSlipstreamNewPositionFuse;
-    VelodromSuperchainSlipstreamModifyPositionFuse private _velodromSuperchainSlipstreamModifyPositionFuse;
-    VelodromSuperchainSlipstreamLeafCLGaugeFuse private _velodromSuperchainSlipstreamLeafCLGaugeFuse;
-    VelodromSuperchainSlipstreamCollectFuse private _velodromSuperchainSlipstreamCollectFuse;
-    VelodromSuperchainSlipstreamBalance private _velodromSuperchainSlipstreamBalance;
-    VelodromSuperchainSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
+    VelodromeSuperchainSlipstreamNewPositionFuse private _velodromSuperchainSlipstreamNewPositionFuse;
+    VelodromeSuperchainSlipstreamModifyPositionFuse private _velodromSuperchainSlipstreamModifyPositionFuse;
+    VelodromeSuperchainSlipstreamLeafCLGaugeFuse private _velodromSuperchainSlipstreamLeafCLGaugeFuse;
+    VelodromeSuperchainSlipstreamCollectFuse private _velodromSuperchainSlipstreamCollectFuse;
+    VelodromeSuperchainSlipstreamBalance private _velodromSuperchainSlipstreamBalance;
+    VelodromeSuperchainSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
 
     function setUp() public {
         // Fork Base network
@@ -91,7 +91,7 @@ contract VelodromSuperchainSlipstreamTest is Test {
         vm.stopPrank();
 
         FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
-            "VelodromSuperchainSlipstream",
+            "VelodromeSuperchainSlipstream",
             "VSS",
             _UNDERLYING_TOKEN,
             0,
@@ -118,29 +118,29 @@ contract VelodromSuperchainSlipstreamTest is Test {
         deal(_USDTO, _USER, 1_000_000e6);
         deal(_USDCE, _USER, 1_000_000e6);
 
-        // Deploy VelodromSuperchainSlipstreamCollectFuse
-        _velodromSuperchainSlipstreamNewPositionFuse = new VelodromSuperchainSlipstreamNewPositionFuse(
+        // Deploy VelodromeSuperchainSlipstreamCollectFuse
+        _velodromSuperchainSlipstreamNewPositionFuse = new VelodromeSuperchainSlipstreamNewPositionFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN,
             _NONFUNGIBLE_POSITION_MANAGER
         );
-        _velodromSuperchainSlipstreamModifyPositionFuse = new VelodromSuperchainSlipstreamModifyPositionFuse(
+        _velodromSuperchainSlipstreamModifyPositionFuse = new VelodromeSuperchainSlipstreamModifyPositionFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN,
             _NONFUNGIBLE_POSITION_MANAGER
         );
-        _velodromSuperchainSlipstreamLeafCLGaugeFuse = new VelodromSuperchainSlipstreamLeafCLGaugeFuse(
+        _velodromSuperchainSlipstreamLeafCLGaugeFuse = new VelodromeSuperchainSlipstreamLeafCLGaugeFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN
         );
-        _velodromSuperchainSlipstreamCollectFuse = new VelodromSuperchainSlipstreamCollectFuse(
+        _velodromSuperchainSlipstreamCollectFuse = new VelodromeSuperchainSlipstreamCollectFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN,
             _NONFUNGIBLE_POSITION_MANAGER
         );
-        _velodromSuperchainSlipstreamBalance = new VelodromSuperchainSlipstreamBalance(
+        _velodromSuperchainSlipstreamBalance = new VelodromeSuperchainSlipstreamBalance(
             IporFusionMarkets.VELODROME_SUPERCHAIN,
             _NONFUNGIBLE_POSITION_MANAGER,
             _SLIPSTREAM_SUPERCHAIN_VAULT
         );
 
-        _velodromeGaugeClaimFuse = new VelodromSuperchainSlipstreamGaugeClaimFuse(
+        _velodromeGaugeClaimFuse = new VelodromeSuperchainSlipstreamGaugeClaimFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN
         );
 
@@ -172,15 +172,15 @@ contract VelodromSuperchainSlipstreamTest is Test {
 
         // Setup market substrates
         bytes32[] memory velodromSubstrates = new bytes32[](2);
-        velodromSubstrates[0] = VelodromSuperchainSlipstreamSubstrateLib.substrateToBytes32(
-            VelodromSuperchainSlipstreamSubstrate({
-                substrateType: VelodromSuperchainSlipstreamSubstrateType.Pool,
+        velodromSubstrates[0] = VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32(
+            VelodromeSuperchainSlipstreamSubstrate({
+                substrateType: VelodromeSuperchainSlipstreamSubstrateType.Pool,
                 substrateAddress: _VELODROME_POOL
             })
         );
-        velodromSubstrates[1] = VelodromSuperchainSlipstreamSubstrateLib.substrateToBytes32(
-            VelodromSuperchainSlipstreamSubstrate({
-                substrateType: VelodromSuperchainSlipstreamSubstrateType.Gauge,
+        velodromSubstrates[1] = VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32(
+            VelodromeSuperchainSlipstreamSubstrate({
+                substrateType: VelodromeSuperchainSlipstreamSubstrateType.Gauge,
                 substrateAddress: _VELODROME_GAUGE
             })
         );
@@ -235,8 +235,8 @@ contract VelodromSuperchainSlipstreamTest is Test {
     // Example test structure:
     function test_shouldCollectFeesFromNFTPositions() public {
         // given
-        VelodromSuperchainSlipstreamNewPositionFuseEnterData
-            memory mintParams = VelodromSuperchainSlipstreamNewPositionFuseEnterData({
+        VelodromeSuperchainSlipstreamNewPositionFuseEnterData
+            memory mintParams = VelodromeSuperchainSlipstreamNewPositionFuseEnterData({
                 token0: _USDTO,
                 token1: _USDCE,
                 tickSpacing: 1,
@@ -290,8 +290,8 @@ contract VelodromSuperchainSlipstreamTest is Test {
         test_shouldCollectFeesFromNFTPositions();
 
         // given
-        VelodromSuperchainSlipstreamNewPositionFuseEnterData
-            memory mintParams = VelodromSuperchainSlipstreamNewPositionFuseEnterData({
+        VelodromeSuperchainSlipstreamNewPositionFuseEnterData
+            memory mintParams = VelodromeSuperchainSlipstreamNewPositionFuseEnterData({
                 token0: _USDTO,
                 token1: _USDCE,
                 tickSpacing: 1,
@@ -350,8 +350,8 @@ contract VelodromSuperchainSlipstreamTest is Test {
             _VELODROME_POOL
         );
 
-        VelodromSuperchainSlipstreamModifyPositionFuseEnterData
-            memory modifyParams = VelodromSuperchainSlipstreamModifyPositionFuseEnterData({
+        VelodromeSuperchainSlipstreamModifyPositionFuseEnterData
+            memory modifyParams = VelodromeSuperchainSlipstreamModifyPositionFuseEnterData({
                 token0: _USDTO,
                 token1: _USDCE,
                 tokenId: tokenIds[0],
@@ -404,8 +404,8 @@ contract VelodromSuperchainSlipstreamTest is Test {
         (, , , , , , , uint128 liquidityBefore, , , , ) = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER)
             .positions(tokenIds[0]);
 
-        VelodromSuperchainSlipstreamModifyPositionFuseExitData
-            memory modifyParams = VelodromSuperchainSlipstreamModifyPositionFuseExitData({
+        VelodromeSuperchainSlipstreamModifyPositionFuseExitData
+            memory modifyParams = VelodromeSuperchainSlipstreamModifyPositionFuseExitData({
                 tokenId: tokenIds[0],
                 liquidity: liquidityBefore / 2,
                 amount0Min: 0,
@@ -449,8 +449,8 @@ contract VelodromSuperchainSlipstreamTest is Test {
             _VELODROME_POOL
         );
 
-        VelodromSuperchainSlipstreamCollectFuseEnterData
-            memory collectParams = VelodromSuperchainSlipstreamCollectFuseEnterData({tokenIds: tokenIds});
+        VelodromeSuperchainSlipstreamCollectFuseEnterData
+            memory collectParams = VelodromeSuperchainSlipstreamCollectFuseEnterData({tokenIds: tokenIds});
 
         FuseAction[] memory collectCalls = new FuseAction[](1);
         collectCalls[0] = FuseAction(
@@ -496,8 +496,8 @@ contract VelodromSuperchainSlipstreamTest is Test {
             _VELODROME_POOL
         );
 
-        VelodromSuperchainSlipstreamLeafCLGaugeFuseEnterData
-            memory stakeParams = VelodromSuperchainSlipstreamLeafCLGaugeFuseEnterData({
+        VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData
+            memory stakeParams = VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData({
                 gaugeAddress: _VELODROME_GAUGE,
                 tokenId: tokenIds[0]
             });
@@ -523,8 +523,8 @@ contract VelodromSuperchainSlipstreamTest is Test {
 
         uint256[] memory stakedValues = ILeafCLGauge(_VELODROME_GAUGE).stakedValues(address(_plasmaVault));
 
-        VelodromSuperchainSlipstreamLeafCLGaugeFuseExitData
-            memory unstakeParams = VelodromSuperchainSlipstreamLeafCLGaugeFuseExitData({
+        VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData
+            memory unstakeParams = VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData({
                 gaugeAddress: _VELODROME_GAUGE,
                 tokenId: stakedValues[0]
             });
