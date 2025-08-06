@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {VelodromSuperchainSlipstreamSubstrateLib, VelodromSuperchainSlipstreamSubstrateType, VelodromSuperchainSlipstreamSubstrate} from "./VelodromSuperchainSlipstreamLib.sol";
+import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
@@ -35,9 +35,9 @@ contract VelodromSuperchainSlipstreamLeafCLGauge is IFuseCommon {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
-                VelodromSuperchainSlipstreamSubstrateLib.substrateToBytes32(
-                    VelodromSuperchainSlipstreamSubstrate({
-                        substrateType: VelodromSuperchainSlipstreamSubstrateType.Gauge,
+                VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32(
+                    VelodromeSuperchainSlipstreamSubstrate({
+                        substrateType: VelodromeSuperchainSlipstreamSubstrateType.Gauge,
                         substrateAddress: data.gaugeAddress
                     })
                 )
@@ -61,9 +61,9 @@ contract VelodromSuperchainSlipstreamLeafCLGauge is IFuseCommon {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
-                VelodromSuperchainSlipstreamSubstrateLib.substrateToBytes32(
-                    VelodromSuperchainSlipstreamSubstrate({
-                        substrateType: VelodromSuperchainSlipstreamSubstrateType.Gauge,
+                VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32(
+                    VelodromeSuperchainSlipstreamSubstrate({
+                        substrateType: VelodromeSuperchainSlipstreamSubstrateType.Gauge,
                         substrateAddress: data.gaugeAddress
                     })
                 )
