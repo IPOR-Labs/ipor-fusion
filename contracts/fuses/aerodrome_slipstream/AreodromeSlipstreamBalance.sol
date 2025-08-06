@@ -66,12 +66,12 @@ contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
                 sqrtPriceX96 = ICLPool(substrate.substrateAddress).slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = addPrincippal(amount0, amount1, tokenIds[j], sqrtPriceX96);
+                    (amount0, amount1) = addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
                     (amount0, amount1) = addFees(amount0, amount1, tokenIds[j]);
                 }
 
-                balance += conbertToUsd(amount0, token0, priceOracleMiddleware);
-                balance += conbertToUsd(amount1, token1, priceOracleMiddleware);
+                balance += convertToUsd(amount0, token0, priceOracleMiddleware);
+                balance += convertToUsd(amount1, token1, priceOracleMiddleware);
             } else if (substrate.substrateType == AreodromeSlipstreamSubstrateType.Gauge) {
                 tokenIds = ICLGauge(substrate.substrateAddress).stakedValues(address(this));
                 uint256 tokenIdsLen = tokenIds.length;
@@ -80,17 +80,17 @@ contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
                 sqrtPriceX96 = ICLGauge(substrate.substrateAddress).pool().slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = addPrincippal(amount0, amount1, tokenIds[j], sqrtPriceX96);
+                    (amount0, amount1) = addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
                 }
 
-                balance += conbertToUsd(amount0, token0, priceOracleMiddleware);
-                balance += conbertToUsd(amount1, token1, priceOracleMiddleware);
+                balance += convertToUsd(amount0, token0, priceOracleMiddleware);
+                balance += convertToUsd(amount1, token1, priceOracleMiddleware);
             }
         }
         return balance;
     }
 
-    function addPrincippal(
+    function addPrincipal(
         uint256 amount0_,
         uint256 amount1_,
         uint256 tokenId_,
@@ -124,7 +124,7 @@ contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
         return (newAmount0, newAmount1);
     }
 
-    function conbertToUsd(
+    function convertToUsd(
         uint256 amount_,
         address token_,
         address priceOracleMiddleware_

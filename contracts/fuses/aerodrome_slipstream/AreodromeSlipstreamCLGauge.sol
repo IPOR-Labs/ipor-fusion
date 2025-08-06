@@ -31,49 +31,49 @@ contract AreodromeSlipstreamCLGauge is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(AreodromeSlipstreamCLGaugeEnterData calldata data) external {
+    function enter(AreodromeSlipstreamCLGaugeEnterData calldata data_) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 AreodromeSlipstreamSubstrateLib.substrateToBytes32(
                     AreodromeSlipstreamSubstrate({
                         substrateType: AreodromeSlipstreamSubstrateType.Gauge,
-                        substrateAddress: data.gaugeAddress
+                        substrateAddress: data_.gaugeAddress
                     })
                 )
             )
         ) {
-            revert AreodromeSlipstreamCLGaugeUnsupportedGauge(data.gaugeAddress);
+            revert AreodromeSlipstreamCLGaugeUnsupportedGauge(data_.gaugeAddress);
         }
 
-        if (data.tokenId == 0) {
+        if (data_.tokenId == 0) {
             return;
         }
 
-        INonfungiblePositionManager(ICLGauge(data.gaugeAddress).nft()).approve(data.gaugeAddress, data.tokenId);
+        INonfungiblePositionManager(ICLGauge(data_.gaugeAddress).nft()).approve(data_.gaugeAddress, data_.tokenId);
 
-        ICLGauge(data.gaugeAddress).deposit(data.tokenId);
+        ICLGauge(data_.gaugeAddress).deposit(data_.tokenId);
 
-        emit AreodromeSlipstreamCLGaugeEnter(data.gaugeAddress, data.tokenId);
+        emit AreodromeSlipstreamCLGaugeEnter(data_.gaugeAddress, data_.tokenId);
     }
 
-    function exit(AreodromeSlipstreamCLGaugeExitData calldata data) external {
+    function exit(AreodromeSlipstreamCLGaugeExitData calldata data_) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 AreodromeSlipstreamSubstrateLib.substrateToBytes32(
                     AreodromeSlipstreamSubstrate({
                         substrateType: AreodromeSlipstreamSubstrateType.Gauge,
-                        substrateAddress: data.gaugeAddress
+                        substrateAddress: data_.gaugeAddress
                     })
                 )
             )
         ) {
-            revert AreodromeSlipstreamCLGaugeUnsupportedGauge(data.gaugeAddress);
+            revert AreodromeSlipstreamCLGaugeUnsupportedGauge(data_.gaugeAddress);
         }
 
-        ICLGauge(data.gaugeAddress).withdraw(data.tokenId);
+        ICLGauge(data_.gaugeAddress).withdraw(data_.tokenId);
 
-        emit AreodromeSlipstreamCLGaugeExit(data.gaugeAddress, data.tokenId);
+        emit AreodromeSlipstreamCLGaugeExit(data_.gaugeAddress, data_.tokenId);
     }
 }

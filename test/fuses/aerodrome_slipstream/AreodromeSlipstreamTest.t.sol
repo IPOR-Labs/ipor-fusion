@@ -32,7 +32,6 @@ import {ICLGauge} from "../../../contracts/fuses/aerodrome_slipstream/ext/ICLGau
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {AreodromeSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 /// @title AreodromeSlipstreamTest
 /// @notice Test suite for Velodrom Superchain Slipstream Collect Fuse
@@ -56,8 +55,8 @@ contract AreodromeSlipstreamTest is Test {
     address private constant _NONFUNGIBLE_POSITION_MANAGER = 0x827922686190790b37229fd06084350E74485b72;
     address private constant _SLIPSTREAM_SUPERCHAIN_VAULT = 0x0AD09A66af0154a84e86F761313d02d0abB6edd5;
 
-    address private constant _VELODROME_POOL = 0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59;
-    address private constant _VELODROME_GAUGE = 0xF33a96b5932D9E9B9A0eDA447AbD8C9d48d2e0c8;
+    address private constant _AREODROME_POOL = 0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59;
+    address private constant _AREODROME_GAUGE = 0xF33a96b5932D9E9B9A0eDA447AbD8C9d48d2e0c8;
 
     // Core contracts
     PlasmaVault private _plasmaVault;
@@ -119,25 +118,25 @@ contract AreodromeSlipstreamTest is Test {
 
         // Deploy AreodromeSlipstreamCollectFuse
         _areodromeSlipstreamNewPositionFuse = new AreodromeSlipstreamNewPositionFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
         _areodromeSlipstreamModifyPositionFuse = new AreodromeSlipstreamModifyPositionFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
-        _areodromeSlipstreamCLGauge = new AreodromeSlipstreamCLGauge(IporFusionMarkets.VELODROME_SUPERCHAIN);
+        _areodromeSlipstreamCLGauge = new AreodromeSlipstreamCLGauge(IporFusionMarkets.AREODROME_SLIPSTREAM);
         _areodromeSlipstreamCollectFuse = new AreodromeSlipstreamCollectFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
         _areodromeSlipstreamBalance = new AreodromeSlipstreamBalance(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER,
             _SLIPSTREAM_SUPERCHAIN_VAULT
         );
 
-        _velodromeGaugeClaimFuse = new AreodromeSlipstreamGaugeClaimFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
+        _velodromeGaugeClaimFuse = new AreodromeSlipstreamGaugeClaimFuse(IporFusionMarkets.AREODROME_SLIPSTREAM);
 
         // Setup fuses
         address[] memory fuses = new address[](4);
@@ -154,7 +153,7 @@ contract AreodromeSlipstreamTest is Test {
         _rewardsClaimManager.addRewardFuses(rewardFuses);
 
         _plasmaVaultGovernance.addBalanceFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.AREODROME_SLIPSTREAM,
             address(_areodromeSlipstreamBalance)
         );
 
@@ -166,22 +165,22 @@ contract AreodromeSlipstreamTest is Test {
         vm.stopPrank();
 
         // Setup market substrates
-        bytes32[] memory velodromSubstrates = new bytes32[](2);
-        velodromSubstrates[0] = AreodromeSlipstreamSubstrateLib.substrateToBytes32(
+        bytes32[] memory areodromSubstrates = new bytes32[](2);
+        areodromSubstrates[0] = AreodromeSlipstreamSubstrateLib.substrateToBytes32(
             AreodromeSlipstreamSubstrate({
                 substrateType: AreodromeSlipstreamSubstrateType.Pool,
-                substrateAddress: _VELODROME_POOL
+                substrateAddress: _AREODROME_POOL
             })
         );
-        velodromSubstrates[1] = AreodromeSlipstreamSubstrateLib.substrateToBytes32(
+        areodromSubstrates[1] = AreodromeSlipstreamSubstrateLib.substrateToBytes32(
             AreodromeSlipstreamSubstrate({
                 substrateType: AreodromeSlipstreamSubstrateType.Gauge,
-                substrateAddress: _VELODROME_GAUGE
+                substrateAddress: _AREODROME_GAUGE
             })
         );
 
         vm.startPrank(_FUSE_MANAGER);
-        _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.VELODROME_SUPERCHAIN, velodromSubstrates);
+        _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.AREODROME_SLIPSTREAM, areodromSubstrates);
         vm.stopPrank();
 
         // Setup price feeds
@@ -210,7 +209,7 @@ contract AreodromeSlipstreamTest is Test {
         vm.stopPrank();
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarkets.VELODROME_SUPERCHAIN;
+        marketIds[0] = IporFusionMarkets.AREODROME_SLIPSTREAM;
         uint256[][] memory dependencies = new uint256[][](1);
         dependencies[0] = new uint256[](1);
         dependencies[0][0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
@@ -252,7 +251,7 @@ contract AreodromeSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
         uint256 usdcBalanceBefore = IERC20(_USDC).balanceOf(address(_plasmaVault));
         uint256 wethBalanceBefore = IERC20(_WETH).balanceOf(address(_plasmaVault));
@@ -264,7 +263,7 @@ contract AreodromeSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
         uint256 usdcBalanceAfter = IERC20(_USDC).balanceOf(address(_plasmaVault));
         uint256 wethBalanceAfter = IERC20(_WETH).balanceOf(address(_plasmaVault));
@@ -306,7 +305,7 @@ contract AreodromeSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
         uint256 usdcBalanceBefore = IERC20(_USDC).balanceOf(address(_plasmaVault));
         uint256 wethBalanceBefore = IERC20(_WETH).balanceOf(address(_plasmaVault));
@@ -318,7 +317,7 @@ contract AreodromeSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
         uint256 usdcBalanceAfter = IERC20(_USDC).balanceOf(address(_plasmaVault));
         uint256 wethBalanceAfter = IERC20(_WETH).balanceOf(address(_plasmaVault));
@@ -363,7 +362,7 @@ contract AreodromeSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
         uint256 usdcBalanceBefore = IERC20(_USDC).balanceOf(address(_plasmaVault));
         uint256 wethBalanceBefore = IERC20(_WETH).balanceOf(address(_plasmaVault));
@@ -375,7 +374,7 @@ contract AreodromeSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
         uint256 usdcBalanceAfter = IERC20(_USDC).balanceOf(address(_plasmaVault));
         uint256 wethBalanceAfter = IERC20(_WETH).balanceOf(address(_plasmaVault));
@@ -411,7 +410,7 @@ contract AreodromeSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
 
         // when
@@ -421,14 +420,11 @@ contract AreodromeSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
 
         (, , , , , , , uint128 liquidityAfter, , , , ) = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER)
             .positions(tokenId);
-
-        // assertGt(marketBalanceBefore, marketBalanceAfter, "marketBalanceBefore > marketBalanceAfter");
-        // assertGt(liquidityBefore, liquidityAfter, "liquidityBefore > liquidityAfter");
     }
 
     function test_shouldCollectFromNFTPosition() public {
@@ -454,7 +450,7 @@ contract AreodromeSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
 
         uint256 wethBalanceBefore = IERC20(_WETH).balanceOf(address(_plasmaVault));
@@ -467,7 +463,7 @@ contract AreodromeSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.AREODROME_SLIPSTREAM
         );
 
         assertGt(wethBalanceAfter, wethBalanceBefore, "wethBalanceAfter should be greater than wethBalanceBefore");
@@ -489,7 +485,7 @@ contract AreodromeSlipstreamTest is Test {
         );
 
         AreodromeSlipstreamCLGaugeEnterData memory stakeParams = AreodromeSlipstreamCLGaugeEnterData({
-            gaugeAddress: _VELODROME_GAUGE,
+            gaugeAddress: _AREODROME_GAUGE,
             tokenId: tokenId
         });
 
@@ -504,7 +500,7 @@ contract AreodromeSlipstreamTest is Test {
         _plasmaVault.execute(stakeCalls);
         vm.stopPrank();
 
-        uint256[] memory stakedValues = ICLGauge(_VELODROME_GAUGE).stakedValues(address(_plasmaVault));
+        uint256[] memory stakedValues = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
 
         assertEq(stakedValues[0], tokenId, "stakedValues[0] should be equal to tokenId");
     }
@@ -512,10 +508,10 @@ contract AreodromeSlipstreamTest is Test {
     function test_shouldUnstakeFromGauge() public {
         test_shouldStakeToGauge();
 
-        uint256[] memory stakedValuesBefore = ICLGauge(_VELODROME_GAUGE).stakedValues(address(_plasmaVault));
+        uint256[] memory stakedValuesBefore = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
 
         AreodromeSlipstreamCLGaugeExitData memory unstakeParams = AreodromeSlipstreamCLGaugeExitData({
-            gaugeAddress: _VELODROME_GAUGE,
+            gaugeAddress: _AREODROME_GAUGE,
             tokenId: stakedValuesBefore[0]
         });
 
@@ -531,7 +527,7 @@ contract AreodromeSlipstreamTest is Test {
         vm.stopPrank();
 
         // then
-        uint256[] memory stakedValuesAfter = ICLGauge(_VELODROME_GAUGE).stakedValues(address(_plasmaVault));
+        uint256[] memory stakedValuesAfter = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
 
         assertEq(
             stakedValuesBefore.length - 1,
@@ -546,14 +542,14 @@ contract AreodromeSlipstreamTest is Test {
         vm.warp(block.timestamp + 7 days);
 
         address[] memory gauges = new address[](1);
-        gauges[0] = _VELODROME_GAUGE;
+        gauges[0] = _AREODROME_GAUGE;
 
         FuseAction[] memory claimCalls = new FuseAction[](1);
         claimCalls[0] = FuseAction(
             address(_velodromeGaugeClaimFuse),
             abi.encodeWithSignature("claim(address[])", gauges)
         );
-        address rewardToken = ICLGauge(_VELODROME_GAUGE).rewardToken();
+        address rewardToken = ICLGauge(_AREODROME_GAUGE).rewardToken();
         uint256 balanceBefore = IERC20(rewardToken).balanceOf(address(_rewardsClaimManager));
 
         // when
