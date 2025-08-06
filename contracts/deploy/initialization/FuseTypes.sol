@@ -198,7 +198,7 @@ library FuseTypes {
     uint16 public constant UNIVERSAL_TOKEN_SWAPPER_WITH_VERIFICATION_FUSE_ID = 65;
     string public constant UNIVERSAL_TOKEN_SWAPPER_WITH_VERIFICATION_FUSE_NAME = "Universal_Token_Swapper_With_Verification_Fuse";
 
-    function getAllFuseId() internal pure returns (uint16[] memory) {
+    function getAllFuseIds() internal pure returns (uint16[] memory) {
         uint16[] memory fuseIds = new uint16[](65);
         fuseIds[0] = AAVEV2_BALANCE_FUSE_ID;
         fuseIds[1] = AAVEV2_SUPPLY_FUSE_ID;
@@ -268,7 +268,7 @@ library FuseTypes {
         return fuseIds;
     }
 
-    function getAllFuseName() internal pure returns (string[] memory) {
+    function getAllFuseNames() internal pure returns (string[] memory) {
         string[] memory fuseNames = new string[](65);
         fuseNames[0] = AAVEV2_BALANCE_FUSE_NAME;
         fuseNames[1] = AAVEV2_SUPPLY_FUSE_NAME;
