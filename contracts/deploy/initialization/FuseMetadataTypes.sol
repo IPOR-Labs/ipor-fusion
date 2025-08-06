@@ -4,52 +4,48 @@ pragma solidity 0.8.26;
 
 library FuseMetadataTypes {
 
-    ///@dev (Unaudited, Reviewed, Tested, Audited)
     uint16 public constant FUSE_METADATA_AUDIT_STATUS_ID = 0;
-    string public constant FUSE_METADATA_AUDIT_STATUS_NAME = "Audit_Status";
+    string public constant FUSE_METADATA_AUDIT_STATUS_NAME = "AUDIT_STATUS";
 
-    string public constant FUSE_METADATA_AUDIT_STATUS_UNAUDITED_CODE = "Unaudited";
-    string public constant FUSE_METADATA_AUDIT_STATUS_REVIEWED_CODE = "Reviewed";
-    string public constant FUSE_METADATA_AUDIT_STATUS_TESTED_CODE = "Tested";
-    string public constant FUSE_METADATA_AUDIT_STATUS_AUDITED_CODE = "Audited";
+    string public constant FUSE_METADATA_AUDIT_STATUS_UNAUDITED_CODE = "UNAUDITED";
+    string public constant FUSE_METADATA_AUDIT_STATUS_REVIEWED_CODE = "REVIEWED";
+    string public constant FUSE_METADATA_AUDIT_STATUS_TESTED_CODE = "TESTED";
+    string public constant FUSE_METADATA_AUDIT_STATUS_AUDITED_CODE = "AUDITED";
 
     uint16 public constant FUSE_METADATA_SUBSTRATE_INFO_ID = 1;
-    string public constant FUSE_METADATA_SUBSTRATE_INFO_NAME = "Substrate_Info";
+    string public constant FUSE_METADATA_SUBSTRATE_INFO_NAME = "SUBSTRATE_INFO";
 
-    ///@dev (Deposit, Balance, DEX, Perpetual, Borrow, Rewards, Collateral, Flash_Loan)
     uint16 public constant FUSE_METADATA_CATEGORY_INFO_ID = 2;
-    string public constant FUSE_METADATA_CATEGORY_INFO_NAME = "Category_Info";
+    string public constant FUSE_METADATA_CATEGORY_INFO_NAME = "CATEGORY_INFO";
 
-    string public constant FUSE_METADATA_CATEGORY_INFO_DEPOSIT_CODE = "Deposit";
-    string public constant FUSE_METADATA_CATEGORY_INFO_BALANCE_CODE = "Balance";
+    string public constant FUSE_METADATA_CATEGORY_INFO_DEPOSIT_CODE = "DEPOSIT";
+    string public constant FUSE_METADATA_CATEGORY_INFO_BALANCE_CODE = "BALANCE";
     string public constant FUSE_METADATA_CATEGORY_INFO_DEX_CODE = "DEX";
-    string public constant FUSE_METADATA_CATEGORY_INFO_PERPETUAL_CODE = "Perpetual";
-    string public constant FUSE_METADATA_CATEGORY_INFO_BORROW_CODE = "Borrow";
-    string public constant FUSE_METADATA_CATEGORY_INFO_REWARDS_CODE = "Rewards";
-    string public constant FUSE_METADATA_CATEGORY_INFO_COLLATERAL_CODE = "Collateral";
-    string public constant FUSE_METADATA_CATEGORY_INFO_FLASH_LOAN_CODE = "Flash_Loan";
+    string public constant FUSE_METADATA_CATEGORY_INFO_PERPETUAL_CODE = "PERPETUAL";
+    string public constant FUSE_METADATA_CATEGORY_INFO_BORROW_CODE = "BORROW";
+    string public constant FUSE_METADATA_CATEGORY_INFO_REWARDS_CODE = "REWARDS";
+    string public constant FUSE_METADATA_CATEGORY_INFO_COLLATERAL_CODE = "COLLATERAL";
+    string public constant FUSE_METADATA_CATEGORY_INFO_FLASH_LOAN_CODE = "FLASH_LOAN";
 
-    ///@dev (V1, V2)
     uint16 public constant FUSE_METADATA_ABI_VERSION_ID = 3;
-    string public constant FUSE_METADATA_ABI_VERSION_NAME = "Abi_Version";
+    string public constant FUSE_METADATA_ABI_VERSION_NAME = "ABI_VERSION";
 
     string public constant FUSE_METADATA_ABI_VERSION_V1_CODE = "V1";
     string public constant FUSE_METADATA_ABI_VERSION_V2_CODE = "V2";
 
-    ///@dev (Aave, Compound, Curve, Euler, Fluid, Gearbox, Harvest, Moonwell, Morpho, Ramses)
     uint16 public constant FUSE_METADATA_PROTOCOL_INFO_ID = 4;
-    string public constant FUSE_METADATA_PROTOCOL_INFO_NAME = "Protocol_Info";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_NAME = "PROTOCOL_INFO";
 
-    string public constant FUSE_METADATA_PROTOCOL_INFO_AAVE_CODE = "Aave";
-    string public constant FUSE_METADATA_PROTOCOL_INFO_COMPOUND_CODE = "Compound";
-    string public constant FUSE_METADATA_PROTOCOL_INFO_CURVE_CODE = "Curve";
-    string public constant FUSE_METADATA_PROTOCOL_INFO_EULER_CODE = "Euler";
-    string public constant FUSE_METADATA_PROTOCOL_INFO_FLUID_CODE = "Fluid";
-    string public constant FUSE_METADATA_PROTOCOL_INFO_GEARBOX_CODE = "Gearbox";
-    string public constant FUSE_METADATA_PROTOCOL_INFO_HARVEST_CODE = "Harvest";
-    string public constant FUSE_METADATA_PROTOCOL_INFO_MOONWELL_CODE = "Moonwell";
-    string public constant FUSE_METADATA_PROTOCOL_INFO_MORPHO_CODE = "Morpho";
-    string public constant FUSE_METADATA_PROTOCOL_INFO_RAMSES_CODE = "Ramses";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_AAVE_CODE = "AAVE";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_COMPOUND_CODE = "COMPOUND";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_CURVE_CODE = "CURVE";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_EULER_CODE = "EULER";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_FLUID_CODE = "FLUID";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_GEARBOX_CODE = "GEARBOX";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_HARVEST_CODE = "HARVEST";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_MOONWELL_CODE = "MOONWELL";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_MORPHO_CODE = "MORPHO";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_RAMSES_CODE = "RAMSES";
 
     function getAllFuseMetadataTypeIds() internal pure returns (uint16[] memory) {
         uint16[] memory fuseMetadataTypeIds = new uint16[](5);
