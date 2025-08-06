@@ -16,10 +16,10 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
-import {VelodromeBalanceFuse} from "../../../contracts/fuses/velodrome_superchain/VelodrimeBalanceFuse.sol";
-import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "../../../contracts/fuses/velodrome_superchain/VelodrimeLib.sol";
+import {VelodromeBalanceFuse} from "../../../contracts/fuses/velodrome_superchain/VelodromeBalanceFuse.sol";
+import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "../../../contracts/fuses/velodrome_superchain/VelodromeLib.sol";
 import {VelodromeLiquidityFuse, VelodromeLiquidityFuseEnterData, VelodromeLiquidityFuseExitData} from "../../../contracts/fuses/velodrome_superchain/VelodromeLiquidityFuse.sol";
-import {VelodromeGaugeFuse, VelodromeGaugeFuseEnterData, VelodromeGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain/VelodrimeGaugeFuse.sol";
+import {VelodromeGaugeFuse, VelodromeGaugeFuseEnterData, VelodromeGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain/VelodromeGaugeFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IRouter} from "../../../contracts/fuses/velodrome_superchain/ext/IRouter.sol";
@@ -219,13 +219,14 @@ contract VelodromeFuseTests is Test {
         // Deposit all LP tokens to gauge
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: lpTokenBalance
+            amount: lpTokenBalance,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // Execute gauge deposit
@@ -647,13 +648,14 @@ contract VelodromeFuseTests is Test {
         uint256 gaugeDepositAmount = lpTokenBalance / 2; // Deposit half of LP tokens
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: gaugeDepositAmount
+            amount: gaugeDepositAmount,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // when
@@ -719,13 +721,14 @@ contract VelodromeFuseTests is Test {
         address unsupportedGauge = address(0x1234567890123456789012345678901234567890);
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: unsupportedGauge,
-            amount: lpTokenBalance / 2
+            amount: lpTokenBalance / 2,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // when & then
@@ -782,13 +785,14 @@ contract VelodromeFuseTests is Test {
         // Now deposit all LP tokens to gauge
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: lpTokenBalance
+            amount: lpTokenBalance,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // when
@@ -863,13 +867,14 @@ contract VelodromeFuseTests is Test {
         uint256 firstDepositAmount = lpTokenBalance / 2;
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: firstDepositAmount
+            amount: firstDepositAmount,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // Execute first gauge deposit
@@ -883,11 +888,15 @@ contract VelodromeFuseTests is Test {
 
         // Second gauge deposit - remaining LP tokens
         uint256 secondDepositAmount = afterFirstLpTokenBalance;
-        gaugeEnterData = VelodromeGaugeFuseEnterData({gaugeAddress: _VELODROME_GAUGE, amount: secondDepositAmount});
+        gaugeEnterData = VelodromeGaugeFuseEnterData({
+            gaugeAddress: _VELODROME_GAUGE,
+            amount: secondDepositAmount,
+            minAmount: 0
+        });
 
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // Execute second gauge deposit
@@ -966,13 +975,14 @@ contract VelodromeFuseTests is Test {
         // Deposit all LP tokens to gauge
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: lpTokenBalance
+            amount: lpTokenBalance,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // Execute gauge deposit
@@ -991,13 +1001,14 @@ contract VelodromeFuseTests is Test {
         uint256 withdrawAmount = lpTokenBalance / 2;
         VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: withdrawAmount
+            amount: withdrawAmount,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+            abi.encodeWithSignature("exit((address,uint256,uint256))", gaugeExitData)
         );
 
         // when
@@ -1074,13 +1085,14 @@ contract VelodromeFuseTests is Test {
         // Deposit all LP tokens to gauge
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: lpTokenBalance
+            amount: lpTokenBalance,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // Execute gauge deposit
@@ -1098,13 +1110,14 @@ contract VelodromeFuseTests is Test {
         // Now withdraw all LP tokens from gauge
         VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: lpTokenBalance
+            amount: lpTokenBalance,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+            abi.encodeWithSignature("exit((address,uint256,uint256))", gaugeExitData)
         );
 
         // when
@@ -1178,13 +1191,14 @@ contract VelodromeFuseTests is Test {
         // Deposit all LP tokens to gauge
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: lpTokenBalance
+            amount: lpTokenBalance,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // Execute gauge deposit
@@ -1203,13 +1217,14 @@ contract VelodromeFuseTests is Test {
         uint256 firstWithdrawAmount = lpTokenBalance / 2;
         VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: firstWithdrawAmount
+            amount: firstWithdrawAmount,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+            abi.encodeWithSignature("exit((address,uint256,uint256))", gaugeExitData)
         );
 
         // Execute first withdrawal
@@ -1223,11 +1238,15 @@ contract VelodromeFuseTests is Test {
 
         // Second withdrawal - remaining LP tokens
         uint256 secondWithdrawAmount = lpTokenBalance - firstWithdrawAmount;
-        gaugeExitData = VelodromeGaugeFuseExitData({gaugeAddress: _VELODROME_GAUGE, amount: secondWithdrawAmount});
+        gaugeExitData = VelodromeGaugeFuseExitData({
+            gaugeAddress: _VELODROME_GAUGE,
+            amount: secondWithdrawAmount,
+            minAmount: 0
+        });
 
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("exit((address,uint256))", gaugeExitData)
+            abi.encodeWithSignature("exit((address,uint256,uint256))", gaugeExitData)
         );
 
         // Execute second withdrawal
@@ -1301,13 +1320,14 @@ contract VelodromeFuseTests is Test {
         // Deposit LP tokens to gauge
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: lpTokenBalance
+            amount: lpTokenBalance,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // Execute gauge deposit
@@ -1319,7 +1339,8 @@ contract VelodromeFuseTests is Test {
         address unsupportedGauge = address(0x1234567890123456789012345678901234567890);
         VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
             gaugeAddress: unsupportedGauge,
-            amount: lpTokenBalance / 2
+            amount: lpTokenBalance / 2,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
@@ -1373,13 +1394,14 @@ contract VelodromeFuseTests is Test {
         // Deposit LP tokens to gauge
         VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: lpTokenBalance
+            amount: lpTokenBalance,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
         actions[0] = FuseAction(
             address(_velodromeGaugeFuse),
-            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
         );
 
         // Execute gauge deposit
@@ -1390,7 +1412,8 @@ contract VelodromeFuseTests is Test {
         // Try to withdraw zero amount
         VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
             gaugeAddress: _VELODROME_GAUGE,
-            amount: 0
+            amount: 0,
+            minAmount: 0
         });
 
         actions = new FuseAction[](1);
