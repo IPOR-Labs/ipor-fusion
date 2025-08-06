@@ -79,8 +79,9 @@ contract PtPriceFeed is IPriceFeed {
             revert PriceOracleZeroAddress();
         }
 
-        (bool increaseCardinalityRequired, , bool oldestObservationSatisfied) = IPPYLpOracle(pendleOracle_)
-            .getOracleState(pendleMarket_, twapWindow_);
+        (bool increaseCardinalityRequired, uint16 cardinalityRequired, bool oldestObservationSatisfied) = IPPYLpOracle(
+            pendleOracle_
+        ).getOracleState(pendleMarket_, twapWindow_);
 
         if (increaseCardinalityRequired || !oldestObservationSatisfied) {
             revert PriceOraclePendleOracleNotReady();
