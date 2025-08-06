@@ -7,7 +7,6 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IStabilityPool} from "./ext/IStabilityPool.sol";
-import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
 
 /**
  * @dev Data structure used for entering the Liquity Stability Pool by providing BOLD to it

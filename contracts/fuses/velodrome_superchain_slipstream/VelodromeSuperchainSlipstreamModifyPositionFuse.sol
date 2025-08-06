@@ -6,9 +6,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
-import {VelodromSuperchainSlipstreamSubstrateLib, VelodromSuperchainSlipstreamSubstrateType, VelodromSuperchainSlipstreamSubstrate} from "./VelodromSuperchainSlipstreamLib.sol";
+import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 
-struct VelodromSuperchainSlipstreamModifyPositionFuseEnterData {
+struct VelodromeSuperchainSlipstreamModifyPositionFuseEnterData {
     /// @notice The address of the token0 for a specific pool
     address token0;
     /// @notice The address of the token1 for a specific pool
@@ -27,7 +27,7 @@ struct VelodromSuperchainSlipstreamModifyPositionFuseEnterData {
     uint256 deadline;
 }
 
-struct VelodromSuperchainSlipstreamModifyPositionFuseExitData {
+struct VelodromeSuperchainSlipstreamModifyPositionFuseExitData {
     /// @notice The ID of the token for which liquidity is being decreased
     uint256 tokenId;
     /// @notice The amount by which liquidity will be decreased
@@ -40,24 +40,24 @@ struct VelodromSuperchainSlipstreamModifyPositionFuseExitData {
     uint256 deadline;
 }
 
-contract VelodromSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
+contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    event VelodromSuperchainSlipstreamModifyPositionFuseEnter(
+    event VelodromeSuperchainSlipstreamModifyPositionFuseEnter(
         address version,
         uint256 tokenId,
         uint128 liquidity,
         uint256 amount0,
         uint256 amount1
     );
-    event VelodromSuperchainSlipstreamModifyPositionFuseExit(
+    event VelodromeSuperchainSlipstreamModifyPositionFuseExit(
         address version,
         uint256 tokenId,
         uint256 amount0,
         uint256 amount1
     );
 
-    error VelodromSuperchainSlipstreamModifyPositionFuseUnsupportedPool(address pool);
+    error VelodromeSuperchainSlipstreamModifyPositionFuseUnsupportedPool(address pool);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -72,25 +72,25 @@ contract VelodromSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
         FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
     }
 
-    function enter(VelodromSuperchainSlipstreamModifyPositionFuseEnterData calldata data_) public {
+    function enter(VelodromeSuperchainSlipstreamModifyPositionFuseEnterData calldata data_) public {
         (, , address token0, address token1, int24 tickSpacing, , , , , , , ) = INonfungiblePositionManager(
             NONFUNGIBLE_POSITION_MANAGER
         ).positions(data_.tokenId);
 
-        address pool = VelodromSuperchainSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
+        address pool = VelodromeSuperchainSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
 
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
-                VelodromSuperchainSlipstreamSubstrateLib.substrateToBytes32(
-                    VelodromSuperchainSlipstreamSubstrate({
-                        substrateType: VelodromSuperchainSlipstreamSubstrateType.Pool,
+                VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32(
+                    VelodromeSuperchainSlipstreamSubstrate({
+                        substrateType: VelodromeSuperchainSlipstreamSubstrateType.Pool,
                         substrateAddress: pool
                     })
                 )
             )
         ) {
-            revert VelodromSuperchainSlipstreamModifyPositionFuseUnsupportedPool(pool);
+            revert VelodromeSuperchainSlipstreamModifyPositionFuseUnsupportedPool(pool);
         }
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
@@ -113,28 +113,28 @@ contract VelodromSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
-        emit VelodromSuperchainSlipstreamModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
+        emit VelodromeSuperchainSlipstreamModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
     }
 
-    function exit(VelodromSuperchainSlipstreamModifyPositionFuseExitData calldata data_) public {
+    function exit(VelodromeSuperchainSlipstreamModifyPositionFuseExitData calldata data_) public {
         (, , address token0, address token1, int24 tickSpacing, , , , , , , ) = INonfungiblePositionManager(
             NONFUNGIBLE_POSITION_MANAGER
         ).positions(data_.tokenId);
 
-        address pool = VelodromSuperchainSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
+        address pool = VelodromeSuperchainSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
 
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
-                VelodromSuperchainSlipstreamSubstrateLib.substrateToBytes32(
-                    VelodromSuperchainSlipstreamSubstrate({
-                        substrateType: VelodromSuperchainSlipstreamSubstrateType.Pool,
+                VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32(
+                    VelodromeSuperchainSlipstreamSubstrate({
+                        substrateType: VelodromeSuperchainSlipstreamSubstrateType.Pool,
                         substrateAddress: pool
                     })
                 )
             )
         ) {
-            revert VelodromSuperchainSlipstreamModifyPositionFuseUnsupportedPool(pool);
+            revert VelodromeSuperchainSlipstreamModifyPositionFuseUnsupportedPool(pool);
         }
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
@@ -149,6 +149,6 @@ contract VelodromSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
         (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER)
             .decreaseLiquidity(params);
 
-        emit VelodromSuperchainSlipstreamModifyPositionFuseExit(VERSION, data_.tokenId, amount0, amount1);
+        emit VelodromeSuperchainSlipstreamModifyPositionFuseExit(VERSION, data_.tokenId, amount0, amount1);
     }
 }

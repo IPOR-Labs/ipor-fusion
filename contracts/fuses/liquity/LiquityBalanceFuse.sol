@@ -7,7 +7,6 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IStabilityPool} from "./ext/IStabilityPool.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
-import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
