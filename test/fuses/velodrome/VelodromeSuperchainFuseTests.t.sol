@@ -16,24 +16,24 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
-import {VelodromeBalanceFuse} from "../../../contracts/fuses/velodrome_superchain/VelodromeBalanceFuse.sol";
-import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "../../../contracts/fuses/velodrome_superchain/VelodromeLib.sol";
-import {VelodromeLiquidityFuse, VelodromeLiquidityFuseEnterData, VelodromeLiquidityFuseExitData} from "../../../contracts/fuses/velodrome_superchain/VelodromeLiquidityFuse.sol";
-import {VelodromeGaugeFuse, VelodromeGaugeFuseEnterData, VelodromeGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain/VelodromeGaugeFuse.sol";
+import {VelodromeSuperchainBalanceFuse} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainBalanceFuse.sol";
+import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainLib.sol";
+import {VelodromeSuperchainLiquidityFuse, VelodromeSuperchainLiquidityFuseEnterData, VelodromeSuperchainLiquidityFuseExitData} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol";
+import {VelodromeSuperchainGaugeFuse, VelodromeSuperchainGaugeFuseEnterData, VelodromeSuperchainGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IRouter} from "../../../contracts/fuses/velodrome_superchain/ext/IRouter.sol";
-import {VelodromeGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromeGaugeClaimFuse.sol";
+import {VelodromeSuperchainGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainGaugeClaimFuse.sol";
 import {ILeafGauge} from "../../../contracts/fuses/velodrome_superchain/ext/ILeafGauge.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 
 import {IWETH9} from "../erc4626/IWETH9.sol";
 
-/// @title AerodromeFuseTests
-/// @notice Test suite for Aerodrome fuses on Base blockchain
-/// @dev Tests Aerodrome liquidity provision, balance management, and fee claiming functionality
-contract VelodromeFuseTests is Test {
+/// @title VelodromeSuperchainFuseTests
+/// @notice Test suite for Velodrome Superchain fuses on Base blockchain
+/// @dev Tests Velodrome Superchain liquidity provision, balance management, and fee claiming functionality
+contract VelodromeSuperchainFuseTests is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
     using PlasmaVaultHelper for PlasmaVault;
     using IporFusionAccessManagerHelper for IporFusionAccessManager;
@@ -63,10 +63,10 @@ contract VelodromeFuseTests is Test {
     PlasmaVaultGovernance private _plasmaVaultGovernance;
     PriceOracleMiddlewareManager private _priceOracleMiddleware;
     IporFusionAccessManager private _accessManager;
-    VelodromeBalanceFuse private _velodromeBalanceFuse;
-    VelodromeLiquidityFuse private _velodromeLiquidityFuse;
-    VelodromeGaugeFuse private _velodromeGaugeFuse;
-    VelodromeGaugeClaimFuse private _velodromeGaugeClaimFuse;
+    VelodromeSuperchainBalanceFuse private _velodromeBalanceFuse;
+    VelodromeSuperchainLiquidityFuse private _velodromeLiquidityFuse;
+    VelodromeSuperchainGaugeFuse private _velodromeGaugeFuse;
+    VelodromeSuperchainGaugeClaimFuse private _velodromeGaugeClaimFuse;
     RewardsClaimManager private _rewardsClaimManager;
 
     function setUp() public {
@@ -123,10 +123,10 @@ contract VelodromeFuseTests is Test {
         IERC20(_DINERO).transfer(address(_plasmaVault), 1_000_000e18);
         vm.stopPrank();
 
-        _velodromeBalanceFuse = new VelodromeBalanceFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
-        _velodromeLiquidityFuse = new VelodromeLiquidityFuse(IporFusionMarkets.VELODROME_SUPERCHAIN, _VELODROME_ROUTER);
-        _velodromeGaugeFuse = new VelodromeGaugeFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
-        _velodromeGaugeClaimFuse = new VelodromeGaugeClaimFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
+        _velodromeBalanceFuse = new VelodromeSuperchainBalanceFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
+        _velodromeLiquidityFuse = new VelodromeSuperchainLiquidityFuse(IporFusionMarkets.VELODROME_SUPERCHAIN, _VELODROME_ROUTER);
+        _velodromeGaugeFuse = new VelodromeSuperchainGaugeFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
+        _velodromeGaugeClaimFuse = new VelodromeSuperchainGaugeClaimFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         address[] memory fuses = new address[](3);
         fuses[0] = address(_velodromeLiquidityFuse);
@@ -152,14 +152,14 @@ contract VelodromeFuseTests is Test {
 
         bytes32[] memory aerodromeSubstrates = new bytes32[](2);
 
-        aerodromeSubstrates[0] = VelodromeSubstrateLib.substrateToBytes32(
-            VelodromeSubstrate({
+        aerodromeSubstrates[0] = VelodromeSuperchainSubstrateLib.substrateToBytes32(
+            VelodromeSuperchainSubstrate({
                 substrateAddress: IRouter(_VELODROME_ROUTER).poolFor(_DINERO, _UNDERLYING_TOKEN, false),
-                substrateType: VelodromeSubstrateType.Pool
+                substrateType: VelodromeSuperchainSubstrateType.Pool
             })
         );
-        aerodromeSubstrates[1] = VelodromeSubstrateLib.substrateToBytes32(
-            VelodromeSubstrate({substrateAddress: _VELODROME_GAUGE, substrateType: VelodromeSubstrateType.Gauge})
+        aerodromeSubstrates[1] = VelodromeSuperchainSubstrateLib.substrateToBytes32(
+            VelodromeSuperchainSubstrate({substrateAddress: _VELODROME_GAUGE, substrateType: VelodromeSuperchainSubstrateType.Gauge})
         );
 
         vm.startPrank(_FUSE_MANAGER);
@@ -190,7 +190,7 @@ contract VelodromeFuseTests is Test {
         uint256 deadline = block.timestamp + 3600; // 1 hour
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -217,7 +217,7 @@ contract VelodromeFuseTests is Test {
         uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
 
         // Deposit all LP tokens to gauge
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: lpTokenBalance,
             minAmount: 0
@@ -271,7 +271,7 @@ contract VelodromeFuseTests is Test {
         uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // Create VelodromeLiquidityFuseEnterData
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -315,7 +315,7 @@ contract VelodromeFuseTests is Test {
         uint256 amountBMin = 0.99e18;
         uint256 deadline = block.timestamp + 3600;
 
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: true,
@@ -359,7 +359,7 @@ contract VelodromeFuseTests is Test {
         uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // First liquidity addition
-        VelodromeLiquidityFuseEnterData memory enterData1 = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData1 = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -387,7 +387,7 @@ contract VelodromeFuseTests is Test {
         uint256 afterFirstVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // Second liquidity addition
-        enterData1 = VelodromeLiquidityFuseEnterData({
+        enterData1 = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -456,7 +456,7 @@ contract VelodromeFuseTests is Test {
         uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // First, add liquidity
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -488,7 +488,7 @@ contract VelodromeFuseTests is Test {
         uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
 
         // Now remove all liquidity
-        VelodromeLiquidityFuseExitData memory exitData = VelodromeLiquidityFuseExitData({
+        VelodromeSuperchainLiquidityFuseExitData memory exitData = VelodromeSuperchainLiquidityFuseExitData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -568,7 +568,7 @@ contract VelodromeFuseTests is Test {
         address poolAddress = IRouter(_VELODROME_ROUTER).poolFor(_DINERO, _UNDERLYING_TOKEN, false);
 
         // First, add liquidity
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -615,7 +615,7 @@ contract VelodromeFuseTests is Test {
         uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -646,7 +646,7 @@ contract VelodromeFuseTests is Test {
 
         // Now deposit LP tokens to gauge
         uint256 gaugeDepositAmount = lpTokenBalance / 2; // Deposit half of LP tokens
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: gaugeDepositAmount,
             minAmount: 0
@@ -691,7 +691,7 @@ contract VelodromeFuseTests is Test {
         uint256 deadline = block.timestamp + 3600;
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -719,7 +719,7 @@ contract VelodromeFuseTests is Test {
 
         // Try to deposit to an unsupported gauge
         address unsupportedGauge = address(0x1234567890123456789012345678901234567890);
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: unsupportedGauge,
             amount: lpTokenBalance / 2,
             minAmount: 0
@@ -753,7 +753,7 @@ contract VelodromeFuseTests is Test {
         uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -783,7 +783,7 @@ contract VelodromeFuseTests is Test {
         );
 
         // Now deposit all LP tokens to gauge
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: lpTokenBalance,
             minAmount: 0
@@ -834,7 +834,7 @@ contract VelodromeFuseTests is Test {
         uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -865,7 +865,7 @@ contract VelodromeFuseTests is Test {
 
         // First gauge deposit - half of LP tokens
         uint256 firstDepositAmount = lpTokenBalance / 2;
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: firstDepositAmount,
             minAmount: 0
@@ -888,7 +888,7 @@ contract VelodromeFuseTests is Test {
 
         // Second gauge deposit - remaining LP tokens
         uint256 secondDepositAmount = afterFirstLpTokenBalance;
-        gaugeEnterData = VelodromeGaugeFuseEnterData({
+        gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: secondDepositAmount,
             minAmount: 0
@@ -943,7 +943,7 @@ contract VelodromeFuseTests is Test {
         uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -973,7 +973,7 @@ contract VelodromeFuseTests is Test {
         );
 
         // Deposit all LP tokens to gauge
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: lpTokenBalance,
             minAmount: 0
@@ -999,7 +999,7 @@ contract VelodromeFuseTests is Test {
 
         // Now withdraw half of the LP tokens from gauge
         uint256 withdrawAmount = lpTokenBalance / 2;
-        VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
+        VelodromeSuperchainGaugeFuseExitData memory gaugeExitData = VelodromeSuperchainGaugeFuseExitData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: withdrawAmount,
             minAmount: 0
@@ -1053,7 +1053,7 @@ contract VelodromeFuseTests is Test {
         uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -1083,7 +1083,7 @@ contract VelodromeFuseTests is Test {
         );
 
         // Deposit all LP tokens to gauge
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: lpTokenBalance,
             minAmount: 0
@@ -1108,7 +1108,7 @@ contract VelodromeFuseTests is Test {
         );
 
         // Now withdraw all LP tokens from gauge
-        VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
+        VelodromeSuperchainGaugeFuseExitData memory gaugeExitData = VelodromeSuperchainGaugeFuseExitData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: lpTokenBalance,
             minAmount: 0
@@ -1159,7 +1159,7 @@ contract VelodromeFuseTests is Test {
         uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -1189,7 +1189,7 @@ contract VelodromeFuseTests is Test {
         );
 
         // Deposit all LP tokens to gauge
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: lpTokenBalance,
             minAmount: 0
@@ -1215,7 +1215,7 @@ contract VelodromeFuseTests is Test {
 
         // First withdrawal - half of LP tokens
         uint256 firstWithdrawAmount = lpTokenBalance / 2;
-        VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
+        VelodromeSuperchainGaugeFuseExitData memory gaugeExitData = VelodromeSuperchainGaugeFuseExitData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: firstWithdrawAmount,
             minAmount: 0
@@ -1238,7 +1238,7 @@ contract VelodromeFuseTests is Test {
 
         // Second withdrawal - remaining LP tokens
         uint256 secondWithdrawAmount = lpTokenBalance - firstWithdrawAmount;
-        gaugeExitData = VelodromeGaugeFuseExitData({
+        gaugeExitData = VelodromeSuperchainGaugeFuseExitData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: secondWithdrawAmount,
             minAmount: 0
@@ -1291,7 +1291,7 @@ contract VelodromeFuseTests is Test {
         uint256 deadline = block.timestamp + 3600;
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -1318,7 +1318,7 @@ contract VelodromeFuseTests is Test {
         uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
 
         // Deposit LP tokens to gauge
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: lpTokenBalance,
             minAmount: 0
@@ -1337,7 +1337,7 @@ contract VelodromeFuseTests is Test {
 
         // Try to withdraw from an unsupported gauge
         address unsupportedGauge = address(0x1234567890123456789012345678901234567890);
-        VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
+        VelodromeSuperchainGaugeFuseExitData memory gaugeExitData = VelodromeSuperchainGaugeFuseExitData({
             gaugeAddress: unsupportedGauge,
             amount: lpTokenBalance / 2,
             minAmount: 0
@@ -1365,7 +1365,7 @@ contract VelodromeFuseTests is Test {
         uint256 deadline = block.timestamp + 3600;
 
         // First, add liquidity to get LP tokens
-        VelodromeLiquidityFuseEnterData memory enterData = VelodromeLiquidityFuseEnterData({
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
             tokenA: _UNDERLYING_TOKEN,
             tokenB: _DINERO,
             stable: false,
@@ -1392,7 +1392,7 @@ contract VelodromeFuseTests is Test {
         uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
 
         // Deposit LP tokens to gauge
-        VelodromeGaugeFuseEnterData memory gaugeEnterData = VelodromeGaugeFuseEnterData({
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: lpTokenBalance,
             minAmount: 0
@@ -1410,7 +1410,7 @@ contract VelodromeFuseTests is Test {
         vm.stopPrank();
 
         // Try to withdraw zero amount
-        VelodromeGaugeFuseExitData memory gaugeExitData = VelodromeGaugeFuseExitData({
+        VelodromeSuperchainGaugeFuseExitData memory gaugeExitData = VelodromeSuperchainGaugeFuseExitData({
             gaugeAddress: _VELODROME_GAUGE,
             amount: 0,
             minAmount: 0
@@ -1468,14 +1468,14 @@ contract VelodromeFuseTests is Test {
     function test_shouldConvertGaugeSubstrateToBytes32AndBack() public {
         // given
         address gaugeAddress = _VELODROME_GAUGE;
-        VelodromeSubstrate memory originalSubstrate = VelodromeSubstrate({
-            substrateType: VelodromeSubstrateType.Gauge,
+        VelodromeSuperchainSubstrate memory originalSubstrate = VelodromeSuperchainSubstrate({
+            substrateType: VelodromeSuperchainSubstrateType.Gauge,
             substrateAddress: gaugeAddress
         });
 
         // when
-        bytes32 encodedSubstrate = VelodromeSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSubstrate memory decodedSubstrate = VelodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
 
         // then
         assertEq(
@@ -1493,14 +1493,14 @@ contract VelodromeFuseTests is Test {
     function test_shouldConvertPoolSubstrateToBytes32AndBack() public {
         // given
         address poolAddress = IRouter(_VELODROME_ROUTER).poolFor(_DINERO, _UNDERLYING_TOKEN, false);
-        VelodromeSubstrate memory originalSubstrate = VelodromeSubstrate({
-            substrateType: VelodromeSubstrateType.Pool,
+        VelodromeSuperchainSubstrate memory originalSubstrate = VelodromeSuperchainSubstrate({
+            substrateType: VelodromeSuperchainSubstrateType.Pool,
             substrateAddress: poolAddress
         });
 
         // when
-        bytes32 encodedSubstrate = VelodromeSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSubstrate memory decodedSubstrate = VelodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
 
         // then
         assertEq(
@@ -1518,14 +1518,14 @@ contract VelodromeFuseTests is Test {
     function test_shouldConvertUndefinedSubstrateToBytes32AndBack() public {
         // given
         address someAddress = address(0x1234567890123456789012345678901234567890);
-        VelodromeSubstrate memory originalSubstrate = VelodromeSubstrate({
-            substrateType: VelodromeSubstrateType.UNDEFINED,
+        VelodromeSuperchainSubstrate memory originalSubstrate = VelodromeSuperchainSubstrate({
+            substrateType: VelodromeSuperchainSubstrateType.UNDEFINED,
             substrateAddress: someAddress
         });
 
         // when
-        bytes32 encodedSubstrate = VelodromeSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSubstrate memory decodedSubstrate = VelodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
 
         // then
         assertEq(
@@ -1543,14 +1543,14 @@ contract VelodromeFuseTests is Test {
     function test_shouldConvertZeroAddressSubstrateToBytes32AndBack() public {
         // given
         address zeroAddress = address(0);
-        VelodromeSubstrate memory originalSubstrate = VelodromeSubstrate({
-            substrateType: VelodromeSubstrateType.Gauge,
+        VelodromeSuperchainSubstrate memory originalSubstrate = VelodromeSuperchainSubstrate({
+            substrateType: VelodromeSuperchainSubstrateType.Gauge,
             substrateAddress: zeroAddress
         });
 
         // when
-        bytes32 encodedSubstrate = VelodromeSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSubstrate memory decodedSubstrate = VelodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
 
         // then
         assertEq(
@@ -1568,14 +1568,14 @@ contract VelodromeFuseTests is Test {
     function test_shouldConvertMaxAddressSubstrateToBytes32AndBack() public {
         // given
         address maxAddress = address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
-        VelodromeSubstrate memory originalSubstrate = VelodromeSubstrate({
-            substrateType: VelodromeSubstrateType.Pool,
+        VelodromeSuperchainSubstrate memory originalSubstrate = VelodromeSuperchainSubstrate({
+            substrateType: VelodromeSuperchainSubstrateType.Pool,
             substrateAddress: maxAddress
         });
 
         // when
-        bytes32 encodedSubstrate = VelodromeSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSubstrate memory decodedSubstrate = VelodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
 
         // then
         assertEq(
@@ -1593,14 +1593,14 @@ contract VelodromeFuseTests is Test {
     function test_shouldVerifyBytes32EncodingStructure() public {
         // given
         address testAddress = address(0x1234567890123456789012345678901234567890);
-        VelodromeSubstrateType testType = VelodromeSubstrateType.Gauge;
-        VelodromeSubstrate memory originalSubstrate = VelodromeSubstrate({
+        VelodromeSuperchainSubstrateType testType = VelodromeSuperchainSubstrateType.Gauge;
+        VelodromeSuperchainSubstrate memory originalSubstrate = VelodromeSuperchainSubstrate({
             substrateType: testType,
             substrateAddress: testAddress
         });
 
         // when
-        bytes32 encodedSubstrate = VelodromeSubstrateLib.substrateToBytes32(originalSubstrate);
+        bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
 
         // then
         // Verify the lower 160 bits contain the address
@@ -1615,12 +1615,12 @@ contract VelodromeFuseTests is Test {
     function test_shouldVerifyBytes32DecodingStructure() public {
         // given
         address testAddress = makeAddr("testAddress");
-        VelodromeSubstrateType testType = VelodromeSubstrateType.Pool;
+        VelodromeSuperchainSubstrateType testType = VelodromeSuperchainSubstrateType.Pool;
         uint256 encodedValue = uint256(uint160(testAddress)) | (uint256(testType) << 160);
         bytes32 encodedSubstrate = bytes32(encodedValue);
 
         // when
-        VelodromeSubstrate memory decodedSubstrate = VelodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
 
         // then
         assertEq(uint256(decodedSubstrate.substrateType), uint256(testType), "Decoded type should match");
@@ -1630,20 +1630,20 @@ contract VelodromeFuseTests is Test {
     function test_shouldHandleAllSubstrateTypes() public {
         // given
         address testAddress = address(0x1111111111111111111111111111111111111111);
-        VelodromeSubstrateType[] memory types = new VelodromeSubstrateType[](3);
-        types[0] = VelodromeSubstrateType.UNDEFINED;
-        types[1] = VelodromeSubstrateType.Gauge;
-        types[2] = VelodromeSubstrateType.Pool;
+        VelodromeSuperchainSubstrateType[] memory types = new VelodromeSuperchainSubstrateType[](3);
+        types[0] = VelodromeSuperchainSubstrateType.UNDEFINED;
+        types[1] = VelodromeSuperchainSubstrateType.Gauge;
+        types[2] = VelodromeSuperchainSubstrateType.Pool;
 
         for (uint256 i = 0; i < types.length; i++) {
-            VelodromeSubstrate memory originalSubstrate = VelodromeSubstrate({
+            VelodromeSuperchainSubstrate memory originalSubstrate = VelodromeSuperchainSubstrate({
                 substrateType: types[i],
                 substrateAddress: testAddress
             });
 
             // when
-            bytes32 encodedSubstrate = VelodromeSubstrateLib.substrateToBytes32(originalSubstrate);
-            VelodromeSubstrate memory decodedSubstrate = VelodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+            bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
+            VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
 
             // then
             assertEq(
@@ -1669,14 +1669,14 @@ contract VelodromeFuseTests is Test {
         testAddresses[4] = address(0x5000000000000000000000000000000000000000);
 
         for (uint256 i = 0; i < testAddresses.length; i++) {
-            VelodromeSubstrate memory originalSubstrate = VelodromeSubstrate({
-                substrateType: VelodromeSubstrateType.Gauge,
+            VelodromeSuperchainSubstrate memory originalSubstrate = VelodromeSuperchainSubstrate({
+                substrateType: VelodromeSuperchainSubstrateType.Gauge,
                 substrateAddress: testAddresses[i]
             });
 
             // when
-            bytes32 encodedSubstrate = VelodromeSubstrateLib.substrateToBytes32(originalSubstrate);
-            VelodromeSubstrate memory decodedSubstrate = VelodromeSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+            bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
+            VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
 
             // then
             assertEq(

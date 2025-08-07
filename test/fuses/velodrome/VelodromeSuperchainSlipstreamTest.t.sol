@@ -120,28 +120,28 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         // Deploy VelodromeSuperchainSlipstreamCollectFuse
         _velodromSuperchainSlipstreamNewPositionFuse = new VelodromeSuperchainSlipstreamNewPositionFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
         _velodromSuperchainSlipstreamModifyPositionFuse = new VelodromeSuperchainSlipstreamModifyPositionFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
         _velodromSuperchainSlipstreamLeafCLGaugeFuse = new VelodromeSuperchainSlipstreamLeafCLGaugeFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
         _velodromSuperchainSlipstreamCollectFuse = new VelodromeSuperchainSlipstreamCollectFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
         _velodromSuperchainSlipstreamBalance = new VelodromeSuperchainSlipstreamBalance(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER,
             _SLIPSTREAM_SUPERCHAIN_VAULT
         );
 
         _velodromeGaugeClaimFuse = new VelodromeSuperchainSlipstreamGaugeClaimFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
 
         // Setup fuses
@@ -159,7 +159,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         _rewardsClaimManager.addRewardFuses(rewardFuses);
 
         _plasmaVaultGovernance.addBalanceFuse(
-            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             address(_velodromSuperchainSlipstreamBalance)
         );
 
@@ -186,7 +186,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         );
 
         vm.startPrank(_FUSE_MANAGER);
-        _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.VELODROME_SUPERCHAIN, velodromSubstrates);
+        _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM, velodromSubstrates);
         vm.stopPrank();
 
         // Setup price feeds
@@ -215,7 +215,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         vm.stopPrank();
 
         uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarkets.VELODROME_SUPERCHAIN;
+        marketIds[0] = IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM;
         uint256[][] memory dependencies = new uint256[][](1);
         dependencies[0] = new uint256[](1);
         dependencies[0][0] = IporFusionMarkets.ERC20_VAULT_BALANCE;
@@ -260,7 +260,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
         uint256 usdceBalanceBefore = IERC20(_USDCE).balanceOf(address(_plasmaVault));
         uint256 usdtoBalanceBefore = IERC20(_USDTO).balanceOf(address(_plasmaVault));
@@ -272,7 +272,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
         uint256 usdceBalanceAfter = IERC20(_USDCE).balanceOf(address(_plasmaVault));
         uint256 usdtoBalanceAfter = IERC20(_USDTO).balanceOf(address(_plasmaVault));
@@ -315,7 +315,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
         uint256 usdceBalanceBefore = IERC20(_USDCE).balanceOf(address(_plasmaVault));
         uint256 usdtoBalanceBefore = IERC20(_USDTO).balanceOf(address(_plasmaVault));
@@ -327,7 +327,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
         uint256 usdceBalanceAfter = IERC20(_USDCE).balanceOf(address(_plasmaVault));
         uint256 usdtoBalanceAfter = IERC20(_USDTO).balanceOf(address(_plasmaVault));
@@ -372,7 +372,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
         uint256 usdceBalanceBefore = IERC20(_USDCE).balanceOf(address(_plasmaVault));
         uint256 usdtoBalanceBefore = IERC20(_USDTO).balanceOf(address(_plasmaVault));
@@ -384,7 +384,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
         uint256 usdceBalanceAfter = IERC20(_USDCE).balanceOf(address(_plasmaVault));
         uint256 usdtoBalanceAfter = IERC20(_USDTO).balanceOf(address(_plasmaVault));
@@ -420,7 +420,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
 
         // when
@@ -430,7 +430,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
 
         (, , , , , , , uint128 liquidityAfter, , , , ) = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER)
@@ -459,7 +459,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         );
 
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
 
         uint256 usdceBalanceBefore = IERC20(_USDCE).balanceOf(address(_plasmaVault));
@@ -474,7 +474,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         // then
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
-            IporFusionMarkets.VELODROME_SUPERCHAIN
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
 
         assertGt(usdceBalanceAfter, usdceBalanceBefore, "usdceBalanceAfter should be greater than usdceBalanceBefore");
