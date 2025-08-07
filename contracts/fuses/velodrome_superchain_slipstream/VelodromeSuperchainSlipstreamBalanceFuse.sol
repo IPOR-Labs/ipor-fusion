@@ -13,15 +13,15 @@ import {ICLPool} from "./ext/ICLPool.sol";
 import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";
 import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 
-contract VelodromeSuperchainSlipstreamBalance is IMarketBalanceFuse {
+contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
     uint256 public immutable MARKET_ID;
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
-    address public immutable SLIPSTREAM_SUPERCHAIN_VAULT;
+    address public immutable SLIPSTREAM_SUPERCHAIN_SUGAR;
 
-    constructor(uint256 marketId_, address nonfungiblePositionManager_, address slipstreamSuperchainVault_) {
+    constructor(uint256 marketId_, address nonfungiblePositionManager_, address slipstreamSuperchainSugar_) {
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
-        SLIPSTREAM_SUPERCHAIN_VAULT = slipstreamSuperchainVault_;
+        SLIPSTREAM_SUPERCHAIN_SUGAR = slipstreamSuperchainSugar_;
     }
 
     function balanceOf() external view override returns (uint256) {
@@ -90,7 +90,7 @@ contract VelodromeSuperchainSlipstreamBalance is IMarketBalanceFuse {
         uint256 tokenId_,
         uint160 sqrtPriceX96_
     ) internal view returns (uint256 newAmount0, uint256 newAmount1) {
-        (uint256 principal0, uint256 principal1) = ISlipstreamSugar(SLIPSTREAM_SUPERCHAIN_VAULT).principal(
+        (uint256 principal0, uint256 principal1) = ISlipstreamSugar(SLIPSTREAM_SUPERCHAIN_SUGAR).principal(
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER),
             tokenId_,
             sqrtPriceX96_
@@ -107,7 +107,7 @@ contract VelodromeSuperchainSlipstreamBalance is IMarketBalanceFuse {
         uint256 amount1_,
         uint256 tokenId_
     ) internal view returns (uint256 newAmount0, uint256 newAmount1) {
-        (uint256 fees0, uint256 fees1) = ISlipstreamSugar(SLIPSTREAM_SUPERCHAIN_VAULT).fees(
+        (uint256 fees0, uint256 fees1) = ISlipstreamSugar(SLIPSTREAM_SUPERCHAIN_SUGAR).fees(
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER),
             tokenId_
         );
