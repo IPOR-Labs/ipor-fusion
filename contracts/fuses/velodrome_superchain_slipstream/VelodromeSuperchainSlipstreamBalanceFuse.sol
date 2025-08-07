@@ -13,7 +13,7 @@ import {ICLPool} from "./ext/ICLPool.sol";
 import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";
 import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 
-contract VelodromeSuperchainSlipstreamBalance is IMarketBalanceFuse {
+contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
     uint256 public immutable MARKET_ID;
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
     address public immutable SLIPSTREAM_SUPERCHAIN_VAULT;

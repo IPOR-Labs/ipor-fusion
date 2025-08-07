@@ -22,7 +22,7 @@ import {VelodromeSuperchainSlipstreamNewPositionFuse, VelodromeSuperchainSlipstr
 import {VelodromeSuperchainSlipstreamModifyPositionFuse, VelodromeSuperchainSlipstreamModifyPositionFuseEnterData, VelodromeSuperchainSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol";
 import {VelodromeSuperchainSlipstreamLeafCLGaugeFuse, VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData, VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol";
 import {VelodromeSuperchainSlipstreamCollectFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
-import {VelodromeSuperchainSlipstreamBalance} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalance.sol";
+import {VelodromeSuperchainSlipstreamBalanceFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalanceFuse.sol";
 import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
@@ -71,7 +71,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
     VelodromeSuperchainSlipstreamModifyPositionFuse private _velodromSuperchainSlipstreamModifyPositionFuse;
     VelodromeSuperchainSlipstreamLeafCLGaugeFuse private _velodromSuperchainSlipstreamLeafCLGaugeFuse;
     VelodromeSuperchainSlipstreamCollectFuse private _velodromSuperchainSlipstreamCollectFuse;
-    VelodromeSuperchainSlipstreamBalance private _velodromSuperchainSlipstreamBalance;
+    VelodromeSuperchainSlipstreamBalanceFuse private _velodromSuperchainSlipstreamBalanceFuse;
     VelodromeSuperchainSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
 
     function setUp() public {
@@ -134,7 +134,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
-        _velodromSuperchainSlipstreamBalance = new VelodromeSuperchainSlipstreamBalance(
+        _velodromSuperchainSlipstreamBalanceFuse = new VelodromeSuperchainSlipstreamBalanceFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER,
             _SLIPSTREAM_SUPERCHAIN_VAULT
@@ -160,7 +160,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         _plasmaVaultGovernance.addBalanceFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
-            address(_velodromSuperchainSlipstreamBalance)
+            address(_velodromSuperchainSlipstreamBalanceFuse)
         );
 
         _plasmaVaultGovernance.addBalanceFuse(
