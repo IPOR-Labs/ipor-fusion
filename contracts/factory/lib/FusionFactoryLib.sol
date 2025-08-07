@@ -209,23 +209,24 @@ library FusionFactoryLib {
             fusionAddresses.plasmaVault
         );
 
-        address[] memory approvedAddresses = new address[](4);
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
+            fusionAddresses.plasmaVault
+        ).getPerformanceFeeData();
+
+        fusionAddresses.feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
+
+        address[] memory approvedAddresses = new address[](5);
         approvedAddresses[0] = fusionAddresses.plasmaVault;
         approvedAddresses[1] = fusionAddresses.withdrawManager;
         approvedAddresses[2] = fusionAddresses.priceManager;
         approvedAddresses[3] = fusionAddresses.rewardsManager;
+        approvedAddresses[4] = fusionAddresses.feeManager;
 
         fusionAddresses.contextManager = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(
             fusionFactoryIndex,
             fusionAddresses.accessManager,
             approvedAddresses
         );
-
-        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
-            fusionAddresses.plasmaVault
-        ).getPerformanceFeeData();
-
-        fusionAddresses.feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
 
         IRewardsClaimManager(fusionAddresses.rewardsManager).setupVestingTime(
             FusionFactoryStorageLib.getVestingPeriodInSeconds()
