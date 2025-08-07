@@ -535,7 +535,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
         uint256 delta = actualExchangeRate_ - uint256(highWaterMarkStorage.highWaterMark);
         uint256 sharesToHarvest = Math.mulDiv(totalSupply_, delta, 10 ** assetDecimals_);
-        uint256 feeShares = Math.mulDiv(sharesToHarvest, performanceFee_, 10000);
+        feeShares = Math.mulDiv(sharesToHarvest, performanceFee_, 10000);
 
         FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(actualExchangeRate_);
         return (PERFORMANCE_FEE_ACCOUNT, feeShares);
