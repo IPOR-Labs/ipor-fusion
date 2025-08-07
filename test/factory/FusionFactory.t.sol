@@ -27,6 +27,7 @@ import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactory
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
+import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
@@ -964,5 +965,59 @@ contract FusionFactoryTest is Test {
         assertFalse(hasRoleTwo, "address(0x123) should not have admin role");
         assertFalse(hasRoleFactory, "fusionFactory should not have admin role");
         assertFalse(hasRoleOwner, "owner should not have admin role");
+    }
+
+    function testShouldCreateVaultWithCorrectContextManagerApprovedTargets() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        // Verify that the context manager has approved the correct targets
+        address[] memory approvedTargets = ContextManager(instance.contextManager).getApprovedTargets();
+
+        // Should have exactly 5 approved targets
+        assertEq(approvedTargets.length, 5);
+
+        // Verify each target is approved
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.plasmaVault));
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.withdrawManager));
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.priceManager));
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.rewardsManager));
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.feeManager));
+
+        // Verify the approved targets array contains the correct addresses
+        bool foundPlasmaVault = false;
+        bool foundWithdrawManager = false;
+        bool foundPriceManager = false;
+        bool foundRewardsManager = false;
+        bool foundFeeManager = false;
+        for (uint256 i = 0; i < approvedTargets.length; i++) {
+            if (approvedTargets[i] == instance.plasmaVault) {
+                foundPlasmaVault = true;
+            } else if (approvedTargets[i] == instance.withdrawManager) {
+                foundWithdrawManager = true;
+            } else if (approvedTargets[i] == instance.priceManager) {
+                foundPriceManager = true;
+            } else if (approvedTargets[i] == instance.rewardsManager) {
+                foundRewardsManager = true;
+            } else if (approvedTargets[i] == instance.feeManager) {
+                foundFeeManager = true;
+            }
+        }
+
+        assertTrue(foundPlasmaVault, "PlasmaVault should be in approved targets");
+        assertTrue(foundWithdrawManager, "WithdrawManager should be in approved targets");
+        assertTrue(foundPriceManager, "PriceManager should be in approved targets");
+        assertTrue(foundRewardsManager, "RewardsManager should be in approved targets");
+        assertTrue(foundFeeManager, "FeeManager should be in approved targets");
     }
 }

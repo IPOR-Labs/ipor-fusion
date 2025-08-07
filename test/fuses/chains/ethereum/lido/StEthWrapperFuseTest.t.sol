@@ -24,7 +24,6 @@ import {PlasmaVaultGovernance} from "../../../../../contracts/vaults/PlasmaVault
 import {IWstETH} from "./IWstETH.sol";
 
 contract StEthWrapperFuseTest is Test {
-
     ///  assets
     address private constant _WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address private constant _stETH_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
@@ -179,15 +178,15 @@ contract StEthWrapperFuseTest is Test {
             priceOracleMiddlewareManagers: initAddress,
             preHooksManagers: initAddress,
             plasmaVaultAddress: PlasmaVaultAddress({
-            plasmaVault: _plasmaVault,
-            accessManager: _accessManager,
-            rewardsClaimManager: address(0x123),
-            withdrawManager: address(0x123),
-            feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
-        .FEE_MANAGER(),
-            contextManager: address(0x123),
-            priceOracleMiddlewareManager: address(0x123)
-        })
+                plasmaVault: _plasmaVault,
+                accessManager: _accessManager,
+                rewardsClaimManager: address(0x123),
+                withdrawManager: address(0x123),
+                feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
+                    .FEE_MANAGER(),
+                contextManager: address(0x123),
+                priceOracleMiddlewareManager: address(0x123)
+            })
         });
         InitializationData memory initializationData = IporFusionAccessManagerInitializerLibV1
             .generateInitializeIporPlasmaVault(data);
@@ -301,7 +300,6 @@ contract StEthWrapperFuseTest is Test {
         assertApproxEqAbs(wstEthBalanceAfter, expectedWstEthAmount, _errorDelta, "invalid wstETH balance");
         assertApproxEqAbs(plasmaVaultBalanceAfter, 50e18, _errorDelta, "stETH balance before should be 50");
 
-
         FuseAction[] memory exitCalls = new FuseAction[](1);
 
         exitCalls[0] = FuseAction({
@@ -348,7 +346,6 @@ contract StEthWrapperFuseTest is Test {
         assertApproxEqAbs(plasmaVaultBalanceBefore, 100e18, _errorDelta, "stETH balance before should be 100");
         assertApproxEqAbs(wstEthBalanceAfter, expectedWstEthAmount, _errorDelta, "invalid wstETH balance");
         assertApproxEqAbs(plasmaVaultBalanceAfter, 50e18, _errorDelta, "stETH balance before should be 50");
-
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
 

@@ -79,8 +79,9 @@ contract PtPriceFeed is IPriceFeed {
             revert PriceOracleZeroAddress();
         }
 
-        (bool increaseCardinalityRequired, , bool oldestObservationSatisfied) = IPPYLpOracle(pendleOracle_)
-            .getOracleState(pendleMarket_, twapWindow_);
+        (bool increaseCardinalityRequired, uint16 cardinalityRequired, bool oldestObservationSatisfied) = IPPYLpOracle(
+            pendleOracle_
+        ).getOracleState(pendleMarket_, twapWindow_);
 
         if (increaseCardinalityRequired || !oldestObservationSatisfied) {
             revert PriceOraclePendleOracleNotReady();
@@ -140,7 +141,7 @@ contract PtPriceFeed is IPriceFeed {
     /// @notice Returns the underlying asset price from middleware
     /// @return price Asset price
     /// @return decimals Price decimals
-    function getUnderlyingPrice() external view returns (uint256 price, uint256 decimals) {
+    function getUnderlyingPrice() external view returns (uint256, uint256) {
         return IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(ASSET_ADDRESS);
     }
 }
