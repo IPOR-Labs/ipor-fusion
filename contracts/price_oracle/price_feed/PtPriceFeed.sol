@@ -141,7 +141,7 @@ contract PtPriceFeed is IPriceFeed {
     /// @notice Returns the underlying asset price from middleware
     /// @return price Asset price
     /// @return decimals Price decimals
-    function getUnderlyingPrice() external view returns (uint256 price, uint256 decimals) {
+    function getUnderlyingPrice() external view returns (uint256, uint256) {
         return IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(ASSET_ADDRESS);
     }
 }

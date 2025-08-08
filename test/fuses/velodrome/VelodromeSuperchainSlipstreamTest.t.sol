@@ -22,7 +22,7 @@ import {VelodromeSuperchainSlipstreamNewPositionFuse, VelodromeSuperchainSlipstr
 import {VelodromeSuperchainSlipstreamModifyPositionFuse, VelodromeSuperchainSlipstreamModifyPositionFuseEnterData, VelodromeSuperchainSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol";
 import {VelodromeSuperchainSlipstreamLeafCLGaugeFuse, VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData, VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol";
 import {VelodromeSuperchainSlipstreamCollectFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
-import {VelodromeSuperchainSlipstreamBalance} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalance.sol";
+import {VelodromeSuperchainSlipstreamBalanceFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalanceFuse.sol";
 import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
@@ -55,7 +55,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
     address private constant _fusionFactory = 0xEC53f69Bd1D991a2F99e96DE66E81D0E42A61D8D;
     address private constant _NONFUNGIBLE_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
-    address private constant _SLIPSTREAM_SUPERCHAIN_VAULT = 0x222ed297aF0560030136AE652d39fa40E1B72818;
+    address private constant _SLIPSTREAM_SUPERCHAIN_SUGAR = 0x222ed297aF0560030136AE652d39fa40E1B72818;
 
     address private constant _VELODROME_POOL = 0x317728bcCE5d1C2895b71b01eEBbB6989ae504aE;
     address private constant _VELODROME_GAUGE = 0x2C568357E5e4BEee207Ab46b5bA5C1196D0D5Ecf;
@@ -71,7 +71,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
     VelodromeSuperchainSlipstreamModifyPositionFuse private _velodromSuperchainSlipstreamModifyPositionFuse;
     VelodromeSuperchainSlipstreamLeafCLGaugeFuse private _velodromSuperchainSlipstreamLeafCLGaugeFuse;
     VelodromeSuperchainSlipstreamCollectFuse private _velodromSuperchainSlipstreamCollectFuse;
-    VelodromeSuperchainSlipstreamBalance private _velodromSuperchainSlipstreamBalance;
+    VelodromeSuperchainSlipstreamBalanceFuse private _velodromSuperchainSlipstreamBalanceFuse;
     VelodromeSuperchainSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
 
     function setUp() public {
@@ -134,10 +134,10 @@ contract VelodromeSuperchainSlipstreamTest is Test {
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
-        _velodromSuperchainSlipstreamBalance = new VelodromeSuperchainSlipstreamBalance(
+        _velodromSuperchainSlipstreamBalanceFuse = new VelodromeSuperchainSlipstreamBalanceFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER,
-            _SLIPSTREAM_SUPERCHAIN_VAULT
+            _SLIPSTREAM_SUPERCHAIN_SUGAR
         );
 
         _velodromeGaugeClaimFuse = new VelodromeSuperchainSlipstreamGaugeClaimFuse(
@@ -160,7 +160,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         _plasmaVaultGovernance.addBalanceFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
-            address(_velodromSuperchainSlipstreamBalance)
+            address(_velodromSuperchainSlipstreamBalanceFuse)
         );
 
         _plasmaVaultGovernance.addBalanceFuse(
