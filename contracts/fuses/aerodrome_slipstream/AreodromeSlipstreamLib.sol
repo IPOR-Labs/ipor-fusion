@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {ICLFactory} from "./ext/ICLFactory.sol";
+
+/// @notice Error when token order is invalid (expected token0 < token1)
+error WrongTokenOrder();
 
 enum AreodromeSlipstreamSubstrateType {
     UNDEFINED,
@@ -52,7 +54,9 @@ library AreodromeSlipstreamSubstrateLib {
     /// @param key_ The PoolKey
     /// @return pool The contract address of the V3 pool
     function computeAddress(address factory_, PoolKey memory key_) private view returns (address pool) {
-        require(key_.token0 < key_.token1);
+        if (!(key_.token0 < key_.token1)) {
+            revert WrongTokenOrder();
+        }
 
         pool = predictDeterministicAddress(
             ICLFactory(factory_).poolImplementation(),

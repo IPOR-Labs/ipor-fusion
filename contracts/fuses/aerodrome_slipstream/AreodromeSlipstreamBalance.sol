@@ -9,7 +9,7 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
-import {ICLPool, Slot0} from "./ext/ICLPool.sol";
+import {ICLPool} from "./ext/ICLPool.sol";
 import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";
 import {ICLGauge} from "./ext/ICLGauge.sol";
 
