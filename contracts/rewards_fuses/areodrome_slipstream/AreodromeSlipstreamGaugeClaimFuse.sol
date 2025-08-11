@@ -9,7 +9,7 @@ import {ICLGauge} from "../../fuses/aerodrome_slipstream/ext/ICLGauge.sol";
 import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrate, AreodromeSlipstreamSubstrateType} from "../../fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
 
 /// @title AerodromeSlipstreamGaugeClaimFuse
-/// @notice This contract handles the claiming of rewards from Velodrome gauges.
+/// @notice This contract handles the claiming of rewards from Aerodrome gauges.
 /// @dev Claims AERO tokens from specified gauges and transfers them to the rewards claim manager.
 contract AreodromeSlipstreamGaugeClaimFuse {
     using SafeERC20 for IERC20;
@@ -37,7 +37,7 @@ contract AreodromeSlipstreamGaugeClaimFuse {
         MARKET_ID = marketId_;
     }
 
-    /// @notice Claims rewards from specified Velodrome gauges
+    /// @notice Claims rewards from specified Aerodrome gauges
     /// @param gauges_ Array of gauge addresses to claim rewards from
     function claim(address[] memory gauges_) external {
         uint256 len = gauges_.length;

@@ -18,6 +18,12 @@ struct AreodromeSlipstreamSubstrate {
     address substrateAddress;
 }
 
+struct PoolKey {
+    address token0;
+    address token1;
+    int24 tickSpacing;
+}
+
 library AreodromeSlipstreamSubstrateLib {
     function substrateToBytes32(AreodromeSlipstreamSubstrate memory substrate_) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(substrate_.substrateAddress)) | (uint256(substrate_.substrateType) << 160));
@@ -30,13 +36,14 @@ library AreodromeSlipstreamSubstrateLib {
         substrate.substrateAddress = PlasmaVaultConfigLib.bytes32ToAddress(bytes32Substrate_);
     }
 
-    /// @dev Velodrome V3 Pool Key
-
-    /// @notice The identifying key of the pool
-    struct PoolKey {
-        address token0;
-        address token1;
-        int24 tickSpacing;
+    function getPoolAddress(
+        address factory_,
+        address tokenA_,
+        address tokenB_,
+        int24 tickSpacing_
+    ) internal view returns (address pool) {
+        PoolKey memory key = _getPoolKey(tokenA_, tokenB_, tickSpacing_);
+        pool = _computeAddress(factory_, key);
     }
 
     /// @notice Returns PoolKey: the ordered tokens with the matched fee levels
@@ -44,7 +51,7 @@ library AreodromeSlipstreamSubstrateLib {
     /// @param tokenB_ The second token of a pool, unsorted
     /// @param tickSpacing_ The tick spacing of the pool
     /// @return Poolkey The pool details with ordered token0 and token1 assignments
-    function getPoolKey(address tokenA_, address tokenB_, int24 tickSpacing_) private pure returns (PoolKey memory) {
+    function _getPoolKey(address tokenA_, address tokenB_, int24 tickSpacing_) private pure returns (PoolKey memory) {
         if (tokenA_ > tokenB_) (tokenA_, tokenB_) = (tokenB_, tokenA_);
         return PoolKey({token0: tokenA_, token1: tokenB_, tickSpacing: tickSpacing_});
     }
@@ -53,12 +60,12 @@ library AreodromeSlipstreamSubstrateLib {
     /// @param factory_ The CL factory contract address
     /// @param key_ The PoolKey
     /// @return pool The contract address of the V3 pool
-    function computeAddress(address factory_, PoolKey memory key_) private view returns (address pool) {
+    function _computeAddress(address factory_, PoolKey memory key_) private view returns (address pool) {
         if (!(key_.token0 < key_.token1)) {
             revert WrongTokenOrder();
         }
 
-        pool = predictDeterministicAddress(
+        pool = _predictDeterministicAddress(
             ICLFactory(factory_).poolImplementation(),
             keccak256(abi.encode(key_.token0, key_.token1, key_.tickSpacing)),
             factory_
@@ -68,11 +75,11 @@ library AreodromeSlipstreamSubstrateLib {
     /**
      * @dev Computes the address of a clone deployed using {Clones-cloneDeterministic}.
      */
-    function predictDeterministicAddress(
+    function _predictDeterministicAddress(
         address master_,
         bytes32 salt_,
         address deployer_
-    ) internal pure returns (address predicted) {
+    ) private pure returns (address predicted) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             let ptr := mload(0x40)
@@ -84,15 +91,5 @@ library AreodromeSlipstreamSubstrateLib {
             mstore(add(ptr, 0x6c), keccak256(ptr, 0x37))
             predicted := keccak256(add(ptr, 0x37), 0x55)
         }
-    }
-
-    function getPoolAddress(
-        address factory_,
-        address tokenA_,
-        address tokenB_,
-        int24 tickSpacing_
-    ) internal view returns (address pool) {
-        PoolKey memory key = getPoolKey(tokenA_, tokenB_, tickSpacing_);
-        pool = computeAddress(factory_, key);
     }
 }

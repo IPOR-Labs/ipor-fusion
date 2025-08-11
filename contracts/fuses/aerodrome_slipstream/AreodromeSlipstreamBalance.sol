@@ -14,14 +14,24 @@ import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";
 import {ICLGauge} from "./ext/ICLGauge.sol";
 
 contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
+    error InvalidAddress();
+
     uint256 public immutable MARKET_ID;
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
-    address public immutable SLIPSTREAM_SUPERCHAIN_VAULT;
+    address public immutable SLIPSTREAM_SUPERCHAIN_SUGAR;
 
-    constructor(uint256 marketId_, address nonfungiblePositionManager_, address slipstreamSuperchainVault_) {
+    constructor(uint256 marketId_, address nonfungiblePositionManager_, address slipstreamSuperchainSugar_) {
+        if (nonfungiblePositionManager_ == address(0)) {
+            revert InvalidAddress();
+        }
+
+        if (slipstreamSuperchainSugar_ == address(0)) {
+            revert InvalidAddress();
+        }
+
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
-        SLIPSTREAM_SUPERCHAIN_VAULT = slipstreamSuperchainVault_;
+        SLIPSTREAM_SUPERCHAIN_SUGAR = slipstreamSuperchainSugar_;
     }
 
     function balanceOf() external view override returns (uint256) {
@@ -43,10 +53,10 @@ contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
             return 0;
         }
 
+        AreodromeSlipstreamSubstrate memory substrate;
+
         for (uint256 i; i < len; i++) {
-            AreodromeSlipstreamSubstrate memory substrate = AreodromeSlipstreamSubstrateLib.bytes32ToSubstrate(
-                grantedSubstrates[i]
-            );
+            substrate = AreodromeSlipstreamSubstrateLib.bytes32ToSubstrate(grantedSubstrates[i]);
             amount0 = 0;
             amount1 = 0;
 
@@ -66,12 +76,12 @@ contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
                 sqrtPriceX96 = ICLPool(substrate.substrateAddress).slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
-                    (amount0, amount1) = addFees(amount0, amount1, tokenIds[j]);
+                    (amount0, amount1) = _addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
+                    (amount0, amount1) = _addFees(amount0, amount1, tokenIds[j]);
                 }
 
-                balance += convertToUsd(amount0, token0, priceOracleMiddleware);
-                balance += convertToUsd(amount1, token1, priceOracleMiddleware);
+                balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
+                balance += _convertToUsd(amount1, token1, priceOracleMiddleware);
             } else if (substrate.substrateType == AreodromeSlipstreamSubstrateType.Gauge) {
                 tokenIds = ICLGauge(substrate.substrateAddress).stakedValues(address(this));
                 uint256 tokenIdsLen = tokenIds.length;
@@ -80,23 +90,23 @@ contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
                 sqrtPriceX96 = ICLGauge(substrate.substrateAddress).pool().slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
+                    (amount0, amount1) = _addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
                 }
 
-                balance += convertToUsd(amount0, token0, priceOracleMiddleware);
-                balance += convertToUsd(amount1, token1, priceOracleMiddleware);
+                balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
+                balance += _convertToUsd(amount1, token1, priceOracleMiddleware);
             }
         }
         return balance;
     }
 
-    function addPrincipal(
+    function _addPrincipal(
         uint256 amount0_,
         uint256 amount1_,
         uint256 tokenId_,
         uint160 sqrtPriceX96_
     ) internal view returns (uint256 newAmount0, uint256 newAmount1) {
-        (uint256 principal0, uint256 principal1) = ISlipstreamSugar(SLIPSTREAM_SUPERCHAIN_VAULT).principal(
+        (uint256 principal0, uint256 principal1) = ISlipstreamSugar(SLIPSTREAM_SUPERCHAIN_SUGAR).principal(
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER),
             tokenId_,
             sqrtPriceX96_
@@ -108,12 +118,12 @@ contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
         return (newAmount0, newAmount1);
     }
 
-    function addFees(
+    function _addFees(
         uint256 amount0_,
         uint256 amount1_,
         uint256 tokenId_
     ) internal view returns (uint256 newAmount0, uint256 newAmount1) {
-        (uint256 fees0, uint256 fees1) = ISlipstreamSugar(SLIPSTREAM_SUPERCHAIN_VAULT).fees(
+        (uint256 fees0, uint256 fees1) = ISlipstreamSugar(SLIPSTREAM_SUPERCHAIN_SUGAR).fees(
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER),
             tokenId_
         );
@@ -124,7 +134,7 @@ contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
         return (newAmount0, newAmount1);
     }
 
-    function convertToUsd(
+    function _convertToUsd(
         uint256 amount_,
         address token_,
         address priceOracleMiddleware_

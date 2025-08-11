@@ -42,9 +42,10 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
+        VelodromeSuperchainSlipstreamSubstrate memory substrate;
+
         for (uint256 i; i < len; i++) {
-            VelodromeSuperchainSlipstreamSubstrate memory substrate = VelodromeSuperchainSlipstreamSubstrateLib
-                .bytes32ToSubstrate(grantedSubstrates[i]);
+            substrate = VelodromeSuperchainSlipstreamSubstrateLib.bytes32ToSubstrate(grantedSubstrates[i]);
             amount0 = 0;
             amount1 = 0;
 

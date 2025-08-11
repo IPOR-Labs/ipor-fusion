@@ -16,6 +16,7 @@ contract AreodromeSlipstreamCollectFuse is IFuseCommon {
     event AreodromeSlipstreamCollectFuseEnter(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
 
     error UnsupportedMethod();
+    error InvalidAddress();
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -24,6 +25,10 @@ contract AreodromeSlipstreamCollectFuse is IFuseCommon {
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
 
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
+        if (nonfungiblePositionManager_ == address(0)) {
+            revert InvalidAddress();
+        }
+
         VERSION = address(this);
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;

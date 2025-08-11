@@ -39,6 +39,7 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
     error AreodromeSlipstreamNewPositionFuseUnsupportedPool(address pool);
+    error InvalidAddress();
 
     event AreodromeSlipstreamNewPositionFuseEnter(
         address indexed version,
@@ -61,6 +62,10 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
     address public immutable FACTORY;
 
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
+        if (nonfungiblePositionManager_ == address(0)) {
+            revert InvalidAddress();
+        }
+
         VERSION = address(this);
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;

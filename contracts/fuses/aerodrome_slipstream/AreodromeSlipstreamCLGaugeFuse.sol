@@ -7,31 +7,31 @@ import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, Areod
 import {ICLGauge} from "./ext/ICLGauge.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
-struct AreodromeSlipstreamCLGaugeEnterData {
+struct AreodromeSlipstreamCLGaugeFuseEnterData {
     address gaugeAddress;
     uint256 tokenId;
 }
 
-struct AreodromeSlipstreamCLGaugeExitData {
+struct AreodromeSlipstreamCLGaugeFuseExitData {
     address gaugeAddress;
     uint256 tokenId;
 }
 
-contract AreodromeSlipstreamCLGauge is IFuseCommon {
+contract AreodromeSlipstreamCLGaugeFuse is IFuseCommon {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
 
-    event AreodromeSlipstreamCLGaugeEnter(address gaugeAddress, uint256 tokenId);
-    event AreodromeSlipstreamCLGaugeExit(address gaugeAddress, uint256 tokenId);
+    event AreodromeSlipstreamCLGaugeFuseEnter(address gaugeAddress, uint256 tokenId);
+    event AreodromeSlipstreamCLGaugeFuseExit(address gaugeAddress, uint256 tokenId);
 
-    error AreodromeSlipstreamCLGaugeUnsupportedGauge(address gaugeAddress);
+    error AreodromeSlipstreamCLGaugeFuseUnsupportedGauge(address gaugeAddress);
 
     constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
-    function enter(AreodromeSlipstreamCLGaugeEnterData calldata data_) external {
+    function enter(AreodromeSlipstreamCLGaugeFuseEnterData calldata data_) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
@@ -43,7 +43,7 @@ contract AreodromeSlipstreamCLGauge is IFuseCommon {
                 )
             )
         ) {
-            revert AreodromeSlipstreamCLGaugeUnsupportedGauge(data_.gaugeAddress);
+            revert AreodromeSlipstreamCLGaugeFuseUnsupportedGauge(data_.gaugeAddress);
         }
 
         if (data_.tokenId == 0) {
@@ -54,10 +54,10 @@ contract AreodromeSlipstreamCLGauge is IFuseCommon {
 
         ICLGauge(data_.gaugeAddress).deposit(data_.tokenId);
 
-        emit AreodromeSlipstreamCLGaugeEnter(data_.gaugeAddress, data_.tokenId);
+        emit AreodromeSlipstreamCLGaugeFuseEnter(data_.gaugeAddress, data_.tokenId);
     }
 
-    function exit(AreodromeSlipstreamCLGaugeExitData calldata data_) external {
+    function exit(AreodromeSlipstreamCLGaugeFuseExitData calldata data_) external {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
@@ -69,11 +69,11 @@ contract AreodromeSlipstreamCLGauge is IFuseCommon {
                 )
             )
         ) {
-            revert AreodromeSlipstreamCLGaugeUnsupportedGauge(data_.gaugeAddress);
+            revert AreodromeSlipstreamCLGaugeFuseUnsupportedGauge(data_.gaugeAddress);
         }
 
         ICLGauge(data_.gaugeAddress).withdraw(data_.tokenId);
 
-        emit AreodromeSlipstreamCLGaugeExit(data_.gaugeAddress, data_.tokenId);
+        emit AreodromeSlipstreamCLGaugeFuseExit(data_.gaugeAddress, data_.tokenId);
     }
 }

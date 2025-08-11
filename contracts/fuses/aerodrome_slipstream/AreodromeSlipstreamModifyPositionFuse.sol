@@ -53,6 +53,7 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     event AreodromeSlipstreamModifyPositionFuseExit(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
 
     error AreodromeSlipstreamModifyPositionFuseUnsupportedPool(address pool);
+    error InvalidAddress();
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -61,6 +62,10 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     address public immutable FACTORY;
 
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
+        if (nonfungiblePositionManager_ == address(0)) {
+            revert InvalidAddress();
+        }
+
         VERSION = address(this);
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;

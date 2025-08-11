@@ -19,7 +19,7 @@ import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AreodromeSlipstreamCollectFuse, AreodromeSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
 import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEnterData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol";
 import {AreodromeSlipstreamModifyPositionFuse, AreodromeSlipstreamModifyPositionFuseEnterData, AreodromeSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol";
-import {AreodromeSlipstreamCLGauge, AreodromeSlipstreamCLGaugeEnterData, AreodromeSlipstreamCLGaugeExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGauge.sol";
+import {AreodromeSlipstreamCLGaugeFuse, AreodromeSlipstreamCLGaugeFuseEnterData, AreodromeSlipstreamCLGaugeFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol";
 import {AreodromeSlipstreamCollectFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
 import {AreodromeSlipstreamBalance} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalance.sol";
 import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
@@ -67,7 +67,7 @@ contract AreodromeSlipstreamTest is Test {
 
     AreodromeSlipstreamNewPositionFuse private _areodromeSlipstreamNewPositionFuse;
     AreodromeSlipstreamModifyPositionFuse private _areodromeSlipstreamModifyPositionFuse;
-    AreodromeSlipstreamCLGauge private _areodromeSlipstreamCLGauge;
+    AreodromeSlipstreamCLGaugeFuse private _areodromeSlipstreamCLGaugeFuse;
     AreodromeSlipstreamCollectFuse private _areodromeSlipstreamCollectFuse;
     AreodromeSlipstreamBalance private _areodromeSlipstreamBalance;
     AreodromeSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
@@ -125,7 +125,7 @@ contract AreodromeSlipstreamTest is Test {
             IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
-        _areodromeSlipstreamCLGauge = new AreodromeSlipstreamCLGauge(IporFusionMarkets.AREODROME_SLIPSTREAM);
+        _areodromeSlipstreamCLGaugeFuse = new AreodromeSlipstreamCLGaugeFuse(IporFusionMarkets.AREODROME_SLIPSTREAM);
         _areodromeSlipstreamCollectFuse = new AreodromeSlipstreamCollectFuse(
             IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
@@ -142,7 +142,7 @@ contract AreodromeSlipstreamTest is Test {
         address[] memory fuses = new address[](4);
         fuses[0] = address(_areodromeSlipstreamNewPositionFuse);
         fuses[1] = address(_areodromeSlipstreamModifyPositionFuse);
-        fuses[2] = address(_areodromeSlipstreamCLGauge);
+        fuses[2] = address(_areodromeSlipstreamCLGaugeFuse);
         fuses[3] = address(_areodromeSlipstreamCollectFuse);
 
         address[] memory rewardFuses = new address[](1);
@@ -484,14 +484,14 @@ contract AreodromeSlipstreamTest is Test {
             0
         );
 
-        AreodromeSlipstreamCLGaugeEnterData memory stakeParams = AreodromeSlipstreamCLGaugeEnterData({
+        AreodromeSlipstreamCLGaugeFuseEnterData memory stakeParams = AreodromeSlipstreamCLGaugeFuseEnterData({
             gaugeAddress: _AREODROME_GAUGE,
             tokenId: tokenId
         });
 
         FuseAction[] memory stakeCalls = new FuseAction[](1);
         stakeCalls[0] = FuseAction(
-            address(_areodromeSlipstreamCLGauge),
+            address(_areodromeSlipstreamCLGaugeFuse),
             abi.encodeWithSignature("enter((address,uint256))", stakeParams)
         );
 
@@ -510,14 +510,14 @@ contract AreodromeSlipstreamTest is Test {
 
         uint256[] memory stakedValuesBefore = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
 
-        AreodromeSlipstreamCLGaugeExitData memory unstakeParams = AreodromeSlipstreamCLGaugeExitData({
+        AreodromeSlipstreamCLGaugeFuseExitData memory unstakeParams = AreodromeSlipstreamCLGaugeFuseExitData({
             gaugeAddress: _AREODROME_GAUGE,
             tokenId: stakedValuesBefore[0]
         });
 
         FuseAction[] memory unstakeCalls = new FuseAction[](1);
         unstakeCalls[0] = FuseAction(
-            address(_areodromeSlipstreamCLGauge),
+            address(_areodromeSlipstreamCLGaugeFuse),
             abi.encodeWithSignature("exit((address,uint256))", unstakeParams)
         );
 
