@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 
 import {LiquityTroveFuse, LiquityTroveEnterData, LiquityTroveExitData} from "../../../contracts/fuses/liquity/LiquityTroveFuse.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/LiquityBalanceFuse.sol";
+import {LiquityTroveBalanceFuse} from "../../../contracts/fuses/liquity/LiquityTroveBalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -169,7 +169,7 @@ contract LiquityTroveFuseTest is Test {
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
-        balanceFuse = address(new LiquityBalanceFuse(IporFusionMarkets.LIQUITY_V2_TROVE));
+        balanceFuse = address(new LiquityTroveBalanceFuse(IporFusionMarkets.LIQUITY_V2_TROVE));
         ZeroBalanceFuse zeroBalance = new ZeroBalanceFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER);
         erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
         balanceFuses_ = new MarketBalanceFuseConfig[](3);
