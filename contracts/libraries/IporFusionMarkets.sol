@@ -91,6 +91,9 @@ library IporFusionMarkets {
     /// @dev Velodrome Superchain Slipstream market
     uint256 public constant VELODROME_SUPERCHAIN_SLIPSTREAM = 32;
 
+    /// @dev Liquity V2 market
+    uint256 public constant LIQUITY_V2_TROVE = 33;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
