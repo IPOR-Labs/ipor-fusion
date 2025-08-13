@@ -161,7 +161,6 @@ library FuseStorageLib {
      * - Parallel structure to Uniswap V3 position tracking
      */
     bytes32 private constant RAMSES_V2_TOKEN_IDS = 0x1a3831a406f27d4d5d820158b29ce95a1e8e840bf416921917aa388e2461b700;
-
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
         /// @dev fuse address => If index = 0 - is not granted, otherwise - granted

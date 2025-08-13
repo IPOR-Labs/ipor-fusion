@@ -8,13 +8,12 @@ on:
 
 jobs:
     authorize:
-        environment:
-          ${{ github.event_name == 'pull_request_target' &&
-          github.event.pull_request.head.repo.full_name != github.repository &&
-          'external' || 'internal' }}
+        environment: ${{ github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository &&
+            'external' || 'internal' }}
         runs-on: ubuntu-latest
         steps:
-          - run: true
+            - run: true
 
     notify:
         needs:
@@ -33,6 +32,7 @@ jobs:
             ARBITRUM_PROVIDER_URL: ${{ secrets.ARBITRUM_PROVIDER_URL }}
             BASE_PROVIDER_URL: ${{ secrets.BASE_PROVIDER_URL }}
             TAC_PROVIDER_URL: ${{ secrets.TAC_PROVIDER_URL }}
+            INK_PROVIDER_URL: ${{ secrets.INK_PROVIDER_URL }}
         with:
             sizes-enabled: false
             sizes-options: "--skip test --skip script"

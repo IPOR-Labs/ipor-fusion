@@ -3,17 +3,23 @@ pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
+import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
+import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPool} from "./ext/IPool.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IGauge} from "./ext/IGauge.sol";
-import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodromeLib.sol";
+import {ILeafGauge} from "./ext/ILeafGauge.sol";
+import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "./VelodromeSuperchainLib.sol";
 
-contract AerodromeBalanceFuse is IMarketBalanceFuse {
+/// @title VelodromeSuperchainBalanceFuse
+/// @notice Contract responsible for managing Velodrome Basic Vault balance calculations
+/// @dev This contract handles balance tracking for Plasma Vault positions in Velodrome pools and gauges
+/// It calculates total USD value of vault's liquidity positions and accrued fees across multiple Velodrome substrates
+/// The balance calculations support both direct pool positions and staked gauge positions
+
+contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
     error InvalidPool();
@@ -38,15 +44,15 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         address pool;
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         uint256 liquidity;
-        AerodromeSubstrate memory substrate;
+        VelodromeSuperchainSubstrate memory substrate;
 
         for (uint256 i; i < len; ++i) {
-            substrate = AerodromeSubstrateLib.bytes32ToSubstrate(pools[i]);
+            substrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(pools[i]);
 
-            if (substrate.substrateType == AerodromeSubstrateType.Gauge) {
-                pool = IGauge(substrate.substrateAddress).stakingToken();
+            if (substrate.substrateType == VelodromeSuperchainSubstrateType.Gauge) {
+                pool = ILeafGauge(substrate.substrateAddress).stakingToken();
                 liquidity = IERC20(substrate.substrateAddress).balanceOf(address(this));
-            } else if (substrate.substrateType == AerodromeSubstrateType.Pool) {
+            } else if (substrate.substrateType == VelodromeSuperchainSubstrateType.Pool) {
                 pool = substrate.substrateAddress;
                 liquidity = IERC20(pool).balanceOf(address(this));
             } else {
@@ -58,7 +64,6 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
                 balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
             }
         }
-
         return balance;
     }
 
@@ -85,7 +90,6 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
 
         balanceInUsd += IporMath.convertToWad(amount0 * price0, IERC20Metadata(token0).decimals() + priceDecimals0);
         balanceInUsd += IporMath.convertToWad(amount1 * price1, IERC20Metadata(token1).decimals() + priceDecimals1);
-
         return balanceInUsd;
     }
 
@@ -113,7 +117,6 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         if (delta1 > 0) {
             claimable1 += (liquidity_ * delta1) / 1e18;
         }
-
         if (claimable0 > 0) {
             address token0 = IPool(pool_).token0();
             (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
@@ -139,20 +142,18 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         return balanceInUsd;
     }
 
-    function substratesToBytes32(AerodromeSubstrate[] memory substrates_) private pure returns (bytes32[] memory) {
+    function substratesToBytes32(VelodromeSuperchainSubstrate[] memory substrates_) private pure returns (bytes32[] memory) {
         bytes32[] memory bytes32Substrates = new bytes32[](substrates_.length);
         for (uint256 i; i < substrates_.length; ++i) {
-            bytes32Substrates[i] = AerodromeSubstrateLib.substrateToBytes32(substrates_[i]);
+            bytes32Substrates[i] = VelodromeSuperchainSubstrateLib.substrateToBytes32(substrates_[i]);
         }
         return bytes32Substrates;
     }
 
-    function bytes32ToSubstrate(
-        bytes32[] memory bytes32Substrates_
-    ) private pure returns (AerodromeSubstrate[] memory) {
-        AerodromeSubstrate[] memory substrates = new AerodromeSubstrate[](bytes32Substrates_.length);
+    function bytes32ToSubstrate(bytes32[] memory bytes32Substrates_) private pure returns (VelodromeSuperchainSubstrate[] memory) {
+        VelodromeSuperchainSubstrate[] memory substrates = new VelodromeSuperchainSubstrate[](bytes32Substrates_.length);
         for (uint256 i; i < bytes32Substrates_.length; ++i) {
-            substrates[i] = AerodromeSubstrateLib.bytes32ToSubstrate(bytes32Substrates_[i]);
+            substrates[i] = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(bytes32Substrates_[i]);
         }
         return substrates;
     }

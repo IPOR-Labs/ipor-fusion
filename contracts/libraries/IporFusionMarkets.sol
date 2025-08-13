@@ -85,13 +85,19 @@ library IporFusionMarkets {
 
     uint256 public constant AERODROME = 30;
 
+    /// @dev Velodrome Superchain market
+    uint256 public constant VELODROME_SUPERCHAIN = 31;
+
+    /// @dev Velodrome Superchain Slipstream market
+    uint256 public constant VELODROME_SUPERCHAIN_SLIPSTREAM = 32;
+
     /// @dev StakeDaoV2 market
     /// @dev Substrate type: address
-    uint256 public constant STAKE_DAO_V2 = 31;
+    uint256 public constant STAKE_DAO_V2 = 33;
 
     /// @dev StakeDaoV2 rewards market
     /// @dev Substrate type: StakeDaoV2Substrate
-    uint256 public constant STAKE_DAO_V2_REWARDS = 32;
+    uint256 public constant STAKE_DAO_V2_REWARDS = 34;
 
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
