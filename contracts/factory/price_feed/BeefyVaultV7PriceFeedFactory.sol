@@ -56,5 +56,6 @@ contract BeefyVaultV7PriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeabl
     /// @notice Authorizes an upgrade to a new implementation
     /// @dev Required by the OZ UUPS module, can only be called by the owner
     /// @param newImplementation Address of the new implementation
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

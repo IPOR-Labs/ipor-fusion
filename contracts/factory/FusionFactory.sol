@@ -273,5 +273,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
     /// @dev Required by the OZ UUPS module
     /// @param newImplementation Address of the new implementation
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

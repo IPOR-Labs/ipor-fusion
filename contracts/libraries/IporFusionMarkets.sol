@@ -86,8 +86,11 @@ library IporFusionMarkets {
     uint256 public constant AERODROME = 30;
 
     /// @dev StakeDaoV2 market
+    /// @dev Substrate type: address
     uint256 public constant STAKE_DAO_V2 = 31;
+
     /// @dev StakeDaoV2 rewards market
+    /// @dev Substrate type: StakeDaoV2Substrate
     uint256 public constant STAKE_DAO_V2_REWARDS = 32;
 
     /// @dev Market 1 for ERC4626 Vault

@@ -5,7 +5,6 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
-import {IporMath} from "../libraries/math/IporMath.sol";
 import {IFuseCommon} from "./IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
 

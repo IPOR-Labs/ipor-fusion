@@ -41,6 +41,13 @@ import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 import {StakeDaoV2BalanceFuse} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2BalanceFuse.sol";
 import {StakeDaoV2SupplyFuse, StakeDaoV2SupplyFuseEnterData} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol";
+import {StakeDaoV2ClaimFuse} from "../../../contracts/rewards_fuses/stake_dao_v2/StakeDaoV2ClaimFuse.sol";
+import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {StakeDaoV2SubstrateLib, StakeDaoV2Substrate, StakeDaoV2SubstrateType} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2SubstrateLib.sol";
+import {IAccountant} from "../../../contracts/fuses/stake_dao_v2/ext/IAccountant.sol";
+import {IRewardVault} from "../../../contracts/fuses/stake_dao_v2/ext/IRewardVault.sol";
+import {SimpleMockAccountant} from "./mocks/SimpleMockAccountant.sol";
+import {MockRewardVault} from "./mocks/MockRewardVault.sol";
 
 contract StakeDaoV2FuseTest is Test {
     address constant FUSION_FACTORY = 0x134fCAce7a2C7Ef3dF2479B62f03ddabAEa922d5;
@@ -49,6 +56,7 @@ contract StakeDaoV2FuseTest is Test {
 
     address constant FUSION_ACCESS_MANAGER = 0x19BAf9a25D1a4619Be1f7065c6A8d181a524991D;
     address constant FUSION_PRICE_MANAGER = 0x40e2d65023ef964A673950Df587cE239Bb1CE43d;
+    address constant FUSION_REWARDS_MANAGER = 0x47E217B96148F754D134EC44D691A2462C922391;
     address constant FUSION_PLASMA_VAULT_sdSaveUSDC = 0xa4f39ec96B7A2178B381dE9CDc9021fB2490b409;
 
     address constant STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC = 0x1544E663DD326a6d853a0cc4ceEf0860eb82B287;
@@ -71,6 +79,8 @@ contract StakeDaoV2FuseTest is Test {
     address constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address constant CRV_USD = 0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5;
 
+    address constant CRV = 0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978;
+
     address user;
     address atomist;
     address alpha;
@@ -79,6 +89,7 @@ contract StakeDaoV2FuseTest is Test {
     address stakeDaoV2SupplyFuse;
 
     address CRV_USD_HOLDER = 0xB5c6082d3307088C98dA8D79991501E113e6365d;
+    address USDC_HOLDER = 0x2Df1c51E09aECF9cacB7bc98cB1742757f163dF7;
 
     ////todo: jak bedzie supply to a amount w crvUSD - to pozwolić alfie przygotowac a w fusie zrobić całą logikę przelewu
 
@@ -106,38 +117,24 @@ contract StakeDaoV2FuseTest is Test {
         _addStakeDaoV2Fuses();
     }
 
-    function test_shouldSupplyToStakeDaoV2() public {}
-
     function test_shouldDepositToVaultAndRebalanceAssetsProportionallyTo4Vaults() public {
         // given
         uint256 depositAmountCrvUSD = 1000e18; // 1000 crvUSD
-        
 
         /// @dev Simulate that Vault has some crvUSD
         vm.prank(CRV_USD_HOLDER);
         IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
 
-
         // Add user to whitelist
         vm.prank(atomist);
         IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.WHITELIST_ROLE, user, 0);
-
-        // User deposits to vault
-        // vm.startPrank(user);
-        // IERC20(USDC).approve(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmount);
-        // PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).deposit(depositAmount, user);
-        // vm.stopPrank();
 
         // Update balances after deposit
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.STAKE_DAO_V2;
 
-        // uint256 totalAssetsAfterDeposit = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssets();
-        // assertGt(totalAssetsAfterDeposit, totalAssetsBefore, "Total assets should increase after deposit");
-
         // Calculate proportional amounts for 4 vaults (25% each)
         uint256 amountPerVault = depositAmountCrvUSD / 4;
-
 
         // Create FuseAction array for rebalancing to 4 vaults
         FuseAction[] memory actions = new FuseAction[](4);
@@ -194,15 +191,17 @@ contract StakeDaoV2FuseTest is Test {
             )
         );
 
-        // Record balances before rebalancing
-        // uint256 vaultBalanceBefore = IERC20(USDC).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
         uint256 totalAssetsInMarketBefore = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssetsInMarket(
             IporFusionMarkets.STAKE_DAO_V2
         );
 
-        // Record balance of CRV_USD vault before rebalancing
         uint256 crvUsdVaultBalanceBefore = IERC20(CRV_USD).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
-        console2.log("CRV_USD vault balance before:", crvUsdVaultBalanceBefore);
+
+        assertEq(
+            crvUsdVaultBalanceBefore,
+            depositAmountCrvUSD,
+            "CRV_USD vault balance should be equal to transferred amount"
+        );
 
         // when - Alpha executes rebalancing
         vm.startPrank(alpha);
@@ -211,22 +210,12 @@ contract StakeDaoV2FuseTest is Test {
 
         // Record balance of CRV_USD vault after rebalancing
         uint256 crvUsdVaultBalanceAfter = IERC20(CRV_USD).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
-        console2.log("CRV_USD vault balance after:", crvUsdVaultBalanceAfter);
 
-        // then - Verify rebalancing results
-        // uint256 vaultBalanceAfter = IERC20(USDC).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
-
-        // console2.log("vaultBalanceAfter", vaultBalanceAfter);
+        assertEq(crvUsdVaultBalanceAfter, 0, "CRV_USD vault balance should be 0 after rebalancing");
 
         uint256 totalAssetsInMarketAfter = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssetsInMarket(
             IporFusionMarkets.STAKE_DAO_V2
         );
-
-        console2.log("totalAssetsInMarketBefore", totalAssetsInMarketBefore);
-        console2.log("totalAssetsInMarketAfter", totalAssetsInMarketAfter);
-
-        // Vault balance should decrease after rebalancing
-        // assertLt(vaultBalanceAfter, vaultBalanceBefore, "Vault balance should decrease after rebalancing");
 
         // Total assets in market should increase
         assertGt(
@@ -234,42 +223,261 @@ contract StakeDaoV2FuseTest is Test {
             totalAssetsInMarketBefore,
             "Total assets in market should increase after rebalancing"
         );
+    }
 
-        // Verify proportional distribution (approximately 25% each)
-        // uint256 expectedAmountPerVault = totalAssetsAfterDeposit / 4;
-        // uint256 tolerance = expectedAmountPerVault / 100; // 1% tolerance
+    function test_shouldClaimMainRewards() public {
+        _configureRewardsSubstrates();
 
-        // // Check that the total assets in market is approximately 4 times the amount per vault
-        // assertApproxEqAbs(
-        //     totalAssetsInMarketAfter,
-        //     expectedAmountPerVault * 4,
-        //     tolerance * 4,
-        //     "Total assets in market should be approximately 4 times the amount per vault"
-        // );
+        // given
+        uint256 depositAmountCrvUSD = 1000e18; // 1000 crvUSD
 
-        // Verify that vault balance decreased by approximately the total rebalanced amount
-        // uint256 expectedBalanceDecrease = expectedAmountPerVault * 4;
-        // assertApproxEqAbs(
-        //     vaultBalanceBefore - vaultBalanceAfter,
-        //     expectedBalanceDecrease,
-        //     tolerance * 4,
-        //     "Vault balance should decrease by approximately the total rebalanced amount"
-        // );
+        address accountant = address(IRewardVault(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC).ACCOUNTANT());
 
-        // Verify total assets remain consistent
-        // uint256 finalTotalAssets = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssets();
+        SimpleMockAccountant mockAccountant = new SimpleMockAccountant(CRV, 777e18);
 
-        // console.log("finalTotalAssets", finalTotalAssets);
-        // console.log("totalAssetsAfterDeposit", totalAssetsAfterDeposit);
+        // Deal CRV tokens to the mock accountant so it can transfer them
+        deal(CRV, address(mockAccountant), 777e18);
 
-        // assertApproxEqAbs(
-        //     finalTotalAssets,
-        //     totalAssetsAfterDeposit,
-        //     tolerance * 4,
-        //     "Total assets should remain approximately the same after rebalancing"
-        // );
+        // Replace the real accountant with our mock
+        bytes memory newCode = address(mockAccountant).code;
+        vm.etch(accountant, newCode);
 
-        
+        /// @dev Simulate that Vault has some crvUSD
+        vm.prank(CRV_USD_HOLDER);
+        IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
+
+        // Add user to whitelist
+        vm.prank(atomist);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.WHITELIST_ROLE, user, 0);
+
+        // Create StakeDaoV2ClaimFuse
+        address stakeDaoV2ClaimFuse = address(new StakeDaoV2ClaimFuse(IporFusionMarkets.STAKE_DAO_V2_REWARDS));
+
+        // Add claim fuse to rewards manager
+        address[] memory rewardFuses = new address[](1);
+        rewardFuses[0] = stakeDaoV2ClaimFuse;
+
+        vm.startPrank(atomist);
+        RewardsClaimManager(FUSION_REWARDS_MANAGER).addRewardFuses(rewardFuses);
+        vm.stopPrank();
+
+        // Prepare reward vaults array for claiming
+        address[] memory rewardVaults = new address[](1);
+        rewardVaults[0] = STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC;
+
+        // Create FuseAction for claiming main rewards
+        FuseAction[] memory claimActions = new FuseAction[](1);
+        claimActions[0] = FuseAction(
+            stakeDaoV2ClaimFuse,
+            abi.encodeWithSignature("claimMainRewards(address[])", rewardVaults)
+        );
+
+        // Get rewards claim manager address
+        address rewardsClaimManager = PlasmaVaultGovernance(FUSION_PLASMA_VAULT_sdSaveUSDC)
+            .getRewardsClaimManagerAddress();
+
+        vm.startPrank(alpha);
+        // when - Execute claim rewards with error handling
+        RewardsClaimManager(rewardsClaimManager).claimRewards(claimActions);
+        vm.stopPrank();
+
+        //then
+        assertEq(IERC20(CRV).balanceOf(FUSION_REWARDS_MANAGER), 777e18, "CRV balance should be 777e18");
+    }
+
+    function test_shouldClaimExtraRewards() public {
+        _configureRewardsSubstrates();
+
+        // given
+        uint256 depositAmountCrvUSD = 1000e18; // 1000 crvUSD
+
+        // Create mock ERC20 tokens for extra rewards (CVX and LDO as examples)
+        MockERC20 mockCVX = new MockERC20("Convex Token", "CVX", 18);
+        MockERC20 mockLDO = new MockERC20("Lido Token", "LDO", 18);
+
+        address CVX = address(mockCVX);
+        address LDO = address(mockLDO);
+
+        // Create mock reward vault that can claim extra rewards
+        MockRewardVault mockRewardVault = new MockRewardVault(CVX, LDO, 123e18, 456e18);
+
+        // Configure all substrates at once
+        _configureAllRewardsSubstrates(CVX, LDO, address(mockRewardVault));
+
+        // Deal extra reward tokens to the mock reward vault
+        deal(CVX, address(mockRewardVault), 123e18);
+        deal(LDO, address(mockRewardVault), 456e18);
+
+        /// @dev Simulate that Vault has some crvUSD
+        vm.prank(CRV_USD_HOLDER);
+        IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
+
+        // Add user to whitelist
+        vm.prank(atomist);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.WHITELIST_ROLE, user, 0);
+
+        // Create StakeDaoV2ClaimFuse
+        address stakeDaoV2ClaimFuse = address(new StakeDaoV2ClaimFuse(IporFusionMarkets.STAKE_DAO_V2_REWARDS));
+
+        // Add claim fuse to rewards manager
+        address[] memory rewardFuses = new address[](1);
+        rewardFuses[0] = stakeDaoV2ClaimFuse;
+
+        vm.startPrank(atomist);
+        RewardsClaimManager(FUSION_REWARDS_MANAGER).addRewardFuses(rewardFuses);
+        vm.stopPrank();
+
+        // Prepare reward vaults array for claiming extra rewards
+        address[] memory rewardVaults = new address[](1);
+        rewardVaults[0] = address(mockRewardVault);
+
+        // Prepare extra reward tokens array for each vault
+        address[][] memory rewardVaultsTokens = new address[][](1);
+        rewardVaultsTokens[0] = new address[](2);
+        rewardVaultsTokens[0][0] = CVX;
+        rewardVaultsTokens[0][1] = LDO;
+
+        // Create FuseAction for claiming extra rewards
+        FuseAction[] memory claimActions = new FuseAction[](1);
+        claimActions[0] = FuseAction(
+            stakeDaoV2ClaimFuse,
+            abi.encodeWithSignature("claimExtraRewards(address[],address[][])", rewardVaults, rewardVaultsTokens)
+        );
+
+        // Get rewards claim manager address
+        address rewardsClaimManager = PlasmaVaultGovernance(FUSION_PLASMA_VAULT_sdSaveUSDC)
+            .getRewardsClaimManagerAddress();
+
+        vm.startPrank(alpha);
+        // when - Execute claim extra rewards
+        RewardsClaimManager(rewardsClaimManager).claimRewards(claimActions);
+        vm.stopPrank();
+
+        //then
+        assertEq(IERC20(CVX).balanceOf(FUSION_REWARDS_MANAGER), 123e18, "CVX balance should be 123e18");
+        assertEq(IERC20(LDO).balanceOf(FUSION_REWARDS_MANAGER), 456e18, "LDO balance should be 456e18");
+    }
+
+    function _configureRewardsSubstrates() private {
+        vm.startPrank(atomist);
+        substrates = new bytes32[](4);
+        substrates[0] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({
+                substrateType: StakeDaoV2SubstrateType.RewardVault,
+                substrateAddress: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC
+            })
+        );
+        substrates[1] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({
+                substrateType: StakeDaoV2SubstrateType.RewardVault,
+                substrateAddress: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WETH
+            })
+        );
+        substrates[2] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({
+                substrateType: StakeDaoV2SubstrateType.RewardVault,
+                substrateAddress: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_EYWA
+            })
+        );
+        substrates[3] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({
+                substrateType: StakeDaoV2SubstrateType.RewardVault,
+                substrateAddress: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_ARB
+            })
+        );
+
+        PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).grantMarketSubstrates(
+            IporFusionMarkets.STAKE_DAO_V2_REWARDS,
+            substrates
+        );
+        vm.stopPrank();
+    }
+
+    function _configureExtraRewardsSubstrates(address cvx, address ldo) private {
+        vm.startPrank(atomist);
+
+        // Grant substrates for extra reward tokens
+        bytes32[] memory extraRewardSubstrates = new bytes32[](2);
+        extraRewardSubstrates[0] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({substrateType: StakeDaoV2SubstrateType.ExtraRewardToken, substrateAddress: cvx})
+        );
+        extraRewardSubstrates[1] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({substrateType: StakeDaoV2SubstrateType.ExtraRewardToken, substrateAddress: ldo})
+        );
+
+        PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).grantMarketSubstrates(
+            IporFusionMarkets.STAKE_DAO_V2_REWARDS,
+            extraRewardSubstrates
+        );
+        vm.stopPrank();
+    }
+
+    function _configureMockRewardVaultSubstrate(address mockRewardVault) private {
+        vm.startPrank(atomist);
+
+        // Grant substrate for the mock reward vault
+        bytes32[] memory mockRewardVaultSubstrates = new bytes32[](1);
+        mockRewardVaultSubstrates[0] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({substrateType: StakeDaoV2SubstrateType.RewardVault, substrateAddress: mockRewardVault})
+        );
+
+        PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).grantMarketSubstrates(
+            IporFusionMarkets.STAKE_DAO_V2_REWARDS,
+            mockRewardVaultSubstrates
+        );
+        vm.stopPrank();
+    }
+
+    function _configureAllRewardsSubstrates(address cvx, address ldo, address mockRewardVault) private {
+        vm.startPrank(atomist);
+
+        // Combine all substrates into one array
+        bytes32[] memory allSubstrates = new bytes32[](7); // 4 original + 2 extra tokens + 1 mock vault
+
+        // Original reward vault substrates
+        allSubstrates[0] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({
+                substrateType: StakeDaoV2SubstrateType.RewardVault,
+                substrateAddress: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC
+            })
+        );
+        allSubstrates[1] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({
+                substrateType: StakeDaoV2SubstrateType.RewardVault,
+                substrateAddress: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WETH
+            })
+        );
+        allSubstrates[2] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({
+                substrateType: StakeDaoV2SubstrateType.RewardVault,
+                substrateAddress: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_EYWA
+            })
+        );
+        allSubstrates[3] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({
+                substrateType: StakeDaoV2SubstrateType.RewardVault,
+                substrateAddress: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_ARB
+            })
+        );
+
+        // Extra reward token substrates
+        allSubstrates[4] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({substrateType: StakeDaoV2SubstrateType.ExtraRewardToken, substrateAddress: cvx})
+        );
+        allSubstrates[5] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({substrateType: StakeDaoV2SubstrateType.ExtraRewardToken, substrateAddress: ldo})
+        );
+
+        // Mock reward vault substrate
+        allSubstrates[6] = StakeDaoV2SubstrateLib.substrateToBytes32(
+            StakeDaoV2Substrate({substrateType: StakeDaoV2SubstrateType.RewardVault, substrateAddress: mockRewardVault})
+        );
+
+        PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).grantMarketSubstrates(
+            IporFusionMarkets.STAKE_DAO_V2_REWARDS,
+            allSubstrates
+        );
+        vm.stopPrank();
     }
 
     function _addStakeDaoV2Fuses() private {
@@ -286,6 +494,7 @@ contract StakeDaoV2FuseTest is Test {
             address(new StakeDaoV2BalanceFuse(IporFusionMarkets.STAKE_DAO_V2))
         );
 
+        // Set up substrates for supply fuse (as assets)
         substrates = new bytes32[](4);
         substrates[0] = bytes32(uint256(uint160(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC)));
         substrates[1] = bytes32(uint256(uint160(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WETH)));
@@ -314,32 +523,11 @@ contract StakeDaoV2FuseTest is Test {
             atomist,
             0
         );
-        vm.stopPrank();
 
-        // IporFusionAccessManager(STAKEDAO_V2_ACCESS_MANAGER).grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
-        // // Grant alpha role to alpha address
-        // accessManagerLlamaLandWbtc.grantRole(Roles.ALPHA_ROLE, alpha, 0);
-        // accessManagerLlamaLandWeth.grantRole(Roles.ALPHA_ROLE, alpha, 0);
-        // accessManagerLlamaLandEywa.grantRole(Roles.ALPHA_ROLE, alpha, 0);
-        // accessManagerLlamaLandArb.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.CLAIM_REWARDS_ROLE, alpha, 0);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.TRANSFER_REWARDS_ROLE, alpha, 0);
+        IporFusionAccessManager(FUSION_ACCESS_MANAGER).grantRole(Roles.UPDATE_REWARDS_BALANCE_ROLE, alpha, 0);
 
-        // // Grant fuse manager role to atomist address (needed to add fuses)
-
-        // accessManagerLlamaLandWeth.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
-        // accessManagerLlamaLandEywa.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
-        // accessManagerLlamaLandArb.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
-
-        // // Grant instant withdrawal fuses role to atomist address (needed to configure instant withdrawal fuses)
-        // accessManagerLlamaLandWbtc.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
-        // accessManagerLlamaLandWeth.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
-        // accessManagerLlamaLandEywa.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
-        // accessManagerLlamaLandArb.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
-
-        // // Grant PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE to atomist
-
-        // accessManagerLlamaLandWeth.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
-        // accessManagerLlamaLandEywa.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
-        // accessManagerLlamaLandArb.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
         vm.stopPrank();
     }
 }

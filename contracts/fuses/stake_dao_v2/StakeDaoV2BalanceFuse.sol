@@ -19,7 +19,6 @@ contract StakeDaoV2BalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
     }
 
-
     function balanceOf() external view override returns (uint256 balance) {
         bytes32[] memory rewardVaults = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -34,20 +33,20 @@ contract StakeDaoV2BalanceFuse is IMarketBalanceFuse {
 
         address lpTokenAddress;
         uint256 lpTokenAssets;
-        
+
         address lpTokenUnderlyingAddress;
         uint256 lpTokenUnderlyingAssets;
 
         uint256 lpTokenUnderlyingPrice;
         uint256 lpTokenUnderlyingPriceDecimals;
-        
+
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         address plasmaVault = address(this);
 
         for (uint256 i; i < len; ++i) {
             rewardVaultAddress = IERC4626(PlasmaVaultConfigLib.bytes32ToAddress(rewardVaults[i]));
 
-            /// @dev Notice! In StakeDaoV2 deposited assets are 1:1 shares of the reward vault, 
+            /// @dev Notice! In StakeDaoV2 deposited assets are 1:1 shares of the reward vault,
             /// @dev so we don't need to convert to assets [ rewardVaultAddress.convertToAssets(rewardVaultAddress.balanceOf(plasmaVault)); ]
             rewardVaultAssets = rewardVaultAddress.balanceOf(plasmaVault);
 
@@ -63,14 +62,18 @@ contract StakeDaoV2BalanceFuse is IMarketBalanceFuse {
             lpTokenUnderlyingAssets = IERC4626(lpTokenAddress).convertToAssets(lpTokenAssets);
 
             /// @dev Get the price of the lp token underlying asset from price oracle
-            (lpTokenUnderlyingPrice, lpTokenUnderlyingPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(lpTokenUnderlyingAddress);
+            (lpTokenUnderlyingPrice, lpTokenUnderlyingPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
+                .getAssetPrice(lpTokenUnderlyingAddress);
 
             /// @dev Calculate balance in USD (WAD decimals)
+            /// @dev The LP token vault returns underlying assets in the token's natural decimals
+            /// @dev No need for additional decimal conversion since the vault handles this internally
             balance += IporMath.convertToWad(
                 lpTokenUnderlyingAssets * lpTokenUnderlyingPrice,
                 IERC20Metadata(lpTokenUnderlyingAddress).decimals() + lpTokenUnderlyingPriceDecimals
             );
         }
 
+        return balance;
     }
 }

@@ -5,6 +5,7 @@ import {IAccountant} from "./IAccountant.sol";
 
 interface IRewardVault {
     /// @notice Accountant tracks user balances and main protocol rewards
+    // solhint-disable-next-line func-name-mixedcase
     function ACCOUNTANT() external view returns (IAccountant accountant);
 
     /// @notice Claims rewards for multiple tokens in a single transaction

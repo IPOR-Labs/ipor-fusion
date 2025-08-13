@@ -40,7 +40,7 @@ contract StakeDaoV2ClaimFuse {
     }
 
     /// Main Protocol Rewards (e.g., CRV, BAL)
-    function claimMainRewards( address[] calldata rewardVaults) public {
+    function claimMainRewards(address[] calldata rewardVaults) public {
         address receiver = _getReceiver();
 
         _validateRewardVaults(rewardVaults);
@@ -66,10 +66,7 @@ contract StakeDaoV2ClaimFuse {
     }
 
     /// Extra rewards (e.g., CVX, LDO)
-    function claimExtraRewards(
-        address[] calldata rewardVaults,
-        address[][] calldata rewardVaultsTokens
-    ) public {
+    function claimExtraRewards(address[] calldata rewardVaults, address[][] calldata rewardVaultsTokens) public {
         address receiver = _getReceiver();
 
         _validateRewardVaultsTokens(rewardVaults, rewardVaultsTokens);
@@ -110,7 +107,10 @@ contract StakeDaoV2ClaimFuse {
         }
     }
 
-    function _validateRewardVaultsTokens(address[] calldata rewardVaults, address[][] calldata rewardVaultsTokens) internal view {
+    function _validateRewardVaultsTokens(
+        address[] calldata rewardVaults,
+        address[][] calldata rewardVaultsTokens
+    ) internal view {
         if (rewardVaults.length != rewardVaultsTokens.length) {
             revert StakeDaoV2ClaimFuseArrayLengthMismatch(rewardVaults.length, rewardVaultsTokens.length);
         }
