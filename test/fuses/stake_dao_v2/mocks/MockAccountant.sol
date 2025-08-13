@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {console2} from "forge-std/console2.sol";
 
 contract MockAccountant {
     using Address for address;
@@ -20,16 +19,13 @@ contract MockAccountant {
 
     function claim(address[] calldata gauges_, bytes[] calldata harvestData_, address receiver_) external {
         address account = msg.sender;
-        console2.log("[MockAccountant] account", account);
 
         uint256 totalAmount;
 
         for (uint256 i; i < gauges_.length; i++) {
-            console2.log("[MockAccountant] gauges_[i]", gauges_[i]);
             totalAmount += mockedRewards[gauges_[i]][account];
         }
-
-        console2.log("[MockAccountant] totalAmount", totalAmount);
+        
         IERC20(REWARD_TOKEN).safeTransfer(receiver_, totalAmount);
     }
 
