@@ -7,18 +7,28 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
+import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 import {ICLPool} from "./ext/ICLPool.sol";
 import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";
-import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
+import {ICLGauge} from "./ext/ICLGauge.sol";
 
-contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
+contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
+    error InvalidAddress();
+
     uint256 public immutable MARKET_ID;
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
     address public immutable SLIPSTREAM_SUPERCHAIN_SUGAR;
 
     constructor(uint256 marketId_, address nonfungiblePositionManager_, address slipstreamSuperchainSugar_) {
+        if (nonfungiblePositionManager_ == address(0)) {
+            revert InvalidAddress();
+        }
+
+        if (slipstreamSuperchainSugar_ == address(0)) {
+            revert InvalidAddress();
+        }
+
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
         SLIPSTREAM_SUPERCHAIN_SUGAR = slipstreamSuperchainSugar_;
@@ -36,46 +46,51 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
         uint256 amount0;
         uint256 amount1;
         uint256[] memory tokenIds;
+        uint256 tokenIdsLen;
         uint160 sqrtPriceX96;
 
         if (len == 0) {
             return 0;
         }
 
-        VelodromeSuperchainSlipstreamSubstrate memory substrate;
+        AreodromeSlipstreamSubstrate memory substrate;
 
         for (uint256 i; i < len; i++) {
-            substrate = VelodromeSuperchainSlipstreamSubstrateLib.bytes32ToSubstrate(grantedSubstrates[i]);
+            substrate = AreodromeSlipstreamSubstrateLib.bytes32ToSubstrate(grantedSubstrates[i]);
             amount0 = 0;
             amount1 = 0;
 
-            if (substrate.substrateType == VelodromeSuperchainSlipstreamSubstrateType.Pool) {
-                tokenIds = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).userPositions(
-                    address(this),
-                    substrate.substrateAddress
-                );
+            if (substrate.substrateType == AreodromeSlipstreamSubstrateType.Pool) {
+                tokenIdsLen = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).balanceOf(address(this));
+                tokenIds = new uint256[](tokenIdsLen);
 
-                uint256 tokenIdsLen = tokenIds.length;
+                for (uint256 j; j < tokenIdsLen; j++) {
+                    tokenIds[j] = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+                        address(this),
+                        j
+                    );
+                }
+
                 token0 = ICLPool(substrate.substrateAddress).token0();
                 token1 = ICLPool(substrate.substrateAddress).token1();
                 sqrtPriceX96 = ICLPool(substrate.substrateAddress).slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = _addPrincippal(amount0, amount1, tokenIds[j], sqrtPriceX96);
+                    (amount0, amount1) = _addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
                     (amount0, amount1) = _addFees(amount0, amount1, tokenIds[j]);
                 }
 
                 balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
                 balance += _convertToUsd(amount1, token1, priceOracleMiddleware);
-            } else if (substrate.substrateType == VelodromeSuperchainSlipstreamSubstrateType.Gauge) {
-                tokenIds = ILeafCLGauge(substrate.substrateAddress).stakedValues(address(this));
+            } else if (substrate.substrateType == AreodromeSlipstreamSubstrateType.Gauge) {
+                tokenIds = ICLGauge(substrate.substrateAddress).stakedValues(address(this));
                 uint256 tokenIdsLen = tokenIds.length;
-                token0 = ILeafCLGauge(substrate.substrateAddress).token0();
-                token1 = ILeafCLGauge(substrate.substrateAddress).token1();
-                sqrtPriceX96 = ILeafCLGauge(substrate.substrateAddress).pool().slot0().sqrtPriceX96;
+                token0 = ICLGauge(substrate.substrateAddress).token0();
+                token1 = ICLGauge(substrate.substrateAddress).token1();
+                sqrtPriceX96 = ICLGauge(substrate.substrateAddress).pool().slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = _addPrincippal(amount0, amount1, tokenIds[j], sqrtPriceX96);
+                    (amount0, amount1) = _addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
                 }
 
                 balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
@@ -85,7 +100,7 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
         return balance;
     }
 
-    function _addPrincippal(
+    function _addPrincipal(
         uint256 amount0_,
         uint256 amount1_,
         uint256 tokenId_,

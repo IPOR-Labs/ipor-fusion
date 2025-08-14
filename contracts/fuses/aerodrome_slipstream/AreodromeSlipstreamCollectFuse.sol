@@ -6,19 +6,14 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
-struct VelodromeSuperchainSlipstreamCollectFuseEnterData {
+struct AreodromeSlipstreamCollectFuseEnterData {
     uint256[] tokenIds;
 }
 
-contract VelodromeSuperchainSlipstreamCollectFuse is IFuseCommon {
+contract AreodromeSlipstreamCollectFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    event VelodromeSuperchainSlipstreamCollectFuseEnter(
-        address version,
-        uint256 tokenId,
-        uint256 amount0,
-        uint256 amount1
-    );
+    event AreodromeSlipstreamCollectFuseEnter(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
 
     error UnsupportedMethod();
     error InvalidAddress();
@@ -39,7 +34,7 @@ contract VelodromeSuperchainSlipstreamCollectFuse is IFuseCommon {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
-    function enter(VelodromeSuperchainSlipstreamCollectFuseEnterData calldata data_) public {
+    function enter(AreodromeSlipstreamCollectFuseEnterData calldata data_) public {
         uint256 len = data_.tokenIds.length;
 
         if (len == 0) {
@@ -59,7 +54,7 @@ contract VelodromeSuperchainSlipstreamCollectFuse is IFuseCommon {
 
             (amount0, amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).collect(params);
 
-            emit VelodromeSuperchainSlipstreamCollectFuseEnter(VERSION, params.tokenId, amount0, amount1);
+            emit AreodromeSlipstreamCollectFuseEnter(VERSION, params.tokenId, amount0, amount1);
         }
     }
 }
