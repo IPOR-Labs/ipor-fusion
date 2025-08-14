@@ -42,8 +42,6 @@ contract StakeDaoV2BalanceFuse is IMarketBalanceFuse {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         address plasmaVault = address(this);
 
-        uint256 lpTokenUnderlyingAssets;
-
         for (uint256 i; i < len; ++i) {
             rewardVaultAddress = IERC4626(PlasmaVaultConfigLib.bytes32ToAddress(rewardVaults[i]));
 
