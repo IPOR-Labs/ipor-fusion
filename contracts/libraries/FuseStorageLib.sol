@@ -168,7 +168,7 @@ library FuseStorageLib {
      * @notice Tracks and manages Liquity V2 Troves positions held by the vault
      *
      * Calculation:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.LiquityV2OwnerIndexes")) - 1)) & ~bytes32(uint256(0xff))
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.LiquityV2OwnerIds")) - 1)) & ~bytes32(uint256(0xff))
      *
      * Purpose:
      * - Tracks all Liquity V2 Troves positions owned by the vault
@@ -177,7 +177,7 @@ library FuseStorageLib {
      * - Mirrors Uniswap V3-style position management for Arbitrum
      *
      * Storage Layout:
-     * - Points to LiquityV2OwnerIndexes struct containing:
+     * - Points to LiquityV2OwnerIds struct containing:
      *   - lastIndex: uint256 last index used for new positions
      *   - idByOwnerIndex: mapping(address => mapping(uint256 ownerIndex => uint256 troveId))
      *     - Maps each owner index to its corresponding trove ID
@@ -202,8 +202,8 @@ library FuseStorageLib {
      * - Essential for position ownership verification
      * - Parallel structure to Uniswap V3 position tracking
      */
-    bytes32 private constant LIQUITY_V2_OWNER_INDEXES =
-        0xb1a3ed2517f1e0e383b64eb7f3695f659c1472cde57ba2d893735d39aa184600;
+    bytes32 private constant LIQUITY_V2_OWNER_IDS =
+        0x666c67a69b8006dd3640f09d1123ec0d376176b37a6ef588f4e3637b5ecdff00;
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
         /// @dev fuse address => If index = 0 - is not granted, otherwise - granted
@@ -228,10 +228,10 @@ library FuseStorageLib {
         mapping(uint256 tokenId => uint256 index) indexes;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.LiquityV2OwnerIndexes
-    struct LiquityV2OwnerIndexes {
-        uint256 lastIndex;
-        mapping(address => mapping(uint256 ownerIndex => uint256 troveId)) idByOwnerIndex;
+    /// @custom:storage-location erc7201:io.ipor.LiquityV2OwnerIds
+    struct LiquityV2OwnerIds {
+        mapping(address registry => uint256[] troveIds) troveIds;
+        mapping(address registry => mapping(uint256 index => uint256 troveId)) idsByIndex;
     }
 
     /// @notice Gets the fuses storage pointer
@@ -262,10 +262,10 @@ library FuseStorageLib {
         }
     }
 
-    /// @notice Gets the LiquityV2OwnerIndexes storage pointer
-    function getLiquityV2OwnerIndexes() internal pure returns (LiquityV2OwnerIndexes storage liquityV2OwnerIndexes) {
+    /// @notice Gets the LiquityV2OwnerIds storage pointer
+    function getLiquityV2OwnerIds() internal pure returns (LiquityV2OwnerIds storage liquityV2OwnerIds) {
         assembly {
-            liquityV2OwnerIndexes.slot := LIQUITY_V2_OWNER_INDEXES
+            liquityV2OwnerIds.slot := LIQUITY_V2_OWNER_IDS
         }
     }
 }

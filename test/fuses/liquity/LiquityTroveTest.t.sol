@@ -16,21 +16,19 @@ import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {LiquityIndexesReader} from "../../../contracts/readers/LiquityIndexesReader.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-
 contract LiquityTroveFuseTest is Test {
     address internal constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address internal constant WSTETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address internal constant RETH = 0xae78736Cd615f374D3085123A210448E74Fc6393;
-    address internal constant BOLD = 0xb01dd87B29d187F3E3a4Bf6cdAebfb97F3D9aB98;
+    address internal constant BOLD = 0x6440f144b7e50D6a8439336510312d2F54beB01D;
 
-    address internal constant ETH_REGISTRY = 0x38e1F07b954cFaB7239D7acab49997FBaAD96476;
-    address internal constant WSTETH_REGISTRY = 0x2D4ef56cb626E9a4C90c156018BA9CE269573c61;
-    address internal constant RETH_REGISTRY = 0x3b48169809DD827F22C9e0F2d71ff12Ea7A94a2F;
+    address internal constant ETH_REGISTRY = 0x20F7C9ad66983F6523a0881d0f82406541417526;
+    address internal constant WSTETH_REGISTRY = 0x8d733F7ea7c23Cbea7C613B6eBd845d46d3aAc54;
+    address internal constant RETH_REGISTRY = 0x6106046F031a22713697e04C08B330dDaf3e8789;
 
     address private plasmaVault;
     address private accessManager;
@@ -38,7 +36,6 @@ contract LiquityTroveFuseTest is Test {
     ERC20BalanceFuse private erc20BalanceFuse;
     address private balanceFuse;
     LiquityTroveFuse private _liquityTroveFuse;
-    LiquityIndexesReader private _reader;
 
 
     function setUp() public {
@@ -94,12 +91,12 @@ contract LiquityTroveFuseTest is Test {
 
         PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
 
-        _reader = new LiquityIndexesReader();
     }
 
     function testLiquityTroveShouldEnter() public {
         LiquityTroveEnterData memory enterData = LiquityTroveEnterData({
-            registry: 0x38e1F07b954cFaB7239D7acab49997FBaAD96476,
+            registry: ETH_REGISTRY,
+            newIndex: 1,
             collAmount: 2000 * 1e18,
             boldAmount: 2000 * 1e18,
             upperHint: 0,
@@ -111,7 +108,7 @@ contract LiquityTroveFuseTest is Test {
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_liquityTroveFuse),
-            abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256,uint256,uint256))", enterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256,uint256,uint256,uint256))", enterData)
         );
 
         deal(WETH, address(this), 200000 * 1e18);
@@ -120,23 +117,13 @@ contract LiquityTroveFuseTest is Test {
         PlasmaVault(plasmaVault).execute(enterCalls);
     }
 
-    function testShouldReturnCorrectIndexesAfterEnter() public {
-        testLiquityTroveShouldEnter();
-
-        uint256 lastIndex = _reader.getLastIndex(plasmaVault);
-        assertEq(lastIndex, 1, "lastIndex should be 1 after one trove entry");
-
-        uint256 troveId = _reader.getTroveId(plasmaVault, address(this), 0);
-        assertEq(troveId, 0, "Trove ID for index 0 should be 0 for msg.sender");
-    }
-
     function testLiquityTroveShouldExit() public {
         testLiquityTroveShouldEnter();
 
         uint256[] memory ownerIndexes = new uint256[](1);
         ownerIndexes[0] = 1;
         LiquityTroveExitData memory exitData = LiquityTroveExitData(
-            0x38e1F07b954cFaB7239D7acab49997FBaAD96476,
+            ETH_REGISTRY,
             ownerIndexes
         );
         FuseAction[] memory exitCalls = new FuseAction[](1);

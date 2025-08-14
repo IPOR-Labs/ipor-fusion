@@ -18,6 +18,7 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 /// @dev Substrates in this fuse are the address registries of Liquity protocol that are used in the Liquity protocol for a given MARKET_ID
 struct LiquityTroveEnterData {
     address registry;
+    uint256 newIndex;
     uint256 collAmount;
     uint256 boldAmount;
     uint256 upperHint;
@@ -35,7 +36,6 @@ contract LiquityTroveFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
     uint256 public immutable MARKET_ID;
-    address public immutable VERSION;
 
     uint256 private constant MIN_ANNUAL_INTEREST_RATE = 1e16 / 2; // 0.5%
     uint256 private constant MAX_ANNUAL_INTEREST_RATE = 250 * 1e16; // 250%
@@ -44,8 +44,8 @@ contract LiquityTroveFuse is IFuseCommon {
     uint256 private constant DECIMAL_PRECISION = 1e18;
     uint256 private constant MIN_DEBT = 2000e18;
 
-    event LiquityTroveFuseEnter(address version, address asset, uint256 ownerIndex, uint256 troveId);
-    event LiquityTroveFuseExit(address version, address asset, uint256 troveId);
+    event LiquityTroveFuseEnter(address asset, uint256 ownerIndex, uint256 troveId);
+    event LiquityTroveFuseExit(address asset, uint256 troveId);
 
     error InvalidAnnualInterestRate();
     error InvalidRegistry();
@@ -54,9 +54,9 @@ contract LiquityTroveFuse is IFuseCommon {
     error NewOracleFailureDetected();
     error ICRBelowMCR(uint256 icr, uint256 mcr);
     error DebtAboveBalance(uint256 debt, uint256 balance);
+    error IndexAlreadyUsed();
 
     constructor(uint256 marketId_) {
-        VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
@@ -67,9 +67,6 @@ contract LiquityTroveFuse is IFuseCommon {
             revert InvalidAnnualInterestRate();
         }
 
-        FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
-        uint256 newIndex = troveData.lastIndex++;
-
         IBorrowerOperations borrowerOperations = IBorrowerOperations(
             IAddressesRegistry(data.registry).borrowerOperations()
         );
@@ -79,10 +76,13 @@ contract LiquityTroveFuse is IFuseCommon {
 
         ERC20(collToken).forceApprove(address(borrowerOperations), type(uint256).max);
 
+        FuseStorageLib.LiquityV2OwnerIds storage ownerIdsData = FuseStorageLib.getLiquityV2OwnerIds();
+        if(ownerIdsData.idsByIndex[data.registry][data.newIndex] != 0) revert IndexAlreadyUsed();
+
         // it's better to compute upperHint and lowerHint off-chain, since calculating on-chain is expensive
         uint256 troveId = borrowerOperations.openTrove(
             address(this),
-            newIndex,
+            data.newIndex,
             data.collAmount,
             data.boldAmount,
             data.upperHint,
@@ -96,9 +96,10 @@ contract LiquityTroveFuse is IFuseCommon {
 
         ERC20(collToken).forceApprove(address(borrowerOperations), 0);
 
-        troveData.idByOwnerIndex[data.registry][newIndex] = troveId;
+        ownerIdsData.idsByIndex[data.registry][data.newIndex] = troveId;
+        ownerIdsData.troveIds[data.registry].push(troveId);
 
-        emit LiquityTroveFuseEnter(VERSION, data.registry, newIndex, troveId);
+        emit LiquityTroveFuseEnter(data.registry, data.newIndex, troveId);
     }
 
     function exit(LiquityTroveExitData calldata data) external {
@@ -113,13 +114,13 @@ contract LiquityTroveFuse is IFuseCommon {
         ITroveManager troveManager = ITroveManager(IAddressesRegistry(data.registry).troveManager());
         ERC20 boldToken = ERC20(IAddressesRegistry(data.registry).boldToken());
 
-        FuseStorageLib.LiquityV2OwnerIndexes storage troveData = FuseStorageLib.getLiquityV2OwnerIndexes();
+        FuseStorageLib.LiquityV2OwnerIds storage troveData = FuseStorageLib.getLiquityV2OwnerIds();
 
         boldToken.forceApprove(address(borrowerOperations), type(uint256).max);
 
         uint256 troveId;
         for (uint256 i; i < len; i++) {
-            troveId = troveData.idByOwnerIndex[data.registry][data.ownerIndexes[i]];
+            troveId = troveData.idsByIndex[data.registry][data.ownerIndexes[i]];
             if (troveId == 0) continue;
 
             if (troveManager.getLatestTroveData(troveId).entireDebt > boldToken.balanceOf(address(this))) {
@@ -130,9 +131,8 @@ contract LiquityTroveFuse is IFuseCommon {
             }
 
             borrowerOperations.closeTrove(troveId);
-            delete troveData.idByOwnerIndex[data.registry][data.ownerIndexes[i]];
 
-            emit LiquityTroveFuseExit(VERSION, data.registry, troveId);
+            emit LiquityTroveFuseExit(data.registry, troveId);
         }
 
         boldToken.forceApprove(address(borrowerOperations), 0);

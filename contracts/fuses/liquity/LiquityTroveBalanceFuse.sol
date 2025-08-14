@@ -8,6 +8,10 @@ import {IPriceFeed} from "./ext/IPriceFeed.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
+import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
+import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
+import {ITroveManager} from "./ext/ITroveManager.sol";
 
 /// @title Fuse for Liquity protocol responsible for calculating the balance of the Plasma Vault in Liquity protocol based on preconfigured market substrates
 /// @dev Substrates in this fuse are the address registries of Liquity protocol that are used in the Liquity protocol for a given MARKET_ID
@@ -25,31 +29,37 @@ contract LiquityTroveBalanceFuse is IMarketBalanceFuse {
     // The Plasma Vault can contain BOLD (former LUSD), WETH, wstETH, and rETH
     function balanceOf() external view override returns (uint256 balanceTemp) {
         bytes32[] memory registriesRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        FuseStorageLib.LiquityV2OwnerIds storage troveData = FuseStorageLib.getLiquityV2OwnerIds();
 
-        uint256 len = registriesRaw.length;
+        uint256 registryNumber = registriesRaw.length;
 
-        if (len == 0) return 0;
-
-        uint256 lastGoodPrice;
-        IPriceFeed priceFeed;
-        address plasmaVault = address(this);
-
-        for (uint256 i; i < len; ++i) {
+        if (registryNumber == 0) return 0;
+        address collToken;
+        uint256 collTokenPrice;
+        uint256 collTokenPriceDecimals;
+        uint256 entireCollValue;
+        IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
+            PlasmaVaultLib.getPriceOracleMiddleware()
+        );
+        for (uint256 i; i < registryNumber; ++i) {
             address registry = PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]);
-            IERC20Metadata token = IERC20Metadata(IAddressesRegistry(registry).collToken());
-            priceFeed = IPriceFeed(IAddressesRegistry(registry).priceFeed());
-            lastGoodPrice = priceFeed.lastGoodPrice();
-            if (lastGoodPrice == 0) {
-                revert Errors.UnsupportedQuoteCurrencyFromOracle();
-            }
-            uint256 decimals = token.decimals();
-            uint256 balance = token.balanceOf(plasmaVault);
-            if (balance > 0) {
-                balanceTemp += IporMath.convertToWad(
-                    balance * lastGoodPrice,
-                    decimals + LIQUITY_ORACLE_BASE_CURRENCY_DECIMALS
+            ITroveManager troveManager = ITroveManager(IAddressesRegistry(registry).troveManager());
+            collToken = IAddressesRegistry(registry).collToken();
+            (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
+            uint256 idsLen = troveData.troveIds[registry].length;
+
+            // TODO: add popping mechanism in ids so that idsLen does not explode
+            for(uint256 j; j < idsLen; ++j) {
+                uint256 troveId = troveData.idsByIndex[registry][j];
+                if (troveId == 0) continue;
+                entireCollValue += IporMath.convertToWad(
+                    troveManager.getLatestTroveData(troveId).entireColl * collTokenPrice,
+                    IERC20Metadata(collToken).decimals() + collTokenPriceDecimals
                 );
+                // TODO: investigate with IPOR team or Liquity if we need to add interests here
             }
         }
+
+        return entireCollValue;
     }
 }
