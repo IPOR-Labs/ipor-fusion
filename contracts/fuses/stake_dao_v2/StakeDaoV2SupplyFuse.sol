@@ -82,18 +82,16 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
             revert StakeDaoV2SupplyFuseUnsupportedRewardVault("enter", data_.rewardVault);
         }
 
-        /// @dev sd-cvcrvUSD-vault
         IERC4626 rewardVault = IERC4626(data_.rewardVault);
 
-        /// @dev cvcrvUSD
         address lpTokenAddress = rewardVault.asset();
 
-        /// @dev crvUSD
         address lpTokenUnderlyingAddress = IERC4626(lpTokenAddress).asset();
 
-        /// @dev Find final amount of lpTokenUnderlyingAmount based on available balance
+        address plasmaVault = address(this);
+
         uint256 finalLpTokenUnderlyingAmount = IporMath.min(
-            ERC20(lpTokenUnderlyingAddress).balanceOf(address(this)),
+            ERC20(lpTokenUnderlyingAddress).balanceOf(plasmaVault),
             data_.lpTokenUnderlyingAmount
         );
 
@@ -104,17 +102,13 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
             );
         }
 
-        /// @dev Approve underlying token transfer to LP token vault
         ERC20(lpTokenUnderlyingAddress).forceApprove(lpTokenAddress, finalLpTokenUnderlyingAmount);
 
-        /// @dev Deposit underlying to LP token vault to get LP tokens
-        uint256 lpTokenAmount = IERC4626(lpTokenAddress).deposit(finalLpTokenUnderlyingAmount, address(this));
+        uint256 lpTokenAmount = IERC4626(lpTokenAddress).deposit(finalLpTokenUnderlyingAmount, plasmaVault);
 
-        /// @dev Approve LP token transfer to reward vault
         ERC20(lpTokenAddress).forceApprove(data_.rewardVault, lpTokenAmount);
 
-        /// @dev Deposit LP tokens to reward vault
-        uint256 rewardVaultShares = rewardVault.deposit(lpTokenAmount, address(this));
+        uint256 rewardVaultShares = rewardVault.deposit(lpTokenAmount, plasmaVault);
 
         ERC20(lpTokenUnderlyingAddress).forceApprove(lpTokenAddress, 0);
         ERC20(lpTokenAddress).forceApprove(data_.rewardVault, 0);
@@ -137,9 +131,10 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
             revert StakeDaoV2SupplyFuseUnsupportedRewardVault("exit", data_.rewardVault);
         }
 
-        /// @dev Find final amount of rewardVaultShares based on available balance
+        address plasmaVault = address(this);
+
         uint256 finalRewardVaultShares = IporMath.min(
-            ERC20(data_.rewardVault).balanceOf(address(this)),
+            ERC20(data_.rewardVault).balanceOf(plasmaVault),
             data_.rewardVaultShares
         );
 
@@ -152,13 +147,9 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
 
         IERC4626 rewardVault = IERC4626(data_.rewardVault);
 
-        /// @dev Redeem shares from reward vault
-        uint256 lpTokenAmount = rewardVault.redeem(finalRewardVaultShares, address(this), address(this));
+        uint256 lpTokenAmount = rewardVault.redeem(finalRewardVaultShares, plasmaVault, plasmaVault);
 
-        uint256 lpTokenUnderlyingAmount;
-
-        address lpTokenAddress = rewardVault.asset();
-        lpTokenUnderlyingAmount = IERC4626(lpTokenAddress).redeem(lpTokenAmount, address(this), address(this));
+        uint256 lpTokenUnderlyingAmount = IERC4626(rewardVault.asset()).redeem(lpTokenAmount, plasmaVault, plasmaVault);
 
         emit StakeDaoV2SupplyFuseExit(
             VERSION,

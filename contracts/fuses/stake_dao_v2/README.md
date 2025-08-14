@@ -105,5 +105,3 @@ struct StakeDaoV2Substrate {
 The integration requires price feeds for all LP token underlying asset. Price feed configuration via `Price Oracle Middleware Manager` or `Price Oracle Middleware`
 
 -   **crvUSD/USD**
-
-

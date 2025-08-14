@@ -91,6 +91,7 @@ contract PlasmaVaultBalanceAssetsValidationFuse is IFuseCommon {
             revert Errors.WrongValue();
         }
 
+        uint256 balance;
         uint256 length = data_.assets.length;
 
         for (uint256 i; i < length; i++) {
@@ -102,7 +103,7 @@ contract PlasmaVaultBalanceAssetsValidationFuse is IFuseCommon {
                 revert Errors.WrongValue();
             }
 
-            uint256 balance = ERC20(data_.assets[i]).balanceOf(address(this));
+            balance = ERC20(data_.assets[i]).balanceOf(address(this));
 
             if (balance < data_.minBalanceValues[i] || balance > data_.maxBalanceValues[i]) {
                 revert PlasmaVaultBalanceAssetsValidationFuseInvalidBalance(
