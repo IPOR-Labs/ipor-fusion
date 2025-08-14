@@ -4,12 +4,14 @@
 
 StakeDAO V2 integration enables IPOR Fusion to interact with StakeDAO V2 reward vaults (ERC4626-compliant). This integration allows users to deposit assets and earn yields from various DeFi protocols through a unified interface, while also claiming rewards from multiple sources.
 
+**What Stake DAO v2 does:**
+StakeDAO V2 provides yield farming opportunities by aggregating liquidity across multiple DeFi protocols. Users can deposit assets into reward vaults that automatically allocate funds to various strategies (like lending protocols, DEX liquidity pools, etc.) and earn both yield from the underlying protocols and additional rewards from StakeDAO's reward distribution system.
+
 ## Market Structure
 
-The integration uses two distinct markets for different operations:
+The integration uses a single market for all operations:
 
--   **Market ID 31** (`STAKE_DAO_V2`) - Supply/withdrawal operations
--   **Market ID 32** (`STAKE_DAO_V2_REWARDS`) - Reward claiming operations
+-   **Market ID 31** (`STAKE_DAO_V2`) - Supply/withdrawal/claim operations
 
 ## Architecture
 
@@ -43,7 +45,8 @@ The balance calculation follows a multi-step process for each configured reward 
 
 -   StakeDAO V2 deposited assets are 1:1 shares of the reward vault
 -   No additional conversion is needed for reward vault shares to assets
--   The LP token vault handles decimal conversions internally
+-   **Main Rewards**: Primary protocol tokens (e.g., CRV, BAL, AURA) that are always available
+-   **Extra Rewards**: Additional incentive tokens (e.g., CVX, LDO, WETH) that are distributed when available and when main rewards are being claimed
 
 ## Rewards System
 
@@ -62,7 +65,7 @@ Rewards are claimed through the `StakeDaoV2ClaimFuse` which:
 
 ## Substrate Configuration
 
-### 1. STAKE_DAO_V2 Market (Market ID: 31) - Supply/Withdrawal Operations
+### 1. STAKE_DAO_V2 Market (Market ID: 31) - Supply/Withdrawal/claim Operations
 
 For supply and withdrawal operations, substrates are configured as **simple reward vault addresses**.
 
@@ -75,33 +78,11 @@ For supply and withdrawal operations, substrates are configured as **simple rewa
 | LlamaLend EYWA | `0x555928DC8973F10f5bbA677d0EBB7cbac968e36A` | `0x747A547E48ee52491794b8eA01cd81fc5D59Ad84` | EYWA             |
 | LlamaLend ARB  | `0x17E876675258DeE5A7b2e2e14FCFaB44F867896c` | `0xa6C2E6A83D594e862cDB349396856f7FFE9a979B` | ARB              |
 
-### 2. STAKE_DAO_V2_REWARDS Market (Market ID: 32) - Reward Claiming Operations
-
-For reward claiming operations, substrates use a **typed structure** that includes both the substrate type and address.
-
-#### Substrate Types
-
-```solidity
-enum StakeDaoV2SubstrateType {
-    UNDEFINED,
-    RewardVault, // For main rewards from reward vaults
-    ExtraRewardToken // For extra reward tokens
-}
-```
-
-#### Configuration Structure
-
-```solidity
-struct StakeDaoV2Substrate {
-    StakeDaoV2SubstrateType substrateType;
-    address substrateAddress;
-}
-```
-
 ## Price Oracle Setup
 
 ### Required Price Feeds
 
 The integration requires price feeds for all LP token underlying asset. Price feed configuration via `Price Oracle Middleware Manager` or `Price Oracle Middleware`
 
--   **crvUSD/USD**
+Example:
+-   price feed for pair: **crvUSD/USD**
