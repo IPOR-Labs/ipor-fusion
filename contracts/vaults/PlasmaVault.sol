@@ -599,7 +599,6 @@ contract PlasmaVault is
         bytes32 r_,
         bytes32 s_
     ) external override nonReentrant restricted returns (uint256) {
-        
         try IERC20Permit(asset()).permit(_msgSender(), address(this), assets_, deadline_, v_, r_, s_) {
             /// @dev Permit successful, proceed with deposit
         } catch {

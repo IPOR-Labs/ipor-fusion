@@ -25,7 +25,7 @@ contract MockAccountant {
         for (uint256 i; i < gauges_.length; i++) {
             totalAmount += mockedRewards[gauges_[i]][account];
         }
-        
+
         IERC20(REWARD_TOKEN).safeTransfer(receiver_, totalAmount);
     }
 

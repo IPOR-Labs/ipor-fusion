@@ -35,7 +35,6 @@ contract StakeDaoV2BalanceFuse is IMarketBalanceFuse {
         uint256 lpTokenAssets;
 
         address lpTokenUnderlyingAddress;
-        uint256 lpTokenUnderlyingAssets;
 
         uint256 lpTokenUnderlyingPrice;
         uint256 lpTokenUnderlyingPriceDecimals;
@@ -43,33 +42,33 @@ contract StakeDaoV2BalanceFuse is IMarketBalanceFuse {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         address plasmaVault = address(this);
 
+        uint256 lpTokenUnderlyingAssets;
+
         for (uint256 i; i < len; ++i) {
             rewardVaultAddress = IERC4626(PlasmaVaultConfigLib.bytes32ToAddress(rewardVaults[i]));
 
-            /// @dev Notice! In StakeDaoV2 deposited assets are 1:1 shares of the reward vault,
-            /// @dev so we don't need to convert to assets [ rewardVaultAddress.convertToAssets(rewardVaultAddress.balanceOf(plasmaVault)); ]
+            /// @dev Notice! In StakeDaoV2 deposited assets are 1:1 shares of the reward vault, so amount of underlying assets is equal to amount of shares
+            /// @dev there is no need to convert to assets [ rewardVaultAddress.convertToAssets(rewardVaultAddress.balanceOf(plasmaVault)); ]
             rewardVaultAssets = rewardVaultAddress.balanceOf(plasmaVault);
 
             /// @dev Underlying asset of the reward vault is the lp token vault which compatible with ERC4626
             lpTokenAddress = rewardVaultAddress.asset();
 
+            /// @dev Reward Vault shares are 1:1 Reward Vault assets
+            /// @dev Reward Vault assets are LP Token shares
             lpTokenAssets = IERC4626(lpTokenAddress).convertToAssets(rewardVaultAssets);
 
-            /// @dev Get the lp token underlying asset of the lp token
+            /// @dev Get the LP Token underlying asset address of the LP Token (ERC4626),
+            /// @dev LP Token Underlying contract don't have to be ERC4626 compatible, should be ERC20 compatible
             lpTokenUnderlyingAddress = IERC4626(lpTokenAddress).asset();
 
-            /// @dev Convert lp token assets to lp token underlying assets
-            lpTokenUnderlyingAssets = IERC4626(lpTokenAddress).convertToAssets(lpTokenAssets);
-
-            /// @dev Get the price of the lp token underlying asset from price oracle
+            /// @dev Get the price of the LP Token underlying asset from price oracle
             (lpTokenUnderlyingPrice, lpTokenUnderlyingPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
                 .getAssetPrice(lpTokenUnderlyingAddress);
 
             /// @dev Calculate balance in USD (WAD decimals)
-            /// @dev The LP token vault returns underlying assets in the token's natural decimals
-            /// @dev No need for additional decimal conversion since the vault handles this internally
             balance += IporMath.convertToWad(
-                lpTokenUnderlyingAssets * lpTokenUnderlyingPrice,
+                lpTokenAssets * lpTokenUnderlyingPrice,
                 IERC20Metadata(lpTokenUnderlyingAddress).decimals() + lpTokenUnderlyingPriceDecimals
             );
         }

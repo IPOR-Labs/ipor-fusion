@@ -91,7 +91,9 @@ contract PlasmaVaultBalanceAssetsValidationFuse is IFuseCommon {
             revert Errors.WrongValue();
         }
 
-        for (uint256 i = 0; i < data_.assets.length; i++) {
+        uint256 length = data_.assets.length;
+
+        for (uint256 i; i < length; i++) {
             if (data_.assets[i] == address(0)) {
                 continue;
             }

@@ -29,10 +29,6 @@ struct StakeDaoV2SupplyFuseExitData {
     uint256 rewardVaultShares;
     /// @dev minimum amount of reward vault shares to withdraw,
     uint256 minRewardVaultShares;
-    /// @dev mode of exit,
-    /// @dev 0 - exit from reward vault,
-    /// @dev 1 - exit from reward vault AND then exit from lp token vault (LP token vault is an underlying asset of reward vault)
-    uint256 mode;
 }
 
 contract StakeDaoV2SupplyFuse is IFuseCommon {
@@ -54,8 +50,7 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
         address rewardVault,
         uint256 finalRewardVaultShares,
         uint256 lpTokenAmount,
-        uint256 lpTokenUnderlyingAmount,
-        uint256 mode
+        uint256 lpTokenUnderlyingAmount
     );
 
     error StakeDaoV2SupplyFuseInsufficientLpTokenUnderlyingAmount(
@@ -162,18 +157,15 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
 
         uint256 lpTokenUnderlyingAmount;
 
-        if (data_.mode == 1) {
-            address lpTokenAddress = rewardVault.asset();
-            lpTokenUnderlyingAmount = IERC4626(lpTokenAddress).redeem(lpTokenAmount, address(this), address(this));
-        }
+        address lpTokenAddress = rewardVault.asset();
+        lpTokenUnderlyingAmount = IERC4626(lpTokenAddress).redeem(lpTokenAmount, address(this), address(this));
 
         emit StakeDaoV2SupplyFuseExit(
             VERSION,
             data_.rewardVault,
             finalRewardVaultShares,
             lpTokenAmount,
-            lpTokenUnderlyingAmount,
-            data_.mode
+            lpTokenUnderlyingAmount
         );
     }
 }

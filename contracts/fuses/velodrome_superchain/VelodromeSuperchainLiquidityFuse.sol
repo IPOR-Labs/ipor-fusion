@@ -78,7 +78,10 @@ contract VelodromeSuperchainLiquidityFuse is IFuseCommon {
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 VelodromeSuperchainSubstrateLib.substrateToBytes32(
-                    VelodromeSuperchainSubstrate({substrateAddress: poolAddress, substrateType: VelodromeSuperchainSubstrateType.Pool})
+                    VelodromeSuperchainSubstrate({
+                        substrateAddress: poolAddress,
+                        substrateType: VelodromeSuperchainSubstrateType.Pool
+                    })
                 )
             )
         ) {
@@ -109,7 +112,15 @@ contract VelodromeSuperchainLiquidityFuse is IFuseCommon {
             revert VelodromeSuperchainLiquidityFuseAddLiquidityFailed();
         }
 
-        emit VelodromeSuperchainLiquidityFuseEnter(VERSION, data_.tokenA, data_.tokenB, data_.stable, amountA, amountB, liquidity);
+        emit VelodromeSuperchainLiquidityFuseEnter(
+            VERSION,
+            data_.tokenA,
+            data_.tokenB,
+            data_.stable,
+            amountA,
+            amountB,
+            liquidity
+        );
 
         IERC20(data_.tokenA).forceApprove(poolAddress, 0);
         IERC20(data_.tokenB).forceApprove(poolAddress, 0);
@@ -125,7 +136,10 @@ contract VelodromeSuperchainLiquidityFuse is IFuseCommon {
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 VelodromeSuperchainSubstrateLib.substrateToBytes32(
-                    VelodromeSuperchainSubstrate({substrateAddress: poolAddress, substrateType: VelodromeSuperchainSubstrateType.Pool})
+                    VelodromeSuperchainSubstrate({
+                        substrateAddress: poolAddress,
+                        substrateType: VelodromeSuperchainSubstrateType.Pool
+                    })
                 )
             )
         ) {
