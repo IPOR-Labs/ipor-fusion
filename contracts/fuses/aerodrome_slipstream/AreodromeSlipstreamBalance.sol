@@ -84,7 +84,7 @@ contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
                 balance += _convertToUsd(amount1, token1, priceOracleMiddleware);
             } else if (substrate.substrateType == AreodromeSlipstreamSubstrateType.Gauge) {
                 tokenIds = ICLGauge(substrate.substrateAddress).stakedValues(address(this));
-                uint256 tokenIdsLen = tokenIds.length;
+                tokenIdsLen = tokenIds.length;
                 token0 = ICLGauge(substrate.substrateAddress).token0();
                 token1 = ICLGauge(substrate.substrateAddress).token1();
                 sqrtPriceX96 = ICLGauge(substrate.substrateAddress).pool().slot0().sqrtPriceX96;

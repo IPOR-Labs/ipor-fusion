@@ -65,7 +65,10 @@ contract VelodromeSuperchainSlipstreamGaugeClaimFuse {
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 VelodromeSuperchainSubstrateLib.substrateToBytes32(
-                    VelodromeSuperchainSubstrate({substrateAddress: gauge_, substrateType: VelodromeSuperchainSubstrateType.Gauge})
+                    VelodromeSuperchainSubstrate({
+                        substrateAddress: gauge_,
+                        substrateType: VelodromeSuperchainSubstrateType.Gauge
+                    })
                 )
             )
         ) {
