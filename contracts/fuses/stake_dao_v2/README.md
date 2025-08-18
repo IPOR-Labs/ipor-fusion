@@ -71,7 +71,7 @@ For supply and withdrawal operations, substrates are configured as **simple rewa
 
 #### Vault examples:
 
-| Vault Name     | Reward Vault Address                         | LP Token Address                             | Underlying Asset |
+| Vault Name     | Reward Vault Address                         | LP Token Address                             | Collateral Asset |
 | -------------- | -------------------------------------------- | -------------------------------------------- | ---------------- |
 | LlamaLend WBTC | `0x1544E663DD326a6d853a0cc4ceEf0860eb82B287` | `0xe07f1151887b8FDC6800f737252f6b91b46b5865` | WBTC             |
 | LlamaLend WETH | `0x2abaD3D0c104fE1C9A412431D070e73108B4eFF8` | `0xd3cA9BEc3e681b0f578FD87f20eBCf2B7e0bb739` | WETH             |
@@ -85,4 +85,5 @@ For supply and withdrawal operations, substrates are configured as **simple rewa
 The integration requires price feeds for all LP token underlying asset. Price feed configuration via `Price Oracle Middleware Manager` or `Price Oracle Middleware`
 
 Example:
+
 -   price feed for pair: **crvUSD/USD**
