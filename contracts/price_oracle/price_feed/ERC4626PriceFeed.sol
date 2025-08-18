@@ -38,7 +38,10 @@ contract ERC4626PriceFeed is IPriceFeed {
         /// @dev msg.sender is PriceOracleMiddleware or PriceOracleMiddlewareManager
         (uint256 assetPrice, uint256 decimals) = IPriceOracleMiddleware(msg.sender).getAssetPrice(asset);
 
-        uint256 uintPrice = IporMath.convertToWad(sharesPrice * assetPrice, IERC20Metadata(asset).decimals() + decimals);
+        uint256 uintPrice = IporMath.convertToWad(
+            sharesPrice * assetPrice,
+            IERC20Metadata(asset).decimals() + decimals
+        );
 
         return (0, uintPrice.toInt256(), 0, 0, 0);
     }

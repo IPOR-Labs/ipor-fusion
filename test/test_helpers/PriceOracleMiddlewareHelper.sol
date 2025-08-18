@@ -24,14 +24,14 @@ library PriceOracleMiddlewareHelper {
         address chainlinkFeedRegistry_
     ) internal returns (PriceOracleMiddleware priceOracleMiddleware) {
         // Deploy implementation
-        address priceOracleMiddleware = address(new PriceOracleMiddleware(chainlinkFeedRegistry_));
+        address priceOracleMiddlewareAddr = address(new PriceOracleMiddleware(chainlinkFeedRegistry_));
 
         // Deploy and initialize proxy
         return
             PriceOracleMiddleware(
                 address(
                     new ERC1967Proxy(
-                        address(priceOracleMiddleware),
+                        address(priceOracleMiddlewareAddr),
                         abi.encodeWithSignature("initialize(address)", owner_)
                     )
                 )
