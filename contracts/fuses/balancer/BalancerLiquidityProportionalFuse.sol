@@ -8,7 +8,10 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 import {IRouter} from "./ext/IRouter.sol";
+import {IPermit2} from "./ext/IPermit2.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {console2} from "forge-std/console2.sol";
 
 /// @notice Data required to add liquidity proportionally into a Balancer V3 pool
 struct BalancerLiquidityProportionalFuseEnterData {
@@ -26,10 +29,12 @@ struct BalancerLiquidityProportionalFuseEnterData {
 /// @notice Fuse that adds/removes liquidity proportionally to/from a Balancer V3 pool via Router API
 contract BalancerLiquidityProportionalFuse is IFuseCommon {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
     address public immutable BALANCER_ROUTER;
+    address public immutable PERMIT2;
 
     error BalancerLiquidityProportionalFuseUnsupportedPool(address pool);
     error BalancerLiquidityProportionalFuseInvalidParams();
@@ -49,7 +54,7 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
         uint256 exactBptAmountIn
     );
 
-    constructor(uint256 marketId_, address balancerRouter_) {
+    constructor(uint256 marketId_, address balancerRouter_, address permit2_) {
         if (balancerRouter_ == address(0)) {
             revert InvalidAddress();
         }
@@ -57,6 +62,7 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
         VERSION = address(this);
         MARKET_ID = marketId_;
         BALANCER_ROUTER = balancerRouter_;
+        PERMIT2 = permit2_;
     }
 
     /// @notice Adds liquidity proportionally into a Balancer V3 pool
@@ -84,8 +90,20 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
         uint256 len = data_.tokens.length;
         for (uint256 i; i < len; ++i) {
             uint256 amountIn = data_.maxAmountsIn[i];
+            console2.log("IPermit2 amountIn:", amountIn);
+            console2.log("IPermit2 PERMIT2:", PERMIT2);
+            console2.log("IPermit2 BALANCER_ROUTER:", BALANCER_ROUTER);
+            console2.log("IPermit2 data_.tokens[i]:", data_.tokens[i]);
             if (amountIn > 0) {
-                IERC20(data_.tokens[i]).forceApprove(BALANCER_ROUTER, amountIn);
+                IERC20(data_.tokens[i]).forceApprove(PERMIT2, amountIn);
+                IPermit2(PERMIT2).approve(
+                    data_.tokens[i],
+                    BALANCER_ROUTER,
+                    // amountIn.toUint160(),
+                    // uint48(block.timestamp + 10)
+                    type(uint160).max,
+                    type(uint48).max
+                );
             }
         }
 

@@ -93,6 +93,8 @@ library IporFusionMarkets {
 
     uint256 public constant AREODROME_SLIPSTREAM = 33;
 
+    uint256 public constant BALANCER = 34;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
