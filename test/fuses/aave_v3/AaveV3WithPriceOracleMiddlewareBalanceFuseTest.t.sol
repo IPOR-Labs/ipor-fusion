@@ -32,10 +32,10 @@ Fork environment:
 - RPC source: env var `BASE_PROVIDER_URL`
 - Block number: 34_381_896
 */
-
 contract AaveV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
     address private constant _WETH = 0x4200000000000000000000000000000000000006;
     address private constant _WST_ETH = 0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452;
+    address private constant _AAVE_V3_POOL_ADDRESSES_PROVIDER = 0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D;
 
     address private constant _USER = TestAddresses.USER;
     address private constant _ATOMIST = TestAddresses.ATOMIST;
@@ -74,10 +74,7 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
         deal(_WST_ETH, _USER, 1_000_000e18);
 
         _balanceFuseAaveV3 = address(
-            new AaveV3WithPriceOracleMiddlewareBalanceFuse(
-                IporFusionMarkets.AAVE_V3,
-                0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D
-            )
+            new AaveV3WithPriceOracleMiddlewareBalanceFuse(IporFusionMarkets.AAVE_V3, _AAVE_V3_POOL_ADDRESSES_PROVIDER)
         );
 
         address[] memory fuses = new address[](2);
