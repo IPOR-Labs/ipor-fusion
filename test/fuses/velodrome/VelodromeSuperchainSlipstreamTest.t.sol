@@ -186,7 +186,10 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         );
 
         vm.startPrank(_FUSE_MANAGER);
-        _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM, velodromSubstrates);
+        _plasmaVaultGovernance.grantMarketSubstrates(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
+            velodromSubstrates
+        );
         vm.stopPrank();
 
         // Setup price feeds

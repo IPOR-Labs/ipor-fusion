@@ -124,6 +124,15 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @dev - Expected price is <= 0
     /// @dev - Price delta between actual and expected price is > 1%
     /// @dev - PT token already has a price source configured
+    /// @dev
+    /// @dev TROUBLESHOOTING - PriceOraclePendleOracleNotReady Error:
+    /// @dev If you encounter PriceOraclePendleOracleNotReady error during PtPriceFeed creation:
+    /// @dev 1. Check increaseCardinalityRequired by calling getOracleState on IPPYLpOracle:
+    /// @dev    (bool increaseCardinalityRequired, uint16 cardinalityRequired, bool oldestObservationSatisfied) =
+    /// @dev    IPPYLpOracle(pendleOracle_).getOracleState(pendleMarket_, twapWindow_);
+    /// @dev 2. If increaseCardinalityRequired is true, call increaseObservationsCardinalityNext on the market:
+    /// @dev    Market(_activeItem.market).increaseObservationsCardinalityNext(uint16(29));
+    /// @dev 3. Wait for data generation - this is indicated by oldestObservationSatisfied being false
     /// @param pendleOracle_ Address of the Pendle Oracle contract used for price feeds
     /// @param pendleMarket_ Address of the Pendle Market contract associated with the PT
     /// @param twapWindow_ Time window in seconds for TWAP calculations
