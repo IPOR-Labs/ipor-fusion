@@ -17,6 +17,22 @@ import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.
 import {AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
 
+/*
+Test description:
+- Verifies the Aave V3 balance fuse integrated with the PriceOracleMiddleware inside the PlasmaVault.
+- Checks updates of market balance for `AAVE_V3` in `PlasmaVault.totalAssetsInMarket(...)` after operations:
+  - supply (enter) WETH and wstETH → balance increases,
+  - withdraw (exit) WETH → balance decreases,
+  - borrow WETH → balance decreases,
+  - repay WETH → balance increases.
+- Confirms dependency graph configuration: market `AAVE_V3` depends on `ERC20_VAULT_BALANCE`.
+
+Fork environment:
+- Chain: Base
+- RPC source: env var `BASE_PROVIDER_URL`
+- Block number: 34_381_896
+*/
+
 contract AaveV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
     address private constant _WETH = 0x4200000000000000000000000000000000000006;
     address private constant _WST_ETH = 0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452;
