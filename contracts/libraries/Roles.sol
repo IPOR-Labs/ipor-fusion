@@ -39,6 +39,9 @@ library Roles {
     /// @notice Technical role for limit transfer and transferFrom methods in the Vault contract
     uint64 public constant TECH_VAULT_TRANSFER_SHARES_ROLE = 7;
 
+    /// @notice Account with this role has rights to manage OWNER_ROLE
+    uint64 public constant OWNER_ADMIN_ROLE = 8;
+
     /// @notice Account with this role has rights to manage the PlasmaVault. It recommended to use MultiSig contract for this role.
     /// @dev Managed by Owner
     uint64 public constant ATOMIST_ROLE = 100;

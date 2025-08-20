@@ -86,7 +86,7 @@ struct Iterator {
 library IporFusionAccessManagerInitializerLibV1 {
     error InvalidAddress();
 
-    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 21;
     uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
@@ -174,6 +174,19 @@ library IporFusionAccessManagerInitializerLibV1 {
             }
             accountToRoles[index] = AccountToRole({
                 roleId: Roles.OWNER_ROLE,
+                account: data_.owners[i],
+                executionDelay: 0
+            });
+            ++index;
+        }
+
+        /// @dev Add OWNER_ADMIN_ROLE for each owner
+        for (uint256 i; i < data_.owners.length; ++i) {
+            if (data_.owners[i] == address(0)) {
+                revert InvalidAddress();
+            }
+            accountToRoles[index] = AccountToRole({
+                roleId: Roles.OWNER_ADMIN_ROLE,
                 account: data_.owners[i],
                 executionDelay: 0
             });
@@ -417,7 +430,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         return
             data_.iporDaos.length +
             data_.admins.length +
-            data_.owners.length +
+            data_.owners.length * 2 + // @dev * 2 because of OWNER_ROLE and OWNER_ADMIN_ROLE for each owner
             data_.guardians.length +
             data_.atomists.length +
             data_.alphas.length +
@@ -446,7 +459,8 @@ library IporFusionAccessManagerInitializerLibV1 {
     function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
         adminRoles_ = new AdminRole[](ADMIN_ROLES_ARRAY_LENGTH);
         Iterator memory iterator;
-        adminRoles_[iterator.index] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
+        adminRoles_[iterator.index] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.OWNER_ADMIN_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.OWNER_ADMIN_ROLE, adminRoleId: Roles.ADMIN_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.PRE_HOOKS_MANAGER_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.ATOMIST_ROLE, adminRoleId: Roles.OWNER_ROLE});
