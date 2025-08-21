@@ -94,6 +94,12 @@ library IporFusionMarkets {
     /// @dev Liquity V2 market
     uint256 public constant LIQUITY_V2_TROVE = 33;
 
+    /// @dev Ebisu market
+    uint256 public constant EBISU_TROVE = 34;
+
+    /// @dev Ebisu stability pool market
+    uint256 public constant EBISU_STABILITY_POOL = 35;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
