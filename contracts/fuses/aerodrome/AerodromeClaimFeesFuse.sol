@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPool} from "./ext/IPool.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodrimeLib.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodromeLib.sol";
 
 struct AerodromeClaimFeesFuseEnterData {
     address[] pools;
@@ -27,14 +27,14 @@ contract AerodromeClaimFeesFuse is IFuseCommon {
         MARKET_ID = marketIdInput;
     }
 
-    function enter(AerodromeClaimFeesFuseEnterData memory data) external {
+    function enter(AerodromeClaimFeesFuseEnterData memory data_) external {
         address poolAddress;
         uint256 claimed0;
         uint256 claimed1;
-        uint256 len = data.pools.length;
+        uint256 len = data_.pools.length;
 
         for (uint256 i; i < len; i++) {
-            poolAddress = data.pools[i];
+            poolAddress = data_.pools[i];
             if (
                 !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                     MARKET_ID,

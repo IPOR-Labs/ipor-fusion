@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IRouter} from "./ext/IRouter.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodrimeLib.sol";
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodromeLib.sol";
 
 struct AerodromeLiquidityFuseEnterData {
     address tokenA;
@@ -64,16 +64,16 @@ contract AerodromeLiquidityFuse is IFuseCommon {
         AREODROME_ROUTER = areodromeRouter_;
     }
 
-    function enter(AerodromeLiquidityFuseEnterData memory data) external {
-        if (data.tokenA == address(0) || data.tokenB == address(0)) {
+    function enter(AerodromeLiquidityFuseEnterData memory data_) external {
+        if (data_.tokenA == address(0) || data_.tokenB == address(0)) {
             revert AerodromeLiquidityFuseInvalidToken();
         }
 
-        if (data.amountADesired == 0 && data.amountBDesired == 0) {
+        if (data_.amountADesired == 0 && data_.amountBDesired == 0) {
             return;
         }
 
-        address poolAddress = IRouter(AREODROME_ROUTER).poolFor(data.tokenA, data.tokenB, data.stable, address(0));
+        address poolAddress = IRouter(AREODROME_ROUTER).poolFor(data_.tokenA, data_.tokenB, data_.stable, address(0));
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
@@ -85,42 +85,50 @@ contract AerodromeLiquidityFuse is IFuseCommon {
             revert AerodromeLiquidityFuseUnsupportedPool("enter", poolAddress);
         }
 
-        if (data.amountADesired > 0) {
-            IERC20(data.tokenA).forceApprove(AREODROME_ROUTER, data.amountADesired);
+        if (data_.amountADesired > 0) {
+            IERC20(data_.tokenA).forceApprove(AREODROME_ROUTER, data_.amountADesired);
         }
 
-        if (data.amountBDesired > 0) {
-            IERC20(data.tokenB).forceApprove(AREODROME_ROUTER, data.amountBDesired);
+        if (data_.amountBDesired > 0) {
+            IERC20(data_.tokenB).forceApprove(AREODROME_ROUTER, data_.amountBDesired);
         }
 
         (uint256 amountA, uint256 amountB, uint256 liquidity) = IRouter(AREODROME_ROUTER).addLiquidity(
-            data.tokenA,
-            data.tokenB,
-            data.stable,
-            data.amountADesired,
-            data.amountBDesired,
-            data.amountAMin,
-            data.amountBMin,
+            data_.tokenA,
+            data_.tokenB,
+            data_.stable,
+            data_.amountADesired,
+            data_.amountBDesired,
+            data_.amountAMin,
+            data_.amountBMin,
             address(this),
-            data.deadline
+            data_.deadline
         );
 
         if (liquidity == 0) {
             revert AerodromeLiquidityFuseAddLiquidityFailed();
         }
 
-        emit AerodromeLiquidityFuseEnter(VERSION, data.tokenA, data.tokenB, data.stable, amountA, amountB, liquidity);
+        emit AerodromeLiquidityFuseEnter(
+            VERSION,
+            data_.tokenA,
+            data_.tokenB,
+            data_.stable,
+            amountA,
+            amountB,
+            liquidity
+        );
 
-        IERC20(data.tokenA).forceApprove(poolAddress, 0);
-        IERC20(data.tokenB).forceApprove(poolAddress, 0);
+        IERC20(data_.tokenA).forceApprove(poolAddress, 0);
+        IERC20(data_.tokenB).forceApprove(poolAddress, 0);
     }
 
-    function exit(AerodromeLiquidityFuseExitData memory data) external {
-        if (data.tokenA == address(0) || data.tokenB == address(0)) {
+    function exit(AerodromeLiquidityFuseExitData memory data_) external {
+        if (data_.tokenA == address(0) || data_.tokenB == address(0)) {
             revert AerodromeLiquidityFuseInvalidToken();
         }
 
-        address poolAddress = IRouter(AREODROME_ROUTER).poolFor(data.tokenA, data.tokenB, data.stable, address(0));
+        address poolAddress = IRouter(AREODROME_ROUTER).poolFor(data_.tokenA, data_.tokenB, data_.stable, address(0));
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
@@ -132,29 +140,29 @@ contract AerodromeLiquidityFuse is IFuseCommon {
             revert AerodromeLiquidityFuseUnsupportedPool("exit", poolAddress);
         }
 
-        IERC20(poolAddress).forceApprove(AREODROME_ROUTER, data.liquidity);
+        IERC20(poolAddress).forceApprove(AREODROME_ROUTER, data_.liquidity);
 
         (uint256 amountA, uint256 amountB) = IRouter(AREODROME_ROUTER).removeLiquidity(
-            data.tokenA,
-            data.tokenB,
-            data.stable,
-            data.liquidity,
-            data.amountAMin,
-            data.amountBMin,
+            data_.tokenA,
+            data_.tokenB,
+            data_.stable,
+            data_.liquidity,
+            data_.amountAMin,
+            data_.amountBMin,
             address(this),
-            data.deadline
+            data_.deadline
         );
 
         IERC20(poolAddress).forceApprove(AREODROME_ROUTER, 0);
 
         emit AerodromeLiquidityFuseExit(
             VERSION,
-            data.tokenA,
-            data.tokenB,
-            data.stable,
+            data_.tokenA,
+            data_.tokenB,
+            data_.stable,
             amountA,
             amountB,
-            data.liquidity
+            data_.liquidity
         );
     }
 }
