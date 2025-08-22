@@ -223,7 +223,7 @@ library FuseTypes {
     string public constant UNISWAP_V3_SWAP_POSITIONS_BALANCE_FUSE_NAME = "UNISWAP_V3_SWAP_POSITIONS_BALANCE_FUSE";
 
     function getAllFuseIds() internal pure returns (uint16[] memory) {
-        uint16[] memory fuseIds = new uint16[](65);
+        uint16[] memory fuseIds = new uint16[](73);
         fuseIds[0] = AAVE_V2_BALANCE_FUSE_ID;
         fuseIds[1] = AAVE_V2_SUPPLY_FUSE_ID;
         fuseIds[2] = AAVE_V3_BALANCE_FUSE_ID;
@@ -301,7 +301,7 @@ library FuseTypes {
     }
 
     function getAllFuseNames() internal pure returns (string[] memory) {
-        string[] memory fuseNames = new string[](65);
+        string[] memory fuseNames = new string[](73);
         fuseNames[0] = AAVE_V2_BALANCE_FUSE_NAME;
         fuseNames[1] = AAVE_V2_SUPPLY_FUSE_NAME;
         fuseNames[2] = AAVE_V3_BALANCE_FUSE_NAME;
