@@ -11,15 +11,15 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPool} from "./ext/IPool.sol";
 import {ILeafGauge} from "./ext/ILeafGauge.sol";
-import {VelodromeSubstrateLib, VelodromeSubstrate, VelodromeSubstrateType} from "./VelodromeLib.sol";
+import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "./VelodromeSuperchainLib.sol";
 
-/// @title VelodromeBalanceFuse
+/// @title VelodromeSuperchainBalanceFuse
 /// @notice Contract responsible for managing Velodrome Basic Vault balance calculations
 /// @dev This contract handles balance tracking for Plasma Vault positions in Velodrome pools and gauges
 /// It calculates total USD value of vault's liquidity positions and accrued fees across multiple Velodrome substrates
 /// The balance calculations support both direct pool positions and staked gauge positions
 
-contract VelodromeBalanceFuse is IMarketBalanceFuse {
+contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
     error InvalidPool();
@@ -44,15 +44,15 @@ contract VelodromeBalanceFuse is IMarketBalanceFuse {
         address pool;
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         uint256 liquidity;
-        VelodromeSubstrate memory substrate;
+        VelodromeSuperchainSubstrate memory substrate;
 
         for (uint256 i; i < len; ++i) {
-            substrate = VelodromeSubstrateLib.bytes32ToSubstrate(pools[i]);
+            substrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(pools[i]);
 
-            if (substrate.substrateType == VelodromeSubstrateType.Gauge) {
+            if (substrate.substrateType == VelodromeSuperchainSubstrateType.Gauge) {
                 pool = ILeafGauge(substrate.substrateAddress).stakingToken();
                 liquidity = IERC20(substrate.substrateAddress).balanceOf(address(this));
-            } else if (substrate.substrateType == VelodromeSubstrateType.Pool) {
+            } else if (substrate.substrateType == VelodromeSuperchainSubstrateType.Pool) {
                 pool = substrate.substrateAddress;
                 liquidity = IERC20(pool).balanceOf(address(this));
             } else {
@@ -68,25 +68,25 @@ contract VelodromeBalanceFuse is IMarketBalanceFuse {
     }
 
     function _calculateBalanceFromLiquidity(
-        address pool,
-        address priceOracleMiddleware,
-        uint256 liquidity
+        address pool_,
+        address priceOracleMiddleware_,
+        uint256 liquidity_
     ) private view returns (uint256 balanceInUsd) {
-        address token0 = IPool(pool).token0();
-        address token1 = IPool(pool).token1();
+        address token0 = IPool(pool_).token0();
+        address token1 = IPool(pool_).token1();
 
         if (token0 == address(0) || token1 == address(0)) {
             revert InvalidPool();
         }
 
-        (uint256 reserve0, uint256 reserve1, ) = IPool(pool).getReserves();
-        uint256 totalSupply = IERC20(pool).totalSupply();
+        (uint256 reserve0, uint256 reserve1, ) = IPool(pool_).getReserves();
+        uint256 totalSupply = IERC20(pool_).totalSupply();
 
-        uint256 amount0 = (liquidity * reserve0) / totalSupply;
-        uint256 amount1 = (liquidity * reserve1) / totalSupply;
+        uint256 amount0 = (liquidity_ * reserve0) / totalSupply;
+        uint256 amount1 = (liquidity_ * reserve1) / totalSupply;
 
-        (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(token0);
-        (uint256 price1, uint256 priceDecimals1) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(token1);
+        (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(token0);
+        (uint256 price1, uint256 priceDecimals1) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(token1);
 
         balanceInUsd += IporMath.convertToWad(amount0 * price0, IERC20Metadata(token0).decimals() + priceDecimals0);
         balanceInUsd += IporMath.convertToWad(amount1 * price1, IERC20Metadata(token1).decimals() + priceDecimals1);
@@ -94,32 +94,32 @@ contract VelodromeBalanceFuse is IMarketBalanceFuse {
     }
 
     function _calculateBalanceFromFees(
-        address pool,
-        address priceOracleMiddleware,
-        uint256 liquidity
+        address pool_,
+        address priceOracleMiddleware_,
+        uint256 liquidity_
     ) private view returns (uint256 balanceInUsd) {
         address plasmaVault = address(this);
-        uint256 supplyIndex0 = IPool(pool).supplyIndex0(plasmaVault);
-        uint256 supplyIndex1 = IPool(pool).supplyIndex1(plasmaVault);
-        uint256 index0 = IPool(pool).index0();
-        uint256 index1 = IPool(pool).index1();
+        uint256 supplyIndex0 = IPool(pool_).supplyIndex0(plasmaVault);
+        uint256 supplyIndex1 = IPool(pool_).supplyIndex1(plasmaVault);
+        uint256 index0 = IPool(pool_).index0();
+        uint256 index1 = IPool(pool_).index1();
 
         uint256 delta0 = index0 - supplyIndex0;
         uint256 delta1 = index1 - supplyIndex1;
 
-        uint256 claimable0 = IPool(pool).claimable0(plasmaVault);
-        uint256 claimable1 = IPool(pool).claimable1(plasmaVault);
+        uint256 claimable0 = IPool(pool_).claimable0(plasmaVault);
+        uint256 claimable1 = IPool(pool_).claimable1(plasmaVault);
 
         if (delta0 > 0) {
-            claimable0 += (liquidity * delta0) / 1e18;
+            claimable0 += (liquidity_ * delta0) / 1e18;
         }
 
         if (delta1 > 0) {
-            claimable1 += (liquidity * delta1) / 1e18;
+            claimable1 += (liquidity_ * delta1) / 1e18;
         }
         if (claimable0 > 0) {
-            address token0 = IPool(pool).token0();
-            (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
+            address token0 = IPool(pool_).token0();
+            (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
                 token0
             );
             balanceInUsd += IporMath.convertToWad(
@@ -129,8 +129,8 @@ contract VelodromeBalanceFuse is IMarketBalanceFuse {
         }
 
         if (claimable1 > 0) {
-            address token1 = IPool(pool).token1();
-            (uint256 price1, uint256 priceDecimals1) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
+            address token1 = IPool(pool_).token1();
+            (uint256 price1, uint256 priceDecimals1) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
                 token1
             );
             balanceInUsd += IporMath.convertToWad(
@@ -142,18 +142,24 @@ contract VelodromeBalanceFuse is IMarketBalanceFuse {
         return balanceInUsd;
     }
 
-    function substratesToBytes32(VelodromeSubstrate[] memory substrates) private pure returns (bytes32[] memory) {
-        bytes32[] memory bytes32Substrates = new bytes32[](substrates.length);
-        for (uint256 i; i < substrates.length; ++i) {
-            bytes32Substrates[i] = VelodromeSubstrateLib.substrateToBytes32(substrates[i]);
+    function substratesToBytes32(
+        VelodromeSuperchainSubstrate[] memory substrates_
+    ) private pure returns (bytes32[] memory) {
+        bytes32[] memory bytes32Substrates = new bytes32[](substrates_.length);
+        for (uint256 i; i < substrates_.length; ++i) {
+            bytes32Substrates[i] = VelodromeSuperchainSubstrateLib.substrateToBytes32(substrates_[i]);
         }
         return bytes32Substrates;
     }
 
-    function bytes32ToSubstrate(bytes32[] memory bytes32Substrates) private pure returns (VelodromeSubstrate[] memory) {
-        VelodromeSubstrate[] memory substrates = new VelodromeSubstrate[](bytes32Substrates.length);
-        for (uint256 i; i < bytes32Substrates.length; ++i) {
-            substrates[i] = VelodromeSubstrateLib.bytes32ToSubstrate(bytes32Substrates[i]);
+    function bytes32ToSubstrate(
+        bytes32[] memory bytes32Substrates_
+    ) private pure returns (VelodromeSuperchainSubstrate[] memory) {
+        VelodromeSuperchainSubstrate[] memory substrates = new VelodromeSuperchainSubstrate[](
+            bytes32Substrates_.length
+        );
+        for (uint256 i; i < bytes32Substrates_.length; ++i) {
+            substrates[i] = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(bytes32Substrates_[i]);
         }
         return substrates;
     }

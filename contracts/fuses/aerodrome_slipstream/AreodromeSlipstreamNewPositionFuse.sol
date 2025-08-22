@@ -6,9 +6,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
-import {VelodromSuperchainSlipstreamSubstrateLib, VelodromSuperchainSlipstreamSubstrateType, VelodromSuperchainSlipstreamSubstrate} from "./VelodromSuperchainSlipstreamLib.sol";
+import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
 
-struct VelodromSuperchainSlipstreamNewPositionFuseEnterData {
+struct AreodromeSlipstreamNewPositionFuseEnterData {
     /// @notice The address of the token0 for a specific pool
     address token0;
     /// @notice The address of the token1 for a specific pool
@@ -31,16 +31,17 @@ struct VelodromSuperchainSlipstreamNewPositionFuseEnterData {
     uint160 sqrtPriceX96;
 }
 
-struct VelodromSuperchainSlipstreamNewPositionFuseExitData {
+struct AreodromeSlipstreamNewPositionFuseExitData {
     uint256[] tokenIds;
 }
 
-contract VelodromSuperchainSlipstreamNewPositionFuse is IFuseCommon {
+contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
-    error VelodromSuperchainSlipstreamNewPositionFuseUnsupportedPool(address pool);
+    error AreodromeSlipstreamNewPositionFuseUnsupportedPool(address pool);
+    error InvalidAddress();
 
-    event VelodromSuperchainSlipstreamNewPositionFuseEnter(
+    event AreodromeSlipstreamNewPositionFuseEnter(
         address indexed version,
         uint256 indexed tokenId,
         uint128 liquidity,
@@ -53,7 +54,7 @@ contract VelodromSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         int24 tickUpper
     );
 
-    event VelodromSuperchainSlipstreamNewPositionFuseExit(address indexed version, uint256 indexed tokenId);
+    event AreodromeSlipstreamNewPositionFuseExit(address indexed version, uint256 indexed tokenId);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -61,20 +62,24 @@ contract VelodromSuperchainSlipstreamNewPositionFuse is IFuseCommon {
     address public immutable FACTORY;
 
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
+        if (nonfungiblePositionManager_ == address(0)) {
+            revert InvalidAddress();
+        }
+
         VERSION = address(this);
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
         FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
     }
 
-    function enter(VelodromSuperchainSlipstreamNewPositionFuseEnterData calldata data_) public {
+    function enter(AreodromeSlipstreamNewPositionFuseEnterData calldata data_) public {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
-                VelodromSuperchainSlipstreamSubstrateLib.substrateToBytes32(
-                    VelodromSuperchainSlipstreamSubstrate({
-                        substrateType: VelodromSuperchainSlipstreamSubstrateType.Pool,
-                        substrateAddress: VelodromSuperchainSlipstreamSubstrateLib.getPoolAddress(
+                AreodromeSlipstreamSubstrateLib.substrateToBytes32(
+                    AreodromeSlipstreamSubstrate({
+                        substrateType: AreodromeSlipstreamSubstrateType.Pool,
+                        substrateAddress: AreodromeSlipstreamSubstrateLib.getPoolAddress(
                             FACTORY,
                             data_.token0,
                             data_.token1,
@@ -85,13 +90,8 @@ contract VelodromSuperchainSlipstreamNewPositionFuse is IFuseCommon {
             )
         ) {
             /// @dev this is to avoid stack too deep error
-            revert VelodromSuperchainSlipstreamNewPositionFuseUnsupportedPool(
-                VelodromSuperchainSlipstreamSubstrateLib.getPoolAddress(
-                    FACTORY,
-                    data_.token0,
-                    data_.token1,
-                    data_.tickSpacing
-                )
+            revert AreodromeSlipstreamNewPositionFuseUnsupportedPool(
+                AreodromeSlipstreamSubstrateLib.getPoolAddress(FACTORY, data_.token0, data_.token1, data_.tickSpacing)
             );
         }
 
@@ -120,7 +120,7 @@ contract VelodromSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
-        emit VelodromSuperchainSlipstreamNewPositionFuseEnter(
+        emit AreodromeSlipstreamNewPositionFuseEnter(
             VERSION,
             tokenId,
             liquidity,
@@ -134,13 +134,13 @@ contract VelodromSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         );
     }
 
-    function exit(VelodromSuperchainSlipstreamNewPositionFuseExitData calldata closePositions) public {
+    function exit(AreodromeSlipstreamNewPositionFuseExitData calldata closePositions) public {
         uint256 len = closePositions.tokenIds.length;
 
         for (uint256 i; i < len; i++) {
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
 
-            emit VelodromSuperchainSlipstreamNewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
+            emit AreodromeSlipstreamNewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
         }
     }
 }
