@@ -1306,8 +1306,8 @@ contract FuseWhitelistTest is Test {
 
     function test_AddAllFuseTypes_Success() public {
         // Arrange
-        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseId();
-        string[] memory fuseTypeNames = FuseTypes.getAllFuseName();
+        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseIds();
+        string[] memory fuseTypeNames = FuseTypes.getAllFuseNames();
 
         (uint16[] memory fuseTypesIdsBefore, string[] memory fuseTypesNamesBefore) = _fuseWhitelist.getFuseTypes();
 
@@ -1334,8 +1334,8 @@ contract FuseWhitelistTest is Test {
 
     function test_AddAllFuseTypes_EventEmitted() public {
         // Arrange
-        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseId();
-        string[] memory fuseTypeNames = FuseTypes.getAllFuseName();
+        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseIds();
+        string[] memory fuseTypeNames = FuseTypes.getAllFuseNames();
 
         // Act & Assert
         vm.startPrank(FUSE_TYPE_MANAGER_ROLE);
