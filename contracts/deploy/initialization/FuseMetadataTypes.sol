@@ -18,7 +18,7 @@ library FuseMetadataTypes {
     uint16 public constant FUSE_METADATA_CATEGORY_INFO_ID = 2;
     string public constant FUSE_METADATA_CATEGORY_INFO_NAME = "CATEGORY_INFO";
 
-    string public constant FUSE_METADATA_CATEGORY_INFO_DEPOSIT_CODE = "DEPOSIT";
+    string public constant FUSE_METADATA_CATEGORY_INFO_SUPPLY_CODE = "SUPPLY";
     string public constant FUSE_METADATA_CATEGORY_INFO_BALANCE_CODE = "BALANCE";
     string public constant FUSE_METADATA_CATEGORY_INFO_DEX_CODE = "DEX";
     string public constant FUSE_METADATA_CATEGORY_INFO_PERPETUAL_CODE = "PERPETUAL";
@@ -26,6 +26,7 @@ library FuseMetadataTypes {
     string public constant FUSE_METADATA_CATEGORY_INFO_REWARDS_CODE = "REWARDS";
     string public constant FUSE_METADATA_CATEGORY_INFO_COLLATERAL_CODE = "COLLATERAL";
     string public constant FUSE_METADATA_CATEGORY_INFO_FLASH_LOAN_CODE = "FLASH_LOAN";
+    string public constant FUSE_METADATA_CATEGORY_INFO_OTHER_CODE = "OTHER";
 
     uint16 public constant FUSE_METADATA_ABI_VERSION_ID = 3;
     string public constant FUSE_METADATA_ABI_VERSION_NAME = "ABI_VERSION";
