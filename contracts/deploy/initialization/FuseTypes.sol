@@ -319,7 +319,7 @@ library FuseTypes {
     string public constant ERC4626_MARKET_14_SUPPLY_FUSE_NAME = "ERC4626_MARKET_14_SUPPLY_FUSE";
 
     function getAllFuseIds() internal pure returns (uint16[] memory) {
-        uint16[] memory fuseIds = new uint16[](73);
+        uint16[] memory fuseIds = new uint16[](105);
         fuseIds[0] = AAVE_V2_BALANCE_FUSE_ID;
         fuseIds[1] = AAVE_V2_SUPPLY_FUSE_ID;
         fuseIds[2] = AAVE_V3_BALANCE_FUSE_ID;
@@ -429,7 +429,7 @@ library FuseTypes {
     }
 
     function getAllFuseNames() internal pure returns (string[] memory) {
-        string[] memory fuseNames = new string[](73);
+        string[] memory fuseNames = new string[](105);
         fuseNames[0] = AAVE_V2_BALANCE_FUSE_NAME;
         fuseNames[1] = AAVE_V2_SUPPLY_FUSE_NAME;
         fuseNames[2] = AAVE_V3_BALANCE_FUSE_NAME;
