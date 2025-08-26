@@ -1375,10 +1375,10 @@ contract FuseWhitelistTest is Test {
         assertEq(metadataIdsAfter[2], 2, "Category Info ID should be 2");
         assertEq(metadataIdsAfter[3], 3, "Abi Version ID should be 3");
 
-        assertEq(metadataTypesAfter[0], "Audit_Status", "Audit Status name should be 'Audit_Status'");
-        assertEq(metadataTypesAfter[1], "Substrate_Info", "Substrate Info name should be 'Substrate_Info'");
-        assertEq(metadataTypesAfter[2], "Category_Info", "Category Info name should be 'Category_Info'");
-        assertEq(metadataTypesAfter[3], "Abi_Version", "Abi Version name should be 'Abi_Version'");
+        assertEq(metadataTypesAfter[0], "AUDIT_STATUS", "Audit Status name should be 'AUDIT_STATUS'");
+        assertEq(metadataTypesAfter[1], "SUBSTRATE_INFO", "Substrate Info name should be 'SUBSTRATE_INFO'");
+        assertEq(metadataTypesAfter[2], "CATEGORY_INFO", "Category Info name should be 'CATEGORY_INFO'");
+        assertEq(metadataTypesAfter[3], "ABI_VERSION", "Abi Version name should be 'ABI_VERSION'");
     }
 
     function test_AddMetadataTypes_WithFuseMetadataTypesConstants_EventEmitted() public {
@@ -1389,13 +1389,13 @@ contract FuseWhitelistTest is Test {
         // Act & Assert
         vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.MetadataTypeAdded(0, "Audit_Status");
+        emit FuseWhitelistLib.MetadataTypeAdded(0, "AUDIT_STATUS");
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.MetadataTypeAdded(1, "Substrate_Info");
+        emit FuseWhitelistLib.MetadataTypeAdded(1, "SUBSTRATE_INFO");
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.MetadataTypeAdded(2, "Category_Info");
+        emit FuseWhitelistLib.MetadataTypeAdded(2, "CATEGORY_INFO");
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.MetadataTypeAdded(3, "Abi_Version");
+        emit FuseWhitelistLib.MetadataTypeAdded(3, "ABI_VERSION");
         bool result = _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
         vm.stopPrank();
 
