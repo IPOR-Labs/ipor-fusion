@@ -907,7 +907,7 @@ contract FuseWhitelistTest is Test {
         string memory description = _fuseWhitelist.getFuseStateName(1);
 
         // Assert
-        assertEq(description, "Active", "Fuse state description should match");
+        assertEq(description, "ACTIVE", "Fuse state description should match");
     }
 
     function test_GetFuseStateName_NonExistentState() public {
