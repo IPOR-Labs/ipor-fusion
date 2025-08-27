@@ -1,37 +1,64 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-///@dev (0-unaudited,  1-reviewed, 2-tested, 3-audited)
-uint16 constant FUSE_METADATA_AUDIT_STATUS = 0;
-string constant FUSE_METADATA_AUDIT_STATUS_NAME = "Audit_Status";
-
-uint16 constant FUSE_METADATA_SUBSTRATE_INFO = 1;
-string constant FUSE_METADATA_SUBSTRATE_INFO_NAME = "Substrate_Info";
-
-///@dev (0-deposit, 1-balance, 2-dex, 3-perp, 4-borrow, 5-rewards)
-uint16 constant FUSE_METADATA_CATEGORY_INFO = 2;
-string constant FUSE_METADATA_CATEGORY_INFO_NAME = "Category_Info";
-
-///@dev (0-v1, 1-v2)
-uint16 constant FUSE_METADATA_ABI_VERSION = 3;
-string constant FUSE_METADATA_ABI_VERSION_NAME = "Abi_Version";
-
-///@dev (0-Aave, 1-Compound, 2-Curve, 3-Euler, 4-Fluid, 5-Gearbox, 6-Harvest, 7-Moonwell, 8-Morpho, 9-Ramses)
-uint16 constant FUSE_METADATA_PROTOCOL_INFO = 4;
-string constant FUSE_METADATA_PROTOCOL_INFO_NAME = "Protocol_Info";
 
 library FuseMetadataTypes {
-    function getAllFuseMetadataTypeIds() public pure returns (uint16[] memory) {
+
+    uint16 public constant FUSE_METADATA_AUDIT_STATUS_ID = 0;
+    string public constant FUSE_METADATA_AUDIT_STATUS_NAME = "AUDIT_STATUS";
+
+    string public constant FUSE_METADATA_AUDIT_STATUS_UNAUDITED_CODE = "UNAUDITED";
+    string public constant FUSE_METADATA_AUDIT_STATUS_REVIEWED_CODE = "REVIEWED";
+    string public constant FUSE_METADATA_AUDIT_STATUS_TESTED_CODE = "TESTED";
+    string public constant FUSE_METADATA_AUDIT_STATUS_AUDITED_CODE = "AUDITED";
+
+    uint16 public constant FUSE_METADATA_SUBSTRATE_INFO_ID = 1;
+    string public constant FUSE_METADATA_SUBSTRATE_INFO_NAME = "SUBSTRATE_INFO";
+
+    uint16 public constant FUSE_METADATA_CATEGORY_INFO_ID = 2;
+    string public constant FUSE_METADATA_CATEGORY_INFO_NAME = "CATEGORY_INFO";
+
+    string public constant FUSE_METADATA_CATEGORY_INFO_SUPPLY_CODE = "SUPPLY";
+    string public constant FUSE_METADATA_CATEGORY_INFO_BALANCE_CODE = "BALANCE";
+    string public constant FUSE_METADATA_CATEGORY_INFO_DEX_CODE = "DEX";
+    string public constant FUSE_METADATA_CATEGORY_INFO_PERPETUAL_CODE = "PERPETUAL";
+    string public constant FUSE_METADATA_CATEGORY_INFO_BORROW_CODE = "BORROW";
+    string public constant FUSE_METADATA_CATEGORY_INFO_REWARDS_CODE = "REWARDS";
+    string public constant FUSE_METADATA_CATEGORY_INFO_COLLATERAL_CODE = "COLLATERAL";
+    string public constant FUSE_METADATA_CATEGORY_INFO_FLASH_LOAN_CODE = "FLASH_LOAN";
+    string public constant FUSE_METADATA_CATEGORY_INFO_OTHER_CODE = "OTHER";
+
+    uint16 public constant FUSE_METADATA_ABI_VERSION_ID = 3;
+    string public constant FUSE_METADATA_ABI_VERSION_NAME = "ABI_VERSION";
+
+    string public constant FUSE_METADATA_ABI_VERSION_V1_CODE = "V1";
+    string public constant FUSE_METADATA_ABI_VERSION_V2_CODE = "V2";
+
+    uint16 public constant FUSE_METADATA_PROTOCOL_INFO_ID = 4;
+    string public constant FUSE_METADATA_PROTOCOL_INFO_NAME = "PROTOCOL_INFO";
+
+    string public constant FUSE_METADATA_PROTOCOL_INFO_AAVE_CODE = "AAVE";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_COMPOUND_CODE = "COMPOUND";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_CURVE_CODE = "CURVE";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_EULER_CODE = "EULER";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_FLUID_CODE = "FLUID";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_GEARBOX_CODE = "GEARBOX";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_HARVEST_CODE = "HARVEST";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_MOONWELL_CODE = "MOONWELL";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_MORPHO_CODE = "MORPHO";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_RAMSES_CODE = "RAMSES";
+
+    function getAllFuseMetadataTypeIds() internal pure returns (uint16[] memory) {
         uint16[] memory fuseMetadataTypeIds = new uint16[](5);
-        fuseMetadataTypeIds[0] = FUSE_METADATA_AUDIT_STATUS;
-        fuseMetadataTypeIds[1] = FUSE_METADATA_SUBSTRATE_INFO;
-        fuseMetadataTypeIds[2] = FUSE_METADATA_CATEGORY_INFO;
-        fuseMetadataTypeIds[3] = FUSE_METADATA_ABI_VERSION;
-        fuseMetadataTypeIds[4] = FUSE_METADATA_PROTOCOL_INFO;
+        fuseMetadataTypeIds[0] = FUSE_METADATA_AUDIT_STATUS_ID;
+        fuseMetadataTypeIds[1] = FUSE_METADATA_SUBSTRATE_INFO_ID;
+        fuseMetadataTypeIds[2] = FUSE_METADATA_CATEGORY_INFO_ID;
+        fuseMetadataTypeIds[3] = FUSE_METADATA_ABI_VERSION_ID;
+        fuseMetadataTypeIds[4] = FUSE_METADATA_PROTOCOL_INFO_ID;
         return fuseMetadataTypeIds;
     }
 
-    function getAllFuseMetadataTypeNames() public pure returns (string[] memory) {
+    function getAllFuseMetadataTypeNames() internal pure returns (string[] memory) {
         string[] memory fuseMetadataTypeNames = new string[](5);
         fuseMetadataTypeNames[0] = FUSE_METADATA_AUDIT_STATUS_NAME;
         fuseMetadataTypeNames[1] = FUSE_METADATA_SUBSTRATE_INFO_NAME;
@@ -39,5 +66,25 @@ library FuseMetadataTypes {
         fuseMetadataTypeNames[3] = FUSE_METADATA_ABI_VERSION_NAME;
         fuseMetadataTypeNames[4] = FUSE_METADATA_PROTOCOL_INFO_NAME;
         return fuseMetadataTypeNames;
+    }
+
+    function stringToBytes32Array(string memory source) public pure returns (bytes32[] memory) {
+        bytes memory sourceBytes = bytes(source);
+        uint256 sourceLength = sourceBytes.length;
+        uint256 arrayLength = (sourceLength + 31) / 32;
+        bytes32[] memory result = new bytes32[](arrayLength);
+
+        for (uint256 i = 0; i < arrayLength; i++) {
+            bytes32 chunk;
+            for (uint256 j = 0; j < 32; j++) {
+                uint256 index = i * 32 + j;
+                if (index < sourceLength) {
+                    chunk |= bytes32(uint256(uint8(sourceBytes[index])) << (248 - j * 8));
+                }
+            }
+            result[i] = chunk;
+        }
+
+        return result;
     }
 }

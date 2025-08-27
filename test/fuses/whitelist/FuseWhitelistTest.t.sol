@@ -269,15 +269,15 @@ contract FuseWhitelistTest is Test {
         assertEq(fuseStatesNamesAfter.length, fuseStateNames.length, "Fuses names should be equal to the input");
 
         // Verify specific status values
-        assertEq(fuseStatesIdsAfter[0], 0, "Default status ID should be 0");
-        assertEq(fuseStatesIdsAfter[1], 1, "Active status ID should be 1");
-        assertEq(fuseStatesIdsAfter[2], 2, "Deprecated status ID should be 2");
-        assertEq(fuseStatesIdsAfter[3], 3, "Removed status ID should be 3");
+        assertEq(fuseStatesIdsAfter[0], 0, "DEFAULT status ID should be 0");
+        assertEq(fuseStatesIdsAfter[1], 1, "ACTIVE status ID should be 1");
+        assertEq(fuseStatesIdsAfter[2], 2, "DEPRECATED status ID should be 2");
+        assertEq(fuseStatesIdsAfter[3], 3, "REMOVED status ID should be 3");
 
-        assertEq(fuseStatesNamesAfter[0], "Default", "Default status name should be 'Default'");
-        assertEq(fuseStatesNamesAfter[1], "Active", "Active status name should be 'Active'");
-        assertEq(fuseStatesNamesAfter[2], "Deprecated", "Deprecated status name should be 'Deprecated'");
-        assertEq(fuseStatesNamesAfter[3], "Removed", "Removed status name should be 'Removed'");
+        assertEq(fuseStatesNamesAfter[0], "DEFAULT", "Default status name should be 'DEFAULT'");
+        assertEq(fuseStatesNamesAfter[1], "ACTIVE", "Active status name should be 'ACTIVE'");
+        assertEq(fuseStatesNamesAfter[2], "DEPRECATED", "Deprecated status name should be 'DEPRECATED'");
+        assertEq(fuseStatesNamesAfter[3], "REMOVED", "Removed status name should be 'REMOVED'");
     }
 
     function test_AddFuseStates_WithFuseStatusConstants_EventEmitted() public {
@@ -288,13 +288,13 @@ contract FuseWhitelistTest is Test {
         // Act & Assert
         vm.startPrank(FUSE_STATE_MANAGER_ROLE);
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.FuseStateAdded(0, "Default");
+        emit FuseWhitelistLib.FuseStateAdded(0, "DEFAULT");
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.FuseStateAdded(1, "Active");
+        emit FuseWhitelistLib.FuseStateAdded(1, "ACTIVE");
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.FuseStateAdded(2, "Deprecated");
+        emit FuseWhitelistLib.FuseStateAdded(2, "DEPRECATED");
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.FuseStateAdded(3, "Removed");
+        emit FuseWhitelistLib.FuseStateAdded(3, "REMOVED");
         bool result = _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
         vm.stopPrank();
 
@@ -885,9 +885,9 @@ contract FuseWhitelistTest is Test {
         assertEq(statesIds[2], 2, "Third state ID should be 2");
 
         // Verify names
-        assertEq(statesNames[0], "Default", "First state name should be Default");
-        assertEq(statesNames[1], "Active", "Second state name should be Active");
-        assertEq(statesNames[2], "Inactive", "Third state name should be Inactive");
+        assertEq(statesNames[0], "DEFAULT", "First state name should be DEFAULT");
+        assertEq(statesNames[1], "ACTIVE", "Second state name should be ACTIVE");
+        assertEq(statesNames[2], "DEPRECATED", "Third state name should be DEPRECATED");
     }
 
     function test_GetFuseStates_Empty() public {
@@ -907,7 +907,7 @@ contract FuseWhitelistTest is Test {
         string memory description = _fuseWhitelist.getFuseStateName(1);
 
         // Assert
-        assertEq(description, "Active", "Fuse state description should match");
+        assertEq(description, "ACTIVE", "Fuse state description should match");
     }
 
     function test_GetFuseStateName_NonExistentState() public {
@@ -1306,8 +1306,8 @@ contract FuseWhitelistTest is Test {
 
     function test_AddAllFuseTypes_Success() public {
         // Arrange
-        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseId();
-        string[] memory fuseTypeNames = FuseTypes.getAllFuseName();
+        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseIds();
+        string[] memory fuseTypeNames = FuseTypes.getAllFuseNames();
 
         (uint16[] memory fuseTypesIdsBefore, string[] memory fuseTypesNamesBefore) = _fuseWhitelist.getFuseTypes();
 
@@ -1334,8 +1334,8 @@ contract FuseWhitelistTest is Test {
 
     function test_AddAllFuseTypes_EventEmitted() public {
         // Arrange
-        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseId();
-        string[] memory fuseTypeNames = FuseTypes.getAllFuseName();
+        uint16[] memory fuseTypeIds = FuseTypes.getAllFuseIds();
+        string[] memory fuseTypeNames = FuseTypes.getAllFuseNames();
 
         // Act & Assert
         vm.startPrank(FUSE_TYPE_MANAGER_ROLE);
@@ -1375,10 +1375,10 @@ contract FuseWhitelistTest is Test {
         assertEq(metadataIdsAfter[2], 2, "Category Info ID should be 2");
         assertEq(metadataIdsAfter[3], 3, "Abi Version ID should be 3");
 
-        assertEq(metadataTypesAfter[0], "Audit_Status", "Audit Status name should be 'Audit_Status'");
-        assertEq(metadataTypesAfter[1], "Substrate_Info", "Substrate Info name should be 'Substrate_Info'");
-        assertEq(metadataTypesAfter[2], "Category_Info", "Category Info name should be 'Category_Info'");
-        assertEq(metadataTypesAfter[3], "Abi_Version", "Abi Version name should be 'Abi_Version'");
+        assertEq(metadataTypesAfter[0], "AUDIT_STATUS", "Audit Status name should be 'AUDIT_STATUS'");
+        assertEq(metadataTypesAfter[1], "SUBSTRATE_INFO", "Substrate Info name should be 'SUBSTRATE_INFO'");
+        assertEq(metadataTypesAfter[2], "CATEGORY_INFO", "Category Info name should be 'CATEGORY_INFO'");
+        assertEq(metadataTypesAfter[3], "ABI_VERSION", "Abi Version name should be 'ABI_VERSION'");
     }
 
     function test_AddMetadataTypes_WithFuseMetadataTypesConstants_EventEmitted() public {
@@ -1389,13 +1389,13 @@ contract FuseWhitelistTest is Test {
         // Act & Assert
         vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.MetadataTypeAdded(0, "Audit_Status");
+        emit FuseWhitelistLib.MetadataTypeAdded(0, "AUDIT_STATUS");
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.MetadataTypeAdded(1, "Substrate_Info");
+        emit FuseWhitelistLib.MetadataTypeAdded(1, "SUBSTRATE_INFO");
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.MetadataTypeAdded(2, "Category_Info");
+        emit FuseWhitelistLib.MetadataTypeAdded(2, "CATEGORY_INFO");
         vm.expectEmit(true, true, true, true);
-        emit FuseWhitelistLib.MetadataTypeAdded(3, "Abi_Version");
+        emit FuseWhitelistLib.MetadataTypeAdded(3, "ABI_VERSION");
         bool result = _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
         vm.stopPrank();
 
@@ -1437,9 +1437,9 @@ contract FuseWhitelistTest is Test {
         fuseStateIds[1] = 1;
         fuseStateIds[2] = 2;
 
-        fuseStateNames[0] = "Default";
-        fuseStateNames[1] = "Active";
-        fuseStateNames[2] = "Inactive";
+        fuseStateNames[0] = "DEFAULT";
+        fuseStateNames[1] = "ACTIVE";
+        fuseStateNames[2] = "DEPRECATED";
 
         // Act
         vm.startPrank(FUSE_TYPE_MANAGER_ROLE);

@@ -444,13 +444,17 @@ library FuseWhitelistLib {
 
     /// @notice Adds a fuse to its market ID list
     /// @param fuseAddress_ The address of the fuse to add
-    /// @dev Automatically determines market ID from the fuse contract
+    /// @dev Automatically determines market ID from the fuse contract, only adds if MARKET_ID() method exists
     function addFuseToMarketId(address fuseAddress_) internal {
-        uint256 marketId = IFuseCommon(fuseAddress_).MARKET_ID();
-        FuseInfoByMarketId storage fuseInfoByMarketId = _getFuseInfoByMarketIdSlot();
-        fuseInfoByMarketId.fusesByMarketId[marketId].push(fuseAddress_);
+        try IFuseCommon(fuseAddress_).MARKET_ID() returns (uint256 marketId) {
+            FuseInfoByMarketId storage fuseInfoByMarketId = _getFuseInfoByMarketIdSlot();
+            fuseInfoByMarketId.fusesByMarketId[marketId].push(fuseAddress_);
 
-        emit FuseAddedToMarketId(fuseAddress_, marketId);
+            emit FuseAddedToMarketId(fuseAddress_, marketId);
+        } catch {
+            // Fuse doesn't have MARKET_ID() method, skip adding to market ID list
+            // This is intentionally empty - we want to silently skip fuses without MARKET_ID()
+        }
     }
 
     /// @notice Retrieves all fuses associated with a market ID
