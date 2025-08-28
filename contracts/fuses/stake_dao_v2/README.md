@@ -69,7 +69,7 @@ Rewards are claimed through the `StakeDaoV2ClaimFuse` which:
 
 For supply and withdrawal operations, substrates are configured as **simple reward vault addresses**.
 
-#### Vault examples:
+#### Vault examples on Arbitrum:
 
 | Vault Name     | Reward Vault Address                         | LP Token Address                             | Collateral Asset |
 | -------------- | -------------------------------------------- | -------------------------------------------- | ---------------- |
