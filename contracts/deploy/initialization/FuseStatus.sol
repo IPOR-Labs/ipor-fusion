@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 
 /// @dev Returns all fuse statuses
 library FuseStatus {
-
     /// @dev Default status after deployment
     uint16 public constant FUSE_STATUS_DEFAULT_ID = 0;
     string public constant FUSE_STATUS_DEFAULT_NAME = "DEFAULT";

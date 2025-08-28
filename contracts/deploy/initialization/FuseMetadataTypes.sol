@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-
 library FuseMetadataTypes {
-
     uint16 public constant FUSE_METADATA_AUDIT_STATUS_ID = 0;
     string public constant FUSE_METADATA_AUDIT_STATUS_NAME = "AUDIT_STATUS";
 
