@@ -396,7 +396,7 @@ contract InitializeAccessManagerTest is Test {
         withdrawManager.updateRequestFee(newFee);
     }
 
-    function testShouldNotHaveAdminRoleForZeroAddress() external {
+    function testShouldOwnersHaveOwnerAdminRole() external {
         // given
         DataForInitialization memory data = _generateDataForInitialization();
         data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
@@ -413,9 +413,180 @@ contract InitializeAccessManagerTest is Test {
         accessManager.initialize(initData);
 
         // then
-        (bool isMember, uint32 executionDelay) = accessManager.hasRole(Roles.ADMIN_ROLE, address(0));
-        assertFalse(isMember, "Zero address should not have admin role");
+        for (uint256 i; i < data.owners.length; i++) {
+            address owner = data.owners[i];
+
+            // Check that owner has OWNER_ROLE
+            (bool hasOwnerRole, uint32 ownerRoleDelay) = accessManager.hasRole(Roles.OWNER_ROLE, owner);
+            assertTrue(hasOwnerRole, "Owner should have OWNER_ROLE");
+            assertEq(ownerRoleDelay, 0, "OWNER_ROLE execution delay should be 0");
+        }
+    }
+
+    function testShouldOwnersBeAbleToManageOwnerRole() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        data.plasmaVaultAddress.withdrawManager = address(withdrawManager);
+        data.plasmaVaultAddress.priceOracleMiddlewareManager = address(priceOracleMiddlewareProxy);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address newOwner = address(0x999);
+        address owner = data.owners[0];
+
+        // when - owner should be able to grant OWNER_ROLE to new address
+        vm.prank(owner);
+        accessManager.grantRole(Roles.OWNER_ROLE, newOwner, 0);
+
+        // then
+        (bool hasOwnerRole, uint32 executionDelay) = accessManager.hasRole(Roles.OWNER_ROLE, newOwner);
+        assertTrue(hasOwnerRole, "New owner should have OWNER_ROLE");
+        assertEq(executionDelay, 0, "Execution delay should be 0");
+    }
+
+    function testOwnerRoleHasAdminRole() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        // then
+        uint64 ownerRoleAdmin = accessManager.getRoleAdmin(Roles.OWNER_ROLE);
+        assertEq(ownerRoleAdmin, Roles.OWNER_ROLE, "OWNER_ROLE should be managed by OWNER_ROLE");
+    }
+
+    function testShouldOwnersBeAbleToRevokeOwnerRole() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        data.plasmaVaultAddress.withdrawManager = address(withdrawManager);
+        data.plasmaVaultAddress.priceOracleMiddlewareManager = address(priceOracleMiddlewareProxy);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address ownerToRevoke = data.owners[1]; // Use second owner
+        address owner = data.owners[0]; // Use first owner
+
+        // when - owner should be able to revoke OWNER_ROLE from another owner
+        vm.prank(owner);
+        accessManager.revokeRole(Roles.OWNER_ROLE, ownerToRevoke);
+
+        // then
+        (bool hasOwnerRole, uint32 executionDelay) = accessManager.hasRole(Roles.OWNER_ROLE, ownerToRevoke);
+        assertFalse(hasOwnerRole, "Revoked owner should not have OWNER_ROLE");
         assertEq(executionDelay, 0, "Execution delay should be 0 for non-member");
+    }
+
+    function testShouldNonOwnersNotBeAbleToManageOwnerRole() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        data.plasmaVaultAddress.withdrawManager = address(withdrawManager);
+        data.plasmaVaultAddress.priceOracleMiddlewareManager = address(priceOracleMiddlewareProxy);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address newOwner = address(0x999);
+        address nonOwner = data.atomists[0]; // Use atomist as non-owner
+
+        // when/then - non-owner should not be able to grant OWNER_ROLE
+        vm.expectRevert();
+        vm.prank(nonOwner);
+        accessManager.grantRole(Roles.OWNER_ROLE, newOwner, 0);
+    }
+
+    function testShouldOwnerAdminRoleBeAdminOfOwnerRole() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        data.plasmaVaultAddress.withdrawManager = address(withdrawManager);
+        data.plasmaVaultAddress.priceOracleMiddlewareManager = address(priceOracleMiddlewareProxy);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        // when
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        // then
+        uint64 ownerRoleAdmin = accessManager.getRoleAdmin(Roles.OWNER_ROLE);
+        assertEq(ownerRoleAdmin, Roles.OWNER_ROLE, "OWNER_ROLE should be managed by OWNER_ROLE");
+    }
+
+    function testShouldAdminRoleBeOwnerRole() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        data.plasmaVaultAddress.withdrawManager = address(withdrawManager);
+        data.plasmaVaultAddress.priceOracleMiddlewareManager = address(priceOracleMiddlewareProxy);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        // when
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        // then
+        uint64 ownerRoleAdmin = accessManager.getRoleAdmin(Roles.OWNER_ROLE);
+        assertEq(ownerRoleAdmin, Roles.OWNER_ROLE, "OWNER_ROLE should be managed by OWNER_ROLE");
+    }
+
+    function testShouldNotGrantOwnerBySuperAdminBecauseOnlyOwnerRoleHasAdminRole() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+
+        address admin = data.admins[0];
+
+        address newOwner = address(0x999);
+
+        assertNotEq(admin, address(0), "Admin should not be 0");
+
+        // when/then
+        vm.expectRevert();
+        vm.startPrank(admin);
+        accessManager.grantRole(Roles.OWNER_ROLE, newOwner, 0);
+        vm.stopPrank();
     }
 
     function _generateDataForInitialization() private returns (DataForInitialization memory) {
