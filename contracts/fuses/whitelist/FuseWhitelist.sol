@@ -140,6 +140,30 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         return true;
     }
 
+    /// @notice Updates metadata for multiple existing fuses
+    /// @param fuseAddresses_ Array of fuse addresses to update
+    /// @param metadataIds_ Array of metadata type IDs to update for each fuse
+    /// @param metadatas_ Array of metadata value arrays for each fuse
+    /// @return bool True if operation was successful
+    /// @dev Requires UPDATE_FUSE_METADATA_MANAGER_ROLE
+    /// @dev All arrays must have equal length
+    /// @dev Each fuse must exist in the system
+    /// @dev Each metadata type must be valid
+    function updateFusesMetadata(
+        address[] calldata fuseAddresses_,
+        uint16[] calldata metadataIds_,
+        bytes32[][] calldata metadatas_
+    ) external onlyRole(UPDATE_FUSE_METADATA_MANAGER_ROLE) returns (bool) {
+        uint256 length = fuseAddresses_.length;
+        if (length != metadataIds_.length || length != metadatas_.length) {
+            revert FuseWhitelistInvalidInputLength();
+        }
+        for (uint256 i; i < length; i++) {
+            FuseWhitelistLib.updateFuseMetadata(fuseAddresses_[i], metadataIds_[i], metadatas_[i]);
+        }
+        return true;
+    }
+
     /// @notice Retrieves all registered fuse types
     /// @return Array of fuse type IDs
     /// @return Array of fuse type names
