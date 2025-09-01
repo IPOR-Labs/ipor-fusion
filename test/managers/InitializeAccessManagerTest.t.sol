@@ -13,6 +13,8 @@ import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
+
 
 import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
@@ -587,6 +589,27 @@ contract InitializeAccessManagerTest is Test {
         vm.startPrank(admin);
         accessManager.grantRole(Roles.OWNER_ROLE, newOwner, 0);
         vm.stopPrank();
+    }
+
+    function testShouldFuseManagerUpdateCallbackHandler() external {
+        // given
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        vm.prank(admin);
+        accessManager.initialize(initData);
+    
+        // when
+        uint64 roleId = accessManager.getTargetFunctionRole(address(plasmaVault), PlasmaVaultGovernance.updateCallbackHandler.selector);
+    
+        // then
+        assertEq(Roles.FUSE_MANAGER_ROLE, roleId);
     }
 
     function _generateDataForInitialization() private returns (DataForInitialization memory) {
