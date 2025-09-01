@@ -260,7 +260,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoBaseTest is Test {
         // Set up callback handler for Morpho Flash Loan
         CallbackHandlerMorpho callbackHandler = new CallbackHandlerMorpho();
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).updateCallbackHandler(
             address(callbackHandler),
             _MORPHO,
