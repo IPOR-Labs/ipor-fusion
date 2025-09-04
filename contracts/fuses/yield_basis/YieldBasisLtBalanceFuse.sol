@@ -9,6 +9,8 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
+import {console2} from "forge-std/console2.sol";
+
 /// @title Fuse for Yield Basis Leveraged Liquidity Token vaults responsible for calculating the balance of the Plasma Vault in the Yield Basis vaults
 /// @dev Substrates in this fuse are the assets that are used in the Yield Basis vaults for a given MARKET_ID
 /// @dev Notice! PriceFeed for underlying asset of the Yield Basis vaults have to be configured in Price Oracle Middleware Manager or Price Oracle Middleware
@@ -22,8 +24,8 @@ contract YieldBasisLtBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
     }
 
-    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
-    function balanceOf() external view override returns (uint256) {
+    /// @return balance The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    function balanceOf() external view override returns (uint256 balance) {
         bytes32[] memory lts = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         uint256 len = lts.length;
@@ -32,21 +34,28 @@ contract YieldBasisLtBalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        uint256 balance;
-        uint256 ltAssets;
         IYieldBasisLT lt;
+        uint256 ltAssetsInWad;
+        
+
         address asset;
-        uint256 price;
-        uint256 priceDecimals;
+        uint256 assetPrice;
+        uint256 assetPriceDecimals;
+        
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         address plasmaVault = address(this);
+        
 
         for (uint256 i; i < len; ++i) {
             lt = IYieldBasisLT(PlasmaVaultConfigLib.bytes32ToAddress(lts[i]));
-            ltAssets = lt.balanceOf(plasmaVault);
+
+            ltAssetsInWad = lt.pricePerShare() * lt.balanceOf(plasmaVault) / 10**lt.decimals();
+
             asset = lt.ASSET_TOKEN();
-            (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);
-            balance += IporMath.convertToWad(ltAssets * price, IYieldBasisLT(asset).decimals() + priceDecimals);
+            (assetPrice, assetPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);
+            
+            balance += ltAssetsInWad * assetPrice / 10**assetPriceDecimals;
+
         }
 
         return balance;

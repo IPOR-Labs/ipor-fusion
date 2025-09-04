@@ -320,18 +320,16 @@ contract PlasmaVault is
             selector == 0x8c5710c9 || // min_admin_fee()
             selector == 0xcab4d3db || // fee_receiver()
             selector == 0x680c7783 || // emergency_admin()
-            selector == 0xf851a440
+            selector == 0xf851a440 
         ) {
             return PLASMA_VAULT_BASE.functionDelegateCall(msg.data);
         }
 
         if (PlasmaVaultLib.isExecutionStarted()) {
-            console2.log("CallbackHandlerLib.handleCallback()");
             /// @dev Handle callback can be done only during the execution of the FuseActions by Alpha
             CallbackHandlerLib.handleCallback();
             return "";
         } else {
-            console2.log("PLASMA_VAULT_BASE.functionDelegateCall(msg.data)");
             return PLASMA_VAULT_BASE.functionDelegateCall(msg.data);
         }
     }

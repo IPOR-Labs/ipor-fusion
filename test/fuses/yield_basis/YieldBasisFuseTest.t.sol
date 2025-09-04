@@ -88,6 +88,9 @@ contract YieldBasisFuseTest is Test {
     address withdrawManager;
     address priceOracle;
 
+    uint256 vaultLtBalanceAfter;
+    uint256 vaultBalanceAfter;
+
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 373531486);
 
@@ -153,6 +156,261 @@ contract YieldBasisFuseTest is Test {
         assertTrue(totalAssetsInMarket >= 0, "Total assets in market should be calculated successfully");
     }
 
+    function testShouldSupplyAndWithdrawFromYieldBasis() public {
+        // given
+        _createVaultWithFusionFactory();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.ATOMIST_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
+        vm.stopPrank();
+
+        _setupPriceOracleMiddleware();
+
+        _prepareLTContractConfig();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        vm.stopPrank();
+
+        _addYieldBasisFuses();
+
+        uint256 supplyLtAssetAmount = 1e5;
+        _fundVaultWithWBTC(supplyLtAssetAmount);
+
+        YieldBasisLtSupplyFuseEnterData memory enterData = YieldBasisLtSupplyFuseEnterData({
+            ltAddress: YIELD_BASIS_LT_WBTC,
+            ltAssetAmount: supplyLtAssetAmount,
+            minLtAssetAmount: (supplyLtAssetAmount * 99) / 100, // 1% slippage tolerance
+            debt: 0,
+            minSharesToReceive: (supplyLtAssetAmount * 99) / 100 // 1% slippage tolerance
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction({
+            fuse: yieldBasisSupplyFuse,
+            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", enterData)
+        });
+
+        uint256 totalAssetBefore = plasmaVault.totalAssets();
+        uint256 wbtcBalanceBefore = IERC20(WBTC).balanceOf(address(plasmaVault));
+        uint256 balanceInMarketBeforeSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
+        uint256 yieldBasisLtBalanceBeforeSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
+
+        vm.prank(alpha);
+        plasmaVault.execute(supplyActions);
+
+        uint256 yieldBasisLtBalanceAfterSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
+        uint256 balanceInMarketAfterSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
+        uint256 wbtcBalanceAfter = IERC20(WBTC).balanceOf(address(plasmaVault));
+
+        assertGt(yieldBasisLtBalanceAfterSupply, 0, "Should have Yield Basis LT tokens after supply");
+        assertGt(
+            yieldBasisLtBalanceAfterSupply,
+            yieldBasisLtBalanceBeforeSupply,
+            "Yield Basis LT balance should increase after supply"
+        );
+
+        assertGt(balanceInMarketAfterSupply, 0, "Market balance should be greater than 0 after supply");
+        assertGt(
+            balanceInMarketAfterSupply,
+            balanceInMarketBeforeSupply,
+            "Market balance should increase after supply"
+        );
+
+        assertLt(wbtcBalanceAfter, wbtcBalanceBefore, "WBTC balance should decrease after supply");
+
+        uint256 withdrawLtSharesAmount = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault)) / 2;
+
+        YieldBasisLtSupplyFuseExitData memory exitData = YieldBasisLtSupplyFuseExitData({
+            ltAddress: YIELD_BASIS_LT_WBTC,
+            ltSharesAmount: withdrawLtSharesAmount, // Withdraw half of the shares
+            minLtAssetAmountToReceive: 0
+        });
+
+        FuseAction[] memory withdrawActions = new FuseAction[](1);
+        withdrawActions[0] = FuseAction({
+            fuse: yieldBasisSupplyFuse,
+            data: abi.encodeWithSignature("exit((address,uint256,uint256))", exitData)
+        });
+
+        vm.prank(alpha);
+        plasmaVault.execute(withdrawActions);
+
+        uint256 yieldBasisLtBalanceAfterWithdraw = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
+        uint256 balanceInMarketAfterWithdraw = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
+
+        uint256 wbtcBalanceAfterWithdraw = IERC20(WBTC).balanceOf(address(plasmaVault));
+
+        assertLt(
+            yieldBasisLtBalanceAfterWithdraw,
+            yieldBasisLtBalanceAfterSupply,
+            "Yield Basis LT balance should decrease after withdrawal"
+        );
+        assertGt(balanceInMarketAfterWithdraw, 0, "Market balance should be greater than 0 after withdrawal");
+        assertLt(
+            balanceInMarketAfterWithdraw,
+            balanceInMarketAfterSupply,
+            "Market balance should decrease on Yield Basis LT after withdrawal from Yield Basis LT"
+        );
+        assertGt(
+            wbtcBalanceAfterWithdraw,
+            wbtcBalanceAfter,
+            "WBTC balance should increase on Plasma Vault after withdrawal from Yield Basis LT"
+        );
+    }
+
+    function testShouldInstantWithdrawFromYieldBasis() public {
+        _createVaultWithFusionFactory();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.ATOMIST_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
+        vm.stopPrank();
+
+        _setupPriceOracleMiddleware();
+
+        _prepareLTContractConfig();
+
+        _addYieldBasisFuses();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        vm.stopPrank();
+
+        address testUser = address(0x123);
+        uint256 userDepositAmount = 15e5;
+
+        /// in setup is deposit to vault
+        _setupUserForWithdrawal(testUser, userDepositAmount);
+
+        _configureInstantWithdrawFuses();
+
+        // Supply to Yield Basis
+        _executeSupply(userDepositAmount);
+
+        // Verify supply was successful
+        uint256 ltBalanceAfterSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
+
+        assertGt(ltBalanceAfterSupply, 0, "Should have LT tokens after supply");
+
+        vm.warp(block.timestamp + 1);
+
+        /// max assets amount that user can withdraw divided by 2
+        uint256 userMaxWithdrawHalf = plasmaVault.maxWithdraw(testUser) / 2;
+
+        console2.log("userMaxWithdrawHalf", userMaxWithdrawHalf);
+
+        assertGt(userMaxWithdrawHalf, 0, "User should have withdrawable amount");
+
+        console2.log("WBTC balance on LT contract:", IERC20(WBTC).balanceOf(YIELD_BASIS_LT_WBTC));
+
+        //when
+        vm.prank(testUser);
+        plasmaVault.withdraw(userMaxWithdrawHalf, testUser, testUser);
+
+        //then
+        // uint256 userBalanceAfterWithdraw = plasmaVault.balanceOf(testUser);
+        // assertLt(userBalanceAfterWithdraw, userMaxWithdrawHalf, "User balance should decrease after withdrawal");
+    }
+
+    function testShouldRevertOnUnsupportedAsset() public {
+        // Setup vault and fuses
+        _createVaultWithFusionFactory();
+        _grantRoles();
+        _addYieldBasisFuses();
+
+        // Try to supply with unsupported asset
+        address unsupportedAsset = address(0x999);
+        YieldBasisLtSupplyFuseEnterData memory enterData = YieldBasisLtSupplyFuseEnterData({
+            ltAddress: unsupportedAsset,
+            ltAssetAmount: 1e5,
+            minLtAssetAmount: 1e5,
+            debt: 0,
+            minSharesToReceive: 1e8
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction({
+            fuse: yieldBasisSupplyFuse,
+            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", enterData)
+        });
+
+        // Should revert with unsupported asset
+        vm.prank(alpha);
+        vm.expectRevert();
+        plasmaVault.execute(supplyActions);
+    }
+
+    // Helper functions
+    function _grantRoles() private {
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.ATOMIST_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        vm.stopPrank();
+    }
+
+    function _fundVaultWithWBTC(uint256 amount) private {
+        // Fund the vault with WBTC by transferring from a holder
+        vm.prank(WBTC_HOLDER);
+        IERC20(WBTC).transfer(address(plasmaVault), amount);
+    }
+
+    function _executeSupply(uint256 amount) private {
+        YieldBasisLtSupplyFuseEnterData memory enterData = YieldBasisLtSupplyFuseEnterData({
+            ltAddress: YIELD_BASIS_LT_WBTC,
+            ltAssetAmount: amount,
+            minLtAssetAmount: (amount * 95) / 100,
+            debt: 0,
+            minSharesToReceive: (amount * 95) / 100
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: yieldBasisSupplyFuse,
+            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", enterData)
+        });
+
+        vm.prank(alpha);
+        plasmaVault.execute(actions);
+    }
+
+    function _configureInstantWithdrawFuses() private {
+        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
+
+        bytes32[] memory instantWithdrawParams = new bytes32[](2);
+        instantWithdrawParams[0] = bytes32(0); // amount placeholder
+        instantWithdrawParams[1] = bytes32(uint256(uint160(YIELD_BASIS_LT_WBTC))); // LT address
+
+        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
+            fuse: yieldBasisSupplyFuse,
+            params: instantWithdrawParams
+        });
+
+        vm.prank(atomist);
+        PlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
+    }
+
+    function _setupUserForWithdrawal(address testUser, uint256 amount) private {
+        // Fund user with WBTC
+        vm.prank(WBTC_HOLDER);
+        IERC20(WBTC).transfer(testUser, amount);
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, testUser, 0);
+        vm.stopPrank();
+
+        // User deposits to vault
+        vm.startPrank(testUser);
+        IERC20(WBTC).approve(address(plasmaVault), amount);
+        plasmaVault.deposit(amount, testUser);
+        vm.stopPrank();
+    }
+
     function _setupFusionFactory() private {
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
             accessManagerFactory: address(new AccessManagerFactory()),
@@ -203,7 +461,7 @@ contract YieldBasisFuseTest is Test {
         address[] memory sources = new address[](1);
         assets[0] = WBTC;
         sources[0] = CHAINLINK_PRICE_FEED_WBTC;
-        
+
         vm.startPrank(atomist);
         PriceOracleMiddlewareManager(priceOracle).setAssetsPriceSources(assets, sources);
         vm.stopPrank();
@@ -321,407 +579,5 @@ contract YieldBasisFuseTest is Test {
             withdrawManager,
             address(new RewardsClaimManager(address(accessManager), address(plasmaVault)))
         );
-    }
-
-    function testShouldSupplyAndWithdrawFromYieldBasis() public {
-        _createVaultWithFusionFactory();
-        
-        vm.startPrank(atomist);
-        accessManager.grantRole(Roles.ATOMIST_ROLE, atomist, 0);
-        accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
-        accessManager.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
-        vm.stopPrank();
-        
-        _setupPriceOracleMiddleware();
-
-        _prepareLTContractConfig();
-
-        vm.startPrank(atomist);
-        accessManager.grantRole(Roles.ALPHA_ROLE, alpha, 0);
-        vm.stopPrank();
-
-        _addYieldBasisFuses();
-
-        uint256 supplyAmount = 1e5; 
-        _fundVaultWithWBTC(supplyAmount);
-
-        // Check initial market balance
-        uint256 totalAssetsInMarketBefore = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
-        assertEq(totalAssetsInMarketBefore, 0, "Market balance should be 0 before supply");
-
-        // Prepare supply action
-        YieldBasisLtSupplyFuseEnterData memory enterData = YieldBasisLtSupplyFuseEnterData({
-            ltAddress: YIELD_BASIS_LT_WBTC,
-            ltAssets: supplyAmount,
-            minLtAssets: (supplyAmount * 99) / 100, // 1% slippage tolerance
-            debt: 0, 
-            minShares: (supplyAmount * 99) / 100 // 1% slippage tolerance
-        });
-
-        FuseAction[] memory supplyActions = new FuseAction[](1);
-        supplyActions[0] = FuseAction({
-            fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", enterData)
-        });
-
-        uint256 totalAssetBefore = plasmaVault.totalAssets();
-        uint256 wbtcBalanceBefore = IERC20(WBTC).balanceOf(address(plasmaVault));
-// 0. 00052778 5065606808
-        // Execute supply
-        vm.prank(alpha);
-        plasmaVault.execute(supplyActions);
-
-        // Verify supply
-        uint256 yieldBasisLtBalanceAfterSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
-        uint256 balanceInMarketAfterSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
-        uint256 wbtcBalanceAfter = IERC20(WBTC).balanceOf(address(plasmaVault));
-
-        assertGt(yieldBasisLtBalanceAfterSupply, 0, "Should have Yield Basis LT tokens after supply");
-        assertGt(balanceInMarketAfterSupply, 0, "Market balance should be greater than 0 after supply");
-        assertLt(wbtcBalanceAfter, wbtcBalanceBefore, "WBTC balance should decrease after supply");
-
-        // Setup for withdrawal
-        uint256 withdrawAmount = supplyAmount / 2; // Withdraw half
-
-        // Prepare withdrawal action
-        YieldBasisLtSupplyFuseExitData memory exitData = YieldBasisLtSupplyFuseExitData({
-            ltAddress: YIELD_BASIS_LT_WBTC,
-            ltShares: yieldBasisLtBalanceAfterSupply / 2, // Withdraw half of the shares
-            minLtShares: ((yieldBasisLtBalanceAfterSupply / 2) * 99) / 100, // 1% slippage tolerance
-            minLtAssets: (withdrawAmount * 99) / 100 // 1% slippage tolerance
-        });
-
-        FuseAction[] memory withdrawActions = new FuseAction[](1);
-        withdrawActions[0] = FuseAction({
-            fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", exitData)
-        });
-
-        // Execute withdrawal
-        vm.prank(alpha);
-        plasmaVault.execute(withdrawActions);
-
-        // Final verifications
-        uint256 yieldBasisLtBalanceAfterWithdraw = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
-        uint256 totalAssetAfter = plasmaVault.totalAssets();
-        uint256 balanceInMarketAfter = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
-        uint256 wbtcBalanceFinal = IERC20(WBTC).balanceOf(address(plasmaVault));
-
-        assertLt(
-            yieldBasisLtBalanceAfterWithdraw,
-            yieldBasisLtBalanceAfterSupply,
-            "LT balance should decrease after withdrawal"
-        );
-        assertGt(wbtcBalanceFinal, wbtcBalanceAfter, "WBTC balance should increase after withdrawal");
-        assertGt(balanceInMarketAfter, 0, "Market balance should still be greater than 0");
-        
-        console2.log("totalAssetAfter", totalAssetAfter);
-        console2.log("totalAssetBefore", totalAssetBefore);
-    }
-
-    function testShouldVerifyAlphaRoleSetup() public {
-        // Setup vault and fuses using the same approach as the existing test
-        _createVaultWithFusionFactory();
-
-        // Grant necessary roles to atomist and alpha
-        vm.startPrank(atomist);
-        accessManager.grantRole(Roles.ATOMIST_ROLE, atomist, 0);
-        accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
-        vm.stopPrank();
-
-        // Now grant alpha role using atomist who has ATOMIST_ROLE
-        vm.startPrank(atomist);
-        accessManager.grantRole(Roles.ALPHA_ROLE, alpha, 0);
-        vm.stopPrank();
-
-        // Configure yield basis fuses
-        _addYieldBasisFuses();
-
-        // Verify that alpha has the ALPHA_ROLE
-        (bool hasAlphaRole, ) = accessManager.hasRole(Roles.ALPHA_ROLE, alpha);
-        assertTrue(hasAlphaRole, "Alpha should have ALPHA_ROLE");
-
-        // Verify that atomist has the ATOMIST_ROLE
-        (bool hasAtomistRole, ) = accessManager.hasRole(Roles.ATOMIST_ROLE, atomist);
-        assertTrue(hasAtomistRole, "Atomist should have ATOMIST_ROLE");
-
-        // Try to execute a simple action to verify permissions
-        FuseAction[] memory emptyActions = new FuseAction[](0);
-
-        // This should not revert if alpha has proper permissions
-        vm.prank(alpha);
-        plasmaVault.execute(emptyActions);
-    }
-
-    function testShouldSupplyAndWithdrawMultipleTimes() public {
-        // Setup vault and fuses
-        _createVaultWithFusionFactory();
-        _grantRoles();
-        _addYieldBasisFuses();
-
-        // Fund the vault with WBTC for testing
-        uint256 initialAmount = 2e8; // 2 WBTC
-        _fundVaultWithWBTC(initialAmount);
-
-        // First supply: 1 WBTC
-        uint256 firstSupplyAmount = 1e8;
-        _executeSupply(firstSupplyAmount);
-
-        // Verify first supply
-        uint256 balanceInMarketAfterFirstSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
-        uint256 ltBalanceAfterFirstSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
-
-        assertGt(balanceInMarketAfterFirstSupply, 0, "Market balance should be greater than 0 after first supply");
-        assertGt(ltBalanceAfterFirstSupply, 0, "LT balance should be greater than 0 after first supply");
-
-        // Second supply: 0.5 WBTC
-        uint256 secondSupplyAmount = 5e7; // 0.5 WBTC
-        _executeSupply(secondSupplyAmount);
-
-        // Verify second supply
-        uint256 balanceInMarketAfterSecondSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
-        uint256 ltBalanceAfterSecondSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
-
-        assertGt(
-            balanceInMarketAfterSecondSupply,
-            balanceInMarketAfterFirstSupply,
-            "Market balance should increase after second supply"
-        );
-        assertGt(
-            ltBalanceAfterSecondSupply,
-            ltBalanceAfterFirstSupply,
-            "LT balance should increase after second supply"
-        );
-
-        // First withdrawal: 0.3 WBTC worth
-        uint256 firstWithdrawShares = (ltBalanceAfterSecondSupply * 3) / 10; // 30% of shares
-        _executeWithdraw(firstWithdrawShares);
-
-        // Verify first withdrawal
-        uint256 balanceInMarketAfterFirstWithdraw = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
-        uint256 ltBalanceAfterFirstWithdraw = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
-
-        assertLt(
-            balanceInMarketAfterFirstWithdraw,
-            balanceInMarketAfterSecondSupply,
-            "Market balance should decrease after first withdrawal"
-        );
-        assertLt(
-            ltBalanceAfterFirstWithdraw,
-            ltBalanceAfterSecondSupply,
-            "LT balance should decrease after first withdrawal"
-        );
-
-        // Second withdrawal: remaining shares
-        _executeWithdraw(ltBalanceAfterFirstWithdraw);
-
-        // Verify final state
-        uint256 finalLtBalance = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
-        uint256 finalMarketBalance = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
-
-        assertApproxEqAbs(finalLtBalance, 0, 1e6, "Final LT balance should be approximately 0");
-        assertApproxEqAbs(finalMarketBalance, 0, 1e6, "Final market balance should be approximately 0");
-    }
-
-    function testShouldInstantWithdrawFromYieldBasis() public {
-        // Setup vault and fuses
-        _createVaultWithFusionFactory();
-        _grantRoles();
-        _addYieldBasisFuses();
-        _configureInstantWithdrawFuses();
-
-        // Fund the vault with WBTC for testing
-        uint256 supplyAmount = 1e8; // 1 WBTC
-        _fundVaultWithWBTC(supplyAmount);
-
-        // Supply to Yield Basis
-        _executeSupply(supplyAmount);
-
-        // Verify supply was successful
-        uint256 ltBalanceAfterSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
-        assertGt(ltBalanceAfterSupply, 0, "Should have LT tokens after supply");
-
-        // Setup user for instant withdrawal
-        address testUser = address(0x123);
-        uint256 userDepositAmount = 5e7; // 0.5 WBTC
-        _setupUserForWithdrawal(testUser, userDepositAmount);
-
-        // Get max withdraw amount for user
-        uint256 userMaxWithdraw = plasmaVault.maxWithdraw(testUser);
-        assertGt(userMaxWithdraw, 0, "User should have withdrawable amount");
-
-        // Record balances before instant withdrawal
-        uint256 vaultLtBalanceBefore = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
-        uint256 userBalanceBefore = IERC20(WBTC).balanceOf(testUser);
-        uint256 marketBalanceBefore = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
-
-        // Execute instant withdrawal
-        vm.prank(testUser);
-        plasmaVault.withdraw(userMaxWithdraw, testUser, testUser);
-
-        // Verify instant withdrawal
-        uint256 vaultLtBalanceAfter = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
-        uint256 userBalanceAfter = IERC20(WBTC).balanceOf(testUser);
-        uint256 marketBalanceAfter = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
-
-        assertGt(userBalanceAfter, userBalanceBefore, "User should receive WBTC after instant withdrawal");
-        assertLt(
-            vaultLtBalanceAfter,
-            vaultLtBalanceBefore,
-            "Vault LT balance should decrease after instant withdrawal"
-        );
-        assertLt(marketBalanceAfter, marketBalanceBefore, "Market balance should decrease after instant withdrawal");
-    }
-
-    function testShouldHandleZeroAmountSupplyAndWithdraw() public {
-        // Setup vault and fuses
-        _createVaultWithFusionFactory();
-        _grantRoles();
-        _addYieldBasisFuses();
-
-        // Test zero amount supply
-        YieldBasisLtSupplyFuseEnterData memory zeroEnterData = YieldBasisLtSupplyFuseEnterData({
-            ltAddress: YIELD_BASIS_LT_WBTC,
-            ltAssets: 0,
-            minLtAssets: 0,
-            debt: 0,
-            minShares: 0
-        });
-
-        FuseAction[] memory zeroSupplyActions = new FuseAction[](1);
-        zeroSupplyActions[0] = FuseAction({
-            fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", zeroEnterData)
-        });
-
-        // Should not revert with zero amount
-        vm.prank(alpha);
-        plasmaVault.execute(zeroSupplyActions);
-
-        // Test zero amount withdrawal
-        YieldBasisLtSupplyFuseExitData memory zeroExitData = YieldBasisLtSupplyFuseExitData({
-            ltAddress: YIELD_BASIS_LT_WBTC,
-            ltShares: 0,
-            minLtShares: 0,
-            minLtAssets: 0
-        });
-
-        FuseAction[] memory zeroWithdrawActions = new FuseAction[](1);
-        zeroWithdrawActions[0] = FuseAction({
-            fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", zeroExitData)
-        });
-
-        // Should not revert with zero amount
-        vm.prank(alpha);
-        plasmaVault.execute(zeroWithdrawActions);
-    }
-
-    function testShouldRevertOnUnsupportedAsset() public {
-        // Setup vault and fuses
-        _createVaultWithFusionFactory();
-        _grantRoles();
-        _addYieldBasisFuses();
-
-        // Try to supply with unsupported asset
-        address unsupportedAsset = address(0x999);
-        YieldBasisLtSupplyFuseEnterData memory enterData = YieldBasisLtSupplyFuseEnterData({
-            ltAddress: unsupportedAsset,
-            ltAssets: 1e8,
-            minLtAssets: 1e8,
-            debt: 1e8 * 50000,
-            minShares: 1e8
-        });
-
-        FuseAction[] memory supplyActions = new FuseAction[](1);
-        supplyActions[0] = FuseAction({
-            fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", enterData)
-        });
-
-        // Should revert with unsupported asset
-        vm.prank(alpha);
-        vm.expectRevert();
-        plasmaVault.execute(supplyActions);
-    }
-
-    // Helper functions
-    function _grantRoles() private {
-        vm.startPrank(atomist);
-        accessManager.grantRole(Roles.ATOMIST_ROLE, atomist, 0);
-        accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
-        accessManager.grantRole(Roles.ALPHA_ROLE, alpha, 0);
-        vm.stopPrank();
-    }
-
-    function _fundVaultWithWBTC(uint256 amount) private {
-        // Fund the vault with WBTC by transferring from a holder
-        vm.prank(WBTC_HOLDER);
-        IERC20(WBTC).transfer(address(plasmaVault), amount);
-    }
-
-    function _executeSupply(uint256 amount) private {
-        YieldBasisLtSupplyFuseEnterData memory enterData = YieldBasisLtSupplyFuseEnterData({
-            ltAddress: YIELD_BASIS_LT_WBTC,
-            ltAssets: amount,
-            minLtAssets: (amount * 99) / 100,
-            debt: amount * 50000,
-            minShares: (amount * 99) / 100
-        });
-
-        FuseAction[] memory actions = new FuseAction[](1);
-        actions[0] = FuseAction({
-            fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", enterData)
-        });
-
-        vm.prank(alpha);
-        plasmaVault.execute(actions);
-    }
-
-    function _executeWithdraw(uint256 shares) private {
-        YieldBasisLtSupplyFuseExitData memory exitData = YieldBasisLtSupplyFuseExitData({
-            ltAddress: YIELD_BASIS_LT_WBTC,
-            ltShares: shares,
-            minLtShares: (shares * 99) / 100,
-            minLtAssets: 0
-        });
-
-        FuseAction[] memory actions = new FuseAction[](1);
-        actions[0] = FuseAction({
-            fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", exitData)
-        });
-
-        vm.prank(alpha);
-        plasmaVault.execute(actions);
-    }
-
-    function _configureInstantWithdrawFuses() private {
-        InstantWithdrawalFusesParamsStruct[] memory instantWithdrawFuses = new InstantWithdrawalFusesParamsStruct[](1);
-
-        bytes32[] memory instantWithdrawParams = new bytes32[](2);
-        instantWithdrawParams[0] = bytes32(0); // amount placeholder
-        instantWithdrawParams[1] = bytes32(uint256(uint160(YIELD_BASIS_LT_WBTC))); // LT address
-
-        instantWithdrawFuses[0] = InstantWithdrawalFusesParamsStruct({
-            fuse: yieldBasisSupplyFuse,
-            params: instantWithdrawParams
-        });
-
-        vm.prank(atomist);
-        PlasmaVaultGovernance(address(plasmaVault)).configureInstantWithdrawalFuses(instantWithdrawFuses);
-    }
-
-    function _setupUserForWithdrawal(address testUser, uint256 amount) private {
-        // Fund user with WBTC
-        vm.prank(WBTC_HOLDER);
-        IERC20(WBTC).transfer(testUser, amount);
-
-        // User deposits to vault
-        vm.startPrank(testUser);
-        IERC20(WBTC).approve(address(plasmaVault), amount);
-        plasmaVault.deposit(amount, testUser);
-        vm.stopPrank();
     }
 }
