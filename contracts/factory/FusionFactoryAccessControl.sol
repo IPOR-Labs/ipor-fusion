@@ -35,6 +35,7 @@ abstract contract FusionFactoryAccessControl is AccessControlEnumerableUpgradeab
         _disableInitializers();
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function __FusionFactoryAccessControl_init() internal onlyInitializing {
         __AccessControlEnumerable_init();
     }

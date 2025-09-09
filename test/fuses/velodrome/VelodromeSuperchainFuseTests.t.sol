@@ -124,7 +124,10 @@ contract VelodromeSuperchainFuseTests is Test {
         vm.stopPrank();
 
         _velodromeBalanceFuse = new VelodromeSuperchainBalanceFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
-        _velodromeLiquidityFuse = new VelodromeSuperchainLiquidityFuse(IporFusionMarkets.VELODROME_SUPERCHAIN, _VELODROME_ROUTER);
+        _velodromeLiquidityFuse = new VelodromeSuperchainLiquidityFuse(
+            IporFusionMarkets.VELODROME_SUPERCHAIN,
+            _VELODROME_ROUTER
+        );
         _velodromeGaugeFuse = new VelodromeSuperchainGaugeFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
         _velodromeGaugeClaimFuse = new VelodromeSuperchainGaugeClaimFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
 
@@ -159,7 +162,10 @@ contract VelodromeSuperchainFuseTests is Test {
             })
         );
         aerodromeSubstrates[1] = VelodromeSuperchainSubstrateLib.substrateToBytes32(
-            VelodromeSuperchainSubstrate({substrateAddress: _VELODROME_GAUGE, substrateType: VelodromeSuperchainSubstrateType.Gauge})
+            VelodromeSuperchainSubstrate({
+                substrateAddress: _VELODROME_GAUGE,
+                substrateType: VelodromeSuperchainSubstrateType.Gauge
+            })
         );
 
         vm.startPrank(_FUSE_MANAGER);
@@ -1475,7 +1481,9 @@ contract VelodromeSuperchainFuseTests is Test {
 
         // when
         bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(
+            encodedSubstrate
+        );
 
         // then
         assertEq(
@@ -1500,7 +1508,9 @@ contract VelodromeSuperchainFuseTests is Test {
 
         // when
         bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(
+            encodedSubstrate
+        );
 
         // then
         assertEq(
@@ -1525,7 +1535,9 @@ contract VelodromeSuperchainFuseTests is Test {
 
         // when
         bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(
+            encodedSubstrate
+        );
 
         // then
         assertEq(
@@ -1550,7 +1562,9 @@ contract VelodromeSuperchainFuseTests is Test {
 
         // when
         bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(
+            encodedSubstrate
+        );
 
         // then
         assertEq(
@@ -1575,7 +1589,9 @@ contract VelodromeSuperchainFuseTests is Test {
 
         // when
         bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
-        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(
+            encodedSubstrate
+        );
 
         // then
         assertEq(
@@ -1620,7 +1636,9 @@ contract VelodromeSuperchainFuseTests is Test {
         bytes32 encodedSubstrate = bytes32(encodedValue);
 
         // when
-        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+        VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(
+            encodedSubstrate
+        );
 
         // then
         assertEq(uint256(decodedSubstrate.substrateType), uint256(testType), "Decoded type should match");
@@ -1643,7 +1661,9 @@ contract VelodromeSuperchainFuseTests is Test {
 
             // when
             bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
-            VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+            VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(
+                encodedSubstrate
+            );
 
             // then
             assertEq(
@@ -1676,7 +1696,9 @@ contract VelodromeSuperchainFuseTests is Test {
 
             // when
             bytes32 encodedSubstrate = VelodromeSuperchainSubstrateLib.substrateToBytes32(originalSubstrate);
-            VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(encodedSubstrate);
+            VelodromeSuperchainSubstrate memory decodedSubstrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(
+                encodedSubstrate
+            );
 
             // then
             assertEq(

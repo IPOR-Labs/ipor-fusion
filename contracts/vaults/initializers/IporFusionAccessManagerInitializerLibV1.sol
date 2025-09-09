@@ -446,7 +446,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     function _generateAdminRoles() private pure returns (AdminRole[] memory adminRoles_) {
         adminRoles_ = new AdminRole[](ADMIN_ROLES_ARRAY_LENGTH);
         Iterator memory iterator;
-        adminRoles_[iterator.index] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.ADMIN_ROLE});
+        adminRoles_[iterator.index] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.PRE_HOOKS_MANAGER_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.ATOMIST_ROLE, adminRoleId: Roles.OWNER_ROLE});
@@ -707,7 +707,7 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
-            roleId: Roles.ATOMIST_ROLE,
+            roleId: Roles.FUSE_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.updateCallbackHandler.selector,
             minimalExecutionDelay: 0
         });
