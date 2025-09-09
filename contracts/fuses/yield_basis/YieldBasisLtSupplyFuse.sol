@@ -151,7 +151,6 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         console2.log("[instantWithdraw] pricePerShare", lt.pricePerShare()); // how many assets for 1 share
         console2.log("[instantWithdraw] ltSharesAmount", ltSharesAmount);
 
-
         if (sharesToWithdraw == 0) {
             return;
         }
@@ -160,9 +159,17 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             revert YieldBasisLtSupplyFuseUnsupportedVault("instantWithdraw", ltAddress);
         }
 
-        (uint256 ltAssetAmountReceived, int256 debtChange) = IYieldBasisLT(ltAddress).emergency_withdraw(sharesToWithdraw);
+        (uint256 ltAssetAmountReceived, int256 debtChange) = IYieldBasisLT(ltAddress).emergency_withdraw(
+            sharesToWithdraw
+        );
 
-        emit YieldBasisLtSupplyFuseInstantWithdrawExit(VERSION, ltAddress, sharesToWithdraw, ltAssetAmountReceived, debtChange);
+        emit YieldBasisLtSupplyFuseInstantWithdrawExit(
+            VERSION,
+            ltAddress,
+            sharesToWithdraw,
+            ltAssetAmountReceived,
+            debtChange
+        );
     }
 
     function _exit(YieldBasisLtSupplyFuseExitData memory data_) internal {
