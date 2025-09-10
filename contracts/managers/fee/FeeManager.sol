@@ -56,6 +56,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     event HarvestPerformanceFee(address receiver, uint256 amount);
     event PerformanceFeeUpdated(uint256 totalFee, address[] recipients, uint256[] fees);
     event ManagementFeeUpdated(uint256 totalFee, address[] recipients, uint256[] fees);
+    event FeeAccountDeployed(address performanceFeeAccount, address managementFeeAccount);
 
     /// @notice Thrown when trying to call a function before initialization
     error NotInitialized();
@@ -160,6 +161,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         /// @dev Values stored in FeeManager have to be equal to the values stored in PlasmaVault
         FeeManagerStorageLib.setPlasmaVaultTotalPerformanceFee(totalPerformanceFee);
         FeeManagerStorageLib.setPlasmaVaultTotalManagementFee(totalManagementFee);
+
+        emit FeeAccountDeployed(PERFORMANCE_FEE_ACCOUNT, MANAGEMENT_FEE_ACCOUNT);
     }
 
     /// @notice Initializes the FeeManager contract by setting up fee account approvals
