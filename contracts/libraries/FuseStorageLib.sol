@@ -168,7 +168,7 @@ library FuseStorageLib {
      * @notice Tracks and manages Ebisu Troves positions held by the vault
      *
      * Calculation:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.EbisuOwnerIds")) - 1)) & ~bytes32(uint256(0xff))
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.EbisuTroveIds")) - 1)) & ~bytes32(uint256(0xff))
      *
      * Purpose:
      * - Tracks all Ebisu Troves positions owned by the vault
@@ -177,8 +177,9 @@ library FuseStorageLib {
      * - Mirrors Uniswap V3-style position management for Arbitrum
      *
      * Storage Layout:
-     * - Points to EbisuOwnerIds struct containing:
-     *   - ownerIndexes: uint256[] indexes used for new positions
+     * - Points to EbisuTroveIds struct containing:
+     * -  uint256 latestOwnerId; the ownerId of the latest (only) open trove
+     * -  mapping(address zapper => uint256 id) troveIds; mapping of troveId by zapper (for balance fuse)
      *
      * Usage Pattern:
      * - Updated when creating new Ebisu
@@ -199,8 +200,8 @@ library FuseStorageLib {
      * - Essential for position ownership verification
      * - Parallel structure to Uniswap V3 position tracking
      */
-    bytes32 private constant EBISU_OWNER_IDS =
-        0xdd50223379a4a49a8342e6bdb74d8793d834c91e2f26a97f84b12aa2038d3600;
+    bytes32 private constant EBISU_TROVE_IDS =
+        0x9b098fe9de431f116cec9bcef5a806a02e41a628f070feb12cb5ddc28d703300;
 
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
@@ -226,9 +227,10 @@ library FuseStorageLib {
         mapping(uint256 tokenId => uint256 index) indexes;
     }
 
-    /// @custom:storage-location erc7201:io.ipor.EbisuOwnerIds
-    struct EbisuOwnerIds {
-        mapping(address zapper => uint256[] ids) ownerIds;
+    /// @custom:storage-location erc7201:io.ipor.EbisuTroveIds
+    struct EbisuTroveIds {
+        uint256 latestOwnerId;
+        mapping(address zapper => uint256 id) troveIds;
     }
 
     /// @notice Gets the fuses storage pointer
@@ -259,10 +261,10 @@ library FuseStorageLib {
         }
     }
 
-    /// @notice Gets the EbisuOwnerIds storage pointer
-    function getEbisuOwnerIds() internal pure returns (EbisuOwnerIds storage ebisuOwnerIds) {
+    /// @notice Gets the EbisuTroveIds storage pointer
+    function getEbisuTroveIds() internal pure returns (EbisuTroveIds storage ebisuTroveIds) {
         assembly {
-            ebisuOwnerIds.slot := EBISU_OWNER_IDS
+            ebisuTroveIds.slot := EBISU_TROVE_IDS
         }
     }
 }

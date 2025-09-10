@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
@@ -26,13 +26,13 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
     }
 
     function balanceOf() external view returns (uint256) {
-        bytes32[] memory zappersRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
-        FuseStorageLib.EbisuOwnerIds storage troveData = FuseStorageLib.getEbisuOwnerIds();
+        FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
 
-        uint256 zappersNumber = zappersRaw.length;
+        uint256 substratesNumber = substrates.length;
 
-        if (zappersNumber == 0) return 0;
+        if (substratesNumber == 0) return 0;
         address collToken;
         uint256 collTokenPrice;
         uint256 collTokenPriceDecimals;
@@ -40,26 +40,32 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
         IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
         );
-        address zapper;
         ITroveManager troveManager;
-        uint256 idsLen;
         uint256 troveId;
+        address target;
 
-        for (uint256 i; i < zappersNumber; ++i) {
-            zapper = PlasmaVaultConfigLib.bytes32ToAddress(zappersRaw[i]);
-            troveManager = ITroveManager(ILeverageZapper(zapper).troveManager());
-            collToken = ILeverageZapper(zapper).collToken();
-            (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
-            idsLen = troveData.ownerIds[address(zapper)].length;
+        for (uint256 i; i < substratesNumber; ++i) {
+            target = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
 
-            for(uint256 j; j < idsLen; ++j) {
-                troveId = EbisuMathLibrary.calculateTroveId(address(this), zapper, troveData.ownerIds[address(zapper)][j]);
-                if (troveId == 0) continue;
-                entireCollValue += IporMath.convertToWad(
-                    troveManager.getLatestTroveData(troveId).entireColl * collTokenPrice,
-                    IERC20Metadata(collToken).decimals() + collTokenPriceDecimals
-                );
+            // Probe target as a zapper; if it isn't, just skip
+            try ILeverageZapper(target).collToken() returns (address ct) {
+                collToken = ct;
+            } catch {
+                continue;
             }
+            try ILeverageZapper(target).troveManager() returns (address tm) {
+                troveManager = ITroveManager(tm);
+            } catch {
+                continue;
+            }
+            (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
+            
+            troveId = troveData.troveIds[target];
+            if(troveId == 0) continue;
+            entireCollValue += IporMath.convertToWad(
+                troveManager.getLatestTroveData(troveId).entireColl * collTokenPrice,
+                IERC20Metadata(collToken).decimals() + collTokenPriceDecimals
+            );
         }
         return entireCollValue;
     }
