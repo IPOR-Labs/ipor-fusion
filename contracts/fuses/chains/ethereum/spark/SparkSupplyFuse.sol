@@ -53,15 +53,15 @@ contract SparkSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     function exit(SparkSupplyFuseExitData calldata data) external {
-        _exit(data);
+        _exit(data, false);
     }
 
     /// @dev params[0] - amount in underlying asset
     function instantWithdraw(bytes32[] calldata params_) external override {
-        _exit(SparkSupplyFuseExitData({amount: uint256(params_[0])}));
+        _exit(SparkSupplyFuseExitData({amount: uint256(params_[0])}), true);
     }
 
-    function _exit(SparkSupplyFuseExitData memory data_) private {
+    function _exit(SparkSupplyFuseExitData memory data_, bool catchExceptions_) private {
         if (data_.amount == 0) {
             return;
         }
@@ -72,11 +72,20 @@ contract SparkSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        try ISavingsDai(SDAI).withdraw(finalAmount, address(this), address(this)) returns (uint256 shares) {
-            emit SparkSupplyFuseExit(VERSION, data_.amount, shares);
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit SparkSupplyFuseExitFailed(VERSION, finalAmount);
+        _performWithdraw(finalAmount, catchExceptions_);
+    }
+
+    function _performWithdraw(uint256 finalAmount_, bool catchExceptions_) private {
+        if (catchExceptions_) {
+            try ISavingsDai(SDAI).withdraw(finalAmount_, address(this), address(this)) returns (uint256 shares) {
+                emit SparkSupplyFuseExit(VERSION, finalAmount_, shares);
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit SparkSupplyFuseExitFailed(VERSION, finalAmount_);
+            }
+        } else {
+            uint256 shares = ISavingsDai(SDAI).withdraw(finalAmount_, address(this), address(this));
+            emit SparkSupplyFuseExit(VERSION, finalAmount_, shares);
         }
     }
 }
