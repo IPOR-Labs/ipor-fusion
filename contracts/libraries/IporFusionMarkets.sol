@@ -100,6 +100,8 @@ library IporFusionMarkets {
     /// @dev Substrate type: address
     uint256 public constant STAKE_DAO_V2 = 34;
 
+    uint256 public constant BALANCER = 35;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
