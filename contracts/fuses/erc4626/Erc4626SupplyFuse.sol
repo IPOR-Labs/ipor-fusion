@@ -80,7 +80,7 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     function exit(Erc4626SupplyFuseExitData calldata data_) external {
-        _exit(data_);
+        _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
@@ -89,10 +89,10 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address vault = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        _exit(Erc4626SupplyFuseExitData(vault, amount));
+        _exit(Erc4626SupplyFuseExitData(vault, amount), true);
     }
 
-    function _exit(Erc4626SupplyFuseExitData memory data_) internal {
+    function _exit(Erc4626SupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (data_.vaultAssetAmount == 0) {
             return;
         }
@@ -110,24 +110,22 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        try IERC4626(data_.vault).withdraw(finalVaultAssetAmount, address(this), address(this)) returns (
-            uint256 shares
-        ) {
-            emit Erc4626SupplyFuseExit(
-                VERSION,
-                IERC4626(data_.vault).asset(),
-                data_.vault,
-                finalVaultAssetAmount,
-                shares
-            );
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit Erc4626SupplyFuseExitFailed(
-                VERSION,
-                IERC4626(data_.vault).asset(),
-                data_.vault,
-                finalVaultAssetAmount
-            );
+        _performWithdraw(data_.vault, finalVaultAssetAmount, catchExceptions_);
+    }
+
+    function _performWithdraw(address vault_, uint256 finalVaultAssetAmount_, bool catchExceptions_) private {
+        if (catchExceptions_) {
+            try IERC4626(vault_).withdraw(finalVaultAssetAmount_, address(this), address(this)) returns (
+                uint256 shares
+            ) {
+                emit Erc4626SupplyFuseExit(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_, shares);
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit Erc4626SupplyFuseExitFailed(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_);
+            }
+        } else {
+            uint256 shares = IERC4626(vault_).withdraw(finalVaultAssetAmount_, address(this), address(this));
+            emit Erc4626SupplyFuseExit(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_, shares);
         }
     }
 }

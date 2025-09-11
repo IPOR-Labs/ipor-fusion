@@ -67,7 +67,7 @@ contract GearboxV3FarmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     /// @notice Exits from the Market
     function exit(GearboxV3FarmdSupplyFuseExitData memory data_) external {
-        _exit(data_);
+        _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset of Plasma Vault, params[1] - Farm dToken address
@@ -81,11 +81,12 @@ contract GearboxV3FarmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 farmdToken: farmdToken,
                 /// @dev dToken 1:1 Farm dToken
                 dTokenAmount: IERC4626(IFarmingPool(farmdToken).stakingToken()).convertToShares(amount)
-            })
+            }),
+            true
         );
     }
 
-    function _exit(GearboxV3FarmdSupplyFuseExitData memory data_) internal {
+    function _exit(GearboxV3FarmdSupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (data_.dTokenAmount == 0) {
             return;
         }
@@ -103,11 +104,20 @@ contract GearboxV3FarmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        try IFarmingPool(data_.farmdToken).withdraw(withdrawAmount) {
-            emit GearboxV3FarmdFuseExit(VERSION, data_.farmdToken, withdrawAmount);
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit GearboxV3FarmdFuseExitFailed(VERSION, data_.farmdToken, withdrawAmount);
+        _performWithdraw(data_.farmdToken, withdrawAmount, catchExceptions_);
+    }
+
+    function _performWithdraw(address farmdToken_, uint256 withdrawAmount_, bool catchExceptions_) private {
+        if (catchExceptions_) {
+            try IFarmingPool(farmdToken_).withdraw(withdrawAmount_) {
+                emit GearboxV3FarmdFuseExit(VERSION, farmdToken_, withdrawAmount_);
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit GearboxV3FarmdFuseExitFailed(VERSION, farmdToken_, withdrawAmount_);
+            }
+        } else {
+            IFarmingPool(farmdToken_).withdraw(withdrawAmount_);
+            emit GearboxV3FarmdFuseExit(VERSION, farmdToken_, withdrawAmount_);
         }
     }
 }

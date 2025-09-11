@@ -65,7 +65,7 @@ contract AaveV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     function exit(AaveV2SupplyFuseExitData calldata data_) external {
-        _exit(data_);
+        _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
@@ -74,10 +74,10 @@ contract AaveV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        _exit(AaveV2SupplyFuseExitData(asset, amount));
+        _exit(AaveV2SupplyFuseExitData(asset, amount), true);
     }
 
-    function _exit(AaveV2SupplyFuseExitData memory data_) internal {
+    function _exit(AaveV2SupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -100,11 +100,20 @@ contract AaveV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        try AAVE_POOL.withdraw(data_.asset, amountToWithdraw, address(this)) returns (uint256 withdrawnAmount) {
-            emit AaveV2SupplyFuseExit(VERSION, data_.asset, withdrawnAmount);
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit AaveV2SupplyFuseExitFailed(VERSION, data_.asset, data_.amount);
+        _performWithdraw(data_.asset, amountToWithdraw, catchExceptions_);
+    }
+
+     function _performWithdraw(address asset_, uint256 amountToWithdraw_, bool catchExceptions_) private {
+        if (catchExceptions_) {
+            try AAVE_POOL.withdraw(asset_, amountToWithdraw_, address(this)) returns (uint256 withdrawnAmount) {
+                emit AaveV2SupplyFuseExit(VERSION, asset_, withdrawnAmount);
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit AaveV2SupplyFuseExitFailed(VERSION, asset_, amountToWithdraw_);
+            }
+        } else {
+            uint256 withdrawnAmount = AAVE_POOL.withdraw(asset_, amountToWithdraw_, address(this));
+            emit AaveV2SupplyFuseExit(VERSION, asset_, withdrawnAmount);
         }
     }
 }
