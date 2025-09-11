@@ -11,7 +11,6 @@ import {IRouter} from "./ext/IRouter.sol";
 import {IPermit2} from "./ext/IPermit2.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @notice Data required to add liquidity proportionally into a Balancer V3 pool
 struct BalancerLiquidityProportionalFuseEnterData {
@@ -25,6 +24,14 @@ struct BalancerLiquidityProportionalFuseEnterData {
     uint256 exactBptAmountOut;
 }
 
+struct BalancerLiquidityProportionalFuseExitData {
+    /// @notice Pool address (also the BPT token)
+    address pool;
+    /// @notice Exact amount of BPT to burn
+    uint256 exactBptAmountIn;
+    /// @notice Minimum amounts of tokens to receive, in token registration order
+    uint256[] minAmountsOut;
+}
 /// @title BalancerLiquidityProportionalFuse
 /// @notice Fuse that adds/removes liquidity proportionally to/from a Balancer V3 pool via Router API
 contract BalancerLiquidityProportionalFuse is IFuseCommon {
@@ -75,7 +82,6 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
             revert BalancerLiquidityProportionalFuseInvalidParams();
         }
 
-        // Access control: pool must be granted as a substrate for this market
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
@@ -90,24 +96,18 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
         uint256 len = data_.tokens.length;
         for (uint256 i; i < len; ++i) {
             uint256 amountIn = data_.maxAmountsIn[i];
-            console2.log("IPermit2 amountIn:", amountIn);
-            console2.log("IPermit2 PERMIT2:", PERMIT2);
-            console2.log("IPermit2 BALANCER_ROUTER:", BALANCER_ROUTER);
-            console2.log("IPermit2 data_.tokens[i]:", data_.tokens[i]);
             if (amountIn > 0) {
                 IERC20(data_.tokens[i]).forceApprove(PERMIT2, amountIn);
                 IPermit2(PERMIT2).approve(
                     data_.tokens[i],
                     BALANCER_ROUTER,
-                    // amountIn.toUint160(),
-                    // uint48(block.timestamp + 10)
-                    type(uint160).max,
-                    type(uint48).max
+                    amountIn.toUint160(),
+                    uint48(block.timestamp + 1)
                 );
             }
         }
 
-        uint256[] memory amountsIn = IRouter(BALANCER_ROUTER).addLiquidityProportional{value: msg.value}(
+        uint256[] memory amountsIn = IRouter(BALANCER_ROUTER).addLiquidityProportional(
             data_.pool,
             data_.maxAmountsIn,
             data_.exactBptAmountOut,
@@ -117,21 +117,11 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
 
         emit BalancerLiquidityProportionalFuseEnter(VERSION, data_.pool, amountsIn, data_.exactBptAmountOut);
 
-        // Reset approvals to 0 to minimize allowance attack surface
         for (uint256 i; i < len; ++i) {
             if (data_.maxAmountsIn[i] > 0) {
                 IERC20(data_.tokens[i]).forceApprove(BALANCER_ROUTER, 0);
             }
         }
-    }
-
-    struct BalancerLiquidityProportionalFuseExitData {
-        /// @notice Pool address (also the BPT token)
-        address pool;
-        /// @notice Exact amount of BPT to burn
-        uint256 exactBptAmountIn;
-        /// @notice Minimum amounts of tokens to receive, in token registration order
-        uint256[] minAmountsOut;
     }
 
     /// @notice Removes liquidity proportionally from a Balancer V3 pool
@@ -170,7 +160,6 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
 
         emit BalancerLiquidityProportionalFuseExit(VERSION, data_.pool, amountsOut, data_.exactBptAmountIn);
 
-        // Reset approval to 0 to minimize allowance attack surface
         IERC20(data_.pool).forceApprove(BALANCER_ROUTER, 0);
     }
 }

@@ -9,6 +9,8 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 import {IRouter} from "./ext/IRouter.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IPermit2} from "./ext/IPermit2.sol";
 
 struct BalancerSingleTokenFuseEnterData {
     address pool;
@@ -17,12 +19,21 @@ struct BalancerSingleTokenFuseEnterData {
     uint256 exactBptAmountOut;
 }
 
+struct BalancerSingleTokenFuseExitData {
+    address pool;
+    address tokenOut;
+    uint256 maxBptAmountIn;
+    uint256 exactAmountOut;
+}
+
 contract BalancerSingleTokenFuse is IFuseCommon {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
     address public immutable BALANCER_ROUTER;
+    address public immutable PERMIT2;
 
     error BalancerSingleTokenFuseUnsupportedPool(address pool);
     error BalancerSingleTokenFuseInvalidParams();
@@ -44,13 +55,14 @@ contract BalancerSingleTokenFuse is IFuseCommon {
         uint256 exactAmountOut
     );
 
-    constructor(uint256 marketId_, address balancerRouter_) {
+    constructor(uint256 marketId_, address balancerRouter_, address permit2_) {
         if (balancerRouter_ == address(0)) {
             revert InvalidAddress();
         }
         VERSION = address(this);
         MARKET_ID = marketId_;
         BALANCER_ROUTER = balancerRouter_;
+        PERMIT2 = permit2_;
     }
 
     function enter(BalancerSingleTokenFuseEnterData calldata data_) external {
@@ -73,7 +85,13 @@ contract BalancerSingleTokenFuse is IFuseCommon {
             return;
         }
 
-        IERC20(data_.tokenIn).forceApprove(BALANCER_ROUTER, data_.maxAmountIn);
+        IERC20(data_.tokenIn).forceApprove(PERMIT2, data_.maxAmountIn);
+        IPermit2(PERMIT2).approve(
+            data_.tokenIn,
+            BALANCER_ROUTER,
+            data_.maxAmountIn.toUint160(),
+            uint48(block.timestamp + 1)
+        );
 
         uint256 amountIn = IRouter(BALANCER_ROUTER).addLiquiditySingleTokenExactOut(
             data_.pool,
@@ -87,13 +105,6 @@ contract BalancerSingleTokenFuse is IFuseCommon {
         emit BalancerSingleTokenFuseEnter(VERSION, data_.pool, data_.tokenIn, amountIn, data_.exactBptAmountOut);
 
         IERC20(data_.tokenIn).forceApprove(BALANCER_ROUTER, 0);
-    }
-
-    struct BalancerSingleTokenFuseExitData {
-        address pool;
-        address tokenOut;
-        uint256 maxBptAmountIn;
-        uint256 exactAmountOut;
     }
 
     function exit(BalancerSingleTokenFuseExitData calldata data_) external payable {

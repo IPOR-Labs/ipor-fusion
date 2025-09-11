@@ -97,7 +97,7 @@ contract BalancerGaugeFuse is IFuseCommon {
             revert BalancerGaugeFuseInsufficientBptAmount(data_.gaugeAddress, data_.bptAmount, data_.minBptAmount);
         }
 
-        ILiquidityGauge(data_.gaugeAddress).withdraw(withdrawAmount, address(this), false);
+        ILiquidityGauge(data_.gaugeAddress).withdraw(withdrawAmount, false);
 
         emit BalancerGaugeFuseExit(VERSION, data_.gaugeAddress, withdrawAmount);
     }

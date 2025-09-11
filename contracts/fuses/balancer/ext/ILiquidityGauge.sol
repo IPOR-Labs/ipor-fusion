@@ -13,10 +13,9 @@ interface ILiquidityGauge {
     /**
      * @notice Withdraw `_value` LP tokens
      * @param _value Number of tokens to withdraw
-     * @param _user The account to send gauge tokens to (defaults to msg.sender)
      * @param _claim_rewards (defaults to False)
      */
-    function withdraw(uint256 _value, address _user, bool _claim_rewards) external;
+    function withdraw(uint256 _value, bool _claim_rewards) external;
 
     function user_checkpoint(address _addr) external returns (bool);
 
