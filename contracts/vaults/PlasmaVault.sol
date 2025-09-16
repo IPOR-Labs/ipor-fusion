@@ -639,7 +639,7 @@ contract PlasmaVault is
     ///
     /// @param shares_ Number of vault shares to mint
     /// @param receiver_ Address to receive the minted shares
-    /// @return uint256 Amount of assets deposited
+    /// @return depositAssets Amount of assets deposited
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access Initially restricted to WHITELIST_ROLE, can be set to PUBLIC_ROLE via convertToPublicVault
     function mint(
