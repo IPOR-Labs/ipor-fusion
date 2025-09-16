@@ -28,6 +28,9 @@ import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGov
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
+import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+import {FeeConfig} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
@@ -100,6 +103,79 @@ contract FusionFactoryTest is Test {
         vm.startPrank(daoFeeManager);
         fusionFactory.updateDaoFee(daoFeeRecipient, 100, 100);
         vm.stopPrank();
+
+        address[] memory approvedAddresses = new address[](1);
+        approvedAddresses[0] = address(1);
+
+        address accessManagerBase = address(new IporFusionAccessManager(owner, 1 seconds));
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+
+        address contextManagerBase = address(new ContextManager(owner, approvedAddresses));
+        address priceManagerBase = address(new PriceOracleMiddlewareManager(owner, priceOracleMiddleware));
+
+        address plasmaVaultCoreBase = address(
+            new PlasmaVault(
+                PlasmaVaultInitData({
+                    assetName: "fake",
+                    assetSymbol: "fake",
+                    underlyingToken: address(underlyingToken),
+                    priceOracleMiddleware: priceOracleMiddleware,
+                    feeConfig: FeeConfig({
+                        feeFactory: factoryAddresses.feeManagerFactory,
+                        iporDaoManagementFee: 1,
+                        iporDaoPerformanceFee: 1,
+                        iporDaoFeeRecipientAddress: address(this)
+                    }),
+                    accessManager: accessManagerBase,
+                    plasmaVaultBase: plasmaVaultBase,
+                    withdrawManager: withdrawManagerBase
+                })
+            )
+        );
+
+        address rewardsManagerBase = address(new RewardsClaimManager(owner, plasmaVaultCoreBase));
+
+        vm.startPrank(maintenanceManager);
+        fusionFactory.updateBaseAddresses(
+            1,
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
+        );
+
+        vm.stopPrank();
+    }
+
+    function testShouldCloneFusionInstance() public {
+        //given
+        uint256 redemptionDelay = 1 seconds;
+
+        //when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        //then
+        assertEq(instance.assetName, "Test Asset");
+        assertEq(instance.assetSymbol, "TEST");
+        assertEq(instance.underlyingToken, address(underlyingToken));
+        assertEq(instance.initialOwner, owner);
+        assertEq(instance.plasmaVaultBase, plasmaVaultBase);
+
+        assertTrue(instance.accessManager != address(0));
+        assertTrue(instance.withdrawManager != address(0));
+        assertTrue(instance.priceManager != address(0));
+        assertTrue(instance.plasmaVault != address(0));
+        assertTrue(instance.rewardsManager != address(0));
+        assertTrue(instance.contextManager != address(0));
+        assertTrue(instance.feeManager != address(0));
     }
 
     function testShouldCreateFusionInstance() public {
