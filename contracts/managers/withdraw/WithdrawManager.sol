@@ -8,6 +8,7 @@ import {WithdrawManagerStorageLib} from "./WithdrawManagerStorageLib.sol";
 import {WithdrawRequest} from "./WithdrawManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
 import {IPlasmaVaultBase} from "../../interfaces/IPlasmaVaultBase.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 struct WithdrawRequestInfo {
     uint256 shares;
@@ -26,7 +27,7 @@ struct WithdrawRequestInfo {
  * - ATOMIST_ROLE: Required for updateWithdrawWindow
  * - PUBLIC_ROLE: Can call request, getLastReleaseFundsTimestamp, getWithdrawWindow, and requestInfo
  */
-contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
+contract WithdrawManager is Initializable, AccessManagedUpgradeable, ContextClient {
     error WithdrawManagerInvalidTimestamp(uint256 timestamp);
     error WithdrawManagerInvalidSharesToRelease(
         uint256 sharesToRelease,
@@ -36,8 +37,16 @@ contract WithdrawManager is AccessManagedUpgradeable, ContextClient {
     error WithdrawManagerZeroShares();
     error WithdrawManagerInvalidFee(uint256 fee);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address accessManager_) initializer {
-        super.__AccessManaged_init(accessManager_);
+        __AccessManaged_init(accessManager_);
+    }
+
+    /// @notice Initializes the WithdrawManager with access manager (for cloning)
+    /// @param accessManager_ The address of the access control manager
+    /// @dev This method is called after cloning to initialize the contract
+    function proxyInitialize(address accessManager_) external initializer {
+        __AccessManaged_init(accessManager_);
     }
 
     /**

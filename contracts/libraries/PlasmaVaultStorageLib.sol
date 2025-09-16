@@ -722,6 +722,20 @@ library PlasmaVaultStorageLib {
     bytes32 private constant WITHDRAW_MANAGER = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e11;
 
     /**
+     * @dev Storage slot for plasma vault base address. Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultBase")) - 1)) & ~bytes32(uint256(0xff))
+     */
+    bytes32 private constant PLASMA_VAULT_BASE_SLOT =
+        0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e12;
+
+    /**
+     * @dev Storage slot for share scale multiplier. Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.shareScaleMultiplier")) - 1)) & ~bytes32(uint256(0xff))
+     */
+    bytes32 private constant SHARE_SCALE_MULTIPLIER_SLOT =
+        0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e13;
+
+    /**
      * @notice Maps callback signatures to their handler contracts
      * @dev Stores routing information for protocol-specific callbacks
      * @custom:storage-location erc7201:io.ipor.callbackHandler
@@ -1101,6 +1115,42 @@ library PlasmaVaultStorageLib {
     function getWithdrawManager() internal pure returns (WithdrawManager storage withdrawManager) {
         assembly {
             withdrawManager.slot := WITHDRAW_MANAGER
+        }
+    }
+
+    /// @notice Gets the plasma vault base address from storage
+    /// @return The address of the plasma vault base contract
+    function getPlasmaVaultBase() internal view returns (address) {
+        address base;
+        assembly {
+            base := sload(PLASMA_VAULT_BASE_SLOT)
+        }
+        return base;
+    }
+
+    /// @notice Sets the plasma vault base address in storage
+    /// @param base_ The address of the plasma vault base contract
+    function setPlasmaVaultBase(address base_) internal {
+        assembly {
+            sstore(PLASMA_VAULT_BASE_SLOT, base_)
+        }
+    }
+
+    /// @notice Gets the share scale multiplier from storage
+    /// @return The share scale multiplier value
+    function getShareScaleMultiplier() internal view returns (uint256) {
+        uint256 multiplier;
+        assembly {
+            multiplier := sload(SHARE_SCALE_MULTIPLIER_SLOT)
+        }
+        return multiplier;
+    }
+
+    /// @notice Sets the share scale multiplier in storage
+    /// @param multiplier_ The share scale multiplier value
+    function setShareScaleMultiplier(uint256 multiplier_) internal {
+        assembly {
+            sstore(SHARE_SCALE_MULTIPLIER_SLOT, multiplier_)
         }
     }
 }

@@ -235,21 +235,43 @@ contract PlasmaVault is
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
-    address public immutable PLASMA_VAULT_BASE;
-    uint256 private immutable _SHARE_SCALE_MULTIPLIER; /// @dev 10^_decimalsOffset() multiplier for share scaling in ERC4626
+    /// @notice The plasma vault base contract address
+    /// @dev Retrieved from storage library
+    function PLASMA_VAULT_BASE() public view returns (address) {
+        return PlasmaVaultStorageLib.getPlasmaVaultBase();
+    }
 
-    // /// @notice Constructor with initialization for direct deployment
-    // /// @dev Used when deploying directly without proxy
-    // /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
+    /// @notice The share scale multiplier for ERC4626 operations
+    /// @dev Retrieved from storage library
+    function _SHARE_SCALE_MULTIPLIER() public view returns (uint256) {
+        return PlasmaVaultStorageLib.getShareScaleMultiplier();
+    }
+
+    /// @notice Constructor with initialization for direct deployment
+    /// @dev Used when deploying directly without proxy
+    /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
     constructor(PlasmaVaultInitData memory initData_) ERC20Upgradeable() ERC4626Upgradeable() initializer {
+        _initializeVault(initData_);
+    }
+
+    /// @notice Initializes the PlasmaVault with initialization data (for cloning)
+    /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
+    /// @dev This method is called after cloning to initialize the contract
+    function proxyInitialize(PlasmaVaultInitData memory initData_) external initializer {
+        _initializeVault(initData_);
+    }
+
+    /// @notice Private method containing the common initialization logic
+    /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
+    /// @dev This method is used by both constructor and proxyInitialize to avoid code duplication
+    function _initializeVault(PlasmaVaultInitData memory initData_) private {
         super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
         super.__ERC4626_init(IERC20(initData_.underlyingToken));
 
-        _SHARE_SCALE_MULTIPLIER = 10 ** _decimalsOffset();
+        PlasmaVaultStorageLib.setShareScaleMultiplier(10 ** _decimalsOffset());
+        PlasmaVaultStorageLib.setPlasmaVaultBase(initData_.plasmaVaultBase);
 
-        PLASMA_VAULT_BASE = initData_.plasmaVaultBase;
-
-        PLASMA_VAULT_BASE.functionDelegateCall(
+        initData_.plasmaVaultBase.functionDelegateCall(
             abi.encodeWithSelector(
                 IPlasmaVaultBase.init.selector,
                 initData_.assetName,
@@ -269,7 +291,7 @@ contract PlasmaVault is
         FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
             FeeManagerInitData({
                 initialAuthority: initData_.accessManager,
-                plasmaVault: address(this),
+                plasmaVault: address(this), //TODO: check if this is correct
                 iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
                 iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
                 iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress,
@@ -317,7 +339,7 @@ contract PlasmaVault is
             CallbackHandlerLib.handleCallback();
             return "";
         } else {
-            return PLASMA_VAULT_BASE.functionDelegateCall(msg.data);
+            return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
         }
     }
 
@@ -1409,7 +1431,7 @@ contract PlasmaVault is
     }
 
     function _update(address from_, address to_, uint256 value_) internal virtual override {
-        PLASMA_VAULT_BASE.functionDelegateCall(
+        PLASMA_VAULT_BASE().functionDelegateCall(
             abi.encodeWithSelector(IPlasmaVaultBase.updateInternal.selector, from_, to_, value_)
         );
     }
@@ -1423,8 +1445,8 @@ contract PlasmaVault is
 
         return
             supply == 0
-                ? assets * _SHARE_SCALE_MULTIPLIER
-                : assets.mulDiv(supply + _SHARE_SCALE_MULTIPLIER, totalAssets() + 1, rounding);
+                ? assets * _SHARE_SCALE_MULTIPLIER()
+                : assets.mulDiv(supply + _SHARE_SCALE_MULTIPLIER(), totalAssets() + 1, rounding);
     }
 
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual override returns (uint256) {
@@ -1432,7 +1454,7 @@ contract PlasmaVault is
 
         return
             supply == 0
-                ? shares.mulDiv(1, _SHARE_SCALE_MULTIPLIER, rounding)
-                : shares.mulDiv(totalAssets() + 1, supply + _SHARE_SCALE_MULTIPLIER, rounding);
+                ? shares.mulDiv(1, _SHARE_SCALE_MULTIPLIER(), rounding)
+                : shares.mulDiv(totalAssets() + 1, supply + _SHARE_SCALE_MULTIPLIER(), rounding);
     }
 }

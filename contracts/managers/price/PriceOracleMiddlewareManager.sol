@@ -9,6 +9,7 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 import {IPriceFeed} from "../../price_oracle/price_feed/IPriceFeed.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /// @title Price Oracle Middleware Manager
 /// @notice Manages price sources for assets and provides price information
@@ -16,7 +17,7 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 /// @dev Access control is managed through roles:
 /// @dev - PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE: Can set and remove asset price sources
 /// @dev - ATOMIST_ROLE: Can set the price oracle middleware address
-contract PriceOracleMiddlewareManager is AccessManagedUpgradeable, ContextClient, UniversalReader {
+contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable, ContextClient, UniversalReader {
     using SafeCast for int256;
 
     /// @dev Quote currency address representing USD (Chainlink standard)
@@ -45,7 +46,20 @@ contract PriceOracleMiddlewareManager is AccessManagedUpgradeable, ContextClient
     /// @notice Thrown when input arrays have mismatched lengths
     error ArrayLengthMismatch();
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address initialAuthority_, address priceOracleMiddleware_) initializer {
+        _initialize(initialAuthority_, priceOracleMiddleware_);
+    }
+
+    /// @notice Initializes the PriceOracleMiddlewareManager with authority and price oracle middleware
+    /// @param initialAuthority_ The address of the initial authority
+    /// @param priceOracleMiddleware_ The address of the price oracle middleware
+    /// @dev This method is called after cloning to initialize the contract
+    function proxyInitialize(address initialAuthority_, address priceOracleMiddleware_) external initializer {
+        _initialize(initialAuthority_, priceOracleMiddleware_);
+    }
+
+    function _initialize(address initialAuthority_, address priceOracleMiddleware_) private {
         if (initialAuthority_ == address(0)) {
             revert InvalidAuthority();
         }

@@ -14,6 +14,14 @@ library RewardsClaimManagersStorageLib {
     /// keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.VestingData")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant VESTING_DATA = 0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc00;
 
+    /// @dev Storage slot for underlying token address. Computed as:
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.UnderlyingToken")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant UNDERLYING_TOKEN_SLOT = 0x7ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc01;
+
+    /// @dev Storage slot for plasma vault address. Computed as:
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.PlasmaVault")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant PLASMA_VAULT_SLOT = 0x8ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc02;
+
     /// @notice Emitted when vesting data is updated
     /// @param transferredTokens Amount of tokens that have been transferred to the Plasma Vault
     /// @param balanceOnLastUpdate Balance of tokens at the last update
@@ -78,5 +86,41 @@ library RewardsClaimManagersStorageLib {
         uint128 releasedTokens = vestingData.transferredTokens + amount_.toUint128();
         vestingData.transferredTokens = releasedTokens;
         emit TransferredTokensUpdated(releasedTokens);
+    }
+
+    /// @notice Gets the underlying token address from storage
+    /// @return The address of the underlying token
+    function getUnderlyingToken() internal view returns (address) {
+        address token;
+        assembly {
+            token := sload(UNDERLYING_TOKEN_SLOT)
+        }
+        return token;
+    }
+
+    /// @notice Sets the underlying token address in storage
+    /// @param token_ The address of the underlying token
+    function setUnderlyingToken(address token_) internal {
+        assembly {
+            sstore(UNDERLYING_TOKEN_SLOT, token_)
+        }
+    }
+
+    /// @notice Gets the plasma vault address from storage
+    /// @return The address of the plasma vault
+    function getPlasmaVault() internal view returns (address) {
+        address vault;
+        assembly {
+            vault := sload(PLASMA_VAULT_SLOT)
+        }
+        return vault;
+    }
+
+    /// @notice Sets the plasma vault address in storage
+    /// @param vault_ The address of the plasma vault
+    function setPlasmaVault(address vault_) internal {
+        assembly {
+            sstore(PLASMA_VAULT_SLOT, vault_)
+        }
     }
 }

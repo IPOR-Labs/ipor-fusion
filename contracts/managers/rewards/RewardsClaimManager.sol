@@ -29,10 +29,16 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     using SafeCast for uint256;
 
     /// @notice The underlying token used for rewards
-    address public immutable UNDERLYING_TOKEN;
+    /// @dev Retrieved from storage library
+    function UNDERLYING_TOKEN() public view returns (address) {
+        return RewardsClaimManagersStorageLib.getUnderlyingToken();
+    }
 
     /// @notice The address of the Plasma Vault contract
-    address public immutable PLASMA_VAULT;
+    /// @dev Retrieved from storage library
+    function PLASMA_VAULT() public view returns (address) {
+        return RewardsClaimManagersStorageLib.getPlasmaVault();
+    }
 
     error UnableToTransferUnderlyingToken();
 
@@ -40,16 +46,24 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// @param amount The amount of tokens withdrawn
     event AmountWithdrawn(uint256 amount);
 
-    /// @notice Initializes the RewardsClaimManager
-    /// @param initialAuthority_ The initial authority address for access control
-    /// @param plasmaVault_ The address of the Plasma Vault contract
-    /// @dev Sets up initial vesting time and configures access control
-    /// @custom:access Only during initialization
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address initialAuthority_, address plasmaVault_) initializer {
+        _initialize(initialAuthority_, plasmaVault_);
+    }
+
+    /// @notice Initializes the RewardsClaimManager with access manager and plasma vault (for cloning)
+    /// @param initialAuthority_ The address of the access control manager
+    /// @param plasmaVault_ The address of the Plasma Vault contract
+    /// @dev This method is called after cloning to initialize the contract
+    function proxyInitialize(address initialAuthority_, address plasmaVault_) external initializer {
+        _initialize(initialAuthority_, plasmaVault_);
+    }
+
+    function _initialize(address initialAuthority_, address plasmaVault_) private {
         super.__AccessManaged_init_unchained(initialAuthority_);
 
-        UNDERLYING_TOKEN = PlasmaVault(plasmaVault_).asset();
-        PLASMA_VAULT = plasmaVault_;
+        RewardsClaimManagersStorageLib.setUnderlyingToken(PlasmaVault(plasmaVault_).asset());
+        RewardsClaimManagersStorageLib.setPlasmaVault(plasmaVault_);
 
         RewardsClaimManagersStorageLib.setupVestingTime(1);
     }
@@ -62,7 +76,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
         VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
 
         if (data.vestingTime == 0) {
-            return IERC20(UNDERLYING_TOKEN).balanceOf(address(this));
+            return IERC20(UNDERLYING_TOKEN()).balanceOf(address(this));
         }
 
         if (data.updateBalanceTimestamp == 0) {
@@ -114,7 +128,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// @dev Cannot transfer the underlying token
     /// @custom:access TRANSFER_REWARDS_ROLE
     function transfer(address asset_, address to_, uint256 amount_) external restricted {
-        if (asset_ == UNDERLYING_TOKEN) {
+        if (asset_ == UNDERLYING_TOKEN()) {
             revert UnableToTransferUnderlyingToken();
         }
 
@@ -137,7 +151,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
             }
         }
 
-        PlasmaVault(PLASMA_VAULT).claimRewards(calls_);
+        PlasmaVault(PLASMA_VAULT()).claimRewards(calls_);
     }
 
     /// @notice Updates the balance and vesting schedule
@@ -147,13 +161,13 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
         uint256 balance = balanceOf();
 
         if (balance > 0) {
-            IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
+            IERC20(UNDERLYING_TOKEN()).safeTransfer(PLASMA_VAULT(), balance);
         }
 
         VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
 
         data.updateBalanceTimestamp = block.timestamp.toUint32();
-        data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN).balanceOf(address(this)).toUint128();
+        data.lastUpdateBalance = IERC20(UNDERLYING_TOKEN()).balanceOf(address(this)).toUint128();
         data.transferredTokens = 0;
 
         RewardsClaimManagersStorageLib.setVestingData(data);
@@ -169,7 +183,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
             return;
         }
 
-        IERC20(UNDERLYING_TOKEN).safeTransfer(PLASMA_VAULT, balance);
+        IERC20(UNDERLYING_TOKEN()).safeTransfer(PLASMA_VAULT(), balance);
         RewardsClaimManagersStorageLib.updateTransferredTokens(balance);
 
         emit AmountWithdrawn(balance);

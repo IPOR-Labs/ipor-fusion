@@ -114,14 +114,21 @@ contract ContextManager is AccessManagedUpgradeable {
     /// @notice Chain ID used for signature verification
     uint256 public immutable CHAIN_ID;
 
-    /**
-     * @notice Initializes the ContextManager with initial authority and approved addresses
-     * @param initialAuthority_ Address of the initial authority for access control
-     * @param approvedTargets_ Array of initially approved targets
-     * @dev Sets up access control and approved addresses list
-     * @custom:security Validates initial authority and approved addresses
-     */
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address initialAuthority_, address[] memory approvedTargets_) initializer {
+        CHAIN_ID = block.chainid;
+        _initialize(initialAuthority_, approvedTargets_);
+    }
+
+    /// @notice Initializes the ContextManager with access manager and approved targets (for cloning)
+    /// @param initialAuthority_ The address of the access control manager
+    /// @param approvedTargets_ Array of initially approved targets
+    /// @dev This method is called after cloning to initialize the contract
+    function proxyInitialize(address initialAuthority_, address[] memory approvedTargets_) external initializer {
+        _initialize(initialAuthority_, approvedTargets_);
+    }
+
+    function _initialize(address initialAuthority_, address[] memory approvedTargets_) private {
         if (initialAuthority_ == address(0)) {
             revert InvalidAuthority();
         }
@@ -141,10 +148,7 @@ contract ContextManager is AccessManagedUpgradeable {
 
             ContextManagerStorageLib.addApprovedTarget(approvedTargets_[i]);
         }
-
-        CHAIN_ID = block.chainid;
     }
-
     /**
      * @notice Gets the current nonce for a specific address
      * @param sender_ The sender to get the nonce for

@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {IIporFusionAccessManager} from "../../interfaces/IIporFusionAccessManager.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
@@ -39,7 +40,7 @@ import {Roles} from "../../libraries/Roles.sol";
  * - Timelock controls for sensitive operations
  *
  */
-contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
+contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, AccessManager {
     error AccessManagedUnauthorized(address caller);
     error TooShortExecutionDelayForRole(uint64 roleId, uint32 executionDelay);
     error TooLongRedemptionDelay(uint256 redemptionDelayInSeconds);
@@ -48,7 +49,7 @@ contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
     uint256 public constant MAX_REDEMPTION_DELAY_IN_SECONDS = 7 days;
 
     /// @notice Actual redemption delay in seconds for this instance
-    uint256 public immutable override REDEMPTION_DELAY_IN_SECONDS;
+    uint256 public override REDEMPTION_DELAY_IN_SECONDS;
 
     /// @dev Flag to track custom schedule consumption
     bool private _customConsumingSchedule;
@@ -62,17 +63,25 @@ contract IporFusionAccessManager is IIporFusionAccessManager, AccessManager {
         _;
     }
 
-    /**
-     * @notice Constructor sets up initial admin and redemption delay
-     * @param initialAdmin_ Address of the initial admin
-     * @param redemptionDelayInSeconds_ Initial redemption delay in seconds
-     * @custom:security Validates redemption delay is within bounds
-     */
-    constructor(address initialAdmin_, uint256 redemptionDelayInSeconds_) AccessManager(initialAdmin_) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address initialAdmin_, uint256 redemptionDelayInSeconds_) AccessManager(initialAdmin_) initializer {
+        _initialize(initialAdmin_, redemptionDelayInSeconds_);
+    }
+
+    function proxyInitialize(address initialAdmin_, uint256 redemptionDelayInSeconds_) external initializer {
+        _initialize(initialAdmin_, redemptionDelayInSeconds_);
+    }
+
+    /// @notice Private method containing the common initialization logic
+    /// @param initialAdmin_ The initial admin address
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
+    /// @dev This method is used by both constructor and proxyInitialize to avoid code duplication
+    function _initialize(address initialAdmin_, uint256 redemptionDelayInSeconds_) private {
         if (redemptionDelayInSeconds_ > MAX_REDEMPTION_DELAY_IN_SECONDS) {
             revert TooLongRedemptionDelay(redemptionDelayInSeconds_);
         }
         REDEMPTION_DELAY_IN_SECONDS = redemptionDelayInSeconds_;
+        _grantRole(ADMIN_ROLE, initialAdmin_, 0, 0);
     }
 
     /**

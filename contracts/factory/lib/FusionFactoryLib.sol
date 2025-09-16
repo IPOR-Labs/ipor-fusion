@@ -139,11 +139,7 @@ library FusionFactoryLib {
 
         fusionAddresses.version = FusionFactoryStorageLib.getFusionFactoryVersion();
 
-        uint256 fusionFactoryIndex = FusionFactoryStorageLib.getFusionFactoryIndex();
-        fusionFactoryIndex++;
-        FusionFactoryStorageLib.setFusionFactoryIndex(fusionFactoryIndex);
-
-        fusionAddresses.index = fusionFactoryIndex;
+        fusionAddresses.index = _increaseFusionFactoryIndex();
 
         fusionAddresses.assetName = assetName_;
         fusionAddresses.assetSymbol = assetSymbol_;
@@ -160,18 +156,18 @@ library FusionFactoryLib {
             .getFactoryAddresses();
 
         fusionAddresses.accessManager = AccessManagerFactory(factoryAddresses.accessManagerFactory).create(
-            fusionFactoryIndex,
+            fusionAddresses.index,
             address(this),
             redemptionDelayInSeconds_
         );
 
         fusionAddresses.withdrawManager = WithdrawManagerFactory(factoryAddresses.withdrawManagerFactory).create(
-            fusionFactoryIndex,
+            fusionAddresses.index,
             fusionAddresses.accessManager
         );
 
         fusionAddresses.priceManager = PriceManagerFactory(factoryAddresses.priceManagerFactory).create(
-            fusionFactoryIndex,
+            fusionAddresses.index,
             fusionAddresses.accessManager,
             FusionFactoryStorageLib.getPriceOracleMiddleware()
         );
@@ -183,7 +179,7 @@ library FusionFactoryLib {
         }
 
         fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).create(
-            fusionFactoryIndex,
+            fusionAddresses.index,
             PlasmaVaultInitData({
                 assetName: assetName_,
                 assetSymbol: assetSymbol_,
@@ -204,7 +200,7 @@ library FusionFactoryLib {
         fusionAddresses.assetDecimals = IERC20Metadata(fusionAddresses.plasmaVault).decimals();
 
         fusionAddresses.rewardsManager = RewardsManagerFactory(factoryAddresses.rewardsManagerFactory).create(
-            fusionFactoryIndex,
+            fusionAddresses.index,
             fusionAddresses.accessManager,
             fusionAddresses.plasmaVault
         );
@@ -223,7 +219,7 @@ library FusionFactoryLib {
         approvedAddresses[4] = fusionAddresses.feeManager;
 
         fusionAddresses.contextManager = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(
-            fusionFactoryIndex,
+            fusionAddresses.index,
             fusionAddresses.accessManager,
             approvedAddresses
         );
@@ -282,6 +278,180 @@ library FusionFactoryLib {
         _emitEvent(fusionAddresses);
 
         return fusionAddresses;
+    }
+
+    function clone(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_,
+        bool withAdmin_
+    ) public returns (FusionInstance memory fusionAddresses) {
+        if (underlyingToken_ == address(0)) revert InvalidUnderlyingToken();
+        if (owner_ == address(0)) revert InvalidOwner();
+
+        fusionAddresses.version = FusionFactoryStorageLib.getFusionFactoryVersion();
+
+        fusionAddresses.index = _increaseFusionFactoryIndex();
+
+        fusionAddresses.assetName = assetName_;
+        fusionAddresses.assetSymbol = assetSymbol_;
+
+        fusionAddresses.underlyingToken = underlyingToken_;
+        fusionAddresses.underlyingTokenSymbol = IERC20Metadata(underlyingToken_).symbol();
+        fusionAddresses.underlyingTokenDecimals = IERC20Metadata(underlyingToken_).decimals();
+
+        fusionAddresses.initialOwner = owner_;
+
+        fusionAddresses.plasmaVaultBase = FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
+
+        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = FusionFactoryStorageLib.getBaseAddresses();
+
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib
+            .getFactoryAddresses();
+
+        fusionAddresses.accessManager = AccessManagerFactory(factoryAddresses.accessManagerFactory).clone(
+            baseAddresses.accessManagerBase,
+            fusionAddresses.index,
+            address(this),
+            redemptionDelayInSeconds_
+        );
+
+        require(baseAddresses.withdrawManagerBase != address(0), "WithdrawManagerFactory: Invalid base address");
+
+        fusionAddresses.withdrawManager = WithdrawManagerFactory(factoryAddresses.withdrawManagerFactory).clone(
+            baseAddresses.withdrawManagerBase,
+            fusionAddresses.index,
+            fusionAddresses.accessManager
+        );
+
+        require(baseAddresses.priceManagerBase != address(0), "PriceManagerFactory: Invalid base address");
+        fusionAddresses.priceManager = PriceManagerFactory(factoryAddresses.priceManagerFactory).clone(
+            baseAddresses.priceManagerBase,
+            fusionAddresses.index,
+            fusionAddresses.accessManager,
+            FusionFactoryStorageLib.getPriceOracleMiddleware()
+        );
+
+        // address daoFeeRecipientAddress = FusionFactoryStorageLib.getDaoFeeRecipientAddress();
+
+        // if (daoFeeRecipientAddress == address(0)) {
+        //     revert InvalidDaoFeeRecipient();
+        // }
+
+        DataForInitialization memory accessData;
+        accessData.isPublic = false;
+
+        if (withAdmin_) {
+            accessData.admins = FusionFactoryStorageLib.getPlasmaVaultAdminArray();
+        }
+
+        accessData.owners = new address[](1);
+        accessData.owners[0] = owner_;
+
+        accessData.iporDaos = new address[](1);
+        accessData.iporDaos[0] = FusionFactoryStorageLib.getDaoFeeRecipientAddress();
+
+        fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).clone(
+            FusionFactoryStorageLib.getPlasmaVaultCoreBaseAddress(),
+            fusionAddresses.index,
+            PlasmaVaultInitData({
+                assetName: assetName_,
+                assetSymbol: assetSymbol_,
+                underlyingToken: underlyingToken_,
+                priceOracleMiddleware: fusionAddresses.priceManager,
+                feeConfig: FeeConfig({
+                    feeFactory: factoryAddresses.feeManagerFactory,
+                    iporDaoManagementFee: FusionFactoryStorageLib.getDaoManagementFee(),
+                    iporDaoPerformanceFee: FusionFactoryStorageLib.getDaoPerformanceFee(),
+                    iporDaoFeeRecipientAddress: accessData.iporDaos[0]
+                }),
+                accessManager: fusionAddresses.accessManager,
+                plasmaVaultBase: fusionAddresses.plasmaVaultBase,
+                withdrawManager: fusionAddresses.withdrawManager
+            })
+        );
+
+        fusionAddresses.assetDecimals = IERC20Metadata(fusionAddresses.plasmaVault).decimals();
+
+        require(baseAddresses.rewardsManagerBase != address(0), "RewardsManagerFactory: Invalid base address");
+        fusionAddresses.rewardsManager = RewardsManagerFactory(factoryAddresses.rewardsManagerFactory).clone(
+            baseAddresses.rewardsManagerBase,
+            fusionAddresses.index,
+            fusionAddresses.accessManager,
+            fusionAddresses.plasmaVault
+        );
+
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData = IPlasmaVaultGovernance(
+            fusionAddresses.plasmaVault
+        ).getPerformanceFeeData();
+
+        fusionAddresses.feeManager = FeeAccount(performanceFeeData.feeAccount).FEE_MANAGER();
+
+        address[] memory approvedAddresses = new address[](5);
+        approvedAddresses[0] = fusionAddresses.plasmaVault;
+        approvedAddresses[1] = fusionAddresses.withdrawManager;
+        approvedAddresses[2] = fusionAddresses.priceManager;
+        approvedAddresses[3] = fusionAddresses.rewardsManager;
+        approvedAddresses[4] = fusionAddresses.feeManager;
+
+        require(baseAddresses.contextManagerBase != address(0), "ContextManagerFactory: Invalid base address");
+        fusionAddresses.contextManager = ContextManagerFactory(factoryAddresses.contextManagerFactory).clone(
+            baseAddresses.contextManagerBase,
+            fusionAddresses.index,
+            fusionAddresses.accessManager,
+            approvedAddresses
+        );
+
+        IRewardsClaimManager(fusionAddresses.rewardsManager).setupVestingTime(
+            FusionFactoryStorageLib.getVestingPeriodInSeconds()
+        );
+
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).setRewardsClaimManagerAddress(
+            fusionAddresses.rewardsManager
+        );
+
+        WithdrawManager(fusionAddresses.withdrawManager).updateWithdrawWindow(
+            FusionFactoryStorageLib.getWithdrawWindowInSeconds()
+        );
+        WithdrawManager(fusionAddresses.withdrawManager).updatePlasmaVaultAddress(fusionAddresses.plasmaVault);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = FusionFactoryStorageLib.getBurnRequestFeeFuseAddress();
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).addFuses(fuses);
+
+        IPlasmaVaultGovernance(fusionAddresses.plasmaVault).addBalanceFuse(
+            IporFusionMarkets.ZERO_BALANCE_MARKET,
+            FusionFactoryStorageLib.getBurnRequestFeeBalanceFuseAddress()
+        );
+
+        FeeManager(fusionAddresses.feeManager).initialize();
+
+        accessData.plasmaVaultAddress = PlasmaVaultAddress({
+            plasmaVault: fusionAddresses.plasmaVault,
+            accessManager: fusionAddresses.accessManager,
+            rewardsClaimManager: fusionAddresses.rewardsManager,
+            withdrawManager: fusionAddresses.withdrawManager,
+            feeManager: fusionAddresses.feeManager,
+            contextManager: fusionAddresses.contextManager,
+            priceOracleMiddlewareManager: fusionAddresses.priceManager
+        });
+
+        IporFusionAccessManager(fusionAddresses.accessManager).initialize(
+            IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(accessData)
+        );
+
+        _emitEvent(fusionAddresses);
+
+        return fusionAddresses;
+    }
+
+    function _increaseFusionFactoryIndex() internal returns (uint256) {
+        uint256 fusionFactoryIndex = FusionFactoryStorageLib.getFusionFactoryIndex();
+        fusionFactoryIndex++;
+        FusionFactoryStorageLib.setFusionFactoryIndex(fusionFactoryIndex);
+        return fusionFactoryIndex;
     }
 
     function _emitEvent(FusionInstance memory fusionAddresses) internal {

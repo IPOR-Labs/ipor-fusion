@@ -22,6 +22,14 @@ pragma solidity 0.8.26;
  * - Storage slots are carefully chosen and must not be modified
  */
 library FusionFactoryStorageLib {
+    struct BaseAddresses {
+        address accessManagerBase;
+        address withdrawManagerBase;
+        address rewardsManagerBase;
+        address contextManagerBase;
+        address priceManagerBase;
+        address plasmaVaultCoreBase;
+    }
     struct FactoryAddresses {
         address accessManagerFactory;
         address plasmaVaultFactory;
@@ -117,6 +125,30 @@ library FusionFactoryStorageLib {
     bytes32 private constant VESTING_PERIOD_IN_SECONDS =
         0xe7de166eee522f429c14923fb385ff49d6c65d576ad910fc76c16800f269be00;
 
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.AccessManagerBaseAddress")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ACCESS_MANAGER_BASE_ADDRESS =
+        0xdee5af15cbb5c7d3f575c81c43b164c912e2cacae09ac95ab04460973550ec00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.WithdrawManagerBaseAddress")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant WITHDRAW_MANAGER_BASE_ADDRESS =
+        0x71c920154481896f4e6224fa3f403d92b902534a39efd0adf8948440a29f6900;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.RewardsManagerBaseAddress")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant REWARDS_MANAGER_BASE_ADDRESS =
+        0x7947c1b14a70a26b8ee1c91656f600b5c452629fc225e1bd435f2d73da810600;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.ContextManagerBaseAddress")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant CONTEXT_MANAGER_BASE_ADDRESS =
+        0x327c4805778da4e3703f4a6907d698c910c93cbbedf6f536be61f90d407ed600;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PriceManagerBaseAddress")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant PRICE_MANAGER_BASE_ADDRESS =
+        0x5e1e7003d30cfb3abdb5e35688c765a955b6455e91670898a8e5c73d9c677000;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultCoreBaseAddress")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant PLASMA_VAULT_CORE_BASE_ADDRESS =
+        0x5e1e7003d30cfb3abdb5e35688c765a955b6455e91670898a8e5c73d9c677001;
+
     function getFactoryAddresses() internal view returns (FactoryAddresses memory) {
         return
             FactoryAddresses({
@@ -127,6 +159,18 @@ library FusionFactoryStorageLib {
                 rewardsManagerFactory: _getRewardsManagerFactoryAddressSlot().value,
                 contextManagerFactory: _getContextManagerFactoryAddressSlot().value,
                 priceManagerFactory: _getPriceManagerFactoryAddressSlot().value
+            });
+    }
+
+    function getBaseAddresses() internal view returns (BaseAddresses memory) {
+        return
+            BaseAddresses({
+                accessManagerBase: _getAccessManagerBaseAddressSlot().value,
+                withdrawManagerBase: _getWithdrawManagerBaseAddressSlot().value,
+                rewardsManagerBase: _getRewardsManagerBaseAddressSlot().value,
+                contextManagerBase: _getContextManagerBaseAddressSlot().value,
+                priceManagerBase: _getPriceManagerBaseAddressSlot().value,
+                plasmaVaultCoreBase: _getPlasmaVaultCoreBaseAddressSlot().value
             });
     }
 
@@ -176,6 +220,30 @@ library FusionFactoryStorageLib {
 
     function getVestingPeriodInSeconds() internal view returns (uint256) {
         return _getVestingPeriodInSecondsSlot().value;
+    }
+
+    function getAccessManagerBaseAddress() internal view returns (address) {
+        return _getAccessManagerBaseAddressSlot().value;
+    }
+
+    function getWithdrawManagerBaseAddress() internal view returns (address) {
+        return _getWithdrawManagerBaseAddressSlot().value;
+    }
+
+    function getRewardsManagerBaseAddress() internal view returns (address) {
+        return _getRewardsManagerBaseAddressSlot().value;
+    }
+
+    function getContextManagerBaseAddress() internal view returns (address) {
+        return _getContextManagerBaseAddressSlot().value;
+    }
+
+    function getPriceManagerBaseAddress() internal view returns (address) {
+        return _getPriceManagerBaseAddressSlot().value;
+    }
+
+    function getPlasmaVaultCoreBaseAddress() internal view returns (address) {
+        return _getPlasmaVaultCoreBaseAddressSlot().value;
     }
 
     function setFusionFactoryVersion(uint256 value) internal {
@@ -253,6 +321,60 @@ library FusionFactoryStorageLib {
 
     function setVestingPeriodInSeconds(uint256 value) internal {
         _getVestingPeriodInSecondsSlot().value = value;
+    }
+
+    function setAccessManagerBaseAddress(address value) internal {
+        _getAccessManagerBaseAddressSlot().value = value;
+    }
+
+    function setWithdrawManagerBaseAddress(address value) internal {
+        _getWithdrawManagerBaseAddressSlot().value = value;
+    }
+
+    function setRewardsManagerBaseAddress(address value) internal {
+        _getRewardsManagerBaseAddressSlot().value = value;
+    }
+
+    function setContextManagerBaseAddress(address value) internal {
+        _getContextManagerBaseAddressSlot().value = value;
+    }
+
+    function setPriceManagerBaseAddress(address value) internal {
+        _getPriceManagerBaseAddressSlot().value = value;
+    }
+
+    function setPlasmaVaultCoreBaseAddress(address value) internal {
+        _getPlasmaVaultCoreBaseAddressSlot().value = value;
+    }
+
+    function _getAccessManagerBaseAddressSlot() private pure returns (AddressType storage $) {
+        assembly {
+            $.slot := ACCESS_MANAGER_BASE_ADDRESS
+        }
+    }
+
+    function _getWithdrawManagerBaseAddressSlot() private pure returns (AddressType storage $) {
+        assembly {
+            $.slot := WITHDRAW_MANAGER_BASE_ADDRESS
+        }
+    }
+
+    function _getRewardsManagerBaseAddressSlot() private pure returns (AddressType storage $) {
+        assembly {
+            $.slot := REWARDS_MANAGER_BASE_ADDRESS
+        }
+    }
+
+    function _getContextManagerBaseAddressSlot() private pure returns (AddressType storage $) {
+        assembly {
+            $.slot := CONTEXT_MANAGER_BASE_ADDRESS
+        }
+    }
+
+    function _getPriceManagerBaseAddressSlot() private pure returns (AddressType storage $) {
+        assembly {
+            $.slot := PRICE_MANAGER_BASE_ADDRESS
+        }
     }
 
     function _getFusionFactoryVersionSlot() private pure returns (Uint256Type storage $) {
@@ -366,6 +488,12 @@ library FusionFactoryStorageLib {
     function _getVestingPeriodInSecondsSlot() private pure returns (Uint256Type storage $) {
         assembly {
             $.slot := VESTING_PERIOD_IN_SECONDS
+        }
+    }
+
+    function _getPlasmaVaultCoreBaseAddressSlot() private pure returns (AddressType storage $) {
+        assembly {
+            $.slot := PLASMA_VAULT_CORE_BASE_ADDRESS
         }
     }
 }

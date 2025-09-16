@@ -88,6 +88,17 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
             );
     }
 
+    function clone(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_
+    ) external returns (FusionFactoryLib.FusionInstance memory) {
+        return
+            FusionFactoryLib.clone(assetName_, assetSymbol_, underlyingToken_, redemptionDelayInSeconds_, owner_, true);
+    }
+
     /// @notice Creates a new Fusion Vault with admin role
     /// @param assetName_ The name of the asset
     /// @param assetSymbol_ The symbol of the asset
@@ -172,6 +183,28 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
             contextManagerFactory: newFactoryAddresses_.contextManagerFactory,
             priceManagerFactory: newFactoryAddresses_.priceManagerFactory
         });
+    }
+
+    function updateBaseAddresses(
+        address newAccessManagerBase_,
+        address newWithdrawManagerBase_,
+        address newRewardsManagerBase_,
+        address newContextManagerBase_,
+        address newPriceManagerBase_,
+        address newPlasmaVaultCoreBase_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+        if (newAccessManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newWithdrawManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newRewardsManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newContextManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newPriceManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newPlasmaVaultCoreBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        FusionFactoryStorageLib.setAccessManagerBaseAddress(newAccessManagerBase_);
+        FusionFactoryStorageLib.setWithdrawManagerBaseAddress(newWithdrawManagerBase_);
+        FusionFactoryStorageLib.setRewardsManagerBaseAddress(newRewardsManagerBase_);
+        FusionFactoryStorageLib.setContextManagerBaseAddress(newContextManagerBase_);
+        FusionFactoryStorageLib.setPriceManagerBaseAddress(newPriceManagerBase_);
+        FusionFactoryStorageLib.setPlasmaVaultCoreBaseAddress(newPlasmaVaultCoreBase_);
     }
 
     function updatePlasmaVaultBase(address newPlasmaVaultBase_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
