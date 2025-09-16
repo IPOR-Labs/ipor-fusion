@@ -642,7 +642,10 @@ contract PlasmaVault is
     /// @return uint256 Amount of assets deposited
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access Initially restricted to WHITELIST_ROLE, can be set to PUBLIC_ROLE via convertToPublicVault
-    function mint(uint256 shares_, address receiver_) public override nonReentrant restricted returns (uint256) {
+    function mint(
+        uint256 shares_,
+        address receiver_
+    ) public override nonReentrant restricted returns (uint256 depositAssets) {
         if (shares_ == 0) {
             revert NoSharesToMint();
         }
@@ -655,14 +658,12 @@ contract PlasmaVault is
 
         (address feeRecipient, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(shares_);
 
-        uint256 depositAssets = super.mint(shares_ + feeShares, receiver_);
+        depositAssets = super.mint(shares_ + feeShares, receiver_);
 
         if (feeShares > 0) {
             _transfer(receiver_, feeRecipient, feeShares);
             emit DepositFeeRealized(feeRecipient, feeShares);
         }
-
-        return depositAssets;
     }
 
     /// @notice Withdraws underlying assets from the vault

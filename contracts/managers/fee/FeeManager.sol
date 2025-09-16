@@ -502,7 +502,6 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @custom:see EIP-4626 for vault fee patterns and best practices
     /// @custom:example Setting fee_ to 1e16 (1e18 * 0.01) sets a 1% deposit fee
     function setDepositFee(uint256 fee_) external restricted {
-        //todo add to V1
         FeeManagerStorageLib.setPlasmaVaultDepositFee(fee_);
     }
 
@@ -572,25 +571,25 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     ///      and the amount of assets being deposited. The deposit fee is calculated as a percentage
     ///      of the deposited assets using 18 decimal precision (1e18 = 100%, 1e16 = 1%).
     ///
-    /// @param assets_ The amount of assets being deposited (in asset units)
+    /// @param shares_ The amount of shares being deposited (in share units)
     ///
-    /// @return The calculated deposit fee amount (in asset units)
+    /// @return The calculated deposit fee amount (in share units)
     ///
     /// @dev Flow:
     /// 1. Retrieves the current deposit fee percentage from storage
     /// 2. If deposit fee is 0, returns 0 (no fee)
-    /// 3. Calculates fee using Math.mulDiv for precision: (assets_ * depositFee) / 1e18
+    /// 3. Calculates fee using Math.mulDiv for precision: (shares_ * depositFee) / 1e18
     ///
     /// @custom:security Uses Math.mulDiv to prevent overflow and maintain precision
     /// @custom:security View function - no state changes, safe for external calls
     /// @custom:see EIP-4626 for vault fee patterns and best practices
-    /// @custom:example If depositFee is 1e16 (1%) and assets_ is 1000e18, returns 10e18
-    function calculateDepositFee(uint256 assets_) external view returns (uint256) {
+    /// @custom:example If depositFee is 1e16 (1%) and shares_ is 1000e18, returns 10e18
+    function calculateDepositFee(uint256 shares_) external view returns (uint256) {
         uint256 depositFee = FeeManagerStorageLib.getPlasmaVaultDepositFee();
         if (depositFee == 0) {
             return 0;
         }
-        return Math.mulDiv(assets_, depositFee, 1e18);
+        return Math.mulDiv(shares_, depositFee, 1e18);
     }
 
     /// @notice Gets the current deposit fee percentage for the plasma vault
