@@ -64,6 +64,7 @@ contract RewardsManagerFactory {
         rewardsManager = Clones.clone(baseAddress_);
         RewardsClaimManager(rewardsManager).proxyInitialize(accessManager_, plasmaVault_);
 
+        emit RewardsManagerCreated(index_, rewardsManager, accessManager_, plasmaVault_);
         emit RewardsManagerCloned(baseAddress_, index_, rewardsManager, accessManager_, plasmaVault_);
     }
 }

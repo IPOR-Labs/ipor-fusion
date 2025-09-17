@@ -34,7 +34,6 @@ contract ContextManagerFactory {
         address[] memory approvedTargets_
     ) external returns (address contextManager) {
         contextManager = address(new ContextManager(accessManager_, approvedTargets_));
-
         emit ContextManagerCreated(index_, contextManager, approvedTargets_);
     }
 
@@ -54,6 +53,8 @@ contract ContextManagerFactory {
 
         contextManager = Clones.clone(baseAddress_);
         ContextManager(contextManager).proxyInitialize(accessManager_, approvedTargets_);
+        
+        emit ContextManagerCreated(index_, contextManager, approvedTargets_);
         emit ContextManagerCloned(baseAddress_, index_, contextManager, approvedTargets_);
     }
 }

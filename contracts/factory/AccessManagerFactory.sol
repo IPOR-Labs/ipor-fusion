@@ -62,6 +62,8 @@ contract AccessManagerFactory {
         accessManager = Clones.clone(baseAddress_);
         IporFusionAccessManager(accessManager).proxyInitialize(initialAuthority_, redemptionDelayInSeconds_);
 
+        emit AccessManagerCreated(index_, accessManager, redemptionDelayInSeconds_);
         emit AccessManagerCloned(baseAddress_, index_, accessManager, redemptionDelayInSeconds_);
     }
+
 }

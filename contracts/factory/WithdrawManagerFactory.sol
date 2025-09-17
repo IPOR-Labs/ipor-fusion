@@ -50,6 +50,7 @@ contract WithdrawManagerFactory {
         withdrawManager = Clones.clone(baseAddress_);
         WithdrawManager(withdrawManager).proxyInitialize(accessManager_);
 
+        emit WithdrawManagerCreated(index_, withdrawManager, accessManager_);
         emit WithdrawManagerCloned(baseAddress_, index_, withdrawManager, accessManager_);
     }
 }

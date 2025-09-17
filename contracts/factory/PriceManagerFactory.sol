@@ -57,6 +57,7 @@ contract PriceManagerFactory {
         priceManager = Clones.clone(baseAddress_);
         PriceOracleMiddlewareManager(priceManager).proxyInitialize(accessManager_, priceOracleMiddleware_);
 
+        emit PriceManagerCreated(index_, priceManager, priceOracleMiddleware_);
         emit PriceManagerCloned(baseAddress_, index_, priceManager, priceOracleMiddleware_);
     }
 }

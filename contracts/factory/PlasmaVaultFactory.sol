@@ -76,6 +76,13 @@ contract PlasmaVaultFactory {
         plasmaVault = Clones.clone(baseAddress_);
         PlasmaVault(plasmaVault).proxyInitialize(initData_);
 
+        emit PlasmaVaultCreated(
+            index_, 
+            plasmaVault, 
+            initData_.assetName, 
+            initData_.assetSymbol, 
+            initData_.underlyingToken);
+
         emit PlasmaVaultCloned(
             baseAddress_,
             index_,
