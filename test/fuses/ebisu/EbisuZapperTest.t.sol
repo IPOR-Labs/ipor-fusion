@@ -13,16 +13,16 @@ import {
 } from "../../../contracts/vaults/PlasmaVault.sol";
 
 import {
-    EbisuZapperFuse,
-    EbisuZapperFuseEnterData,
-    EbisuZapperFuseExitData,
+    EbisuZapperCreateFuse,
+    EbisuZapperCreateFuseEnterData,
+    EbisuZapperCreateFuseExitData,
     ExitType
-} from "../../../contracts/fuses/ebisu/EbisuZapperFuse.sol";
+} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
 
 import {EbisuZapperBalanceFuse} from "../../../contracts/fuses/ebisu/EbisuZapperBalanceFuse.sol";
 import {ITroveManager} from "../../../contracts/fuses/ebisu/ext/ITroveManager.sol";
 import {ILeverageZapper} from "../../../contracts/fuses/ebisu/ext/ILeverageZapper.sol";
-import {EbisuMathLibrary} from "../../../contracts/fuses/ebisu/EbisuMathLibrary.sol";
+import {EbisuMathLib} from "../../../contracts/fuses/ebisu/lib/EbisuMathLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -35,17 +35,16 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
+import {EbisuWethEthAdapterAddressReader} from "../../../contracts/readers/EbisuWethEthAdapterAddressReader.sol";
 
 import {
-    EbisuZapperLeverUpFuse,
+    EbisuZapperLeverModifyFuse,
+    EbisuLeverDownData,
     EbisuLeverUpData
-} from "../../../contracts/fuses/ebisu/EbisuZapperLeverUpFuse.sol";
-import {
-    EbisuZapperLeverDownFuse,
-    EbisuLeverDownData
-} from "../../../contracts/fuses/ebisu/EbisuZapperLeverDownFuse.sol";
-import {WethEthAdapter} from "../../../contracts/fuses/ebisu/WethEthAdapter.sol";
+} from "../../../contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol";
+import {WethEthAdapterStorageLib} from "../../../contracts/fuses/ebisu/lib/WethEthAdapterStorageLib.sol";
 
+import {console} from "forge-std/console.sol";
 interface EbisuPriceFeed {
     function lastGoodPrice() external view returns (uint256);
 }
@@ -76,15 +75,15 @@ contract EbisuZapperTest is Test {
     address internal constant LBTC_REGISTRY = 0x7f034988AF49248D3d5bD81a2CE76ED4a3006243;
 
     PlasmaVault private plasmaVault;
-    EbisuZapperFuse private zapperFuse;
-    EbisuZapperLeverUpFuse private leverUpFuse;
-    EbisuZapperLeverDownFuse private leverDownFuse;
+    EbisuZapperCreateFuse private zapperFuse;
+    EbisuZapperLeverModifyFuse private leverModifyFuse;
     EbisuZapperBalanceFuse private balanceFuse;
     ERC20BalanceFuse private erc20BalanceFuse;
-    WethEthAdapter private wethEthAdapter;
 
     address private accessManager;
     address private priceOracle;
+
+    EbisuWethEthAdapterAddressReader private wethEthAdapterAddressReader;
 
     // ETH gas compensation constant from zapper (keep in sync with fuse)
     uint256 private constant ETH_GAS_COMPENSATION = 0.0375 ether;
@@ -131,9 +130,6 @@ contract EbisuZapperTest is Test {
             )
         );
 
-        // deploy adapter (must be whitelisted)
-        wethEthAdapter = new WethEthAdapter(address(plasmaVault), WETH);
-
         // setup plasma vault
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
@@ -155,11 +151,14 @@ contract EbisuZapperTest is Test {
         dependenceMarkets[0] = dependence; // Ebisu -> ERC20_VAULT_BALANCE
 
         PlasmaVaultGovernance(address(plasmaVault)).updateDependencyBalanceGraphs(marketIds, dependenceMarkets);
+
+        // adapter address reader
+        wethEthAdapterAddressReader = new EbisuWethEthAdapterAddressReader();
     }
 
     function testShouldEnterToEbisuZapper() public {
         // given
-        EbisuZapperFuseEnterData memory enterData = EbisuZapperFuseEnterData({
+        EbisuZapperCreateFuseEnterData memory enterData = EbisuZapperCreateFuseEnterData({
             zapper: WEETH_ZAPPER,
             registry: WEETH_REGISTRY,
             collAmount: 10 * 1e18,        // 10 WEETH
@@ -169,8 +168,6 @@ contract EbisuZapperTest is Test {
             flashLoanAmount: 1 * 1e17,    // 0.1 ETH
             annualInterestRate: 20 * 1e16, // 20%
             maxUpfrontFee: 4 * 1e18,
-            weth: WETH,
-            wethEthAdapter: address(wethEthAdapter),
             wethForGas: ETH_GAS_COMPENSATION
         });
 
@@ -178,7 +175,7 @@ contract EbisuZapperTest is Test {
         enterCalls[0] = FuseAction(
             address(zapperFuse),
             abi.encodeWithSignature(
-                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address,address,uint256))",
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256))",
                 enterData
             )
         );
@@ -194,7 +191,11 @@ contract EbisuZapperTest is Test {
         // when
         plasmaVault.execute(enterCalls);
 
-        uint256 troveId = EbisuMathLibrary.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
+        // Verify adapter was created
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        assertTrue(wethEthAdapter != address(0), "Adapter should be created after execution");
+
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
 
         // Inspect trove state
         ITroveManager troveManager = ITroveManager(ILeverageZapper(WEETH_ZAPPER).troveManager());
@@ -214,28 +215,28 @@ contract EbisuZapperTest is Test {
         deal(EBUSD, address(this), 3000 * 1e18);
         ERC20(EBUSD).transfer(address(plasmaVault), 3000 * 1e18);
 
-        EbisuZapperFuseExitData memory exitData = EbisuZapperFuseExitData({
+        EbisuZapperCreateFuseExitData memory exitData = EbisuZapperCreateFuseExitData({
             zapper: WEETH_ZAPPER,
             flashLoanAmount: 0,
             minExpectedCollateral: 0,
-            exitType: ExitType.ETH,
-            weth: WETH,
-            wethEthAdapter: address(wethEthAdapter)
+            exitType: ExitType.ETH
         });
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(zapperFuse),
             abi.encodeWithSignature(
-                "exit((address,uint256,uint256,uint8,address,address))",
+                "exit((address,uint256,uint256,uint8))",
                 exitData
             )
         );
 
         // when
         plasmaVault.execute(exitCalls);
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        assertTrue(wethEthAdapter != address(0), "Adapter should be created after execution");
 
-        uint256 troveId = EbisuMathLibrary.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
         ITroveManager troveManager = ITroveManager(ILeverageZapper(WEETH_ZAPPER).troveManager());
         ITroveManager.LatestTroveData memory troveData = troveManager.getLatestTroveData(troveId);
 
@@ -252,28 +253,28 @@ contract EbisuZapperTest is Test {
         deal(EBUSD, address(this), 3000 * 1e18);
         ERC20(EBUSD).transfer(address(plasmaVault), 3000 * 1e18);
 
-        EbisuZapperFuseExitData memory exitData = EbisuZapperFuseExitData({
+        EbisuZapperCreateFuseExitData memory exitData = EbisuZapperCreateFuseExitData({
             zapper: WEETH_ZAPPER,
             flashLoanAmount: 1 * 1e18,
             minExpectedCollateral: 6 * 1e16,
-            exitType: ExitType.COLLATERAL,
-            weth: WETH,
-            wethEthAdapter: address(wethEthAdapter)
+            exitType: ExitType.COLLATERAL
         });
 
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(zapperFuse),
             abi.encodeWithSignature(
-                "exit((address,uint256,uint256,uint8,address,address))",
+                "exit((address,uint256,uint256,uint8))",
                 exitData
             )
         );
 
         // when
         plasmaVault.execute(exitCalls);
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        assertTrue(wethEthAdapter != address(0), "Adapter should be created after execution");
 
-        uint256 troveId = EbisuMathLibrary.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
         ITroveManager troveManager = ITroveManager(ILeverageZapper(WEETH_ZAPPER).troveManager());
         ITroveManager.LatestTroveData memory troveData = troveManager.getLatestTroveData(troveId);
 
@@ -285,8 +286,10 @@ contract EbisuZapperTest is Test {
     function testLeverUpEffectsEbisu() public {
         // given
         testShouldEnterToEbisuZapper();
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        assertTrue(wethEthAdapter != address(0), "Adapter should be created after execution");
 
-        uint256 troveId = EbisuMathLibrary.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
         ITroveManager troveManager = ITroveManager(ILeverageZapper(WEETH_ZAPPER).troveManager());
 
         ITroveManager.LatestTroveData memory initialData = troveManager.getLatestTroveData(troveId);
@@ -295,7 +298,6 @@ contract EbisuZapperTest is Test {
 
         EbisuLeverUpData memory leverUpData = EbisuLeverUpData({
             zapper: WEETH_ZAPPER,
-            wethEthAdapter: address(wethEthAdapter),
             flashLoanAmount: 1 * 1e17,
             ebusdAmount: 500 * 1e18,
             maxUpfrontFee: 2 * 1e18
@@ -303,8 +305,8 @@ contract EbisuZapperTest is Test {
 
         FuseAction[] memory leverUpCalls = new FuseAction[](1);
         leverUpCalls[0] = FuseAction(
-            address(leverUpFuse),
-            abi.encodeWithSignature("execute((address,address,uint256,uint256,uint256))", leverUpData)
+            address(leverModifyFuse),
+            abi.encodeWithSignature("enter((address,uint256,uint256,uint256))", leverUpData)
         );
 
         // when
@@ -326,8 +328,10 @@ contract EbisuZapperTest is Test {
     function testLeverDownEffectsEbisu() public {
         // given
         testShouldEnterToEbisuZapper();
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        assertTrue(wethEthAdapter != address(0), "Adapter should be created after execution");
 
-        uint256 troveId = EbisuMathLibrary.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), WEETH_ZAPPER, 1);
         ITroveManager troveManager = ITroveManager(ILeverageZapper(WEETH_ZAPPER).troveManager());
 
         ITroveManager.LatestTroveData memory initialData = troveManager.getLatestTroveData(troveId);
@@ -336,15 +340,14 @@ contract EbisuZapperTest is Test {
 
         EbisuLeverDownData memory leverDownData = EbisuLeverDownData({
             zapper: WEETH_ZAPPER,
-            wethEthAdapter: address(wethEthAdapter),
             flashLoanAmount: 5 * 1e16,
             minBoldAmount: 200 * 1e18
         });
 
         FuseAction[] memory leverDownCalls = new FuseAction[](1);
         leverDownCalls[0] = FuseAction(
-            address(leverDownFuse),
-            abi.encodeWithSignature("execute((address,address,uint256,uint256))", leverDownData)
+            address(leverModifyFuse),
+            abi.encodeWithSignature("exit((address,uint256,uint256))", leverDownData)
         );
 
         // when
@@ -365,12 +368,11 @@ contract EbisuZapperTest is Test {
 
     // --- helpers ---
 
-    function _setupMarketConfigs() private view returns (MarketSubstratesConfig[] memory marketConfigs_) {
+    function _setupMarketConfigs() private pure returns (MarketSubstratesConfig[] memory marketConfigs_) {
         // EBISU market substrates must include:
         // - all zappers used
         // - the corresponding address registries used
-        // - the WETH<->ETH adapter (since the fuse validates it as substrate)
-        bytes32[] memory ebisuSubs = new bytes32[](9);
+        bytes32[] memory ebisuSubs = new bytes32[](8);
         ebisuSubs[0] = PlasmaVaultConfigLib.addressToBytes32(WEETH_ZAPPER);
         ebisuSubs[1] = PlasmaVaultConfigLib.addressToBytes32(SUSDE_ZAPPER);
         ebisuSubs[2] = PlasmaVaultConfigLib.addressToBytes32(WBTC_ZAPPER);
@@ -379,7 +381,6 @@ contract EbisuZapperTest is Test {
         ebisuSubs[5] = PlasmaVaultConfigLib.addressToBytes32(SUSDE_REGISTRY);
         ebisuSubs[6] = PlasmaVaultConfigLib.addressToBytes32(WBTC_REGISTRY);
         ebisuSubs[7] = PlasmaVaultConfigLib.addressToBytes32(LBTC_REGISTRY);
-        ebisuSubs[8] = PlasmaVaultConfigLib.addressToBytes32(address(wethEthAdapter)); // adapter
 
         bytes32[] memory erc20Assets = new bytes32[](2);
         erc20Assets[0] = PlasmaVaultConfigLib.addressToBytes32(EBUSD);
@@ -391,14 +392,12 @@ contract EbisuZapperTest is Test {
     }
 
     function _setupFuses() private returns (address[] memory fuses) {
-        zapperFuse   = new EbisuZapperFuse(IporFusionMarkets.EBISU);      // OPEN + CLOSE
-        leverUpFuse  = new EbisuZapperLeverUpFuse(IporFusionMarkets.EBISU);
-        leverDownFuse= new EbisuZapperLeverDownFuse(IporFusionMarkets.EBISU);
+        zapperFuse   = new EbisuZapperCreateFuse(IporFusionMarkets.EBISU, WETH);      // OPEN + CLOSE
+        leverModifyFuse  = new EbisuZapperLeverModifyFuse(IporFusionMarkets.EBISU);
 
-        fuses = new address[](3);
+        fuses = new address[](2);
         fuses[0] = address(zapperFuse);
-        fuses[1] = address(leverUpFuse);
-        fuses[2] = address(leverDownFuse);
+        fuses[1] = address(leverModifyFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {

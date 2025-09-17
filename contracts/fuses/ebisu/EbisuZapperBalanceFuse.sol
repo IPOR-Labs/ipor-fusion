@@ -9,9 +9,9 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
-import {EbisuMathLibrary} from "./EbisuMathLibrary.sol";
 import {ITroveManager} from "./ext/ITroveManager.sol";
 import {ILeverageZapper} from "./ext/ILeverageZapper.sol";
+import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
 
 /**
  * @title Fuse for Ebisu protocol responsible for calculating the balance of the Plasma Vault in Ebisu protocol based on preconfigured market substrates
@@ -42,25 +42,19 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
         );
         ITroveManager troveManager;
         uint256 troveId;
-        address target;
+        EbisuZapperSubstrate memory target;
 
         for (uint256 i; i < substratesNumber; ++i) {
-            target = PlasmaVaultConfigLib.bytes32ToAddress(substrates[i]);
+            target = EbisuZapperSubstrateLib.bytes32ToSubstrate(substrates[i]);
 
-            // Probe target as a zapper; if it isn't, just skip
-            try ILeverageZapper(target).collToken() returns (address ct) {
-                collToken = ct;
-            } catch {
-                continue;
-            }
-            try ILeverageZapper(target).troveManager() returns (address tm) {
-                troveManager = ITroveManager(tm);
-            } catch {
-                continue;
-            }
+            if (target.substrateType != EbisuZapperSubstrateType.Zapper) continue;
+            
+            // At this point, we expect the contract to have collToken and troveManager
+            collToken = ILeverageZapper(target.substrateAddress).collToken();
+            troveManager = ITroveManager(ILeverageZapper(target.substrateAddress).troveManager());
             (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
             
-            troveId = troveData.troveIds[target];
+            troveId = troveData.troveIds[target.substrateAddress];
             if(troveId == 0) continue;
             entireCollValue += IporMath.convertToWad(
                 troveManager.getLatestTroveData(troveId).entireColl * collTokenPrice,

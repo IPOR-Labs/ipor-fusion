@@ -21,7 +21,9 @@ contract WethEthAdapter {
     address public immutable VAULT;
     address public immutable WETH;
 
+    error InsufficientEthSpent();
     error NotVault();
+    error ZapperCallFailed();
 
     modifier onlyVault() {
         if (msg.sender != VAULT) revert NotVault();
@@ -44,24 +46,24 @@ contract WethEthAdapter {
     ) external onlyVault {
         // Unwrap to ETH
         IWETH(WETH).withdraw(wethAmount);
-        uint256 beforeBal = address(this).balance;
+        uint256 beforeBalance = address(this).balance;
 
         ERC20 collToken = ERC20(ILeverageZapper(zapper).collToken());
 
         collToken.forceApprove(zapper, collAmount);
 
         (bool ok, ) = zapper.call{value: wethAmount}(callData);
-        require(ok, "WethEthAdapter: zapper call failed");
+        if(!ok) revert ZapperCallFailed();
         
         collToken.forceApprove(zapper, 0);
 
         // Wrap any ETH that returned here (refunds / proceeds)
-        uint256 afterBal = address(this).balance;
-        uint256 ethLeft = afterBal;
+        uint256 afterBalance = address(this).balance;
+        uint256 ethLeft = afterBalance;
 
         // Safety: ensure at least minEthToSpend was actually consumed
-        uint256 spent = beforeBal + wethAmount > afterBal ? (beforeBal + wethAmount - afterBal) : 0;
-        require(spent >= minEthToSpend, "WethEthAdapter: insufficient ETH spent");
+        uint256 spent = beforeBalance + wethAmount > afterBalance ? (beforeBalance + wethAmount - afterBalance) : 0;
+        if(spent < minEthToSpend) revert InsufficientEthSpent();
 
         if (ethLeft > 0) {
             IWETH(WETH).deposit{value: ethLeft}();
@@ -84,7 +86,7 @@ contract WethEthAdapter {
         ebusdToken.forceApprove(zapper, type(uint256).max);
 
         (bool ok, ) = zapper.call(callData);
-        require(ok, "WethEthAdapter: zapper call failed");
+        if(!ok) revert ZapperCallFailed();
 
         ebusdToken.forceApprove(zapper, 0);
 

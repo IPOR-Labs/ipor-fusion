@@ -10,21 +10,18 @@ import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {IPriceFeed} from "./ext/IPriceFeed.sol";
 import {LiquityMath} from "./ext/LiquityMath.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
-import {EbisuMathLibrary} from "./EbisuMathLibrary.sol";
+import {EbisuMathLib} from "./lib/EbisuMathLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-
-enum EnterType {
-    ENTER,
-    LEVERUP,
-    LEVERDOWN
-}
+import {IWethEthAdapter} from "./IWethEthAdapter.sol";
+import {WethEthAdapterStorageLib} from "./lib/WethEthAdapterStorageLib.sol";
+import {WethEthAdapter} from "./WethEthAdapter.sol";
 
 enum ExitType {
     ETH,
     COLLATERAL
 }
 
-struct EbisuZapperFuseEnterData {
+struct EbisuZapperCreateFuseEnterData {
     address zapper;
     address registry;
     uint256 collAmount;
@@ -34,22 +31,19 @@ struct EbisuZapperFuseEnterData {
     uint256 flashLoanAmount;
     uint256 annualInterestRate;
     uint256 maxUpfrontFee;
-    address weth;
-    address wethEthAdapter;
     uint256 wethForGas;
 }
 
-struct EbisuZapperFuseExitData {
+struct EbisuZapperCreateFuseExitData {
     address zapper;
     uint256 flashLoanAmount;
     uint256 minExpectedCollateral;
     ExitType exitType;
-    address weth;
-    address wethEthAdapter;
 }
 
-contract EbisuZapperFuse is IFuseCommon {
+contract EbisuZapperCreateFuse is IFuseCommon {
     uint256 public immutable MARKET_ID;
+    address public immutable WETH;
 
     // from zapper
     uint256 public constant ETH_GAS_COMPENSATION = 0.0375 ether;
@@ -64,30 +58,30 @@ contract EbisuZapperFuse is IFuseCommon {
     error DebtBelowMin(uint256 debt);
     error ICRBelowMCR(uint256 icr, uint256 mcr);
     error NewOracleFailureDetected();
-    error UnknownEnterType();
     error UnknownExitType();
     error UpfrontFeeTooHigh(uint256 fee);
     error UnsupportedSubstrate();
-    error TargetIsNotAContract();
     error TroveAlreadyOpen();
     error TroveNotOpen();
+    error WethEthAdapterNotFound();
 
-    event EbisuZapperFuseEnter(
+    event EbisuZapperCreateFuseEnter(
         address zapper,
         uint256 collAmount,
         uint256 flashLoanAmount,
         uint256 ebusdAmount,
         uint256 troveId
     );
-    event EbisuZapperFuseLeverDown(address zapper, uint256 ownerIndex, uint256 flashLoanAmount, uint256 ebusdAmount);
-    event EbisuZapperFuseLeverUp(address zapper, uint256 ownerIndex, uint256 flashLoanAmount, uint256 ebusdAmount);
-    event EbisuZapperFuseExit(address zapper, uint256 ownerIndex);
+    event EbisuZapperCreateFuseExit(address zapper, uint256 ownerIndex);
+    event WethEthAdapterCreated(address adapterAddress, address plasmaVault, address weth);
 
-    constructor(uint256 marketId_) {
+    constructor(uint256 marketId_, address weth_) {
+        require(weth_ != address(0), "WETH address invalid");
         MARKET_ID = marketId_;
+        WETH = weth_;
     }
 
-    function enter(EbisuZapperFuseEnterData calldata data) external {
+    function enter(EbisuZapperCreateFuseEnterData calldata data) external {
         // Storage cache
         FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
 
@@ -95,9 +89,8 @@ contract EbisuZapperFuse is IFuseCommon {
         if (troveData.troveIds[data.zapper] != 0) revert TroveAlreadyOpen();
 
         // Validate targets early
-        _validateSubstrate(MARKET_ID, data.zapper);
-        _validateSubstrate(MARKET_ID, data.registry);
-        _validateSubstrate(MARKET_ID, data.wethEthAdapter);
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.zapper)) revert UnsupportedSubstrate();
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.registry)) revert UnsupportedSubstrate();
 
         // Interest bounds
         if (data.annualInterestRate < MIN_ANNUAL_INTEREST_RATE || data.annualInterestRate > MAX_ANNUAL_INTEREST_RATE) {
@@ -106,10 +99,17 @@ contract EbisuZapperFuse is IFuseCommon {
 
         _checkUpfrontFeeAndDebt(data);
 
+        address adapter = WethEthAdapterStorageLib.getWethEthAdapter();
+        if (adapter == address(0)) {
+            adapter = _createAdapterWhenNotExists();
+        }
+
         // Build params
+        // Bump the latestOwnerId so that the first id ever used 1
+        troveData.latestOwnerId++;
         ILeverageZapper.OpenLeveragedTroveParams memory params = ILeverageZapper.OpenLeveragedTroveParams({
             owner: address(this),
-            ownerIndex: ++troveData.latestOwnerId,
+            ownerIndex: troveData.latestOwnerId,
             collAmount: data.collAmount,
             flashLoanAmount: data.flashLoanAmount,
             boldAmount: data.ebusdAmount,
@@ -119,60 +119,54 @@ contract EbisuZapperFuse is IFuseCommon {
             batchManager: address(0),
             maxUpfrontFee: data.maxUpfrontFee,
             addManager: address(0),
-            removeManager: data.wethEthAdapter,
-            receiver: data.wethEthAdapter
+            removeManager: adapter,
+            receiver: adapter
         });
-
-        // Route through ETH adapter to fund msg.value without the Vault holding ETH
-        //  - VAULT approves adapter for data.wethForGas (done here via delegatecall)
-        //  - adapter unwraps WETH->ETH and calls zapper.open...{value: ETH}
-        require(data.wethEthAdapter != address(0) && data.weth != address(0), "enter: adapter/weth required");
-        _validateSubstrate(MARKET_ID, data.wethEthAdapter); // keep duplicate validation to preserve behavior
 
         ILeverageZapper zapper = ILeverageZapper(data.zapper);
 
         // Send the gas amount
-        IERC20(data.weth).transfer(data.wethEthAdapter, data.wethForGas);
+        IERC20(WETH).transfer(adapter, data.wethForGas);
 
         // Transfer collateral to adapter
-        IERC20(zapper.collToken()).transfer(data.wethEthAdapter, data.collAmount);
+        IERC20(zapper.collToken()).transfer(adapter, data.collAmount);
 
         // Prepare zapper call
         bytes memory callData =
             abi.encodeWithSelector(ILeverageZapper.openLeveragedTroveWithRawETH.selector, params);
 
-        // minEthToSpend = ETH_GAS_COMPENSATION by default (you can pass data.wethForGas if you want exact match)
-        (bool ok, ) = data.wethEthAdapter.call(
-            abi.encodeWithSignature(
-                "callZapperWithEth(address,bytes,uint256,uint256,uint256)",
-                data.zapper,
-                callData,
-                data.collAmount,
-                data.wethForGas,
-                ETH_GAS_COMPENSATION
-            )
+        // minEthToSpend = ETH_GAS_COMPENSATION by default
+        IWethEthAdapter(adapter).callZapperWithEth(
+            data.zapper,
+            callData,
+            data.collAmount,
+            data.wethForGas,
+            ETH_GAS_COMPENSATION
         );
-        require(ok, "enter: adapter call failed");
 
         // Track troveId for this zapper
-        uint256 troveId = EbisuMathLibrary.calculateTroveId(
-            data.wethEthAdapter,
+        uint256 troveId = EbisuMathLib.calculateTroveId(
+            adapter,
             address(this),
             data.zapper,
             troveData.latestOwnerId
         );
         troveData.troveIds[data.zapper] = troveId;
 
-        emit EbisuZapperFuseEnter(data.zapper, data.collAmount, data.flashLoanAmount, data.ebusdAmount, troveId);
+        emit EbisuZapperCreateFuseEnter(data.zapper, data.collAmount, data.flashLoanAmount, data.ebusdAmount, troveId);
     }
 
-    function exit(EbisuZapperFuseExitData calldata data) external {
-        _validateSubstrate(MARKET_ID, data.zapper);
+    function exit(EbisuZapperCreateFuseExitData calldata data) external {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.zapper)) revert UnsupportedSubstrate();
 
         FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
 
         uint256 troveId = troveData.troveIds[data.zapper];
         if (troveId == 0) revert TroveNotOpen();
+
+        address adapter = WethEthAdapterStorageLib.getWethEthAdapter();
+        if (adapter == address(0)) 
+            revert WethEthAdapterNotFound();
 
         ILeverageZapper zapper = ILeverageZapper(data.zapper);
         IERC20 ebusdToken = IERC20(zapper.boldToken());
@@ -190,10 +184,6 @@ contract EbisuZapperFuse is IFuseCommon {
             revert UnknownExitType();
         }
 
-        // The Vault cannot receive ETH. Use adapter to wrap back to WETH and return it.
-        require(data.wethEthAdapter != address(0) && data.weth != address(0), "exit: adapter/weth required");
-        _validateSubstrate(MARKET_ID, data.wethEthAdapter); // keep validation behavior
-
         // Build calldata (minimal difference between the two modes)
         bytes memory callData = isCollateralExit
             ? abi.encodeWithSelector(
@@ -208,16 +198,13 @@ contract EbisuZapperFuse is IFuseCommon {
             );
 
         // Repay from Vault balance via adapter (common path)
-        ebusdToken.transfer(data.wethEthAdapter, ebusdToken.balanceOf(address(this)));
+        ebusdToken.transfer(adapter, ebusdToken.balanceOf(address(this)));
 
-        (bool ok, ) = data.wethEthAdapter.call(
-            abi.encodeWithSignature("callZapperExpectEthBack(address,bytes)", data.zapper, callData)
-        );
-        require(ok, "exit: adapter closeToRawETH failed");
+        IWethEthAdapter(adapter).callZapperExpectEthBack(data.zapper, callData);
 
         delete troveData.troveIds[data.zapper];
 
-        emit EbisuZapperFuseExit(data.zapper, troveData.latestOwnerId);
+        emit EbisuZapperCreateFuseExit(data.zapper, troveData.latestOwnerId);
     }
 
     // -------- internal helpers --------
@@ -236,7 +223,7 @@ contract EbisuZapperFuse is IFuseCommon {
         }
     }
 
-    function _checkUpfrontFeeAndDebt(EbisuZapperFuseEnterData calldata data) internal {
+    function _checkUpfrontFeeAndDebt(EbisuZapperCreateFuseEnterData calldata data) internal {
         IAddressesRegistry reg = IAddressesRegistry(data.registry);
         IActivePool activePool = reg.activePool();
 
@@ -267,8 +254,14 @@ contract EbisuZapperFuse is IFuseCommon {
         }
     }
 
-    function _validateSubstrate(uint256 marketId, address target) internal view {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(marketId, target)) revert UnsupportedSubstrate();
-        if (target.code.length == 0) revert TargetIsNotAContract();
+    /// @notice Creates a new WethEthAdapter and stores its address in storage if it doesn't exist
+    function _createAdapterWhenNotExists() internal returns (address adapterAddress) {
+        adapterAddress = WethEthAdapterStorageLib.getWethEthAdapter();
+
+        if (adapterAddress == address(0)) {
+            adapterAddress = address(new WethEthAdapter(address(this), WETH));
+            WethEthAdapterStorageLib.setWethEthAdapter(adapterAddress);
+            emit WethEthAdapterCreated(adapterAddress, address(this), WETH);
+        }
     }
 }
