@@ -269,8 +269,8 @@ library FusionFactoryLib {
 
         if (baseAddresses.plasmaVaultCoreBase == address(0)) revert InvalidBaseAddress();
         if (baseAddresses.accessManagerBase == address(0)) revert InvalidBaseAddress();
-        if (baseAddresses.withdrawManagerBase == address(0)) revert InvalidBaseAddress();
         if (baseAddresses.priceManagerBase == address(0)) revert InvalidBaseAddress();
+        if (baseAddresses.withdrawManagerBase == address(0)) revert InvalidBaseAddress();
         if (baseAddresses.rewardsManagerBase == address(0)) revert InvalidBaseAddress();
         if (baseAddresses.contextManagerBase == address(0)) revert InvalidBaseAddress();
 
@@ -284,17 +284,17 @@ library FusionFactoryLib {
             redemptionDelayInSeconds_
         );
 
-        fusionAddresses.withdrawManager = WithdrawManagerFactory(factoryAddresses.withdrawManagerFactory).clone(
-            baseAddresses.withdrawManagerBase,
-            fusionAddresses.index,
-            fusionAddresses.accessManager
-        );
-
         fusionAddresses.priceManager = PriceManagerFactory(factoryAddresses.priceManagerFactory).clone(
             baseAddresses.priceManagerBase,
             fusionAddresses.index,
             fusionAddresses.accessManager,
             FusionFactoryStorageLib.getPriceOracleMiddleware()
+        );
+
+        fusionAddresses.withdrawManager = WithdrawManagerFactory(factoryAddresses.withdrawManagerFactory).clone(
+            baseAddresses.withdrawManagerBase,
+            fusionAddresses.index,
+            fusionAddresses.accessManager
         );
 
         address daoFeeRecipientAddress = FusionFactoryStorageLib.getDaoFeeRecipientAddress();

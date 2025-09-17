@@ -49,6 +49,7 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
     uint256 public constant MAX_REDEMPTION_DELAY_IN_SECONDS = 7 days;
 
     /// @notice Actual redemption delay in seconds for this instance
+    // solhint-disable-next-line var-name-mixedcase
     uint256 public override REDEMPTION_DELAY_IN_SECONDS;
 
     /// @dev Flag to track custom schedule consumption
@@ -64,10 +65,20 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
+    /// @notice Constructor that initializes the IporFusionAccessManager with an admin and redemption delay
+    /// @dev Used when deploying directly without proxy
+    /// @param initialAdmin_ The address that will be granted the ADMIN_ROLE
+    /// @param redemptionDelayInSeconds_ The initial redemption delay period in seconds
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address initialAdmin_, uint256 redemptionDelayInSeconds_) AccessManager(initialAdmin_) initializer {
         _initialize(initialAdmin_, redemptionDelayInSeconds_);
     }
 
+    /// @notice Initializes the IporFusionAccessManager with access control and redemption delay (for cloning)
+    /// @param initialAdmin_ The address that will be granted the ADMIN_ROLE
+    /// @param redemptionDelayInSeconds_ The initial redemption delay period in seconds
+    /// @dev This method is called after cloning to initialize the contract
+    /// @custom:access Only during initialization
     function proxyInitialize(address initialAdmin_, uint256 redemptionDelayInSeconds_) external initializer {
         _initialize(initialAdmin_, redemptionDelayInSeconds_);
     }

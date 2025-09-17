@@ -37,6 +37,9 @@ contract WithdrawManager is Initializable, AccessManagedUpgradeable, ContextClie
     error WithdrawManagerZeroShares();
     error WithdrawManagerInvalidFee(uint256 fee);
 
+    /// @notice Constructor that initializes the WithdrawManager with access control
+    /// @dev Used when deploying directly without proxy
+    /// @param accessManager_ The address of the access control manager that will manage roles and permissions
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address accessManager_) initializer {
         __AccessManaged_init(accessManager_);

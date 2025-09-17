@@ -723,17 +723,17 @@ library PlasmaVaultStorageLib {
 
     /**
      * @dev Storage slot for plasma vault base address. Computed as:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.plasmaVaultBase")) - 1)) & ~bytes32(uint256(0xff))
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultBase")) - 1)) & ~bytes32(uint256(0xff))
      */
     bytes32 private constant PLASMA_VAULT_BASE_SLOT =
-        0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e12;
+        0x708fd1151214a098976e0893cd3883792c21aeb94a31cd7733c8947c13c23000;
 
     /**
      * @dev Storage slot for share scale multiplier. Computed as:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.shareScaleMultiplier")) - 1)) & ~bytes32(uint256(0xff))
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.param.ShareScaleMultiplier")) - 1)) & ~bytes32(uint256(0xff))
      */
     bytes32 private constant SHARE_SCALE_MULTIPLIER_SLOT =
-        0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e13;
+        0x5bb34fc23414cfe7e422518e1d8590877bcc5dcacad5f8689bfd98e9a05ac600;
 
     /**
      * @notice Maps callback signatures to their handler contracts

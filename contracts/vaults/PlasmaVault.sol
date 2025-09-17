@@ -235,79 +235,12 @@ contract PlasmaVault is
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
 
-    /// @notice The plasma vault base contract address
-    /// @dev Retrieved from storage library
-    function PLASMA_VAULT_BASE() public view returns (address) {
-        return PlasmaVaultStorageLib.getPlasmaVaultBase();
-    }
-
-    /// @notice The share scale multiplier for ERC4626 operations
-    /// @dev Retrieved from storage library
-    function _SHARE_SCALE_MULTIPLIER() public view returns (uint256) {
-        return PlasmaVaultStorageLib.getShareScaleMultiplier();
-    }
 
     /// @notice Constructor with initialization for direct deployment
     /// @dev Used when deploying directly without proxy
     /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
     constructor(PlasmaVaultInitData memory initData_) ERC20Upgradeable() ERC4626Upgradeable() initializer {
         _initializeVault(initData_);
-    }
-
-    /// @notice Initializes the PlasmaVault with initialization data (for cloning)
-    /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
-    /// @dev This method is called after cloning to initialize the contract
-    function proxyInitialize(PlasmaVaultInitData memory initData_) external initializer {
-        _initializeVault(initData_);
-    }
-
-    /// @notice Private method containing the common initialization logic
-    /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
-    /// @dev This method is used by both constructor and proxyInitialize to avoid code duplication
-    function _initializeVault(PlasmaVaultInitData memory initData_) private {
-        super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
-        super.__ERC4626_init(IERC20(initData_.underlyingToken));
-
-        PlasmaVaultStorageLib.setShareScaleMultiplier(10 ** _decimalsOffset());
-        PlasmaVaultStorageLib.setPlasmaVaultBase(initData_.plasmaVaultBase);
-
-        initData_.plasmaVaultBase.functionDelegateCall(
-            abi.encodeWithSelector(
-                IPlasmaVaultBase.init.selector,
-                initData_.assetName,
-                initData_.accessManager,
-                type(uint256).max /// @dev default total supply cap is max uint256
-            )
-        );
-
-        IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(initData_.priceOracleMiddleware);
-
-        if (priceOracleMiddleware.QUOTE_CURRENCY() != USD) {
-            revert Errors.UnsupportedQuoteCurrencyFromOracle();
-        }
-
-        PlasmaVaultLib.setPriceOracleMiddleware(initData_.priceOracleMiddleware);
-
-        FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
-            FeeManagerInitData({
-                initialAuthority: initData_.accessManager,
-                plasmaVault: address(this), //TODO: check if this is correct
-                iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
-                iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
-                iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress,
-                recipientManagementFees: new RecipientFee[](0),
-                recipientPerformanceFees: new RecipientFee[](0)
-            })
-        );
-
-        PlasmaVaultLib.configurePerformanceFee(feeManagerData.performanceFeeAccount, feeManagerData.performanceFee);
-        PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
-
-        PlasmaVaultLib.updateManagementFeeData();
-        if (initData_.withdrawManager == address(0)) {
-            revert WithdrawManagerNotSet();
-        }
-        PlasmaVaultLib.updateWithdrawManager(initData_.withdrawManager);
     }
 
     /// @notice Fallback function handling delegatecall execution and callbacks
@@ -341,6 +274,19 @@ contract PlasmaVault is
         } else {
             return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
         }
+    }
+
+    /// @notice The plasma vault base contract address
+    /// @dev Retrieved from storage library
+    function PLASMA_VAULT_BASE() public view returns (address) {
+        return PlasmaVaultStorageLib.getPlasmaVaultBase();
+    }
+
+    /// @notice Initializes the PlasmaVault with initialization data (for cloning)
+    /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
+    /// @dev This method is called after cloning to initialize the contract
+    function proxyInitialize(PlasmaVaultInitData memory initData_) external initializer {
+        _initializeVault(initData_);
     }
 
     function onERC721Received(
@@ -1231,6 +1177,61 @@ contract PlasmaVault is
                 _burn(owner_, feeSharesToBurn);
             }
         }
+    }
+
+    /// @notice The share scale multiplier for ERC4626 operations
+    /// @dev Retrieved from storage library
+    function _SHARE_SCALE_MULTIPLIER() internal view returns (uint256) {
+        return PlasmaVaultStorageLib.getShareScaleMultiplier();
+    }
+
+    /// @notice Private method containing the common initialization logic
+    /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
+    /// @dev This method is used by both constructor and proxyInitialize to avoid code duplication
+    function _initializeVault(PlasmaVaultInitData memory initData_) private {
+        super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
+        super.__ERC4626_init(IERC20(initData_.underlyingToken));
+
+        PlasmaVaultStorageLib.setShareScaleMultiplier(10 ** _decimalsOffset());
+        PlasmaVaultStorageLib.setPlasmaVaultBase(initData_.plasmaVaultBase);
+
+        initData_.plasmaVaultBase.functionDelegateCall(
+            abi.encodeWithSelector(
+                IPlasmaVaultBase.init.selector,
+                initData_.assetName,
+                initData_.accessManager,
+                type(uint256).max /// @dev default total supply cap is max uint256
+            )
+        );
+
+        IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(initData_.priceOracleMiddleware);
+
+        if (priceOracleMiddleware.QUOTE_CURRENCY() != USD) {
+            revert Errors.UnsupportedQuoteCurrencyFromOracle();
+        }
+
+        PlasmaVaultLib.setPriceOracleMiddleware(initData_.priceOracleMiddleware);
+
+        FeeManagerData memory feeManagerData = FeeManagerFactory(initData_.feeConfig.feeFactory).deployFeeManager(
+            FeeManagerInitData({
+                initialAuthority: initData_.accessManager,
+                plasmaVault: address(this),
+                iporDaoManagementFee: initData_.feeConfig.iporDaoManagementFee,
+                iporDaoPerformanceFee: initData_.feeConfig.iporDaoPerformanceFee,
+                iporDaoFeeRecipientAddress: initData_.feeConfig.iporDaoFeeRecipientAddress,
+                recipientManagementFees: new RecipientFee[](0),
+                recipientPerformanceFees: new RecipientFee[](0)
+            })
+        );
+
+        PlasmaVaultLib.configurePerformanceFee(feeManagerData.performanceFeeAccount, feeManagerData.performanceFee);
+        PlasmaVaultLib.configureManagementFee(feeManagerData.managementFeeAccount, feeManagerData.managementFee);
+
+        PlasmaVaultLib.updateManagementFeeData();
+        if (initData_.withdrawManager == address(0)) {
+            revert WithdrawManagerNotSet();
+        }
+        PlasmaVaultLib.updateWithdrawManager(initData_.withdrawManager);
     }
 
     function _deposit(uint256 assets_, address receiver_) internal returns (uint256) {

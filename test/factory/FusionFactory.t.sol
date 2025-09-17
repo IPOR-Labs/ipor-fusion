@@ -31,7 +31,6 @@ import {ContextManager} from "../../contracts/managers/context/ContextManager.so
 import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {FeeConfig} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
     FusionFactory public fusionFactoryImplementation;

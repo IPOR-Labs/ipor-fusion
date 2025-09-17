@@ -116,7 +116,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address owner_
     ) external returns (FusionFactoryLib.FusionInstance memory) {
         return
-            FusionFactoryLib.clone(assetName_, assetSymbol_, underlyingToken_, redemptionDelayInSeconds_, owner_, true);
+            FusionFactoryLib.clone(assetName_, assetSymbol_, underlyingToken_, redemptionDelayInSeconds_, owner_, false);
     }
 
     /// @notice Creates a new Fusion Vault with admin role
@@ -226,6 +226,16 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         });
     }
 
+    /// @notice Updates the base contract addresses used for cloning new components
+    /// @param version_ Version number to track base contract updates
+    /// @param newPlasmaVaultCoreBase_ New base address for PlasmaVaultCore implementation
+    /// @param newAccessManagerBase_ New base address for AccessManager implementation
+    /// @param newPriceManagerBase_ New base address for PriceManager implementation
+    /// @param newWithdrawManagerBase_ New base address for WithdrawManager implementation
+    /// @param newRewardsManagerBase_ New base address for RewardsManager implementation
+    /// @param newContextManagerBase_ New base address for ContextManager implementation
+    /// @dev These base contracts serve as templates that are cloned when creating new vaults
+    /// @custom:access Restricted to MAINTENANCE_MANAGER_ROLE
     function updateBaseAddresses(
         uint256 version_,
         address newPlasmaVaultCoreBase_,

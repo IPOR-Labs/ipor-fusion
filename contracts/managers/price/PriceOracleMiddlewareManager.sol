@@ -47,6 +47,11 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
     error ArrayLengthMismatch();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
+    /// @notice Constructor that initializes the PriceOracleMiddlewareManager with authority and price oracle middleware
+    /// @dev Used when deploying directly without proxy
+    /// @param initialAuthority_ The address that will be granted authority to manage access control
+    /// @param priceOracleMiddleware_ The address of the price oracle middleware that will be used
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address initialAuthority_, address priceOracleMiddleware_) initializer {
         _initialize(initialAuthority_, priceOracleMiddleware_);
     }

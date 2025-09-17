@@ -23,12 +23,12 @@ pragma solidity 0.8.26;
  */
 library FusionFactoryStorageLib {
     struct BaseAddresses {
+        address plasmaVaultCoreBase;
         address accessManagerBase;
+        address priceManagerBase;
         address withdrawManagerBase;
         address rewardsManagerBase;
         address contextManagerBase;
-        address priceManagerBase;
-        address plasmaVaultCoreBase;
     }
     struct FactoryAddresses {
         address accessManagerFactory;
@@ -147,7 +147,8 @@ library FusionFactoryStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultCoreBaseAddress")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PLASMA_VAULT_CORE_BASE_ADDRESS =
-        0x5e1e7003d30cfb3abdb5e35688c765a955b6455e91670898a8e5c73d9c677001;
+        0x64580ae806e62df65aec7b569ca88d764fcb6a37f8b0f20662030e6001952700;
+
 
     function getFactoryAddresses() internal view returns (FactoryAddresses memory) {
         return
@@ -165,12 +166,12 @@ library FusionFactoryStorageLib {
     function getBaseAddresses() internal view returns (BaseAddresses memory) {
         return
             BaseAddresses({
+                plasmaVaultCoreBase: _getPlasmaVaultCoreBaseAddressSlot().value,
                 accessManagerBase: _getAccessManagerBaseAddressSlot().value,
+                priceManagerBase: _getPriceManagerBaseAddressSlot().value,
                 withdrawManagerBase: _getWithdrawManagerBaseAddressSlot().value,
                 rewardsManagerBase: _getRewardsManagerBaseAddressSlot().value,
-                contextManagerBase: _getContextManagerBaseAddressSlot().value,
-                priceManagerBase: _getPriceManagerBaseAddressSlot().value,
-                plasmaVaultCoreBase: _getPlasmaVaultCoreBaseAddressSlot().value
+                contextManagerBase: _getContextManagerBaseAddressSlot().value
             });
     }
 

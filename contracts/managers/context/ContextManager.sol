@@ -115,6 +115,11 @@ contract ContextManager is AccessManagedUpgradeable {
     uint256 public immutable CHAIN_ID;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
+    /// @notice Constructor that initializes the ContextManager with authority and approved targets
+    /// @dev Used when deploying directly without proxy
+    /// @param initialAuthority_ The address that will be granted authority to manage access control
+    /// @param approvedTargets_ Array of initially approved target addresses that can be called
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address initialAuthority_, address[] memory approvedTargets_) initializer {
         CHAIN_ID = block.chainid;
         _initialize(initialAuthority_, approvedTargets_);

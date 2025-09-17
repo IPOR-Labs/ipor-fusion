@@ -16,11 +16,11 @@ library RewardsClaimManagersStorageLib {
 
     /// @dev Storage slot for underlying token address. Computed as:
     /// keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.UnderlyingToken")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant UNDERLYING_TOKEN_SLOT = 0x7ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc01;
+    bytes32 private constant UNDERLYING_TOKEN_SLOT = 0x96962a50a0c0e57d12771ca8fb38d59142b19de93fdd10189d0e6674c3c52600;
 
     /// @dev Storage slot for plasma vault address. Computed as:
     /// keccak256(abi.encode(uint256(keccak256("io.ipor.managers.rewards.PlasmaVault")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant PLASMA_VAULT_SLOT = 0x8ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc02;
+    bytes32 private constant PLASMA_VAULT_SLOT = 0x2d4767721b6a66348474dafa99902e10eaba3139521ee5498349612c152c8100;
 
     /// @notice Emitted when vesting data is updated
     /// @param transferredTokens Amount of tokens that have been transferred to the Plasma Vault
