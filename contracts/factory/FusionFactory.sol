@@ -333,6 +333,10 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         return FusionFactoryStorageLib.getFactoryAddresses();
     }
 
+    function getBaseAddresses() external view returns (FusionFactoryStorageLib.BaseAddresses memory) {
+        return FusionFactoryStorageLib.getBaseAddresses();
+    }
+
     function getPlasmaVaultBaseAddress() external view returns (address) {
         return FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
     }
