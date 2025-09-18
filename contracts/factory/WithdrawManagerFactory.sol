@@ -14,13 +14,6 @@ contract WithdrawManagerFactory {
     /// @param accessManager The address of the AccessManager contract that will control permissions
     event WithdrawManagerCreated(uint256 index, address withdrawManager, address accessManager);
 
-    /// @notice Emitted when a new WithdrawManager instance is cloned
-    /// @param baseAddress The address of the base WithdrawManager implementation to clone
-    /// @param index The index of the WithdrawManager instance
-    /// @param withdrawManager The address of the newly cloned WithdrawManager contract
-    /// @param accessManager The address of the AccessManager contract that will control permissions for the new WithdrawManager
-    event WithdrawManagerCloned(address baseAddress, uint256 index, address withdrawManager, address accessManager);
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
@@ -51,6 +44,5 @@ contract WithdrawManagerFactory {
         WithdrawManager(withdrawManager).proxyInitialize(accessManager_);
 
         emit WithdrawManagerCreated(index_, withdrawManager, accessManager_);
-        emit WithdrawManagerCloned(baseAddress_, index_, withdrawManager, accessManager_);
     }
 }

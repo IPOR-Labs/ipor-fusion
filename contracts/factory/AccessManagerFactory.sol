@@ -15,18 +15,6 @@ contract AccessManagerFactory {
     /// @param redemptionDelayInSeconds The configured redemption delay in seconds for the new instance
     event AccessManagerCreated(uint256 index, address accessManager, uint256 redemptionDelayInSeconds);
 
-    /// @notice Emitted when a new AccessManager instance is cloned
-    /// @param baseAddress The address of the base AccessManager implementation to clone
-    /// @param index The index of the AccessManager instance
-    /// @param accessManager The address of the newly cloned IporFusionAccessManager contract
-    /// @param redemptionDelayInSeconds The configured redemption delay in seconds for the new instance
-    event AccessManagerCloned(
-        address baseAddress,
-        uint256 index,
-        address accessManager,
-        uint256 redemptionDelayInSeconds
-    );
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
@@ -63,7 +51,6 @@ contract AccessManagerFactory {
         IporFusionAccessManager(accessManager).proxyInitialize(initialAuthority_, redemptionDelayInSeconds_);
 
         emit AccessManagerCreated(index_, accessManager, redemptionDelayInSeconds_);
-        emit AccessManagerCloned(baseAddress_, index_, accessManager, redemptionDelayInSeconds_);
     }
 
 }

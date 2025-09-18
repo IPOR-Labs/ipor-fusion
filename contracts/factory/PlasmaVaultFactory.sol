@@ -25,22 +25,6 @@ contract PlasmaVaultFactory {
         address underlyingToken
     );
 
-    /// @notice Emitted when a new PlasmaVault is cloned
-    /// @param baseAddress The address of the base PlasmaVault implementation to clone
-    /// @param index The index of the PlasmaVault instance
-    /// @param plasmaVault The address of the newly cloned PlasmaVault
-    /// @param assetName The name of the underlying asset
-    /// @param assetSymbol The symbol of the underlying asset
-    /// @param underlyingToken The address of the underlying token contract
-    event PlasmaVaultCloned(
-        address baseAddress,
-        uint256 index,
-        address plasmaVault,
-        string assetName,
-        string assetSymbol,
-        address underlyingToken
-    );
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
@@ -82,14 +66,5 @@ contract PlasmaVaultFactory {
             initData_.assetName, 
             initData_.assetSymbol, 
             initData_.underlyingToken);
-
-        emit PlasmaVaultCloned(
-            baseAddress_,
-            index_,
-            plasmaVault,
-            initData_.assetName,
-            initData_.assetSymbol,
-            initData_.underlyingToken
-        );
     }
 }

@@ -13,13 +13,6 @@ contract ContextManagerFactory {
     /// @param approvedTargets The addresses of the approved targets
     event ContextManagerCreated(uint256 index, address contextManager, address[] approvedTargets);
 
-    /// @notice Emitted when a new ContextManager instance is cloned
-    /// @param baseAddress The address of the base ContextManager implementation to clone
-    /// @param index The index of the ContextManager instance
-    /// @param contextManager The address of the newly cloned ContextManager
-    /// @param approvedTargets The addresses of the approved targets
-    event ContextManagerCloned(address baseAddress, uint256 index, address contextManager, address[] approvedTargets);
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
@@ -53,8 +46,7 @@ contract ContextManagerFactory {
 
         contextManager = Clones.clone(baseAddress_);
         ContextManager(contextManager).proxyInitialize(accessManager_, approvedTargets_);
-        
+
         emit ContextManagerCreated(index_, contextManager, approvedTargets_);
-        emit ContextManagerCloned(baseAddress_, index_, contextManager, approvedTargets_);
     }
 }

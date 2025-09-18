@@ -16,20 +16,6 @@ contract RewardsManagerFactory {
     /// @param plasmaVault The address of the plasma vault contract
     event RewardsManagerCreated(uint256 index, address rewardsManager, address accessManager, address plasmaVault);
 
-    /// @notice Emitted when a new RewardsClaimManager instance is cloned
-    /// @param baseAddress The address of the base RewardsClaimManager implementation to clone
-    /// @param index The index of the RewardsClaimManager instance
-    /// @param rewardsManager The address of the newly cloned RewardsClaimManager
-    /// @param accessManager The address of the access control manager
-    /// @param plasmaVault The address of the plasma vault contract
-    event RewardsManagerCloned(
-        address baseAddress,
-        uint256 index,
-        address rewardsManager,
-        address accessManager,
-        address plasmaVault
-    );
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
@@ -65,6 +51,5 @@ contract RewardsManagerFactory {
         RewardsClaimManager(rewardsManager).proxyInitialize(accessManager_, plasmaVault_);
 
         emit RewardsManagerCreated(index_, rewardsManager, accessManager_, plasmaVault_);
-        emit RewardsManagerCloned(baseAddress_, index_, rewardsManager, accessManager_, plasmaVault_);
     }
 }

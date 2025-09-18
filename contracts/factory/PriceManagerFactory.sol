@@ -14,13 +14,6 @@ contract PriceManagerFactory {
     /// @param priceOracleMiddleware The address of the price oracle middleware that will be used for price feeds
     event PriceManagerCreated(uint256 index, address priceManager, address priceOracleMiddleware);
 
-    /// @notice Emitted when a new PriceOracleMiddlewareManager instance is cloned
-    /// @param baseAddress The address of the base PriceOracleMiddlewareManager implementation to clone
-    /// @param index The index of the PriceOracleMiddlewareManager instance
-    /// @param priceManager The address of the newly cloned PriceOracleMiddlewareManager
-    /// @param priceOracleMiddleware The address of the price oracle middleware that will be used for price feeds
-    event PriceManagerCloned(address baseAddress, uint256 index, address priceManager, address priceOracleMiddleware);
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
@@ -58,6 +51,5 @@ contract PriceManagerFactory {
         PriceOracleMiddlewareManager(priceManager).proxyInitialize(accessManager_, priceOracleMiddleware_);
 
         emit PriceManagerCreated(index_, priceManager, priceOracleMiddleware_);
-        emit PriceManagerCloned(baseAddress_, index_, priceManager, priceOracleMiddleware_);
     }
 }
