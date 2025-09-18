@@ -22,7 +22,6 @@ contract SwapExecutorRestricted {
     /// @notice Address of the restricted contract
     address public immutable RESTRICTED;
 
-
     constructor(address restricted_) {
         if (restricted_ == address(0)) {
             revert SwapExecutorRestrictedInvalidRestrictedAddress();

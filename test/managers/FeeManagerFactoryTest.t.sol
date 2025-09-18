@@ -89,7 +89,10 @@ contract FeeManagerFactoryTest is Test {
 
         // when - expect the FeeAccountDeployed event to be emitted
         vm.expectEmit(true, true, true, true);
-        emit FeeManager.FeeAccountDeployed(EXPECTED_PERFORMANCE_FEE_ACCOUNT_ADDRESS, EXPECTED_MANAGEMENT_FEE_ACCOUNT_ADDRESS);
+        emit FeeManager.FeeAccountDeployed(
+            EXPECTED_PERFORMANCE_FEE_ACCOUNT_ADDRESS,
+            EXPECTED_MANAGEMENT_FEE_ACCOUNT_ADDRESS
+        );
 
         FeeManagerData memory feeManagerData = feeManagerFactory.deployFeeManager(initData);
 
@@ -101,5 +104,4 @@ contract FeeManagerFactoryTest is Test {
         assertEq(feeManagerData.managementFee, MANAGEMENT_FEE + DAO_MANAGEMENT_FEE, "Management fee should match");
         assertEq(feeManagerData.performanceFee, PERFORMANCE_FEE + DAO_PERFORMANCE_FEE, "Performance fee should match");
     }
-
 }

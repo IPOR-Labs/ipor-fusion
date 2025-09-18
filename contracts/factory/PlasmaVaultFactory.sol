@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import {PlasmaVaultInitData} from "../vaults/PlasmaVault.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 /// @title PlasmaVaultFactory
 /// @notice Factory contract for creating and deploying new PlasmaVault instances
@@ -24,6 +25,9 @@ contract PlasmaVaultFactory {
         address underlyingToken
     );
 
+    /// @notice Error thrown when trying to use zero address as base
+    error InvalidBaseAddress();
+
     /// @notice Creates a new PlasmaVault instance with the specified initialization parameters
     /// @param index_ The index of the PlasmaVault instance
     /// @param initData_ The initialization data containing vault configuration parameters
@@ -39,5 +43,28 @@ contract PlasmaVaultFactory {
             initData_.assetSymbol,
             initData_.underlyingToken
         );
+    }
+
+    /// @notice Creates a new instance of PlasmaVault using Clones pattern
+    /// @param baseAddress_ The address of the base PlasmaVault implementation to clone
+    /// @param index_ The index of the PlasmaVault instance
+    /// @param initData_ The initialization data containing vault configuration parameters
+    /// @return plasmaVault The address of the newly cloned PlasmaVault contract
+    function clone(
+        address baseAddress_,
+        uint256 index_,
+        PlasmaVaultInitData memory initData_
+    ) external returns (address plasmaVault) {
+        if (baseAddress_ == address(0)) revert InvalidBaseAddress();
+
+        plasmaVault = Clones.clone(baseAddress_);
+        PlasmaVault(plasmaVault).proxyInitialize(initData_);
+
+        emit PlasmaVaultCreated(
+            index_, 
+            plasmaVault, 
+            initData_.assetName, 
+            initData_.assetSymbol, 
+            initData_.underlyingToken);
     }
 }
