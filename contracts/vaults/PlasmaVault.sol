@@ -234,6 +234,7 @@ contract PlasmaVault is
     error WithdrawManagerNotSet();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
+    event DepositFeeRealized(address recipient, uint256 feeShares);
 
     address public immutable PLASMA_VAULT_BASE;
     uint256 private immutable _SHARE_SCALE_MULTIPLIER; /// @dev 10^_decimalsOffset() multiplier for share scaling in ERC4626
@@ -638,10 +639,13 @@ contract PlasmaVault is
     ///
     /// @param shares_ Number of vault shares to mint
     /// @param receiver_ Address to receive the minted shares
-    /// @return uint256 Amount of assets deposited
+    /// @return depositAssets Amount of assets deposited
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access Initially restricted to WHITELIST_ROLE, can be set to PUBLIC_ROLE via convertToPublicVault
-    function mint(uint256 shares_, address receiver_) public override nonReentrant restricted returns (uint256) {
+    function mint(
+        uint256 shares_,
+        address receiver_
+    ) public override nonReentrant restricted returns (uint256 depositAssets) {
         if (shares_ == 0) {
             revert NoSharesToMint();
         }
@@ -652,7 +656,14 @@ contract PlasmaVault is
 
         _realizeManagementFee();
 
-        return super.mint(shares_, receiver_);
+        (address feeRecipient, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(shares_);
+
+        depositAssets = super.mint(shares_ + feeShares, receiver_);
+
+        if (feeShares > 0) {
+            _transfer(receiver_, feeRecipient, feeShares);
+            emit DepositFeeRealized(feeRecipient, feeShares);
+        }
     }
 
     /// @notice Withdraws underlying assets from the vault
@@ -753,6 +764,17 @@ contract PlasmaVault is
 
             _burn(owner_, feeSharesToBurn);
         }
+    }
+
+    function previewDeposit(uint256 assets_) public view override returns (uint256) {
+        uint256 shares = super.previewDeposit(assets_);
+        (, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(shares);
+        return feeShares > 0 ? shares - feeShares : shares;
+    }
+
+    function previewMint(uint256 shares_) public view override returns (uint256) {
+        (, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(shares_);
+        return super.previewMint(shares_ + feeShares);
     }
 
     function previewRedeem(uint256 shares_) public view override returns (uint256) {
@@ -925,11 +947,14 @@ contract PlasmaVault is
         }
 
         uint256 exchangeRate = convertToAssets(10 ** uint256(decimals()));
+        (, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(totalSupplyCap - totalSupply);
+        uint256 sharesToMint = totalSupplyCap - totalSupply - feeShares;
 
-        if (type(uint256).max / exchangeRate < totalSupplyCap - totalSupply) {
+        if (type(uint256).max / exchangeRate < sharesToMint) {
             return type(uint256).max;
         }
-        return convertToAssets(totalSupplyCap - totalSupply);
+
+        return convertToAssets(sharesToMint);
     }
 
     /// @notice Calculates maximum number of shares that can be minted
@@ -961,8 +986,10 @@ contract PlasmaVault is
         if (totalSupply >= totalSupplyCap) {
             return 0;
         }
+        (, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(totalSupplyCap - totalSupply);
 
-        return totalSupplyCap - totalSupply;
+        /// @dev we need to subtract fee shares to get the maximum number of shares that can be minted, We accept the error of calculating a higher fee than will actually be charged.
+        return totalSupplyCap - totalSupply - feeShares;
     }
 
     /// @notice Claims rewards from integrated protocols through fuse contracts
@@ -1221,12 +1248,18 @@ contract PlasmaVault is
 
         _realizeManagementFee();
 
+        uint256 sharesGross = super.convertToShares(assets_);
         uint256 shares = super.deposit(assets_, receiver_);
 
         if (shares == 0) {
             revert NoSharesToDeposit();
         }
 
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+
+        if (withdrawManager != address(0) && sharesGross > shares) {
+            super._mint(withdrawManager, sharesGross - shares);
+        }
         return shares;
     }
 
