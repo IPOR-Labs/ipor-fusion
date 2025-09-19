@@ -58,7 +58,8 @@ contract InitializeAccessManagerTest is Test {
         withdrawManager = new WithdrawManager(address(accessManager));
 
         vm.startPrank(admin);
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",

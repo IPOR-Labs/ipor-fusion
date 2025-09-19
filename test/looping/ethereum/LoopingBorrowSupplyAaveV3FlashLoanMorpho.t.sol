@@ -198,7 +198,8 @@ contract LoopingBorrowSupplyAaveV3FlashLoanMorphoTest is Test {
         });
 
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(new PlasmaVault(initData));
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(initData);
 
         vm.stopPrank();
 

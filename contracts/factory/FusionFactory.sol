@@ -116,7 +116,14 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address owner_
     ) external returns (FusionFactoryLib.FusionInstance memory) {
         return
-            FusionFactoryLib.clone(assetName_, assetSymbol_, underlyingToken_, redemptionDelayInSeconds_, owner_, false);
+            FusionFactoryLib.clone(
+                assetName_,
+                assetSymbol_,
+                underlyingToken_,
+                redemptionDelayInSeconds_,
+                owner_,
+                false
+            );
     }
 
     /// @notice Creates a new Fusion Vault with admin role

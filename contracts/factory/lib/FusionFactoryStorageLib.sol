@@ -149,7 +149,6 @@ library FusionFactoryStorageLib {
     bytes32 private constant PLASMA_VAULT_CORE_BASE_ADDRESS =
         0x64580ae806e62df65aec7b569ca88d764fcb6a37f8b0f20662030e6001952700;
 
-
     function getFactoryAddresses() internal view returns (FactoryAddresses memory) {
         return
             FactoryAddresses({

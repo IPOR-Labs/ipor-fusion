@@ -52,5 +52,4 @@ contract AccessManagerFactory {
 
         emit AccessManagerCreated(index_, accessManager, redemptionDelayInSeconds_);
     }
-
 }

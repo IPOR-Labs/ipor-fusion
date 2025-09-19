@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import {PlasmaVaultInitData} from "../vaults/PlasmaVault.sol";
 import {PlasmaVault} from "../vaults/PlasmaVault.sol";
+
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 /// @title PlasmaVaultFactory
@@ -35,7 +36,8 @@ contract PlasmaVaultFactory {
     /// @dev This function deploys a new PlasmaVault contract with the provided initialization data
     /// @dev The initialization data must contain valid parameters for the vault to function correctly
     function create(uint256 index_, PlasmaVaultInitData memory initData_) external returns (address plasmaVault) {
-        plasmaVault = address(new PlasmaVault(initData_));
+        plasmaVault = address(new PlasmaVault());
+        PlasmaVault(plasmaVault).proxyInitialize(initData_);
         emit PlasmaVaultCreated(
             index_,
             plasmaVault,
@@ -61,10 +63,11 @@ contract PlasmaVaultFactory {
         PlasmaVault(plasmaVault).proxyInitialize(initData_);
 
         emit PlasmaVaultCreated(
-            index_, 
-            plasmaVault, 
-            initData_.assetName, 
-            initData_.assetSymbol, 
-            initData_.underlyingToken);
+            index_,
+            plasmaVault,
+            initData_.assetName,
+            initData_.assetSymbol,
+            initData_.underlyingToken
+        );
     }
 }

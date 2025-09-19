@@ -1027,7 +1027,8 @@ contract PlasmaVaultBasicTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses,
         address[] memory fuses
     ) public returns (PlasmaVault) {
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

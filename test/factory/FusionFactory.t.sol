@@ -113,24 +113,23 @@ contract FusionFactoryTest is Test {
         address contextManagerBase = address(new ContextManager(owner, approvedAddresses));
         address priceManagerBase = address(new PriceOracleMiddlewareManager(owner, priceOracleMiddleware));
 
-        address plasmaVaultCoreBase = address(
-            new PlasmaVault(
-                PlasmaVaultInitData({
-                    assetName: "fake",
-                    assetSymbol: "fake",
-                    underlyingToken: address(underlyingToken),
-                    priceOracleMiddleware: priceOracleMiddleware,
-                    feeConfig: FeeConfig({
-                        feeFactory: factoryAddresses.feeManagerFactory,
-                        iporDaoManagementFee: 111,
-                        iporDaoPerformanceFee: 222,
-                        iporDaoFeeRecipientAddress: address(this)
-                    }),
-                    accessManager: accessManagerBase,
-                    plasmaVaultBase: plasmaVaultBase,
-                    withdrawManager: withdrawManagerBase
-                })
-            )
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        PlasmaVault(plasmaVaultCoreBase).proxyInitialize(
+            PlasmaVaultInitData({
+                assetName: "fake",
+                assetSymbol: "fake",
+                underlyingToken: address(underlyingToken),
+                priceOracleMiddleware: priceOracleMiddleware,
+                feeConfig: FeeConfig({
+                    feeFactory: factoryAddresses.feeManagerFactory,
+                    iporDaoManagementFee: 111,
+                    iporDaoPerformanceFee: 222,
+                    iporDaoFeeRecipientAddress: address(this)
+                }),
+                accessManager: accessManagerBase,
+                plasmaVaultBase: plasmaVaultBase,
+                withdrawManager: withdrawManagerBase
+            })
         );
 
         address rewardsManagerBase = address(new RewardsClaimManager(owner, plasmaVaultCoreBase));
