@@ -62,18 +62,17 @@ contract UniversalSwapOnUniswapV3SwapFuseTest is Test {
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
         // plasma vault
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
-                    "pvUSDC",
-                    USDC,
-                    _priceOracle,
-                    _setupFeeConfig(),
-                    _createAccessManager(),
-                    address(new PlasmaVaultBase()),
-                    _withdrawManager
-                )
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
+                "pvUSDC",
+                USDC,
+                _priceOracle,
+                _setupFeeConfig(),
+                _createAccessManager(),
+                address(new PlasmaVaultBase()),
+                _withdrawManager
             )
         );
         PlasmaVaultConfigurator.setupPlasmaVault(

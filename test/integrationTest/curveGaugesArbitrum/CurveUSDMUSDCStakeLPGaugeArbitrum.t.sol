@@ -870,7 +870,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
 
     function _createPlasmaVault() private {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",
                 assetSymbol: "PLASMA",

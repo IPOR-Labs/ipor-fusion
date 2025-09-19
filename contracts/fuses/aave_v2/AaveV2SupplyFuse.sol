@@ -103,7 +103,7 @@ contract AaveV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         _performWithdraw(data_.asset, amountToWithdraw, catchExceptions_);
     }
 
-     function _performWithdraw(address asset_, uint256 amountToWithdraw_, bool catchExceptions_) private {
+    function _performWithdraw(address asset_, uint256 amountToWithdraw_, bool catchExceptions_) private {
         if (catchExceptions_) {
             try AAVE_POOL.withdraw(asset_, amountToWithdraw_, address(this)) returns (uint256 withdrawnAmount) {
                 emit AaveV2SupplyFuseExit(VERSION, asset_, withdrawnAmount);

@@ -28,7 +28,10 @@ import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGov
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
-
+import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+import {FeeConfig} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
     FusionFactory public fusionFactoryImplementation;
@@ -98,8 +101,80 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
 
         vm.startPrank(daoFeeManager);
-        fusionFactory.updateDaoFee(daoFeeRecipient, 100, 100);
+        fusionFactory.updateDaoFee(daoFeeRecipient, 333, 777);
         vm.stopPrank();
+
+        address[] memory approvedAddresses = new address[](1);
+        approvedAddresses[0] = address(1);
+
+        address accessManagerBase = address(new IporFusionAccessManager(owner, 1 seconds));
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+
+        address contextManagerBase = address(new ContextManager(owner, approvedAddresses));
+        address priceManagerBase = address(new PriceOracleMiddlewareManager(owner, priceOracleMiddleware));
+
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        PlasmaVault(plasmaVaultCoreBase).proxyInitialize(
+            PlasmaVaultInitData({
+                assetName: "fake",
+                assetSymbol: "fake",
+                underlyingToken: address(underlyingToken),
+                priceOracleMiddleware: priceOracleMiddleware,
+                feeConfig: FeeConfig({
+                    feeFactory: factoryAddresses.feeManagerFactory,
+                    iporDaoManagementFee: 111,
+                    iporDaoPerformanceFee: 222,
+                    iporDaoFeeRecipientAddress: address(this)
+                }),
+                accessManager: accessManagerBase,
+                plasmaVaultBase: plasmaVaultBase,
+                withdrawManager: withdrawManagerBase
+            })
+        );
+
+        address rewardsManagerBase = address(new RewardsClaimManager(owner, plasmaVaultCoreBase));
+
+        vm.startPrank(maintenanceManager);
+        fusionFactory.updateBaseAddresses(
+            1,
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
+        );
+
+        vm.stopPrank();
+    }
+
+    function testShouldCloneFusionInstance() public {
+        //given
+        uint256 redemptionDelay = 1 seconds;
+
+        //when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        //then
+        assertEq(instance.assetName, "Test Asset");
+        assertEq(instance.assetSymbol, "TEST");
+        assertEq(instance.underlyingToken, address(underlyingToken));
+        assertEq(instance.initialOwner, owner);
+        assertEq(instance.plasmaVaultBase, plasmaVaultBase);
+
+        assertTrue(instance.accessManager != address(0));
+        assertTrue(instance.withdrawManager != address(0));
+        assertTrue(instance.priceManager != address(0));
+        assertTrue(instance.plasmaVault != address(0));
+        assertTrue(instance.rewardsManager != address(0));
+        assertTrue(instance.contextManager != address(0));
+        assertTrue(instance.feeManager != address(0));
     }
 
     function testShouldCreateFusionInstance() public {
@@ -390,6 +465,37 @@ contract FusionFactoryTest is Test {
         assertEq(delayTwo, 0);
     }
 
+    function testShouldCloneVaultWithoutAdmin() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        address[] memory newPlasmaVaultAdminArray = new address[](2);
+        newPlasmaVaultAdminArray[0] = address(0x321);
+        newPlasmaVaultAdminArray[1] = address(0x123);
+
+        vm.startPrank(owner);
+        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
+        vm.stopPrank();
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+        (bool hasRoleOne, uint32 delayOne) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[0]);
+        (bool hasRoleTwo, uint32 delayTwo) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[1]);
+        assertFalse(hasRoleOne);
+        assertFalse(hasRoleTwo);
+        assertEq(delayOne, 0);
+        assertEq(delayTwo, 0);
+    }
+
     function testShouldCreatePremiumVaultWithAdmin() public {
         // given
         address[] memory newPlasmaVaultAdminArray = new address[](2);
@@ -405,6 +511,40 @@ contract FusionFactoryTest is Test {
         // when
         vm.startPrank(maintenanceManager);
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.createSupervised(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+        vm.stopPrank();
+
+        // then
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+        (bool hasRoleOne, uint32 delayOne) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[0]);
+        (bool hasRoleTwo, uint32 delayTwo) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[1]);
+        assertTrue(hasRoleOne);
+        assertTrue(hasRoleTwo);
+        assertEq(delayOne, 0);
+        assertEq(delayTwo, 0);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+    }
+
+    function testShouldClonePremiumVaultWithAdmin() public {
+        // given
+        address[] memory newPlasmaVaultAdminArray = new address[](2);
+        newPlasmaVaultAdminArray[0] = address(0x321);
+        newPlasmaVaultAdminArray[1] = address(0x123);
+
+        uint256 redemptionDelay = 3 seconds;
+
+        vm.startPrank(owner);
+        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
+        vm.stopPrank();
+
+        // when
+        vm.startPrank(maintenanceManager);
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.cloneSupervised(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -451,6 +591,33 @@ contract FusionFactoryTest is Test {
         assertEq(fusionFactory.getDaoPerformanceFee(), daoPerformanceFee);
     }
 
+    function testShouldCloneVaultWithCorrectIporDaoFees() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        address daoFeeRecipient = address(0x999);
+        uint256 daoManagementFee = 100;
+        uint256 daoPerformanceFee = 200;
+
+        vm.startPrank(daoFeeManager);
+        fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
+        vm.stopPrank();
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
+        assertEq(fusionFactory.getDaoManagementFee(), daoManagementFee);
+        assertEq(fusionFactory.getDaoPerformanceFee(), daoPerformanceFee);
+    }
+
     function testShouldCreateVaultWithCorrectRedemptionDelay() public {
         // given
         uint256 redemptionDelay = 123;
@@ -470,12 +637,51 @@ contract FusionFactoryTest is Test {
         assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
     }
 
+    function testShouldCloneVaultWithCorrectRedemptionDelay() public {
+        // given
+        uint256 redemptionDelay = 123;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+    }
+
     function testShouldCreateVaultWithZeroRedemptionDelay() public {
         // given
         uint256 redemptionDelay = 0;
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
+    }
+
+    function testShouldCloneVaultWithZeroRedemptionDelay() public {
+        // given
+        uint256 redemptionDelay = 0;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -515,6 +721,31 @@ contract FusionFactoryTest is Test {
         assertEq(withdrawManager.getWithdrawWindow(), withdrawWindow);
     }
 
+    function testShouldCloneVaultWithCorrectWithdrawWindow() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // given
+        uint256 withdrawWindow = 123;
+
+        vm.startPrank(maintenanceManager);
+        fusionFactory.updateWithdrawWindowInSeconds(withdrawWindow);
+        vm.stopPrank();
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        WithdrawManager withdrawManager = WithdrawManager(instance.withdrawManager);
+        assertEq(withdrawManager.getWithdrawWindow(), withdrawWindow);
+    }
+
     function testShouldCreateVaultWithCorrectVestingPeriod() public {
         // given
         uint256 redemptionDelay = 1 seconds;
@@ -527,6 +758,30 @@ contract FusionFactoryTest is Test {
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        RewardsClaimManager rewardsClaimManager = RewardsClaimManager(instance.rewardsManager);
+        assertEq(rewardsClaimManager.getVestingData().vestingTime, vestingPeriod);
+    }
+
+    function testShouldCloneVaultWithCorrectVestingPeriod() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        // given
+        uint256 vestingPeriod = 123;
+
+        vm.startPrank(maintenanceManager);
+        fusionFactory.updateVestingPeriodInSeconds(vestingPeriod);
+        vm.stopPrank();
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -557,12 +812,48 @@ contract FusionFactoryTest is Test {
         assertEq(plasmaVault.PLASMA_VAULT_BASE(), plasmaVaultBase);
     }
 
+    function testShouldCloneVaultWithCorrectPlasmaVaultBase() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        PlasmaVault plasmaVault = PlasmaVault(instance.plasmaVault);
+        assertEq(plasmaVault.PLASMA_VAULT_BASE(), plasmaVaultBase);
+    }
+
     function testShouldCreateVaultWithCorrectPlasmaVaultOnWithdrawManager() public {
         // given
         uint256 redemptionDelay = 1 seconds;
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        WithdrawManager withdrawManager = WithdrawManager(instance.withdrawManager);
+        assertEq(withdrawManager.getPlasmaVaultAddress(), instance.plasmaVault);
+    }
+
+    function testShouldCloneVaultWithCorrectPlasmaVaultOnWithdrawManager() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -594,12 +885,63 @@ contract FusionFactoryTest is Test {
         assertEq(governanceVault.getRewardsClaimManagerAddress(), instance.rewardsManager);
     }
 
+    function testShouldCloneVaultWithCorrectRewardsClaimManager() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        PlasmaVaultGovernance governanceVault = PlasmaVaultGovernance(instance.plasmaVault);
+
+        assertEq(governanceVault.getRewardsClaimManagerAddress(), instance.rewardsManager);
+    }
+
     function testShouldCreateVaultWithCorrectBurnRequestFeeFuse() public {
         // given
         uint256 redemptionDelay = 1 seconds;
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        PlasmaVaultGovernance governanceVault = PlasmaVaultGovernance(instance.plasmaVault);
+
+        assertEq(
+            governanceVault.isBalanceFuseSupported(IporFusionMarkets.ZERO_BALANCE_MARKET, burnRequestFeeBalanceFuse),
+            true
+        );
+
+        address[] memory fuses = governanceVault.getFuses();
+
+        for (uint256 i = 0; i < fuses.length; i++) {
+            if (fuses[i] == burnRequestFeeFuse) {
+                return;
+            }
+        }
+
+        fail();
+    }
+
+    function testShouldCloneVaultWithCorrectBurnRequestFeeFuse() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -663,8 +1005,8 @@ contract FusionFactoryTest is Test {
 
         // Verify that existing functionality still works
         assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
-        assertEq(fusionFactory.getDaoManagementFee(), 100);
-        assertEq(fusionFactory.getDaoPerformanceFee(), 100);
+        assertEq(fusionFactory.getDaoManagementFee(), 333);
+        assertEq(fusionFactory.getDaoPerformanceFee(), 777);
     }
 
     function testShouldRevertUpgradeWhenNotOwner() public {
@@ -703,6 +1045,24 @@ contract FusionFactoryTest is Test {
         assertEq(plasmaVaultGovernance.getPriceOracleMiddleware(), instance.priceManager);
     }
 
+    function testShouldCloneVaultAndHaveCorrectPriceManagerOnVault() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        IPlasmaVaultGovernance plasmaVaultGovernance = IPlasmaVaultGovernance(instance.plasmaVault);
+        assertEq(plasmaVaultGovernance.getPriceOracleMiddleware(), instance.priceManager);
+    }
+
     function testShouldAllowDepositAfterVaultCreation() public {
         // given
         uint256 depositAmount = 1000 * 1e18; // 1000 tokens
@@ -711,6 +1071,44 @@ contract FusionFactoryTest is Test {
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        vm.startPrank(depositor);
+        underlyingToken.mint(depositor, depositAmount);
+        underlyingToken.approve(instance.plasmaVault, depositAmount);
+
+        // Add depositor to whitelist
+        vm.startPrank(owner);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.ATOMIST_ROLE, owner, 0);
+        vm.stopPrank();
+
+        vm.stopPrank();
+        vm.startPrank(owner);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.WHITELIST_ROLE, depositor, 0);
+        vm.stopPrank();
+
+        vm.startPrank(depositor);
+        PlasmaVault(instance.plasmaVault).deposit(depositAmount, depositor);
+        vm.stopPrank();
+
+        // then
+        assertEq(underlyingToken.balanceOf(instance.plasmaVault), depositAmount);
+        assertEq(PlasmaVault(instance.plasmaVault).balanceOf(depositor), depositAmount * 100);
+    }
+
+    function testShouldAllowDepositAfterVaultCloning() public {
+        // given
+        uint256 depositAmount = 1000 * 1e18; // 1000 tokens
+        address depositor = address(0x123);
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -792,6 +1190,57 @@ contract FusionFactoryTest is Test {
         assertEq(finalShareBalance, initialShareBalance - redeemAmount);
     }
 
+    function testShouldWithdrawAfterVaultCloning() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        uint256 depositAmount = 1000 * 1e18; // 1000 tokens
+        address depositor = address(0x123);
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // Setup - mint tokens, approve, and add to whitelist
+        underlyingToken.mint(depositor, depositAmount);
+
+        vm.startPrank(owner);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.ATOMIST_ROLE, owner, 0);
+        IporFusionAccessManager(instance.accessManager).grantRole(Roles.WHITELIST_ROLE, depositor, 0);
+        vm.stopPrank();
+
+        // Deposit tokens
+        vm.startPrank(depositor);
+        underlyingToken.approve(instance.plasmaVault, depositAmount);
+        PlasmaVault(instance.plasmaVault).deposit(depositAmount, depositor);
+
+        vm.warp(block.timestamp + 1);
+
+        // Verify deposit was successful
+        uint256 initialShareBalance = PlasmaVault(instance.plasmaVault).balanceOf(depositor);
+        assertEq(initialShareBalance, depositAmount * 100); // 100 is the conversion rate
+
+        // Direct redeem (instead of request withdraw)
+        uint256 redeemAmount = initialShareBalance / 2; // Redeem half the shares
+        uint256 initialTokenBalance = underlyingToken.balanceOf(depositor);
+
+        // Perform redeem
+        PlasmaVault(instance.plasmaVault).redeem(redeemAmount, depositor, depositor);
+        vm.stopPrank();
+
+        // then
+        // Verify redemption was successful
+        uint256 finalShareBalance = PlasmaVault(instance.plasmaVault).balanceOf(depositor);
+        uint256 finalTokenBalance = underlyingToken.balanceOf(depositor);
+
+        // Share balance should be reduced
+        assertEq(finalShareBalance, initialShareBalance - redeemAmount);
+    }
+
     function testShouldDAOBeConfiguredAfterVaultCreation() public {
         // given
         uint256 redemptionDelay = 1 seconds;
@@ -824,12 +1273,96 @@ contract FusionFactoryTest is Test {
         assertEq(feeManager.getIporDaoFeeRecipientAddress(), daoFeeRecipient);
     }
 
+    function testShouldDAOBeConfiguredAfterVaultClone() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        address daoFeeRecipient = address(0x123);
+        uint256 daoManagementFee = 100;
+        uint256 daoPerformanceFee = 100;
+
+        vm.startPrank(owner);
+        fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), daoFeeManager);
+        fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), maintenanceManager);
+        vm.stopPrank();
+
+        vm.startPrank(daoFeeManager);
+        fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
+        vm.stopPrank();
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        FeeManager feeManager = FeeManager(instance.feeManager);
+        assertEq(feeManager.IPOR_DAO_MANAGEMENT_FEE(), daoManagementFee);
+        assertEq(feeManager.IPOR_DAO_PERFORMANCE_FEE(), daoPerformanceFee);
+        assertEq(feeManager.getIporDaoFeeRecipientAddress(), daoFeeRecipient);
+    }
+
     function testShouldContainAppropriateTechnicalRolesAfterVaultCreation() public {
         //given
         uint256 redemptionDelay = 1 seconds;
 
         // when
         FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        (bool hasPlasmaVaultRole, ) = accessManager.hasRole(Roles.TECH_PLASMA_VAULT_ROLE, instance.plasmaVault);
+        assertTrue(hasPlasmaVaultRole, "PlasmaVault role not found TECH_PLASMA_VAULT_ROLE");
+
+        (bool hasContextManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_CONTEXT_MANAGER_ROLE,
+            instance.contextManager
+        );
+        assertTrue(hasContextManagerRole, "ContextManager role not found TECH_CONTEXT_MANAGER_ROLE");
+
+        (bool hasWithdrawManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_WITHDRAW_MANAGER_ROLE,
+            instance.withdrawManager
+        );
+        assertTrue(hasWithdrawManagerRole, "WithdrawManager role not found TECH_WITHDRAW_MANAGER_ROLE");
+
+        (bool hasVaultTransferSharesRole, ) = accessManager.hasRole(
+            Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
+            instance.feeManager
+        );
+        assertTrue(hasVaultTransferSharesRole, "VaultTransferShares role not found TECH_VAULT_TRANSFER_SHARES_ROLE");
+
+        (bool hasPerformanceFeeManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
+            instance.feeManager
+        );
+        assertTrue(
+            hasPerformanceFeeManagerRole,
+            "PerformanceFeeManager role not found TECH_PERFORMANCE_FEE_MANAGER_ROLE"
+        );
+
+        (bool hasRewardsClaimManagerRole, ) = accessManager.hasRole(
+            Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
+            instance.rewardsManager
+        );
+        assertTrue(hasRewardsClaimManagerRole, "RewardsClaimManager role not found TECH_REWARDS_CLAIM_MANAGER_ROLE");
+    }
+
+    function testShouldContainAppropriateTechnicalRolesAfterVaultClone() public {
+        //given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -1019,5 +1552,241 @@ contract FusionFactoryTest is Test {
         assertTrue(foundPriceManager, "PriceManager should be in approved targets");
         assertTrue(foundRewardsManager, "RewardsManager should be in approved targets");
         assertTrue(foundFeeManager, "FeeManager should be in approved targets");
+    }
+
+    function testShouldCloneVaultWithCorrectContextManagerApprovedTargets() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then
+        // Verify that the context manager has approved the correct targets
+        address[] memory approvedTargets = ContextManager(instance.contextManager).getApprovedTargets();
+
+        // Should have exactly 5 approved targets
+        assertEq(approvedTargets.length, 5);
+
+        // Verify each target is approved
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.plasmaVault));
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.withdrawManager));
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.priceManager));
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.rewardsManager));
+        assertTrue(ContextManager(instance.contextManager).isTargetApproved(instance.feeManager));
+
+        // Verify the approved targets array contains the correct addresses
+        bool foundPlasmaVault = false;
+        bool foundWithdrawManager = false;
+        bool foundPriceManager = false;
+        bool foundRewardsManager = false;
+        bool foundFeeManager = false;
+        for (uint256 i = 0; i < approvedTargets.length; i++) {
+            if (approvedTargets[i] == instance.plasmaVault) {
+                foundPlasmaVault = true;
+            } else if (approvedTargets[i] == instance.withdrawManager) {
+                foundWithdrawManager = true;
+            } else if (approvedTargets[i] == instance.priceManager) {
+                foundPriceManager = true;
+            } else if (approvedTargets[i] == instance.rewardsManager) {
+                foundRewardsManager = true;
+            } else if (approvedTargets[i] == instance.feeManager) {
+                foundFeeManager = true;
+            }
+        }
+
+        assertTrue(foundPlasmaVault, "PlasmaVault should be in approved targets");
+        assertTrue(foundWithdrawManager, "WithdrawManager should be in approved targets");
+        assertTrue(foundPriceManager, "PriceManager should be in approved targets");
+        assertTrue(foundRewardsManager, "RewardsManager should be in approved targets");
+        assertTrue(foundFeeManager, "FeeManager should be in approved targets");
+    }
+
+    function testShouldCreateTwoClonedVaultsWithUniqueAddresses() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when - create first vault using clone
+        FusionFactoryLib.FusionInstance memory instance1 = fusionFactory.clone(
+            "Test Asset 1",
+            "TEST1",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // when - create second vault using clone
+        FusionFactoryLib.FusionInstance memory instance2 = fusionFactory.clone(
+            "Test Asset 2",
+            "TEST2",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then - verify all addresses are different from each other
+        assertTrue(instance1.plasmaVault != instance2.plasmaVault, "PlasmaVault addresses should be different");
+        assertTrue(instance1.accessManager != instance2.accessManager, "AccessManager addresses should be different");
+        assertTrue(instance1.feeManager != instance2.feeManager, "FeeManager addresses should be different");
+        assertTrue(
+            instance1.rewardsManager != instance2.rewardsManager,
+            "RewardsManager addresses should be different"
+        );
+        assertTrue(
+            instance1.withdrawManager != instance2.withdrawManager,
+            "WithdrawManager addresses should be different"
+        );
+        assertTrue(
+            instance1.contextManager != instance2.contextManager,
+            "ContextManager addresses should be different"
+        );
+        assertTrue(instance1.priceManager != instance2.priceManager, "PriceManager addresses should be different");
+        assertTrue(instance1.feeManager != instance2.feeManager, "FeeManager addresses should be different");
+
+        // then - verify fee account addresses are different
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData1 = IPlasmaVaultGovernance(
+            instance1.plasmaVault
+        ).getPerformanceFeeData();
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData2 = IPlasmaVaultGovernance(
+            instance2.plasmaVault
+        ).getPerformanceFeeData();
+        assertTrue(
+            performanceFeeData1.feeAccount != performanceFeeData2.feeAccount,
+            "Performance fee account addresses should be different"
+        );
+
+        PlasmaVaultStorageLib.ManagementFeeData memory managementFeeData1 = IPlasmaVaultGovernance(
+            instance1.plasmaVault
+        ).getManagementFeeData();
+        PlasmaVaultStorageLib.ManagementFeeData memory managementFeeData2 = IPlasmaVaultGovernance(
+            instance2.plasmaVault
+        ).getManagementFeeData();
+        assertTrue(
+            managementFeeData1.feeAccount != managementFeeData2.feeAccount,
+            "Management fee account addresses should be different"
+        );
+
+        // then - verify FeeManager configuration
+        FeeManager feeManager1 = FeeManager(instance1.feeManager);
+        FeeManager feeManager2 = FeeManager(instance2.feeManager);
+
+        // DAO fee recipient should be the same for both instances
+        assertEq(
+            feeManager1.getIporDaoFeeRecipientAddress(),
+            feeManager2.getIporDaoFeeRecipientAddress(),
+            "DAO fee recipient addresses should be the same"
+        );
+
+        // Fee accounts should be different between instances
+        assertTrue(
+            feeManager1.PERFORMANCE_FEE_ACCOUNT() != feeManager2.PERFORMANCE_FEE_ACCOUNT(),
+            "Performance fee account addresses should be different"
+        );
+        assertTrue(
+            feeManager1.MANAGEMENT_FEE_ACCOUNT() != feeManager2.MANAGEMENT_FEE_ACCOUNT(),
+            "Management fee account addresses should be different"
+        );
+
+        // Plasma vault addresses should be different between instances
+        assertTrue(
+            feeManager1.PLASMA_VAULT() != feeManager2.PLASMA_VAULT(),
+            "Plasma vault addresses should be different"
+        );
+
+        // DAO fees should be greater than zero
+        assertTrue(feeManager1.IPOR_DAO_MANAGEMENT_FEE() > 0, "DAO management fee should be greater than zero");
+        assertTrue(feeManager1.IPOR_DAO_PERFORMANCE_FEE() > 0, "DAO performance fee should be greater than zero");
+        assertTrue(feeManager2.IPOR_DAO_MANAGEMENT_FEE() > 0, "DAO management fee should be greater than zero");
+        assertTrue(feeManager2.IPOR_DAO_PERFORMANCE_FEE() > 0, "DAO performance fee should be greater than zero");
+
+        // DAO fees should have the expected values (set in factory setup)
+        assertEq(feeManager1.IPOR_DAO_MANAGEMENT_FEE(), 333, "DAO management fee should be 333");
+        assertEq(feeManager1.IPOR_DAO_PERFORMANCE_FEE(), 777, "DAO performance fee should be 777");
+        assertEq(feeManager2.IPOR_DAO_MANAGEMENT_FEE(), 333, "DAO management fee should be 333");
+        assertEq(feeManager2.IPOR_DAO_PERFORMANCE_FEE(), 777, "DAO performance fee should be 777");
+
+        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = fusionFactory.getBaseAddresses();
+
+        // then - verify all addresses are different from base addresses
+        assertTrue(
+            instance1.plasmaVault != baseAddresses.plasmaVaultCoreBase,
+            "Instance1 PlasmaVault should be different from base"
+        );
+        assertTrue(
+            instance1.accessManager != baseAddresses.accessManagerBase,
+            "Instance1 AccessManager should be different from base"
+        );
+        assertTrue(
+            instance1.rewardsManager != baseAddresses.rewardsManagerBase,
+            "Instance1 RewardsManager should be different from base"
+        );
+        assertTrue(
+            instance1.withdrawManager != baseAddresses.withdrawManagerBase,
+            "Instance1 WithdrawManager should be different from base"
+        );
+        assertTrue(
+            instance1.contextManager != baseAddresses.contextManagerBase,
+            "Instance1 ContextManager should be different from base"
+        );
+        assertTrue(
+            instance1.priceManager != baseAddresses.priceManagerBase,
+            "Instance1 PriceManager should be different from base"
+        );
+
+        assertTrue(
+            instance2.plasmaVault != baseAddresses.plasmaVaultCoreBase,
+            "Instance2 PlasmaVault should be different from base"
+        );
+        assertTrue(
+            instance2.accessManager != baseAddresses.accessManagerBase,
+            "Instance2 AccessManager should be different from base"
+        );
+        assertTrue(
+            instance2.rewardsManager != baseAddresses.rewardsManagerBase,
+            "Instance2 RewardsManager should be different from base"
+        );
+        assertTrue(
+            instance2.withdrawManager != baseAddresses.withdrawManagerBase,
+            "Instance2 WithdrawManager should be different from base"
+        );
+        assertTrue(
+            instance2.contextManager != baseAddresses.contextManagerBase,
+            "Instance2 ContextManager should be different from base"
+        );
+        assertTrue(
+            instance2.priceManager != baseAddresses.priceManagerBase,
+            "Instance2 PriceManager should be different from base"
+        );
+
+        // then - verify all addresses are non-zero
+        assertTrue(instance1.plasmaVault != address(0), "Instance1 PlasmaVault should not be zero address");
+        assertTrue(instance1.accessManager != address(0), "Instance1 AccessManager should not be zero address");
+        assertTrue(instance1.feeManager != address(0), "Instance1 FeeManager should not be zero address");
+        assertTrue(instance1.rewardsManager != address(0), "Instance1 RewardsManager should not be zero address");
+        assertTrue(instance1.withdrawManager != address(0), "Instance1 WithdrawManager should not be zero address");
+        assertTrue(instance1.contextManager != address(0), "Instance1 ContextManager should not be zero address");
+        assertTrue(instance1.priceManager != address(0), "Instance1 PriceManager should not be zero address");
+
+        assertTrue(instance2.plasmaVault != address(0), "Instance2 PlasmaVault should not be zero address");
+        assertTrue(instance2.accessManager != address(0), "Instance2 AccessManager should not be zero address");
+        assertTrue(instance2.feeManager != address(0), "Instance2 FeeManager should not be zero address");
+        assertTrue(instance2.rewardsManager != address(0), "Instance2 RewardsManager should not be zero address");
+        assertTrue(instance2.withdrawManager != address(0), "Instance2 WithdrawManager should not be zero address");
+        assertTrue(instance2.contextManager != address(0), "Instance2 ContextManager should not be zero address");
+        assertTrue(instance2.priceManager != address(0), "Instance2 PriceManager should not be zero address");
+
+        // then - verify plasmaVaultBase is the same for both instances (should reference the same base)
+        assertEq(
+            instance1.plasmaVaultBase,
+            instance2.plasmaVaultBase,
+            "Both instances should reference the same plasmaVaultBase"
+        );
+        assertEq(instance1.plasmaVaultBase, plasmaVaultBase, "plasmaVaultBase should match the setup value");
     }
 }

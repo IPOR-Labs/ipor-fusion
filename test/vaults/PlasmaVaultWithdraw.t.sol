@@ -2173,7 +2173,9 @@ contract PlasmaVaultWithdrawTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses,
         address withdrawManager
     ) private returns (PlasmaVault plasmaVault) {
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
