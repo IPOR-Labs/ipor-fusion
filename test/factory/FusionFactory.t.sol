@@ -31,6 +31,7 @@ import {ContextManager} from "../../contracts/managers/context/ContextManager.so
 import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {FeeConfig} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
     FusionFactory public fusionFactoryImplementation;
@@ -100,7 +101,7 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
 
         vm.startPrank(daoFeeManager);
-        fusionFactory.updateDaoFee(daoFeeRecipient, 100, 100);
+        fusionFactory.updateDaoFee(daoFeeRecipient, 333, 777);
         vm.stopPrank();
 
         address[] memory approvedAddresses = new address[](1);
@@ -121,8 +122,8 @@ contract FusionFactoryTest is Test {
                 priceOracleMiddleware: priceOracleMiddleware,
                 feeConfig: FeeConfig({
                     feeFactory: factoryAddresses.feeManagerFactory,
-                    iporDaoManagementFee: 1,
-                    iporDaoPerformanceFee: 1,
+                    iporDaoManagementFee: 111,
+                    iporDaoPerformanceFee: 222,
                     iporDaoFeeRecipientAddress: address(this)
                 }),
                 accessManager: accessManagerBase,
@@ -1004,8 +1005,8 @@ contract FusionFactoryTest is Test {
 
         // Verify that existing functionality still works
         assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
-        assertEq(fusionFactory.getDaoManagementFee(), 100);
-        assertEq(fusionFactory.getDaoPerformanceFee(), 100);
+        assertEq(fusionFactory.getDaoManagementFee(), 333);
+        assertEq(fusionFactory.getDaoPerformanceFee(), 777);
     }
 
     function testShouldRevertUpgradeWhenNotOwner() public {
@@ -1605,5 +1606,187 @@ contract FusionFactoryTest is Test {
         assertTrue(foundPriceManager, "PriceManager should be in approved targets");
         assertTrue(foundRewardsManager, "RewardsManager should be in approved targets");
         assertTrue(foundFeeManager, "FeeManager should be in approved targets");
+    }
+
+    function testShouldCreateTwoClonedVaultsWithUniqueAddresses() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when - create first vault using clone
+        FusionFactoryLib.FusionInstance memory instance1 = fusionFactory.clone(
+            "Test Asset 1",
+            "TEST1",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // when - create second vault using clone
+        FusionFactoryLib.FusionInstance memory instance2 = fusionFactory.clone(
+            "Test Asset 2",
+            "TEST2",
+            address(underlyingToken),
+            redemptionDelay,
+            owner
+        );
+
+        // then - verify all addresses are different from each other
+        assertTrue(instance1.plasmaVault != instance2.plasmaVault, "PlasmaVault addresses should be different");
+        assertTrue(instance1.accessManager != instance2.accessManager, "AccessManager addresses should be different");
+        assertTrue(instance1.feeManager != instance2.feeManager, "FeeManager addresses should be different");
+        assertTrue(
+            instance1.rewardsManager != instance2.rewardsManager,
+            "RewardsManager addresses should be different"
+        );
+        assertTrue(
+            instance1.withdrawManager != instance2.withdrawManager,
+            "WithdrawManager addresses should be different"
+        );
+        assertTrue(
+            instance1.contextManager != instance2.contextManager,
+            "ContextManager addresses should be different"
+        );
+        assertTrue(instance1.priceManager != instance2.priceManager, "PriceManager addresses should be different");
+        assertTrue(instance1.feeManager != instance2.feeManager, "FeeManager addresses should be different");
+
+        // then - verify fee account addresses are different
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData1 = IPlasmaVaultGovernance(
+            instance1.plasmaVault
+        ).getPerformanceFeeData();
+        PlasmaVaultStorageLib.PerformanceFeeData memory performanceFeeData2 = IPlasmaVaultGovernance(
+            instance2.plasmaVault
+        ).getPerformanceFeeData();
+        assertTrue(
+            performanceFeeData1.feeAccount != performanceFeeData2.feeAccount,
+            "Performance fee account addresses should be different"
+        );
+
+        PlasmaVaultStorageLib.ManagementFeeData memory managementFeeData1 = IPlasmaVaultGovernance(
+            instance1.plasmaVault
+        ).getManagementFeeData();
+        PlasmaVaultStorageLib.ManagementFeeData memory managementFeeData2 = IPlasmaVaultGovernance(
+            instance2.plasmaVault
+        ).getManagementFeeData();
+        assertTrue(
+            managementFeeData1.feeAccount != managementFeeData2.feeAccount,
+            "Management fee account addresses should be different"
+        );
+
+        // then - verify FeeManager configuration
+        FeeManager feeManager1 = FeeManager(instance1.feeManager);
+        FeeManager feeManager2 = FeeManager(instance2.feeManager);
+
+        // DAO fee recipient should be the same for both instances
+        assertEq(
+            feeManager1.getIporDaoFeeRecipientAddress(),
+            feeManager2.getIporDaoFeeRecipientAddress(),
+            "DAO fee recipient addresses should be the same"
+        );
+
+        // Fee accounts should be different between instances
+        assertTrue(
+            feeManager1.PERFORMANCE_FEE_ACCOUNT() != feeManager2.PERFORMANCE_FEE_ACCOUNT(),
+            "Performance fee account addresses should be different"
+        );
+        assertTrue(
+            feeManager1.MANAGEMENT_FEE_ACCOUNT() != feeManager2.MANAGEMENT_FEE_ACCOUNT(),
+            "Management fee account addresses should be different"
+        );
+
+        // Plasma vault addresses should be different between instances
+        assertTrue(
+            feeManager1.PLASMA_VAULT() != feeManager2.PLASMA_VAULT(),
+            "Plasma vault addresses should be different"
+        );
+
+        // DAO fees should be greater than zero
+        assertTrue(feeManager1.IPOR_DAO_MANAGEMENT_FEE() > 0, "DAO management fee should be greater than zero");
+        assertTrue(feeManager1.IPOR_DAO_PERFORMANCE_FEE() > 0, "DAO performance fee should be greater than zero");
+        assertTrue(feeManager2.IPOR_DAO_MANAGEMENT_FEE() > 0, "DAO management fee should be greater than zero");
+        assertTrue(feeManager2.IPOR_DAO_PERFORMANCE_FEE() > 0, "DAO performance fee should be greater than zero");
+
+        // DAO fees should have the expected values (set in factory setup)
+        assertEq(feeManager1.IPOR_DAO_MANAGEMENT_FEE(), 333, "DAO management fee should be 333");
+        assertEq(feeManager1.IPOR_DAO_PERFORMANCE_FEE(), 777, "DAO performance fee should be 777");
+        assertEq(feeManager2.IPOR_DAO_MANAGEMENT_FEE(), 333, "DAO management fee should be 333");
+        assertEq(feeManager2.IPOR_DAO_PERFORMANCE_FEE(), 777, "DAO performance fee should be 777");
+
+        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = fusionFactory.getBaseAddresses();
+
+        // then - verify all addresses are different from base addresses
+        assertTrue(
+            instance1.plasmaVault != baseAddresses.plasmaVaultCoreBase,
+            "Instance1 PlasmaVault should be different from base"
+        );
+        assertTrue(
+            instance1.accessManager != baseAddresses.accessManagerBase,
+            "Instance1 AccessManager should be different from base"
+        );
+        assertTrue(
+            instance1.rewardsManager != baseAddresses.rewardsManagerBase,
+            "Instance1 RewardsManager should be different from base"
+        );
+        assertTrue(
+            instance1.withdrawManager != baseAddresses.withdrawManagerBase,
+            "Instance1 WithdrawManager should be different from base"
+        );
+        assertTrue(
+            instance1.contextManager != baseAddresses.contextManagerBase,
+            "Instance1 ContextManager should be different from base"
+        );
+        assertTrue(
+            instance1.priceManager != baseAddresses.priceManagerBase,
+            "Instance1 PriceManager should be different from base"
+        );
+
+        assertTrue(
+            instance2.plasmaVault != baseAddresses.plasmaVaultCoreBase,
+            "Instance2 PlasmaVault should be different from base"
+        );
+        assertTrue(
+            instance2.accessManager != baseAddresses.accessManagerBase,
+            "Instance2 AccessManager should be different from base"
+        );
+        assertTrue(
+            instance2.rewardsManager != baseAddresses.rewardsManagerBase,
+            "Instance2 RewardsManager should be different from base"
+        );
+        assertTrue(
+            instance2.withdrawManager != baseAddresses.withdrawManagerBase,
+            "Instance2 WithdrawManager should be different from base"
+        );
+        assertTrue(
+            instance2.contextManager != baseAddresses.contextManagerBase,
+            "Instance2 ContextManager should be different from base"
+        );
+        assertTrue(
+            instance2.priceManager != baseAddresses.priceManagerBase,
+            "Instance2 PriceManager should be different from base"
+        );
+
+        // then - verify all addresses are non-zero
+        assertTrue(instance1.plasmaVault != address(0), "Instance1 PlasmaVault should not be zero address");
+        assertTrue(instance1.accessManager != address(0), "Instance1 AccessManager should not be zero address");
+        assertTrue(instance1.feeManager != address(0), "Instance1 FeeManager should not be zero address");
+        assertTrue(instance1.rewardsManager != address(0), "Instance1 RewardsManager should not be zero address");
+        assertTrue(instance1.withdrawManager != address(0), "Instance1 WithdrawManager should not be zero address");
+        assertTrue(instance1.contextManager != address(0), "Instance1 ContextManager should not be zero address");
+        assertTrue(instance1.priceManager != address(0), "Instance1 PriceManager should not be zero address");
+
+        assertTrue(instance2.plasmaVault != address(0), "Instance2 PlasmaVault should not be zero address");
+        assertTrue(instance2.accessManager != address(0), "Instance2 AccessManager should not be zero address");
+        assertTrue(instance2.feeManager != address(0), "Instance2 FeeManager should not be zero address");
+        assertTrue(instance2.rewardsManager != address(0), "Instance2 RewardsManager should not be zero address");
+        assertTrue(instance2.withdrawManager != address(0), "Instance2 WithdrawManager should not be zero address");
+        assertTrue(instance2.contextManager != address(0), "Instance2 ContextManager should not be zero address");
+        assertTrue(instance2.priceManager != address(0), "Instance2 PriceManager should not be zero address");
+
+        // then - verify plasmaVaultBase is the same for both instances (should reference the same base)
+        assertEq(
+            instance1.plasmaVaultBase,
+            instance2.plasmaVaultBase,
+            "Both instances should reference the same plasmaVaultBase"
+        );
+        assertEq(instance1.plasmaVaultBase, plasmaVaultBase, "plasmaVaultBase should match the setup value");
     }
 }

@@ -104,4 +104,5 @@ contract FeeManagerFactoryTest is Test {
         assertEq(feeManagerData.managementFee, MANAGEMENT_FEE + DAO_MANAGEMENT_FEE, "Management fee should match");
         assertEq(feeManagerData.performanceFee, PERFORMANCE_FEE + DAO_PERFORMANCE_FEE, "Performance fee should match");
     }
+
 }
