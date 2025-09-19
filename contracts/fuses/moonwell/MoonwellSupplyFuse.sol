@@ -82,7 +82,7 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Withdraw assets from Moonwell
     /// @param data_ Struct containing asset and amount to withdraw
     function exit(MoonwellSupplyFuseExitData calldata data_) external {
-        _exit(data_);
+        _exit(data_, false);
     }
 
     /// @notice Handle instant withdrawals
@@ -92,12 +92,12 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 amount = uint256(params_[0]);
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        _exit(MoonwellSupplyFuseExitData(asset, amount));
+        _exit(MoonwellSupplyFuseExitData(asset, amount), true);
     }
 
     /// @dev Internal function to handle withdrawals
     /// @param data_ Struct containing withdrawal parameters
-    function _exit(MoonwellSupplyFuseExitData memory data_) internal {
+    function _exit(MoonwellSupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -112,15 +112,33 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        try mToken.redeemUnderlying(amountToWithdraw) returns (uint256 redeemResult) {
-            if (redeemResult != 0) {
-                emit MoonwellSupplyExitFuse(VERSION, data_.asset, address(mToken), redeemResult);
-            } else {
-                emit MoonwellSupplyExitFailed(VERSION, data_.asset, address(mToken), amountToWithdraw);
+        _performWithdraw(data_.asset, address(mToken), amountToWithdraw, catchExceptions_);
+    }
+
+    function _performWithdraw(
+        address asset_,
+        address mToken_,
+        uint256 amountToWithdraw_,
+        bool catchExceptions_
+    ) private {
+        if (catchExceptions_) {
+            try MErc20(mToken_).redeemUnderlying(amountToWithdraw_) returns (uint256 redeemResult) {
+                if (redeemResult != 0) {
+                    emit MoonwellSupplyExitFuse(VERSION, asset_, mToken_, redeemResult);
+                } else {
+                    emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amountToWithdraw_);
+                }
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amountToWithdraw_);
             }
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit MoonwellSupplyExitFailed(VERSION, data_.asset, address(mToken), amountToWithdraw);
+        } else {
+            uint256 redeemResult = MErc20(mToken_).redeemUnderlying(amountToWithdraw_);
+            if (redeemResult != 0) {
+                emit MoonwellSupplyExitFuse(VERSION, asset_, mToken_, redeemResult);
+            } else {
+                emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amountToWithdraw_);
+            }
         }
     }
 }
