@@ -114,22 +114,22 @@ contract FusionFactoryTest is Test {
 
         address plasmaVaultCoreBase = address(new PlasmaVault());
         PlasmaVault(plasmaVaultCoreBase).proxyInitialize(
-                PlasmaVaultInitData({
-                    assetName: "fake",
-                    assetSymbol: "fake",
-                    underlyingToken: address(underlyingToken),
-                    priceOracleMiddleware: priceOracleMiddleware,
-                    feeConfig: FeeConfig({
-                        feeFactory: factoryAddresses.feeManagerFactory,
-                        iporDaoManagementFee: 1,
-                        iporDaoPerformanceFee: 1,
-                        iporDaoFeeRecipientAddress: address(this)
-                    }),
-                    accessManager: accessManagerBase,
-                    plasmaVaultBase: plasmaVaultBase,
-                    withdrawManager: withdrawManagerBase
-                })
-            );
+            PlasmaVaultInitData({
+                assetName: "fake",
+                assetSymbol: "fake",
+                underlyingToken: address(underlyingToken),
+                priceOracleMiddleware: priceOracleMiddleware,
+                feeConfig: FeeConfig({
+                    feeFactory: factoryAddresses.feeManagerFactory,
+                    iporDaoManagementFee: 1,
+                    iporDaoPerformanceFee: 1,
+                    iporDaoFeeRecipientAddress: address(this)
+                }),
+                accessManager: accessManagerBase,
+                plasmaVaultBase: plasmaVaultBase,
+                withdrawManager: withdrawManagerBase
+            })
+        );
 
         address rewardsManagerBase = address(new RewardsClaimManager(owner, plasmaVaultCoreBase));
 
@@ -529,7 +529,7 @@ contract FusionFactoryTest is Test {
         assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
     }
 
-     function testShouldClonePremiumVaultWithAdmin() public {
+    function testShouldClonePremiumVaultWithAdmin() public {
         // given
         address[] memory newPlasmaVaultAdminArray = new address[](2);
         newPlasmaVaultAdminArray[0] = address(0x321);
@@ -1553,7 +1553,7 @@ contract FusionFactoryTest is Test {
         assertTrue(foundFeeManager, "FeeManager should be in approved targets");
     }
 
-     function testShouldCloneVaultWithCorrectContextManagerApprovedTargets() public {
+    function testShouldCloneVaultWithCorrectContextManagerApprovedTargets() public {
         // given
         uint256 redemptionDelay = 1 seconds;
 

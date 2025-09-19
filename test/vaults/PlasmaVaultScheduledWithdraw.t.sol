@@ -61,7 +61,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
                 withdrawManager: _withdrawManager
             })
         );
-        
+
         vm.stopPrank();
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,

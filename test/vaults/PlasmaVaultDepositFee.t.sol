@@ -18,6 +18,7 @@ import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {AccessManagerFactory} from "../../contracts/factory/AccessManagerFactory.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 
 contract PlasmaVaultDepositFeeTest is Test {
     // Test constants
@@ -55,6 +56,8 @@ contract PlasmaVaultDepositFeeTest is Test {
         fusionFactory.upgradeToAndCall(address(newImplementation), "");
         vm.stopPrank();
 
+        address plasmaVaultBase = address(new PlasmaVaultBase());
+
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = fusionFactory.getFactoryAddresses();
         factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
         factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
@@ -65,6 +68,7 @@ contract PlasmaVaultDepositFeeTest is Test {
         vm.startPrank(factoryAdmin);
         fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), factoryAdmin);
         fusionFactory.updateFactoryAddresses(1000, factoryAddresses);
+        fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
         vm.stopPrank();
 
         FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(

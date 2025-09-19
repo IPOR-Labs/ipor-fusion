@@ -93,7 +93,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
     function _createPlasmaVault() private {
         vm.startPrank(_ATOMIST);
         _plasmaVault = address(new PlasmaVault());
-        
+
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",

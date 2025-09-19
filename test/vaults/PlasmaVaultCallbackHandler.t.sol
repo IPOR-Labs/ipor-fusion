@@ -77,17 +77,17 @@ contract PlasmaVaultCallbackHandler is Test {
         _createWithdrawManager();
         _plasmaVault = address(new PlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
-                    "TPLASMA",
-                    _DAI,
-                    address(_priceOracleMiddlewareProxy),
-                    feeConfig,
-                    _accessManager,
-                    address(new PlasmaVaultBase()),
-                    _withdrawManager
-                )
-            );
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
+                "TPLASMA",
+                _DAI,
+                address(_priceOracleMiddlewareProxy),
+                feeConfig,
+                _accessManager,
+                address(new PlasmaVaultBase()),
+                _withdrawManager
+            )
+        );
 
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,

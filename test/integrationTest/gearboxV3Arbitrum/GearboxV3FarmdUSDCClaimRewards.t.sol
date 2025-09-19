@@ -65,20 +65,18 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
-        _plasmaVault = address(
-            new PlasmaVault());
+        _plasmaVault = address(new PlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
-                PlasmaVaultInitData({
-                    assetName: "TEST PLASMA VAULT",
-                    assetSymbol: "TPLASMA",
-                    underlyingToken: USDC,
-                    priceOracleMiddleware: _priceOracleMiddlewareProxy,
-                    feeConfig: _setupFeeConfig(),
-                    accessManager: _accessManager,
-                    plasmaVaultBase: address(new PlasmaVaultBase()),
-                    withdrawManager: _withdrawManager
-                })
-            
+            PlasmaVaultInitData({
+                assetName: "TEST PLASMA VAULT",
+                assetSymbol: "TPLASMA",
+                underlyingToken: USDC,
+                priceOracleMiddleware: _priceOracleMiddlewareProxy,
+                feeConfig: _setupFeeConfig(),
+                accessManager: _accessManager,
+                plasmaVaultBase: address(new PlasmaVaultBase()),
+                withdrawManager: _withdrawManager
+            })
         );
 
         PlasmaVaultConfigurator.setupPlasmaVault(
