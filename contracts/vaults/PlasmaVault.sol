@@ -236,11 +236,6 @@ contract PlasmaVault is
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event DepositFeeRealized(address recipient, uint256 feeShares);
 
-    // /// @notice Constructor with initialization for direct deployment
-    // /// @dev Used when deploying directly without proxy
-    // constructor() ERC20Upgradeable() ERC4626Upgradeable() initializer {
-    // }
-
     /// @notice Fallback function handling delegatecall execution and callbacks
     /// @dev Routes execution between callback handling and base contract delegation
     ///
