@@ -36,7 +36,6 @@ import {PlasmaVaultFeesLib} from "./lib/PlasmaVaultFeesLib.sol";
 import {PlasmaVaultMarketsLib} from "./lib/PlasmaVaultMarketsLib.sol";
 import {RecipientFee} from "../managers/fee/FeeManager.sol";
 
-
 /// @title PlasmaVault Initialization Data Structure
 /// @notice Configuration data structure used during Plasma Vault deployment and initialization
 /// @dev Encapsulates all required parameters for vault setup and protocol integration
@@ -280,7 +279,6 @@ contract PlasmaVault is
     function PLASMA_VAULT_BASE() public view returns (address) {
         return PlasmaVaultStorageLib.getPlasmaVaultBase();
     }
-
 
     /// @notice Initializes the PlasmaVault with initialization data (for cloning)
     /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct

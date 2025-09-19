@@ -6,7 +6,6 @@ import {PlasmaVault} from "../vaults/PlasmaVault.sol";
 
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-
 /// @title PlasmaVaultFactory
 /// @notice Factory contract for creating and deploying new PlasmaVault instances
 /// @dev This factory uses the standard deployment pattern rather than minimal proxy pattern
@@ -48,7 +47,7 @@ contract PlasmaVaultFactory {
         );
     }
 
-     /// @notice Creates a new instance of PlasmaVault using Clones pattern
+    /// @notice Creates a new instance of PlasmaVault using Clones pattern
     /// @param baseAddress_ The address of the base PlasmaVault implementation to clone
     /// @param index_ The index of the PlasmaVault instance
     /// @param initData_ The initialization data containing vault configuration parameters
@@ -64,11 +63,11 @@ contract PlasmaVaultFactory {
         PlasmaVault(plasmaVault).proxyInitialize(initData_);
 
         emit PlasmaVaultCreated(
-            index_, 
-            plasmaVault, 
-            initData_.assetName, 
-            initData_.assetSymbol, 
-            initData_.underlyingToken);
+            index_,
+            plasmaVault,
+            initData_.assetName,
+            initData_.assetSymbol,
+            initData_.underlyingToken
+        );
     }
-
 }

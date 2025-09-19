@@ -81,7 +81,11 @@ contract PlasmaVaultBase is
     /// @param totalSupplyCap_ The maximum total supply cap for the vault
     /// @dev Validates access manager address and total supply cap
     /// @custom:access Only during initialization
-    function init(string memory assetName_, address accessManager_, uint256 totalSupplyCap_) external onlyInitializing override {
+    function init(
+        string memory assetName_,
+        address accessManager_,
+        uint256 totalSupplyCap_
+    ) external override onlyInitializing {
         if (accessManager_ == address(0)) {
             revert Errors.WrongAddress();
         }
