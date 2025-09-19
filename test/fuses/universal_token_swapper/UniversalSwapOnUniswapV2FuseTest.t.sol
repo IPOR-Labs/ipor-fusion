@@ -59,7 +59,8 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
 
         // plasma vault
         _plasmaVault = address(
-            new PlasmaVault(
+            new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "pvUSDC",
@@ -70,7 +71,6 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
                     address(new PlasmaVaultBase()),
                     _withdrawManager
                 )
-            )
         );
 
         PlasmaVaultConfigurator.setupPlasmaVault(

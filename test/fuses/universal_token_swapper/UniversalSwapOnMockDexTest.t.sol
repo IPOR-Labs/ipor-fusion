@@ -65,7 +65,8 @@ contract UniversalSwapOnMockDexTest is Test {
 
         // plasma vault
         _plasmaVault = address(
-            new PlasmaVault(
+            new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "pvUSDC",
@@ -76,7 +77,6 @@ contract UniversalSwapOnMockDexTest is Test {
                     address(new PlasmaVaultBase()),
                     _withdrawManager
                 )
-            )
         );
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,

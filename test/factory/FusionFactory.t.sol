@@ -112,8 +112,8 @@ contract FusionFactoryTest is Test {
         address contextManagerBase = address(new ContextManager(owner, approvedAddresses));
         address priceManagerBase = address(new PriceOracleMiddlewareManager(owner, priceOracleMiddleware));
 
-        address plasmaVaultCoreBase = address(
-            new PlasmaVault(
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        PlasmaVault(plasmaVaultCoreBase).proxyInitialize(
                 PlasmaVaultInitData({
                     assetName: "fake",
                     assetSymbol: "fake",
@@ -129,8 +129,7 @@ contract FusionFactoryTest is Test {
                     plasmaVaultBase: plasmaVaultBase,
                     withdrawManager: withdrawManagerBase
                 })
-            )
-        );
+            );
 
         address rewardsManagerBase = address(new RewardsClaimManager(owner, plasmaVaultCoreBase));
 

@@ -75,8 +75,8 @@ contract PlasmaVaultCallbackHandler is Test {
 
         _createAccessManager();
         _createWithdrawManager();
-        _plasmaVault = address(
-            new PlasmaVault(
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "TPLASMA",
@@ -87,8 +87,7 @@ contract PlasmaVaultCallbackHandler is Test {
                     address(new PlasmaVaultBase()),
                     _withdrawManager
                 )
-            )
-        );
+            );
 
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,

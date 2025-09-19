@@ -86,7 +86,8 @@ contract LiquityStabilityPoolFuseTest is Test {
         mockDex = new MockDex(WETH, BOLD);
         deal(BOLD, address(mockDex), 1e6 * 1e6);
 
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",
                 "pvBOLD",

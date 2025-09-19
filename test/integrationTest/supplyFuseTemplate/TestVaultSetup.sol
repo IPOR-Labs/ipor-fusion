@@ -25,7 +25,8 @@ abstract contract TestVaultSetup is TestStorage {
 
         vm.startPrank(accounts[0]);
         plasmaVault = address(
-            new PlasmaVault(
+            new PlasmaVault());
+        PlasmaVault(plasmaVault).proxyInitialize(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "TPLASMA",
@@ -36,7 +37,7 @@ abstract contract TestVaultSetup is TestStorage {
                     address(new PlasmaVaultBase()),
                     withdrawManager
                 )
-            )
+            
         );
         vm.stopPrank();
 
@@ -66,8 +67,8 @@ abstract contract TestVaultSetup is TestStorage {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         vm.startPrank(accounts[0]);
-        plasmaVault = address(
-            new PlasmaVault(
+        plasmaVault = address(new PlasmaVault());
+        PlasmaVault(plasmaVault).proxyInitialize(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "TPLASMA",
@@ -78,8 +79,7 @@ abstract contract TestVaultSetup is TestStorage {
                     address(new PlasmaVaultBase()),
                     withdrawManager
                 )
-            )
-        );
+            );
 
         vm.stopPrank();
 

@@ -58,8 +58,8 @@ contract MorphoFlashLoanFuseTest is Test {
         address withdrawManager = address(new WithdrawManager(_accessManager));
 
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData({
                     assetName: "PLASMA VAULT",
                     assetSymbol: "PLASMA",
@@ -70,8 +70,8 @@ contract MorphoFlashLoanFuseTest is Test {
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     withdrawManager: withdrawManager
                 })
-            )
-        );
+            );
+        
         vm.stopPrank();
 
         PlasmaVaultConfigurator.setupPlasmaVault(

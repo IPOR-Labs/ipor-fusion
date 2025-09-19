@@ -96,8 +96,8 @@ contract FeeManagerTest is Test {
 
     function _createPlasmaVault() private {
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData({
                     assetName: "PLASMA VAULT",
                     assetSymbol: "PLASMA",
@@ -108,8 +108,7 @@ contract FeeManagerTest is Test {
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     withdrawManager: _withdrawManager
                 })
-            )
-        );
+            );
 
         vm.stopPrank();
 

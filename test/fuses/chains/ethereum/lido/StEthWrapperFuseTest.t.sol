@@ -56,8 +56,8 @@ contract StEthWrapperFuseTest is Test {
 
         // plasma vault
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(  
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "stETH",
@@ -68,7 +68,6 @@ contract StEthWrapperFuseTest is Test {
                     address(new PlasmaVaultBase()),
                     withdrawManager
                 )
-            )
         );
         vm.stopPrank();
 

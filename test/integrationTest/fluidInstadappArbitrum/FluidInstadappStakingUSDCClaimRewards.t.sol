@@ -67,7 +67,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
 
         address withdrawManager = address(new WithdrawManager(_accessManager));
         _plasmaVault = address(
-            new PlasmaVault(
+            new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData({
                     assetName: "TEST PLASMA VAULT",
                     assetSymbol: "TPLASMA",
@@ -78,7 +79,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     withdrawManager: withdrawManager
                 })
-            )
+            
         );
 
         PlasmaVaultConfigurator.setupPlasmaVault(

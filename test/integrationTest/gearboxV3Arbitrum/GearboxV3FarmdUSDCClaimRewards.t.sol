@@ -66,7 +66,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         alphas[0] = address(this);
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
         _plasmaVault = address(
-            new PlasmaVault(
+            new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData({
                     assetName: "TEST PLASMA VAULT",
                     assetSymbol: "TPLASMA",
@@ -77,7 +78,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                     plasmaVaultBase: address(new PlasmaVaultBase()),
                     withdrawManager: _withdrawManager
                 })
-            )
+            
         );
 
         PlasmaVaultConfigurator.setupPlasmaVault(

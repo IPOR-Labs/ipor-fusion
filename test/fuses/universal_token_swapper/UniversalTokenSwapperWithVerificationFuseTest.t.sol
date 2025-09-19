@@ -89,7 +89,8 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
 
         // plasma vault
         _plasmaVault = address(
-            new PlasmaVault(
+            new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "pvUSDC",
@@ -100,7 +101,7 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
                     address(new PlasmaVaultBase()),
                     address(withdrawManager)
                 )
-            )
+            
         );
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,

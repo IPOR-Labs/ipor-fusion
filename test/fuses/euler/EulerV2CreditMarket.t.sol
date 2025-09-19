@@ -103,8 +103,8 @@ contract EulerCreditMarketTest is Test {
 
         // plasma vault
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "USDC",
@@ -115,8 +115,7 @@ contract EulerCreditMarketTest is Test {
                     address(new PlasmaVaultBase()),
                     withdrawManager
                 )
-            )
-        );
+            );
         vm.stopPrank();
 
         PlasmaVaultConfigurator.setupPlasmaVault(

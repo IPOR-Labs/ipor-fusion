@@ -71,8 +71,10 @@ contract UniswapV3PositionFuseTest is Test {
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
         // plasma vault
         _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
+                new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
+
+                    PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "pvUSDC",
                     USDC,
@@ -82,7 +84,6 @@ contract UniswapV3PositionFuseTest is Test {
                     address(new PlasmaVaultBase()),
                     _withdrawManager
                 )
-            )
         );
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,

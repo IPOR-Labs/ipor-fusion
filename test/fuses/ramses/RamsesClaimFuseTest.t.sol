@@ -90,8 +90,8 @@ contract RamsesClaimFuseTest is Test {
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
         // plasma vault
-        _plasmaVault = address(
-            new PlasmaVault(
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
                 PlasmaVaultInitData(
                     "TEST PLASMA VAULT",
                     "pvUSDC",
@@ -102,8 +102,8 @@ contract RamsesClaimFuseTest is Test {
                     address(new PlasmaVaultBase()),
                     _withdrawManager
                 )
-            )
-        );
+            );
+        
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
             address(this),
