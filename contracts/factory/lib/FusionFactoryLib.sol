@@ -7,6 +7,7 @@ import {WithdrawManagerFactory} from "../WithdrawManagerFactory.sol";
 import {ContextManagerFactory} from "../ContextManagerFactory.sol";
 import {PriceManagerFactory} from "../PriceManagerFactory.sol";
 import {PlasmaVaultFactory} from "../PlasmaVaultFactory.sol";
+import {ClonePlasmaVaultFactory} from "../ClonePlasmaVaultFactory.sol";
 import {AccessManagerFactory} from "../AccessManagerFactory.sol";
 import {FusionFactoryStorageLib} from "./FusionFactoryStorageLib.sol";
 import {PlasmaVaultInitData} from "../../vaults/PlasmaVault.sol";
@@ -302,7 +303,7 @@ library FusionFactoryLib {
             revert InvalidDaoFeeRecipient();
         }
 
-        fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).clone(
+        fusionAddresses.plasmaVault = ClonePlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).clone(
             baseAddresses.plasmaVaultCoreBase,
             fusionAddresses.index,
             PlasmaVaultInitData({
