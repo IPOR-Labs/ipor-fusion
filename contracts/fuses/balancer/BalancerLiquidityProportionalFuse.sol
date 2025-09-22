@@ -93,6 +93,8 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
             revert BalancerLiquidityProportionalFuseUnsupportedPool(data_.pool);
         }
 
+        BalancerSubstrateLib.checkTokensInPool(data_.pool, data_.tokens);
+
         uint256 len = data_.tokens.length;
         for (uint256 i; i < len; ++i) {
             uint256 amountIn = data_.maxAmountsIn[i];
@@ -119,7 +121,7 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
 
         for (uint256 i; i < len; ++i) {
             if (data_.maxAmountsIn[i] > 0) {
-                IERC20(data_.tokens[i]).forceApprove(BALANCER_ROUTER, 0);
+                IERC20(data_.tokens[i]).forceApprove(PERMIT2, 0);
             }
         }
     }
@@ -131,7 +133,6 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
             revert BalancerLiquidityProportionalFuseInvalidParams();
         }
 
-        // Access control: pool must be granted as a substrate for this market
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,

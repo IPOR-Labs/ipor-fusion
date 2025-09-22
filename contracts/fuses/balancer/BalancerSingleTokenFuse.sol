@@ -85,6 +85,11 @@ contract BalancerSingleTokenFuse is IFuseCommon {
             return;
         }
 
+        address[] memory tokens = new address[](1);
+        tokens[0] = data_.tokenIn;
+
+        BalancerSubstrateLib.checkTokensInPool(data_.pool, tokens);
+
         IERC20(data_.tokenIn).forceApprove(PERMIT2, data_.maxAmountIn);
         IPermit2(PERMIT2).approve(
             data_.tokenIn,

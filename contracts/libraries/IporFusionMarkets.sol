@@ -100,6 +100,9 @@ library IporFusionMarkets {
     /// @dev Substrate type: address
     uint256 public constant STAKE_DAO_V2 = 34;
 
+    /// @dev Balancer market
+    /// @dev Substrate type: BalancerSubstrate (pool or gauge addresses)
+    /// @dev Supports both Balancer pools and liquidity gauges for LP token management
     uint256 public constant BALANCER = 35;
 
     /// @dev Market 1 for ERC4626 Vault

@@ -2,6 +2,8 @@
 pragma solidity 0.8.26;
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IPool} from "./ext/IPool.sol";
 
 enum BalancerSubstrateType {
     UNDEFINED,
@@ -15,6 +17,8 @@ struct BalancerSubstrate {
 }
 
 library BalancerSubstrateLib {
+    error TokensNotInPool(address pool, address token);
+
     function substrateToBytes32(BalancerSubstrate memory substrate_) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(substrate_.substrateAddress)) | (uint256(substrate_.substrateType) << 160));
     }
@@ -59,6 +63,29 @@ library BalancerSubstrateLib {
             // Since we multiply and divide we don't need to use FP math.
             // Round down since we're calculating amounts out.
             amountsOut[i] = (balances[i] * bptAmountIn) / bptTotalSupply;
+        }
+    }
+
+    function checkTokensInPool(address pool_, address[] memory tokens_) internal view {
+        (IERC20[] memory tokens, , , ) = IPool(pool_).getTokenInfo();
+        uint256 tokensToCheckLength = tokens_.length;
+        uint256 tokensLength = tokens.length;
+        address token;
+        bool tokenFound;
+        for (uint256 i; i < tokensToCheckLength; ++i) {
+            token = tokens_[i];
+            tokenFound = false;
+
+            for (uint256 j; j < tokensLength; ++j) {
+                if (address(tokens[j]) == token) {
+                    tokenFound = true;
+                    break;
+                }
+            }
+
+            if (!tokenFound) {
+                revert TokensNotInPool(pool_, tokens_[i]);
+            }
         }
     }
 }

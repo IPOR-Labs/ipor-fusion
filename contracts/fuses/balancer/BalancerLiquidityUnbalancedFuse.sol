@@ -11,6 +11,13 @@ import {IRouter} from "./ext/IRouter.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
 import {IPermit2} from "./ext/IPermit2.sol";
 
+/**
+ * @notice Data structure for entering liquidity into a Balancer pool with unbalanced amounts
+ * @param pool The address of the Balancer pool
+ * @param tokens Array of token addresses to provide liquidity for
+ * @param exactAmountsIn Array of exact token amounts to provide (must match tokens array length)
+ * @param minBptAmountOut Minimum BPT (Balancer Pool Token) amount to receive
+ */
 struct BalancerLiquidityUnbalancedFuseEnterData {
     address pool;
     address[] tokens;
@@ -18,12 +25,51 @@ struct BalancerLiquidityUnbalancedFuseEnterData {
     uint256 minBptAmountOut;
 }
 
+/**
+ * @notice Data structure for exiting liquidity from a Balancer pool
+ * @param pool The address of the Balancer pool
+ * @param maxBptAmountIn Maximum BPT amount to burn for withdrawal
+ * @param minAmountsOut Array of minimum token amounts to receive for each token
+ */
 struct BalancerLiquidityUnbalancedFuseExitData {
     address pool;
     uint256 maxBptAmountIn;
     uint256[] minAmountsOut;
 }
 
+/**
+ * @title BalancerLiquidityUnbalancedFuse
+ * @notice A fuse contract that handles unbalanced liquidity operations with Balancer pools
+ *         within the IPOR Fusion vault system
+ * @dev This contract implements the IFuseCommon interface and provides functionality for
+ *      adding and removing liquidity from Balancer pools with custom token amounts.
+ *      Unlike proportional liquidity operations, this fuse allows for unbalanced deposits
+ *      and withdrawals, providing more flexibility in liquidity management.
+ *
+ * Key Features:
+ * - Unbalanced liquidity addition to Balancer pools
+ * - Custom liquidity removal from Balancer pools
+ * - Integration with Permit2 for gas-efficient token approvals
+ * - Substrate validation to ensure only authorized pools are used
+ * - Comprehensive event logging for operation tracking
+ *
+ * Architecture:
+ * - Each fuse is tied to a specific market ID and Balancer router address
+ * - Uses Permit2 for efficient token approvals without requiring separate transactions
+ * - Validates pool access through the substrate system before executing operations
+ * - Supports both enter and exit operations with custom token amounts
+ *
+ * Security Considerations:
+ * - Immutable market ID, router, and Permit2 addresses prevent configuration changes
+ * - Input validation ensures pool addresses are not zero and array lengths match
+ * - Substrate validation prevents unauthorized pool access
+ * - Automatic approval cleanup after operations to prevent token exposure
+ * - Uses SafeERC20 for secure token operations
+ *
+ * Usage:
+ * - Enter: Provide exact token amounts to receive BPT tokens
+ * - Exit: Burn BPT tokens to receive underlying tokens with minimum amounts specified
+ */
 contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -81,6 +127,8 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
             revert BalancerLiquidityUnbalancedFuseUnsupportedPool(data_.pool);
         }
 
+        BalancerSubstrateLib.checkTokensInPool(data_.pool, data_.tokens);
+
         uint256 len = data_.tokens.length;
         for (uint256 i; i < len; ++i) {
             uint256 amountIn = data_.exactAmountsIn[i];
@@ -107,7 +155,7 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
 
         for (uint256 i; i < len; ++i) {
             if (data_.exactAmountsIn[i] > 0) {
-                IERC20(data_.tokens[i]).forceApprove(BALANCER_ROUTER, 0);
+                IERC20(data_.tokens[i]).forceApprove(PERMIT2, 0);
             }
         }
     }

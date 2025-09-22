@@ -7,10 +7,37 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
-import {IRouter} from "./ext/IRouter.sol";
 import {IPool} from "./ext/IPool.sol";
 import {ILiquidityGauge} from "./ext/ILiquidityGauge.sol";
 
+/**
+ * @title BalancerBalanceFuse
+ * @notice A fuse contract that calculates the total USD value of Balancer LP tokens and gauge positions
+ *         for a specific market within the IPOR Fusion vault system
+ * @dev This contract implements the IMarketBalanceFuse interface and is designed to work with
+ *      Balancer protocol's pool and gauge systems. It supports both direct pool positions and
+ *      gauge-staked positions, converting all underlying token balances to USD values.
+ *
+ * Key Features:
+ * - Calculates total USD value of all Balancer positions for a given market
+ * - Supports both Balancer pools and liquidity gauges
+ * - Uses proportional token amounts based on LP token holdings
+ * - Integrates with the price oracle middleware for accurate USD conversions
+ * - Handles multiple substrates (pools/gauges) per market
+ *
+ * Architecture:
+ * - Each fuse is tied to a specific market ID and Balancer router address
+ * - Retrieves granted substrates (pools/gauges) from the vault configuration
+ * - For each substrate, calculates the proportional token amounts from LP holdings
+ * - Converts all token amounts to USD using the price oracle middleware
+ * - Returns the total aggregated USD value
+ *
+ * Security Considerations:
+ * - Immutable market ID and router address prevent configuration changes
+ * - Input validation ensures router address is not zero
+ * - Uses view functions for balance calculations to prevent state changes
+ * - Relies on trusted price oracle middleware for accurate pricing
+ */
 contract BalancerBalanceFuse is IMarketBalanceFuse {
     error InvalidAddress();
 
@@ -49,6 +76,12 @@ contract BalancerBalanceFuse is IMarketBalanceFuse {
             } else if (substrate.substrateType == BalancerSubstrateType.GAUGE) {
                 pool = ILiquidityGauge(substrate.substrateAddress).lp_token();
                 lpBalance = IERC20(substrate.substrateAddress).balanceOf(address(this));
+            } else {
+                continue;
+            }
+
+            if (lpBalance == 0) {
+                continue;
             }
 
             (IERC20[] memory tokens, , , uint256[] memory lastBalancesLiveScaled18) = IPool(pool).getTokenInfo();
