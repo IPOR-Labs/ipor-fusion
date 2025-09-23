@@ -100,6 +100,10 @@ library IporFusionMarkets {
     /// @dev Substrate type: address
     uint256 public constant STAKE_DAO_V2 = 34;
 
+    /// @dev Silo Finance V2 market
+    /// @dev Substrate type: address - address of the Silo Config contract
+    uint256 public constant SILO_V2 = 35; //TODO: after merge check.
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
