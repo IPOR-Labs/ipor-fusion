@@ -107,7 +107,8 @@ contract PlasmaVaultErc20FusionTest is Test {
 
         accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,

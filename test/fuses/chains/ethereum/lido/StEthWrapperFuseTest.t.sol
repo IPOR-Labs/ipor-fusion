@@ -56,18 +56,17 @@ contract StEthWrapperFuseTest is Test {
 
         // plasma vault
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
-                    "stETH",
-                    _stETH_ADDRESS,
-                    _priceOracle,
-                    _setupFeeConfig(),
-                    accessManager,
-                    address(new PlasmaVaultBase()),
-                    withdrawManager
-                )
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
+                "stETH",
+                _stETH_ADDRESS,
+                _priceOracle,
+                _setupFeeConfig(),
+                accessManager,
+                address(new PlasmaVaultBase()),
+                withdrawManager
             )
         );
         vm.stopPrank();

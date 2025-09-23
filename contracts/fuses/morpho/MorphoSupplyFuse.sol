@@ -77,7 +77,7 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     function exit(MorphoSupplyFuseExitData calldata data_) external {
-        _exit(data_);
+        _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - Morpho market id
@@ -86,10 +86,10 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         bytes32 morphoMarketId = params_[1];
 
-        _exit(MorphoSupplyFuseExitData(morphoMarketId, amount));
+        _exit(MorphoSupplyFuseExitData(morphoMarketId, amount), true);
     }
 
-    function _exit(MorphoSupplyFuseExitData memory data_) internal {
+    function _exit(MorphoSupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -119,25 +119,38 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
 
         if (data_.amount >= assetsMax) {
-            try MORPHO.withdraw(marketParams, 0, shares, address(this), address(this)) returns (
+            _performWithdraw(marketParams, data_.morphoMarketId, 0, shares, catchExceptions_);
+        } else {
+            _performWithdraw(marketParams, data_.morphoMarketId, data_.amount, 0, catchExceptions_);
+        }
+    }
+
+    function _performWithdraw(
+        MarketParams memory marketParams_,
+        bytes32 morphoMarketId_,
+        uint256 assets_,
+        uint256 shares_,
+        bool catchExceptions_
+    ) private {
+        if (catchExceptions_) {
+            try MORPHO.withdraw(marketParams_, assets_, shares_, address(this), address(this)) returns (
                 uint256 assetsWithdrawn,
                 uint256 sharesWithdrawn
             ) {
-                emit MorphoSupplyFuseExit(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsWithdrawn);
+                emit MorphoSupplyFuseExit(VERSION, marketParams_.loanToken, morphoMarketId_, assetsWithdrawn);
             } catch {
                 /// @dev if withdraw failed, continue with the next step
-                emit MorphoSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoMarketId);
+                emit MorphoSupplyFuseExitFailed(VERSION, marketParams_.loanToken, morphoMarketId_);
             }
         } else {
-            try MORPHO.withdraw(marketParams, data_.amount, 0, address(this), address(this)) returns (
-                uint256 assetsWithdrawn,
-                uint256 sharesWithdrawn
-            ) {
-                emit MorphoSupplyFuseExit(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsWithdrawn);
-            } catch {
-                /// @dev if withdraw failed, continue with the next step
-                emit MorphoSupplyFuseExitFailed(VERSION, marketParams.loanToken, data_.morphoMarketId);
-            }
+            (uint256 assetsWithdrawn, ) = MORPHO.withdraw(
+                marketParams_,
+                assets_,
+                shares_,
+                address(this),
+                address(this)
+            );
+            emit MorphoSupplyFuseExit(VERSION, marketParams_.loanToken, morphoMarketId_, assetsWithdrawn);
         }
     }
 }

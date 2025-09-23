@@ -49,7 +49,8 @@ library PlasmaVaultHelper {
             withdrawManager: withdrawManager
         });
 
-        plasmaVault = new PlasmaVault(initData);
+        plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(initData);
     }
 
     function deployMinimalPlasmaVaultWithWithdrawManager(
@@ -75,7 +76,8 @@ library PlasmaVaultHelper {
             withdrawManager: withdrawManager
         });
 
-        plasmaVault = new PlasmaVault(initData);
+        plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(initData);
     }
 
     function accessManagerOf(PlasmaVault plasmaVault_) internal view returns (IporFusionAccessManager) {

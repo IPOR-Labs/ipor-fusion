@@ -66,19 +66,18 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
         alphas[0] = address(this);
 
         address withdrawManager = address(new WithdrawManager(_accessManager));
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData({
-                    assetName: "TEST PLASMA VAULT",
-                    assetSymbol: "TPLASMA",
-                    underlyingToken: USDC,
-                    priceOracleMiddleware: _priceOracleMiddlewareProxy,
-                    feeConfig: _setupFeeConfig(),
-                    accessManager: _accessManager,
-                    plasmaVaultBase: address(new PlasmaVaultBase()),
-                    withdrawManager: withdrawManager
-                })
-            )
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
+            PlasmaVaultInitData({
+                assetName: "TEST PLASMA VAULT",
+                assetSymbol: "TPLASMA",
+                underlyingToken: USDC,
+                priceOracleMiddleware: _priceOracleMiddlewareProxy,
+                feeConfig: _setupFeeConfig(),
+                accessManager: _accessManager,
+                plasmaVaultBase: address(new PlasmaVaultBase()),
+                withdrawManager: withdrawManager
+            })
         );
 
         PlasmaVaultConfigurator.setupPlasmaVault(

@@ -90,7 +90,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
-    uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 5;
+    uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 6;
     uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
     uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 3;
 
@@ -892,6 +892,12 @@ library IporFusionAccessManagerInitializerLibV1 {
                 target: plasmaVaultAddress_.feeManager,
                 roleId: Roles.ATOMIST_ROLE,
                 functionSelector: FeeManager.updateManagementFee.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.feeManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: FeeManager.setDepositFee.selector,
                 minimalExecutionDelay: 0
             });
 

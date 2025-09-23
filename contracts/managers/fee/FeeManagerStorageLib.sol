@@ -16,6 +16,7 @@ event IporDaoFeeRecipientAddressChanged(address indexed newRecipient);
 
 event HighWaterMarkPerformanceFeeUpdated(uint128 highWaterMark);
 event HighWaterMarkPerformanceFeeUpdateIntervalUpdated(uint32 updateInterval);
+event DepositFeeUpdated(uint256 fee);
 
 /// @notice Storage structure for total performance fee in plasma vault
 /// @dev Value stored with 2 decimal precision (10000 = 100%)
@@ -52,6 +53,12 @@ struct HighWaterMarkPerformanceFeeStorage {
     uint32 updateInterval;
 }
 
+/// @notice Storage structure for deposit fee in plasma vault
+/// @dev Value stored with 18 decimal precision (1000000000000000000 = 1)
+struct DepositFeeStorage {
+    uint256 value;
+}
+
 /// @title Fee Manager Storage Library
 /// @notice Library for managing fee-related storage in the IPOR Protocol's plasma vault system
 /// @dev Implements diamond storage pattern for fee management including performance, management, and DAO fees
@@ -69,6 +76,9 @@ library FeeManagerStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.total.management.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant TOTAL_MANAGEMENT_FEE_SLOT =
         0xcf56f35f42e69dcdff0b7b1f2e356cc5f92476bed919f8df0cdbf41f78aa1f00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.deposit.fee.storage")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant DEPOSIT_FEE_SLOT = 0xd9b4590128261b514dbe7816b74c6ee2ff34efef3b40529466c801d63e471800;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.management.fee.recipient.data.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant MANAGEMENT_FEE_RECIPIENT_DATA_SLOT =
@@ -98,6 +108,21 @@ library FeeManagerStorageLib {
         assembly {
             $.slot := PERFORMANCE_FEE_RECIPIENT_DATA_SLOT
         }
+    }
+
+    /// @notice Retrieves deposit fee storage
+    /// @dev Uses assembly to access diamond storage pattern slot
+    /// @return $ Storage pointer to DepositFeeStorage
+    function _depositFeeStorage() internal pure returns (DepositFeeStorage storage $) {
+        assembly {
+            $.slot := DEPOSIT_FEE_SLOT
+        }
+    }
+
+    /// @notice Gets the deposit fee percentage for the plasma vault
+    /// @return Deposit fee percentage with 18 decimals (1e18 = 100%, 1e16 = 1%)
+    function getPlasmaVaultDepositFee() internal view returns (uint256) {
+        return _depositFeeStorage().value;
     }
 
     /// @notice Gets the total performance fee percentage for the plasma vault
@@ -134,6 +159,13 @@ library FeeManagerStorageLib {
     /// @param fee_ Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     function setPlasmaVaultTotalPerformanceFee(uint256 fee_) internal {
         _totalPerformanceFeeStorage().value = fee_;
+    }
+
+    /// @notice Sets the deposit fee percentage for the plasma vault
+    /// @param fee_ Deposit fee percentage with 18 decimals (1e18 = 100%, 1e16 = 1%)
+    function setPlasmaVaultDepositFee(uint256 fee_) internal {
+        _depositFeeStorage().value = fee_;
+        emit DepositFeeUpdated(fee_);
     }
 
     /// @notice Gets the total management fee percentage for the plasma vault

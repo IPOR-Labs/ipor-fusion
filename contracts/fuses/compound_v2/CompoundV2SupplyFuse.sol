@@ -58,7 +58,7 @@ contract CompoundV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     function exit(CompoundV2SupplyFuseExitData calldata data_) external {
-        _exit(data_);
+        _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
@@ -67,10 +67,10 @@ contract CompoundV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        _exit(CompoundV2SupplyFuseExitData(asset, amount));
+        _exit(CompoundV2SupplyFuseExitData(asset, amount), true);
     }
 
-    function _exit(CompoundV2SupplyFuseExitData memory data_) internal {
+    function _exit(CompoundV2SupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -84,16 +84,7 @@ contract CompoundV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        try cToken.redeemUnderlying(amountToWithdraw) returns (uint256 successFlag) {
-            if (successFlag == 0) {
-                emit CompoundV2SupplyExitFuse(VERSION, data_.asset, address(cToken), amountToWithdraw);
-            } else {
-                emit CompoundV2SupplyExitFailed(VERSION, data_.asset, address(cToken), amountToWithdraw);
-            }
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit CompoundV2SupplyExitFailed(VERSION, data_.asset, address(cToken), amountToWithdraw);
-        }
+        _performWithdraw(data_.asset, address(cToken), amountToWithdraw, catchExceptions_);
     }
 
     function _getCToken(uint256 marketId_, address asset_) internal view returns (address) {
@@ -109,5 +100,32 @@ contract CompoundV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             }
         }
         revert CompoundV2SupplyFuseUnsupportedAsset(asset_);
+    }
+
+    function _performWithdraw(
+        address asset_,
+        address cToken_,
+        uint256 amountToWithdraw_,
+        bool catchExceptions_
+    ) private {
+        if (catchExceptions_) {
+            try CErc20(cToken_).redeemUnderlying(amountToWithdraw_) returns (uint256 successFlag) {
+                if (successFlag == 0) {
+                    emit CompoundV2SupplyExitFuse(VERSION, asset_, cToken_, amountToWithdraw_);
+                } else {
+                    emit CompoundV2SupplyExitFailed(VERSION, asset_, cToken_, amountToWithdraw_);
+                }
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit CompoundV2SupplyExitFailed(VERSION, asset_, cToken_, amountToWithdraw_);
+            }
+        } else {
+            uint256 successFlag = CErc20(cToken_).redeemUnderlying(amountToWithdraw_);
+            if (successFlag == 0) {
+                emit CompoundV2SupplyExitFuse(VERSION, asset_, cToken_, amountToWithdraw_);
+            } else {
+                emit CompoundV2SupplyExitFailed(VERSION, asset_, cToken_, amountToWithdraw_);
+            }
+        }
     }
 }
