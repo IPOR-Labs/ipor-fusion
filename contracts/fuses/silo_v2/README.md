@@ -112,23 +112,23 @@ Each SiloConfig represents a risk-isolated market managing:
 **Real-world example on Ethereum Mainnet:**
 
 ```
-SiloConfig Address: 0xeC7C5CAaEA12A1a6952F3a3D0e3ca5B678433934 (weETH Market)
+SiloConfig Address: 0xeC7C5CAaEA12A1a6952F3a3D0e3ca5B678433934 (weETH/wETH Market)
 ├── Silo ID: 105
 ├── Silo0: 0xDb81E17B5CE19e9B2F64B378F98d88E4Ca6726E7 (weETH silo)
 │   ├── Protected Share Token: 0x2791A35E81C5a5D7a5287a28Bbd6263Ba9CE7Ff2 (Non-borrowable weETH Deposit)
 │   ├── Collateral Share Token: 0xDb81E17B5CE19e9B2F64B378F98d88E4Ca6726E7 (Borrowable weETH Deposit)
 │   └── Debt Share Token: 0xDFC782FeA37645E68c20646AaCE73951B2817516 (weETH Debt)
-└── Silo1: 0x160287E2D3fdCDE9E91317982fc1Cc01C1f94085 (weETH silo)
-    ├── Protected Share Token: 0x84851b559B05FD33cbad5087dF531f5ea0be7aFc (Non-borrowable weETH Deposit)
-    ├── Collateral Share Token: 0x160287E2D3fdCDE9E91317982fc1Cc01C1f94085 (Borrowable weETH Deposit)
-    └── Debt Share Token: 0x0a437aB5Cb5fE60ed4aE827D54bD0e5753f46Acb (weETH Debt)
+└── Silo1: 0x160287E2D3fdCDE9E91317982fc1Cc01C1f94085 (wETH silo)
+    ├── Protected Share Token: 0x84851b559B05FD33cbad5087dF531f5ea0be7aFc (Non-borrowable wETH Deposit)
+    ├── Collateral Share Token: 0x160287E2D3fdCDE9E91317982fc1Cc01C1f94085 (Borrowable wETH Deposit)
+    └── Debt Share Token: 0x0a437aB5Cb5fE60ed4aE827D54bD0e5753f46Acb (wETH Debt)
 ```
 
 **Configuration Details:**
 
 -   **SiloConfig.SILO_ID**: 105
--   **Asset**: weETH (Wrapped Ether with staking rewards)
--   **Market Type**: Single-asset market with dual silos for different risk profiles
+-   **Assets**: weETH (Wrapped Ether with staking rewards) and wETH (Wrapped Ether)
+-   **Market Type**: Two-asset market with risk isolation between weETH and wETH
 -   **Share Token Naming**: Each share token includes the asset name, deposit type, and Silo ID
 
 **How to Use This Configuration:**
@@ -192,14 +192,15 @@ The integration requires price feeds for **all silo underlying assets**. Based o
 -   **Solvency Oracle**: For liquidation calculations
 -   **MaxLTV Oracle**: For borrowing limits
 
-### Example Configuration for weETH Market
+### Example Configuration for weETH/wETH Market
 
-For the weETH market example (SiloConfig: `0xeC7C5CAaEA12A1a6952F3a3D0e3ca5B678433934`):
+For the weETH/wETH market example (SiloConfig: `0xeC7C5CAaEA12A1a6952F3a3D0e3ca5B678433934`):
 
 **Required Price Feeds:**
 
--   **weETH/USD**: Price feed for the weETH token address (underlying asset of both silos)
--   **Price Feed Address**: Must be configured in Price Manager for the exact weETH token address
+-   **weETH/USD**: Price feed for the weETH token address (underlying asset of Silo0)
+-   **wETH/USD**: Price feed for the wETH token address (underlying asset of Silo1)
+-   **Price Feed Addresses**: Must be configured in Price Manager for the exact weETH and wETH token addresses
 
 **Configuration Steps:**
 
@@ -219,6 +220,7 @@ For the weETH market example (SiloConfig: `0xeC7C5CAaEA12A1a6952F3a3D0e3ca5B6784
 **Important Notes:**
 
 -   The system queries prices for **underlying assets**, not share tokens
--   Each silo in a market may have the same underlying asset (as in the weETH example)
+-   Each silo in a market typically has different underlying assets (as in the weETH/wETH example)
 -   Price feeds must be configured for the exact token addresses returned by the silo contracts
 -   Missing price feeds will cause balance calculation failures
+-   Both assets in the market require separate price feed configurations
