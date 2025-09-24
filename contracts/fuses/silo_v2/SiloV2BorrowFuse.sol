@@ -10,8 +10,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {SiloIndex} from "./SiloIndex.sol";
 import {ISilo} from "./ext/ISilo.sol";
 import {ISiloConfig} from "./ext/ISiloConfig.sol";
-
-
 struct SiloV2BorrowFuseEnterData {
     /// @dev Silo Config address - contract that manages the Silo
     address siloConfig;
@@ -19,9 +17,7 @@ struct SiloV2BorrowFuseEnterData {
     SiloIndex siloIndex;
     /// @dev amount of Silo underlying asset to supply
     uint256 siloAssetAmount;
-
 }
-
 
 struct SiloV2BorrowFuseExitData {
     /// @dev Silo Config address - contract that manages the Silo
@@ -79,11 +75,7 @@ contract SiloV2BorrowFuse is IFuseCommon {
 
         address silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
 
-        uint256 sharesBorrowed = ISilo(silo).borrow(
-            data_.siloAssetAmount,
-            address(this),
-            address(this)
-        );
+        uint256 sharesBorrowed = ISilo(silo).borrow(data_.siloAssetAmount, address(this), address(this));
 
         emit SiloV2BorrowFuseEvent(VERSION, MARKET_ID, data_.siloConfig, silo, data_.siloAssetAmount, sharesBorrowed);
     }
@@ -106,7 +98,7 @@ contract SiloV2BorrowFuse is IFuseCommon {
         ERC20(siloAssetAddress).forceApprove(silo, data_.siloAssetAmount);
 
         uint256 sharesRepaid = ISilo(silo).repay(data_.siloAssetAmount, address(this));
-        
+
         ERC20(siloAssetAddress).forceApprove(silo, 0);
 
         emit SiloV2BorrowFuseRepay(VERSION, MARKET_ID, data_.siloConfig, silo, data_.siloAssetAmount, sharesRepaid);

@@ -12,7 +12,6 @@ import {ISiloConfig} from "./ext/ISiloConfig.sol";
 import {ISilo} from "./ext/ISilo.sol";
 import {IShareToken} from "./ext/IShareToken.sol";
 import {SiloIndex} from "./SiloIndex.sol";
-
 contract SiloV2BalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
@@ -34,13 +33,17 @@ contract SiloV2BalanceFuse is IMarketBalanceFuse {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         address plasmaVault = address(this);
 
+        int256 totalBalance = 0;
+
         for (uint256 i; i < len; ++i) {
             address siloConfig = PlasmaVaultConfigLib.bytes32ToAddress(siloConfigs[i]);
             (address silo0, address silo1) = ISiloConfig(siloConfig).getSilos();
 
-            balance += _calculateSiloBalance(plasmaVault, siloConfig, silo0, priceOracleMiddleware);
-            balance += _calculateSiloBalance(plasmaVault, siloConfig, silo1, priceOracleMiddleware);
+            totalBalance += _calculateSiloBalance(plasmaVault, siloConfig, silo0, priceOracleMiddleware);
+            totalBalance += _calculateSiloBalance(plasmaVault, siloConfig, silo1, priceOracleMiddleware);
         }
+
+        balance = totalBalance > 0 ? uint256(totalBalance) : 0;
 
         return balance;
     }
@@ -50,47 +53,61 @@ contract SiloV2BalanceFuse is IMarketBalanceFuse {
         address siloConfig_,
         address silo_,
         address priceOracleMiddleware_
-    ) internal view returns (uint256 siloBalance) {
+    ) internal view returns (int256 siloBalance) {
         address siloAssetAddress = ISilo(silo_).asset();
 
         (uint256 siloAssetPrice, uint256 siloAssetPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_)
             .getAssetPrice(siloAssetAddress);
 
-        uint256 siloAssets = _getSiloAssets(plasmaVault_, siloConfig_, silo_);
+        int256 siloAssets = _getSiloAssets(plasmaVault_, siloConfig_, silo_);
 
         if (siloAssets == 0) {
             return 0;
         }
 
-        return
-            IporMath.convertToWad(
-                siloAssets * siloAssetPrice,
+        if (siloAssets < 0) {
+            // For negative silo assets, we need to handle the conversion carefully
+            uint256 absSiloAssets = uint256(-siloAssets);
+            uint256 convertedValue = IporMath.convertToWad(
+                absSiloAssets * siloAssetPrice,
                 IERC20Metadata(siloAssetAddress).decimals() + siloAssetPriceDecimals
             );
+            return -int256(convertedValue);
+        } else {
+            return
+                int256(
+                    IporMath.convertToWad(
+                        uint256(siloAssets) * siloAssetPrice,
+                        IERC20Metadata(siloAssetAddress).decimals() + siloAssetPriceDecimals
+                    )
+                );
+        }
     }
 
     function _getSiloAssets(
         address plasmaVault_,
         address siloConfig_,
         address silo_
-    ) internal view returns (uint256 siloAssets) {
+    ) internal view returns (int256 siloAssets) {
         /// @dev Every share token has their own shares, we have to convert them to given Silo assets
         (address protectedShareToken, address collateralShareToken, address debtShareToken) = ISiloConfig(siloConfig_)
             .getShareTokens(silo_);
 
         uint256 grossAssets = ISilo(silo_).convertToAssets(
-                IShareToken(protectedShareToken).balanceOf(plasmaVault_),
-                ISilo.AssetType.Protected
-            ) +
+            IShareToken(protectedShareToken).balanceOf(plasmaVault_),
+            ISilo.AssetType.Protected
+        ) +
             ISilo(silo_).convertToAssets(
                 IShareToken(collateralShareToken).balanceOf(plasmaVault_),
                 ISilo.AssetType.Collateral
             );
 
         /// @dev Notice! Debt subtracts from the balance
-        uint256 debtAssets = ISilo(silo_).convertToAssets(IShareToken(debtShareToken).balanceOf(plasmaVault_), ISilo.AssetType.Debt);
+        uint256 debtAssets = ISilo(silo_).convertToAssets(
+            IShareToken(debtShareToken).balanceOf(plasmaVault_),
+            ISilo.AssetType.Debt
+        );
 
-        siloAssets = grossAssets > debtAssets ? grossAssets - debtAssets : 0;
-    
+        siloAssets = int256(grossAssets) - int256(debtAssets);
     }
 }

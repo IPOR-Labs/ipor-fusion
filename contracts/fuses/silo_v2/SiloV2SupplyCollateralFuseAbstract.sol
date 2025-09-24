@@ -13,6 +13,7 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {SiloIndex} from "./SiloIndex.sol";
 import {ISilo} from "./ext/ISilo.sol";
 import {ISiloConfig} from "./ext/ISiloConfig.sol";
+import {IShareToken} from "./ext/IShareToken.sol";
 
 struct SiloV2SupplyCollateralFuseEnterData {
     /// @dev Silo Config address - contract that manages the Silo
@@ -130,7 +131,7 @@ abstract contract SiloV2SupplyCollateralFuseAbstract is IFuseCommon {
 
         address silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
 
-        uint256 finalSiloShares = IporMath.min(ISilo(silo).balanceOf(address(this)), data_.siloShares);
+        uint256 finalSiloShares = IporMath.min(ISilo(silo).maxRedeem(address(this), collateralType_), data_.siloShares);
 
         if (finalSiloShares < data_.minSiloShares) {
             revert SiloV2SupplyCollateralFuseInsufficientSiloShares(finalSiloShares, data_.minSiloShares);
