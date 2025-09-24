@@ -11,9 +11,9 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {ISiloConfig} from "./ext/ISiloConfig.sol";
 import {ISilo} from "./ext/ISilo.sol";
 import {IShareToken} from "./ext/IShareToken.sol";
-import {SiloIndex} from "./SiloIndex.sol";
+
 contract SiloV2BalanceFuse is IMarketBalanceFuse {
-    using SafeCast for uint256;
+    using SafeCast for int256;
 
     uint256 public immutable MARKET_ID;
 
@@ -43,7 +43,7 @@ contract SiloV2BalanceFuse is IMarketBalanceFuse {
             totalBalance += _calculateSiloBalance(plasmaVault, siloConfig, silo1, priceOracleMiddleware);
         }
 
-        balance = totalBalance > 0 ? uint256(totalBalance) : 0;
+        balance = totalBalance > 0 ? totalBalance.toUint256() : 0;
 
         return balance;
     }

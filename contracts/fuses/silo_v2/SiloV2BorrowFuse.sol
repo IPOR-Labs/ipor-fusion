@@ -5,7 +5,6 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SiloIndex} from "./SiloIndex.sol";
 import {ISilo} from "./ext/ISilo.sol";
@@ -29,7 +28,6 @@ struct SiloV2BorrowFuseExitData {
 }
 
 contract SiloV2BorrowFuse is IFuseCommon {
-    using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
     /// @dev The version of the contract.

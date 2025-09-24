@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
@@ -13,7 +11,6 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {SiloIndex} from "./SiloIndex.sol";
 import {ISilo} from "./ext/ISilo.sol";
 import {ISiloConfig} from "./ext/ISiloConfig.sol";
-import {IShareToken} from "./ext/IShareToken.sol";
 
 struct SiloV2SupplyCollateralFuseEnterData {
     /// @dev Silo Config address - contract that manages the Silo
@@ -38,7 +35,6 @@ struct SiloV2SupplyCollateralFuseExitData {
 }
 
 abstract contract SiloV2SupplyCollateralFuseAbstract is IFuseCommon {
-    using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
     address public immutable VERSION;
