@@ -109,7 +109,7 @@ contract BalancerSingleTokenFuse is IFuseCommon {
 
         emit BalancerSingleTokenFuseEnter(VERSION, data_.pool, data_.tokenIn, amountIn, data_.exactBptAmountOut);
 
-        IERC20(data_.tokenIn).forceApprove(BALANCER_ROUTER, 0);
+        IERC20(data_.tokenIn).forceApprove(PERMIT2, 0);
     }
 
     function exit(BalancerSingleTokenFuseExitData calldata data_) external payable {
