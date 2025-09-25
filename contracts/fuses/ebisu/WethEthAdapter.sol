@@ -78,8 +78,6 @@ contract WethEthAdapter {
         address zapper,
         bytes calldata callData
     ) external onlyVault {
-        uint256 before = address(this).balance;
-
         ERC20 ebusdToken = ERC20(ILeverageZapper(zapper).boldToken());
         ERC20 collToken = ERC20(ILeverageZapper(zapper).collToken());
 
@@ -92,10 +90,10 @@ contract WethEthAdapter {
 
         uint256 remainsEbusd = ebusdToken.balanceOf(address(this));
         uint256 remainsColl = collToken.balanceOf(address(this));
-        uint256 gained = address(this).balance - before;
-        if (gained > 0) {
-            IWETH(WETH).deposit{value: gained}();
-            IERC20(WETH).transfer(VAULT, gained);
+        uint256 bal = address(this).balance;
+        if (bal > 0) {
+            IWETH(WETH).deposit{value: bal}();
+            IERC20(WETH).transfer(VAULT, bal);
         }
         if (remainsEbusd > 0) {
             ebusdToken.transfer(VAULT, remainsEbusd);

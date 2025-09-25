@@ -5,6 +5,7 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {ILeverageZapper} from "./ext/ILeverageZapper.sol";
+import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
 
 /// @notice Data for lever-down action
 struct EbisuLeverDownData {
@@ -26,18 +27,22 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
 
     error UnsupportedSubstrate();
 
-    event EbisuZapperCreateFuseLeverDown(address zapper, uint256 ownerIndex, uint256 flashLoanAmount, uint256 minBoldAmount);
-    event EbisuZapperCreateFuseLeverUp(address zapper, uint256 ownerIndex, uint256 flashLoanAmount, uint256 ebusdAmount);
+    event EbisuZapperLeverModifyLeverDown(address zapper, uint256 troveId, uint256 flashLoanAmount, uint256 minBoldAmount);
+    event EbisuZapperLeverModifyLeverUp(address zapper, uint256 troveId, uint256 flashLoanAmount, uint256 ebusdAmount);
 
     constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
     }
 
     function enter(EbisuLeverUpData memory data) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.zapper)) revert UnsupportedSubstrate();
+        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
+            EbisuZapperSubstrateLib.substrateToBytes32(
+                EbisuZapperSubstrate({
+                    substrateType: EbisuZapperSubstrateType.Zapper,
+                    substrateAddress: data.zapper
+            })))) revert UnsupportedSubstrate();
 
-        FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
-        uint256 troveId = troveData.troveIds[data.zapper];
+        uint256 troveId = FuseStorageLib.getEbisuTroveIds().troveIds[data.zapper];
 
         ILeverageZapper.LeverUpTroveParams memory params = ILeverageZapper.LeverUpTroveParams({
             troveId: troveId,
@@ -48,14 +53,18 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
 
         ILeverageZapper(data.zapper).leverUpTrove(params);
 
-        emit EbisuZapperCreateFuseLeverUp(data.zapper, troveData.latestOwnerId, data.flashLoanAmount, data.ebusdAmount);
+        emit EbisuZapperLeverModifyLeverUp(data.zapper, troveId, data.flashLoanAmount, data.ebusdAmount);
     }
 
     function exit(EbisuLeverDownData memory data) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.zapper)) revert UnsupportedSubstrate();
+        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
+            EbisuZapperSubstrateLib.substrateToBytes32(
+                EbisuZapperSubstrate({
+                    substrateType: EbisuZapperSubstrateType.Zapper,
+                    substrateAddress: data.zapper
+            })))) revert UnsupportedSubstrate();
 
-        FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
-        uint256 troveId = troveData.troveIds[data.zapper];
+        uint256 troveId = FuseStorageLib.getEbisuTroveIds().troveIds[data.zapper];
 
         ILeverageZapper.LeverDownTroveParams memory params = ILeverageZapper.LeverDownTroveParams({
             troveId: troveId,
@@ -65,6 +74,6 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
 
         ILeverageZapper(data.zapper).leverDownTrove(params);
 
-        emit EbisuZapperCreateFuseLeverDown(data.zapper, troveData.latestOwnerId, data.flashLoanAmount, data.minBoldAmount);
+        emit EbisuZapperLeverModifyLeverDown(data.zapper, troveId, data.flashLoanAmount, data.minBoldAmount);
     }
 }

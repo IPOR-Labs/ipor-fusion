@@ -24,43 +24,62 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
     constructor(uint256 marketId) {
         MARKET_ID = marketId;
     }
-
+    
     function balanceOf() external view returns (uint256) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
         FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
 
         uint256 substratesNumber = substrates.length;
-
+        
         if (substratesNumber == 0) return 0;
         address collToken;
         uint256 collTokenPrice;
         uint256 collTokenPriceDecimals;
+        address ebusdAddress;
+        uint256 ebusdPrice;
+        uint256 ebusdPriceDecimals;
         uint256 entireCollValue;
+        uint256 entireDebtValue;
         IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
         );
-        ITroveManager troveManager;
         uint256 troveId;
         EbisuZapperSubstrate memory target;
 
         for (uint256 i; i < substratesNumber; ++i) {
             target = EbisuZapperSubstrateLib.bytes32ToSubstrate(substrates[i]);
 
-            if (target.substrateType != EbisuZapperSubstrateType.Zapper) continue;
+            if (target.substrateType != EbisuZapperSubstrateType.Zapper) 
+                continue;
+
+            if (ebusdAddress == address(0)) {
+                // bold token (ebUSD) is the same for all zappers
+                ebusdAddress = ILeverageZapper(target.substrateAddress).boldToken();
+                (ebusdPrice, ebusdPriceDecimals) = priceOracleMiddleware.getAssetPrice(ebusdAddress);
+            }
             
             // At this point, we expect the contract to have collToken and troveManager
             collToken = ILeverageZapper(target.substrateAddress).collToken();
-            troveManager = ITroveManager(ILeverageZapper(target.substrateAddress).troveManager());
             (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
             
             troveId = troveData.troveIds[target.substrateAddress];
             if(troveId == 0) continue;
+            ITroveManager.LatestTroveData memory latestTroveData = 
+                ITroveManager(ILeverageZapper(target.substrateAddress).troveManager()).getLatestTroveData(troveId);
+            
             entireCollValue += IporMath.convertToWad(
-                troveManager.getLatestTroveData(troveId).entireColl * collTokenPrice,
+                latestTroveData.entireColl * collTokenPrice,
                 IERC20Metadata(collToken).decimals() + collTokenPriceDecimals
             );
+
+            entireDebtValue += IporMath.convertToWad(
+                latestTroveData.entireDebt * ebusdPrice,
+                IERC20Metadata(ebusdAddress).decimals() + ebusdPriceDecimals
+            );
         }
-        return entireCollValue;
+
+        // max(coll - debt, 0)
+        return entireCollValue - IporMath.min(entireDebtValue, entireCollValue);
     }
 }

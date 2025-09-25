@@ -15,6 +15,7 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IWethEthAdapter} from "./IWethEthAdapter.sol";
 import {WethEthAdapterStorageLib} from "./lib/WethEthAdapterStorageLib.sol";
 import {WethEthAdapter} from "./WethEthAdapter.sol";
+import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
 
 enum ExitType {
     ETH,
@@ -88,9 +89,19 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         // No trove yet for zapper
         if (troveData.troveIds[data.zapper] != 0) revert TroveAlreadyOpen();
 
-        // Validate targets early
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.zapper)) revert UnsupportedSubstrate();
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.registry)) revert UnsupportedSubstrate();
+        // Validate targets
+        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
+            EbisuZapperSubstrateLib.substrateToBytes32(
+                EbisuZapperSubstrate({
+                    substrateType: EbisuZapperSubstrateType.Zapper,
+                    substrateAddress: data.zapper
+                })))) revert UnsupportedSubstrate();
+        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
+            EbisuZapperSubstrateLib.substrateToBytes32(
+                EbisuZapperSubstrate({
+                    substrateType: EbisuZapperSubstrateType.Registry,
+                    substrateAddress: data.registry
+                })))) revert UnsupportedSubstrate();
 
         // Interest bounds
         if (data.annualInterestRate < MIN_ANNUAL_INTEREST_RATE || data.annualInterestRate > MAX_ANNUAL_INTEREST_RATE) {
@@ -105,11 +116,11 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         }
 
         // Build params
-        // Bump the latestOwnerId so that the first id ever used 1
-        troveData.latestOwnerId++;
+        // Bump the latestOwnerId before assigning (pre-increment), so that the first id ever used 1
+        uint256 ownerId = ++troveData.latestOwnerId;
         ILeverageZapper.OpenLeveragedTroveParams memory params = ILeverageZapper.OpenLeveragedTroveParams({
             owner: address(this),
-            ownerIndex: troveData.latestOwnerId,
+            ownerIndex: ownerId,
             collAmount: data.collAmount,
             flashLoanAmount: data.flashLoanAmount,
             boldAmount: data.ebusdAmount,
@@ -149,7 +160,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
             adapter,
             address(this),
             data.zapper,
-            troveData.latestOwnerId
+            ownerId
         );
         troveData.troveIds[data.zapper] = troveId;
 
@@ -157,7 +168,12 @@ contract EbisuZapperCreateFuse is IFuseCommon {
     }
 
     function exit(EbisuZapperCreateFuseExitData calldata data) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data.zapper)) revert UnsupportedSubstrate();
+        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
+            EbisuZapperSubstrateLib.substrateToBytes32(
+                EbisuZapperSubstrate({
+                    substrateType: EbisuZapperSubstrateType.Zapper,
+                    substrateAddress: data.zapper
+            })))) revert UnsupportedSubstrate();
 
         FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
 
