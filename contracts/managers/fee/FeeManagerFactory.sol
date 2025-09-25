@@ -51,22 +51,27 @@ struct FeeManagerData {
 /// @notice Factory contract for deploying and initializing FeeManager instances
 /// @dev Creates standardized fee management systems for plasma vaults
 contract FeeManagerFactory {
+    event FeeManagerDeployed(address feeManager, FeeManagerData feeManagerData);
+
     /// @notice Deploys a new FeeManager contract with the specified configuration
     /// @dev Creates and initializes a new FeeManager with associated fee accounts
     /// @param initData_ Initialization parameters for the fee manager
-    /// @return Data structure containing addresses and fee information of the deployed system
+    /// @return feeManagerData Data structure containing addresses and fee information of the deployed system
     /// @custom:security Validates fee recipient addresses and fee percentages during deployment
-    function deployFeeManager(FeeManagerInitData memory initData_) external returns (FeeManagerData memory) {
+    function deployFeeManager(
+        FeeManagerInitData memory initData_
+    ) external returns (FeeManagerData memory feeManagerData) {
         FeeManager feeManager = new FeeManager(initData_);
 
-        return
-            FeeManagerData({
-                feeManager: address(feeManager),
-                plasmaVault: feeManager.PLASMA_VAULT(),
-                performanceFeeAccount: feeManager.PERFORMANCE_FEE_ACCOUNT(),
-                managementFeeAccount: feeManager.MANAGEMENT_FEE_ACCOUNT(),
-                managementFee: feeManager.getTotalManagementFee(),
-                performanceFee: feeManager.getTotalPerformanceFee()
-            });
+        feeManagerData = FeeManagerData({
+            feeManager: address(feeManager),
+            plasmaVault: feeManager.PLASMA_VAULT(),
+            performanceFeeAccount: feeManager.PERFORMANCE_FEE_ACCOUNT(),
+            managementFeeAccount: feeManager.MANAGEMENT_FEE_ACCOUNT(),
+            managementFee: feeManager.getTotalManagementFee(),
+            performanceFee: feeManager.getTotalPerformanceFee()
+        });
+
+        emit FeeManagerDeployed(address(feeManager), feeManagerData);
     }
 }

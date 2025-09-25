@@ -87,18 +87,17 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         PriceOracleMiddleware(_priceOracle).setAssetsPricesSources(assets, sources);
 
         // plasma vault
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
-                    "pvUSDC",
-                    USDC,
-                    _priceOracle,
-                    _setupFeeConfig(),
-                    _createAccessManager(),
-                    address(new PlasmaVaultBase()),
-                    _createWithdrawManager()
-                )
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
+                "pvUSDC",
+                USDC,
+                _priceOracle,
+                _setupFeeConfig(),
+                _createAccessManager(),
+                address(new PlasmaVaultBase()),
+                _createWithdrawManager()
             )
         );
 

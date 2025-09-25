@@ -15,7 +15,6 @@ import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 
-
 import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 contract InitializeAccessManagerTest is Test {
@@ -59,7 +58,8 @@ contract InitializeAccessManagerTest is Test {
         withdrawManager = new WithdrawManager(address(accessManager));
 
         vm.startPrank(admin);
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
                 "ipfDAI",
@@ -604,10 +604,13 @@ contract InitializeAccessManagerTest is Test {
 
         vm.prank(admin);
         accessManager.initialize(initData);
-    
+
         // when
-        uint64 roleId = accessManager.getTargetFunctionRole(address(plasmaVault), PlasmaVaultGovernance.updateCallbackHandler.selector);
-    
+        uint64 roleId = accessManager.getTargetFunctionRole(
+            address(plasmaVault),
+            PlasmaVaultGovernance.updateCallbackHandler.selector
+        );
+
         // then
         assertEq(Roles.FUSE_MANAGER_ROLE, roleId);
     }

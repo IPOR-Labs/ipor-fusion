@@ -11,6 +11,7 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {ContextClient} from "../managers/context/ContextClient.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
+
 /**
  * @title PlasmaVaultBase - Core Extension for PlasmaVault Token Functionality
  * @notice Stateless extension providing ERC20 Votes and Permit capabilities for PlasmaVault
@@ -84,7 +85,7 @@ contract PlasmaVaultBase is
         string memory assetName_,
         address accessManager_,
         uint256 totalSupplyCap_
-    ) external override initializer {
+    ) external override onlyInitializing {
         if (accessManager_ == address(0)) {
             revert Errors.WrongAddress();
         }
@@ -95,7 +96,7 @@ contract PlasmaVaultBase is
         __init(totalSupplyCap_);
     }
 
-    function __init(uint256 cap_) internal onlyInitializing {
+    function __init(uint256 cap_) internal {
         // solhint-disable-previous-line func-name-mixedcase
         PlasmaVaultStorageLib.ERC20CappedStorage storage $ = PlasmaVaultStorageLib.getERC20CappedStorage();
         if (cap_ == 0) {

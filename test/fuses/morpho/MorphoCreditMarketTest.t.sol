@@ -65,18 +65,17 @@ contract MorphoCreditMarketTest is Test {
         address withdrawManager = address(new WithdrawManager(accessManager));
         // plasma vault
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
-                    "wstETH",
-                    _WST_ETH,
-                    _priceOracle,
-                    _setupFeeConfig(),
-                    accessManager,
-                    address(new PlasmaVaultBase()),
-                    withdrawManager
-                )
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
+                "wstETH",
+                _WST_ETH,
+                _priceOracle,
+                _setupFeeConfig(),
+                accessManager,
+                address(new PlasmaVaultBase()),
+                withdrawManager
             )
         );
 

@@ -110,7 +110,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -192,7 +193,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -262,7 +264,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 amount = 100 * 10 ** ERC20(DAI).decimals();
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -330,7 +333,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -395,7 +399,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         uint256 amount = 0;
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -463,7 +468,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         amounts[0] = 0;
         amounts[1] = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -569,7 +575,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -669,7 +676,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -757,7 +765,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",
@@ -846,7 +855,8 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
                 "PLASMA",

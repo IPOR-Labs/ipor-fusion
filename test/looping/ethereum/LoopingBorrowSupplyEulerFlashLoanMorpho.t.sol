@@ -109,18 +109,17 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
 
         // plasma vault
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
-                    "USDC",
-                    _USDC,
-                    _priceOracle,
-                    _setupFeeConfig(),
-                    _createAccessManager(),
-                    address(new PlasmaVaultBase()),
-                    _createWithdrawManager()
-                )
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
+                "USDC",
+                _USDC,
+                _priceOracle,
+                _setupFeeConfig(),
+                _createAccessManager(),
+                address(new PlasmaVaultBase()),
+                _createWithdrawManager()
             )
         );
         vm.stopPrank();

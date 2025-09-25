@@ -88,18 +88,17 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
         WithdrawManager withdrawManager = new WithdrawManager(address(_accessManager));
 
         // plasma vault
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
-                    "pvUSDC",
-                    USDC,
-                    _priceOracle,
-                    _setupFeeConfig(),
-                    _createAccessManager(),
-                    address(new PlasmaVaultBase()),
-                    address(withdrawManager)
-                )
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
+                "pvUSDC",
+                USDC,
+                _priceOracle,
+                _setupFeeConfig(),
+                _createAccessManager(),
+                address(new PlasmaVaultBase()),
+                address(withdrawManager)
             )
         );
         PlasmaVaultConfigurator.setupPlasmaVault(

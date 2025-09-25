@@ -194,7 +194,8 @@ contract PlasmaVaultDepositTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         // Tworzymy i inicjalizujemy vault
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion USDC",
                 "ipfUSDC",
@@ -287,7 +288,8 @@ contract PlasmaVaultDepositTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         // Create and initialize vault
-        PlasmaVault plasmaVault = new PlasmaVault(
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 assetName,
                 assetSymbol,
