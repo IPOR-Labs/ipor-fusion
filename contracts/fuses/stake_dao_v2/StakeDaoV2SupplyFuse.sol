@@ -9,7 +9,7 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-
+import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 struct StakeDaoV2SupplyFuseEnterData {
     /// @dev Stake DAO V2 reward vault address, with underlying asset as lp token
     /// @dev Example: Stake DAO Curve Vault for crvUSD Vault (sd-cvcrvUSD-vault) [0x1544E663DD326a6d853a0cc4ceEf0860eb82B287]
@@ -31,7 +31,7 @@ struct StakeDaoV2SupplyFuseExitData {
     uint256 minRewardVaultShares;
 }
 
-contract StakeDaoV2SupplyFuse is IFuseCommon {
+contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
@@ -46,6 +46,13 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
         uint256 finalLpTokenUnderlyingAmount
     );
     event StakeDaoV2SupplyFuseExit(
+        address version,
+        address rewardVault,
+        uint256 finalRewardVaultShares,
+        uint256 lpTokenAmount,
+        uint256 lpTokenUnderlyingAmount
+    );
+    event StakeDaoV2SupplyFuseExitFailed(
         address version,
         address rewardVault,
         uint256 finalRewardVaultShares,
@@ -123,6 +130,10 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
     }
 
     function exit(StakeDaoV2SupplyFuseExitData calldata data_) external {
+        _exit(data_, false);
+    }
+
+    function _exit(StakeDaoV2SupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (data_.rewardVaultShares == 0) {
             return;
         }
@@ -147,9 +158,43 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
 
         IERC4626 rewardVault = IERC4626(data_.rewardVault);
 
-        uint256 lpTokenAmount = rewardVault.redeem(finalRewardVaultShares, plasmaVault, plasmaVault);
+        uint256 lpTokenAmount;
+        uint256 lpTokenUnderlyingAmount;
 
-        uint256 lpTokenUnderlyingAmount = IERC4626(rewardVault.asset()).redeem(lpTokenAmount, plasmaVault, plasmaVault);
+        if (catchExceptions_) {
+            try rewardVault.redeem(finalRewardVaultShares, plasmaVault, plasmaVault) returns (
+                uint256 lpTokenAmountTemp
+            ) {
+                lpTokenAmount = lpTokenAmountTemp;
+                try IERC4626(rewardVault.asset()).redeem(lpTokenAmountTemp, plasmaVault, plasmaVault) returns (
+                    uint256 lpTokenUnderlyingAmountTemp
+                ) {
+                    lpTokenUnderlyingAmount = lpTokenUnderlyingAmountTemp;
+                } catch {
+                    /// @dev if redeem failed, continue with the next step
+                    emit StakeDaoV2SupplyFuseExitFailed(
+                        VERSION,
+                        data_.rewardVault,
+                        finalRewardVaultShares,
+                        lpTokenAmount,
+                        lpTokenUnderlyingAmount
+                    );
+                }
+            } catch {
+                /// @dev if redeem failed, continue with the next step
+                emit StakeDaoV2SupplyFuseExitFailed(
+                    VERSION,
+                    data_.rewardVault,
+                    finalRewardVaultShares,
+                    lpTokenAmount,
+                    lpTokenUnderlyingAmount
+                );
+            }
+        } else {
+            lpTokenAmount = rewardVault.redeem(finalRewardVaultShares, plasmaVault, plasmaVault);
+
+            lpTokenUnderlyingAmount = IERC4626(rewardVault.asset()).redeem(lpTokenAmount, plasmaVault, plasmaVault);
+        }
 
         emit StakeDaoV2SupplyFuseExit(
             VERSION,
@@ -158,5 +203,28 @@ contract StakeDaoV2SupplyFuse is IFuseCommon {
             lpTokenAmount,
             lpTokenUnderlyingAmount
         );
+    }
+
+    function instantWithdraw(bytes32[] calldata params_) external override {
+        uint256 amount = uint256(params_[0]);
+
+        if (amount == 0) {
+            return;
+        }
+
+        IERC4626 rewardVault = IERC4626(PlasmaVaultConfigLib.bytes32ToAddress(params_[1]));
+
+        if (address(rewardVault) == address(0)) {
+            return;
+        }
+
+        uint256 shearsAsset = IERC4626(rewardVault.asset()).convertToShares(amount);
+        uint256 shearsShouldRequest = rewardVault.convertToShares(shearsAsset);
+
+        uint256 plasmaVaultBalance = rewardVault.balanceOf(address(this));
+
+        uint256 shearsToRequest = shearsShouldRequest > plasmaVaultBalance ? plasmaVaultBalance : shearsShouldRequest;
+
+        _exit(StakeDaoV2SupplyFuseExitData(address(rewardVault), shearsToRequest, shearsToRequest), true);
     }
 }
