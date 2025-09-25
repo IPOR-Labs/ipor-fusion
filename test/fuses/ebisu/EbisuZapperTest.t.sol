@@ -148,7 +148,8 @@ contract EbisuZapperTest is Test {
         priceOracle.setAssetsPricesSources(assets, priceFeeds);
 
         // create plasma vault in a single step
-        plasmaVault = new PlasmaVault(
+        plasmaVault = new PlasmaVault();
+        plasmaVault.proxyInitialize(
             PlasmaVaultInitData(
                 "TEST sUSDe PLASMA VAULT",
                 "zpTEST",
