@@ -218,13 +218,13 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        uint256 shearsAsset = IERC4626(rewardVault.asset()).convertToShares(amount);
-        uint256 shearsShouldRequest = rewardVault.convertToShares(shearsAsset);
+        uint256 sharesAsset = IERC4626(rewardVault.asset()).convertToShares(amount);
+        uint256 sharesShouldRequest = rewardVault.convertToShares(sharesAsset);
 
         uint256 plasmaVaultBalance = rewardVault.balanceOf(address(this));
 
-        uint256 shearsToRequest = shearsShouldRequest > plasmaVaultBalance ? plasmaVaultBalance : shearsShouldRequest;
+        uint256 sharesToRequest = sharesShouldRequest > plasmaVaultBalance ? plasmaVaultBalance : sharesShouldRequest;
 
-        _exit(StakeDaoV2SupplyFuseExitData(address(rewardVault), shearsToRequest, shearsToRequest), true);
+        _exit(StakeDaoV2SupplyFuseExitData(address(rewardVault), sharesToRequest, sharesToRequest), true);
     }
 }
