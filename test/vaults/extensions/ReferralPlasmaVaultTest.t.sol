@@ -176,7 +176,7 @@ contract ReferralPlasmaVaultTest is Test {
         vm.startPrank(zapInContract);
         vm.expectEmit(true, true, true, true);
         emit ReferralEvent(referrer, referralCode);
-        referralPlasmaVault.emitReferalForZapIn(referrer, referralCode);
+        referralPlasmaVault.emitReferralForZapIn(referrer, referralCode);
         vm.stopPrank();
 
         // then - test passes if no revert occurs and event is emitted
@@ -200,7 +200,7 @@ contract ReferralPlasmaVaultTest is Test {
         // when / then
         vm.startPrank(nonZapIn);
         vm.expectRevert(error);
-        referralPlasmaVault.emitReferalForZapIn(referrer, referralCode);
+        referralPlasmaVault.emitReferralForZapIn(referrer, referralCode);
         vm.stopPrank();
     }
 
@@ -215,7 +215,7 @@ contract ReferralPlasmaVaultTest is Test {
         // when / then - zapInAddress is still address(0)
         vm.startPrank(nonZapIn);
         vm.expectRevert(error);
-        referralPlasmaVault.emitReferalForZapIn(referrer, referralCode);
+        referralPlasmaVault.emitReferralForZapIn(referrer, referralCode);
         vm.stopPrank();
     }
 
@@ -240,7 +240,7 @@ contract ReferralPlasmaVaultTest is Test {
         vm.startPrank(zapInContract);
         vm.expectEmit(true, true, true, true);
         emit ReferralEvent(referrer, referralCode);
-        referralPlasmaVault.emitReferalForZapIn(referrer, referralCode);
+        referralPlasmaVault.emitReferralForZapIn(referrer, referralCode);
         vm.stopPrank();
     }
 }

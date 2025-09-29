@@ -67,7 +67,7 @@ contract ReferralPlasmaVault is Ownable {
     /// @custom:access Only the authorized zap-in contract can call this function
     /// @custom:security Protected by onlyZapIn modifier to prevent unauthorized referral event emission
     /// @custom:event Emits ReferralEvent with the referrer address and referral code for tracking
-    function emitReferalForZapIn(address referrer, bytes32 referralCode_) external onlyZapIn {
+    function emitReferralForZapIn(address referrer, bytes32 referralCode_) external onlyZapIn {
         emit ReferralEvent(referrer, referralCode_);
     }
 

@@ -122,7 +122,7 @@ contract ERC4626ZapInWithNativeToken is ReentrancyGuard, Ownable {
         }
 
         if (referralContractAddress != address(0) && referralCode_ != bytes32(0)) {
-            ReferralPlasmaVault(referralContractAddress).emitReferalForZapIn(currentZapSender, referralCode_);
+            ReferralPlasmaVault(referralContractAddress).emitReferralForZapIn(currentZapSender, referralCode_);
         }
 
         vault.deposit(depositAssetBalance, zapInData_.receiver);
