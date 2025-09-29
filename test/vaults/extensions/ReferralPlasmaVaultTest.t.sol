@@ -98,4 +98,149 @@ contract ReferralPlasmaVaultTest is Test {
 
         vm.stopPrank();
     }
+
+    // Tests for setZapInAddress function
+
+    function testShouldSetZapInAddressSuccessfully() public {
+        // given
+        address owner = referralPlasmaVault.owner();
+        address zapInContract = makeAddr("ZapInContract");
+
+        // when
+        vm.startPrank(owner);
+        referralPlasmaVault.setZapInAddress(zapInContract);
+        vm.stopPrank();
+
+        // then
+        assertEq(referralPlasmaVault.zapInAddress(), zapInContract, "ZapIn address should be set");
+        assertEq(referralPlasmaVault.owner(), address(0), "Ownership should be renounced");
+    }
+
+    function testShouldRevertWhenSettingZapInAddressAsZero() public {
+        // given
+        address owner = referralPlasmaVault.owner();
+        address zeroAddress = address(0);
+
+        bytes memory error = abi.encodeWithSignature("ZapInAddressIsZero()");
+
+        // when / then
+        vm.startPrank(owner);
+        vm.expectRevert(error);
+        referralPlasmaVault.setZapInAddress(zeroAddress);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenNonOwnerTriesToSetZapInAddress() public {
+        // given
+        address nonOwner = makeAddr("NonOwner");
+        address zapInContract = makeAddr("ZapInContract");
+
+        // when / then
+        vm.startPrank(nonOwner);
+        vm.expectRevert();
+        referralPlasmaVault.setZapInAddress(zapInContract);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenTryingToSetZapInAddressAfterOwnershipRenounced() public {
+        // given
+        address owner = referralPlasmaVault.owner();
+        address zapInContract1 = makeAddr("ZapInContract1");
+        address zapInContract2 = makeAddr("ZapInContract2");
+
+        // First set zapIn address (this renounces ownership)
+        vm.startPrank(owner);
+        referralPlasmaVault.setZapInAddress(zapInContract1);
+        vm.stopPrank();
+
+        // when / then - try to set again (should fail as ownership is renounced)
+        vm.startPrank(owner);
+        vm.expectRevert();
+        referralPlasmaVault.setZapInAddress(zapInContract2);
+        vm.stopPrank();
+    }
+
+    function testShouldAllowZapInToCallEmitReferalForZapInAfterSetting() public {
+        // given
+        address owner = referralPlasmaVault.owner();
+        address zapInContract = makeAddr("ZapInContract");
+        address referrer = makeAddr("Referrer");
+        bytes32 referralCode = keccak256("TEST_REFERRAL");
+
+        // Set zapIn address first
+        vm.startPrank(owner);
+        referralPlasmaVault.setZapInAddress(zapInContract);
+        vm.stopPrank();
+
+        // when
+        vm.startPrank(zapInContract);
+        vm.expectEmit(true, true, true, true);
+        emit ReferralEvent(referrer, referralCode);
+        referralPlasmaVault.emitReferalForZapIn(referrer, referralCode);
+        vm.stopPrank();
+
+        // then - test passes if no revert occurs and event is emitted
+    }
+
+    function testShouldRevertWhenNonZapInTriesToCallEmitReferalForZapIn() public {
+        // given
+        address owner = referralPlasmaVault.owner();
+        address zapInContract = makeAddr("ZapInContract");
+        address nonZapIn = makeAddr("NonZapIn");
+        address referrer = makeAddr("Referrer");
+        bytes32 referralCode = keccak256("TEST_REFERRAL");
+
+        // Set zapIn address first
+        vm.startPrank(owner);
+        referralPlasmaVault.setZapInAddress(zapInContract);
+        vm.stopPrank();
+
+        bytes memory error = abi.encodeWithSignature("NotZapIn()");
+
+        // when / then
+        vm.startPrank(nonZapIn);
+        vm.expectRevert(error);
+        referralPlasmaVault.emitReferalForZapIn(referrer, referralCode);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenCallingEmitReferalForZapInBeforeZapInAddressIsSet() public {
+        // given
+        address nonZapIn = makeAddr("NonZapIn");
+        address referrer = makeAddr("Referrer");
+        bytes32 referralCode = keccak256("TEST_REFERRAL");
+
+        bytes memory error = abi.encodeWithSignature("NotZapIn()");
+
+        // when / then - zapInAddress is still address(0)
+        vm.startPrank(nonZapIn);
+        vm.expectRevert(error);
+        referralPlasmaVault.emitReferalForZapIn(referrer, referralCode);
+        vm.stopPrank();
+    }
+
+    function testShouldMaintainZapInAddressAfterOwnershipRenounced() public {
+        // given
+        address owner = referralPlasmaVault.owner();
+        address zapInContract = makeAddr("ZapInContract");
+
+        // when
+        vm.startPrank(owner);
+        referralPlasmaVault.setZapInAddress(zapInContract);
+        vm.stopPrank();
+
+        // then
+        assertEq(referralPlasmaVault.zapInAddress(), zapInContract, "ZapIn address should remain set");
+        assertEq(referralPlasmaVault.owner(), address(0), "Ownership should be renounced");
+
+        // Verify that the zapIn can still call functions
+        address referrer = makeAddr("Referrer");
+        bytes32 referralCode = keccak256("TEST_REFERRAL");
+
+        vm.startPrank(zapInContract);
+        vm.expectEmit(true, true, true, true);
+        emit ReferralEvent(referrer, referralCode);
+        referralPlasmaVault.emitReferalForZapIn(referrer, referralCode);
+        vm.stopPrank();
+    }
 }

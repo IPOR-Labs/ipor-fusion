@@ -6,6 +6,8 @@ import {ERC4626ZapInAllowance} from "./ERC4626ZapInAllowance.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReferralPlasmaVault} from "../vaults/extensions/ReferralPlasmaVault.sol";
 
 /// @notice Structure representing a single function call in the zap-in process
 /// @dev Used to execute multiple operations in a single transaction
@@ -35,7 +37,7 @@ struct ZapInData {
 /// @title ERC4626ZapInWithNativeToken
 /// @notice Facilitates complex zap-in operations for ERC4626 vault deposits
 /// @dev Handles token approvals, multiple contract interactions, and deposits in a single transaction
-contract ERC4626ZapInWithNativeToken is ReentrancyGuard {
+contract ERC4626ZapInWithNativeToken is ReentrancyGuard, Ownable {
     using Address for address;
     using SafeERC20 for IERC4626;
 
@@ -49,17 +51,29 @@ contract ERC4626ZapInWithNativeToken is ReentrancyGuard {
     error InsufficientDepositAssetBalance();
     /// @notice Thrown when receiver address is zero
     error ReceiverIsZero();
-
+    /// @notice Thrown when referral contract address is zero
+    error ReferralContractAddressIsZero();
     /// @notice Address of the ZapInAllowance contract that handles token transfers
     /// @dev Immutable contract address created in constructor
     address public immutable ZAP_IN_ALLOWANCE_CONTRACT;
+    address public referralContractAddress;
 
     /// @notice Address of the current user performing a zap-in operation
     /// @dev This is set during the zapIn function execution and cleared afterwards
     address public currentZapSender;
 
-    constructor() {
+    constructor() Ownable(msg.sender) {
         ZAP_IN_ALLOWANCE_CONTRACT = address(new ERC4626ZapInAllowance(address(this)));
+    }
+
+    /// @notice Executes a zap-in operation without referral code
+    /// @dev Convenience function that calls the main zapIn function with a zero referral code
+    /// @param zapInData_ Struct containing all necessary parameters for the zap-in operation
+    /// @return results Array of bytes containing the results of each call executed during the zap-in process
+    /// @custom:security This function is protected by reentrancy guard and tracks the zap sender
+    /// @custom:gas This function may consume significant gas due to multiple external calls and token transfers
+    function zapIn(ZapInData calldata zapInData_) public payable returns (bytes[] memory results) {
+        return zapIn(zapInData_, bytes32(0));
     }
 
     /// @notice Executes a complex zap-in operation with multiple steps
@@ -67,8 +81,9 @@ contract ERC4626ZapInWithNativeToken is ReentrancyGuard {
     /// @param zapInData_ Struct containing all necessary parameters for the zap-in operation
     /// @return results Array of bytes containing the results of each call
     function zapIn(
-        ZapInData calldata zapInData_
-    ) external payable nonReentrant trackZapSender returns (bytes[] memory results) {
+        ZapInData calldata zapInData_,
+        bytes32 referralCode_
+    ) public payable nonReentrant trackZapSender returns (bytes[] memory results) {
         if (zapInData_.minAmountToDeposit == 0) {
             revert MinAmountToDepositIsZero();
         }
@@ -106,6 +121,10 @@ contract ERC4626ZapInWithNativeToken is ReentrancyGuard {
             revert InsufficientDepositAssetBalance();
         }
 
+        if (referralContractAddress != address(0) && referralCode_ != bytes32(0)) {
+            ReferralPlasmaVault(referralContractAddress).emitReferalForZapIn(currentZapSender, referralCode_);
+        }
+
         vault.deposit(depositAssetBalance, zapInData_.receiver);
 
         uint256 assetsToRefundToSenderLength = zapInData_.assetsToRefundToSender.length;
@@ -136,5 +155,20 @@ contract ERC4626ZapInWithNativeToken is ReentrancyGuard {
         currentZapSender = msg.sender;
         _;
         currentZapSender = address(0);
+    }
+
+    /// @notice Sets the referral contract address and renounces ownership
+    /// @dev This function can only be called once by the owner. After setting the referral contract address,
+    ///      the ownership is permanently renounced, making the contract immutable for future changes.
+    /// @param referralContractAddress_ The address of the ReferralPlasmaVault contract to be used for referral tracking
+    /// @custom:security This function permanently renounces ownership after execution, ensuring the referral address cannot be changed
+    /// @custom:access Only the contract owner can call this function, and only once
+    /// @custom:effect After execution, the contract becomes ownerless and the referral address is permanently set
+    function setReferralContractAddress(address referralContractAddress_) external onlyOwner {
+        if (referralContractAddress_ == address(0)) {
+            revert ReferralContractAddressIsZero();
+        }
+        referralContractAddress = referralContractAddress_;
+        renounceOwnership();
     }
 }
