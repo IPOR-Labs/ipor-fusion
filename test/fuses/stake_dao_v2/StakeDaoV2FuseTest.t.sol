@@ -73,7 +73,7 @@ contract StakeDaoV2FuseTest is Test {
 
     address constant CHAINLINK_PRICE_FEED_USDC = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
-    /// @dev https://data.chain.link/feeds/arbitrum/mainnet/crvusd-usd
+    // @dev https://data.chain.link/feeds/arbitrum/mainnet/crvusd-usd
     address constant CHAINLINK_PRICE_FEED_CRV_USD = 0x0a32255dd4BB6177C994bAAc73E0606fDD568f66;
 
     address constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -119,7 +119,7 @@ contract StakeDaoV2FuseTest is Test {
         // given
         uint256 depositAmountCrvUSD = 1000e18; // 1000 crvUSD
 
-        /// @dev Simulate that Vault has some crvUSD
+        // @dev Simulate that Vault has some crvUSD
         vm.prank(CRV_USD_HOLDER);
         IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
 
@@ -236,7 +236,7 @@ contract StakeDaoV2FuseTest is Test {
         bytes memory newCode = address(mockAccountant).code;
         vm.etch(accountant, newCode);
 
-        /// @dev Simulate that Vault has some crvUSD
+        // @dev Simulate that Vault has some crvUSD
         vm.prank(CRV_USD_HOLDER);
         IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
 
@@ -298,7 +298,7 @@ contract StakeDaoV2FuseTest is Test {
         deal(CVX, address(mockRewardVault), 123e18);
         deal(LDO, address(mockRewardVault), 456e18);
 
-        /// @dev Simulate that Vault has some crvUSD
+        // @dev Simulate that Vault has some crvUSD
         vm.prank(CRV_USD_HOLDER);
         IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
 
@@ -345,10 +345,10 @@ contract StakeDaoV2FuseTest is Test {
     }
 
     function test_shouldDepositToSingleVaultAndAssertBalanceFuse() public {
-        /// given
+        // given
         uint256 depositAmountCrvUSD = 1000e18; // 1000 crvUSD
 
-        /// @dev Simulate that Vault has some crvUSD
+        // @dev Simulate that Vault has some crvUSD
         vm.prank(CRV_USD_HOLDER);
         IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
 
@@ -416,7 +416,7 @@ contract StakeDaoV2FuseTest is Test {
             rewardVaultSharesBefore,
             "Vault should have more shares in the reward vault after deposit"
         );
-        /// @dev Notice! Expected Plasma Vault balance should be around 1000 USD (because crvUSD is stable)
+        // @dev Notice! Expected Plasma Vault balance should be around 1000 USD (because crvUSD is stable)
         assertApproxEqRel(
             plasmaVaultTotalAssetsAfter,
             1000e6,
