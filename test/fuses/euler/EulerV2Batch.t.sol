@@ -19,6 +19,7 @@ import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
 import {CallbackHandlerEuler} from "../../../contracts/handlers/callbacks/CallbackHandlerEuler.sol";
 import {EmptyFuse} from "./EmptyFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+import {CallbackData} from "../../../contracts/libraries/CallbackHandlerLib.sol";
 
 contract EulerV2Batch is Test {
     address public constant EULER_V2_EVC = 0x0C9a3dd6b8F28529d72d7f9cE918D493519EE383;
@@ -92,36 +93,53 @@ contract EulerV2Batch is Test {
         address[] memory assetsForApprovals = new address[](1);
         assetsForApprovals[0] = USDC;
 
-        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(batchItems, assetsForApprovals);
+        address[] memory eulerVaultsForApprovals = new address[](1);
+        eulerVaultsForApprovals[0] = EULER_VAULT;
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
 
         FuseAction[] memory mockActions = new FuseAction[](1);
         mockActions[0] = FuseAction(address(emptyFuse), abi.encodeWithSelector(EmptyFuse.enter.selector));
 
         batchItems[0] = EulerV2BatchItem(
             EULER_V2_EVC,
-            address(0),
+            bytes1(0x00),
             abi.encodeWithSelector(IEVC.enableController.selector, plasmaVault, EULER_VAULT)
         );
         batchItems[1] = EulerV2BatchItem(
             EULER_VAULT,
-            plasmaVault,
+            bytes1(0x00),
             abi.encodeWithSelector(IBorrowing.borrow.selector, 1_000_000e6, plasmaVault)
         );
         batchItems[2] = EulerV2BatchItem(
             plasmaVault,
-            plasmaVault,
-            abi.encodeWithSelector(CallbackHandlerEuler.onEulerFlashLoan.selector, abi.encode(mockActions))
+            bytes1(0x00),
+            abi.encodeWithSelector(
+                CallbackHandlerEuler.onEulerFlashLoan.selector,
+                abi.encode(
+                    CallbackData({
+                        asset: USDC,
+                        addressToApprove: EULER_VAULT,
+                        amountToApprove: 1_000_000e6,
+                        actionData: abi.encode(mockActions)
+                    })
+                )
+            )
         );
         batchItems[3] = EulerV2BatchItem(
             EULER_VAULT,
-            plasmaVault,
+            bytes1(0x00),
             abi.encodeWithSelector(IBorrowing.repay.selector, 1_000_000e6, plasmaVault)
         );
 
         //todo add more batch items
         batchItems[4] = EulerV2BatchItem(
             EULER_VAULT,
-            plasmaVault,
+            bytes1(0x00),
             abi.encodeWithSelector(IVault.disableController.selector)
         );
 
