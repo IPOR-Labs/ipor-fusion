@@ -20,6 +20,7 @@ import {CallbackHandlerEuler} from "../../../contracts/handlers/callbacks/Callba
 import {EmptyFuse} from "./EmptyFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {CallbackData} from "../../../contracts/libraries/CallbackHandlerLib.sol";
+import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
 contract EulerV2Batch is Test {
     address public constant EULER_V2_EVC = 0x0C9a3dd6b8F28529d72d7f9cE918D493519EE383;
@@ -147,6 +148,316 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithZeroAddressInBatchItems() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            address(0), // Zero address should cause revert
+            bytes1(0x00),
+            abi.encodeWithSelector(IEVC.enableController.selector, plasmaVault, EULER_VAULT)
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.ZeroAddress.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithEmptyBatchItems() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](0); // Empty array
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.EmptyBatchItems.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithArrayLengthMismatch() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_V2_EVC,
+            bytes1(0x00),
+            abi.encodeWithSelector(IEVC.enableController.selector, plasmaVault, EULER_VAULT)
+        );
+
+        address[] memory assetsForApprovals = new address[](2); // 2 assets
+        assetsForApprovals[0] = USDC;
+        assetsForApprovals[1] = USDC;
+
+        address[] memory eulerVaultsForApprovals = new address[](1); // 1 vault - mismatch!
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.ArrayLengthMismatch.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithInvalidEVCSelector() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_V2_EVC,
+            bytes1(0x00),
+            abi.encodeWithSelector(bytes4(0x12345678), plasmaVault, EULER_VAULT) // Invalid selector
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.UnsupportedOperation.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithInvalidPlasmaVaultCallback() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            address(fuse), // This should be plasmaVault for callback
+            bytes1(0x00),
+            abi.encodeWithSelector(bytes4(0x12345678), "invalid data") // Invalid callback selector
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.UnsupportedOperation.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithInvalidEulerVaultSelector() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_VAULT,
+            bytes1(0x00),
+            abi.encodeWithSelector(bytes4(0x12345678), 1000e6, plasmaVault) // Invalid selector
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.UnsupportedOperation.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithInvalidSubaccountInBorrow() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_VAULT,
+            bytes1(0x00),
+            abi.encodeWithSelector(IBorrowing.borrow.selector, 1000e6, address(0x1234)) // Wrong subaccount
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.EulerVaultInvalidPermissions.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithInvalidSubaccountInDeposit() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_VAULT,
+            bytes1(0x00),
+            abi.encodeWithSelector(ERC4626Upgradeable.deposit.selector, 1000e6, address(0x1234)) // Wrong subaccount
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.EulerVaultInvalidPermissions.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithInvalidSubaccountInWithdraw() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_VAULT,
+            bytes1(0x00),
+            abi.encodeWithSelector(ERC4626Upgradeable.withdraw.selector, 1000e6, address(0x1234), address(0x1234)) // Wrong subaccount
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.EulerVaultInvalidPermissions.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithInvalidSubaccountInRepay() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_VAULT,
+            bytes1(0x00),
+            abi.encodeWithSelector(IBorrowing.repay.selector, 1000e6, address(0x1234)) // Wrong subaccount
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.EulerVaultInvalidPermissions.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithInvalidAccountInEnableController() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_V2_EVC,
+            bytes1(0x00),
+            abi.encodeWithSelector(IEVC.enableController.selector, address(0x1234), EULER_VAULT) // Wrong account
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.EVCInvalidCollateral.selector);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWithInvalidVaultInEnableController() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_V2_EVC,
+            bytes1(0x00),
+            abi.encodeWithSelector(IEVC.enableController.selector, plasmaVault, address(0x1234)) // Invalid vault
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.EVCInvalidCollateral.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
