@@ -21,7 +21,7 @@ import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEn
 import {AreodromeSlipstreamModifyPositionFuse, AreodromeSlipstreamModifyPositionFuseEnterData, AreodromeSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol";
 import {AreodromeSlipstreamCLGaugeFuse, AreodromeSlipstreamCLGaugeFuseEnterData, AreodromeSlipstreamCLGaugeFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol";
 import {AreodromeSlipstreamCollectFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
-import {AreodromeSlipstreamBalance} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalance.sol";
+import {AreodromeSlipstreamBalanceFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalanceFuse.sol";
 import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
@@ -71,7 +71,7 @@ contract AreodromeSlipstreamTest is Test {
     AreodromeSlipstreamModifyPositionFuse private _areodromeSlipstreamModifyPositionFuse;
     AreodromeSlipstreamCLGaugeFuse private _areodromeSlipstreamCLGaugeFuse;
     AreodromeSlipstreamCollectFuse private _areodromeSlipstreamCollectFuse;
-    AreodromeSlipstreamBalance private _areodromeSlipstreamBalance;
+    AreodromeSlipstreamBalanceFuse private _areodromeSlipstreamBalance;
     AreodromeSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
 
     function setUp() public {
@@ -136,7 +136,7 @@ contract AreodromeSlipstreamTest is Test {
             IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
-        _areodromeSlipstreamBalance = new AreodromeSlipstreamBalance(
+        _areodromeSlipstreamBalance = new AreodromeSlipstreamBalanceFuse(
             IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER,
             _SLIPSTREAM_SUPERCHAIN_VAULT
