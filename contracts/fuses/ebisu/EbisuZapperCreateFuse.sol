@@ -12,15 +12,10 @@ import {LiquityMath} from "./ext/LiquityMath.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {EbisuMathLib} from "./lib/EbisuMathLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IWethEthAdapter} from "./IWethEthAdapter.sol";
+import {IWethEthAdapter} from "./ext/IWethEthAdapter.sol";
 import {WethEthAdapterStorageLib} from "./lib/WethEthAdapterStorageLib.sol";
-import {WethEthAdapter} from "./WethEthAdapter.sol";
+import {WethEthAdapter} from "./ext/WethEthAdapter.sol";
 import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
-
-enum ExitType {
-    ETH,
-    COLLATERAL
-}
 
 struct EbisuZapperCreateFuseEnterData {
     address zapper;
@@ -32,14 +27,13 @@ struct EbisuZapperCreateFuseEnterData {
     uint256 flashLoanAmount;
     uint256 annualInterestRate;
     uint256 maxUpfrontFee;
-    uint256 wethForGas;
 }
 
 struct EbisuZapperCreateFuseExitData {
     address zapper;
     uint256 flashLoanAmount;
     uint256 minExpectedCollateral;
-    ExitType exitType;
+    bool exitFromCollateral;
 }
 
 contract EbisuZapperCreateFuse is IFuseCommon {
@@ -110,10 +104,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
 
         _checkUpfrontFeeAndDebt(data);
 
-        address adapter = WethEthAdapterStorageLib.getWethEthAdapter();
-        if (adapter == address(0)) {
-            adapter = _createAdapterWhenNotExists();
-        }
+        address adapter = _createAdapterWhenNotExists();
 
         // Build params
         // Bump the latestOwnerId before assigning (pre-increment), so that the first id ever used 1
@@ -137,21 +128,16 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         ILeverageZapper zapper = ILeverageZapper(data.zapper);
 
         // Send the gas amount
-        IERC20(WETH).transfer(adapter, data.wethForGas);
+        IERC20(WETH).transfer(adapter, ETH_GAS_COMPENSATION);
 
         // Transfer collateral to adapter
         IERC20(zapper.collToken()).transfer(adapter, data.collAmount);
 
-        // Prepare zapper call
-        bytes memory callData =
-            abi.encodeWithSelector(ILeverageZapper.openLeveragedTroveWithRawETH.selector, params);
-
         // minEthToSpend = ETH_GAS_COMPENSATION by default
         IWethEthAdapter(adapter).callZapperWithEth(
+            params,
             data.zapper,
-            callData,
             data.collAmount,
-            data.wethForGas,
             ETH_GAS_COMPENSATION
         );
 
@@ -184,39 +170,17 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         if (adapter == address(0)) 
             revert WethEthAdapterNotFound();
 
-        ILeverageZapper zapper = ILeverageZapper(data.zapper);
-        IERC20 ebusdToken = IERC20(zapper.boldToken());
-
-        // Decide which zapper function to call (only calldata differs)
-        bytes4 selector;
-        bool isCollateralExit;
-        if (data.exitType == ExitType.ETH) {
-            selector = IZapper.closeTroveToRawETH.selector;
-            isCollateralExit = false;
-        } else if (data.exitType == ExitType.COLLATERAL) {
-            selector = IZapper.closeTroveFromCollateral.selector;
-            isCollateralExit = true;
-        } else {
-            revert UnknownExitType();
+        if (!data.exitFromCollateral){
+            IERC20 ebusdToken = IERC20(ILeverageZapper(data.zapper).boldToken());
+            ebusdToken.transfer(adapter, ebusdToken.balanceOf(address(this)));
         }
 
-        // Build calldata (minimal difference between the two modes)
-        bytes memory callData = isCollateralExit
-            ? abi.encodeWithSelector(
-                selector,
-                troveId,
-                data.flashLoanAmount,
-                data.minExpectedCollateral
-            )
-            : abi.encodeWithSelector(
-                selector,
-                troveId
-            );
-
-        // Repay from Vault balance via adapter (common path)
-        ebusdToken.transfer(adapter, ebusdToken.balanceOf(address(this)));
-
-        IWethEthAdapter(adapter).callZapperExpectEthBack(data.zapper, callData);
+        IWethEthAdapter(adapter).callZapperExpectEthBack(
+            data.zapper, 
+            data.exitFromCollateral,
+            troveId,
+            data.flashLoanAmount,
+            data.minExpectedCollateral);
 
         delete troveData.troveIds[data.zapper];
 

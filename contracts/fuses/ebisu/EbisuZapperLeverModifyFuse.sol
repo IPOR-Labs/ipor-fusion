@@ -7,19 +7,19 @@ import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {ILeverageZapper} from "./ext/ILeverageZapper.sol";
 import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
 
-/// @notice Data for lever-down action
-struct EbisuLeverDownData {
-    address zapper;
-    uint256 flashLoanAmount;
-    uint256 minBoldAmount;  // minimum BOLD/EBUSD to receive when deleveraging
-}
-
-/// @notice Data for lever-up action
-struct EbisuLeverUpData {
+/// @notice "enter" is a lever-up action
+struct EbisuZapperLeverModifyFuseEnterData {
     address zapper;
     uint256 flashLoanAmount;
     uint256 ebusdAmount;     // BOLD/EBUSD to add as debt
     uint256 maxUpfrontFee;   // safety bound for zapper
+}
+
+/// @notice "exit" is a lever-down action
+struct EbisuZapperLeverModifyFuseExitData {
+    address zapper;
+    uint256 flashLoanAmount;
+    uint256 minBoldAmount;  // minimum BOLD/EBUSD to receive when deleveraging
 }
 
 contract EbisuZapperLeverModifyFuse is IFuseCommon {
@@ -34,7 +34,7 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(EbisuLeverUpData memory data) external {
+    function enter(EbisuZapperLeverModifyFuseEnterData memory data) external {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({
@@ -56,7 +56,7 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
         emit EbisuZapperLeverModifyLeverUp(data.zapper, troveId, data.flashLoanAmount, data.ebusdAmount);
     }
 
-    function exit(EbisuLeverDownData memory data) external {
+    function exit(EbisuZapperLeverModifyFuseExitData memory data) external {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({

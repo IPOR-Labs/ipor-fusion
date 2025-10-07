@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
@@ -18,7 +17,6 @@ import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType}
  * @dev Substrates in this fuse are the address registries of Ebisu protocol that are used in the Ebisu protocol for a given MARKET_ID
  */
 contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
-    using SafeCast for int256;
     uint256 public immutable MARKET_ID;
 
     constructor(uint256 marketId) {
@@ -59,12 +57,12 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
                 (ebusdPrice, ebusdPriceDecimals) = priceOracleMiddleware.getAssetPrice(ebusdAddress);
             }
             
+            troveId = troveData.troveIds[target.substrateAddress];
+            if (troveId == 0) continue;
             // At this point, we expect the contract to have collToken and troveManager
             collToken = ILeverageZapper(target.substrateAddress).collToken();
             (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
             
-            troveId = troveData.troveIds[target.substrateAddress];
-            if(troveId == 0) continue;
             ITroveManager.LatestTroveData memory latestTroveData = 
                 ITroveManager(ILeverageZapper(target.substrateAddress).troveManager()).getLatestTroveData(troveId);
             
