@@ -35,8 +35,8 @@ library EulerFuseLib {
     /// @notice Converts a `bytes32` representation to an `EulerSubstrate` struct
     /// @param data The `bytes32` data to convert
     /// @return substrate The `EulerSubstrate` struct representation of the `bytes32` data
-    /// @dev This function extracts the 20-byte address, isCollateral (1 bit), canBorrow (1 bit), and subAccounts (1 byte) from the `bytes32` data
-    function bytes32ToSubstrate(bytes32 data) internal view returns (EulerSubstrate memory substrate) {
+    /// @dev This function extracts the 20-byte address, isCollateral (1 byte, using 1 bit), canBorrow (1 byte, using 1 bit), and subAccounts (1 byte) from the `bytes32` data
+    function bytes32ToSubstrate(bytes32 data) internal pure returns (EulerSubstrate memory substrate) {
         substrate.eulerVault = address(uint160(uint256(data) >> 96)); // Extract the 20-byte address by shifting right 96 bits
         substrate.isCollateral = (uint8(uint256(data) >> 88) & 0x01) == 1; // Extract isCollateral (1 bit) by shifting 88 bits and masking with 0x01
         substrate.canBorrow = (uint8(uint256(data) >> 80) & 0x01) == 1; // Extract canBorrow (1 bit) by shifting 80 bits and masking with 0x01
