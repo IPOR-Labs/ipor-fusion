@@ -13,7 +13,7 @@ import {ICLPool} from "./ext/ICLPool.sol";
 import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";
 import {ICLGauge} from "./ext/ICLGauge.sol";
 
-contract AreodromeSlipstreamBalance is IMarketBalanceFuse {
+contract AreodromeSlipstreamBalanceFuse is IMarketBalanceFuse {
     error InvalidAddress();
 
     uint256 public immutable MARKET_ID;
