@@ -55,7 +55,7 @@ contract EulerV2BatchFuse is IFuseCommon {
     function enter(EulerV2BatchFuseData calldata data_) external {
         IEVC.BatchItem[] memory batchItems = new IEVC.BatchItem[](data_.batchItems.length);
 
-        validate(data_);
+        _validate(data_);
 
         for (uint256 i = 0; i < data_.assetsForApprovals.length; i++) {
             ERC20(data_.assetsForApprovals[i]).forceApprove(data_.eulerVaultsForApprovals[i], type(uint256).max);
@@ -99,7 +99,7 @@ contract EulerV2BatchFuse is IFuseCommon {
     /// @notice Validates the batch fuse data for security and correctness
     /// @dev Checks for empty batches, array length mismatches, duplicate assets, and validates each batch item
     /// @param data_ The batch fuse data to validate
-    function validate(EulerV2BatchFuseData calldata data_) private view {
+    function _validate(EulerV2BatchFuseData calldata data_) private view {
         if (data_.batchItems.length == 0) {
             revert EmptyBatchItems();
         }
