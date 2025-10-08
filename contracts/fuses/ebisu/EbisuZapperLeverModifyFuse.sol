@@ -34,46 +34,46 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(EbisuZapperLeverModifyFuseEnterData memory data) external {
+    function enter(EbisuZapperLeverModifyFuseEnterData memory data_) external {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({
                     substrateType: EbisuZapperSubstrateType.Zapper,
-                    substrateAddress: data.zapper
+                    substrateAddress: data_.zapper
             })))) revert UnsupportedSubstrate();
 
-        uint256 troveId = FuseStorageLib.getEbisuTroveIds().troveIds[data.zapper];
+        uint256 troveId = FuseStorageLib.getEbisuTroveIds().troveIds[data_.zapper];
 
         ILeverageZapper.LeverUpTroveParams memory params = ILeverageZapper.LeverUpTroveParams({
             troveId: troveId,
-            flashLoanAmount: data.flashLoanAmount,
-            boldAmount: data.ebusdAmount,
-            maxUpfrontFee: data.maxUpfrontFee
+            flashLoanAmount: data_.flashLoanAmount,
+            boldAmount: data_.ebusdAmount,
+            maxUpfrontFee: data_.maxUpfrontFee
         });
 
-        ILeverageZapper(data.zapper).leverUpTrove(params);
+        ILeverageZapper(data_.zapper).leverUpTrove(params);
 
-        emit EbisuZapperLeverModifyLeverUp(data.zapper, troveId, data.flashLoanAmount, data.ebusdAmount);
+        emit EbisuZapperLeverModifyLeverUp(data_.zapper, troveId, data_.flashLoanAmount, data_.ebusdAmount);
     }
 
-    function exit(EbisuZapperLeverModifyFuseExitData memory data) external {
+    function exit(EbisuZapperLeverModifyFuseExitData memory data_) external {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({
                     substrateType: EbisuZapperSubstrateType.Zapper,
-                    substrateAddress: data.zapper
+                    substrateAddress: data_.zapper
             })))) revert UnsupportedSubstrate();
 
-        uint256 troveId = FuseStorageLib.getEbisuTroveIds().troveIds[data.zapper];
+        uint256 troveId = FuseStorageLib.getEbisuTroveIds().troveIds[data_.zapper];
 
         ILeverageZapper.LeverDownTroveParams memory params = ILeverageZapper.LeverDownTroveParams({
             troveId: troveId,
-            flashLoanAmount: data.flashLoanAmount,
-            minBoldAmount: data.minBoldAmount
+            flashLoanAmount: data_.flashLoanAmount,
+            minBoldAmount: data_.minBoldAmount
         });
 
-        ILeverageZapper(data.zapper).leverDownTrove(params);
+        ILeverageZapper(data_.zapper).leverDownTrove(params);
 
-        emit EbisuZapperLeverModifyLeverDown(data.zapper, troveId, data.flashLoanAmount, data.minBoldAmount);
+        emit EbisuZapperLeverModifyLeverDown(data_.zapper, troveId, data_.flashLoanAmount, data_.minBoldAmount);
     }
 }

@@ -13,7 +13,6 @@ interface IWethEthAdapter {
     function callZapperWithEth(
         ILeverageZapper.OpenLeveragedTroveParams calldata params,
         address zapper,
-        uint256 collAmount,
         uint256 wethAmount
     ) external;
 

@@ -178,7 +178,7 @@ library FuseStorageLib {
      *
      * Storage Layout:
      * - Points to EbisuTroveIds struct containing:
-     * -  uint256 latestOwnerId; the ownerId of the latest (only) open trove
+     * -  uint256 latestOwnerIndex; the ownerIndex of the latest (only) open trove
      * -  mapping(address zapper => uint256 id) troveIds; mapping of troveId by zapper (for balance fuse)
      *
      * Usage Pattern:
@@ -229,7 +229,7 @@ library FuseStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.EbisuTroveIds
     struct EbisuTroveIds {
-        uint256 latestOwnerId;
+        uint256 latestOwnerIndex;
         mapping(address zapper => uint256 id) troveIds;
     }
 

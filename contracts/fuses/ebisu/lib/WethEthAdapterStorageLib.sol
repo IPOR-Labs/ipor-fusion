@@ -26,10 +26,10 @@ library WethEthAdapterStorageLib {
     }
 
     /// @notice Sets the WETH ETH adapter address
-    /// @param adapter The address of the WETH ETH adapter
-    function setWethEthAdapter(address adapter) internal {
+    /// @param adapter_ The address of the WETH ETH adapter
+    function setWethEthAdapter(address adapter_) internal {
         WethEthAdapterStorage storage storagePtr = getWethEthAdapterStorage();
-        storagePtr.adapter = adapter;
+        storagePtr.adapter = adapter_;
     }
 
     /// @notice Gets the WETH ETH adapter address

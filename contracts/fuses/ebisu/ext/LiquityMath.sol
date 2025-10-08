@@ -3,17 +3,18 @@ pragma solidity ^0.8.26;
 
 library LiquityMath {
     uint256 internal constant DECIMAL_PRECISION = 1e18;
+    uint256 internal constant MINUTES_IN_1000_YEARS = 525600000;
 
-    function _min(uint256 _a, uint256 _b) internal pure returns (uint256) {
-        return (_a < _b) ? _a : _b;
+    function _min(uint256 a_, uint256 b_) internal pure returns (uint256) {
+        return (a_ < b_) ? a_ : b_;
     }
 
-    function _max(uint256 _a, uint256 _b) internal pure returns (uint256) {
-        return (_a >= _b) ? _a : _b;
+    function _max(uint256 a_, uint256 b_) internal pure returns (uint256) {
+        return (a_ >= b_) ? a_ : b_;
     }
 
-    function _sub_min_0(uint256 _a, uint256 _b) internal pure returns (uint256) {
-        return (_a > _b) ? _a - _b : 0;
+    function _subMin0(uint256 a_, uint256 b_) internal pure returns (uint256) {
+        return (a_ > b_) ? a_ - b_ : 0;
     }
 
     /*
@@ -24,9 +25,9 @@ library LiquityMath {
      * Used only inside the exponentiation, _decPow().
      */
     function decMul(uint256 x, uint256 y) internal pure returns (uint256 decProd) {
-        uint256 prod_xy = x * y;
+        uint256 prodXY = x * y;
 
-        decProd = (prod_xy + DECIMAL_PRECISION / 2) / DECIMAL_PRECISION;
+        decProd = (prodXY + DECIMAL_PRECISION / 2) / DECIMAL_PRECISION;
     }
 
     /*
@@ -45,14 +46,14 @@ library LiquityMath {
      * In function 1), the decayed base rate will be 0 for 1000 years or > 1000 years
      * In function 2), the difference in tokens issued at 1000 years and any time > 1000 years, will be negligible
      */
-    function _decPow(uint256 _base, uint256 _minutes) internal pure returns (uint256) {
-        if (_minutes > 525600000) _minutes = 525600000; // cap to avoid overflow
+    function _decPow(uint256 b_ase, uint256 minutes_) internal pure returns (uint256) {
+        if (minutes_ > MINUTES_IN_1000_YEARS) minutes_ = MINUTES_IN_1000_YEARS; // cap to avoid overflow
 
-        if (_minutes == 0) return DECIMAL_PRECISION;
+        if (minutes_ == 0) return DECIMAL_PRECISION;
 
         uint256 y = DECIMAL_PRECISION;
-        uint256 x = _base;
-        uint256 n = _minutes;
+        uint256 x = b_ase;
+        uint256 n = minutes_;
 
         // Exponentiation-by-squaring
         while (n > 1) {
@@ -70,19 +71,19 @@ library LiquityMath {
         return decMul(x, y);
     }
 
-    function _getAbsoluteDifference(uint256 _a, uint256 _b) internal pure returns (uint256) {
-        return (_a >= _b) ? _a - _b : _b - _a;
+    function _getAbsoluteDifference(uint256 a_, uint256 b_) internal pure returns (uint256) {
+        return (a_ >= b_) ? a_ - b_ : b_ - a_;
     }
 
-    function _computeCR(uint256 _coll, uint256 _debt, uint256 _price) internal pure returns (uint256) {
-        if (_debt > 0) {
-            uint256 newCollRatio = (_coll * _price) / _debt;
+    function _computeCR(uint256 coll_, uint256 debt_, uint256 price_) internal pure returns (uint256) {
+        if (debt_ > 0) {
+            uint256 newCollRatio = (coll_ * price_) / debt_;
 
             return newCollRatio;
         }
         // Return the maximal value for uint256 if the debt is 0. Represents "infinite" CR.
         else {
-            // if (_debt == 0)
+            // if (debt_ == 0)
             return 2 ** 256 - 1;
         }
     }

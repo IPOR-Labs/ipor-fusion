@@ -443,35 +443,15 @@ contract EbisuZapperTest is Test {
 
         uint256 ebisuAfter = plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU);
         assertEq(ebisuAfter, 0, "Ebisu market should be empty after exit");
-        {
-            // ----- CHECK ASSET CHANGE ------
-            // Vault effect of closing a position to raw ETH is
-            // 1. - troveData.entireDebt ebUSD
-            // 2. + troveData.totalColl sUSDe
-            (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-            uint256 debtUSDvalue = IporMath.convertToWad(
-                troveData.entireDebt * price,
-                18 + priceDecimals
-            );
-            (price, priceDecimals) = priceOracle.getAssetPrice(SUSDE);
-            uint256 collUSDvalue = IporMath.convertToWad(
-                troveData.entireColl * price,
-                18 + priceDecimals
-            );
 
-            // transport value in USDC
-            (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
-            uint256 expectedChange = IporMath.convertWadToAssetDecimals(
-                IporMath.division(
-                    (collUSDvalue - debtUSDvalue) * IporMath.BASIS_OF_POWER ** 8,
-                    price
-                ),
-                16
-            );
-
-            uint256 totalAssetsAfter = plasmaVault.totalAssets();
-            assertEq(totalAssetsAfter, totalAssetsBefore + expectedChange + 1); // extremely tiny rounding error
-        }
+        // ----- CHECK ASSET CHANGE ------
+        // Vault effect of closing a position to raw ETH is
+        // 1. - troveData.entireDebt ebUSD
+        // 2. + troveData.totalColl sUSDe
+        // this is exactly balanceOf() of the EbisuBalanceFuse that is now 0
+        // so the net asset change is 0
+        uint256 totalAssetsAfter = plasmaVault.totalAssets();
+        assertEq(totalAssetsAfter, totalAssetsBefore + 1); // extremely tiny rounding error
 
     }
 
@@ -514,38 +494,16 @@ contract EbisuZapperTest is Test {
         uint256 totalAssetsInEbisu = plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU);
         assertEq(totalAssetsInEbisu, 0);
 
-        {
-            // ----- CHECK ASSET CHANGE ------
-            // Vault effect of closing a position from collatera is
-            // 1. + exitData.flashLoanAmount (which in in sUSDe) - troveData.entireDebt in ebUSD
-            // 2. + troveData.totalColl - exitData.flashLoanAmount in sUSDe
-            // therefore the net change is + troveData.totalColl (sUSDe) - troveData.entireDebt (ebUSD)
-            // exactly the same as closeTroveToRawETH
-            
-            (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-            uint256 debtUSDvalue = IporMath.convertToWad(
-                troveData.entireDebt * price,
-                18 + priceDecimals
-            );
-            (price, priceDecimals) = priceOracle.getAssetPrice(SUSDE);
-            uint256 collUSDvalue = IporMath.convertToWad(
-                troveData.entireColl * price,
-                18 + priceDecimals
-            );
+        // ----- CHECK ASSET CHANGE ------
+        // Vault effect of closing a position from collateral is
+        // 1. + exitData.flashLoanAmount (which in in sUSDe) - troveData.entireDebt in ebUSD
+        // 2. + troveData.totalColl - exitData.flashLoanAmount in sUSDe
+        // therefore the net change is + troveData.totalColl (sUSDe) - troveData.entireDebt (ebUSD)
+        // exactly the same as closeTroveToRawETH, this is balanceOf() of the EbisuBalanceFuse
+        // therefore the net change of totalAssets() is 0
 
-            // transport value in USDC
-            (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
-            uint256 expectedChange = IporMath.convertWadToAssetDecimals(
-                IporMath.division(
-                    (collUSDvalue - debtUSDvalue) * IporMath.BASIS_OF_POWER ** 8,
-                    price
-                ),
-                16
-            );
-
-            uint256 totalAssetsAfter = plasmaVault.totalAssets();
-            _eqWithTolerance(totalAssetsAfter, totalAssetsBefore + expectedChange, 10); // this time allow 0.1% error since there have been swaps
-        }
+        uint256 totalAssetsAfter = plasmaVault.totalAssets();
+        _eqWithTolerance(totalAssetsAfter, totalAssetsBefore, 10); // this time allow 0.1% error since there have been swaps
     }
 
     function testLeverUpEffectsEbisu() public {
@@ -574,40 +532,77 @@ contract EbisuZapperTest is Test {
             abi.encodeWithSignature("enter((address,uint256,uint256,uint256))", leverUpData)
         );
 
+        uint256 totalAssetsBefore = plasmaVault.totalAssets();
+        uint256 totalAssetsInMarketBefore = plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU);
         // when
         plasmaVault.execute(leverUpCalls);
 
         ITroveManager.LatestTroveData memory finalData = troveManager.getLatestTroveData(troveId);
-        uint256 finalDebt = finalData.entireDebt;
-        uint256 finalColl = finalData.entireColl;
 
         // then
-        assertGt(finalDebt, initialDebt, "Debt should have increased after lever up");
-        assertGt(finalColl, initialColl, "Collateral should have increased after lever up");
+        assertGe(finalData.entireDebt, initialDebt + leverUpData.ebusdAmount, "Debt should be at least initial debt + ebusd amount");
+        assertLe(finalData.entireDebt, initialDebt + leverUpData.ebusdAmount + leverUpData.maxUpfrontFee, "Debt increased too much"); 
+        assertEq(finalData.entireColl, initialColl + leverUpData.flashLoanAmount, "Collateral should have increased after lever up");
 
-        uint256 debtIncrease = finalDebt - initialDebt;
-        assertGe(debtIncrease, (leverUpData.ebusdAmount * 90) / 100);
-        assertLe(debtIncrease, (leverUpData.ebusdAmount * 110) / 100);
+        {
+            // balanceOf() should be up to date
+            ReadResult memory readResult = UniversalReader(address(plasmaVault)).read(
+                address(balanceFuse),
+                abi.encodeWithSignature("balanceOf()")
+            );
 
+            uint256 balanceOfFromFuse = abi.decode(readResult.data, (uint256));
+            (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
+            uint256 collUSDvalue = IporMath.convertToWad(
+                finalData.entireColl * price,
+                18 + priceDecimals
+            );
+            (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
+            uint256 debtUSDvalue =  IporMath.convertToWad(
+                finalData.entireDebt * price,
+                18 + priceDecimals
+            );
+            assertEq(balanceOfFromFuse, collUSDvalue - debtUSDvalue, "balance after lever up incorrect");
+        }
+        {
+            // check assets change in EBISU
+            (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
+            uint256 collUSDvalueChange = IporMath.convertToWad(
+                (finalData.entireColl - initialData.entireColl) * price,
+                18 + priceDecimals
+            );
+            (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
+            uint256 debtUSDvalueChange =  IporMath.convertToWad(
+                (finalData.entireDebt - initialData.entireDebt)* price,
+                18 + priceDecimals
+            );
 
-        // balanceOf() should be up to date
-        ReadResult memory readResult = UniversalReader(address(plasmaVault)).read(
-            address(balanceFuse),
-            abi.encodeWithSignature("balanceOf()")
-        );
+            // transport in USDC
+            (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
+            uint256 collChange = IporMath.convertWadToAssetDecimals(
+                    IporMath.division(
+                        collUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
+                        price
+                    ),
+                    16
+                );
+            uint256 debtChange = IporMath.convertWadToAssetDecimals(
+                    IporMath.division(
+                        debtUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
+                        price
+                    ),
+                    16
+                );
 
-        uint256 balanceOfFromFuse = abi.decode(readResult.data, (uint256));
-        (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
-        uint256 collValue = IporMath.convertToWad(
-            finalColl * price,
-            18 + priceDecimals
-        );
-        (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-        uint256 debtValue =  IporMath.convertToWad(
-            finalDebt * price,
-            18 + priceDecimals
-        );
-        assertEq(balanceOfFromFuse, collValue - debtValue, "balance after lever up incorrect");
+            assertEq(plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU), totalAssetsInMarketBefore + collChange - debtChange, "Extra assets in EBISU mismatch");
+        }
+
+        // ------ CHECK ASSETS CHANGE ------
+        // Vault effect of closing a position from collateral is
+        // 1. + leverUpData.ebusdAmount (which is in ebUSD) - leverUpData.flashLoanAmount in ebUSD
+        // 2. trove collateral has increased of flashLoanAmount and debt increased of ebusdAmount
+        // therefore the net change is zero
+        _eqWithTolerance(plasmaVault.totalAssets(), totalAssetsBefore, 1); // 0.01% tolerance due to slippage
     }
 
     function testLeverDownEffectsEbisu() public {
@@ -620,8 +615,6 @@ contract EbisuZapperTest is Test {
         ITroveManager troveManager = ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
 
         ITroveManager.LatestTroveData memory initialData = troveManager.getLatestTroveData(troveId);
-        uint256 initialDebt = initialData.entireDebt;
-        uint256 initialColl = initialData.entireColl;
 
         EbisuZapperLeverModifyFuseExitData memory leverDownData = EbisuZapperLeverModifyFuseExitData({
             zapper: SUSDE_ZAPPER,
@@ -634,7 +627,8 @@ contract EbisuZapperTest is Test {
             address(leverModifyFuse),
             abi.encodeWithSignature("exit((address,uint256,uint256))", leverDownData)
         );
-
+        uint256 totalAssetsBefore = plasmaVault.totalAssets();
+        uint256 totalAssetsInMarketBefore = plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU);
         // when
         plasmaVault.execute(leverDownCalls);
 
@@ -643,27 +637,66 @@ contract EbisuZapperTest is Test {
         uint256 finalColl = finalData.entireColl;
 
         // then
-        assertLt(finalDebt, initialDebt, "Debt should have decreased after lever down");
-        assertLt(finalColl, initialColl, "Collateral should have decreased after lever down");
+        assertLt(finalDebt, initialData.entireDebt, "Debt should have decreased after lever down");
+        assertLt(finalColl, initialData.entireColl, "Collateral should have decreased after lever down");
+        {
+            // balanceOf() should be up to date
+            ReadResult memory readResult = UniversalReader(address(plasmaVault)).read(
+                address(balanceFuse),
+                abi.encodeWithSignature("balanceOf()")
+            );
 
-        // balanceOf() should be up to date
-        ReadResult memory readResult = UniversalReader(address(plasmaVault)).read(
-            address(balanceFuse),
-            abi.encodeWithSignature("balanceOf()")
-        );
+            uint256 balanceOfFromFuse = abi.decode(readResult.data, (uint256));
+            (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
+            uint256 collValue = IporMath.convertToWad(
+                finalColl * price,
+                18 + priceDecimals
+            );
+            (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
+            uint256 debtValue =  IporMath.convertToWad(
+                finalDebt * price,
+                18 + priceDecimals
+            );
+            assertEq(balanceOfFromFuse, collValue - debtValue, "balance after lever up incorrect");
+        }
+        {
+            // check assets change in EBISU
+            (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
+            uint256 collUSDvalueChange = IporMath.convertToWad(
+                (initialData.entireColl - finalData.entireColl) * price,
+                18 + priceDecimals
+            );
+            (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
+            uint256 debtUSDvalueChange =  IporMath.convertToWad(
+                (initialData.entireDebt - finalData.entireDebt)* price,
+                18 + priceDecimals
+            );
 
-        uint256 balanceOfFromFuse = abi.decode(readResult.data, (uint256));
-        (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
-        uint256 collValue = IporMath.convertToWad(
-            finalColl * price,
-            18 + priceDecimals
-        );
-        (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-        uint256 debtValue =  IporMath.convertToWad(
-            finalDebt * price,
-            18 + priceDecimals
-        );
-        assertEq(balanceOfFromFuse, collValue - debtValue, "balance after lever up incorrect");
+            // transport in USDC
+            (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
+            uint256 collChange = IporMath.convertWadToAssetDecimals(
+                    IporMath.division(
+                        collUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
+                        price
+                    ),
+                    16
+                );
+            uint256 debtChange = IporMath.convertWadToAssetDecimals(
+                    IporMath.division(
+                        debtUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
+                        price
+                    ),
+                    16
+                );
+
+            assertEq(plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU), totalAssetsInMarketBefore + debtChange - collChange, "Change of assets in EBISU mismatch");
+        }
+        // ------ CHECK ASSETS CHANGE ------
+        // Vault effect of closing a position from collateral is
+        // 1. - leverUpData.ebusdAmount (which is in ebUSD) + leverUpData.flashLoanAmount in ebUSD
+        // 2. trove collateral has increased of flashLoanAmount and debt increased of ebusdAmount
+        // therefore the net change is zero
+        _eqWithTolerance(plasmaVault.totalAssets(), totalAssetsBefore, 1); // 0.01% tolerance due to slippage
     }
 
     // --- internal swapper function ---
