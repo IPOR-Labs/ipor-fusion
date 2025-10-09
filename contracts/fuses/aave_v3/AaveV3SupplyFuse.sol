@@ -84,7 +84,7 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     function exit(AaveV3SupplyFuseExitData calldata data_) external {
-        _exit(data_);
+        _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
@@ -93,10 +93,10 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        _exit(AaveV3SupplyFuseExitData(asset, amount));
+        _exit(AaveV3SupplyFuseExitData(asset, amount), true);
     }
 
-    function _exit(AaveV3SupplyFuseExitData memory data) internal {
+    function _exit(AaveV3SupplyFuseExitData memory data, bool catchExceptions_) internal {
         if (data.amount == 0) {
             return;
         }
@@ -115,13 +115,22 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
+        _performWithdraw(data.asset, finalAmount, catchExceptions_);
+    }
+
+    function _performWithdraw(address asset_, uint256 finalAmount_, bool catchExceptions_) private {
         IPool aavePool = IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool());
 
-        try aavePool.withdraw(data.asset, finalAmount, address(this)) returns (uint256 withdrawnAmount) {
-            emit AaveV3SupplyFuseExit(VERSION, data.asset, withdrawnAmount);
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit AaveV3SupplyFuseExitFailed(VERSION, data.asset, data.amount);
+        if (catchExceptions_) {
+            try aavePool.withdraw(asset_, finalAmount_, address(this)) returns (uint256 withdrawnAmount) {
+                emit AaveV3SupplyFuseExit(VERSION, asset_, withdrawnAmount);
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit AaveV3SupplyFuseExitFailed(VERSION, asset_, finalAmount_);
+            }
+        } else {
+            uint256 withdrawnAmount = aavePool.withdraw(asset_, finalAmount_, address(this));
+            emit AaveV3SupplyFuseExit(VERSION, asset_, withdrawnAmount);
         }
     }
 }

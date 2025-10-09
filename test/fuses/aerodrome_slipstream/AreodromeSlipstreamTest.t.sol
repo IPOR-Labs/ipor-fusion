@@ -21,7 +21,7 @@ import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEn
 import {AreodromeSlipstreamModifyPositionFuse, AreodromeSlipstreamModifyPositionFuseEnterData, AreodromeSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol";
 import {AreodromeSlipstreamCLGaugeFuse, AreodromeSlipstreamCLGaugeFuseEnterData, AreodromeSlipstreamCLGaugeFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol";
 import {AreodromeSlipstreamCollectFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
-import {AreodromeSlipstreamBalance} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalance.sol";
+import {AreodromeSlipstreamBalanceFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalanceFuse.sol";
 import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
@@ -32,6 +32,8 @@ import {ICLGauge} from "../../../contracts/fuses/aerodrome_slipstream/ext/ICLGau
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {AreodromeSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 
 /// @title AreodromeSlipstreamTest
 /// @notice Test suite for Velodrom Superchain Slipstream Collect Fuse
@@ -69,7 +71,7 @@ contract AreodromeSlipstreamTest is Test {
     AreodromeSlipstreamModifyPositionFuse private _areodromeSlipstreamModifyPositionFuse;
     AreodromeSlipstreamCLGaugeFuse private _areodromeSlipstreamCLGaugeFuse;
     AreodromeSlipstreamCollectFuse private _areodromeSlipstreamCollectFuse;
-    AreodromeSlipstreamBalance private _areodromeSlipstreamBalance;
+    AreodromeSlipstreamBalanceFuse private _areodromeSlipstreamBalance;
     AreodromeSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
 
     function setUp() public {
@@ -78,14 +80,18 @@ contract AreodromeSlipstreamTest is Test {
 
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
 
+        address plasmaVaultBase = address(new PlasmaVaultBase());
+
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = fusionFactory.getFactoryAddresses();
         factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
 
         address factoryAdmin = fusionFactory.getRoleMember(fusionFactory.DEFAULT_ADMIN_ROLE(), 0);
 
         vm.startPrank(factoryAdmin);
         fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), factoryAdmin);
         fusionFactory.updateFactoryAddresses(1000, factoryAddresses);
+        fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
         vm.stopPrank();
 
         FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
@@ -130,7 +136,7 @@ contract AreodromeSlipstreamTest is Test {
             IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER
         );
-        _areodromeSlipstreamBalance = new AreodromeSlipstreamBalance(
+        _areodromeSlipstreamBalance = new AreodromeSlipstreamBalanceFuse(
             IporFusionMarkets.AREODROME_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER,
             _SLIPSTREAM_SUPERCHAIN_VAULT

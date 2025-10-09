@@ -8,6 +8,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
+import {IPlasmaVaultGovernance} from "../../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
@@ -18,6 +19,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
 import {SwapExecutor} from "contracts/fuses/universal_token_swapper/SwapExecutor.sol";
+import {SwapExecutorRestricted} from "contracts/fuses/universal_token_swapper/SwapExecutorRestricted.sol";
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -60,18 +62,17 @@ contract UniversalSwapOnUniswapV3SwapFuseTest is Test {
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
         // plasma vault
-        _plasmaVault = address(
-            new PlasmaVault(
-                PlasmaVaultInitData(
-                    "TEST PLASMA VAULT",
-                    "pvUSDC",
-                    USDC,
-                    _priceOracle,
-                    _setupFeeConfig(),
-                    _createAccessManager(),
-                    address(new PlasmaVaultBase()),
-                    _withdrawManager
-                )
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(
+            PlasmaVaultInitData(
+                "TEST PLASMA VAULT",
+                "pvUSDC",
+                USDC,
+                _priceOracle,
+                _setupFeeConfig(),
+                _createAccessManager(),
+                address(new PlasmaVaultBase()),
+                _withdrawManager
             )
         );
         PlasmaVaultConfigurator.setupPlasmaVault(
@@ -191,6 +192,80 @@ contract UniversalSwapOnUniswapV3SwapFuseTest is Test {
             address(_universalTokenSwapperFuse),
             abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
         );
+        uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
+        uint256 plasmaVaultUsdtBalanceBefore = ERC20(USDT).balanceOf(_plasmaVault);
+
+        //when
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+
+        // then
+        uint256 plasmaVaultUsdcBalanceAfter = ERC20(USDC).balanceOf(_plasmaVault);
+        uint256 plasmaVaultUsdtBalanceAfter = ERC20(USDT).balanceOf(_plasmaVault);
+
+        assertEq(plasmaVaultUsdcBalanceBefore, depositAmount, "plasmaVaultUsdcBalanceBefore");
+        assertEq(plasmaVaultUsdcBalanceAfter, 0, "plasmaVaultUsdcBalanceAfter");
+        assertEq(plasmaVaultUsdtBalanceBefore, 0, "plasmaVaultUsdtBalanceBefore");
+        assertGt(plasmaVaultUsdtBalanceAfter, 0, "plasmaVaultUsdtBalanceAfter");
+    }
+
+    function testShouldSwapWithRestrictedExecutor() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        // Create SwapExecutorRestricted with the plasma vault as the restricted address
+        SwapExecutorRestricted swapExecutorRestricted = new SwapExecutorRestricted(_plasmaVault);
+
+        // Create a new UniversalTokenSwapperFuse with the restricted executor
+        UniversalTokenSwapperFuse restrictedUniversalTokenSwapperFuse = new UniversalTokenSwapperFuse(
+            IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
+            address(swapExecutorRestricted),
+            1e18
+        );
+
+        // Add the restricted fuse to the plasma vault
+        address[] memory newFuses = new address[](1);
+        newFuses[0] = address(restrictedUniversalTokenSwapperFuse);
+        IPlasmaVaultGovernance(_plasmaVault).addFuses(newFuses);
+
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+        address[] memory targets = new address[](2);
+        targets[0] = USDC;
+        targets[1] = _UNIVERSAL_ROUTER;
+
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+        data[1] = abi.encodeWithSignature(
+            "execute(bytes,bytes[])",
+            abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
+            inputs
+        );
+
+        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: USDT,
+            amountIn: depositAmount,
+            data: UniversalTokenSwapperData({targets: targets, data: data})
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(restrictedUniversalTokenSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+        );
+
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
         uint256 plasmaVaultUsdtBalanceBefore = ERC20(USDT).balanceOf(_plasmaVault);
 

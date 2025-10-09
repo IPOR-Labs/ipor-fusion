@@ -56,6 +56,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     event HarvestPerformanceFee(address receiver, uint256 amount);
     event PerformanceFeeUpdated(uint256 totalFee, address[] recipients, uint256[] fees);
     event ManagementFeeUpdated(uint256 totalFee, address[] recipients, uint256[] fees);
+    event FeeAccountDeployed(address performanceFeeAccount, address managementFeeAccount);
 
     /// @notice Thrown when trying to call a function before initialization
     error NotInitialized();
@@ -160,6 +161,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         /// @dev Values stored in FeeManager have to be equal to the values stored in PlasmaVault
         FeeManagerStorageLib.setPlasmaVaultTotalPerformanceFee(totalPerformanceFee);
         FeeManagerStorageLib.setPlasmaVaultTotalManagementFee(totalManagementFee);
+
+        emit FeeAccountDeployed(PERFORMANCE_FEE_ACCOUNT, MANAGEMENT_FEE_ACCOUNT);
     }
 
     /// @notice Initializes the FeeManager contract by setting up fee account approvals
@@ -480,6 +483,28 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         FeeManagerStorageLib.updateIntervalHighWaterMarkPerformanceFee(updateInterval_);
     }
 
+    /// @notice Sets the deposit fee percentage for the plasma vault
+    /// @dev This function configures the deposit fee that will be charged on all new deposits
+    ///      to the plasma vault. The fee is calculated as a percentage of the deposited assets
+    ///      and is deducted from the user's deposit amount before minting shares.
+    ///
+    /// @param fee_ Deposit fee percentage with 18 decimal precision (1e18 = 100%, 1e16 = 1%)
+    ///              Must be less than 1e18 (100%) to prevent total loss of deposited assets
+    ///
+    /// @dev Flow:
+    /// 1. Validates that the fee is within acceptable bounds (should be < 100%)
+    /// 2. Updates the deposit fee in storage via FeeManagerStorageLib
+    /// 3. The new fee will apply to all subsequent deposits
+    ///
+    /// @custom:access Restricted to authorized roles (ATOMIST_ROLE)
+    /// @custom:security Fee should be reasonable to maintain vault attractiveness
+    /// @custom:security Fee is deducted from user deposits, not added on top
+    /// @custom:see EIP-4626 for vault fee patterns and best practices
+    /// @custom:example Setting fee_ to 1e16 (1e18 * 0.01) sets a 1% deposit fee
+    function setDepositFee(uint256 fee_) external restricted {
+        FeeManagerStorageLib.setPlasmaVaultDepositFee(fee_);
+    }
+
     /// @notice Calculates performance fee based on high water mark mechanism
     /// @dev This function implements a high water mark (HWM) based performance fee calculation
     ///      where fees are only charged on gains above the previous highest value.
@@ -539,6 +564,52 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
         FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(actualExchangeRate_);
         return (PERFORMANCE_FEE_ACCOUNT, feeShares);
+    }
+
+    /// @notice Calculates the deposit fee for a given amount of assets
+    /// @dev This function calculates the deposit fee based on the configured deposit fee percentage
+    ///      and the amount of assets being deposited. The deposit fee is calculated as a percentage
+    ///      of the deposited assets using 18 decimal precision (1e18 = 100%, 1e16 = 1%).
+    ///
+    /// @param shares_ The amount of shares being deposited (in share units)
+    ///
+    /// @return The calculated deposit fee amount (in share units)
+    ///
+    /// @dev Flow:
+    /// 1. Retrieves the current deposit fee percentage from storage
+    /// 2. If deposit fee is 0, returns 0 (no fee)
+    /// 3. Calculates fee using Math.mulDiv for precision: (shares_ * depositFee) / 1e18
+    ///
+    /// @custom:security Uses Math.mulDiv to prevent overflow and maintain precision
+    /// @custom:security View function - no state changes, safe for external calls
+    /// @custom:see EIP-4626 for vault fee patterns and best practices
+    /// @custom:example If depositFee is 1e16 (1%) and shares_ is 1000e18, returns 10e18
+    function calculateDepositFee(uint256 shares_) external view returns (uint256) {
+        uint256 depositFee = FeeManagerStorageLib.getPlasmaVaultDepositFee();
+        if (depositFee == 0) {
+            return 0;
+        }
+        return Math.mulDiv(shares_, depositFee, 1e18);
+    }
+
+    /// @notice Gets the current deposit fee percentage for the plasma vault
+    /// @dev This function retrieves the currently configured deposit fee percentage
+    ///      that will be applied to all new deposits. The fee is returned in 18 decimal
+    ///      precision format where 1e18 represents 100% and 1e16 represents 1%.
+    ///
+    /// @return The current deposit fee percentage with 18 decimal precision
+    ///         (1e18 = 100%, 1e16 = 1%, 0 = no fee)
+    ///
+    /// @dev Flow:
+    /// 1. Retrieves the deposit fee from storage via FeeManagerStorageLib
+    /// 2. Returns the raw fee value without any calculations
+    ///
+    /// @custom:security View function - no state changes, safe for external calls
+    /// @custom:security Returns the raw fee percentage, not the calculated fee amount
+    /// @custom:see EIP-4626 for vault fee patterns and best practices
+    /// @custom:example If deposit fee is 1%, returns 1e16 (1e18 * 0.01)
+    function getDepositFee() external view returns (uint256) {
+        return FeeManagerStorageLib.getPlasmaVaultDepositFee();
     }
 
     function getPlasmaVaultHighWaterMarkPerformanceFee()

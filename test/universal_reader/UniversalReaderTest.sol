@@ -132,7 +132,8 @@ contract UniversalReaderTest is Test {
         });
 
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(new PlasmaVault(initData));
+        _plasmaVault = address(new PlasmaVault());
+        PlasmaVault(_plasmaVault).proxyInitialize(initData);
 
         vm.stopPrank();
 
@@ -263,7 +264,7 @@ contract UniversalReaderTest is Test {
         // Set up callback handler for Morpho Flash Loan
         CallbackHandlerMorpho callbackHandler = new CallbackHandlerMorpho();
 
-        vm.startPrank(_ATOMIST);
+        vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_plasmaVault).updateCallbackHandler(
             address(callbackHandler),
             _MORPHO,

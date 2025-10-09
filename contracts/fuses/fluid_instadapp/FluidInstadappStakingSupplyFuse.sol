@@ -66,7 +66,7 @@ contract FluidInstadappStakingSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     /// @notice Exits from the Market
     function exit(FluidInstadappStakingSupplyFuseExitData memory data_) external {
-        _exit(data_);
+        _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
@@ -85,11 +85,12 @@ contract FluidInstadappStakingSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 fluidTokenAmount: IERC4626(IFluidLendingStakingRewards(stakingPool).stakingToken()).convertToShares(
                     amount
                 )
-            })
+            }),
+            true
         );
     }
 
-    function _exit(FluidInstadappStakingSupplyFuseExitData memory data_) internal {
+    function _exit(FluidInstadappStakingSupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.stakingPool)) {
             revert FluidInstadappStakingSupplyFuseUnsupportedStakingPool("enter", data_.stakingPool);
         }
@@ -101,11 +102,20 @@ contract FluidInstadappStakingSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        try IFluidLendingStakingRewards(data_.stakingPool).withdraw(withdrawAmount) {
-            emit FluidInstadappStakingFuseExit(VERSION, data_.stakingPool, withdrawAmount);
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit FluidInstadappStakingFuseExitFailed(VERSION, data_.stakingPool, withdrawAmount);
+        _performWithdraw(data_.stakingPool, withdrawAmount, catchExceptions_);
+    }
+
+    function _performWithdraw(address stakingPool_, uint256 withdrawAmount_, bool catchExceptions_) private {
+        if (catchExceptions_) {
+            try IFluidLendingStakingRewards(stakingPool_).withdraw(withdrawAmount_) {
+                emit FluidInstadappStakingFuseExit(VERSION, stakingPool_, withdrawAmount_);
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit FluidInstadappStakingFuseExitFailed(VERSION, stakingPool_, withdrawAmount_);
+            }
+        } else {
+            IFluidLendingStakingRewards(stakingPool_).withdraw(withdrawAmount_);
+            emit FluidInstadappStakingFuseExit(VERSION, stakingPool_, withdrawAmount_);
         }
     }
 }

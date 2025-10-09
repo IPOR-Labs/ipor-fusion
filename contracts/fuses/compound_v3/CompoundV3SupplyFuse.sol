@@ -65,7 +65,7 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     function exit(CompoundV3SupplyFuseExitData calldata data_) external {
-        _exit(data_);
+        _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
@@ -74,10 +74,10 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        _exit(CompoundV3SupplyFuseExitData(asset, amount));
+        _exit(CompoundV3SupplyFuseExitData(asset, amount), true);
     }
 
-    function _exit(CompoundV3SupplyFuseExitData memory data_) internal {
+    function _exit(CompoundV3SupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (data_.amount == 0) {
             return;
         }
@@ -92,12 +92,7 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        try COMET.withdraw(data_.asset, finalAmount) {
-            emit CompoundV3SupplyFuseExit(VERSION, data_.asset, address(COMET), data_.amount);
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit CompoundV3SupplyFuseExitFailed(VERSION, data_.asset, address(COMET), data_.amount);
-        }
+        _performWithdraw(data_.asset, finalAmount, catchExceptions_);
     }
 
     function _getBalance(address asset_) private view returns (uint256) {
@@ -105,6 +100,20 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return COMET.balanceOf(address(this));
         } else {
             return COMET.collateralBalanceOf(address(this), asset_);
+        }
+    }
+
+    function _performWithdraw(address asset_, uint256 finalAmount_, bool catchExceptions_) private {
+        if (catchExceptions_) {
+            try COMET.withdraw(asset_, finalAmount_) {
+                emit CompoundV3SupplyFuseExit(VERSION, asset_, address(COMET), finalAmount_);
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit CompoundV3SupplyFuseExitFailed(VERSION, asset_, address(COMET), finalAmount_);
+            }
+        } else {
+            COMET.withdraw(asset_, finalAmount_);
+            emit CompoundV3SupplyFuseExit(VERSION, asset_, address(COMET), finalAmount_);
         }
     }
 }

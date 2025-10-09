@@ -30,10 +30,26 @@ library PlasmaVaultFeesLib {
             );
     }
 
+    function prepareForRealizeDepositFee(
+        uint256 mintedShares_
+    ) internal view returns (address recipient, uint256 feeShares) {
+        PlasmaVaultStorageLib.PerformanceFeeData memory feeData = PlasmaVaultLib.getPerformanceFeeData();
+        if (feeData.feeAccount == address(0)) {
+            return (address(0), 0);
+        }
+
+        feeShares = FeeManager(FeeAccount(feeData.feeAccount).FEE_MANAGER()).calculateDepositFee(mintedShares_);
+        recipient = PlasmaVaultStorageLib.getWithdrawManager().manager;
+    }
+
     function prepareForRealizeManagementFee(
         uint256 totalAssetsBefore_
     ) internal returns (address recipient, uint256 unrealizedFeeInUnderlying) {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
+
+        if (feeData.feeAccount == address(0)) {
+            return (address(0), 0);
+        }
 
         recipient = feeData.feeAccount;
 

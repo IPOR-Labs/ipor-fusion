@@ -45,6 +45,12 @@ library FuseMetadataTypes {
     string public constant FUSE_METADATA_PROTOCOL_INFO_MOONWELL_CODE = "MOONWELL";
     string public constant FUSE_METADATA_PROTOCOL_INFO_MORPHO_CODE = "MORPHO";
     string public constant FUSE_METADATA_PROTOCOL_INFO_RAMSES_CODE = "RAMSES";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_ERC4626_CODE = "ERC4626";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_ERC20_CODE = "ERC20";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_FUSION_CODE = "FUSION";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_META_MORPHO_CODE = "META_MORPHO";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_UNISWAP_CODE = "UNISWAP";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_PENDLE_CODE = "PENDLE";
 
     function getAllFuseMetadataTypeIds() internal pure returns (uint16[] memory) {
         uint16[] memory fuseMetadataTypeIds = new uint16[](5);

@@ -22,6 +22,17 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address contextManagerFactory,
         address priceManagerFactory
     );
+
+    event BaseAddressesUpdated(
+        uint256 version,
+        address newPlasmaVaultCoreBase,
+        address newAccessManagerBase,
+        address newPriceManagerBase,
+        address newWithdrawManagerBase,
+        address newRewardsManagerBase,
+        address newContextManagerBase
+    );
+
     event PlasmaVaultBaseUpdated(address newPlasmaVaultBase);
     event PriceOracleMiddlewareUpdated(address newPriceOracleMiddleware);
     event BurnRequestFeeFuseUpdated(address newBurnRequestFeeFuse);
@@ -88,6 +99,33 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
             );
     }
 
+    /// @notice Creates a new Fusion Vault by cloning existing contracts
+    /// @param assetName_ The name of the asset
+    /// @param assetSymbol_ The symbol of the asset
+    /// @param underlyingToken_ The address of the underlying token
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
+    /// @param owner_ The owner of the Fusion Vault
+    /// @return The Fusion Vault instance
+    /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
+    /// @dev This function clones existing contracts rather than deploying new ones, which is more gas efficient
+    function clone(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_
+    ) external returns (FusionFactoryLib.FusionInstance memory) {
+        return
+            FusionFactoryLib.clone(
+                assetName_,
+                assetSymbol_,
+                underlyingToken_,
+                redemptionDelayInSeconds_,
+                owner_,
+                false
+            );
+    }
+
     /// @notice Creates a new Fusion Vault with admin role
     /// @param assetName_ The name of the asset
     /// @param assetSymbol_ The symbol of the asset
@@ -112,6 +150,27 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 owner_,
                 true
             );
+    }
+
+    /// @notice Creates a new Fusion Vault by cloning existing contracts, with admin role
+    /// @param assetName_ The name of the asset
+    /// @param assetSymbol_ The symbol of the asset
+    /// @param underlyingToken_ The address of the underlying token
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
+    /// @param owner_ The owner of the Fusion Vault
+    /// @return The Fusion Vault instance
+    /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
+    /// @dev This function clones existing contracts rather than deploying new ones, which is more gas efficient
+    /// @dev Only callable by MAINTENANCE_MANAGER_ROLE
+    function cloneSupervised(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLib.FusionInstance memory) {
+        return
+            FusionFactoryLib.clone(assetName_, assetSymbol_, underlyingToken_, redemptionDelayInSeconds_, owner_, true);
     }
 
     function updatePlasmaVaultAdminArray(
@@ -174,6 +233,52 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         });
     }
 
+    /// @notice Updates the base contract addresses used for cloning new components
+    /// @param version_ Version number to track base contract updates
+    /// @param newPlasmaVaultCoreBase_ New base address for PlasmaVaultCore implementation
+    /// @param newAccessManagerBase_ New base address for AccessManager implementation
+    /// @param newPriceManagerBase_ New base address for PriceManager implementation
+    /// @param newWithdrawManagerBase_ New base address for WithdrawManager implementation
+    /// @param newRewardsManagerBase_ New base address for RewardsManager implementation
+    /// @param newContextManagerBase_ New base address for ContextManager implementation
+    /// @dev These base contracts serve as templates that are cloned when creating new vaults
+    /// @custom:access Restricted to MAINTENANCE_MANAGER_ROLE
+    function updateBaseAddresses(
+        uint256 version_,
+        address newPlasmaVaultCoreBase_,
+        address newAccessManagerBase_,
+        address newPriceManagerBase_,
+        address newWithdrawManagerBase_,
+        address newRewardsManagerBase_,
+        address newContextManagerBase_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+        if (newPlasmaVaultCoreBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newAccessManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newPriceManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newWithdrawManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newRewardsManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+        if (newContextManagerBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
+
+        FusionFactoryStorageLib.setFusionFactoryVersion(version_);
+
+        FusionFactoryStorageLib.setPlasmaVaultCoreBaseAddress(newPlasmaVaultCoreBase_);
+        FusionFactoryStorageLib.setAccessManagerBaseAddress(newAccessManagerBase_);
+        FusionFactoryStorageLib.setPriceManagerBaseAddress(newPriceManagerBase_);
+        FusionFactoryStorageLib.setWithdrawManagerBaseAddress(newWithdrawManagerBase_);
+        FusionFactoryStorageLib.setRewardsManagerBaseAddress(newRewardsManagerBase_);
+        FusionFactoryStorageLib.setContextManagerBaseAddress(newContextManagerBase_);
+
+        emit BaseAddressesUpdated(
+            version_,
+            newPlasmaVaultCoreBase_,
+            newAccessManagerBase_,
+            newPriceManagerBase_,
+            newWithdrawManagerBase_,
+            newRewardsManagerBase_,
+            newContextManagerBase_
+        );
+    }
+
     function updatePlasmaVaultBase(address newPlasmaVaultBase_) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
         if (newPlasmaVaultBase_ == address(0)) revert FusionFactoryLib.InvalidAddress();
         FusionFactoryStorageLib.setPlasmaVaultBaseAddress(newPlasmaVaultBase_);
@@ -233,6 +338,10 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
     function getFactoryAddresses() external view returns (FusionFactoryStorageLib.FactoryAddresses memory) {
         return FusionFactoryStorageLib.getFactoryAddresses();
+    }
+
+    function getBaseAddresses() external view returns (FusionFactoryStorageLib.BaseAddresses memory) {
+        return FusionFactoryStorageLib.getBaseAddresses();
     }
 
     function getPlasmaVaultBaseAddress() external view returns (address) {

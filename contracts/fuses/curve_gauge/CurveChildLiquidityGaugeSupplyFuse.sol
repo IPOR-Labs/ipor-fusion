@@ -72,10 +72,14 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
         address lpToken = IChildLiquidityGauge(gauge).lp_token();
         uint256 lpTokenToWithdraw = ERC4626Upgradeable(lpToken).convertToShares(amount);
 
-        exit(CurveChildLiquidityGaugeSupplyFuseExitData(gauge, lpTokenToWithdraw));
+        _exit(CurveChildLiquidityGaugeSupplyFuseExitData(gauge, lpTokenToWithdraw), true);
     }
 
     function exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_) public {
+        _exit(data_, false);
+    }
+
+    function _exit(CurveChildLiquidityGaugeSupplyFuseExitData memory data_, bool catchExceptions_) internal {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.childLiquidityGauge)) {
             revert CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(data_.childLiquidityGauge);
         }
@@ -92,11 +96,20 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
             return;
         }
 
-        try IChildLiquidityGauge(data_.childLiquidityGauge).withdraw(finalAmount, address(this), false) {
-            emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, data_.childLiquidityGauge, finalAmount);
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit CurveChildLiquidityGaugeSupplyFuseExitFailed(VERSION, data_.childLiquidityGauge, finalAmount);
+        _performWithdraw(data_.childLiquidityGauge, finalAmount, catchExceptions_);
+    }
+
+    function _performWithdraw(address childLiquidityGauge_, uint256 finalAmount_, bool catchExceptions_) private {
+        if (catchExceptions_) {
+            try IChildLiquidityGauge(childLiquidityGauge_).withdraw(finalAmount_, address(this), false) {
+                emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, childLiquidityGauge_, finalAmount_);
+            } catch {
+                /// @dev if withdraw failed, continue with the next step
+                emit CurveChildLiquidityGaugeSupplyFuseExitFailed(VERSION, childLiquidityGauge_, finalAmount_);
+            }
+        } else {
+            IChildLiquidityGauge(childLiquidityGauge_).withdraw(finalAmount_, address(this), false);
+            emit CurveChildLiquidityGaugeSupplyFuseExit(VERSION, childLiquidityGauge_, finalAmount_);
         }
     }
 }

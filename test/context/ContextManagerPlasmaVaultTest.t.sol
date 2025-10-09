@@ -737,7 +737,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         );
     }
 
-    function testAtomistCanUpdateCallbackHandlerUsingContextManager() public {
+    function testFuseManagerCanUpdateCallbackHandlerUsingContextManager() public {
         // given
         address handler = makeAddr("CALLBACK_HANDLER");
         address sender = makeAddr("CALLBACK_SENDER");
@@ -752,7 +752,7 @@ contract ContextManagerPlasmaVaultTest is Test, ContextManagerInitSetup {
         ExecuteData memory executeData = ExecuteData({targets: _addresses, datas: _data});
 
         // when
-        vm.startPrank(TestAddresses.ATOMIST);
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
         _contextManager.runWithContext(executeData);
         vm.stopPrank();
 

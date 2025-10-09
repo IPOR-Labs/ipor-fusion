@@ -34,6 +34,8 @@ import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFact
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {VelodromeSuperchainSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainSlipstreamGaugeClaimFuse.sol";
 import {ILeafGauge} from "../../../contracts/fuses/velodrome_superchain/ext/ILeafGauge.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 
 /// @title VelodromeSuperchainSlipstreamTest
 /// @notice Test suite for Velodrom Superchain Slipstream Collect Fuse
@@ -80,14 +82,18 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
 
+        address plasmaVaultBase = address(new PlasmaVaultBase());
+
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = fusionFactory.getFactoryAddresses();
         factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
 
         address factoryAdmin = fusionFactory.getRoleMember(fusionFactory.DEFAULT_ADMIN_ROLE(), 0);
 
         vm.startPrank(factoryAdmin);
         fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), factoryAdmin);
         fusionFactory.updateFactoryAddresses(1000, factoryAddresses);
+        fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
         vm.stopPrank();
 
         FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
