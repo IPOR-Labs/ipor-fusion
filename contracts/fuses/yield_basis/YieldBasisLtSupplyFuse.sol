@@ -3,14 +3,14 @@ pragma solidity 0.8.26;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IYieldBasisLT} from "./ext/IYieldBasisLT.sol";
-
-import {console2} from "forge-std/console2.sol";
 
 /// @notice Data structure for entering - supply - the Yield Basis vault
 struct YieldBasisLtSupplyFuseEnterData {
@@ -40,7 +40,7 @@ struct YieldBasisLtSupplyFuseExitData {
 /// @dev Substrates in this fuse are the assets that are used in the Yield Basis vaults for a given MARKET_ID
 contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
-    using SafeERC20 for ERC20;
+    using SafeERC20 for IERC20;
 
     event YieldBasisLtSupplyFuseEnter(
         address version,
@@ -104,7 +104,7 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             revert YieldBasisLtSupplyFuseInsufficientUnderlyingAssetAmount(finalLtAssetAmount, data_.minLtAssetAmount);
         }
 
-        ERC20(ltAssetToken).forceApprove(data_.ltAddress, finalLtAssetAmount);
+        IERC20(ltAssetToken).forceApprove(data_.ltAddress, finalLtAssetAmount);
 
         uint256 ltSharesAmountReceived = IYieldBasisLT(data_.ltAddress).deposit(
             finalLtAssetAmount,
@@ -129,47 +129,31 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     /// @dev params[0] - amount in underlying assets, params[1] - LT address
     function instantWithdraw(bytes32[] calldata params_) external override {
-        uint256 ltAssetAmount = uint256(params_[0]);
+        /// @dev params[0] - amount in underlying assets, params[1] - LT address
+        address plasmaVaultAddress = address(this);
+        uint256 plasmaVaultUnderlyingAssetsAmount = uint256(params_[0]);
+        uint256 plasmaVaultUnderlyingAssetsAmountDecimals = IERC20Metadata(IERC4626(plasmaVaultAddress).asset())
+            .decimals();
+        
         address ltAddress = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        if (ltAssetAmount == 0) {
+        if (plasmaVaultUnderlyingAssetsAmount == 0) {
             return;
         }
 
         IYieldBasisLT lt = IYieldBasisLT(ltAddress);
 
-        uint256 ltSharesAmount = (ltAssetAmount * 10 ** lt.decimals()) / lt.pricePerShare();
+        uint256 underlyingAmountInWad = plasmaVaultUnderlyingAssetsAmount * 10 ** (18 - plasmaVaultUnderlyingAssetsAmountDecimals);
 
-        uint256 actualShares = IYieldBasisLT(ltAddress).balanceOf(address(this));
+        uint256 ltSharesAmount = underlyingAmountInWad * 1e18 / lt.pricePerShare();
 
-        uint256 sharesToWithdraw = IporMath.min(ltSharesAmount, actualShares);
+        uint256 ltSharesToWithdraw = IporMath.min(ltSharesAmount, lt.balanceOf(plasmaVaultAddress));
 
-        console2.log("[instantWithdraw] actual shares", actualShares);
-        console2.log("[instantWithdraw] shares to withdraw", sharesToWithdraw);
-
-        console2.log("[instantWithdraw] ltAssetAmount", ltAssetAmount);
-        console2.log("[instantWithdraw] pricePerShare", lt.pricePerShare()); // how many assets for 1 share
-        console2.log("[instantWithdraw] ltSharesAmount", ltSharesAmount);
-
-        if (sharesToWithdraw == 0) {
+        if (ltSharesToWithdraw == 0) {
             return;
         }
 
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, ltAddress)) {
-            revert YieldBasisLtSupplyFuseUnsupportedVault("instantWithdraw", ltAddress);
-        }
-
-        (uint256 ltAssetAmountReceived, int256 debtChange) = IYieldBasisLT(ltAddress).emergency_withdraw(
-            sharesToWithdraw
-        );
-
-        emit YieldBasisLtSupplyFuseInstantWithdrawExit(
-            VERSION,
-            ltAddress,
-            sharesToWithdraw,
-            ltAssetAmountReceived,
-            debtChange
-        );
+        _exit(YieldBasisLtSupplyFuseExitData(ltAddress, ltSharesToWithdraw, 0));
     }
 
     function _exit(YieldBasisLtSupplyFuseExitData memory data_) internal {

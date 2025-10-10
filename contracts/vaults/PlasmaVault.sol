@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
-import {console2} from "forge-std/console2.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -261,18 +260,6 @@ contract PlasmaVault is
     /// @return bytes Empty if callback, delegated result otherwise
     // solhint-disable-next-line no-unused-vars
     fallback(bytes calldata calldata_) external returns (bytes memory) {
-        bytes4 selector = bytes4(msg.data[0:4]);
-
-        // Admin functions should always be handled by PlasmaVaultBase, even during execution
-        if (
-            selector == 0x8c5710c9 || // min_admin_fee()
-            selector == 0xcab4d3db || // fee_receiver()
-            selector == 0x680c7783 || // emergency_admin()
-            selector == 0xf851a440 
-        ) {
-            return PLASMA_VAULT_BASE.functionDelegateCall(msg.data);
-        }
-
         if (PlasmaVaultLib.isExecutionStarted()) {
             /// @dev Handle callback can be done only during the execution of the FuseActions by Alpha
             CallbackHandlerLib.handleCallback();
