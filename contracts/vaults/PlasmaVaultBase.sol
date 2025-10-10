@@ -104,7 +104,7 @@ contract PlasmaVaultBase is
         }
         $.cap = cap_;
     }
-    
+
     /// @notice Gets the maximum total supply cap for the vault
     /// @dev Retrieves the configured supply cap from ERC20CappedStorage
     ///
