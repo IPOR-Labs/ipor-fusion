@@ -104,23 +104,7 @@ contract PlasmaVaultBase is
         }
         $.cap = cap_;
     }
-
-    function min_admin_fee() external pure returns (uint256) {
-        return 0;
-    }
-
-    function fee_receiver() external pure returns (uint256) {
-        return 0;
-    }
-
-    function emergency_admin() external pure returns (address) {
-        return address(0);
-    }
-
-    function admin() external pure returns (address) {
-        return address(0);
-    }
-
+    
     /// @notice Gets the maximum total supply cap for the vault
     /// @dev Retrieves the configured supply cap from ERC20CappedStorage
     ///
