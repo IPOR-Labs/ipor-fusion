@@ -108,14 +108,12 @@ contract PtPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     /// @notice Calculates the price for a PT token without creating a price feed instance
     /// @dev Uses the same pricing logic as PtPriceFeed.latestRoundData()
     /// @dev This is useful for previewing the price before creating an actual price feed
-    /// @param pendleOracle_ Address of the Pendle oracle contract (not used directly but kept for parameter consistency)
     /// @param pendleMarket_ Address of the Pendle market contract associated with the PT
     /// @param twapWindow_ Time window in seconds for TWAP calculations
     /// @param priceMiddleware_ Address of the price oracle middleware
     /// @param usePendleOracleMethod_ Configuration parameter for the oracle method (0 for getPtToSyRate, 1 for getPtToAssetRate)
     /// @return price The calculated price in the same format as PtPriceFeed returns
     function calculatePrice(
-        address pendleOracle_,
         address pendleMarket_,
         uint32 twapWindow_,
         address priceMiddleware_,

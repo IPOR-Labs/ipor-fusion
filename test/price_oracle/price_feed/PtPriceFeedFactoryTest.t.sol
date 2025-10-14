@@ -100,7 +100,6 @@ contract PtPriceFeedFactoryTest is Test {
         for (uint256 i = 0; i < testItems.length; i++) {
             // First calculate the actual price at this block
             int256 calculatedPrice = factoryProxy.calculatePrice(
-                PENDLE_ORACLE,
                 testItems[i].market,
                 TWAP_WINDOW,
                 PRICE_ORACLE,
@@ -234,13 +233,7 @@ contract PtPriceFeedFactoryTest is Test {
         TestItem memory item = _getTestItems()[0];
 
         // when
-        int256 price = factoryProxy.calculatePrice(
-            PENDLE_ORACLE,
-            item.market,
-            TWAP_WINDOW,
-            PRICE_ORACLE,
-            item.usePendleOracleMethod
-        );
+        int256 price = factoryProxy.calculatePrice(item.market, TWAP_WINDOW, PRICE_ORACLE, item.usePendleOracleMethod);
 
         // then
         assertTrue(price > 0, "Price should be positive");
@@ -258,7 +251,6 @@ contract PtPriceFeedFactoryTest is Test {
         // when & then
         for (uint256 i = 0; i < testItems.length; i++) {
             int256 price = factoryProxy.calculatePrice(
-                PENDLE_ORACLE,
                 testItems[i].market,
                 TWAP_WINDOW,
                 PRICE_ORACLE,
