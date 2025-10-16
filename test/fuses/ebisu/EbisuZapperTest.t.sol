@@ -743,49 +743,49 @@ contract EbisuZapperTest is Test {
         ebisuSubs[0] = EbisuZapperSubstrateLib.substrateToBytes32(
             EbisuZapperSubstrate({
                 substrateAddress: WEETH_ZAPPER,
-                substrateType: EbisuZapperSubstrateType.Zapper
+                substrateType: EbisuZapperSubstrateType.ZAPPER
             })
         );
         ebisuSubs[1] = EbisuZapperSubstrateLib.substrateToBytes32(
             EbisuZapperSubstrate({
                 substrateAddress: SUSDE_ZAPPER,
-                substrateType: EbisuZapperSubstrateType.Zapper
+                substrateType: EbisuZapperSubstrateType.ZAPPER
             })
         );
         ebisuSubs[2] = EbisuZapperSubstrateLib.substrateToBytes32(
             EbisuZapperSubstrate({
                 substrateAddress: WBTC_ZAPPER,
-                substrateType: EbisuZapperSubstrateType.Zapper
+                substrateType: EbisuZapperSubstrateType.ZAPPER
             })
         );
         ebisuSubs[3] = EbisuZapperSubstrateLib.substrateToBytes32(
             EbisuZapperSubstrate({
                 substrateAddress: LBTC_ZAPPER,
-                substrateType: EbisuZapperSubstrateType.Zapper
+                substrateType: EbisuZapperSubstrateType.ZAPPER
             })
         );
         ebisuSubs[4] = EbisuZapperSubstrateLib.substrateToBytes32(
             EbisuZapperSubstrate({
                 substrateAddress: WEETH_REGISTRY,
-                substrateType: EbisuZapperSubstrateType.Registry
+                substrateType: EbisuZapperSubstrateType.REGISTRY
             })
         );
         ebisuSubs[5] = EbisuZapperSubstrateLib.substrateToBytes32(
             EbisuZapperSubstrate({
                 substrateAddress: SUSDE_REGISTRY,
-                substrateType: EbisuZapperSubstrateType.Registry
+                substrateType: EbisuZapperSubstrateType.REGISTRY
             })
         );
         ebisuSubs[6] = EbisuZapperSubstrateLib.substrateToBytes32(
             EbisuZapperSubstrate({
                 substrateAddress: WBTC_REGISTRY,
-                substrateType: EbisuZapperSubstrateType.Registry
+                substrateType: EbisuZapperSubstrateType.REGISTRY
             })
         );
         ebisuSubs[7] = EbisuZapperSubstrateLib.substrateToBytes32(
             EbisuZapperSubstrate({
                 substrateAddress: LBTC_REGISTRY,
-                substrateType: EbisuZapperSubstrateType.Registry
+                substrateType: EbisuZapperSubstrateType.REGISTRY
             })
         );
 

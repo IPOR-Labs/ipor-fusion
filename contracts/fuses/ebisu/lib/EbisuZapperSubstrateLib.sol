@@ -3,10 +3,12 @@ pragma solidity 0.8.26;
 
 import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
 
+/// @notice we need both the zapper address for operations, and registry address to validate the call
+/// this substrate type allows us to discriminate between the two, since the balance Fuse must only iterate across the ZAPPER type substrates
 enum EbisuZapperSubstrateType {
     UNDEFINED,
-    Zapper,
-    Registry
+    ZAPPER,
+    REGISTRY
 }
 
 struct EbisuZapperSubstrate {

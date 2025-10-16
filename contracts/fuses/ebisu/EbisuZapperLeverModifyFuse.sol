@@ -22,6 +22,7 @@ struct EbisuZapperLeverModifyFuseExitData {
     uint256 minBoldAmount;  // minimum BOLD/EBUSD to receive when deleveraging
 }
 
+/// @notice Fuse to operate lever-up and lever-down in the open trove
 contract EbisuZapperLeverModifyFuse is IFuseCommon {
     uint256 public immutable MARKET_ID;
 
@@ -34,11 +35,16 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
+    /// @notice we model lever-up with the "enter" function
+    /// The Zapper requests a flash loan to have more collateral with which it mints more ebUSD
+    /// The ebUSD are then swapped for collateral to repay the flash loan
+    /// This has the effect of increasing both the debt and the collateral of the trove
+    /// Any collateral dust is given back to the plasmaVault
     function enter(EbisuZapperLeverModifyFuseEnterData memory data_) external {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.Zapper,
+                    substrateType: EbisuZapperSubstrateType.ZAPPER,
                     substrateAddress: data_.zapper
             })))) revert UnsupportedSubstrate();
 
@@ -56,11 +62,17 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
         emit EbisuZapperLeverModifyLeverUp(data_.zapper, troveId, data_.flashLoanAmount, data_.ebusdAmount);
     }
 
+    /// @notice we model lever-down with the "exit" function
+    /// The Zapper requests a flash loan to have some collateral which is swapped to get ebUSD
+    /// The ebUSD obtained are used to repay part of the trove debt
+    /// This unlocks some collateral from the trove, which is redeemed to repay the flash loan
+    /// This has the effect of decreasing both the debt and the collateral amount from the trove
+    /// Any dust in ebUSD is given back to the plasmaVault
     function exit(EbisuZapperLeverModifyFuseExitData memory data_) external {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.Zapper,
+                    substrateType: EbisuZapperSubstrateType.ZAPPER,
                     substrateAddress: data_.zapper
             })))) revert UnsupportedSubstrate();
 

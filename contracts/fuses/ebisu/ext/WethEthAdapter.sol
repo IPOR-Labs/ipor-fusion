@@ -62,7 +62,7 @@ contract WethEthAdapter {
     /// @notice Call zapper expecting it to return ETH here; wrap all and send WETH and collaterals to VAULT.
     /// This happens when the debt is repaid, therefore ebusd is transferred to zapper rather than collateral.
     /// Collateral will also be sent here when debt is repaid, thus we need to transfer it to the VAULT.
-    function callZapperExpectEthBack(
+    function closeTroveByZapper(
         address zapper_,
         bool exitFromCollateral_,
         uint256 troveId_,

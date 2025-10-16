@@ -17,7 +17,7 @@ interface IWethEthAdapter {
     ) external;
 
     /// @notice Call zapper expecting ETH back; wrap all received ETH to WETH and send tokens to VAULT.
-    function callZapperExpectEthBack(
+    function closeTroveByZapper(
         address zapper,
         bool exitFromCollateral,
         uint256 troveId,

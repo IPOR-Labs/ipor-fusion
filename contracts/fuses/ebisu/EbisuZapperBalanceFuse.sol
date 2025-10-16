@@ -48,7 +48,7 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
         for (uint256 i; i < substratesNumber; ++i) {
             target = EbisuZapperSubstrateLib.bytes32ToSubstrate(substrates[i]);
 
-            if (target.substrateType != EbisuZapperSubstrateType.Zapper) 
+            if (target.substrateType != EbisuZapperSubstrateType.ZAPPER) 
                 continue;
 
             if (ebusdAddress == address(0)) {

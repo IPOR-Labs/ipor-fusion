@@ -19,7 +19,7 @@ library WethEthAdapterStorageLib {
 
     /// @notice Gets the WETH ETH adapter storage pointer
     /// @return storagePtr The WethEthAdapterStorage struct from storage
-    function getWethEthAdapterStorage() internal pure returns (WethEthAdapterStorage storage storagePtr) {
+    function getWethEthAdapterStorage() private pure returns (WethEthAdapterStorage storage storagePtr) {
         assembly {
             storagePtr.slot := WETH_ETH_ADAPTER_SLOT
         }

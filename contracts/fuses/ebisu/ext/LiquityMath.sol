@@ -24,8 +24,8 @@ library LiquityMath {
      *
      * Used only inside the exponentiation, _decPow().
      */
-    function decMul(uint256 x, uint256 y) internal pure returns (uint256 decProd) {
-        uint256 prodXY = x * y;
+    function decMul(uint256 x_, uint256 y_) internal pure returns (uint256 decProd) {
+        uint256 prodXY = x_ * y_;
 
         decProd = (prodXY + DECIMAL_PRECISION / 2) / DECIMAL_PRECISION;
     }
@@ -46,13 +46,13 @@ library LiquityMath {
      * In function 1), the decayed base rate will be 0 for 1000 years or > 1000 years
      * In function 2), the difference in tokens issued at 1000 years and any time > 1000 years, will be negligible
      */
-    function _decPow(uint256 b_ase, uint256 minutes_) internal pure returns (uint256) {
+    function _decPow(uint256 base_, uint256 minutes_) internal pure returns (uint256) {
         if (minutes_ > MINUTES_IN_1000_YEARS) minutes_ = MINUTES_IN_1000_YEARS; // cap to avoid overflow
 
         if (minutes_ == 0) return DECIMAL_PRECISION;
 
         uint256 y = DECIMAL_PRECISION;
-        uint256 x = b_ase;
+        uint256 x = base_;
         uint256 n = minutes_;
 
         // Exponentiation-by-squaring

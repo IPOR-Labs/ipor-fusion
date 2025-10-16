@@ -101,6 +101,7 @@ library IporFusionMarkets {
     uint256 public constant STAKE_DAO_V2 = 34;
 
     /// @dev Ebisu market
+    /// @dev Substrate type: EbisuZapperSubstrate
     uint256 public constant EBISU = 35;
     
     /// @dev Market 1 for ERC4626 Vault

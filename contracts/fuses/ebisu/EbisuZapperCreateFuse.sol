@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {IZapper} from "./ext/IZapper.sol";
 import {ILeverageZapper} from "./ext/ILeverageZapper.sol";
 import {IActivePool} from "./ext/IActivePool.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
@@ -80,23 +79,18 @@ contract EbisuZapperCreateFuse is IFuseCommon {
     }
 
     function enter(EbisuZapperCreateFuseEnterData calldata data_) external {
-        // Storage cache
-        FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
-
-        // No trove yet for zapper
-        if (troveData.troveIds[data_.zapper] != 0) revert TroveAlreadyOpen();
 
         // Validate targets
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.Zapper,
+                    substrateType: EbisuZapperSubstrateType.ZAPPER,
                     substrateAddress: data_.zapper
                 })))) revert UnsupportedSubstrate();
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.Registry,
+                    substrateType: EbisuZapperSubstrateType.REGISTRY,
                     substrateAddress: data_.registry
                 })))) revert UnsupportedSubstrate();
 
@@ -110,8 +104,15 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         address adapter = _createAdapterWhenNotExists();
 
         // Build params
-        // Bump the latestOwnerIndex before assigning (pre-increment), so that the first id ever used 1
-        uint256 ownerIndex = ++troveData.latestOwnerIndex;
+        // Bump the latestOwnerIndex before assigning (pre-increment), so that the first id ever used 
+
+        // Storage cache
+        FuseStorageLib.EbisuTroveIds storage troveDataStorage = FuseStorageLib.getEbisuTroveIds();
+
+        // No trove yet for zapper
+        if (troveDataStorage.troveIds[data_.zapper] != 0) revert TroveAlreadyOpen();
+
+        uint256 ownerIndex = ++troveDataStorage.latestOwnerIndex;
         ILeverageZapper.OpenLeveragedTroveParams memory params = ILeverageZapper.OpenLeveragedTroveParams({
             owner: address(this),
             ownerIndex: ownerIndex,
@@ -143,14 +144,13 @@ contract EbisuZapperCreateFuse is IFuseCommon {
             ETH_GAS_COMPENSATION
         );
 
-        // Track troveId for this zapper
         uint256 troveId = EbisuMathLib.calculateTroveId(
             adapter,
             address(this),
             data_.zapper,
             ownerIndex
         );
-        troveData.troveIds[data_.zapper] = troveId;
+        troveDataStorage.troveIds[data_.zapper] = troveId;
 
         emit EbisuZapperCreateFuseEnter(data_.zapper, data_.collAmount, data_.flashLoanAmount, data_.ebusdAmount, troveId);
     }
@@ -159,13 +159,13 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.Zapper,
+                    substrateType: EbisuZapperSubstrateType.ZAPPER,
                     substrateAddress: data_.zapper
             })))) revert UnsupportedSubstrate();
 
-        FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
+        FuseStorageLib.EbisuTroveIds storage troveDataStorage = FuseStorageLib.getEbisuTroveIds();
 
-        uint256 troveId = troveData.troveIds[data_.zapper];
+        uint256 troveId = troveDataStorage.troveIds[data_.zapper];
         if (troveId == 0) revert TroveNotOpen();
 
         address adapter = WethEthAdapterStorageLib.getWethEthAdapter();
@@ -177,31 +177,31 @@ contract EbisuZapperCreateFuse is IFuseCommon {
             ebusdToken.safeTransfer(adapter, ebusdToken.balanceOf(address(this)));
         }
 
-        IWethEthAdapter(adapter).callZapperExpectEthBack(
+        IWethEthAdapter(adapter).closeTroveByZapper(
             data_.zapper, 
             data_.exitFromCollateral,
             troveId,
             data_.flashLoanAmount,
             data_.minExpectedCollateral);
 
-        delete troveData.troveIds[data_.zapper];
+        delete troveDataStorage.troveIds[data_.zapper];
 
-        emit EbisuZapperCreateFuseExit(data_.zapper, troveData.latestOwnerIndex);
+        emit EbisuZapperCreateFuseExit(data_.zapper, troveDataStorage.latestOwnerIndex);
     }
 
     // -------- internal helpers --------
 
-    function _calcUpfrontFee(uint256 debt, uint256 avgInterestRate) internal pure returns (uint256) {
-        return _calcInterest(debt * avgInterestRate, UPFRONT_INTEREST_PERIOD);
+    function _calcUpfrontFee(uint256 debt_, uint256 avgInterestRate_) internal pure returns (uint256) {
+        return _calcInterest(debt_ * avgInterestRate_, UPFRONT_INTEREST_PERIOD);
     }
 
-    function _calcInterest(uint256 weightedDebt, uint256 period) internal pure returns (uint256) {
-        return (weightedDebt * period) / ONE_YEAR / DECIMAL_PRECISION;
+    function _calcInterest(uint256 weightedDebt_, uint256 period_) internal pure returns (uint256) {
+        return (weightedDebt_ * period_) / ONE_YEAR / DECIMAL_PRECISION;
     }
 
-    function _requireUserAcceptsUpfrontFee(uint256 fee, uint256 maxFee) internal pure {
-        if (fee > maxFee) {
-            revert UpfrontFeeTooHigh(fee);
+    function _requireUserAcceptsUpfrontFee(uint256 fee_, uint256 maxFee_) internal pure {
+        if (fee_ > maxFee_) {
+            revert UpfrontFeeTooHigh(fee_);
         }
     }
 
