@@ -69,7 +69,6 @@ contract EbisuZapperCreateFuse is IFuseCommon {
     error DebtBelowMin(uint256 debt);
     error ICRBelowMCR(uint256 icr, uint256 mcr);
     error NewOracleFailureDetected();
-    error UnknownExitType();
     error UpfrontFeeTooHigh(uint256 fee);
     error UnsupportedSubstrate();
     error TroveAlreadyOpen();
