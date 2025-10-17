@@ -489,7 +489,7 @@ contract YieldBasisFuseTest is Test {
         accessManager.grantRole(Roles.WHITELIST_ROLE, WBTC_HOLDER, 0);
         vm.stopPrank();
 
-        uint256 userDepositAmount = 1e3;                                        /// 1000
+        uint256 userDepositAmount = 1e3; /// 1000
 
         _fundVaultWithWBTC(userDepositAmount);
 
@@ -507,7 +507,6 @@ contract YieldBasisFuseTest is Test {
 
         uint256 wbtcHolderPlasmaVaultShares = plasmaVault.balanceOf(WBTC_HOLDER);
         uint256 wbtcHolderPlasmaVaultAssets = plasmaVault.convertToAssets(wbtcHolderPlasmaVaultShares);
-        
 
         uint256 wbtcHolderMaxWithdrawAllAssets = wbtcHolderPlasmaVaultAssets;
         uint256 wbtcHolderBalanceBeforeWithdraw = plasmaVault.balanceOf(WBTC_HOLDER);
@@ -545,7 +544,6 @@ contract YieldBasisFuseTest is Test {
         YieldBasisLtSupplyFuseEnterData memory enterData = YieldBasisLtSupplyFuseEnterData({
             ltAddress: unsupportedAsset,
             ltAssetAmount: 1e5,
-            minLtAssetAmount: 1e5,
             debt: 0,
             minSharesToReceive: 1e8
         });
@@ -553,7 +551,7 @@ contract YieldBasisFuseTest is Test {
         FuseAction[] memory supplyActions = new FuseAction[](1);
         supplyActions[0] = FuseAction({
             fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", enterData)
+            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256))", enterData)
         });
 
         // Should revert with unsupported asset
@@ -582,7 +580,6 @@ contract YieldBasisFuseTest is Test {
         YieldBasisLtSupplyFuseEnterData memory enterData = YieldBasisLtSupplyFuseEnterData({
             ltAddress: YIELD_BASIS_LT_WBTC,
             ltAssetAmount: amount,
-            minLtAssetAmount: (amount * 95) / 100,
             debt: 20e18,
             minSharesToReceive: (amount * 95) / 100
         });
@@ -590,7 +587,7 @@ contract YieldBasisFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", enterData)
+            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256))", enterData)
         });
 
         vm.prank(alpha);
@@ -601,7 +598,6 @@ contract YieldBasisFuseTest is Test {
         YieldBasisLtSupplyFuseEnterData memory enterData = YieldBasisLtSupplyFuseEnterData({
             ltAddress: YIELD_BASIS_LT_WBTC,
             ltAssetAmount: amount,
-            minLtAssetAmount: (amount * 95) / 100,
             debt: 0, // No debt for direct deposit
             minSharesToReceive: (amount * 95) / 100
         });
@@ -609,7 +605,7 @@ contract YieldBasisFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: yieldBasisSupplyFuse,
-            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256,uint256))", enterData)
+            data: abi.encodeWithSignature("enter((address,uint256,uint256,uint256))", enterData)
         });
 
         vm.prank(alpha);
@@ -719,14 +715,6 @@ contract YieldBasisFuseTest is Test {
         withdrawManager = instance.withdrawManager;
         priceOracle = instance.priceManager;
     }
-
-    // function _prepareLTContractConfig() private {
-    //     vm.startPrank(YIELD_BASIS_LT_WBTC_ADMIN);
-    //     IYieldBasisLT(YIELD_BASIS_LT_WBTC).set_admin(address(plasmaVault));
-    //     vm.stopPrank();
-
-    //     // No callback handlers needed - admin functions are handled by PlasmaVaultBase directly
-    // }
 
     function _addYieldBasisFuses() private {
         // Deploy yield basis fuses

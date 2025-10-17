@@ -6,13 +6,14 @@ import {IYieldBasisLT} from "./ext/IYieldBasisLT.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
+import {FullMath} from "../ramses/ext/FullMath.sol";
 
 /// @title Fuse for Yield Basis Leveraged Liquidity Token vaults responsible for calculating the balance of the Plasma Vault in the Yield Basis vaults
-/// @dev Substrates in this fuse are the assets that are used in the Yield Basis vaults for a given MARKET_ID
-/// @dev Notice! PriceFeed for underlying asset of the Yield Basis vaults have to be configured in Price Oracle Middleware Manager or Price Oracle Middleware
-/// @dev Notice! This fuse is used for Yield Basis vaults that are not ERC4626 compatible
+/// @dev Substrates in this fuse are the assets that are used in the Yield Basis LT tokens for a given MARKET_ID
+/// @dev Notice! PriceFeed for underlying asset of the Yield Basis LT tokens have to be configured in Price Oracle Middleware Manager or Price Oracle Middleware
+/// @dev Notice! This fuse is used for Yield Basis LT tokens that are not ERC4626 compatible
 contract YieldBasisLtBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
@@ -44,12 +45,14 @@ contract YieldBasisLtBalanceFuse is IMarketBalanceFuse {
         for (uint256 i; i < len; ++i) {
             lt = IYieldBasisLT(PlasmaVaultConfigLib.bytes32ToAddress(lts[i]));
 
-            ltSharesInWad = lt.balanceOf(plasmaVault) * 10 ** (18 - lt.decimals());
-            ltAssetsInWad = ltSharesInWad * lt.pricePerShare() / 1e18;
+            ltSharesInWad = IporMath.convertToWad(lt.balanceOf(plasmaVault), lt.decimals());
+            ltAssetsInWad = (ltSharesInWad * lt.pricePerShare()) / 1e18;
 
-            (assetPrice, assetPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(lt.ASSET_TOKEN());
+            (assetPrice, assetPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
+                lt.ASSET_TOKEN()
+            );
 
-            balance += (ltAssetsInWad * assetPrice) / 10 ** assetPriceDecimals;
+            balance += FullMath.mulDiv(ltAssetsInWad, assetPrice, 10 ** assetPriceDecimals);
         }
 
         return balance;
