@@ -9,6 +9,8 @@ Ebisu is a wrapper on top of Liquity which allows to automatically open leverage
 
 Troves can be closed either "to raw ETH", where the user pays directly the ebUSD debt with a transfer, or "from collateral", where the ebUSD is obtained by requesting a collateral flash loan and swapping it. In the latter case, the flash loan is repaid, if possible, by unlocking the collateral in the trove. This means that the latter case cannot be performed if the collateral price dropped too much.
 
+Since Troves can be controlled by LeverageUp and LeverageDown, there's no point in having more than one Trove open at any time for any given Zapper. This is enforced at FuseStorageLib level, in which the mapping is simply zapper => id.
+
 ## Market Structure
 
 The integration uses a single market for all operations:

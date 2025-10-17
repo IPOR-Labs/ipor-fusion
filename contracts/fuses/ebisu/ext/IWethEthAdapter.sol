@@ -10,7 +10,7 @@ interface IWethEthAdapter {
     function WETH() external view returns (address);
 
     /// @notice Unwrap WETH to ETH and call a zapper with ETH; rewrap leftovers and return to VAULT.
-    function callZapperWithEth(
+    function openTroveByZapper(
         ILeverageZapper.OpenLeveragedTroveParams calldata params,
         address zapper,
         uint256 wethAmount

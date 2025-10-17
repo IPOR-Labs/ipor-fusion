@@ -17,6 +17,16 @@ import {WethEthAdapter} from "./ext/WethEthAdapter.sol";
 import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/// @notice Data to open a new Trove through Zapper
+/// @param zapper the zapper address
+/// @param registry the registry address (must be the one with the same branch as the zapper, as per Ebisu's docs)
+/// @param collAmount the amount of collateral deposited directly by the PlasmaVault
+/// @param ebusdAmount the amount of ebUSD to mint as debt (before fees)
+/// @param upperHint upper bound given to SortedTroves to facilitate array insertion on Liquity (better values -> gas saving)
+/// @param lowerHint lower bound given to SortedTroves to facilitate array insertion on Liquity (better values -> gas saving)
+/// @param flashLoanAmount the amount of flash loan requested for the leverage (0 amount -> no leverage)
+/// @param annualInterestRate the annual interest rate the Trove owner is willing to pay
+/// @param maxUpfrontFee the maximum upfront fee the Trove owner is willing to pay
 struct EbisuZapperCreateFuseEnterData {
     address zapper;
     address registry;
@@ -29,6 +39,11 @@ struct EbisuZapperCreateFuseEnterData {
     uint256 maxUpfrontFee;
 }
 
+/// @notice Data to close an open Trove through Zapper
+/// @param zapper the zapper address
+/// @param flashLoanAmount the amount of flash loan requested to close the Trove (relevant only if exitFromCollateral = true)
+/// @param minExpectedCollateral the minimum amount of collateral expected after closure (relevant only if exitFromCollateral = true)
+/// @param exitFromCollateral if this is true, repayment of ebUSD debt is done through a flash loan, otherwise it is done directly by PlasmaVault
 struct EbisuZapperCreateFuseExitData {
     address zapper;
     uint256 flashLoanAmount;
@@ -78,9 +93,13 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         WETH = weth_;
     }
 
+    /// @notice opening a Liquity (leveraged) Trove through Ebisu's Zapper
+    /// The Vault deposits collAmount worth of collateral tokens in the Trove
+    /// The remaining part (leverage) is obtained thanks to a flash loan performed by the Zapper
+    /// The result is having a Trove open with collateral collAmount + flashLoanAmount, and debt ebusdAmount + fees
+    /// An amount of 0.375 ETH must be deposited on the Zapper contract, thus we need the WethEthAdapter
     function enter(EbisuZapperCreateFuseEnterData calldata data_) external {
 
-        // Validate targets
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(
                 EbisuZapperSubstrate({
@@ -94,7 +113,6 @@ contract EbisuZapperCreateFuse is IFuseCommon {
                     substrateAddress: data_.registry
                 })))) revert UnsupportedSubstrate();
 
-        // Interest bounds
         if (data_.annualInterestRate < MIN_ANNUAL_INTEREST_RATE || data_.annualInterestRate > MAX_ANNUAL_INTEREST_RATE) {
             revert UpfrontFeeTooHigh(data_.annualInterestRate);
         }
@@ -103,13 +121,8 @@ contract EbisuZapperCreateFuse is IFuseCommon {
 
         address adapter = _createAdapterWhenNotExists();
 
-        // Build params
-        // Bump the latestOwnerIndex before assigning (pre-increment), so that the first id ever used 
-
-        // Storage cache
         FuseStorageLib.EbisuTroveIds storage troveDataStorage = FuseStorageLib.getEbisuTroveIds();
 
-        // No trove yet for zapper
         if (troveDataStorage.troveIds[data_.zapper] != 0) revert TroveAlreadyOpen();
 
         uint256 ownerIndex = ++troveDataStorage.latestOwnerIndex;
@@ -131,14 +144,12 @@ contract EbisuZapperCreateFuse is IFuseCommon {
 
         ILeverageZapper zapper = ILeverageZapper(data_.zapper);
 
-        // Send the gas amount
         IERC20(WETH).safeTransfer(adapter, ETH_GAS_COMPENSATION);
 
-        // Transfer collateral to adapter
         IERC20(zapper.collToken()).safeTransfer(adapter, data_.collAmount);
 
-        // minEthToSpend = ETH_GAS_COMPENSATION by default
-        IWethEthAdapter(adapter).callZapperWithEth(
+        /// @dev minEthToSpend = ETH_GAS_COMPENSATION by default
+        IWethEthAdapter(adapter).openTroveByZapper(
             params,
             data_.zapper,
             ETH_GAS_COMPENSATION
@@ -155,6 +166,11 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         emit EbisuZapperCreateFuseEnter(data_.zapper, data_.collAmount, data_.flashLoanAmount, data_.ebusdAmount, troveId);
     }
 
+    /// @notice closing a Liquity (leveraged) Trove through Ebisu's Zapper
+    /// If exitFromCollateral = true, ebUSD debt is repaid by requesting a flash loan of collateral tokens and swapping them for ebUSD
+    /// If exitFromCollateral = false, ebUSD debt is repaid by a direct transfer by the PlasmaVault
+    /// In both cases, the PlasmaVault receives the excess collateral tokens
+    /// In the case exitFromCollateral = true, the PlasmaVault may receive excess ebUSD too.
     function exit(EbisuZapperCreateFuseExitData calldata data_) external {
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
             EbisuZapperSubstrateLib.substrateToBytes32(

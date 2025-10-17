@@ -38,7 +38,7 @@ contract WethEthAdapter {
     /// @param params_ the open trove params to call the zapper with
     /// @param zapper_ the address of the zapper to call
     /// @param wethAmount_ the WETH to deposit to Zapper as compensation
-    function callZapperWithEth(
+    function openTroveByZapper(
         ILeverageZapper.OpenLeveragedTroveParams calldata params_,
         address zapper_,
         uint256 wethAmount_
@@ -62,6 +62,11 @@ contract WethEthAdapter {
     /// @notice Call zapper expecting it to return ETH here; wrap all and send WETH and collaterals to VAULT.
     /// This happens when the debt is repaid, therefore ebusd is transferred to zapper rather than collateral.
     /// Collateral will also be sent here when debt is repaid, thus we need to transfer it to the VAULT.
+    /// @param zapper_ the address of the zapper to call
+    /// @param exitFromCollateral_ whether we must exit from collateral (i.e. without paying ebUSD)
+    /// @param troveId_ the ID of the Trove as stored in Liquity contract
+    /// @param flashLoanAmount_ the amount of flash loan requested to close the position (only if closing from collateral)
+    /// @param minExpectedCollateral_ the minimum collateral expected from the closure
     function closeTroveByZapper(
         address zapper_,
         bool exitFromCollateral_,

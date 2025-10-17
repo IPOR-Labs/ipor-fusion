@@ -23,6 +23,8 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId;
     }
     
+    /// @notice the value contained in an open Trove is collateral - debt (each with its own price)
+    /// since interest fees automatically increase the entireDebt of the trove, we do not need to include it explicitly
     function balanceOf() external view returns (uint256) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -52,14 +54,14 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
                 continue;
 
             if (ebusdAddress == address(0)) {
-                // bold token (ebUSD) is the same for all zappers
+                /// @dev bold token (ebUSD) is the same for all zappers
                 ebusdAddress = ILeverageZapper(target.substrateAddress).boldToken();
                 (ebusdPrice, ebusdPriceDecimals) = priceOracleMiddleware.getAssetPrice(ebusdAddress);
             }
             
             troveId = troveData.troveIds[target.substrateAddress];
             if (troveId == 0) continue;
-            // At this point, we expect the contract to have collToken and troveManager
+            /// @dev At this point, we expect the contract to have collToken and troveManager
             collToken = ILeverageZapper(target.substrateAddress).collToken();
             (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
             
@@ -77,7 +79,7 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
             );
         }
 
-        // max(coll - debt, 0)
+        /// @dev max(coll - debt, 0)
         return entireCollValue - IporMath.min(entireDebtValue, entireCollValue);
     }
 }
