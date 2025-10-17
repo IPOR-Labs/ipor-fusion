@@ -46,7 +46,7 @@ The debt of the Trove is automatically updated by Liquity smart contract during 
 
 ## Substrate Configuration
 
-### 1. EBISU Market (Market ID: 35) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove operations
+### 1. EBISU Market (Market ID: 38) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove operations
 
 Substrates are configured as a pair `(type, address)` where "type" can be `UNDEFINED, ZAPPER, REGISTRY`. This is necessary because we need data from the stability pool during the validation of `enter`, and the pool's address is not exposed by the Zapper.
 
