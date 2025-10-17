@@ -11,9 +11,9 @@ import {LiquityMath} from "./ext/LiquityMath.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {EbisuMathLib} from "./lib/EbisuMathLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IWethEthAdapter} from "./ext/IWethEthAdapter.sol";
+import {IWethEthAdapter} from "./IWethEthAdapter.sol";
 import {WethEthAdapterStorageLib} from "./lib/WethEthAdapterStorageLib.sol";
-import {WethEthAdapter} from "./ext/WethEthAdapter.sol";
+import {WethEthAdapter} from "./WethEthAdapter.sol";
 import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 

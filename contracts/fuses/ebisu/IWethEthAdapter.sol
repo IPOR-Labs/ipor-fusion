@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {ILeverageZapper} from "./ILeverageZapper.sol";
+import {ILeverageZapper} from "./ext/ILeverageZapper.sol";
 
 /// @title IWethEthAdapter
 /// @notice Interface for the WethEthAdapter contract.
