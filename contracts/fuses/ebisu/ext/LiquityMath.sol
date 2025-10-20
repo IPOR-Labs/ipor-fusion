@@ -5,15 +5,15 @@ library LiquityMath {
     uint256 internal constant DECIMAL_PRECISION = 1e18;
     uint256 internal constant MINUTES_IN_1000_YEARS = 525600000;
 
-    function _min(uint256 a_, uint256 b_) internal pure returns (uint256) {
+    function min(uint256 a_, uint256 b_) internal pure returns (uint256) {
         return (a_ < b_) ? a_ : b_;
     }
 
-    function _max(uint256 a_, uint256 b_) internal pure returns (uint256) {
+    function max(uint256 a_, uint256 b_) internal pure returns (uint256) {
         return (a_ >= b_) ? a_ : b_;
     }
 
-    function _subMin0(uint256 a_, uint256 b_) internal pure returns (uint256) {
+    function subMin0(uint256 a_, uint256 b_) internal pure returns (uint256) {
         return (a_ > b_) ? a_ - b_ : 0;
     }
 
@@ -46,7 +46,7 @@ library LiquityMath {
      * In function 1), the decayed base rate will be 0 for 1000 years or > 1000 years
      * In function 2), the difference in tokens issued at 1000 years and any time > 1000 years, will be negligible
      */
-    function _decPow(uint256 base_, uint256 minutes_) internal pure returns (uint256) {
+    function decPow(uint256 base_, uint256 minutes_) internal pure returns (uint256) {
         if (minutes_ > MINUTES_IN_1000_YEARS) minutes_ = MINUTES_IN_1000_YEARS; // cap to avoid overflow
 
         if (minutes_ == 0) return DECIMAL_PRECISION;
@@ -71,11 +71,11 @@ library LiquityMath {
         return decMul(x, y);
     }
 
-    function _getAbsoluteDifference(uint256 a_, uint256 b_) internal pure returns (uint256) {
+    function getAbsoluteDifference(uint256 a_, uint256 b_) internal pure returns (uint256) {
         return (a_ >= b_) ? a_ - b_ : b_ - a_;
     }
 
-    function _computeCR(uint256 coll_, uint256 debt_, uint256 price_) internal pure returns (uint256) {
+    function computeCR(uint256 coll_, uint256 debt_, uint256 price_) internal pure returns (uint256) {
         if (debt_ > 0) {
             uint256 newCollRatio = (coll_ * price_) / debt_;
 
