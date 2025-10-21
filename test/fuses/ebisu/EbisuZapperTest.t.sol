@@ -51,8 +51,6 @@ import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType}
     from "../../../contracts/fuses/ebisu/lib/EbisuZapperSubstrateLib.sol";
 import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 
-import {console2} from "forge-std/console2.sol";
-
 contract MockDex {
     function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut) public {
         ERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
