@@ -117,6 +117,10 @@ library IporFusionMarkets {
     /// @dev Substrate values: Yield Basis LT tokens addresses
     uint256 public constant YIELD_BASIS_LT = 37;
 
+    /// @dev Ebisu market
+    /// @dev Substrate type: EbisuZapperSubstrate
+    uint256 public constant EBISU = 38;
+    
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 

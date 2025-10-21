@@ -161,6 +161,48 @@ library FuseStorageLib {
      * - Parallel structure to Uniswap V3 position tracking
      */
     bytes32 private constant RAMSES_V2_TOKEN_IDS = 0x1a3831a406f27d4d5d820158b29ce95a1e8e840bf416921917aa388e2461b700;
+
+
+    /**
+     * @dev Storage slot for managing Ebisu Troves position token IDs in the Plasma Vault
+     * @notice Tracks and manages Ebisu Troves positions held by the vault
+     *
+     * Calculation:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.EbisuTroveIds")) - 1)) & ~bytes32(uint256(0xff))
+     *
+     * Purpose:
+     * - Tracks all Ebisu Troves positions owned by the vault
+     * - Enables efficient position management and lookup
+     * - Supports concentrated liquidity position tracking
+     * - Mirrors Uniswap V3-style position management for Arbitrum
+     *
+     * Storage Layout:
+     * - Points to EbisuTroveIds struct containing:
+     * -  uint256 latestOwnerIndex; the ownerIndex of the latest (only) open trove
+     * -  mapping(address zapper => uint256 id) troveIds; mapping of troveId by zapper (for balance fuse)
+     *
+     * Usage Pattern:
+     * - Updated when creating new Ebisu
+     * - Referenced during position management
+     * - Used for position value calculations
+     * - Maintains efficient position tracking on Arbitrum
+     *
+     * Integration Points:
+     * - Ebisu position management fuses
+     * - Position value calculation systems
+     * - Balance tracking mechanisms
+     * - Arbitrum-specific liquidity operations
+     *
+     * Security Considerations:
+     * - Must accurately track all vault positions
+     * - Critical for Arbitrum liquidity management
+     * - Requires careful index management
+     * - Essential for position ownership verification
+     * - Parallel structure to Uniswap V3 position tracking
+     */
+    bytes32 private constant EBISU_TROVE_IDS =
+        0x9b098fe9de431f116cec9bcef5a806a02e41a628f070feb12cb5ddc28d703300;
+
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
         /// @dev fuse address => If index = 0 - is not granted, otherwise - granted
@@ -183,6 +225,12 @@ library FuseStorageLib {
     struct RamsesV2TokenIds {
         uint256[] tokenIds;
         mapping(uint256 tokenId => uint256 index) indexes;
+    }
+
+    /// @custom:storage-location erc7201:io.ipor.EbisuTroveIds
+    struct EbisuTroveIds {
+        uint256 latestOwnerIndex;
+        mapping(address zapper => uint256 id) troveIds;
     }
 
     /// @notice Gets the fuses storage pointer
@@ -210,6 +258,13 @@ library FuseStorageLib {
     function getRamsesV2TokenIds() internal pure returns (RamsesV2TokenIds storage ramsesV2TokenIds) {
         assembly {
             ramsesV2TokenIds.slot := RAMSES_V2_TOKEN_IDS
+        }
+    }
+
+    /// @notice Gets the EbisuTroveIds storage pointer
+    function getEbisuTroveIds() internal pure returns (EbisuTroveIds storage ebisuTroveIds) {
+        assembly {
+            ebisuTroveIds.slot := EBISU_TROVE_IDS
         }
     }
 }
