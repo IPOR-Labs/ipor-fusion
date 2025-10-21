@@ -2,22 +2,22 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {EnsoSubstrateLib, Substrat} from "../../../contracts/fuses/enso/EnsoSubstrateLib.sol";
+import {EnsoSubstrateLib, Substrate} from "../../../contracts/fuses/enso/EnsoSubstrateLib.sol";
 
 /// @title EnsoSubstrateLibTest
 /// @dev Test contract for EnsoSubstrateLib encoding and decoding functions
 contract EnsoSubstrateLibTest is Test {
-    using EnsoSubstrateLib for Substrat;
+    using EnsoSubstrateLib for Substrate;
 
-    /// @notice Test basic encoding and decoding of a Substrat struct
-    function test_encode_decode_BasicSubstrat() public {
+    /// @notice Test basic encoding and decoding of a Substrate struct
+    function test_encode_decode_BasicSubstrate() public {
         address target = 0x1234567890123456789012345678901234567890;
         bytes4 functionSelector = bytes4(keccak256("transfer(address,uint256)"));
 
-        Substrat memory substrat = Substrat({target_: target, functionSelector_: functionSelector});
+        Substrate memory substrate = Substrate({target_: target, functionSelector_: functionSelector});
 
-        bytes32 encoded = EnsoSubstrateLib.encode(substrat);
-        Substrat memory decoded = EnsoSubstrateLib.decode(encoded);
+        bytes32 encoded = EnsoSubstrateLib.encode(substrate);
+        Substrate memory decoded = EnsoSubstrateLib.decode(encoded);
 
         assertEq(decoded.target_, target, "Decoded target should match original");
         assertEq(decoded.functionSelector_, functionSelector, "Decoded function selector should match original");
@@ -28,10 +28,10 @@ contract EnsoSubstrateLibTest is Test {
         address target = address(0);
         bytes4 functionSelector = 0x12345678;
 
-        Substrat memory substrat = Substrat({target_: target, functionSelector_: functionSelector});
+        Substrate memory substrate = Substrate({target_: target, functionSelector_: functionSelector});
 
-        bytes32 encoded = EnsoSubstrateLib.encode(substrat);
-        Substrat memory decoded = EnsoSubstrateLib.decode(encoded);
+        bytes32 encoded = EnsoSubstrateLib.encode(substrate);
+        Substrate memory decoded = EnsoSubstrateLib.decode(encoded);
 
         assertEq(decoded.target_, target, "Decoded zero address should match");
         assertEq(decoded.functionSelector_, functionSelector, "Decoded function selector should match");
@@ -49,10 +49,10 @@ contract EnsoSubstrateLibTest is Test {
         selectors[4] = bytes4(0xFFFFFFFF);
 
         for (uint256 i = 0; i < selectors.length; i++) {
-            Substrat memory substrat = Substrat({target_: target, functionSelector_: selectors[i]});
+            Substrate memory substrate = Substrate({target_: target, functionSelector_: selectors[i]});
 
-            bytes32 encoded = EnsoSubstrateLib.encode(substrat);
-            Substrat memory decoded = EnsoSubstrateLib.decode(encoded);
+            bytes32 encoded = EnsoSubstrateLib.encode(substrate);
+            Substrate memory decoded = EnsoSubstrateLib.decode(encoded);
 
             assertEq(
                 decoded.target_,
@@ -113,7 +113,7 @@ contract EnsoSubstrateLibTest is Test {
         assertEq(extractedSelector, functionSelector, "Extracted function selector should match original");
     }
 
-    /// @notice Test that encode/decode is reversible for multiple substrats
+    /// @notice Test that encode/decode is reversible for multiple substrates
     function test_encode_decode_Reversibility() public {
         address[] memory targets = new address[](3);
         targets[0] = 0x0000000000000000000000000000000000000001;
@@ -126,10 +126,10 @@ contract EnsoSubstrateLibTest is Test {
         selectors[2] = bytes4(keccak256("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)"));
 
         for (uint256 i = 0; i < targets.length; i++) {
-            Substrat memory original = Substrat({target_: targets[i], functionSelector_: selectors[i]});
+            Substrate memory original = Substrate({target_: targets[i], functionSelector_: selectors[i]});
 
             bytes32 encoded = EnsoSubstrateLib.encode(original);
-            Substrat memory decoded = EnsoSubstrateLib.decode(encoded);
+            Substrate memory decoded = EnsoSubstrateLib.decode(encoded);
 
             assertEq(decoded.target_, original.target_, "Reversibility: target should match");
             assertEq(decoded.functionSelector_, original.functionSelector_, "Reversibility: selector should match");
@@ -141,10 +141,10 @@ contract EnsoSubstrateLibTest is Test {
         address target = 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF;
         bytes4 functionSelector = 0xCAFEBABE;
 
-        Substrat memory substrat = Substrat({target_: target, functionSelector_: functionSelector});
+        Substrate memory substrate = Substrate({target_: target, functionSelector_: functionSelector});
 
-        bytes32 encoded1 = EnsoSubstrateLib.encode(substrat);
-        bytes32 encoded2 = EnsoSubstrateLib.encode(substrat);
+        bytes32 encoded1 = EnsoSubstrateLib.encode(substrate);
+        bytes32 encoded2 = EnsoSubstrateLib.encode(substrate);
         bytes32 encoded3 = EnsoSubstrateLib.encodeRaw(target, functionSelector);
 
         assertEq(encoded1, encoded2, "Multiple encode calls should produce same result");
@@ -172,10 +172,10 @@ contract EnsoSubstrateLibTest is Test {
         address target = address(type(uint160).max);
         bytes4 functionSelector = 0x11223344;
 
-        Substrat memory substrat = Substrat({target_: target, functionSelector_: functionSelector});
+        Substrate memory substrate = Substrate({target_: target, functionSelector_: functionSelector});
 
-        bytes32 encoded = EnsoSubstrateLib.encode(substrat);
-        Substrat memory decoded = EnsoSubstrateLib.decode(encoded);
+        bytes32 encoded = EnsoSubstrateLib.encode(substrate);
+        Substrate memory decoded = EnsoSubstrateLib.decode(encoded);
 
         assertEq(decoded.target_, target, "Max address should be encoded/decoded correctly");
         assertEq(decoded.functionSelector_, functionSelector, "Function selector should be preserved");
@@ -183,10 +183,10 @@ contract EnsoSubstrateLibTest is Test {
 
     /// @notice Fuzz test for encode/decode operations
     function testFuzz_encode_decode_Reversibility(address target_, bytes4 functionSelector_) public {
-        Substrat memory substrat = Substrat({target_: target_, functionSelector_: functionSelector_});
+        Substrate memory substrate = Substrate({target_: target_, functionSelector_: functionSelector_});
 
-        bytes32 encoded = EnsoSubstrateLib.encode(substrat);
-        Substrat memory decoded = EnsoSubstrateLib.decode(encoded);
+        bytes32 encoded = EnsoSubstrateLib.encode(substrate);
+        Substrate memory decoded = EnsoSubstrateLib.decode(encoded);
 
         assertEq(decoded.target_, target_, "Fuzz: Decoded target should match original");
         assertEq(decoded.functionSelector_, functionSelector_, "Fuzz: Decoded selector should match original");
@@ -251,10 +251,10 @@ contract EnsoSubstrateLibTest is Test {
         selectors[3] = balanceOfSelector;
 
         for (uint256 i = 0; i < selectors.length; i++) {
-            Substrat memory substrat = Substrat({target_: usdcAddress, functionSelector_: selectors[i]});
+            Substrate memory substrate = Substrate({target_: usdcAddress, functionSelector_: selectors[i]});
 
-            bytes32 encoded = EnsoSubstrateLib.encode(substrat);
-            Substrat memory decoded = EnsoSubstrateLib.decode(encoded);
+            bytes32 encoded = EnsoSubstrateLib.encode(substrate);
+            Substrate memory decoded = EnsoSubstrateLib.decode(encoded);
 
             assertEq(decoded.target_, usdcAddress, "USDC address should be preserved");
             assertEq(decoded.functionSelector_, selectors[i], "ERC20 selector should be preserved");

@@ -80,6 +80,11 @@ contract EnsoExecutor {
     /// @param amounts Array of amounts that were withdrawn for each token
     event EnsoExecutorTokensWithdrawn(address[] tokens, uint256[] amounts);
 
+    /// @notice Event emitted when recovery function is called
+    /// @param target The target address for the delegatecall
+    /// @param data The calldata used
+    event EnsoExecutorRecovery(address indexed target, bytes data);
+
     /// @notice Address of the DelegateEnsoShortcuts contract
     address public immutable DELEGATE_ENSO_SHORTCUTS;
     address public immutable WETH_ADDRESS;
@@ -153,7 +158,11 @@ contract EnsoExecutor {
 
         if (tokensOutBalance > 0) {
             IERC20(data_.tokensOut).safeTransfer(msg.sender, tokensOutBalance);
-            _balance.assetBalance = (data_.amountOut - tokensOutBalance).toUint96();
+            if (data_.amountOut > tokensOutBalance) {
+                _balance.assetBalance = (data_.amountOut - tokensOutBalance).toUint96();
+            } else {
+                _balance.assetBalance = 0;
+            }
         } else {
             _balance.assetBalance = data_.amountOut.toUint96();
         }
@@ -208,6 +217,8 @@ contract EnsoExecutor {
         }
 
         Address.functionDelegateCall(target_, data_);
+
+        emit EnsoExecutorRecovery(target_, data_);
     }
 
     /// @notice Allows the contract to receive ETH

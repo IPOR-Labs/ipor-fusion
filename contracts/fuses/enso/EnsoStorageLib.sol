@@ -7,7 +7,7 @@ pragma solidity 0.8.26;
 library EnsoStorageLib {
     /// @dev Storage slot for Enso executor address
     /// @dev Calculation: keccak256(abi.encode(uint256(keccak256("io.ipor.enso.Executor")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant ENSO_EXECUTOR_SLOT = 0x2f8c6b6e2f5a2d2a2e5c5a5d5a5c5a5d5a5c5a5d5a5c5a5d5a5c5a5d5a5c5a00;
+    bytes32 private constant ENSO_EXECUTOR_SLOT = 0x2be19acf1082fe0f31c0864ff2dc58ff9679d12ca8fb47a012400b2f6ce3af00;
 
     /// @dev Structure holding the Enso executor address
     /// @custom:storage-location erc7201:io.ipor.enso.Executor
