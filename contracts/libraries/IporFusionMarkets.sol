@@ -109,6 +109,8 @@ library IporFusionMarkets {
     /// @dev Supports both Balancer pools and liquidity gauges for LP token management
     uint256 public constant BALANCER = 36;
 
+    uint256 public constant ENSO = 38;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 

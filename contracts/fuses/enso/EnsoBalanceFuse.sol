@@ -15,6 +15,12 @@ import {EnsoStorageLib} from "./EnsoStorageLib.sol";
 contract EnsoBalanceFuse is IMarketBalanceFuse {
     error EnsoBalanceFuseInvalidPriceOracleMiddleware();
 
+    uint256 public immutable MARKET_ID;
+
+    constructor(uint256 marketId_) {
+        MARKET_ID = marketId_;
+    }
+
     /// @notice Get the balance of the Plasma Vault in the EnsoExecutor in USD
     /// @return The balance of the Plasma Vault in USD, represented in 18 decimals
     function balanceOf() external view override returns (uint256) {
