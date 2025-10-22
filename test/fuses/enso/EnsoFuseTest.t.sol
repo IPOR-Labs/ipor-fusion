@@ -13,6 +13,7 @@ import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.
 // Enso Fuses
 import {EnsoFuse, EnsoFuseEnterData, EnsoFuseExitData} from "../../../contracts/fuses/enso/EnsoFuse.sol";
 import {EnsoBalanceFuse} from "../../../contracts/fuses/enso/EnsoBalanceFuse.sol";
+import {EnsoInitExecutorFuse} from "../../../contracts/fuses/enso/EnsoInitExecutorFuse.sol";
 import {EnsoSubstrateLib, Substrate} from "../../../contracts/fuses/enso/EnsoSubstrateLib.sol";
 
 // Libraries
@@ -52,6 +53,7 @@ contract EnsoFuseTest is Test {
     // Enso Fuses
     EnsoFuse public ensoFuse;
     EnsoBalanceFuse public ensoBalanceFuse;
+    EnsoInitExecutorFuse public ensoInitExecutorFuse;
 
     // Mock contracts
     MockDelegateEnsoShortcuts public mockDelegateEnsoShortcuts;
@@ -115,14 +117,20 @@ contract EnsoFuseTest is Test {
         // Deploy Enso fuses
         ensoFuse = new EnsoFuse(IporFusionMarkets.ENSO, WETH, address(mockDelegateEnsoShortcuts));
         ensoBalanceFuse = new EnsoBalanceFuse(IporFusionMarkets.ENSO);
+        ensoInitExecutorFuse = new EnsoInitExecutorFuse(
+            IporFusionMarkets.ENSO,
+            WETH,
+            address(mockDelegateEnsoShortcuts)
+        );
     }
 
     function _configureEnsoFuses() private {
         vm.startPrank(ATOMIST);
 
         // Add EnsoFuse to the vault
-        address[] memory fuses = new address[](1);
+        address[] memory fuses = new address[](2);
         fuses[0] = address(ensoFuse);
+        fuses[1] = address(ensoInitExecutorFuse);
 
         // Grant market substrates for tokens (using ERC20.transfer selector)
         bytes32[] memory tokenSubstrates = new bytes32[](4);
@@ -536,5 +544,73 @@ contract EnsoFuseTest is Test {
         vm.prank(ALPHA);
         vm.expectRevert(abi.encodeWithSignature("EnsoExecutorBalanceAlreadySet()"));
         plasmaVault.execute(actions);
+    }
+
+    function testShouldCreateExecutorUsingEnsoInitExecutorFuse() public {
+        // given - executor should not exist yet
+        address executorBefore = _getEnsoExecutorAddress();
+        assertEq(executorBefore, address(0), "Executor should not exist before initialization");
+
+        // when - call enter on EnsoInitExecutorFuse
+        vm.recordLogs();
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(address(ensoInitExecutorFuse), abi.encodeWithSignature("enter()"));
+
+        vm.prank(ALPHA);
+        plasmaVault.execute(actions);
+
+        // then - check if EnsoExecutorCreated event was emitted
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bool eventFound = false;
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == keccak256("EnsoExecutorCreated(address,address,address,address)")) {
+                eventFound = true;
+                break;
+            }
+        }
+
+        assertTrue(eventFound, "EnsoExecutorCreated event should be emitted");
+
+        // then - executor should be created
+        address executorAfter = _getEnsoExecutorAddress();
+        assertNotEq(executorAfter, address(0), "Executor should be created");
+        assertTrue(executorAfter != executorBefore, "Executor address should change");
+    }
+
+    function testShouldNotCreateNewExecutorWhenAlreadyExists() public {
+        // given - create executor using EnsoInitExecutorFuse
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(address(ensoInitExecutorFuse), abi.encodeWithSignature("enter()"));
+
+        vm.prank(ALPHA);
+        plasmaVault.execute(actions);
+
+        address executorAfterFirst = _getEnsoExecutorAddress();
+        assertTrue(executorAfterFirst != address(0), "Executor should be created after first call");
+
+        // when - call enter again on EnsoInitExecutorFuse
+        vm.recordLogs();
+
+        vm.prank(ALPHA);
+        plasmaVault.execute(actions);
+
+        // then - check that EnsoExecutorCreated event was NOT emitted during second call
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bool eventFound = false;
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == keccak256("EnsoExecutorCreated(address,address,address,address)")) {
+                eventFound = true;
+                break;
+            }
+        }
+
+        assertFalse(eventFound, "EnsoExecutorCreated event should NOT be emitted on second call");
+
+        // then - executor address should remain the same
+        address executorAfterSecond = _getEnsoExecutorAddress();
+        assertEq(executorAfterSecond, executorAfterFirst, "Executor address should remain unchanged");
     }
 }
