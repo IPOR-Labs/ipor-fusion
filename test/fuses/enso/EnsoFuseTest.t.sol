@@ -14,13 +14,10 @@ import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.
 import {EnsoFuse, EnsoFuseEnterData, EnsoFuseExitData} from "../../../contracts/fuses/enso/EnsoFuse.sol";
 import {EnsoBalanceFuse} from "../../../contracts/fuses/enso/EnsoBalanceFuse.sol";
 import {EnsoSubstrateLib, Substrate} from "../../../contracts/fuses/enso/EnsoSubstrateLib.sol";
-import {EnsoStorageLib} from "../../../contracts/fuses/enso/EnsoStorageLib.sol";
 
 // Libraries
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
-import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 // Mock contracts
@@ -44,9 +41,6 @@ contract EnsoFuseTest is Test {
     address constant ALPHA = 0x2222222222222222222222222222222222222222;
     address constant USER = 0x3333333333333333333333333333333333333333;
     address constant FUSE_MANAGER = 0x4444444444444444444444444444444444444444;
-
-    // Token holders for funding
-    address constant USDC_HOLDER = 0x47c031236e19d024b42f8AE6780E44A573170703; // Circle USDC Treasury
 
     // Contracts
     FusionFactory public fusionFactory;
@@ -382,7 +376,7 @@ contract EnsoFuseTest is Test {
 
         // then
 
-        (address executorAsset, uint256 executorBalance) = _getEnsoExecutorBalance();
+        (, uint256 executorBalance) = _getEnsoExecutorBalance();
         assertGt(ensoMarketBalance, 0, "Enso market should have balance");
 
         // Balance should be approximately equal to swap amount in USD
@@ -400,7 +394,6 @@ contract EnsoFuseTest is Test {
         assertGt(executorBalanceBefore, 0, "Executor should have USDC balance");
 
         uint256 vaultDaiBefore = ERC20(DAI).balanceOf(address(plasmaVault));
-        uint256 vaultUsdcBefore = ERC20(USDC).balanceOf(address(plasmaVault));
 
         // when - exit and withdraw
         EnsoFuseExitData memory exitData = EnsoFuseExitData({tokens: new address[](1)});

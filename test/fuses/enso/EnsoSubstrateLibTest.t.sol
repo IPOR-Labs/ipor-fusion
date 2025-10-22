@@ -10,7 +10,7 @@ contract EnsoSubstrateLibTest is Test {
     using EnsoSubstrateLib for Substrate;
 
     /// @notice Test basic encoding and decoding of a Substrate struct
-    function test_encode_decode_BasicSubstrate() public {
+    function testEncodeDecodeBasicSubstrate() public {
         address target = 0x1234567890123456789012345678901234567890;
         bytes4 functionSelector = bytes4(keccak256("transfer(address,uint256)"));
 
@@ -24,7 +24,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test encoding and decoding with zero address
-    function test_encode_decode_ZeroAddress() public {
+    function testEncodeDecodeZeroAddress() public {
         address target = address(0);
         bytes4 functionSelector = 0x12345678;
 
@@ -38,7 +38,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test encoding and decoding with various function selectors
-    function test_encode_decode_VariousSelectors() public {
+    function testEncodeDecodeVariousSelectors() public {
         address target = 0xabCDEF1234567890ABcDEF1234567890aBCDeF12;
 
         bytes4[] memory selectors = new bytes4[](5);
@@ -68,7 +68,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test encodeRaw function
-    function test_encodeRaw_BasicEncoding() public {
+    function testEncodeRawBasicEncoding() public {
         address target = 0x9876543210987654321098765432109876543210;
         bytes4 functionSelector = bytes4(keccak256("swap(address,uint256)"));
 
@@ -80,7 +80,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test decodeRaw function
-    function test_decodeRaw_BasicDecoding() public {
+    function testDecodeRawBasicDecoding() public {
         address target = 0xabCDeF0123456789AbcdEf0123456789aBCDEF01;
         bytes4 functionSelector = 0xABCD1234;
 
@@ -92,7 +92,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test getTarget function
-    function test_getTarget_ExtractAddress() public {
+    function testGetTargetExtractAddress() public {
         address target = 0x1111111111111111111111111111111111111111;
         bytes4 functionSelector = 0x22222222;
 
@@ -103,7 +103,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test getFunctionSelector function
-    function test_getFunctionSelector_ExtractSelector() public {
+    function testGetFunctionSelectorExtractSelector() public {
         address target = 0x3333333333333333333333333333333333333333;
         bytes4 functionSelector = 0x44444444;
 
@@ -114,7 +114,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test that encode/decode is reversible for multiple substrates
-    function test_encode_decode_Reversibility() public {
+    function testEncodeDecodeReversibility() public {
         address[] memory targets = new address[](3);
         targets[0] = 0x0000000000000000000000000000000000000001;
         targets[1] = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
@@ -137,7 +137,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test that encoding produces consistent results
-    function test_encode_Consistency() public {
+    function testEncodeConsistency() public {
         address target = 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF;
         bytes4 functionSelector = 0xCAFEBABE;
 
@@ -152,7 +152,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test encoding layout - verify bytes are in correct positions
-    function test_encode_LayoutVerification() public {
+    function testEncodeLayoutVerification() public {
         address target = 0x1234567890123456789012345678901234567890;
         bytes4 functionSelector = 0xABCDEF01;
 
@@ -168,7 +168,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test with maximum address value
-    function test_encode_decode_MaxAddress() public {
+    function testEncodeDecodeMaxAddress() public {
         address target = address(type(uint160).max);
         bytes4 functionSelector = 0x11223344;
 
@@ -182,7 +182,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Fuzz test for encode/decode operations
-    function testFuzz_encode_decode_Reversibility(address target_, bytes4 functionSelector_) public {
+    function testFuzzEncodeDecodeReversibility(address target_, bytes4 functionSelector_) public {
         Substrate memory substrate = Substrate({target_: target_, functionSelector_: functionSelector_});
 
         bytes32 encoded = EnsoSubstrateLib.encode(substrate);
@@ -193,7 +193,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Fuzz test for encodeRaw/decodeRaw operations
-    function testFuzz_encodeRaw_decodeRaw_Reversibility(address target_, bytes4 functionSelector_) public {
+    function testFuzzEncodeRawDecodeRawReversibility(address target_, bytes4 functionSelector_) public {
         bytes32 encoded = EnsoSubstrateLib.encodeRaw(target_, functionSelector_);
         (address decodedTarget, bytes4 decodedSelector) = EnsoSubstrateLib.decodeRaw(encoded);
 
@@ -202,7 +202,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Fuzz test for getTarget
-    function testFuzz_getTarget(address target_, bytes4 functionSelector_) public {
+    function testFuzzGetTarget(address target_, bytes4 functionSelector_) public {
         bytes32 encoded = EnsoSubstrateLib.encodeRaw(target_, functionSelector_);
         address extractedTarget = EnsoSubstrateLib.getTarget(encoded);
 
@@ -210,7 +210,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Fuzz test for getFunctionSelector
-    function testFuzz_getFunctionSelector(address target_, bytes4 functionSelector_) public {
+    function testFuzzGetFunctionSelector(address target_, bytes4 functionSelector_) public {
         bytes32 encoded = EnsoSubstrateLib.encodeRaw(target_, functionSelector_);
         bytes4 extractedSelector = EnsoSubstrateLib.getFunctionSelector(encoded);
 
@@ -218,7 +218,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test that different inputs produce different encodings
-    function test_encode_UniquenessVerification() public {
+    function testEncodeUniquenessVerification() public {
         address target1 = 0x1111111111111111111111111111111111111111;
         address target2 = 0x2222222222222222222222222222222222222222;
         bytes4 selector1 = 0x11111111;
@@ -236,7 +236,7 @@ contract EnsoSubstrateLibTest is Test {
     }
 
     /// @notice Test real-world ERC20 function selectors
-    function test_encode_decode_RealWorldSelectors() public {
+    function testEncodeDecodeRealWorldSelectors() public {
         address usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
         bytes4 transferSelector = bytes4(keccak256("transfer(address,uint256)"));
