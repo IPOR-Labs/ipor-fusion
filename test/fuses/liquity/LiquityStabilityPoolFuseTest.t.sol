@@ -334,7 +334,7 @@ contract LiquityStabilityPoolFuseTest is Test {
 
         // Invariant: Liquity market balance = sum of all components
         uint256 compounded = stabilityPool.getCompoundedBoldDeposit(address(plasmaVault));
-        uint256 yieldGain = stabilityPool.getDepositorYieldGain(address(plasmaVault));
+        uint256 yieldGain = stabilityPool.getDepositorYieldGainWithPending(address(plasmaVault));
         uint256 stashedColl = stabilityPool.stashedColl(address(plasmaVault));
         uint256 collGain = stabilityPool.getDepositorCollGain(address(plasmaVault));
 

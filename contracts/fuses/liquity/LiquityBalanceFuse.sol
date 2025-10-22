@@ -121,7 +121,7 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         );
 
         uint256 yieldGainValue = IporMath.convertToWad(
-            stabilityPool_.getDepositorYieldGain(plasmaVault_) * boldPrice_,
+            stabilityPool_.getDepositorYieldGainWithPending(plasmaVault_) * boldPrice_,
             decimalsSum
         );
 

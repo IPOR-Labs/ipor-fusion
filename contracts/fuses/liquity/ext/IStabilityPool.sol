@@ -29,5 +29,5 @@ interface IStabilityPool {
     /// @notice Get the unrealized BOLD yield gain for a depositor from interest
     /// @param depositor_ The address of the depositor
     /// @return The yield gain amount
-    function getDepositorYieldGain(address depositor_) external view returns (uint256);
+    function getDepositorYieldGainWithPending(address depositor_) external view returns (uint256);
 }
