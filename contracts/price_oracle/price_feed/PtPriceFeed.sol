@@ -128,7 +128,7 @@ contract PtPriceFeed is IPriceFeed {
         time = block.timestamp;
     }
 
-    function _decimals() internal view returns (uint8) {
+    function _decimals() internal pure returns (uint8) {
         return 8;
     }
 

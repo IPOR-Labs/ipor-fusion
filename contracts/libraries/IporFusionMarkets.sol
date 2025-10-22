@@ -98,17 +98,29 @@ library IporFusionMarkets {
 
     /// @dev StakeDaoV2 market
     /// @dev Substrate type: address
+    /// @dev Substrate values: address of the Stake DAO Reward Vault contract
     uint256 public constant STAKE_DAO_V2 = 34;
 
     /// @dev Silo Finance V2 market
-    /// @dev Substrate type: address - address of the Silo Config contract
-    uint256 public constant SILO_V2 = 35; //TODO: after merge check.
+    /// @dev Substrate type: address
+    /// @dev Substrate values: address of the Silo Config contract
+    uint256 public constant SILO_V2 = 35;
 
     /// @dev Balancer market
     /// @dev Substrate type: BalancerSubstrate (pool or gauge addresses)
+    /// @dev Substrate values: Balancer pool or gauge addresses
     /// @dev Supports both Balancer pools and liquidity gauges for LP token management
     uint256 public constant BALANCER = 36;
 
+    /// @dev Yield Basis LT market
+    /// @dev Substrate type: address
+    /// @dev Substrate values: Yield Basis LT tokens addresses
+    uint256 public constant YIELD_BASIS_LT = 37;
+
+    /// @dev Ebisu market
+    /// @dev Substrate type: EbisuZapperSubstrate
+    uint256 public constant EBISU = 38;
+    
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
