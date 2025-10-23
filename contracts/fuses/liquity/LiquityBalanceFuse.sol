@@ -50,10 +50,12 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
             boldToken
         );
         uint256 boldDecimals = IERC20Metadata(boldToken).decimals();
+        IAddressesRegistry registry;
+        IStabilityPool stabilityPool;
 
         for (uint256 i; i < len; ++i) {
-            IAddressesRegistry registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
-            IStabilityPool stabilityPool = IStabilityPool(registry.stabilityPool());
+            registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
+            stabilityPool = IStabilityPool(registry.stabilityPool());
 
             /// @dev Calculate collateral value for this registry
             totalCollateralValue += _calculateCollateralValue(
