@@ -14,7 +14,7 @@ import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.
 import {EnsoFuse, EnsoFuseEnterData, EnsoFuseExitData} from "../../../contracts/fuses/enso/EnsoFuse.sol";
 import {EnsoBalanceFuse} from "../../../contracts/fuses/enso/EnsoBalanceFuse.sol";
 import {EnsoInitExecutorFuse} from "../../../contracts/fuses/enso/EnsoInitExecutorFuse.sol";
-import {EnsoSubstrateLib, Substrate} from "../../../contracts/fuses/enso/EnsoSubstrateLib.sol";
+import {EnsoSubstrateLib, EnsoSubstrate} from "../../../contracts/fuses/enso/EnsoSubstrateLib.sol";
 
 // Libraries
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
@@ -135,18 +135,18 @@ contract EnsoFuseTest is Test {
         // Grant market substrates for tokens (using ERC20.transfer selector)
         bytes32[] memory tokenSubstrates = new bytes32[](4);
         tokenSubstrates[0] = EnsoSubstrateLib.encode(
-            Substrate({target_: USDC, functionSelector_: ERC20.transfer.selector})
+            EnsoSubstrate({target_: USDC, functionSelector_: ERC20.transfer.selector})
         );
         tokenSubstrates[1] = EnsoSubstrateLib.encode(
-            Substrate({target_: DAI, functionSelector_: ERC20.transfer.selector})
+            EnsoSubstrate({target_: DAI, functionSelector_: ERC20.transfer.selector})
         );
         tokenSubstrates[2] = EnsoSubstrateLib.encode(
-            Substrate({target_: WETH, functionSelector_: ERC20.transfer.selector})
+            EnsoSubstrate({target_: WETH, functionSelector_: ERC20.transfer.selector})
         );
 
         // Grant substrate for mock target swap function
         tokenSubstrates[3] = EnsoSubstrateLib.encode(
-            Substrate({target_: address(mockEnsoTarget), functionSelector_: MockEnsoTarget.swap.selector})
+            EnsoSubstrate({target_: address(mockEnsoTarget), functionSelector_: MockEnsoTarget.swap.selector})
         );
 
         vm.stopPrank();
@@ -225,7 +225,7 @@ contract EnsoFuseTest is Test {
 
         return
             EnsoFuseEnterData({
-                tokensOut: tokenIn_, // Token leaving the vault (input token)
+                tokenOut: tokenIn_, // Token leaving the vault (input token)
                 amountOut: amountIn_, // Amount leaving the vault
                 wEthAmount: 0,
                 accountId: bytes32(uint256(1)),
@@ -458,7 +458,7 @@ contract EnsoFuseTest is Test {
         state[0] = abi.encode(USDC, DAI, SWAP_USDC_AMOUNT, SWAP_DAI_AMOUNT);
 
         EnsoFuseEnterData memory enterData = EnsoFuseEnterData({
-            tokensOut: DAI,
+            tokenOut: DAI,
             amountOut: SWAP_DAI_AMOUNT,
             wEthAmount: 0,
             accountId: bytes32(uint256(1)),

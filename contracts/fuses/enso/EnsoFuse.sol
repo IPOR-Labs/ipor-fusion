@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {EnsoExecutor, EnsoExecutorData} from "./EnsoExecutor.sol";
-import {EnsoSubstrateLib, Substrate} from "./EnsoSubstrateLib.sol";
+import {EnsoSubstrateLib, EnsoSubstrate} from "./EnsoSubstrateLib.sol";
 import {EnsoStorageLib} from "./EnsoStorageLib.sol";
 
 /// @notice Data structure used for entering an Enso shortcut operation.
@@ -18,7 +18,7 @@ import {EnsoStorageLib} from "./EnsoStorageLib.sol";
 /// @param state_ - An array of bytes that are used to generate call data for each command
 /// @param tokensToReturn_ - Array of token addresses that should be returned from executor to PlasmaVault
 struct EnsoFuseEnterData {
-    address tokensOut;
+    address tokenOut;
     uint256 amountOut;
     uint256 wEthAmount;
     bytes32 accountId;
@@ -88,17 +88,17 @@ contract EnsoFuse is IFuseCommon {
     /// @notice Execute an Enso shortcut through the executor
     /// @param data_ The data structure containing all parameters for the Enso operation
     function enter(EnsoFuseEnterData calldata data_) external {
-        if (data_.tokensOut == address(0)) {
+        if (data_.tokenOut == address(0)) {
             revert EnsoFuseInvalidTokensOut();
         }
 
-        _checkSubstrates(data_);
+        _validateEnterSubstrates(data_);
         _validateCommands(data_.commands);
 
         address executor = _createExecutorWhenNotExists();
 
         if (data_.amountOut > 0) {
-            ERC20(data_.tokensOut).safeTransfer(executor, data_.amountOut);
+            ERC20(data_.tokenOut).safeTransfer(executor, data_.amountOut);
         }
 
         if (data_.wEthAmount > 0) {
@@ -114,7 +114,7 @@ contract EnsoFuse is IFuseCommon {
                 state: data_.state,
                 tokensToReturn: data_.tokensToReturn,
                 wEthAmount: data_.wEthAmount,
-                tokensOut: data_.tokensOut,
+                tokenOut: data_.tokenOut,
                 amountOut: data_.amountOut
             })
         );
@@ -125,7 +125,7 @@ contract EnsoFuse is IFuseCommon {
     /// @notice Withdraw tokens from EnsoExecutor back to PlasmaVault
     /// @param data_ The data structure containing token addresses to withdraw
     function exit(EnsoFuseExitData calldata data_) external {
-        _validateTokenSubstrates(data_.tokens);
+        _validateExitSubstrates(data_.tokens);
 
         address executor = EnsoStorageLib.getEnsoExecutor();
 
@@ -133,24 +133,24 @@ contract EnsoFuse is IFuseCommon {
             revert EnsoFuseInvalidExecutorAddress();
         }
 
-        EnsoExecutor(payable(executor)).withdrawTokens(data_.tokens);
+        EnsoExecutor(payable(executor)).withdrawAll(data_.tokens);
 
         emit EnsoFuseExit(VERSION, data_.tokens);
     }
 
     /// @notice Validate that all substrates (tokens and return tokens) are granted
     /// @param data_ The data structure containing all parameters for validation
-    function _checkSubstrates(EnsoFuseEnterData calldata data_) private view {
-        // Validate tokensOut substrate
+    function _validateEnterSubstrates(EnsoFuseEnterData calldata data_) private view {
+        // Validate tokenOut substrate
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 EnsoSubstrateLib.encode(
-                    Substrate({target_: data_.tokensOut, functionSelector_: ERC20.transfer.selector})
+                    EnsoSubstrate({target_: data_.tokenOut, functionSelector_: ERC20.transfer.selector})
                 )
             )
         ) {
-            revert EnsoFuseUnsupportedAsset(data_.tokensOut);
+            revert EnsoFuseUnsupportedAsset(data_.tokenOut);
         }
 
         // Validate WETH substrate if wEthAmount > 0
@@ -158,7 +158,7 @@ contract EnsoFuse is IFuseCommon {
             if (
                 !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                     MARKET_ID,
-                    EnsoSubstrateLib.encode(Substrate({target_: WETH, functionSelector_: ERC20.transfer.selector}))
+                    EnsoSubstrateLib.encode(EnsoSubstrate({target_: WETH, functionSelector_: ERC20.transfer.selector}))
                 )
             ) {
                 revert EnsoFuseUnsupportedAsset(WETH);
@@ -172,7 +172,7 @@ contract EnsoFuse is IFuseCommon {
                 !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                     MARKET_ID,
                     EnsoSubstrateLib.encode(
-                        Substrate({target_: data_.tokensToReturn[i], functionSelector_: ERC20.transfer.selector})
+                        EnsoSubstrate({target_: data_.tokensToReturn[i], functionSelector_: ERC20.transfer.selector})
                     )
                 )
             ) {
@@ -186,12 +186,17 @@ contract EnsoFuse is IFuseCommon {
     /// @dev Skips validation for STATICCALL (read-only) and handles FLAG_EXTENDED_COMMAND
     function _validateCommands(bytes32[] calldata commands_) private view {
         uint256 commandsLength = commands_.length;
+        bytes32 command;
+        uint256 flags;
+        uint256 callType;
+        address target;
+        bytes4 selector;
         for (uint256 i; i < commandsLength; ++i) {
-            bytes32 command = commands_[i];
+            command = commands_[i];
 
             // Extract flags (byte at position 32)
-            uint256 flags = uint256(uint8(bytes1(command << 32)));
-            uint256 callType = flags & FLAG_CT_MASK;
+            flags = uint256(uint8(bytes1(command << 32)));
+            callType = flags & FLAG_CT_MASK;
 
             // Skip validation for STATICCALL (read-only)
             if (callType == FLAG_CT_STATICCALL) {
@@ -205,8 +210,8 @@ contract EnsoFuse is IFuseCommon {
             }
 
             // Extract target address and function selector
-            address target = address(uint160(uint256(command)));
-            bytes4 selector = bytes4(command);
+            target = address(uint160(uint256(command)));
+            selector = bytes4(command);
 
             // Validate substrate is granted
             if (
@@ -231,14 +236,14 @@ contract EnsoFuse is IFuseCommon {
 
     /// @notice Validate that all token addresses have transfer function granted as substrates
     /// @param tokens_ Array of token addresses to validate
-    function _validateTokenSubstrates(address[] calldata tokens_) private view {
+    function _validateExitSubstrates(address[] calldata tokens_) private view {
         uint256 tokensLength = tokens_.length;
         for (uint256 i; i < tokensLength; ++i) {
             if (
                 !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                     MARKET_ID,
                     EnsoSubstrateLib.encode(
-                        Substrate({target_: tokens_[i], functionSelector_: ERC20.transfer.selector})
+                        EnsoSubstrate({target_: tokens_[i], functionSelector_: ERC20.transfer.selector})
                     )
                 )
             ) {

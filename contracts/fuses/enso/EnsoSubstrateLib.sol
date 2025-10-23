@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 /// @notice Structure representing a substrate with target address and function selector
 /// @param target_ The target contract address
 /// @param functionSelector_ The function selector (first 4 bytes of function signature hash)
-struct Substrate {
+struct EnsoSubstrate {
     address target_;
     bytes4 functionSelector_;
 }
@@ -12,11 +12,11 @@ struct Substrate {
 /// @title EnsoSubstrateLib
 /// @notice Library for encoding and decoding substrate information (address + function selector) to/from bytes32
 library EnsoSubstrateLib {
-    /// @notice Encodes a Substrate struct into bytes32
+    /// @notice Encodes a EnsoSubstrate struct into bytes32
     /// @dev Layout: [0:20] address (20 bytes) | [20:24] bytes4 selector (4 bytes) | [24:32] padding (8 bytes)
-    /// @param substrate_ The Substrate struct to encode
+    /// @param substrate_ The EnsoSubstrate struct to encode
     /// @return encoded The bytes32 encoded representation
-    function encode(Substrate memory substrate_) internal pure returns (bytes32 encoded) {
+    function encode(EnsoSubstrate memory substrate_) internal pure returns (bytes32 encoded) {
         // Shift address to occupy the first 20 bytes (most significant)
         // Then OR with the function selector shifted to bytes [20:24]
         encoded =
@@ -24,11 +24,11 @@ library EnsoSubstrateLib {
             bytes32(uint256(uint32(substrate_.functionSelector_)) << 64);
     }
 
-    /// @notice Decodes bytes32 back into a Substrate struct
+    /// @notice Decodes bytes32 back into a EnsoSubstrate struct
     /// @dev Extracts address from first 20 bytes and function selector from next 4 bytes
     /// @param encoded_ The bytes32 encoded data
-    /// @return substrate_ The decoded Substrate struct
-    function decode(bytes32 encoded_) internal pure returns (Substrate memory substrate_) {
+    /// @return substrate_ The decoded EnsoSubstrate struct
+    function decode(bytes32 encoded_) internal pure returns (EnsoSubstrate memory substrate_) {
         // Extract address from first 20 bytes (shift right 96 bits to get the most significant 160 bits)
         substrate_.target_ = address(uint160(uint256(encoded_) >> 96));
 

@@ -5,17 +5,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
-/// @title IWETH9 Interface
-/// @notice Interface for Wrapped Ether (WETH) token with deposit and withdraw functionality
-interface IWETH9 {
-    /// @notice Deposit ETH to receive WETH
-    function deposit() external payable;
-
-    /// @notice Withdraw ETH from WETH
-    /// @param amount Amount of WETH to withdraw
-    function withdraw(uint256 amount) external;
-}
+import {IWETH9} from "../../interfaces/ext/IWETH9.sol";
 
 /// @title EnsoExecutorData
 /// @notice Data structure containing all necessary information for executing an Enso shortcut
@@ -25,7 +15,7 @@ interface IWETH9 {
 /// @param state An array of bytes that are used to generate call data for each command
 /// @param tokensToReturn Array of token addresses to return to sender after execution
 /// @param wEthAmount Amount of WETH to handle
-/// @param tokensOut Token address to transfer out
+/// @param tokenOut Token address to transfer out
 /// @param amountOut Amount to transfer out
 struct EnsoExecutorData {
     bytes32 accountId;
@@ -34,7 +24,7 @@ struct EnsoExecutorData {
     bytes[] state;
     address[] tokensToReturn;
     uint256 wEthAmount;
-    address tokensOut;
+    address tokenOut;
     uint256 amountOut;
 }
 
@@ -60,7 +50,6 @@ contract EnsoExecutor {
     error EnsoExecutorInvalidDelegateAddress();
 
     /// @notice Error thrown when delegatecall fails
-    error EnsoExecutorDelegatecallFailed();
     error EnsoExecutorInvalidWethAddress();
     error EnsoExecutorInvalidPlasmaVaultAddress();
     error EnsoExecutorUnauthorizedCaller();
@@ -150,16 +139,16 @@ contract EnsoExecutor {
         uint256 ethBalance = address(this).balance;
         if (ethBalance > 0) {
             IWETH9(WETH_ADDRESS).deposit{value: ethBalance}();
-            IERC20(WETH_ADDRESS).safeTransfer(msg.sender, ethBalance);
+            IERC20(WETH_ADDRESS).safeTransfer(PLASMA_VAULT, ethBalance);
         }
 
-        uint256 tokensOutBalance = IERC20(data_.tokensOut).balanceOf(address(this));
-        _balance.assetAddress = data_.tokensOut;
+        uint256 tokenOutBalance = IERC20(data_.tokenOut).balanceOf(address(this));
+        _balance.assetAddress = data_.tokenOut;
 
-        if (tokensOutBalance > 0) {
-            IERC20(data_.tokensOut).safeTransfer(msg.sender, tokensOutBalance);
-            if (data_.amountOut > tokensOutBalance) {
-                _balance.assetBalance = (data_.amountOut - tokensOutBalance).toUint96();
+        if (tokenOutBalance > 0) {
+            IERC20(data_.tokenOut).safeTransfer(PLASMA_VAULT, tokenOutBalance);
+            if (data_.amountOut > tokenOutBalance) {
+                _balance.assetBalance = (data_.amountOut - tokenOutBalance).toUint96();
             } else {
                 _balance.assetBalance = 0;
             }
@@ -167,7 +156,7 @@ contract EnsoExecutor {
             _balance.assetBalance = data_.amountOut.toUint96();
         }
 
-        emit EnsoExecutorExecuted(msg.sender, data_.accountId, data_.requestId);
+        emit EnsoExecutorExecuted(PLASMA_VAULT, data_.accountId, data_.requestId);
     }
 
     /// @notice Get balance from EnsoExecutorBalance structure with uint256 conversion
@@ -182,18 +171,19 @@ contract EnsoExecutor {
     /// @param tokens_ Array of token addresses to withdraw
     /// @dev Only callable by the PlasmaVault contract
     /// @dev Transfers the full balance of each token to PlasmaVault (msg.sender)
-    function withdrawTokens(address[] calldata tokens_) external onlyPlasmaVault {
+    function withdrawAll(address[] calldata tokens_) external onlyPlasmaVault {
         uint256 tokensLength = tokens_.length;
         if (tokensLength == 0) {
             return;
         }
 
         uint256[] memory amounts = new uint256[](tokensLength);
+        uint256 balance;
 
         for (uint256 i; i < tokensLength; ++i) {
-            uint256 balance = IERC20(tokens_[i]).balanceOf(address(this));
+            balance = IERC20(tokens_[i]).balanceOf(address(this));
             if (balance > 0) {
-                IERC20(tokens_[i]).safeTransfer(msg.sender, balance);
+                IERC20(tokens_[i]).safeTransfer(PLASMA_VAULT, balance);
                 amounts[i] = balance;
             }
         }

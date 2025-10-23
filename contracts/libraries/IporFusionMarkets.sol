@@ -116,6 +116,20 @@ library IporFusionMarkets {
     /// @dev Substrate type: address
     /// @dev Substrate values: Yield Basis LT tokens addresses
     uint256 public constant YIELD_BASIS_LT = 37;
+    /// @dev Enso Finance market
+    /// @dev Substrate type: EnsoSubstrate
+    /// @dev Substrate values: Encoded combination of target address and function selector
+    /// @dev Example substrate encoding:
+    ///      - For token transfers: EnsoSubstrateLib.encode(Substrate({
+    ///          target_: USDC,
+    ///          functionSelector_: ERC20.transfer.selector
+    ///        }))
+    ///      - For swaps: EnsoSubstrateLib.encode(Substrate({
+    ///          target_: swapTarget,
+    ///          functionSelector_: ISwap.swap.selector
+    ///        }))
+    /// @dev Used for executing Enso Finance operations via EnsoExecutor contract
+    /// @dev Supports token transfers, swaps and other operations defined in DelegateEnsoShortcuts
 
     uint256 public constant ENSO = 38;
 
