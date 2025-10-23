@@ -6,17 +6,19 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {EnsoExecutor, EnsoExecutorData} from "./EnsoExecutor.sol";
-import {EnsoSubstrateLib, EnsoSubstrate} from "./EnsoSubstrateLib.sol";
-import {EnsoStorageLib} from "./EnsoStorageLib.sol";
+import {EnsoSubstrateLib, EnsoSubstrate} from "./lib/EnsoSubstrateLib.sol";
+import {EnsoStorageLib} from "./lib/EnsoStorageLib.sol";
 
-/// @notice Data structure used for entering an Enso shortcut operation.
-/// @param tokensToTransfer_ - The array of token addresses to transfer from PlasmaVault to the executor
-/// @param amounts_ - The array of amounts corresponding to each token in tokensToTransfer
-/// @param accountId_ - The bytes32 value representing an API user
-/// @param requestId_ - The bytes32 value representing an API request
-/// @param commands_ - An array of bytes32 values that encode calls
-/// @param state_ - An array of bytes that are used to generate call data for each command
-/// @param tokensToReturn_ - Array of token addresses that should be returned from executor to PlasmaVault
+/// @notice Data structure used for entering an Enso shortcut operation
+/// @dev This structure contains all necessary data for executing an Enso routing operation via the executor
+/// @param tokenOut_ The token address that will be transferred from PlasmaVault to EnsoExecutor
+/// @param amountOut_ The amount of tokenOut to transfer to the executor (in tokenOut decimals)
+/// @param wEthAmount_ The amount of WETH to unwrap to ETH and transfer to the executor (in WETH decimals, 0 if not needed)
+/// @param accountId_ The bytes32 value representing an API user identifier from Enso
+/// @param requestId_ The bytes32 value representing a unique API request identifier from Enso
+/// @param commands_ An array of bytes32 values encoding the sequence of calls to execute (target, selector, flags)
+/// @param state_ An array of bytes providing the calldata parameters for each corresponding command
+/// @param tokensToReturn_ Array of token addresses expected to be returned to PlasmaVault after execution
 struct EnsoFuseEnterData {
     address tokenOut;
     uint256 amountOut;
@@ -28,8 +30,9 @@ struct EnsoFuseEnterData {
     address[] tokensToReturn;
 }
 
-/// @notice Data structure used for exiting Enso positions and withdrawing tokens
-/// @param tokens_ - Array of token addresses to withdraw from EnsoExecutor
+/// @notice Data structure used for exiting Enso positions and withdrawing tokens from the executor
+/// @dev This structure is used to specify which tokens should be withdrawn back to PlasmaVault
+/// @param tokens_ Array of token addresses to withdraw from EnsoExecutor back to PlasmaVault
 struct EnsoFuseExitData {
     address[] tokens;
 }
@@ -59,10 +62,25 @@ contract EnsoFuse is IFuseCommon {
     error EnsoFuseInvalidAddress();
     error EnsoFuseInvalidTokensOut();
 
+    /// @notice Flag indicating a standard CALL operation (state-changing, no ETH transfer)
+    /// @dev This flag is extracted from command byte at position 32 and used to route the execution type
     uint256 private constant FLAG_CT_CALL = 0x01;
+
+    /// @notice Flag indicating a STATICCALL operation (read-only, no state changes)
+    /// @dev STATICCALL operations are skipped during substrate validation as they cannot modify state
     uint256 private constant FLAG_CT_STATICCALL = 0x02;
+
+    /// @notice Flag indicating a CALL operation with ETH value transfer
+    /// @dev Similar to FLAG_CT_CALL but includes msg.value in the call
     uint256 private constant FLAG_CT_VALUECALL = 0x03;
+
+    /// @notice Bit mask to extract the call type from command flags
+    /// @dev Applied via bitwise AND to isolate the lower 2 bits containing call type information
     uint256 private constant FLAG_CT_MASK = 0x03;
+
+    /// @notice Flag indicating that the next command contains indices rather than a call
+    /// @dev When set, the following command in the array should be skipped during validation
+    ///      as it contains array indices or other metadata, not an actual external call
     uint256 private constant FLAG_EXTENDED_COMMAND = 0x40;
 
     address public immutable VERSION;

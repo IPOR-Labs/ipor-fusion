@@ -6,8 +6,8 @@ import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
-import {IEnsoExecutor} from "./IEnsoExecutor.sol";
-import {EnsoStorageLib} from "./EnsoStorageLib.sol";
+import {IEnsoExecutor} from "./interfaces/IEnsoExecutor.sol";
+import {EnsoStorageLib} from "./lib/EnsoStorageLib.sol";
 
 /// @title EnsoBalanceFuse
 /// @notice Fuse for reading balance from EnsoExecutor and converting it to USD value

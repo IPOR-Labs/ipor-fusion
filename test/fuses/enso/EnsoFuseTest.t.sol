@@ -14,7 +14,7 @@ import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.
 import {EnsoFuse, EnsoFuseEnterData, EnsoFuseExitData} from "../../../contracts/fuses/enso/EnsoFuse.sol";
 import {EnsoBalanceFuse} from "../../../contracts/fuses/enso/EnsoBalanceFuse.sol";
 import {EnsoInitExecutorFuse} from "../../../contracts/fuses/enso/EnsoInitExecutorFuse.sol";
-import {EnsoSubstrateLib, EnsoSubstrate} from "../../../contracts/fuses/enso/EnsoSubstrateLib.sol";
+import {EnsoSubstrateLib, EnsoSubstrate} from "../../../contracts/fuses/enso/lib/EnsoSubstrateLib.sol";
 
 // Libraries
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";

@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {EnsoSubstrateLib, EnsoSubstrate} from "../../../contracts/fuses/enso/EnsoSubstrateLib.sol";
+import {EnsoSubstrateLib, EnsoSubstrate} from "../../../contracts/fuses/enso/lib/EnsoSubstrateLib.sol";
 
 /// @title EnsoSubstrateLibTest
 /// @dev Test contract for EnsoSubstrateLib encoding and decoding functions

@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {EnsoExecutor} from "./EnsoExecutor.sol";
-import {EnsoStorageLib} from "./EnsoStorageLib.sol";
+import {EnsoStorageLib} from "./lib/EnsoStorageLib.sol";
 
 /// @title EnsoInitExecutorFuse
 /// @notice This contract is designed to initialize and store the EnsoExecutor instance
