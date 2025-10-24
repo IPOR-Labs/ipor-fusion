@@ -15,7 +15,7 @@ Since Troves can be controlled by LeverageUp and LeverageDown, there's no point 
 
 The integration uses a single market for all operations:
 
--   **Market ID 37** (`EBISU`) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove operations
+-   **Market ID 38** (`EBISU`) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove operations
 
 ## Architecture
 
