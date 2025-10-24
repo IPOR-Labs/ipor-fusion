@@ -148,15 +148,15 @@ contract EnsoExecutor {
         if (tokenOutBalance > 0) {
             IERC20(data_.tokenOut).safeTransfer(PLASMA_VAULT, tokenOutBalance);
             if (data_.amountOut > tokenOutBalance) {
-                // In cross-chain or other scenarios, the executor might not have all tokens yet,
-                // but we still track the remaining expected balance for future reconciliation
+                // @dev In cross-chain or other scenarios, the executor might not have all tokens yet,
+                // @devbut we still track the remaining expected balance for future reconciliation
                 _balance.assetBalance = (data_.amountOut - tokenOutBalance).toUint96();
             } else {
                 _balance.assetBalance = 0;
             }
         } else {
-            // In cross-chain or other scenarios, the executor might not have the tokens yet,
-            // but we still track the expected balance for future reconciliation
+            // @dev In cross-chain or other scenarios, the executor might not have the tokens yet,
+            // @dev but we still track the expected balance for future reconciliation
             _balance.assetBalance = data_.amountOut.toUint96();
         }
 
@@ -215,6 +215,6 @@ contract EnsoExecutor {
         emit EnsoExecutorRecovery(target_, data_);
     }
 
-    /// @notice Allows the contract to receive ETH
+    /// @dev Allows the contract to receive ETH
     receive() external payable {}
 }

@@ -11,7 +11,7 @@ Enso is a DeFi routing and automation platform that provides smart routing acros
 
 The integration uses a single market for all operations:
 
--   **Market ID** (configurable) - Enso routing and strategy execution operations
+-   **Market ID** (configurable) - Enso routing and strategy execution operations, it is fixed in IporFusionMarkets to 38
 
 ## Architecture
 

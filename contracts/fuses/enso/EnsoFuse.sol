@@ -60,7 +60,7 @@ contract EnsoFuse is IFuseCommon {
     error EnsoFuseInvalidExecutorAddress();
     error EnsoFuseInvalidArrayLength();
     error EnsoFuseInvalidAddress();
-    error EnsoFuseInvalidTokensOut();
+    error EnsoFuseInvalidTokenOut();
 
     /// @notice Flag indicating a standard CALL operation (state-changing, no ETH transfer)
     /// @dev This flag is extracted from command byte at position 32 and used to route the execution type
@@ -107,7 +107,7 @@ contract EnsoFuse is IFuseCommon {
     /// @param data_ The data structure containing all parameters for the Enso operation
     function enter(EnsoFuseEnterData calldata data_) external {
         if (data_.tokenOut == address(0)) {
-            revert EnsoFuseInvalidTokensOut();
+            revert EnsoFuseInvalidTokenOut();
         }
 
         _validateEnterSubstrates(data_);
