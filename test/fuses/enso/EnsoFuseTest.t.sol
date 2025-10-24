@@ -517,7 +517,7 @@ contract EnsoFuseTest is Test {
 
         // when & then
         vm.prank(ALPHA);
-        vm.expectRevert(abi.encodeWithSignature("EnsoFuseInvalidTokensOut()"));
+        vm.expectRevert(abi.encodeWithSignature("EnsoFuseInvalidTokenOut()"));
         plasmaVault.execute(actions);
     }
 
