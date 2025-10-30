@@ -97,17 +97,18 @@ contract MerklClaimFuse {
         address rewardsClaimManager_
     ) internal {
         uint256 tokensLength = tokens_.length;
+        address plasmaVault = address(this);
 
         // Build users array - always use address(this) as the PlasmaVault address
         address[] memory users = new address[](tokensLength);
         for (uint256 i; i < tokensLength; ++i) {
-            users[i] = address(this);
+            users[i] = plasmaVault;
         }
 
         // Record balances before claiming to calculate claimed amounts
         uint256[] memory balancesBefore = new uint256[](tokensLength);
         for (uint256 i; i < tokensLength; ++i) {
-            balancesBefore[i] = IERC20(tokens_[i]).balanceOf(address(this));
+            balancesBefore[i] = IERC20(tokens_[i]).balanceOf(plasmaVault);
         }
 
         // Call the Merkl Distributor to claim rewards
@@ -154,7 +155,8 @@ contract MerklClaimFuse {
         address token_,
         address[] calldata doNotTransferToRewardManager_
     ) internal pure returns (bool shouldSkip) {
-        for (uint256 j; j < doNotTransferToRewardManager_.length; ++j) {
+        uint256 length = doNotTransferToRewardManager_.length;
+        for (uint256 j; j < length; ++j) {
             if (token_ == doNotTransferToRewardManager_[j]) {
                 return true;
             }
