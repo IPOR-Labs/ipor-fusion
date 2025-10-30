@@ -10,12 +10,11 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {WrappedPlasmaVaultBase} from "./WrappedPlasmaVaultBase.sol";
+import {WhitelistAccessControl} from "./WhitelistAccessControl.sol";
 
-contract WrappedPlasmaVault is WrappedPlasmaVaultBase, Ownable2StepUpgradeable {
+contract WhitelistWrappedPlasmaVault is WrappedPlasmaVaultBase, WhitelistAccessControl {
     using SafeERC20 for IERC20;
     using Math for uint256;
-
-    error ZeroOwnerAddress();
 
     /**
      * @notice Initializes the Wrapped Plasma Vault with the underlying asset and vault configuration
@@ -23,20 +22,19 @@ contract WrappedPlasmaVault is WrappedPlasmaVaultBase, Ownable2StepUpgradeable {
      * @param name_ Name of the vault token
      * @param symbol_ Symbol of the vault token
      * @param plasmaVault_ Address of the underlying Plasma Vault that this wrapper will interact with
-     * @param wrappedPlasmaVaultOwner_ Address of the owner of the wrapped Plasma Vault
+     * @param initialAdmin_ Address of the initial admin of the whitelist access control
      * @custom:oz-upgrades-unsafe-allow constructor
      */
     constructor(
         string memory name_,
         string memory symbol_,
         address plasmaVault_,
-        address wrappedPlasmaVaultOwner_,
+        address initialAdmin_,
         address managementFeeAccount_,
         uint256 managementFeePercentage_,
         address performanceFeeAccount_,
         uint256 performanceFeePercentage_
     )
-        initializer
         WrappedPlasmaVaultBase(
             name_,
             symbol_,
@@ -46,10 +44,8 @@ contract WrappedPlasmaVault is WrappedPlasmaVaultBase, Ownable2StepUpgradeable {
             performanceFeeAccount_,
             performanceFeePercentage_
         )
-    {
-        if (wrappedPlasmaVaultOwner_ == address(0)) revert ZeroOwnerAddress();
-        __Ownable_init(wrappedPlasmaVaultOwner_);
-    }
+        WhitelistAccessControl(initialAdmin_)
+    {}
     /**
      * @notice Configures the management fee parameters for the vault
      * @dev Updates management fee recipient and percentage through PlasmaVaultLib
@@ -80,7 +76,10 @@ contract WrappedPlasmaVault is WrappedPlasmaVaultBase, Ownable2StepUpgradeable {
      * @param feeInPercentage_ Management fee percentage with 2 decimal places (10000 = 100%)
      * @custom:security Restricted to contract owner
      */
-    function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external override onlyOwner {
+    function configureManagementFee(
+        address feeAccount_,
+        uint256 feeInPercentage_
+    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         PlasmaVaultLib.configureManagementFee(feeAccount_, feeInPercentage_);
     }
 
@@ -115,7 +114,34 @@ contract WrappedPlasmaVault is WrappedPlasmaVaultBase, Ownable2StepUpgradeable {
      * @param feeInPercentage_ Performance fee percentage with 2 decimal places (10000 = 100%)
      * @custom:security Restricted to contract owner
      */
-    function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external override onlyOwner {
+    function configurePerformanceFee(
+        address feeAccount_,
+        uint256 feeInPercentage_
+    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         PlasmaVaultLib.configurePerformanceFee(feeAccount_, feeInPercentage_);
+    }
+
+    function deposit(uint256 assets_, address receiver_) public override onlyRole(WHITELISTED) returns (uint256) {
+        return super.deposit(assets_, receiver_);
+    }
+
+    function mint(uint256 shares_, address receiver_) public override onlyRole(WHITELISTED) returns (uint256) {
+        return super.mint(shares_, receiver_);
+    }
+
+    function withdraw(
+        uint256 shares_,
+        address receiver_,
+        address owner_
+    ) public override onlyRole(WHITELISTED) returns (uint256) {
+        return super.withdraw(shares_, receiver_, owner_);
+    }
+
+    function redeem(
+        uint256 shares_,
+        address receiver_,
+        address owner_
+    ) public override onlyRole(WHITELISTED) returns (uint256) {
+        return super.redeem(shares_, receiver_, owner_);
     }
 }
