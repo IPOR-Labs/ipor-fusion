@@ -40,7 +40,6 @@ contract SyrupClaimFuse {
     /// @notice The address of this contract instance, used for version tracking
     address public immutable VERSION;
 
-    /// @notice The address of the Syrup contract
     address public immutable REWARD_DISTRIBUTOR;
 
     /**
