@@ -12,14 +12,14 @@ Reward EUL (rEUL) is a locked form of EUL designed to incentivize early adopters
 
 rEUL tokens convert 1:1 into EUL over six months, following a non-linear unlock schedule:
 
-- **20% unlocks immediately**: Users can redeem a portion of their rEUL right away
-- **80% unlocks linearly over six months**: The remaining portion vests gradually
-- **Forfeiture**: Users can redeem unlocked EUL anytime, but locked EUL is forfeited and burned if not fully vested
+-   **20% unlocks immediately**: Users can redeem a portion of their rEUL right away
+-   **80% unlocks linearly over six months**: The remaining portion vests gradually
+-   **Forfeiture**: Users can redeem unlocked EUL anytime, but locked EUL is forfeited and burned if not fully vested
 
 ### Important Characteristics
 
-- **Non-fungible**: Despite appearing as ERC-20 tokens, rEUL tokens are non-fungible. Each claim starts a separate vesting period, making each token position unique
-- **Transfer restrictions**: Most rEUL tokens are locked and cannot be transferred to general-purpose wallet addresses, except to whitelisted smart contracts for third-party Euler integrations
+-   **Non-fungible**: Despite appearing as ERC-20 tokens, rEUL tokens are non-fungible. Each claim starts a separate vesting period, making each token position unique
+-   **Transfer restrictions**: Most rEUL tokens are locked and cannot be transferred to general-purpose wallet addresses, except to whitelisted smart contracts for third-party Euler integrations
 
 For more details, see the [official Euler documentation](https://docs.euler.finance/EUL/reward-eul).
 
@@ -40,23 +40,25 @@ The fuse performs the following steps when `claim()` is called:
 
 ```solidity
 struct ClaimData {
-    uint256[] lockTimestamps;    // Array of normalized lock timestamps to withdraw
-    bool allowRemainderLoss;      // Whether to allow remainder loss due to lock schedule
+    uint256[] lockTimestamps; // Array of normalized lock timestamps to withdraw
+    bool allowRemainderLoss; // Whether to allow remainder loss due to lock schedule
 }
 ```
 
 **Parameters:**
-- `lockTimestamps`: An array of normalized lock timestamps for the locked rEUL amounts to withdraw. These can be obtained using `IREUL.getLockedAmountsLockTimestamps(address)`
-- `allowRemainderLoss`: 
-  - If `true`: Allows the withdrawal even if there are remainders that will be transferred to the configured receiver address (as per the lock schedule)
-  - If `false`: The withdrawal will revert if there are any remainder amounts that cannot be fully withdrawn
+
+-   `lockTimestamps`: An array of normalized lock timestamps for the locked rEUL amounts to withdraw. These can be obtained using `IREUL.getLockedAmountsLockTimestamps(address)`
+-   `allowRemainderLoss`:
+    -   If `true`: Allows the withdrawal even if there are remainders that will be transferred to the configured receiver address (as per the lock schedule)
+    -   If `false`: The withdrawal will revert if there are any remainder amounts that cannot be fully withdrawn
 
 ### Integration with RewardsClaimManager
 
 This fuse must be registered with a `RewardsClaimManager` contract. The manager:
-- Provides access control (typically via `CLAIM_REWARDS` role)
-- Coordinates multiple reward claim operations
-- Receives the claimed EUL tokens
+
+-   Provides access control (typically via `CLAIM_REWARDS` role)
+-   Coordinates multiple reward claim operations
+-   Receives the claimed EUL tokens
 
 ## Usage Example
 
@@ -91,8 +93,8 @@ Before claiming, you can check how much EUL can be withdrawn:
 );
 ```
 
-- `accountAmount`: The amount that can be unlocked and sent to the account
-- `remainderAmount`: The amount that will be transferred to the configured receiver address (if `allowRemainderLoss` is true)
+-   `accountAmount`: The amount that can be unlocked and sent to the account
+-   `remainderAmount`: The amount that will be transferred to the configured receiver address (if `allowRemainderLoss` is true)
 
 ## Security Considerations
 
@@ -104,36 +106,34 @@ Before claiming, you can check how much EUL can be withdrawn:
 ## Events
 
 ```solidity
-event RewardEulerTokenClaimFuseClaimed(
-    address rewardsClaimManager,
-    uint256 eulerRewardsManagerBalance
-);
+event RewardEulerTokenClaimFuseClaimed(address rewardsClaimManager, uint256 eulerRewardsManagerBalance);
 ```
 
 Emitted when rewards are successfully claimed, including:
-- The address of the rewards claim manager that received the tokens
-- The amount of EUL tokens claimed
+
+-   The address of the rewards claim manager that received the tokens
+-   The amount of EUL tokens claimed
 
 ## Errors
 
-- `RewardEulerTokenClaimFuseInvalidAddress()`: Thrown when rEUL or EUL address is zero in constructor
-- `RewardEulerTokenClaimFuseRewardsClaimManagerNotSet()`: Thrown when RewardsClaimManager address is not set in the vault
-- `RewardEulerTokenClaimFuseInvalidBalanceAfter()`: Thrown when EUL balance decreases after claim operation
+-   `RewardEulerTokenClaimFuseInvalidAddress()`: Thrown when rEUL or EUL address is zero in constructor
+-   `RewardEulerTokenClaimFuseRewardsClaimManagerNotSet()`: Thrown when RewardsClaimManager address is not set in the vault
+-   `RewardEulerTokenClaimFuseInvalidBalanceAfter()`: Thrown when EUL balance decreases after claim operation
 
 ## Deployment
 
 The constructor requires:
-- `rEUL_`: Address of the rEUL token contract (e.g., `0xf3e621395fc714B90dA337AA9108771597b4E696` on Ethereum mainnet)
-- `EUL_`: Address of the EUL token contract (e.g., `0xd9Fcd98c322942075A5C3860693e9f4f03AAE07b` on Ethereum mainnet)
+
+-   `rEUL_`: Address of the rEUL token contract (e.g., `0xf3e621395fc714B90dA337AA9108771597b4E696` on Ethereum mainnet)
+-   `EUL_`: Address of the EUL token contract (e.g., `0xd9Fcd98c322942075A5C3860693e9f4f03AAE07b` on Ethereum mainnet)
 
 ## Related Contracts
 
-- `IREUL`: Interface for interacting with the rEUL token contract
-- `RewardsClaimManager`: Manager contract that coordinates reward claims
-- `PlasmaVaultLib`: Library providing access to vault storage and configuration
+-   `IREUL`: Interface for interacting with the rEUL token contract
+-   `RewardsClaimManager`: Manager contract that coordinates reward claims
+-   `PlasmaVaultLib`: Library providing access to vault storage and configuration
 
 ## References
 
-- [Euler rEUL Documentation](https://docs.euler.finance/EUL/reward-eul)
-- [rEUL Rewards Governance Proposal](https://docs.euler.finance/EUL/reward-eul#further-reading)
-
+-   [Euler rEUL Documentation](https://docs.euler.finance/EUL/reward-eul)
+-   [rEUL Rewards Governance Proposal](https://docs.euler.finance/EUL/reward-eul#further-reading)
