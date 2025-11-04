@@ -11,6 +11,7 @@ import {UniversalReader} from "../../universal_reader/UniversalReader.sol";
 /// @dev Implements UUPS upgradeable pattern and access control
 contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, UniversalReader {
     error FuseWhitelistInvalidInputLength();
+    error FuseWhitelistInvalidInput();
 
     /// @notice Initializes the contract
     /// @param initialAdmin_ The address that will own the contract
@@ -227,6 +228,30 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         fuseType = fuseInfo.fuseType;
         fuseAddress = fuseInfo.fuseAddress;
         timestamp = fuseInfo.timestamp;
+    }
+
+    function getFuseMetadataInfo(
+        address fuseAddress_
+    ) external view returns (uint256[] memory metadataIds, bytes32[][] memory metadata) {
+        if (fuseAddress_ == address(0)) {
+            revert FuseWhitelistInvalidInput();
+        }
+
+        FuseInfo storage fuseInfo = FuseWhitelistLib.getFuseByAddress(fuseAddress_);
+
+        uint256 length = fuseInfo.metadataIds.length;
+
+        if (length == 0) {
+            return (new uint256[](0), new bytes32[][](0));
+        }
+
+        metadataIds = new uint256[](length);
+        metadata = new bytes32[][](length);
+
+        for (uint256 i; i < length; i++) {
+            metadataIds[i] = fuseInfo.metadataIds[i];
+            metadata[i] = fuseInfo.metadata[metadataIds[i]];
+        }
     }
 
     /// @notice Retrieves all fuses associated with a specific market ID
