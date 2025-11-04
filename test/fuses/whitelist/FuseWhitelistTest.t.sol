@@ -696,6 +696,15 @@ contract FuseWhitelistTest is Test {
         vm.stopPrank();
 
         // Assert
+
+        (uint256[] memory metadataIdsResult, bytes32[][] memory metadataResult) = _fuseWhitelist.getFuseMetadataInfo(
+            fuseAddress
+        );
+        assertEq(metadataIdsResult.length, 1, "Metadata IDs should be equal to the input");
+        assertEq(metadataIdsResult[0], 1, "Metadata IDs should be equal to the input");
+        assertEq(metadataResult[0][0], keccak256("test1"), "Metadata should be equal to the input");
+        assertEq(metadataResult[0][1], keccak256("test2"), "Metadata should be equal to the input");
+
         assertTrue(result, "Function should return true");
     }
 
