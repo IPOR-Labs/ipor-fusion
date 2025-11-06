@@ -28,7 +28,7 @@ struct Hook {
 
 /// @notice Structure for storing validator data
 /// @param exchangeRate The exchange rate value (128 bits)
-/// @param threshold The threshold value (120 bits)
+/// @param threshold The threshold value (120 bits) expressed as a percentage in 1e18 precision, where 1e18 = 100%
 /// @dev The entire struct is packed into a single bytes31 value (248 bits total):
 ///      - First 120 bits: threshold
 ///      - Remaining 128 bits: exchangeRate
@@ -40,10 +40,6 @@ struct ValidatorData {
 /// @title ExchangeRateLimiterConfigLib
 /// @notice Library for converting ExchangeRateLimiterConfig to/from bytes32
 library ExchangeRateLimiterConfigLib {
-    /// @notice Error thrown when the maximum number of pre-hooks is exceeded
-    error ExchangeRateLimiterConfigLibMaxPreHooksExceeded();
-    /// @notice Error thrown when the maximum number of post-hooks is exceeded
-    error ExchangeRateLimiterConfigLibMaxPostHooksExceeded();
     /// @notice Error thrown when hook index is out of range (must be 0-9)
     error ExchangeRateLimiterConfigLibInvalidHookIndex();
     /// @notice Error thrown when hook position is already occupied
@@ -59,7 +55,9 @@ library ExchangeRateLimiterConfigLib {
     /// @param config_ The configuration struct to convert
     /// @return The packed bytes32 value
     /// @dev Packs enum type in the most significant byte (bits 248-255), data occupies lower 31 bytes (bits 0-247)
-    function exchangeRateLimiterConfigToBytes32(ExchangeRateLimiterConfig memory config_) internal pure returns (bytes32) {
+    function exchangeRateLimiterConfigToBytes32(
+        ExchangeRateLimiterConfig memory config_
+    ) internal pure returns (bytes32) {
         return bytes32((uint256(config_.typ) << 248) | uint256(uint248(config_.data)));
     }
 
@@ -67,7 +65,9 @@ library ExchangeRateLimiterConfigLib {
     /// @param bytes32Config_ The packed bytes32 value
     /// @return config The unpacked configuration struct
     /// @dev Extracts enum type from most significant byte, data from lower 31 bytes
-    function bytes32ToExchangeRateLimiterConfig(bytes32 bytes32Config_) internal pure returns (ExchangeRateLimiterConfig memory config) {
+    function bytes32ToExchangeRateLimiterConfig(
+        bytes32 bytes32Config_
+    ) internal pure returns (ExchangeRateLimiterConfig memory config) {
         // Extract enum from most significant byte (bits 248-255)
         uint256 typValue = uint256(bytes32Config_) >> 248;
         if (typValue == 0) {
@@ -87,9 +87,9 @@ library ExchangeRateLimiterConfigLib {
     /// @param hook_ The Hook struct to convert
     /// @return The packed bytes31 value
     /// @dev Packs address (160 bits) and index (8 bits) into bytes31:
-    ///      - First 160 bits: address (shifted by 88 bits)
-    ///      - Next 8 bits: index (shifted by 80 bits)
-    ///      - Remaining 80 bits: unused
+    ///      - Bits 88-247 (160 bits): address (shifted by 88 bits)
+    ///      - Bits 80-87 (8 bits): index (shifted by 80 bits)
+    ///      - Bits 0-79 (80 bits): unused
     function hookToBytes31(Hook memory hook_) internal pure returns (bytes31) {
         // Address is 20 bytes (160 bits), index is 1 byte (8 bits), bytes31 is 31 bytes (248 bits)
         // Pack address in bits 88-247 (160 bits), index in bits 80-87 (8 bits)
@@ -121,7 +121,9 @@ library ExchangeRateLimiterConfigLib {
     /// @param bytes31ValidatorData_ The packed bytes31 value
     /// @return validatorData The unpacked ValidatorData struct
     /// @dev Extracts threshold from first 120 bits, exchangeRate from remaining 128 bits
-    function bytes31ToValidatorData(bytes31 bytes31ValidatorData_) internal pure returns (ValidatorData memory validatorData) {
+    function bytes31ToValidatorData(
+        bytes31 bytes31ValidatorData_
+    ) internal pure returns (ValidatorData memory validatorData) {
         uint256 packed = uint256(uint248(bytes31ValidatorData_));
         // Extract threshold from first 120 bits
         validatorData.threshold = uint120(packed & type(uint120).max);
@@ -137,12 +139,16 @@ library ExchangeRateLimiterConfigLib {
     /// @return index Position of validationData in the input array (type(uint256).max if not found)
     /// @dev Iterates through the array, unpacks each ExchangeRateLimiterConfig,
     ///      and categorizes them based on HookType (PREHOOKS, POSTHOOKS, VALIDATOR).
-    ///      Reverts if the maximum number of pre-hooks or post-hooks (10 each) is exceeded.
+    ///      Reverts if hook index is out of range (>= 10) or if hook position is already occupied.
     ///      Hooks are inserted at positions corresponding to their index field (0-9).
     ///      Returns arrays of fixed size 10, with empty hooks (address(0)) filling unused slots.
     function parseConfigs(
         bytes32[] memory configs_
-    ) internal pure returns (Hook[] memory preHooks, Hook[] memory postHooks, ValidatorData memory validationData, uint256 index) {
+    )
+        internal
+        pure
+        returns (Hook[] memory preHooks, Hook[] memory postHooks, ValidatorData memory validationData, uint256 index)
+    {
         index = type(uint256).max;
 
         // Allocate arrays with fixed size of 10
@@ -181,4 +187,3 @@ library ExchangeRateLimiterConfigLib {
         }
     }
 }
-
