@@ -87,7 +87,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
     event WethEthAdapterCreated(address adapterAddress, address plasmaVault, address weth);
 
     constructor(uint256 marketId_, address weth_) {
-        if(weth_ == address(0)) revert WethAddressNotValid();
+        if (weth_ == address(0)) revert WethAddressNotValid();
         MARKET_ID = marketId_;
         WETH = weth_;
     }
@@ -98,21 +98,32 @@ contract EbisuZapperCreateFuse is IFuseCommon {
     /// The result is having a Trove open with collateral collAmount + flashLoanAmount, and debt ebusdAmount + fees
     /// An amount of 0.375 ETH must be deposited on the Zapper contract, thus we need the WethEthAdapter
     function enter(EbisuZapperCreateFuseEnterData calldata data_) external {
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                EbisuZapperSubstrateLib.substrateToBytes32(
+                    EbisuZapperSubstrate({
+                        substrateType: EbisuZapperSubstrateType.ZAPPER,
+                        substrateAddress: data_.zapper
+                    })
+                )
+            )
+        ) revert UnsupportedSubstrate();
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                EbisuZapperSubstrateLib.substrateToBytes32(
+                    EbisuZapperSubstrate({
+                        substrateType: EbisuZapperSubstrateType.REGISTRY,
+                        substrateAddress: data_.registry
+                    })
+                )
+            )
+        ) revert UnsupportedSubstrate();
 
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
-            EbisuZapperSubstrateLib.substrateToBytes32(
-                EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.ZAPPER,
-                    substrateAddress: data_.zapper
-                })))) revert UnsupportedSubstrate();
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
-            EbisuZapperSubstrateLib.substrateToBytes32(
-                EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.REGISTRY,
-                    substrateAddress: data_.registry
-                })))) revert UnsupportedSubstrate();
-
-        if (data_.annualInterestRate < MIN_ANNUAL_INTEREST_RATE || data_.annualInterestRate > MAX_ANNUAL_INTEREST_RATE) {
+        if (
+            data_.annualInterestRate < MIN_ANNUAL_INTEREST_RATE || data_.annualInterestRate > MAX_ANNUAL_INTEREST_RATE
+        ) {
             revert UpfrontFeeTooHigh(data_.annualInterestRate);
         }
 
@@ -136,7 +147,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
             annualInterestRate: data_.annualInterestRate,
             batchManager: address(0),
             maxUpfrontFee: data_.maxUpfrontFee,
-            addManager: address(0),
+            addManager: msg.sender,
             removeManager: adapter,
             receiver: adapter
         });
@@ -148,21 +159,18 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         IERC20(zapper.collToken()).safeTransfer(adapter, data_.collAmount);
 
         /// @dev minEthToSpend = ETH_GAS_COMPENSATION by default
-        IWethEthAdapter(adapter).openTroveByZapper(
-            params,
-            data_.zapper,
-            ETH_GAS_COMPENSATION
-        );
+        IWethEthAdapter(adapter).openTroveByZapper(params, data_.zapper, ETH_GAS_COMPENSATION);
 
-        uint256 troveId = EbisuMathLib.calculateTroveId(
-            adapter,
-            address(this),
-            data_.zapper,
-            ownerIndex
-        );
+        uint256 troveId = EbisuMathLib.calculateTroveId(adapter, address(this), data_.zapper, ownerIndex);
         troveDataStorage.troveIds[data_.zapper] = troveId;
 
-        emit EbisuZapperCreateFuseEnter(data_.zapper, data_.collAmount, data_.flashLoanAmount, data_.ebusdAmount, troveId);
+        emit EbisuZapperCreateFuseEnter(
+            data_.zapper,
+            data_.collAmount,
+            data_.flashLoanAmount,
+            data_.ebusdAmount,
+            troveId
+        );
     }
 
     /// @notice closing a Liquity (leveraged) Trove through Ebisu's Zapper
@@ -171,12 +179,17 @@ contract EbisuZapperCreateFuse is IFuseCommon {
     /// In both cases, the PlasmaVault receives the excess collateral tokens
     /// In the case exitFromCollateral = true, the PlasmaVault may receive excess ebUSD too.
     function exit(EbisuZapperCreateFuseExitData calldata data_) external {
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
-            EbisuZapperSubstrateLib.substrateToBytes32(
-                EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.ZAPPER,
-                    substrateAddress: data_.zapper
-            })))) revert UnsupportedSubstrate();
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                EbisuZapperSubstrateLib.substrateToBytes32(
+                    EbisuZapperSubstrate({
+                        substrateType: EbisuZapperSubstrateType.ZAPPER,
+                        substrateAddress: data_.zapper
+                    })
+                )
+            )
+        ) revert UnsupportedSubstrate();
 
         FuseStorageLib.EbisuTroveIds storage troveDataStorage = FuseStorageLib.getEbisuTroveIds();
 
@@ -184,20 +197,20 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         if (troveId == 0) revert TroveNotOpen();
 
         address adapter = WethEthAdapterStorageLib.getWethEthAdapter();
-        if (adapter == address(0)) 
-            revert WethEthAdapterNotFound();
+        if (adapter == address(0)) revert WethEthAdapterNotFound();
 
-        if (!data_.exitFromCollateral){
+        if (!data_.exitFromCollateral) {
             IERC20 ebusdToken = IERC20(ILeverageZapper(data_.zapper).boldToken());
             ebusdToken.safeTransfer(adapter, ebusdToken.balanceOf(address(this)));
         }
 
         IWethEthAdapter(adapter).closeTroveByZapper(
-            data_.zapper, 
+            data_.zapper,
             data_.exitFromCollateral,
             troveId,
             data_.flashLoanAmount,
-            data_.minExpectedCollateral);
+            data_.minExpectedCollateral
+        );
 
         delete troveDataStorage.troveIds[data_.zapper];
 
