@@ -13,7 +13,7 @@ enum HookType {
 /// @dev The entire struct is packed into a single bytes32 value:
 ///      - First 8 bits (1 byte): HookType enum value
 ///      - Remaining 31 bytes: data
-struct ExchangeRateLimiterConfig {
+struct ExchangeRateValidatorConfig {
     HookType typ;
     bytes31 data;
 }
@@ -37,37 +37,37 @@ struct ValidatorData {
     uint120 threshold;
 }
 
-/// @title ExchangeRateLimiterConfigLib
-/// @notice Library for converting ExchangeRateLimiterConfig to/from bytes32
-library ExchangeRateLimiterConfigLib {
+/// @title ExchangeRateValidatorConfigLib
+/// @notice Library for converting ExchangeRateValidatorConfig to/from bytes32
+library ExchangeRateValidatorConfigLib {
     /// @notice Error thrown when hook index is out of range (must be 0-9)
-    error ExchangeRateLimiterConfigLibInvalidHookIndex();
+    error ExchangeRateValidatorConfigLibInvalidHookIndex();
     /// @notice Error thrown when hook position is already occupied
-    error ExchangeRateLimiterConfigLibHookPositionOccupied();
+    error ExchangeRateValidatorConfigLibHookPositionOccupied();
     /// @notice Error thrown when hook type value is invalid
-    error ExchangeRateLimiterConfigLibInvalidHookType();
+    error ExchangeRateValidatorConfigLibInvalidHookType();
 
     /// @notice Maximum number of pre-hooks allowed
     uint256 private constant MAX_PRE_HOOKS = 10;
     /// @notice Maximum number of post-hooks allowed
     uint256 private constant MAX_POST_HOOKS = 10;
-    /// @notice Converts ExchangeRateLimiterConfig to bytes32
+    /// @notice Converts ExchangeRateValidatorConfig to bytes32
     /// @param config_ The configuration struct to convert
     /// @return The packed bytes32 value
     /// @dev Packs enum type in the most significant byte (bits 248-255), data occupies lower 31 bytes (bits 0-247)
-    function exchangeRateLimiterConfigToBytes32(
-        ExchangeRateLimiterConfig memory config_
+    function exchangeRateValidatorConfigToBytes32(
+        ExchangeRateValidatorConfig memory config_
     ) internal pure returns (bytes32) {
         return bytes32((uint256(config_.typ) << 248) | uint256(uint248(config_.data)));
     }
 
-    /// @notice Converts bytes32 to ExchangeRateLimiterConfig
+    /// @notice Converts bytes32 to ExchangeRateValidatorConfig
     /// @param bytes32Config_ The packed bytes32 value
     /// @return config The unpacked configuration struct
     /// @dev Extracts enum type from most significant byte, data from lower 31 bytes
-    function bytes32ToExchangeRateLimiterConfig(
+    function bytes32ToExchangeRateValidatorConfig(
         bytes32 bytes32Config_
-    ) internal pure returns (ExchangeRateLimiterConfig memory config) {
+    ) internal pure returns (ExchangeRateValidatorConfig memory config) {
         // Extract enum from most significant byte (bits 248-255)
         uint256 typValue = uint256(bytes32Config_) >> 248;
         if (typValue == 0) {
@@ -77,7 +77,7 @@ library ExchangeRateLimiterConfigLib {
         } else if (typValue == 2) {
             config.typ = HookType.VALIDATOR;
         } else {
-            revert ExchangeRateLimiterConfigLibInvalidHookType();
+            revert ExchangeRateValidatorConfigLibInvalidHookType();
         }
         // Extract data from lower 31 bytes (bits 0-247)
         config.data = bytes31(uint248(uint256(bytes32Config_)));
@@ -131,13 +131,13 @@ library ExchangeRateLimiterConfigLib {
         validatorData.exchangeRate = uint128(packed >> 120);
     }
 
-    /// @notice Parses an array of bytes32 containing ExchangeRateLimiterConfig data
-    /// @param configs_ Array of bytes32 containing packed ExchangeRateLimiterConfig
+    /// @notice Parses an array of bytes32 containing ExchangeRateValidatorConfig data
+    /// @param configs_ Array of bytes32 containing packed ExchangeRateValidatorConfig
     /// @return preHooks Array of pre-hooks extracted from the configs (always 10 elements, empty hooks have address(0))
     /// @return postHooks Array of post-hooks extracted from the configs (always 10 elements, empty hooks have address(0))
     /// @return validationData Validator data extracted from the configs
     /// @return index Position of validationData in the input array (type(uint256).max if not found)
-    /// @dev Iterates through the array, unpacks each ExchangeRateLimiterConfig,
+    /// @dev Iterates through the array, unpacks each ExchangeRateValidatorConfig,
     ///      and categorizes them based on HookType (PREHOOKS, POSTHOOKS, VALIDATOR).
     ///      Reverts if hook index is out of range (>= 10) or if hook position is already occupied.
     ///      Hooks are inserted at positions corresponding to their index field (0-9).
@@ -151,31 +151,30 @@ library ExchangeRateLimiterConfigLib {
     {
         index = type(uint256).max;
 
-        // Allocate arrays with fixed size of 10
         preHooks = new Hook[](MAX_PRE_HOOKS);
         postHooks = new Hook[](MAX_POST_HOOKS);
 
         uint256 configsLength = configs_.length;
-
+        ExchangeRateValidatorConfig memory config;
         // Process configs: insert hooks at positions corresponding to their index
         for (uint256 i; i < configsLength; ++i) {
-            ExchangeRateLimiterConfig memory config = bytes32ToExchangeRateLimiterConfig(configs_[i]);
+            config = bytes32ToExchangeRateValidatorConfig(configs_[i]);
             if (config.typ == HookType.PREHOOKS) {
                 Hook memory hook = bytes31ToHook(config.data);
                 if (hook.index >= MAX_PRE_HOOKS) {
-                    revert ExchangeRateLimiterConfigLibInvalidHookIndex();
+                    revert ExchangeRateValidatorConfigLibInvalidHookIndex();
                 }
                 if (preHooks[hook.index].hookAddress != address(0)) {
-                    revert ExchangeRateLimiterConfigLibHookPositionOccupied();
+                    revert ExchangeRateValidatorConfigLibHookPositionOccupied();
                 }
                 preHooks[hook.index] = hook;
             } else if (config.typ == HookType.POSTHOOKS) {
                 Hook memory hook = bytes31ToHook(config.data);
                 if (hook.index >= MAX_POST_HOOKS) {
-                    revert ExchangeRateLimiterConfigLibInvalidHookIndex();
+                    revert ExchangeRateValidatorConfigLibInvalidHookIndex();
                 }
                 if (postHooks[hook.index].hookAddress != address(0)) {
-                    revert ExchangeRateLimiterConfigLibHookPositionOccupied();
+                    revert ExchangeRateValidatorConfigLibHookPositionOccupied();
                 }
                 postHooks[hook.index] = hook;
             } else if (config.typ == HookType.VALIDATOR) {

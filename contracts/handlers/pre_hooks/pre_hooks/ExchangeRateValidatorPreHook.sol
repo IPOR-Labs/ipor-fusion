@@ -4,10 +4,10 @@ pragma solidity 0.8.26;
 import {IPreHook} from "../IPreHook.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
-import {ExchangeRateLimiterConfigLib, Hook, ValidatorData, HookType, ExchangeRateLimiterConfig} from "./ExchangeRateLimiterConfigLib.sol";
+import {ExchangeRateValidatorConfigLib, Hook, ValidatorData, HookType, ExchangeRateValidatorConfig} from "./ExchangeRateValidatorConfigLib.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
-/// @title ExchangeRateLimiterPreHook
+/// @title ExchangeRateValidatorPreHook
 /// @author IPOR Labs
 /// @notice Pre-execution hook for validating and limiting exchange rate changes in Plasma Vault
 /// @dev Implements IPreHook to validate exchange rate changes and execute pre/post hooks.
@@ -26,7 +26,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 /// - Uses delegatecall for hook execution
 /// - Validates threshold values (must be <= 100%)
 /// - Prevents exchange rate manipulation attacks
-contract ExchangeRateLimiterPreHook is IPreHook {
+contract ExchangeRateValidatorPreHook is IPreHook {
     /// @notice Market identifier associated with this pre-hook implementation
     /// @dev Mirrors fuse pattern: immutable MARKET_ID set at construction
     uint256 public immutable MARKET_ID;
@@ -67,7 +67,7 @@ contract ExchangeRateLimiterPreHook is IPreHook {
             Hook[] memory postHooks,
             ValidatorData memory validationData,
             uint256 validatorIndex
-        ) = ExchangeRateLimiterConfigLib.parseConfigs(substrates);
+        ) = ExchangeRateValidatorConfigLib.parseConfigs(substrates);
 
         _runHooks(selector_, preHooks);
         _runValidator(substrates, validatorIndex, validationData);
@@ -143,9 +143,9 @@ contract ExchangeRateLimiterPreHook is IPreHook {
                 exchangeRate: uint128(current),
                 threshold: validationData_.threshold
             });
-            bytes31 encodedValidator = ExchangeRateLimiterConfigLib.validatorDataToBytes31(updated);
-            bytes32 updatedConfig = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-                ExchangeRateLimiterConfig({typ: HookType.VALIDATOR, data: encodedValidator})
+            bytes31 encodedValidator = ExchangeRateValidatorConfigLib.validatorDataToBytes31(updated);
+            bytes32 updatedConfig = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+                ExchangeRateValidatorConfig({typ: HookType.VALIDATOR, data: encodedValidator})
             );
             substrates_[validatorIndex_] = updatedConfig;
             emit ExchangeRateUpdated(expected, current, threshold);

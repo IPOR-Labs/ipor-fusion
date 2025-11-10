@@ -2,20 +2,26 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {ExchangeRateLimiterPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateLimiterPreHook.sol";
+import {ExchangeRateValidatorPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorPreHook.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {ExchangeRateLimiterConfigLib, ExchangeRateLimiterConfig, HookType, ValidatorData, Hook} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateLimiterConfigLib.sol";
+import {
+    ExchangeRateValidatorConfigLib,
+    ExchangeRateValidatorConfig,
+    HookType,
+    ValidatorData,
+    Hook
+} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
 import {SimpleExecutePreHook} from "./SimpleExecutePreHook.sol";
 
-/// @title ExchangeRateLimiterPreHookTest
-/// @notice Tests for ExchangeRateLimiterPreHook
-contract ExchangeRateLimiterPreHookTest is Test {
-    ExchangeRateLimiterPreHook private _exchangeRateLimiterPreHook;
+/// @title ExchangeRateValidatorPreHookTest
+/// @notice Tests for ExchangeRateValidatorPreHook
+contract ExchangeRateValidatorPreHookTest is Test {
+    ExchangeRateValidatorPreHook private _exchangeRateValidatorPreHook;
     IporFusionAccessManager private _accessManager;
     address private constant PLASMA_VAULT = 0x6f66b845604dad6E80b2A1472e6cAcbbE66A8C40;
     address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -31,7 +37,7 @@ contract ExchangeRateLimiterPreHookTest is Test {
         _accessManager = IporFusionAccessManager(PlasmaVault(PLASMA_VAULT).authority());
 
         vm.startPrank(OWNER);
-        _exchangeRateLimiterPreHook = new ExchangeRateLimiterPreHook(IporFusionMarkets.EXCHANGE_RATE_LIMITER);
+        _exchangeRateValidatorPreHook = new ExchangeRateValidatorPreHook(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR);
         _accessManager.grantRole(Roles.PRE_HOOKS_MANAGER_ROLE, ATOMIST, 0);
         vm.stopPrank();
 
@@ -40,7 +46,7 @@ contract ExchangeRateLimiterPreHookTest is Test {
         selectors[0] = PlasmaVault.deposit.selector;
 
         address[] memory preHooks = new address[](1);
-        preHooks[0] = address(_exchangeRateLimiterPreHook);
+        preHooks[0] = address(_exchangeRateValidatorPreHook);
 
         bytes32[][] memory substrates = new bytes32[][](1);
         substrates[0] = new bytes32[](0);
@@ -99,23 +105,23 @@ contract ExchangeRateLimiterPreHookTest is Test {
         });
 
         // Encode validator data to bytes31
-        bytes31 validatorDataBytes = ExchangeRateLimiterConfigLib.validatorDataToBytes31(validatorData);
+        bytes31 validatorDataBytes = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
 
-        // Create ExchangeRateLimiterConfig with VALIDATOR type
-        ExchangeRateLimiterConfig memory config = ExchangeRateLimiterConfig({
+        // Create ExchangeRateValidatorConfig with VALIDATOR type
+        ExchangeRateValidatorConfig memory config = ExchangeRateValidatorConfig({
             typ: HookType.VALIDATOR,
             data: validatorDataBytes
         });
 
         // Encode config to bytes32
-        bytes32 substrate = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(config);
+        bytes32 substrate = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
 
-        // Add substrate to market EXCHANGE_RATE_LIMITER
+        // Add substrate to market EXCHANGE_RATE_VALIDATOR
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = substrate;
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_LIMITER, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -168,23 +174,23 @@ contract ExchangeRateLimiterPreHookTest is Test {
         });
 
         // Encode validator data to bytes31
-        bytes31 validatorDataBytes = ExchangeRateLimiterConfigLib.validatorDataToBytes31(validatorData);
+        bytes31 validatorDataBytes = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
 
-        // Create ExchangeRateLimiterConfig with VALIDATOR type
-        ExchangeRateLimiterConfig memory config = ExchangeRateLimiterConfig({
+        // Create ExchangeRateValidatorConfig with VALIDATOR type
+        ExchangeRateValidatorConfig memory config = ExchangeRateValidatorConfig({
             typ: HookType.VALIDATOR,
             data: validatorDataBytes
         });
 
         // Encode config to bytes32
-        bytes32 substrate = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(config);
+        bytes32 substrate = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
 
-        // Add substrate to market EXCHANGE_RATE_LIMITER
+        // Add substrate to market EXCHANGE_RATE_VALIDATOR
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = substrate;
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_LIMITER, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -202,7 +208,7 @@ contract ExchangeRateLimiterPreHookTest is Test {
         // then - verify deposit reverts with ExchangeRateOutOfRange error
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExchangeRateLimiterPreHook.ExchangeRateOutOfRange.selector,
+                ExchangeRateValidatorPreHook.ExchangeRateOutOfRange.selector,
                 currentExchangeRate,
                 expectedExchangeRate,
                 threshold
@@ -242,23 +248,23 @@ contract ExchangeRateLimiterPreHookTest is Test {
         });
 
         // Encode validator data to bytes31
-        bytes31 validatorDataBytes = ExchangeRateLimiterConfigLib.validatorDataToBytes31(validatorData);
+        bytes31 validatorDataBytes = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
 
-        // Create ExchangeRateLimiterConfig with VALIDATOR type
-        ExchangeRateLimiterConfig memory config = ExchangeRateLimiterConfig({
+        // Create ExchangeRateValidatorConfig with VALIDATOR type
+        ExchangeRateValidatorConfig memory config = ExchangeRateValidatorConfig({
             typ: HookType.VALIDATOR,
             data: validatorDataBytes
         });
 
         // Encode config to bytes32
-        bytes32 substrate = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(config);
+        bytes32 substrate = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
 
-        // Add substrate to market EXCHANGE_RATE_LIMITER
+        // Add substrate to market EXCHANGE_RATE_VALIDATOR
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = substrate;
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_LIMITER, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -276,7 +282,7 @@ contract ExchangeRateLimiterPreHookTest is Test {
         // then - verify deposit reverts with ExchangeRateOutOfRange error
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExchangeRateLimiterPreHook.ExchangeRateOutOfRange.selector,
+                ExchangeRateValidatorPreHook.ExchangeRateOutOfRange.selector,
                 currentExchangeRate,
                 expectedExchangeRate,
                 threshold
@@ -307,17 +313,17 @@ contract ExchangeRateLimiterPreHookTest is Test {
 
         // Create and encode substrate
         bytes32[] memory substrates = new bytes32[](1);
-        substrates[0] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
-                data: ExchangeRateLimiterConfigLib.validatorDataToBytes31(
+                data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
                     ValidatorData({exchangeRate: uint128(expectedExchangeRate), threshold: threshold})
                 )
             })
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_LIMITER, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
         vm.stopPrank();
 
         // Ensure user has USDC and prepare for deposit
@@ -329,7 +335,7 @@ contract ExchangeRateLimiterPreHookTest is Test {
         vm.startPrank(USER);
         IERC20(USDC).approve(PLASMA_VAULT, depositAmount);
         vm.expectEmit(true, true, true, true);
-        emit ExchangeRateLimiterPreHook.ExchangeRateUpdated(expectedExchangeRate, currentExchangeRate, threshold);
+        emit ExchangeRateValidatorPreHook.ExchangeRateUpdated(expectedExchangeRate, currentExchangeRate, threshold);
         plasmaVault.deposit(depositAmount, USER);
         vm.stopPrank();
 
@@ -338,15 +344,15 @@ contract ExchangeRateLimiterPreHookTest is Test {
 
         // Read and verify substrate was updated
         bytes32[] memory substratesAfter = PlasmaVaultGovernance(PLASMA_VAULT).getMarketSubstrates(
-            IporFusionMarkets.EXCHANGE_RATE_LIMITER
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR
         );
         assertEq(substratesAfter.length, 1, "Should have one substrate");
 
-        ExchangeRateLimiterConfig memory updatedConfig = ExchangeRateLimiterConfigLib
-            .bytes32ToExchangeRateLimiterConfig(substratesAfter[0]);
+        ExchangeRateValidatorConfig memory updatedConfig = ExchangeRateValidatorConfigLib
+            .bytes32ToExchangeRateValidatorConfig(substratesAfter[0]);
         assertEq(uint256(updatedConfig.typ), uint256(HookType.VALIDATOR), "Substrate type should be VALIDATOR");
 
-        ValidatorData memory updatedValidatorData = ExchangeRateLimiterConfigLib.bytes31ToValidatorData(
+        ValidatorData memory updatedValidatorData = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(
             updatedConfig.data
         );
         assertEq(
@@ -372,17 +378,17 @@ contract ExchangeRateLimiterPreHookTest is Test {
 
         // Create and encode substrate
         bytes32[] memory substrates = new bytes32[](1);
-        substrates[0] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
-                data: ExchangeRateLimiterConfigLib.validatorDataToBytes31(
+                data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
                     ValidatorData({exchangeRate: uint128(expectedExchangeRate), threshold: threshold})
                 )
             })
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_LIMITER, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
         vm.stopPrank();
 
         // Ensure user has USDC and prepare for deposit
@@ -401,15 +407,15 @@ contract ExchangeRateLimiterPreHookTest is Test {
 
         // Read and verify substrate was NOT updated
         bytes32[] memory substratesAfter = PlasmaVaultGovernance(PLASMA_VAULT).getMarketSubstrates(
-            IporFusionMarkets.EXCHANGE_RATE_LIMITER
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR
         );
         assertEq(substratesAfter.length, 1, "Should have one substrate");
 
-        ExchangeRateLimiterConfig memory updatedConfig = ExchangeRateLimiterConfigLib
-            .bytes32ToExchangeRateLimiterConfig(substratesAfter[0]);
+        ExchangeRateValidatorConfig memory updatedConfig = ExchangeRateValidatorConfigLib
+            .bytes32ToExchangeRateValidatorConfig(substratesAfter[0]);
         assertEq(uint256(updatedConfig.typ), uint256(HookType.VALIDATOR), "Substrate type should be VALIDATOR");
 
-        ValidatorData memory updatedValidatorData = ExchangeRateLimiterConfigLib.bytes31ToValidatorData(
+        ValidatorData memory updatedValidatorData = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(
             updatedConfig.data
         );
 
@@ -438,25 +444,25 @@ contract ExchangeRateLimiterPreHookTest is Test {
         bytes32[] memory substrates = new bytes32[](2);
 
         // First substrate: Pre-hook at index 0
-        substrates[0] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.PREHOOKS,
-                data: ExchangeRateLimiterConfigLib.hookToBytes31(Hook({hookAddress: address(simplePreHook), index: 0}))
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(simplePreHook), index: 0}))
             })
         );
 
         // Second substrate: Validator with current exchange rate (will pass validation)
-        substrates[1] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[1] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
-                data: ExchangeRateLimiterConfigLib.validatorDataToBytes31(
+                data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
                     ValidatorData({exchangeRate: uint128(currentExchangeRate), threshold: threshold})
                 )
             })
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_LIMITER, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -496,33 +502,33 @@ contract ExchangeRateLimiterPreHookTest is Test {
         bytes32[] memory substrates = new bytes32[](3);
 
         // First substrate: Pre-hook at index 0
-        substrates[0] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.PREHOOKS,
-                data: ExchangeRateLimiterConfigLib.hookToBytes31(Hook({hookAddress: address(preHook), index: 0}))
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(preHook), index: 0}))
             })
         );
 
         // Second substrate: Validator with current exchange rate (will pass validation)
-        substrates[1] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[1] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
-                data: ExchangeRateLimiterConfigLib.validatorDataToBytes31(
+                data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
                     ValidatorData({exchangeRate: uint128(currentExchangeRate), threshold: threshold})
                 )
             })
         );
 
         // Third substrate: Post-hook at index 0
-        substrates[2] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[2] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.POSTHOOKS,
-                data: ExchangeRateLimiterConfigLib.hookToBytes31(Hook({hookAddress: address(postHook), index: 0}))
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(postHook), index: 0}))
             })
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_LIMITER, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -567,49 +573,49 @@ contract ExchangeRateLimiterPreHookTest is Test {
         bytes32[] memory substrates = new bytes32[](5);
 
         // First substrate: Pre-hook 1 at index 0
-        substrates[0] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.PREHOOKS,
-                data: ExchangeRateLimiterConfigLib.hookToBytes31(Hook({hookAddress: address(preHook1), index: 0}))
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(preHook1), index: 0}))
             })
         );
 
         // Second substrate: Pre-hook 2 at index 1
-        substrates[1] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[1] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.PREHOOKS,
-                data: ExchangeRateLimiterConfigLib.hookToBytes31(Hook({hookAddress: address(preHook2), index: 1}))
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(preHook2), index: 1}))
             })
         );
 
         // Third substrate: Validator with current exchange rate (will pass validation)
-        substrates[2] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[2] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
-                data: ExchangeRateLimiterConfigLib.validatorDataToBytes31(
+                data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
                     ValidatorData({exchangeRate: uint128(currentExchangeRate), threshold: threshold})
                 )
             })
         );
 
         // Fourth substrate: Post-hook 1 at index 0
-        substrates[3] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[3] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.POSTHOOKS,
-                data: ExchangeRateLimiterConfigLib.hookToBytes31(Hook({hookAddress: address(postHook1), index: 0}))
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(postHook1), index: 0}))
             })
         );
 
         // Fifth substrate: Post-hook 2 at index 1
-        substrates[4] = ExchangeRateLimiterConfigLib.exchangeRateLimiterConfigToBytes32(
-            ExchangeRateLimiterConfig({
+        substrates[4] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
                 typ: HookType.POSTHOOKS,
-                data: ExchangeRateLimiterConfigLib.hookToBytes31(Hook({hookAddress: address(postHook2), index: 1}))
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(postHook2), index: 1}))
             })
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_LIMITER, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
         vm.stopPrank();
 
         // Ensure user has USDC
