@@ -22,6 +22,7 @@ import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
 
 contract MockDex {
     address tokenIn;
@@ -155,6 +156,15 @@ contract LiquityStabilityPoolFuseTest is Test {
         );
         assertEq(sbBalance, totalBoldToDeposit, "Stability Pool deposits should match the deposited amount");
         assertEq(assetAfter, assetBefore, "Assets should be equal to the initial assets");
+
+        // Invariant: Total assets = vault BOLD balance + sum of all market positions
+        uint256 totalAssets = plasmaVault.totalAssets();
+        uint256 vaultBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
+        uint256 liquityMarket = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
+        assertEq(totalAssets, totalBoldInVault, "Total should remain equal (conservation)");
+        assertEq(totalAssets, vaultBoldBalance + liquityMarket, "Total = vault BOLD + Liquity market");
+        assertEq(liquityMarket, totalBoldToDeposit, "Liquity market should equal deposited amount");
+        assertEq(vaultBoldBalance, totalBoldInVault - totalBoldToDeposit, "Vault BOLD should equal remainder");
     }
 
     function testShouldExitFromLiquitySB() public {
@@ -168,6 +178,8 @@ contract LiquityStabilityPoolFuseTest is Test {
         });
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
+        uint256 totalAssetsBefore = plasmaVault.totalAssets();
+        uint256 liquityMarketBefore = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
         // when
         plasmaVault.execute(exitCalls);
 
@@ -186,6 +198,15 @@ contract LiquityStabilityPoolFuseTest is Test {
             totalBoldToDeposit - totalBoldToExit,
             "Stability Pool deposits should match the remaining amount after exit"
         );
+
+        // Invariant: Total assets = vault BOLD balance + sum of all market positions
+        uint256 totalAssetsAfter = plasmaVault.totalAssets();
+        uint256 vaultBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
+        uint256 liquityMarketAfter = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
+        assertEq(totalAssetsAfter, totalAssetsBefore, "Total should remain equal (conservation)");
+        assertEq(totalAssetsAfter, totalBoldInVault, "Total is fully in vault");
+        assertEq(totalAssetsAfter, vaultBoldBalance + liquityMarketAfter, "Total = vault BOLD + Liquity market");
+        assertEq(liquityMarketAfter, liquityMarketBefore - totalBoldToExit, "Assets in market have decreased");
     }
 
     function testShouldClaimCollateralFromLiquitySP() public {
@@ -205,11 +226,14 @@ contract LiquityStabilityPoolFuseTest is Test {
         FuseAction[] memory exitCalls = new FuseAction[](1);
         // exiting from stability pool to trigger collateral claim
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
+        uint256 totalAssetsBefore = plasmaVault.totalAssets();
         // when
         plasmaVault.execute(exitCalls);
+        uint256 totalAssetsAfter = plasmaVault.totalAssets();
 
         // then
         uint256 balance = ERC20(WETH).balanceOf(address(plasmaVault));
+        assertGt(totalAssetsAfter, totalAssetsBefore, "Total should increase due to liquidation");
         assertGt(balance, 0, "Balance should be greater than zero after claiming collateral");
     }
 
@@ -246,26 +270,29 @@ contract LiquityStabilityPoolFuseTest is Test {
 
         uint256 initialBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
 
+        uint256 totalAssetsBefore = plasmaVault.totalAssets();
+        uint256 liquityMarketBefore = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
         // when
         plasmaVault.execute(swapCalls);
+        uint256 totalAssetsAfter = plasmaVault.totalAssets();
+        uint256 liquityMarketAfter = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
 
         // then
-        uint256 boldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
-        assertEq(boldBalance, initialBoldBalance + 1e10, "BOLD should be obtained after the swap");
-        uint256 wethBalance = ERC20(WETH).balanceOf(address(plasmaVault));
-        assertEq(wethBalance, 0, "WETH balance should be zero after the swap");
+        assertEq(ERC20(BOLD).balanceOf(address(plasmaVault)), initialBoldBalance + 1e10, "BOLD should be obtained after the swap");
+        assertEq(ERC20(WETH).balanceOf(address(plasmaVault)), 0, "WETH balance should be zero after the swap");
+        assertEq(totalAssetsAfter, totalAssetsBefore + 1e10, "Total has increased exactly of the swap amount");
+        assertEq(liquityMarketAfter, liquityMarketBefore, "Liquity assets should be equal");
     }
 
-    function testShouldUpdateBalanceWhenProvidingAndLiquidatingToLiquity() external {
+    // Primary test for unrealized collateral gains tracking
+    // Tests unrealized gains BEFORE and AFTER claiming
+    // Validates the state transition: unrealized → stashed
+    // Tests our new balance calculation includes unrealized gains
+    function testShouldTrackUnrealizedCollateralGainsInLiquitySP() external {
         // given
-        uint256 initialBalance = plasmaVault.totalAssets();
-        assertEq(initialBalance, 0, "Initial balance should be zero");
-
         deal(BOLD, address(this), 1000 ether);
         ERC20(BOLD).approve(address(plasmaVault), 1000 ether);
         plasmaVault.deposit(1000 ether, address(this));
-        initialBalance = plasmaVault.totalAssets();
-        assertEq(initialBalance, 1000 ether, "Balance should be 1000 BOLD after dealing");
 
         LiquityStabilityPoolFuseEnterData memory enterData = LiquityStabilityPoolFuseEnterData({
             registry: ETH_REGISTRY,
@@ -273,47 +300,132 @@ contract LiquityStabilityPoolFuseTest is Test {
         });
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
-
-        // when
         plasmaVault.execute(enterCalls);
+        //Call it assets before liquidation
+        uint256 assetsBeforeLiquidation = plasmaVault.totalAssets();
 
-        // then
-        uint256 afterDepBalance = plasmaVault.totalAssets();
-        assertEq(afterDepBalance, initialBalance, "Balance should not change after providing to SP");
-
+        // when - simulate liquidation
         IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool());
         vm.prank(address(stabilityPool.troveManager()));
-        // when
-        stabilityPool.offset(1e20, 100 ether);
+        stabilityPool.offset(50 ether, 10 ether); // Liquidate 50 BOLD, gain 10 ETH
 
-        //then
-        uint256 afterLiquidationBalance = plasmaVault.totalAssets();
-        assertEq(afterLiquidationBalance, afterDepBalance, "Balance should be equal after liquidation");
+        // Verify unrealized gains are tracked by the stability pool BEFORE triggering cache update
+        uint256 unrealizedCollGainBeforeUpdate = stabilityPool.getDepositorCollGain(address(plasmaVault));
+        assertGt(unrealizedCollGainBeforeUpdate, 0, "Should have unrealized collateral gains");
 
+        // Verify compounded deposit decreased
+        //replace etehr with 1e18
+        uint256 compoundedDeposit = stabilityPool.getCompoundedBoldDeposit(address(plasmaVault));
+        assertLt(compoundedDeposit, 500 ether, "Compounded deposit should decrease after liquidation");
+
+        // Trigger balance update by executing a minimal deposit (forces cache refresh)
+        // Note: This will claim the unrealized gains and update snapshot
         enterData = LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: 1});
-        enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
-
-        // when
         plasmaVault.execute(enterCalls);
 
-        //then
-        uint256 afterLiquidationAndUpdateBalance = plasmaVault.totalAssets();
-        assertGt(afterLiquidationAndUpdateBalance, afterLiquidationBalance, "Balance should increase after update");
+        // then - balance should reflect collateral gains after cache refresh
+        uint256 balanceAfterLiquidation = plasmaVault.totalAssets();
+        assertGt(balanceAfterLiquidation, assetsBeforeLiquidation, "Balance should increase due to collateral gains");
 
+        // After enter(), unrealized gains are moved to realized (stashed or added to deposit)
+        uint256 unrealizedCollGainAfter = stabilityPool.getDepositorCollGain(address(plasmaVault));
+        assertEq(unrealizedCollGainAfter, 0, "Unrealized gains should be 0 after claiming via enter()");
+
+        // Invariant: Liquity market balance = sum of all components
+        uint256 compounded = stabilityPool.getCompoundedBoldDeposit(address(plasmaVault));
+        uint256 yieldGain = stabilityPool.getDepositorYieldGainWithPending(address(plasmaVault));
+        uint256 stashedColl = stabilityPool.stashedColl(address(plasmaVault));
+        uint256 collGain = stabilityPool.getDepositorCollGain(address(plasmaVault));
+
+        (uint256 wethPrice, uint256 wethPriceDecimals) = IPriceOracleMiddleware(priceOracle).getAssetPrice(WETH);
+        uint256 stashedValue = (stashedColl * wethPrice) / (10 ** wethPriceDecimals);
+        uint256 collGainValue = (collGain * wethPrice) / (10 ** wethPriceDecimals);
+
+        uint256 expectedLiquityMarket = compounded + yieldGain + stashedValue + collGainValue;
+        uint256 actualLiquityMarket = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
+        
+        // 0.01% tolerance due to oracle price errors
+        _eqWithTolerance(actualLiquityMarket, expectedLiquityMarket, 1, "Liquity market balance should equal sum of components");
+    }
+
+    //Complete lifecycle test of gain state transitions
+    function testShouldCorrectlyTransitionFromUnrealizedToRealizedGainsInLiquitySP() external {
+        // given
+        deal(BOLD, address(this), 1000 ether);
+        ERC20(BOLD).approve(address(plasmaVault), 1000 ether);
+        plasmaVault.deposit(1000 ether, address(this));
+
+        LiquityStabilityPoolFuseEnterData memory enterData = LiquityStabilityPoolFuseEnterData({
+            registry: ETH_REGISTRY,
+            amount: 500 ether
+        });
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
+        plasmaVault.execute(enterCalls);
+
+        // Simulate liquidation
+        IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool());
+        vm.prank(address(stabilityPool.troveManager()));
+        stabilityPool.offset(50 ether, 10 ether);
+
+        // Verify unrealized collateral gain exists immediately after liquidation
+        uint256 unrealizedCollGainBefore = stabilityPool.getDepositorCollGain(address(plasmaVault));
+        assertGt(unrealizedCollGainBefore, 0, "Should have unrealized collateral gains before claim");
+
+        // Trigger balance update to reflect unrealized gains
+        // Note: This enter() will claim the gains and update the snapshot
+        enterData = LiquityStabilityPoolFuseEnterData({registry: ETH_REGISTRY, amount: 1});
+        enterCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("enter((address,uint256))", enterData));
+        plasmaVault.execute(enterCalls);
+
+        // At this point, gains were already claimed by the first enter() call
+        // Verify unrealized gains are now zero after claiming (moved to stashed)
+        uint256 unrealizedCollGainAfterFirstClaim = stabilityPool.getDepositorCollGain(address(plasmaVault));
+        assertEq(unrealizedCollGainAfterFirstClaim, 0, "Unrealized gains should be zero after first claim");
+
+        // Verify collateral was stashed (not transferred since we use _doClaim=false in enter)
+        uint256 stashedCollAfterFirstClaim = stabilityPool.stashedColl(address(plasmaVault));
+        assertGt(stashedCollAfterFirstClaim, 0, "Collateral should be stashed after first claim");
+
+        uint256 assetsBeforeExit = plasmaVault.totalAssets();
+        uint256 liquityAssetsBeforeExit = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
+
+        // when - exit to demonstrate the balance remains consistent
         LiquityStabilityPoolFuseExitData memory exitData = LiquityStabilityPoolFuseExitData({
             registry: ETH_REGISTRY,
-            amount: 1
+            amount: 1 // Minimal withdrawal
         });
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(address(sbFuse), abi.encodeWithSignature("exit((address,uint256))", exitData));
-
-        // when
         plasmaVault.execute(exitCalls);
 
-        // then
-        uint256 afterExitBalance = plasmaVault.totalAssets();
-        assertGt(afterExitBalance, afterLiquidationBalance, "Balance should increase after liquidation");
+        // then - unrealized gains should still be zero (were already claimed)
+        uint256 unrealizedCollGainAfter = stabilityPool.getDepositorCollGain(address(plasmaVault));
+        assertEq(unrealizedCollGainAfter, 0, "Unrealized collateral gains should remain zero");
+
+        // After exit with _doClaim=true, collateral should be transferred to vault
+        uint256 collBalanceAfterExit = ERC20(WETH).balanceOf(address(plasmaVault));
+        assertGt(collBalanceAfterExit, 0, "Vault should have received collateral after exit");
+
+        // Stashed collateral should now be zero (transferred to vault)
+        uint256 stashedCollAfterExit = stabilityPool.stashedColl(address(plasmaVault));
+        assertEq(stashedCollAfterExit, 0, "Stashed collateral should be zero after exit with claim");
+
+        // Assets should remain the same (collateral moved from stashed to vault balance)
+        uint256 assetsAfterExit = plasmaVault.totalAssets();
+        uint256 liquityAssetsAfterExit = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
+
+        assertEq(
+            assetsAfterExit,
+            assetsBeforeExit,
+            "Assets should remain equal after exit (collateral moved to vault)"
+        );
+        assertLt(
+            liquityAssetsAfterExit,
+            liquityAssetsBeforeExit,
+            "Liquity assets should decrease after exit (collateral moved to vault)"
+        );
     }
 
     function _setupMarketConfigs(
@@ -385,5 +497,11 @@ contract LiquityStabilityPoolFuseTest is Test {
             IporFusionAccessManager(accessManager),
             address(0)
         );
+    }
+
+    function _eqWithTolerance(uint256 a, uint256 b, uint256 tol, string memory str) private pure {
+        // tol in basis points 1 = 0.01%
+        assertLe(a, b * (10000 + tol) / 10000, str);
+        assertGe(a * (10000 + tol) / 10000, b, str);
     }
 }

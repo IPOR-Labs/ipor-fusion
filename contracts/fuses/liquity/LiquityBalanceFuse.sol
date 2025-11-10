@@ -19,14 +19,18 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
 
     error InvalidMarketId();
 
-    constructor(uint256 marketId) {
-        MARKET_ID = marketId;
+    constructor(uint256 marketId_) {
+        MARKET_ID = marketId_;
     }
 
     /**
-     * @dev Calculates the USD-denominated balance of the Plasma Vault in the Liquity protocol.
-     *      The balance includes BOLD token deposits and unclaimed collateral gains across all configured registries.
-     *      It is assumed that BOLD token is the same across all registries
+     * @notice Calculates the USD-denominated balance of the Plasma Vault in the Liquity protocol.
+     *         The balance includes:
+     *         - Current BOLD deposits (compounded after liquidations)
+     *         - Stashed collateral (claimed but not sent)
+     *         - Unrealized collateral gains from liquidations
+     *         - Unrealized BOLD yield gains from interest
+     *         It is assumed that BOLD token is the same across all registries
      * @return The total balance of the Plasma Vault in USD (scaled to 18 decimals, that are the BOLD decimals).
      */
     function balanceOf() external view override returns (uint256) {
@@ -34,46 +38,95 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
         uint256 len = registriesRaw.length;
         if (len == 0) return 0;
 
-        IStabilityPool stabilityPool;
-        IAddressesRegistry registry;
-        address boldToken;
-        uint256 boldPrice;
-        uint256 boldPriceDecimals;
-        uint256 boldDecimals;
-        uint256 totalDeposits;
-        uint256 totalCollateral;
-        address collToken;
-        uint256 collTokenPrice;
-        uint256 collTokenPriceDecimals;
+        address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+        address plasmaVault = address(this);
+        uint256 totalBoldValue;
+        uint256 totalCollateralValue;
 
-        IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
-            PlasmaVaultLib.getPriceOracleMiddleware()
+        /// @dev Get BOLD token info from first registry (assumed same across all)
+        IAddressesRegistry firstRegistry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[0]));
+        address boldToken = firstRegistry.boldToken();
+        (uint256 boldPrice, uint256 boldPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
+            boldToken
         );
+        uint256 boldDecimals = IERC20Metadata(boldToken).decimals();
+        IAddressesRegistry registry;
+        IStabilityPool stabilityPool;
 
         for (uint256 i; i < len; ++i) {
             registry = IAddressesRegistry(PlasmaVaultConfigLib.bytes32ToAddress(registriesRaw[i]));
-            if (i == 0) {
-                boldToken = registry.boldToken();
-                (boldPrice, boldPriceDecimals) = priceOracleMiddleware.getAssetPrice(boldToken);
-                boldDecimals = IERC20Metadata(boldToken).decimals();
-            }
-
             stabilityPool = IStabilityPool(registry.stabilityPool());
-            collToken = registry.collToken();
 
-            (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
-
-            totalCollateral += IporMath.convertToWad(
-                stabilityPool.stashedColl(address(this)) * collTokenPrice,
-                IERC20Metadata(collToken).decimals() + collTokenPriceDecimals
+            /// @dev Calculate collateral value for this registry
+            totalCollateralValue += _calculateCollateralValue(
+                stabilityPool,
+                registry.collToken(),
+                plasmaVault,
+                priceOracleMiddleware
             );
 
-            totalDeposits += IporMath.convertToWad(
-                stabilityPool.deposits(address(this)) * boldPrice,
-                boldDecimals + boldPriceDecimals
+            /// @dev Calculate BOLD value for this registry
+            totalBoldValue += _calculateBoldValue(
+                stabilityPool,
+                plasmaVault,
+                boldPrice,
+                boldDecimals,
+                boldPriceDecimals
             );
         }
 
-        return totalCollateral + totalDeposits;
+        return totalCollateralValue + totalBoldValue;
+    }
+
+    /**
+     * @notice Calculates the total collateral value (stashed + unrealized gains) for a single registry
+     */
+    function _calculateCollateralValue(
+        IStabilityPool stabilityPool_,
+        address collToken_,
+        address plasmaVault_,
+        address priceOracleMiddleware_
+    ) private view returns (uint256) {
+        (uint256 collTokenPrice, uint256 collTokenPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_)
+            .getAssetPrice(collToken_);
+        uint256 collTokenDecimals = IERC20Metadata(collToken_).decimals();
+        uint256 decimalsSum = collTokenDecimals + collTokenPriceDecimals;
+
+        uint256 stashedValue = IporMath.convertToWad(
+            stabilityPool_.stashedColl(plasmaVault_) * collTokenPrice,
+            decimalsSum
+        );
+
+        uint256 unrealizedGainValue = IporMath.convertToWad(
+            stabilityPool_.getDepositorCollGain(plasmaVault_) * collTokenPrice,
+            decimalsSum
+        );
+
+        return stashedValue + unrealizedGainValue;
+    }
+
+    /**
+     * @dev Calculates the total BOLD value (compounded deposits + unrealized yield gains) for a single registry
+     */
+    function _calculateBoldValue(
+        IStabilityPool stabilityPool_,
+        address plasmaVault_,
+        uint256 boldPrice_,
+        uint256 boldDecimals_,
+        uint256 boldPriceDecimals_
+    ) private view returns (uint256) {
+        uint256 decimalsSum = boldDecimals_ + boldPriceDecimals_;
+
+        uint256 depositValue = IporMath.convertToWad(
+            stabilityPool_.getCompoundedBoldDeposit(plasmaVault_) * boldPrice_,
+            decimalsSum
+        );
+
+        uint256 yieldGainValue = IporMath.convertToWad(
+            stabilityPool_.getDepositorYieldGainWithPending(plasmaVault_) * boldPrice_,
+            decimalsSum
+        );
+
+        return depositValue + yieldGainValue;
     }
 }
