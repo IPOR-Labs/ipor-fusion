@@ -8,48 +8,44 @@ import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
 
-contract EbisuSetDelegateFuse is IFuseCommon {
+contract EbisuAdjustInterestRateFuse is IFuseCommon {
     uint256 public immutable MARKET_ID;
 
     error UnsupportedSubstrate();
     error TroveNotOpen();
-    error DelegateAddressZero();
 
-    event EbisuSetDelegateFuseEnter(uint256 troveId, address delegate);
+    event EbisuAdjustInterestRateFuseEnter(uint256 troveId, uint256 newAnnualInterestRate);
 
-    struct EbisuSetDelegateFuseEnterData {
+    struct EbisuAdjustInterestRateFuseEnterData {
         address zapper;
         address registry;
-        address delegate;
-        uint128 minInterestRate;
-        uint128 maxInterestRate;
-        uint256 minInterestRateChangePeriod;
+        uint256 newAnnualInterestRate;
+        uint256 maxUpfrontFee;
+        uint256 upperHint;
+        uint256 lowerHint;
     }
 
     constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
     }
 
-    function enter(EbisuSetDelegateFuseEnterData calldata data_) external {
+    function enter(EbisuAdjustInterestRateFuseEnterData calldata data_) external {
         _requireSupportedSubstrates(data_.zapper, data_.registry);
-
-        if (data_.delegate == address(0)) revert DelegateAddressZero();
 
         uint256 troveId = _getTroveIdOrRevert(data_.zapper);
 
-        IBorrowerOperations(IAddressesRegistry(data_.registry).borrowerOperations()).setInterestIndividualDelegate(
+        IAddressesRegistry registry = IAddressesRegistry(data_.registry);
+        IBorrowerOperations registryBorrowerOperations = IBorrowerOperations(address(registry.borrowerOperations()));
+
+        registryBorrowerOperations.adjustTroveInterestRate(
             troveId,
-            data_.delegate,
-            data_.minInterestRate,
-            data_.maxInterestRate,
-            0,
-            0,
-            0,
-            0,
-            data_.minInterestRateChangePeriod
+            data_.newAnnualInterestRate,
+            data_.upperHint,
+            data_.lowerHint,
+            data_.maxUpfrontFee
         );
 
-        emit EbisuSetDelegateFuseEnter(troveId, data_.delegate);
+        emit EbisuAdjustInterestRateFuseEnter(troveId, data_.newAnnualInterestRate);
     }
 
     function _requireSupportedSubstrates(address zapper, address registry) internal view {
