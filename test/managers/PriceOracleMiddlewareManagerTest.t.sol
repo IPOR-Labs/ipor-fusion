@@ -12,6 +12,7 @@ import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/Price
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FixedValuePriceFeed} from "../../contracts/price_oracle/price_feed/FixedValuePriceFeed.sol";
+import {MutableValuePriceFeed} from "./MutableValuePriceFeed.sol";
 
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
@@ -633,5 +634,267 @@ contract PriceOracleMiddlewareManagerTest is Test {
 
         vm.expectRevert(PriceOracleMiddlewareManager.UnsupportedAsset.selector);
         PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).getAssetsPrices(assetsToQuery);
+    }
+
+    function testUpdatePriceValidationOnlyAtomist() public {
+        address[] memory assets = new address[](1);
+        assets[0] = address(0x123);
+
+        uint256[] memory maxPriceDeltas = new uint256[](1);
+        maxPriceDeltas[0] = 5e16; // 5%
+
+        vm.startPrank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        vm.expectRevert();
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+        vm.stopPrank();
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+        vm.stopPrank();
+    }
+
+    function testRemovePriceValidationsOnlyAtomist() public {
+        address[] memory assets = new address[](1);
+        assets[0] = address(0x123);
+
+        uint256[] memory maxPriceDeltas = new uint256[](1);
+        maxPriceDeltas[0] = 5e16; // 5%
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+        vm.stopPrank();
+
+        vm.startPrank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        vm.expectRevert();
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).removePriceValidations(assets);
+        vm.stopPrank();
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).removePriceValidations(assets);
+        vm.stopPrank();
+    }
+
+    function testValidateAssetPricePasses() public {
+        address asset = address(0x123);
+        FixedValuePriceFeed priceFeed = new FixedValuePriceFeed(1e18);
+
+        address[] memory assets = new address[](1);
+        assets[0] = asset;
+
+        address[] memory sources = new address[](1);
+        sources[0] = address(priceFeed);
+
+        vm.startPrank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setAssetsPriceSources(assets, sources);
+        vm.stopPrank();
+
+        uint256[] memory maxPriceDeltas = new uint256[](1);
+        maxPriceDeltas[0] = 1e17; // 10%
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+        vm.stopPrank();
+
+        vm.expectEmit(address(_priceOracleMiddlewareManager));
+        emit PriceOracleMiddlewareManagerLib.PriceValidationBaselineUpdated(asset, 1e18);
+
+        vm.startPrank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAssetsPrices(assets);
+        vm.stopPrank();
+
+        (uint256 storedMaxPriceDelta, uint256 lastValidatedPrice, ) = PriceOracleMiddlewareManager(
+            _priceOracleMiddlewareManager
+        ).getPriceValidationInfo(asset);
+
+        assertEq(storedMaxPriceDelta, maxPriceDeltas[0]);
+        assertEq(lastValidatedPrice, 1e18);
+    }
+
+    function testValidateAssetsPricesOnlyPlasmaVault() public {
+        address asset = address(0x123);
+        FixedValuePriceFeed priceFeed = new FixedValuePriceFeed(1e18);
+
+        address[] memory assets = new address[](1);
+        assets[0] = asset;
+
+        address[] memory sources = new address[](1);
+        sources[0] = address(priceFeed);
+
+        vm.startPrank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setAssetsPriceSources(assets, sources);
+        vm.stopPrank();
+
+        uint256[] memory maxPriceDeltas = new uint256[](1);
+        maxPriceDeltas[0] = 1e17; // 10%
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+        vm.stopPrank();
+
+        vm.startPrank(_USER);
+        vm.expectRevert();
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAssetsPrices(assets);
+        vm.stopPrank();
+
+        vm.expectEmit(address(_priceOracleMiddlewareManager));
+        emit PriceOracleMiddlewareManagerLib.PriceValidationBaselineUpdated(asset, 1e18);
+
+        vm.startPrank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAssetsPrices(assets);
+        vm.stopPrank();
+    }
+
+    function testValidateAllAssetsPricesOnlyPlasmaVault() public {
+        address asset = address(0x123);
+        FixedValuePriceFeed priceFeed = new FixedValuePriceFeed(1e18);
+
+        address[] memory assets = new address[](1);
+        assets[0] = asset;
+
+        address[] memory sources = new address[](1);
+        sources[0] = address(priceFeed);
+
+        vm.startPrank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setAssetsPriceSources(assets, sources);
+        vm.stopPrank();
+
+        uint256[] memory maxPriceDeltas = new uint256[](1);
+        maxPriceDeltas[0] = 1e17; // 10%
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+        vm.stopPrank();
+
+        vm.startPrank(_USER);
+        vm.expectRevert();
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        vm.stopPrank();
+
+        vm.expectEmit(address(_priceOracleMiddlewareManager));
+        emit PriceOracleMiddlewareManagerLib.PriceValidationBaselineUpdated(asset, 1e18);
+
+        vm.startPrank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        vm.stopPrank();
+    }
+
+    function testValidateAllAssetsPricesRevertsWhenPriceExceedsDelta() public {
+        address asset = address(0x123);
+        MutableValuePriceFeed priceFeed = new MutableValuePriceFeed(1e18);
+
+        address[] memory assets = new address[](1);
+        assets[0] = asset;
+
+        address[] memory sources = new address[](1);
+        sources[0] = address(priceFeed);
+
+        vm.startPrank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setAssetsPriceSources(assets, sources);
+        vm.stopPrank();
+
+        uint256[] memory maxPriceDeltas = new uint256[](1);
+        maxPriceDeltas[0] = 1e17; // 10%
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+        vm.stopPrank();
+
+        vm.startPrank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        vm.stopPrank();
+
+        priceFeed.setPrice(2e18);
+
+        vm.startPrank(_plasmaVault);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PriceOracleMiddlewareManagerLib.PriceChangeExceeded.selector,
+                asset,
+                1e18,
+                2e18,
+                maxPriceDeltas[0]
+            )
+        );
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        vm.stopPrank();
+    }
+
+    function testValidateAllAssetsPricesUpdatesBaselineWhenAboveHalfDelta() public {
+        address asset = address(0x123);
+        MutableValuePriceFeed priceFeed = new MutableValuePriceFeed(1e18);
+
+        address[] memory assets = new address[](1);
+        assets[0] = asset;
+
+        address[] memory sources = new address[](1);
+        sources[0] = address(priceFeed);
+
+        vm.startPrank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setAssetsPriceSources(assets, sources);
+        vm.stopPrank();
+
+        uint256[] memory maxPriceDeltas = new uint256[](1);
+        maxPriceDeltas[0] = 1e17; // 10%
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+        vm.stopPrank();
+
+        vm.startPrank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        vm.stopPrank();
+
+        int256 updatedPrice = 106e16; // 6% increase
+        priceFeed.setPrice(updatedPrice);
+
+        vm.expectEmit(address(_priceOracleMiddlewareManager));
+        emit PriceOracleMiddlewareManagerLib.PriceValidationBaselineUpdated(asset, uint256(updatedPrice));
+
+        vm.startPrank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        vm.stopPrank();
+
+        (, uint256 lastValidatedPrice, ) = PriceOracleMiddlewareManager(_priceOracleMiddlewareManager)
+            .getPriceValidationInfo(asset);
+
+        assertEq(lastValidatedPrice, uint256(updatedPrice));
+    }
+
+    function testValidateAllAssetsPricesKeepsBaselineWhenBelowHalfDelta() public {
+        address asset = address(0x123);
+        MutableValuePriceFeed priceFeed = new MutableValuePriceFeed(1e18);
+
+        address[] memory assets = new address[](1);
+        assets[0] = asset;
+
+        address[] memory sources = new address[](1);
+        sources[0] = address(priceFeed);
+
+        vm.startPrank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setAssetsPriceSources(assets, sources);
+        vm.stopPrank();
+
+        uint256[] memory maxPriceDeltas = new uint256[](1);
+        maxPriceDeltas[0] = 1e17; // 10%
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+        vm.stopPrank();
+
+        vm.startPrank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        vm.stopPrank();
+
+        int256 updatedPrice = 103e16; // 3% increase
+        priceFeed.setPrice(updatedPrice);
+
+        vm.startPrank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        vm.stopPrank();
+
+        (, uint256 lastValidatedPrice, ) = PriceOracleMiddlewareManager(_priceOracleMiddlewareManager)
+            .getPriceValidationInfo(asset);
+
+        assertEq(lastValidatedPrice, 1e18);
     }
 }
