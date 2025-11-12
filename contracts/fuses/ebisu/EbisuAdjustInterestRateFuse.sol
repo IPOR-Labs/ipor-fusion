@@ -48,12 +48,12 @@ contract EbisuAdjustInterestRateFuse is IFuseCommon {
         emit EbisuAdjustInterestRateFuseEnter(troveId, data_.newAnnualInterestRate);
     }
 
-    function _requireSupportedSubstrates(address zapper, address registry) internal view {
+    function _requireSupportedSubstrates(address zapper_, address registry_) internal view {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 EbisuZapperSubstrateLib.substrateToBytes32(
-                    EbisuZapperSubstrate({substrateType: EbisuZapperSubstrateType.ZAPPER, substrateAddress: zapper})
+                    EbisuZapperSubstrate({substrateType: EbisuZapperSubstrateType.ZAPPER, substrateAddress: zapper_})
                 )
             )
         ) revert UnsupportedSubstrate();
@@ -62,14 +62,14 @@ contract EbisuAdjustInterestRateFuse is IFuseCommon {
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 EbisuZapperSubstrateLib.substrateToBytes32(
-                    EbisuZapperSubstrate({substrateType: EbisuZapperSubstrateType.REGISTRY, substrateAddress: registry})
+                    EbisuZapperSubstrate({substrateType: EbisuZapperSubstrateType.REGISTRY, substrateAddress: registry_})
                 )
             )
         ) revert UnsupportedSubstrate();
     }
 
-    function _getTroveIdOrRevert(address zapper) internal view returns (uint256 troveId) {
-        troveId = FuseStorageLib.getEbisuTroveIds().troveIds[zapper];
+    function _getTroveIdOrRevert(address zapper_) internal view returns (uint256 troveId) {
+        troveId = FuseStorageLib.getEbisuTroveIds().troveIds[zapper_];
         if (troveId == 0) revert TroveNotOpen();
     }
 }
