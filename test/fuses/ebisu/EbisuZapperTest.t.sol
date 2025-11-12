@@ -18,6 +18,8 @@ import {
     EbisuZapperCreateFuseExitData
 } from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
 
+import {EbisuAdjustInterestRateFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol";
+
 import {EbisuZapperBalanceFuse} from "../../../contracts/fuses/ebisu/EbisuZapperBalanceFuse.sol";
 import {ITroveManager} from "../../../contracts/fuses/ebisu/ext/ITroveManager.sol";
 import {ILeverageZapper} from "../../../contracts/fuses/ebisu/ext/ILeverageZapper.sol";
@@ -66,6 +68,12 @@ interface EBUSDPriceFeed {
     function latestRound() external view returns (uint256);
 }
 
+interface IEbisuBorrowerOperationsHelperMinimal {
+    function getInterestIndividualDelegateOf(
+        uint256 troveId
+    ) external view returns (address account, uint128 minRate, uint128 maxRate, uint256 minInterestRateChangePeriod);
+}
+
 contract EbisuZapperTest is Test {
     // Base Asset
     address internal constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -74,7 +82,7 @@ contract EbisuZapperTest is Test {
     // Borrow Asset
     address internal constant EBUSD = 0x09fD37d9AA613789c517e76DF1c53aEce2b60Df4; // debt token
     // Collateral Assets
-    address internal constant WEETH = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee; 
+    address internal constant WEETH = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
     address internal constant SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497; // collateral token
     address internal constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address internal constant LBTC = 0x8236a87084f8B84306f72007F36F2618A5634494;
@@ -95,6 +103,7 @@ contract EbisuZapperTest is Test {
     EbisuZapperBalanceFuse private balanceFuse;
     ERC20BalanceFuse private erc20BalanceFuse;
     UniversalTokenSwapperFuse private swapFuse;
+    EbisuAdjustInterestRateFuse private adjustRateFuse;
 
     address private accessManager;
     PriceOracleMiddleware private priceOracle;
@@ -226,7 +235,7 @@ contract EbisuZapperTest is Test {
         // now, in order to open a trove, we need to get collateral sUSDe through the Swapper (beware of decimals)
         _swapUSDCtoToken(enterData.collAmount / 1e12, SUSDE);
         uint256 totalAssetsAfterSwap = plasmaVault.totalAssets();
-        
+
         {
             // -- 90,000 USDC (6 decimals) -> USDC value identity
             // -- 10,000 SUSDE (18 decimals) -> USDC value multiply * SUSDE price and divide by USDC price
@@ -250,7 +259,7 @@ contract EbisuZapperTest is Test {
             );
             assertEq(totalAssetsAfterSwap, susdeUSDCvalue + usdcBalance, "total assets after swap incorrect");
         }
-        
+
         // when
         plasmaVault.execute(enterCalls);
 
@@ -265,7 +274,7 @@ contract EbisuZapperTest is Test {
 
         {
             // -- 90,000 USDC (6 decimals) -> USDC value identity
-            // -- ebusdAmount - flashloanAmount worth of sUSDe (18 decimals) 
+            // -- ebusdAmount - flashloanAmount worth of sUSDe (18 decimals)
             // -- trove open with totalColl = collAmount + flashloanAmount and boldAmount = ebusdAmount + upfrontFee
 
             // then
@@ -283,7 +292,7 @@ contract EbisuZapperTest is Test {
                 troveData.entireColl * price,
                 18 + priceDecimals
             );
-            
+
             // debt (ebUSD) value in USD
             (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
             uint256 debtUSDvalue = IporMath.convertToWad(
@@ -337,7 +346,7 @@ contract EbisuZapperTest is Test {
             uint256 susdeBalance = ERC20(SUSDE).balanceOf(address(plasmaVault));
             // slippage + oracles not matching Balancer's ones cause discrepancies of around 2%
             _eqWithTolerance(susdeBalance, ebisuSUSDEvalue - enterData.flashLoanAmount, 200);
-            
+
             uint256 susdeUSDvalue = IporMath.convertToWad(
                 susdeBalance * price,
                 18 + priceDecimals
@@ -388,7 +397,7 @@ contract EbisuZapperTest is Test {
                 16
             );
             // then
-            _eqWithTolerance(totalAssetsAfterExecution, totalAssetsAfterSwap - feeUSDCBalance, 10); // 0.1% tolerance 
+            _eqWithTolerance(totalAssetsAfterExecution, totalAssetsAfterSwap - feeUSDCBalance, 10); // 0.1% tolerance
         }
     }
 
@@ -421,7 +430,7 @@ contract EbisuZapperTest is Test {
             ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
 
         uint256 totalAssetsBefore = plasmaVault.totalAssets();
-        
+
         ITroveManager.LatestTroveData memory troveData = troveManager.getLatestTroveData(troveId);
 
         // when
@@ -582,15 +591,15 @@ contract EbisuZapperTest is Test {
                         collUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
                         price
                     ),
-                    16
-                );
+                16
+            );
             uint256 debtChange = IporMath.convertWadToAssetDecimals(
                     IporMath.division(
                         debtUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
                         price
                     ),
-                    16
-                );
+                16
+            );
 
             assertEq(plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU), totalAssetsInMarketBefore + collChange - debtChange, "Extra assets in EBISU mismatch");
         }
@@ -677,15 +686,15 @@ contract EbisuZapperTest is Test {
                         collUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
                         price
                     ),
-                    16
-                );
+                16
+            );
             uint256 debtChange = IporMath.convertWadToAssetDecimals(
                     IporMath.division(
                         debtUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
                         price
                     ),
-                    16
-                );
+                16
+            );
 
             assertEq(plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU), totalAssetsInMarketBefore + debtChange - collChange, "Change of assets in EBISU mismatch");
         }
@@ -727,6 +736,37 @@ contract EbisuZapperTest is Test {
 
         // swap
         plasmaVault.execute(swapCalls);
+    }
+
+    function testShouldAdjustInterestRateViaFuseEbisu() public {
+        testShouldEnterToEbisuZapper();
+
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), SUSDE_ZAPPER, 1);
+
+        uint256 newRate = 30 * 1e16; // 30%
+
+        EbisuAdjustInterestRateFuse.EbisuAdjustInterestRateFuseEnterData memory adjustData = EbisuAdjustInterestRateFuse
+            .EbisuAdjustInterestRateFuseEnterData({
+                zapper: SUSDE_ZAPPER,
+                registry: SUSDE_REGISTRY,
+                newAnnualInterestRate: newRate,
+                maxUpfrontFee: 5 * 1e18,
+                upperHint: 0,
+                lowerHint: 0
+            });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(adjustRateFuse),
+            abi.encodeWithSelector(EbisuAdjustInterestRateFuse.enter.selector, adjustData)
+        );
+
+        plasmaVault.execute(calls);
+
+        ITroveManager troveManager = ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
+        ITroveManager.LatestTroveData memory troveData = troveManager.getLatestTroveData(troveId);
+        assertEq(troveData.annualInterestRate, newRate, "Interest rate was not updated by fuse");
     }
 
     // --- helpers ---
@@ -812,10 +852,13 @@ contract EbisuZapperTest is Test {
             1e18
         );
 
-        fuses = new address[](3);
+        adjustRateFuse = new EbisuAdjustInterestRateFuse(IporFusionMarkets.EBISU);
+
+        fuses = new address[](4);
         fuses[0] = address(zapperFuse);
         fuses[1] = address(leverModifyFuse);
-        fuses[2] = address(swapFuse);
+        fuses[2] = address(adjustRateFuse);
+        fuses[3] = address(swapFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
