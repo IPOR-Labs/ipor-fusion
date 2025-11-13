@@ -32,6 +32,7 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
 
 
         _validateAllAssetsPricesPreHook = new ValidateAllAssetsPricesPreHook();
+        _mutableValuePriceFeed = new MutableValuePriceFeed(1e18);
 
         FusionFactory fusionFactoryImpl = new FusionFactory();
         FusionFactory factory = FusionFactory(FACTORY);
@@ -58,24 +59,21 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
 
         _fusionInstance = factory.clone("TEST PLASMA VAULT", "TPLASMA", USDC, 0, ADMIN);
 
-       
 
         IporFusionAccessManager iporFusionAccessManager = IporFusionAccessManager(address(_fusionInstance.accessManager));
         iporFusionAccessManager.grantRole(Roles.ATOMIST_ROLE, ADMIN, 0);
         iporFusionAccessManager.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, ADMIN, 0);
         iporFusionAccessManager.grantRole(Roles.PRE_HOOKS_MANAGER_ROLE, ADMIN, 0);
 
+
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = IERC4626.deposit.selector;
-
         address[] memory implementations = new address[](1);
         implementations[0] = address(_validateAllAssetsPricesPreHook);
 
         bytes32[][] memory substrates = new bytes32[][](1);
         substrates[0] = new bytes32[](1);
         substrates[0][0] = bytes32(0);
-
-        _mutableValuePriceFeed = new MutableValuePriceFeed(1e18);
 
         address[] memory assets = new address[](1);
         assets[0] = DAI;
@@ -88,14 +86,13 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
         maxPriceDeltas[0] = 1e15;
         PriceOracleMiddlewareManager(_fusionInstance.priceManager).updatePriceValidation(assets, maxPriceDeltas);
 
-         PlasmaVaultGovernance plasmaVaultGovernance = PlasmaVaultGovernance(address(_fusionInstance.plasmaVault));
+        PlasmaVaultGovernance plasmaVaultGovernance = PlasmaVaultGovernance(address(_fusionInstance.plasmaVault));
 
         plasmaVaultGovernance.setPreHookImplementations(selectors, implementations, substrates);
         plasmaVaultGovernance.convertToPublicVault();
         vm.stopPrank();
     }
 
-    /// @notice Should deposit 1000 USDC (1_000e6) into the Plasma Vault
     function testShouldDeposit1000e6Usdc() public {
         uint256 depositAmount = 1_000e6;
         address plasmaVault = _fusionInstance.plasmaVault;
@@ -120,7 +117,6 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
         assertEq(IERC20(USDC).balanceOf(plasmaVault), depositAmount, "Vault asset balance mismatch");
     }
 
-    /// @notice Should revert on second deposit when price delta exceeds validation threshold
     function testShouldRevertDepositWhenPriceValidationFails() public {
         uint256 depositAmount = 1_000e6;
         address plasmaVault = _fusionInstance.plasmaVault;
