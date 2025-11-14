@@ -361,6 +361,12 @@ library PlasmaVaultConfigLib {
         return PlasmaVaultStorageLib.getMarketSubstrates().value[marketId_];
     }
 
+    function getMarketSubstratesStorage(
+        uint256 marketId_
+    ) internal view returns (PlasmaVaultStorageLib.MarketSubstratesStruct storage) {
+        return PlasmaVaultStorageLib.getMarketSubstrates().value[marketId_];
+    }
+
     function _revokeMarketSubstrates(PlasmaVaultStorageLib.MarketSubstratesStruct storage marketSubstrates) private {
         uint256 length = marketSubstrates.substrates.length;
         for (uint256 i; i < length; ++i) {
