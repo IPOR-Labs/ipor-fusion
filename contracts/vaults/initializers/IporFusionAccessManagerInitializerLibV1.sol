@@ -1021,7 +1021,7 @@ library IporFusionAccessManagerInitializerLibV1 {
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.priceOracleMiddlewareManager,
                 roleId: Roles.ATOMIST_ROLE,
-                functionSelector: PriceOracleMiddlewareManager.removePriceValidations.selector,
+                functionSelector: PriceOracleMiddlewareManager.removePriceValidation.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({

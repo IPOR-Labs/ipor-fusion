@@ -153,7 +153,7 @@ library PriceOracleMiddlewareManagerLib {
 
     /// @notice Removes price validation configuration for an asset and clears stored data.
     /// @param asset_ Asset address to clear.
-    function removePriceValidations(address asset_) internal {
+    function removePriceValidation(address asset_) internal {
         if (asset_ == address(0)) {
             revert AssetsAddressCanNotBeZero();
         }
@@ -167,11 +167,11 @@ library PriceOracleMiddlewareManagerLib {
         emit PriceValidationRemoved(asset_);
     }
 
-    function shouldValidatePrice(address asset_) internal view returns (bool) {
+    function isPriceValidationSupported(address asset_) internal view returns (bool) {
         return _getPriceValidationSlot().assets.contains(asset_);
     }
 
-    function getAllValidatedAssets() internal view returns (address[] memory) {
+    function getConfiguredPriceValidationAssets() internal view returns (address[] memory) {
         return _getPriceValidationSlot().assets.values();
     }
 

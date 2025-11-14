@@ -666,11 +666,11 @@ contract PriceOracleMiddlewareManagerTest is Test {
 
         vm.startPrank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
         vm.expectRevert();
-        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).removePriceValidations(assets);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).removePriceValidation(assets);
         vm.stopPrank();
 
         vm.startPrank(_ATOMIST);
-        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).removePriceValidations(assets);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).removePriceValidation(assets);
         vm.stopPrank();
     }
 

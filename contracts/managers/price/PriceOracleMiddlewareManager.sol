@@ -159,20 +159,20 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
 
     /// @notice Removes price validation configuration for provided assets.
     /// @param assets_ Asset addresses to clear.
-    function removePriceValidations(address[] calldata assets_) external restricted {
+    function removePriceValidation(address[] calldata assets_) external restricted {
         uint256 assetsLength = assets_.length;
         if (assetsLength == 0) {
             revert EmptyArrayNotSupported();
         }
         for (uint256 i; i < assetsLength; ++i) {
-            PriceOracleMiddlewareManagerLib.removePriceValidations(assets_[i]);
+            PriceOracleMiddlewareManagerLib.removePriceValidation(assets_[i]);
         }
     }
 
     /// @notice Returns all assets with active price validation configuration.
     /// @return assets Array of asset addresses with configured validation.
-    function getAllValidatedAssets() external view returns (address[] memory assets) {
-        assets = PriceOracleMiddlewareManagerLib.getAllValidatedAssets();
+    function getConfiguredPriceValidationAssets() external view returns (address[] memory assets) {
+        assets = PriceOracleMiddlewareManagerLib.getConfiguredPriceValidationAssets();
     }
 
     function getPriceValidationInfo(
@@ -182,7 +182,7 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
     }
 
     function validateAllAssetsPrices() external restricted {
-        address[] memory assets = PriceOracleMiddlewareManagerLib.getAllValidatedAssets();
+        address[] memory assets = PriceOracleMiddlewareManagerLib.getConfiguredPriceValidationAssets();
         uint256 assetsLength = assets.length;
         if (assetsLength == 0) {
             return;
