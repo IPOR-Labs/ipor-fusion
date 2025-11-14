@@ -17,6 +17,7 @@ import {AsyncExecutor} from "./AsyncExecutor.sol";
 /// @author IPOR Labs
 contract AsyncActionBalanceFuse is IMarketBalanceFuse {
     /// @notice Thrown when price oracle middleware is not configured in the plasma vault
+    /// @custom:error AsyncActionBalanceFuseInvalidPriceOracleMiddleware
     error AsyncActionBalanceFuseInvalidPriceOracleMiddleware();
 
     /// @notice Identifier of the market this balance fuse is associated with
@@ -29,34 +30,37 @@ contract AsyncActionBalanceFuse is IMarketBalanceFuse {
     }
 
     /// @notice Returns the USD value of the assets tracked by the async executor
-    /// @return balanceValueUsd_ Balance expressed in 18-decimal USD precision
-    function balanceOf() external view override returns (uint256 balanceValueUsd_) {
-        address executor_ = AsyncActionFuseLib.getAsyncExecutor();
+    /// @return balanceValueUsd Balance expressed in 18-decimal USD precision (WAD format)
+    /// @dev Reads cached balance from AsyncExecutor (in underlying asset units), fetches price from oracle,
+    ///      and converts to USD using IporMath.convertToWad. Returns 0 if executor doesn't exist or balance is zero.
+    ///      Requires price oracle middleware to be configured in the Plasma Vault.
+    function balanceOf() external view override returns (uint256 balanceValueUsd) {
+        address executor = AsyncActionFuseLib.getAsyncExecutor();
 
-        if (executor_ == address(0)) {
+        if (executor == address(0)) {
             return 0;
         }
 
-        uint256 balanceInUnderlying_ = AsyncExecutor(payable(executor_)).balance();
+        uint256 balanceInUnderlying = AsyncExecutor(payable(executor)).balance();
 
-        if (balanceInUnderlying_ == 0) {
+        if (balanceInUnderlying == 0) {
             return 0;
         }
 
-        address underlyingAsset_ = IERC4626(address(this)).asset();
-        address priceOracleMiddleware_ = PlasmaVaultLib.getPriceOracleMiddleware();
+        address underlyingAsset = IERC4626(address(this)).asset();
+        address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 
-        if (priceOracleMiddleware_ == address(0)) {
+        if (priceOracleMiddleware == address(0)) {
             revert AsyncActionBalanceFuseInvalidPriceOracleMiddleware();
         }
 
-        (uint256 price_, uint256 priceDecimals_) =
-            IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(underlyingAsset_);
-        uint256 underlyingDecimals_ = IERC20Metadata(underlyingAsset_).decimals();
+        (uint256 price, uint256 priceDecimals) =
+            IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(underlyingAsset);
+        uint256 underlyingDecimals = IERC20Metadata(underlyingAsset).decimals();
 
-        balanceValueUsd_ = IporMath.convertToWad(
-            balanceInUnderlying_ * price_, underlyingDecimals_ + priceDecimals_
+        // Convert balance * price to WAD (18 decimals) accounting for both price and underlying decimals
+        balanceValueUsd = IporMath.convertToWad(
+            balanceInUnderlying * price, underlyingDecimals + priceDecimals
         );
     }
 }
-

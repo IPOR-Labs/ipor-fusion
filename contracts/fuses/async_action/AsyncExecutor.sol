@@ -6,7 +6,6 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IWETH9} from "../../interfaces/ext/IWETH9.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
@@ -34,23 +33,39 @@ contract AsyncExecutor {
     address public immutable PLASMA_VAULT;
 
     /// @notice Thrown when the provided data arrays are of mismatched lengths
+    /// @custom:error AsyncExecutorInvalidArrayLength
     error AsyncExecutorInvalidArrayLength();
 
     /// @notice Thrown when the provided WETH address is zero
+    /// @custom:error AsyncExecutorInvalidWethAddress
     error AsyncExecutorInvalidWethAddress();
+
     /// @notice Thrown when cached balance is expected to be cleared before execution
+    /// @custom:error AsyncExecutorBalanceNotZero
     error AsyncExecutorBalanceNotZero();
+
     /// @notice Thrown when aggregated balance is below allowed threshold
+    /// @custom:error AsyncExecutorBalanceNotEnough
     error AsyncExecutorBalanceNotEnough();
+
     /// @notice Thrown when provided asset address is zero
+    /// @custom:error AsyncExecutorInvalidAssetAddress
     error AsyncExecutorInvalidAssetAddress();
+
     /// @notice Thrown when provided price oracle address is zero
+    /// @custom:error AsyncExecutorInvalidPriceOracleAddress
     error AsyncExecutorInvalidPriceOracleAddress();
+
     /// @notice Thrown when underlying asset address is invalid
+    /// @custom:error AsyncExecutorInvalidUnderlyingAssetAddress
     error AsyncExecutorInvalidUnderlyingAssetAddress();
+
     /// @notice Thrown when caller is not authorized Plasma Vault
+    /// @custom:error AsyncExecutorUnauthorizedCaller
     error AsyncExecutorUnauthorizedCaller();
+
     /// @notice Thrown when provided slippage threshold exceeds 100%
+    /// @custom:error AsyncExecutorInvalidSlippage
     error AsyncExecutorInvalidSlippage();
 
     /// @notice Emitted after a successful async execution
@@ -66,7 +81,7 @@ contract AsyncExecutor {
     address public immutable W_ETH;
 
     /// @notice Contract constructor
-    /// @param wEth_ Address of the WETH token contract
+    /// @param wEth_ Address of the WETH token contract (must not be address(0))
     /// @param plasmaVault_ Address of the controlling Plasma Vault
     constructor(address wEth_, address plasmaVault_) {
         if (wEth_ == address(0)) {
@@ -78,28 +93,29 @@ contract AsyncExecutor {
 
     /// @notice Executes a batch of asynchronous calls
     /// @param data_ Structure containing the execution payload
-    /// @dev Leftover ERC20 tokens and ETH are returned to the caller
+    /// @dev Validates array lengths, updates cached balance if needed, then executes each call sequentially.
+    ///      Calls can include ETH value (if ethAmount > 0) or be regular calls. Leftover ERC20 tokens
+    ///      and ETH remain in the executor contract and should be fetched via fetchAssets().
     function execute(SwapExecutorEthData calldata data_) external onlyPlasmaVault {
-        uint256 len_ = data_.targets.length;
+        uint256 len = data_.targets.length;
 
-        if (len_ != data_.callDatas.length || len_ != data_.ethAmounts.length) {
+        if (len != data_.callDatas.length || len != data_.ethAmounts.length) {
             revert AsyncExecutorInvalidArrayLength();
         }
 
+        // Update cached balance if executor already has a balance
         if (balance > 0) {
             updateBalance(data_.tokenIn, data_.priceOracle);
         }
-
-        
 
         address target;
         bytes memory callData;
         uint256 ethAmount;
 
-        for (uint256 i_; i_ < len_; ++i_) {
-            target = data_.targets[i_];
-            callData = data_.callDatas[i_];
-            ethAmount = data_.ethAmounts[i_];
+        for (uint256 i; i < len; ++i) {
+            target = data_.targets[i];
+            callData = data_.callDatas[i];
+            ethAmount = data_.ethAmounts[i];
 
             if (ethAmount > 0) {
                 Address.functionCallWithValue(target, callData, ethAmount);
@@ -112,13 +128,13 @@ contract AsyncExecutor {
     }
 
     /// @notice Batch asset fetch and risk management by slippage threshold
-    /// @dev Processes updates for each given asset and ensures contract balance meets slippage constraint.
-    ///      The parameter slippage_ is an 18-decimal fixed-point percentage, where 1e18 = 100%.
-    ///      Example: slippage_ = 5e16 means a 5% slippage threshold.
-    /// @param assets_ List of ERC20 asset addresses to update
+    /// @param assets_ List of ERC20 asset addresses to fetch and transfer
     /// @param priceOracle_ Address of price oracle contract to value assets
-    /// @param slippage_ Minimum balance threshold as percentage (1e18 = 100%)
-
+    /// @param slippage_ Maximum allowed slippage as percentage in WAD format (1e18 = 100%, 5e16 = 5%)
+    /// @dev Calculates total USD value of all assets, converts to underlying asset units, and validates
+    ///      against cached balance with slippage tolerance. If validation passes, transfers all assets
+    ///      to Plasma Vault and resets cached balance to zero. Reverts if actual balance is below
+    ///      minimum allowed threshold (cached balance - slippage).
     function fetchAssets(address[] calldata assets_, address priceOracle_, uint256 slippage_)
         external
         onlyPlasmaVault
@@ -161,21 +177,19 @@ contract AsyncExecutor {
         emit AsyncExecutorAssetsFetched(assets_);
     }
 
-
     /// @notice Updates cached balance expressed in the vault underlying asset
     /// @param asset_ ERC20 asset address representing the deposit token
     /// @param priceOracle_ Price oracle used to fetch asset valuations
+    /// @dev Calculates USD value of the asset held by executor and converts it to underlying asset units.
+    ///      Updates the public balance state variable. Requires priceOracle_ to be non-zero.
     function updateBalance(address asset_, address priceOracle_) internal {
         if (priceOracle_ == address(0)) {
             revert AsyncExecutorInvalidPriceOracleAddress();
         }
 
-        uint256 assetBalanceUsd_ = _calculateAssetUsdValue(asset_, priceOracle_);
-      balance = _convertUsdPortfolioToUnderlying(assetBalanceUsd_, priceOracle_);
-
-
+        uint256 assetBalanceUsd = _calculateAssetUsdValue(asset_, priceOracle_);
+        balance = _convertUsdPortfolioToUnderlying(assetBalanceUsd, priceOracle_);
     }
-
 
     /// @notice Allows the executor to receive ETH required for subsequent calls
     receive() external payable {}
@@ -190,81 +204,91 @@ contract AsyncExecutor {
     /// @notice Calculates USD value of a given asset held by this executor in 18-decimal precision
     /// @param asset_ ERC20 asset address to evaluate
     /// @param priceOracle_ Price oracle responsible for quoting the asset in USD
-    /// @return assetValueUsd_ Asset value expressed in USD with 18-decimal WAD precision
+    /// @return assetValueUsd Asset value expressed in USD with 18-decimal WAD precision
+    /// @dev Fetches asset balance, converts to WAD, fetches price from oracle, converts price to WAD,
+    ///      then multiplies balance * price and divides by WAD to get USD value. Returns 0 if balance is zero.
     function _calculateAssetUsdValue(address asset_, address priceOracle_)
         private
         view
-        returns (uint256 assetValueUsd_)
+        returns (uint256 assetValueUsd)
     {
         if (asset_ == address(0)) {
             revert AsyncExecutorInvalidAssetAddress();
         }
 
-        uint256 assetBalance_ = IERC20(asset_).balanceOf(address(this));
-        if (assetBalance_ == 0) {
+        uint256 assetBalance = IERC20(asset_).balanceOf(address(this));
+        if (assetBalance == 0) {
             return 0;
         }
 
-        (uint256 assetPrice_, uint256 assetPriceDecimals_) = IPriceOracleMiddleware(priceOracle_).getAssetPrice(asset_);
-        uint256 assetBalanceWad_ = IporMath.convertToWad(assetBalance_, IERC20Metadata(asset_).decimals());
-        uint256 assetPriceWad_ = IporMath.convertToWad(assetPrice_, assetPriceDecimals_);
+        (uint256 assetPrice, uint256 assetPriceDecimals) = IPriceOracleMiddleware(priceOracle_).getAssetPrice(asset_);
+        uint256 assetBalanceWad = IporMath.convertToWad(assetBalance, IERC20Metadata(asset_).decimals());
+        uint256 assetPriceWad = IporMath.convertToWad(assetPrice, assetPriceDecimals);
 
-        assetValueUsd_ = (assetBalanceWad_ * assetPriceWad_) / WAD;
+        // Calculate USD value: (balance in WAD) * (price in WAD) / WAD
+        assetValueUsd = (assetBalanceWad * assetPriceWad) / WAD;
     }
 
     /// @notice Converts aggregated USD value to the vault underlying asset amount
-    /// @param balanceInUsd_ USD value expressed in 18-decimal WAD format
-    /// @param priceOracle_ Price oracle providing underlying asset quotes
-    /// @return underlyingAmount_ Portfolio value converted to underlying asset denomination
-    function _convertUsdPortfolioToUnderlying(uint256 balanceInUsd_, address priceOracle_)
+    /// @param balanceInUsd USD value expressed in 18-decimal WAD format
+    /// @param priceOracle Price oracle providing underlying asset quotes
+    /// @return underlyingAmount Portfolio value converted to underlying asset denomination
+    /// @dev Resolves underlying asset from calling Plasma Vault, fetches price, and converts USD to underlying units.
+    ///      Returns 0 if balanceInUsd is zero.
+    function _convertUsdPortfolioToUnderlying(uint256 balanceInUsd, address priceOracle)
         private
         view
-        returns (uint256 underlyingAmount_)
+        returns (uint256 underlyingAmount)
     {
-        if (balanceInUsd_ == 0) {
+        if (balanceInUsd == 0) {
             return 0;
         }
 
-        address underlyingAsset_ = _resolveUnderlyingAsset();
-        (uint256 underlyingPrice_, uint256 underlyingPriceDecimals_) =
-            IPriceOracleMiddleware(priceOracle_).getAssetPrice(underlyingAsset_);
-        uint256 underlyingAssetDecimals_ = IERC20Metadata(underlyingAsset_).decimals();
+        address underlyingAsset = _resolveUnderlyingAsset();
+        (uint256 underlyingPrice, uint256 underlyingPriceDecimals) =
+            IPriceOracleMiddleware(priceOracle).getAssetPrice(underlyingAsset);
+        uint256 underlyingAssetDecimals = IERC20Metadata(underlyingAsset).decimals();
 
-        underlyingAmount_ = _convertUsdToUnderlyingAmount(
-            balanceInUsd_, underlyingPrice_, underlyingPriceDecimals_, underlyingAssetDecimals_
+        underlyingAmount = _convertUsdToUnderlyingAmount(
+            balanceInUsd, underlyingPrice, underlyingPriceDecimals, underlyingAssetDecimals
         );
     }
 
     /// @notice Resolves underlying ERC4626 asset controlled by the calling Plasma Vault
-    /// @return underlyingAsset_ Address of the underlying asset
-    function _resolveUnderlyingAsset() private view returns (address underlyingAsset_) {
-        underlyingAsset_ = IERC4626(msg.sender).asset();
-        if (underlyingAsset_ == address(0)) {
+    /// @return underlyingAsset Address of the underlying asset
+    /// @dev Calls IERC4626.asset() on msg.sender (Plasma Vault) to get the underlying asset address.
+    ///      Reverts if the returned address is zero.
+    function _resolveUnderlyingAsset() private view returns (address underlyingAsset) {
+        underlyingAsset = IERC4626(msg.sender).asset();
+        if (underlyingAsset == address(0)) {
             revert AsyncExecutorInvalidUnderlyingAssetAddress();
         }
     }
 
     /// @notice Converts USD value to the amount of the underlying asset
-    /// @param balanceInUSD_ USD value represented in 18-decimal WAD format
-    /// @param underlyingPrice_ Price of the underlying asset returned by the oracle
-    /// @param underlyingPriceDecimals_ Number of decimals returned by the oracle price
-    /// @param underlyingAssetDecimals_ Decimals of the underlying ERC20 asset
-    /// @return underlyingAmount_ Amount of the underlying asset corresponding to the provided USD value
+    /// @param balanceInUSD USD value represented in 18-decimal WAD format
+    /// @param underlyingPrice Price of the underlying asset returned by the oracle
+    /// @param underlyingPriceDecimals Number of decimals returned by the oracle price
+    /// @param underlyingAssetDecimals Decimals of the underlying ERC20 asset
+    /// @return underlyingAmount Amount of the underlying asset corresponding to the provided USD value
+    /// @dev Normalizes price to WAD (18 decimals), then calculates: (USD * 10^assetDecimals) / priceWad
     function _convertUsdToUnderlyingAmount(
-        uint256 balanceInUSD_,
-        uint256 underlyingPrice_,
-        uint256 underlyingPriceDecimals_,
-        uint256 underlyingAssetDecimals_
-    ) private pure returns (uint256 underlyingAmount_) {
-        uint256 underlyingPriceWad_;
-        if (underlyingPriceDecimals_ < 18) {
-            underlyingPriceWad_ = underlyingPrice_ * (10 ** (18 - underlyingPriceDecimals_));
-        } else if (underlyingPriceDecimals_ > 18) {
-            underlyingPriceWad_ = underlyingPrice_ / (10 ** (underlyingPriceDecimals_ - 18));
+        uint256 balanceInUSD,
+        uint256 underlyingPrice,
+        uint256 underlyingPriceDecimals,
+        uint256 underlyingAssetDecimals
+    ) private pure returns (uint256 underlyingAmount) {
+        uint256 underlyingPriceWad;
+        // Normalize price to WAD (18 decimals)
+        if (underlyingPriceDecimals < 18) {
+            underlyingPriceWad = underlyingPrice * (10 ** (18 - underlyingPriceDecimals));
+        } else if (underlyingPriceDecimals > 18) {
+            underlyingPriceWad = underlyingPrice / (10 ** (underlyingPriceDecimals - 18));
         } else {
-            underlyingPriceWad_ = underlyingPrice_;
+            underlyingPriceWad = underlyingPrice;
         }
 
-        underlyingAmount_ = (balanceInUSD_ * (10 ** underlyingAssetDecimals_)) / underlyingPriceWad_;
+        // Convert: (USD in WAD) * (10^assetDecimals) / (price in WAD) = underlying amount
+        underlyingAmount = (balanceInUSD * (10 ** underlyingAssetDecimals)) / underlyingPriceWad;
     }
 }

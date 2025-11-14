@@ -38,13 +38,42 @@ contract AsyncActionFuse is IFuseCommon {
     /// @param amountOut Amount of `tokenOut` transferred to the async executor
     event AsyncActionFuseEnter(address indexed version, address indexed tokenOut, uint256 indexed amountOut);
 
+    /// @notice Thrown when market ID is zero or invalid
+    /// @custom:error AsyncActionFuseInvalidMarketId
     error AsyncActionFuseInvalidMarketId();
+
+    /// @notice Thrown when WETH address is zero
+    /// @custom:error AsyncActionFuseInvalidWethAddress
     error AsyncActionFuseInvalidWethAddress();
+
+    /// @notice Thrown when arrays have mismatched lengths
+    /// @custom:error AsyncActionFuseInvalidArrayLength
     error AsyncActionFuseInvalidArrayLength();
+
+    /// @notice Thrown when token is not allowed or requested amount exceeds allowed limit
+    /// @param tokenOut The token address that was not allowed or exceeded limit
+    /// @param requestedAmount The amount that was requested
+    /// @param maxAllowed The maximum allowed amount (0 if token not found)
+    /// @custom:error AsyncActionFuseTokenOutNotAllowed
     error AsyncActionFuseTokenOutNotAllowed(address tokenOut, uint256 requestedAmount, uint256 maxAllowed);
+
+    /// @notice Thrown when target/selector pair is not in the allowed list
+    /// @param target The target contract address
+    /// @param selector The function selector
+    /// @custom:error AsyncActionFuseTargetNotAllowed
     error AsyncActionFuseTargetNotAllowed(address target, bytes4 selector);
+
+    /// @notice Thrown when callData is shorter than 4 bytes (minimum for function selector)
+    /// @param index The index of the callData in the array that is too short
+    /// @custom:error AsyncActionFuseCallDataTooShort
     error AsyncActionFuseCallDataTooShort(uint256 index);
+
+    /// @notice Thrown when tokenOut address is zero
+    /// @custom:error AsyncActionFuseInvalidTokenOut
     error AsyncActionFuseInvalidTokenOut();
+
+    /// @notice Thrown when price oracle middleware is not configured in the Plasma Vault
+    /// @custom:error AsyncActionFusePriceOracleNotConfigured
     error AsyncActionFusePriceOracleNotConfigured();
 
     /// @notice Fuse implementation address
@@ -56,6 +85,7 @@ contract AsyncActionFuse is IFuseCommon {
 
     /// @notice Initializes the fuse configuration
     /// @param marketId_ Identifier of the market whose substrates govern this fuse
+    /// @param wEth_ Address of the WETH token contract (must not be address(0))
     constructor(uint256 marketId_, address wEth_) {
         if (marketId_ == 0) {
             revert AsyncActionFuseInvalidMarketId();
@@ -71,25 +101,29 @@ contract AsyncActionFuse is IFuseCommon {
 
     /// @notice Validates provided payload and forwards execution instructions to the async executor
     /// @param data_ Complete execution payload encoded off-chain
+    /// @dev Performs validation of token, amount, and target/selector pairs against market substrates.
+    ///      If executor balance is zero and amountOut > 0, transfers tokens to executor before execution.
+    ///      Requires price oracle to be configured in the Plasma Vault.
     function enter(AsyncActionFuseEnterData calldata data_) external {
         if (data_.tokenOut == address(0)) {
             revert AsyncActionFuseInvalidTokenOut();
         }
 
-        uint256 targetsLength_ = data_.targets.length;
-        if (targetsLength_ != data_.callDatas.length || targetsLength_ != data_.ethAmounts.length) {
+        uint256 targetsLength = data_.targets.length;
+        if (targetsLength != data_.callDatas.length || targetsLength != data_.ethAmounts.length) {
             revert AsyncActionFuseInvalidArrayLength();
         }
 
-        bytes32[] memory substrates_ = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-        (AllowedAmountToOutside[] memory allowedAmounts_, AllowedTargets[] memory allowedTargets_,) =
-            AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(substrates_);
+        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        (AllowedAmountToOutside[] memory allowedAmounts, AllowedTargets[] memory allowedTargets,) =
+            AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(substrates);
 
-        _validateTokenOutAndAmount(data_.tokenOut, data_.amountOut, allowedAmounts_);
-        _validateTargets(data_.targets, data_.callDatas, allowedTargets_);
+        _validateTokenOutAndAmount(data_.tokenOut, data_.amountOut, allowedAmounts);
+        _validateTargets(data_.targets, data_.callDatas, allowedTargets);
 
         address payable executor = payable(AsyncActionFuseLib.getAsyncExecutorAddress(W_ETH, address(this)));
 
+        // Transfer tokens to executor only if executor has zero balance and amountOut > 0
         if (data_.amountOut > 0 && (AsyncExecutor(executor).balance() == 0)) {
             IERC20(data_.tokenOut).safeTransfer(executor, data_.amountOut);
         }
@@ -98,7 +132,6 @@ contract AsyncActionFuse is IFuseCommon {
         if (priceOracle == address(0)) {
             revert AsyncActionFusePriceOracleNotConfigured();
         }
-
 
         AsyncExecutor(executor).execute(
             SwapExecutorEthData({
@@ -117,6 +150,8 @@ contract AsyncActionFuse is IFuseCommon {
     /// @param tokenOut_ Asset requested for transfer
     /// @param amountOut_ Amount requested for transfer
     /// @param allowedAmounts_ Substrate encoded limits defined for the market
+    /// @dev Searches allowedAmounts_ array for matching token address and validates requested amount
+    ///      Reverts if token is not found in allowed list or if requested amount exceeds allowed limit
     function _validateTokenOutAndAmount(
         address tokenOut_,
         uint256 amountOut_,
@@ -147,34 +182,39 @@ contract AsyncActionFuse is IFuseCommon {
     /// @param targets_ Array of target contract addresses
     /// @param callDatas_ Array of ABI-encoded calls
     /// @param allowedTargets_ Substrate encoded target permissions defined for the market
+    /// @dev Validates that each target address and function selector combination is present in allowedTargets_.
+    ///      Extracts selector from first 4 bytes of each callData. Reverts if callData is too short (< 4 bytes)
+    ///      or if any target/selector pair is not found in the allowed list.
     function _validateTargets(
         address[] calldata targets_,
         bytes[] calldata callDatas_,
         AllowedTargets[] memory allowedTargets_
     ) private pure {
-        uint256 targetsLength_ = targets_.length;
-        uint256 allowedTargetsLength_ = allowedTargets_.length;
+        uint256 targetsLength = targets_.length;
+        uint256 allowedTargetsLength = allowedTargets_.length;
 
-        for (uint256 i_; i_ < targetsLength_; ++i_) {
-            bytes calldata callData_ = callDatas_[i_];
-            if (callData_.length < 4) {
-                revert AsyncActionFuseCallDataTooShort(i_);
+        for (uint256 i; i < targetsLength; ++i) {
+            bytes calldata callData = callDatas_[i];
+            if (callData.length < 4) {
+                revert AsyncActionFuseCallDataTooShort(i);
             }
 
-            bytes4 selector_ = bytes4(callData_[:4]);
-            address target_ = targets_[i_];
-            bool allowed_;
+            // Extract function selector from first 4 bytes of callData
+            bytes4 selector = bytes4(callData[:4]);
+            address target = targets_[i];
+            bool allowed;
 
-            for (uint256 j_; j_ < allowedTargetsLength_; ++j_) {
-                AllowedTargets memory allowedTarget_ = allowedTargets_[j_];
-                if (allowedTarget_.target == target_ && allowedTarget_.selector == selector_) {
-                    allowed_ = true;
+            // Check if target/selector pair exists in allowed list
+            for (uint256 j; j < allowedTargetsLength; ++j) {
+                AllowedTargets memory allowedTarget = allowedTargets_[j];
+                if (allowedTarget.target == target && allowedTarget.selector == selector) {
+                    allowed = true;
                     break;
                 }
             }
 
-            if (!allowed_) {
-                revert AsyncActionFuseTargetNotAllowed(target_, selector_);
+            if (!allowed) {
+                revert AsyncActionFuseTargetNotAllowed(target, selector);
             }
         }
     }
