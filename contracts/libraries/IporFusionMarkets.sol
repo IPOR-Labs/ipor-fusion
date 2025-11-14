@@ -116,6 +116,7 @@ library IporFusionMarkets {
     /// @dev Substrate type: address
     /// @dev Substrate values: Yield Basis LT tokens addresses
     uint256 public constant YIELD_BASIS_LT = 37;
+
     /// @dev Enso Finance market
     /// @dev Substrate type: EnsoSubstrate
     /// @dev Substrate values: Encoded combination of target address and function selector
@@ -135,8 +136,8 @@ library IporFusionMarkets {
 
     /// @dev Ebisu market
     /// @dev Substrate type: EbisuZapperSubstrate
-    uint256 public constant EBISU = 38;
-    
+    uint256 public constant EBISU = 39;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
@@ -226,6 +227,15 @@ library IporFusionMarkets {
 
     /// @dev Meta Morpho Market 10
     uint256 public constant META_MORPHO_0010 = 200_010;
+
+        /// @dev Exchange Rate Limiter market for pre-hook execution
+    /// @dev Substrate type: bytes32 packed ExchangeRateLimiterConfig (see ExchangeRateLimiterConfigLib)
+    /// @dev Substrate values:
+    /// @dev  - PREHOOKS/POSTHOOKS: Hook { hookAddress, index } packed into bytes31 and wrapped into bytes32 with HookType
+    /// @dev  - VALIDATOR: ValidatorData { exchangeRate, threshold } packed into bytes31 and wrapped into bytes32 with HookType
+    /// @dev Threshold is expressed in 1e18 precision, where 1e18 = 100%
+    /// @dev Used by ExchangeRateLimiterPreHook to orchestrate pre/post hooks and validate exchange rate drift
+    uint256 public constant EXCHANGE_RATE_VALIDATOR = type(uint256).max - 2;
 
     /// @dev Special market ID used to validate balances of substrates (assets) defined in this market.
     /// @dev This market ID is used only for balance validation purposes and does not represent an actual market.
