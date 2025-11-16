@@ -99,12 +99,12 @@ contract AsyncActionFuseLibTest is Test {
         (
             AllowedAmountToOutside[] memory amounts_,
             AllowedTargets[] memory targets_,
-            AllowedSlippage[] memory slippages_
+            AllowedSlippage memory slippage_
         ) = AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(inputs_);
 
         assertEq(amounts_.length, 0);
         assertEq(targets_.length, 0);
-        assertEq(slippages_.length, 0);
+        assertEq(slippage_.slippage, 0);
     }
 
     function test_decodeAsyncActionFuseSubstratesSingleType() public {
@@ -128,12 +128,12 @@ contract AsyncActionFuseLibTest is Test {
         (
             AllowedAmountToOutside[] memory amounts_,
             AllowedTargets[] memory targets_,
-            AllowedSlippage[] memory slippages_
+            AllowedSlippage memory slippage_
         ) = AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(inputs_);
 
         assertEq(amounts_.length, 2, "amount length");
         assertEq(targets_.length, 0, "targets length");
-        assertEq(slippages_.length, 0, "slippage length");
+        assertEq(slippage_.slippage, 0, "slippage should be zero when not present");
         assertEq(amounts_[0].asset, amount1_.asset, "a1 asset");
         assertEq(amounts_[0].amount, amount1_.amount, "a1 amount");
         assertEq(amounts_[1].asset, amount2_.asset, "a2 asset");
@@ -171,12 +171,11 @@ contract AsyncActionFuseLibTest is Test {
         (
             AllowedAmountToOutside[] memory amounts_,
             AllowedTargets[] memory targetsArray_,
-            AllowedSlippage[] memory slippages_
+            AllowedSlippage memory decodedSlippage_
         ) = AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(inputs_);
 
         assertEq(amounts_.length, 1, "amount length");
         assertEq(targetsArray_.length, 1, "targets length");
-        assertEq(slippages_.length, 1, "slippage length");
 
         assertEq(amounts_[0].asset, amount_.asset, "amount asset");
         assertEq(amounts_[0].amount, amount_.amount, "amount");
@@ -184,7 +183,7 @@ contract AsyncActionFuseLibTest is Test {
         assertEq(targetsArray_[0].target, targets_.target, "target address");
         assertEq(uint32(targetsArray_[0].selector), uint32(targets_.selector), "target selector");
 
-        assertEq(slippages_[0].slippage, slippage_.slippage, "slippage");
+        assertEq(decodedSlippage_.slippage, slippage_.slippage, "slippage");
     }
 
     function test_decodeAsyncActionFuseSubstratesIgnoresUnknownTypes() public {
@@ -197,12 +196,12 @@ contract AsyncActionFuseLibTest is Test {
         (
             AllowedAmountToOutside[] memory amounts_,
             AllowedTargets[] memory targets_,
-            AllowedSlippage[] memory slippages_
+            AllowedSlippage memory slippage_
         ) = AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(inputs_);
 
         assertEq(amounts_.length, 0);
         assertEq(targets_.length, 0);
-        assertEq(slippages_.length, 0);
+        assertEq(slippage_.slippage, 0, "slippage should be zero for unknown types");
     }
 
     function callEncodeAllowedAmountToOutside(AllowedAmountToOutside memory input_) external pure {

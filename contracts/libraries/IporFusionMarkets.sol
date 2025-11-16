@@ -170,7 +170,6 @@ library IporFusionMarkets {
     uint256 public constant ASYNC_ACTION = 40;
     
     
-
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 

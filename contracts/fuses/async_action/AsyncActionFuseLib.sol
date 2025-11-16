@@ -186,7 +186,7 @@ library AsyncActionFuseLib {
     /// @param encodedSubstrates_ Array of encoded AsyncActionFuseSubstrate data
     /// @return allowedAmounts Array of AllowedAmountToOutside structs
     /// @return allowedTargets Array of AllowedTargets structs
-    /// @return allowedSlippages Array of AllowedSlippage structs
+    /// @return allowedSlippage 
     /// @dev Processes each bytes32, decodes AsyncActionFuseSubstrate, and routes to appropriate array
     ///      Uses two-pass algorithm: first pass counts each type for array allocation,
     ///      second pass decodes and populates arrays. This approach is gas-efficient for memory allocation.
@@ -197,34 +197,29 @@ library AsyncActionFuseLib {
         returns (
             AllowedAmountToOutside[] memory allowedAmounts,
             AllowedTargets[] memory allowedTargets,
-            AllowedSlippage[] memory allowedSlippages
+            AllowedSlippage memory allowedSlippage
         )
     {
         uint256 length = encodedSubstrates_.length;
         // First pass: count each substrate type to determine array sizes
         uint256 amountCount;
         uint256 targetCount;
-        uint256 slippageCount;
         for (uint256 i; i < length; ++i) {
             uint8 substrateType = uint8(uint256(encodedSubstrates_[i]) >> 248);
             if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE)) {
                 ++amountCount;
             } else if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_TARGETS)) {
                 ++targetCount;
-            } else if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_SLIPPAGE)) {
-                ++slippageCount;
             }
         }
 
         // Allocate arrays with correct sizes
         allowedAmounts = new AllowedAmountToOutside[](amountCount);
         allowedTargets = new AllowedTargets[](targetCount);
-        allowedSlippages = new AllowedSlippage[](slippageCount);
 
         // Second pass: decode and populate arrays
         uint256 amountIndex;
         uint256 targetIndex;
-        uint256 slippageIndex;
 
         for (uint256 i; i < length; ++i) {
             uint256 encoded = uint256(encodedSubstrates_[i]);
@@ -238,8 +233,7 @@ library AsyncActionFuseLib {
                 allowedTargets[targetIndex] = decodeAllowedTargets(dataBytes);
                 ++targetIndex;
             } else if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_SLIPPAGE)) {
-                allowedSlippages[slippageIndex] = decodeAllowedSlippage(dataBytes);
-                ++slippageIndex;
+                allowedSlippage = decodeAllowedSlippage(dataBytes);
             }
         }
     }

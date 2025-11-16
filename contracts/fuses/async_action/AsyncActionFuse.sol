@@ -7,7 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
-import {AsyncActionFuseLib, AllowedAmountToOutside, AllowedTargets} from "./AsyncActionFuseLib.sol";
+import {AsyncActionFuseLib, AllowedAmountToOutside, AllowedTargets, AllowedSlippage} from "./AsyncActionFuseLib.sol";
 import {AsyncExecutor, SwapExecutorEthData} from "./AsyncExecutor.sol";
 
 /// @notice Input payload for executing an async action via the fuse
@@ -26,6 +26,12 @@ struct AsyncActionFuseEnterData {
     address[] tokensDustToCheck;
 }
 
+/// @notice Input payload for fetching assets from async executor via the fuse
+/// @param assets List of ERC20 asset addresses to fetch and transfer from executor
+struct AsyncActionFuseExitData {
+    address[] assets;
+}
+
 /// @title AsyncActionFuse
 /// @notice Validates off-chain encoded asynchronous actions against market substrates before execution
 /// @author IPOR Labs
@@ -37,6 +43,11 @@ contract AsyncActionFuse is IFuseCommon {
     /// @param tokenOut Asset that was transferred to the async executor
     /// @param amountOut Amount of `tokenOut` transferred to the async executor
     event AsyncActionFuseEnter(address indexed version, address indexed tokenOut, uint256 indexed amountOut);
+
+    /// @notice Emitted after a successful asset fetch from async executor
+    /// @param version Address of the fuse implementation that executed the fetch
+    /// @param assets Array of asset addresses that were fetched
+    event AsyncActionFuseExit(address indexed version, address[] assets);
 
     /// @notice Thrown when market ID is zero or invalid
     /// @custom:error AsyncActionFuseInvalidMarketId
@@ -75,6 +86,19 @@ contract AsyncActionFuse is IFuseCommon {
     /// @notice Thrown when price oracle middleware is not configured in the Plasma Vault
     /// @custom:error AsyncActionFusePriceOracleNotConfigured
     error AsyncActionFusePriceOracleNotConfigured();
+
+    /// @notice Thrown when executor balance is not zero
+    /// @custom:error AsyncActionFuseBalanceNotZero
+    error AsyncActionFuseBalanceNotZero();
+
+    /// @notice Thrown when asset is not allowed for transfer
+    /// @param asset The asset address that was not allowed
+    /// @custom:error AsyncActionFuseAssetNotAllowed
+    error AsyncActionFuseAssetNotAllowed(address asset);
+
+    /// @notice Thrown when executor address is zero
+    /// @custom:error AsyncActionFuseInvalidExecutorAddress
+    error AsyncActionFuseInvalidExecutorAddress();
 
     /// @notice Fuse implementation address
     address public immutable VERSION;
@@ -126,6 +150,8 @@ contract AsyncActionFuse is IFuseCommon {
         // Transfer tokens to executor only if executor has zero balance and amountOut > 0
         if (data_.amountOut > 0 && (AsyncExecutor(executor).balance() == 0)) {
             IERC20(data_.tokenOut).safeTransfer(executor, data_.amountOut);
+        } else if (data_.amountOut > 0 && (AsyncExecutor(executor).balance() > 0)){
+            revert AsyncActionFuseBalanceNotZero();
         }
 
         address priceOracle = PlasmaVaultLib.getPriceOracleMiddleware();
@@ -144,6 +170,47 @@ contract AsyncActionFuse is IFuseCommon {
         );
 
         emit AsyncActionFuseEnter(VERSION, data_.tokenOut, data_.amountOut);
+    }
+
+    /// @notice Fetches assets from async executor back to Plasma Vault
+    /// @param data_ Complete exit payload containing assets to fetch
+    /// @dev Validates that all assets are allowed as substrates, then calls fetchAssets on executor.
+    ///      Slippage is always read from substrates. Requires price oracle to be configured.
+    function exit(AsyncActionFuseExitData calldata data_) external {
+        uint256 assetsLength = data_.assets.length;
+        if (assetsLength == 0) {
+            return;
+        }
+
+        bytes[] memory callDatas = new bytes[](assetsLength);
+        for (uint256 i; i < assetsLength; ++i) {
+            callDatas[i] = abi.encodeWithSelector(IERC20.transfer.selector, address(this), data_.assets[i]);
+        }
+
+
+        // Get slippage from substrates
+        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        (, , AllowedSlippage memory allowedSlippage) =
+            AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(substrates);
+
+
+
+        // Get executor address
+        address payable executor = payable(AsyncActionFuseLib.getAsyncExecutor());
+        if (executor == address(0)) {
+            revert AsyncActionFuseInvalidExecutorAddress();
+        }
+
+        // Get price oracle
+        address priceOracle = PlasmaVaultLib.getPriceOracleMiddleware();
+        if (priceOracle == address(0)) {
+            revert AsyncActionFusePriceOracleNotConfigured();
+        }
+
+        // Call fetchAssets on executor
+        AsyncExecutor(executor).fetchAssets(data_.assets, priceOracle, allowedSlippage.slippage);
+
+        emit AsyncActionFuseExit(VERSION, data_.assets);
     }
 
     /// @notice Ensures token and amount requested are within substrate defined boundaries

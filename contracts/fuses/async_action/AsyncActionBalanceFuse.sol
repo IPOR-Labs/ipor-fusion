@@ -10,6 +10,7 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {AsyncActionFuseLib} from "./AsyncActionFuseLib.sol";
 import {AsyncExecutor} from "./AsyncExecutor.sol";
+import {console2} from "forge-std/console2.sol";
 
 /// @title AsyncActionBalanceFuse
 /// @notice Provides USD-denominated valuation of assets managed by the async action executor
@@ -42,6 +43,7 @@ contract AsyncActionBalanceFuse is IMarketBalanceFuse {
         }
 
         uint256 balanceInUnderlying = AsyncExecutor(payable(executor)).balance();
+        console2.log("balanceInUnderlying", balanceInUnderlying);
 
         if (balanceInUnderlying == 0) {
             return 0;

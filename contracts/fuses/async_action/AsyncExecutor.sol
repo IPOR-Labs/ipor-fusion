@@ -104,7 +104,7 @@ contract AsyncExecutor {
         }
 
         // Update cached balance if executor already has a balance
-        if (balance > 0) {
+        if (balance == 0) {
             updateBalance(data_.tokenIn, data_.priceOracle);
         }
 
