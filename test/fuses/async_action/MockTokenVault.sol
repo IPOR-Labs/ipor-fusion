@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title MockTokenVault
 /// @notice Mock contract for testing async actions with deposit and withdraw functionality
@@ -45,7 +44,6 @@ contract MockTokenVault {
         if (amount_ > balance) {
             revert InsufficientBalance(amount_, balance);
         }
-        console2.log("withdrawing tokens from mock token vault", token_, amount_);
         IERC20(token_).safeTransfer(msg.sender, amount_);
         emit Withdraw(msg.sender, token_, amount_);
     }
@@ -57,4 +55,3 @@ contract MockTokenVault {
         return IERC20(token_).balanceOf(address(this));
     }
 }
-
