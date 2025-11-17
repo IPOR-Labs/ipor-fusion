@@ -207,8 +207,9 @@ library AsyncActionFuseLib {
         // First pass: count each substrate type to determine array sizes
         uint256 amountCount;
         uint256 targetCount;
+        uint8 substrateType;
         for (uint256 i; i < length; ++i) {
-            uint8 substrateType = uint8(uint256(encodedSubstrates_[i]) >> 248);
+             substrateType = uint8(uint256(encodedSubstrates_[i]) >> 248);
             if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE)) {
                 ++amountCount;
             } else if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_TARGETS)) {
@@ -223,10 +224,11 @@ library AsyncActionFuseLib {
         // Second pass: decode and populate arrays
         uint256 amountIndex;
         uint256 targetIndex;
-
+        uint256 encoded;
+        
         for (uint256 i; i < length; ++i) {
-            uint256 encoded = uint256(encodedSubstrates_[i]);
-            uint8 substrateType = uint8(encoded >> 248);
+            encoded = uint256(encodedSubstrates_[i]);
+            substrateType = uint8(encoded >> 248);
             bytes31 dataBytes = bytes31(uint248(encoded));
 
             if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE)) {

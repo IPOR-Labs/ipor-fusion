@@ -30,6 +30,7 @@ struct AsyncActionFuseEnterData {
 /// @param assets List of ERC20 asset addresses to fetch and transfer from executor
 struct AsyncActionFuseExitData {
     address[] assets;
+    bytes[] fetchCallDatas;
 }
 
 /// @title AsyncActionFuse
@@ -185,7 +186,7 @@ contract AsyncActionFuse is IFuseCommon {
 
         // Get slippage from substrates
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-        (, , AllowedSlippage memory allowedSlippage) =
+        (, AllowedTargets[] memory allowedTargets, AllowedSlippage memory allowedSlippage) =
             AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(substrates);
 
         // Get executor address
@@ -199,6 +200,8 @@ contract AsyncActionFuse is IFuseCommon {
         if (priceOracle == address(0)) {
             revert AsyncActionFusePriceOracleNotConfigured();
         }
+
+        _validateTargets(data_.assets, data_.fetchCallDatas, allowedTargets);
 
         // Call fetchAssets on executor
         AsyncExecutor(executor).fetchAssets(data_.assets, priceOracle, allowedSlippage.slippage);
@@ -252,9 +255,10 @@ contract AsyncActionFuse is IFuseCommon {
     ) private pure {
         uint256 targetsLength = targets_.length;
         uint256 allowedTargetsLength = allowedTargets_.length;
+        bytes calldata callData; 
 
         for (uint256 i; i < targetsLength; ++i) {
-            bytes calldata callData = callDatas_[i];
+           callData = callDatas_[i];
             if (callData.length < 4) {
                 revert AsyncActionFuseCallDataTooShort(i);
             }
@@ -264,9 +268,11 @@ contract AsyncActionFuse is IFuseCommon {
             address target = targets_[i];
             bool allowed;
 
+            AllowedTargets memory allowedTarget;
+
             // Check if target/selector pair exists in the allowed list
             for (uint256 j; j < allowedTargetsLength; ++j) {
-                AllowedTargets memory allowedTarget = allowedTargets_[j];
+                allowedTarget = allowedTargets_[j];
                 if (allowedTarget.target == target && allowedTarget.selector == selector) {
                     allowed = true;
                     break;

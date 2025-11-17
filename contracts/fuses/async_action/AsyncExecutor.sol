@@ -28,11 +28,14 @@ contract AsyncExecutor {
 
     uint256 private constant WAD = 1e18;
 
-    /// @notice Cached balance expressed in the vault underlying asset units
-    uint256 public balance;
+    /// @notice Address of WETH used for wrapping ETH dust (currently reserved for future use)
+    address public immutable W_ETH;
 
     /// @notice Authorized Plasma Vault allowed to trigger asynchronous execution
     address public immutable PLASMA_VAULT;
+
+    /// @notice Cached balance expressed in the vault underlying asset units
+    uint256 public balance;
 
     /// @notice Thrown when the provided data arrays are of mismatched lengths
     /// @custom:error AsyncExecutorInvalidArrayLength
@@ -79,8 +82,15 @@ contract AsyncExecutor {
     /// @param assets Array of asset addresses that were fetched
     event AsyncExecutorAssetsFetched(address[] assets);
 
-    /// @notice Address of WETH used for wrapping ETH dust (currently reserved for future use)
-    address public immutable W_ETH;
+    /// @notice Modifier that restricts function access to the authorized Plasma Vault
+    /// @dev Reverts if the caller is not the authorized Plasma Vault
+    modifier onlyPlasmaVault() {
+        if (msg.sender != PLASMA_VAULT) {
+            revert AsyncExecutorUnauthorizedCaller();
+        }
+        _;
+    }
+
 
     /// @notice Initializes the AsyncExecutor contract
     /// @param wEth_ Address of the WETH token contract (must not be address(0))
@@ -111,7 +121,7 @@ contract AsyncExecutor {
 
         // Update cached balance if executor has no cached balance
         if (balance == 0) {
-            updateBalance(data_.tokenIn, data_.priceOracle);
+            _updateBalance(data_.tokenIn, data_.priceOracle);
         }
 
         address target;
@@ -190,7 +200,7 @@ contract AsyncExecutor {
     /// @dev Calculates USD value of the asset held by executor and converts it to underlying asset units.
     ///      Updates the public balance state variable.
     ///      Reverts if priceOracle_ is zero or if asset_ is zero.
-    function updateBalance(address asset_, address priceOracle_) internal {
+    function _updateBalance(address asset_, address priceOracle_) internal {
         if (priceOracle_ == address(0)) {
             revert AsyncExecutorInvalidPriceOracleAddress();
         }
@@ -202,15 +212,6 @@ contract AsyncExecutor {
     /// @notice Allows the executor to receive ETH required for subsequent calls
     /// @dev Enables the contract to receive ETH payments for use in function calls with ETH value
     receive() external payable {}
-
-    /// @notice Modifier that restricts function access to the authorized Plasma Vault
-    /// @dev Reverts if the caller is not the authorized Plasma Vault
-    modifier onlyPlasmaVault() {
-        if (msg.sender != PLASMA_VAULT) {
-            revert AsyncExecutorUnauthorizedCaller();
-        }
-        _;
-    }
 
     /// @notice Calculates USD value of a given asset held by this executor in 18-decimal precision
     /// @param asset_ ERC20 asset address to evaluate (must not be address(0))

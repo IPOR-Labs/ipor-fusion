@@ -715,11 +715,18 @@ contract AsyncActionFuseTest is Test {
         address[] memory assetsToFetch = new address[](1);
         assetsToFetch[0] = USDC;
         
+        bytes[] memory fetchCallDatas = new bytes[](1);
+        fetchCallDatas[0] = abi.encodeWithSignature(
+            "transfer(address,uint256)",
+            PLASMA_VAULT,
+            0
+        );
+        
         exitActions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
             data: abi.encodeWithSignature(
-                "exit((address[]))",
-                AsyncActionFuseExitData({assets: assetsToFetch})
+                "exit((address[],bytes[]))",
+                AsyncActionFuseExitData({assets: assetsToFetch, fetchCallDatas: fetchCallDatas})
             )
         });
 
