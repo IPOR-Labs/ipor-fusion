@@ -19,7 +19,9 @@ struct SwapExecutorEthData {
 
 /// @title AsyncExecutor
 /// @notice Executes asynchronous swap actions based on pre-encoded call data
-/// @dev Inspired by SwapExecutorEth but tailored for async execution flows
+/// @dev Inspired by SwapExecutorEth but tailored for async execution flows.
+///      Manages cached balance tracking and asset fetching with slippage protection.
+///      Only callable by the authorized Plasma Vault.
 /// @author IPOR Labs
 contract AsyncExecutor {
     using SafeERC20 for IERC20;
@@ -40,9 +42,9 @@ contract AsyncExecutor {
     /// @custom:error AsyncExecutorInvalidWethAddress
     error AsyncExecutorInvalidWethAddress();
 
-    /// @notice Thrown when cached balance is expected to be cleared before execution
-    /// @custom:error AsyncExecutorBalanceNotZero
-    error AsyncExecutorBalanceNotZero();
+    /// @notice Thrown when the provided Plasma Vault address is zero
+    /// @custom:error AsyncExecutorInvalidPlasmaVaultAddress
+    error AsyncExecutorInvalidPlasmaVaultAddress();
 
     /// @notice Thrown when aggregated balance is below allowed threshold
     /// @custom:error AsyncExecutorBalanceNotEnough
@@ -77,15 +79,18 @@ contract AsyncExecutor {
     /// @param assets Array of asset addresses that were fetched
     event AsyncExecutorAssetsFetched(address[] assets);
 
-    /// @notice Address of WETH used for wrapping ETH dust
+    /// @notice Address of WETH used for wrapping ETH dust (currently reserved for future use)
     address public immutable W_ETH;
 
-    /// @notice Contract constructor
+    /// @notice Initializes the AsyncExecutor contract
     /// @param wEth_ Address of the WETH token contract (must not be address(0))
-    /// @param plasmaVault_ Address of the controlling Plasma Vault
+    /// @param plasmaVault_ Address of the controlling Plasma Vault (must not be address(0))
     constructor(address wEth_, address plasmaVault_) {
         if (wEth_ == address(0)) {
             revert AsyncExecutorInvalidWethAddress();
+        }
+        if (plasmaVault_ == address(0)) {
+            revert AsyncExecutorInvalidPlasmaVaultAddress();
         }
         W_ETH = wEth_;
         PLASMA_VAULT = plasmaVault_;
@@ -94,8 +99,9 @@ contract AsyncExecutor {
     /// @notice Executes a batch of asynchronous calls
     /// @param data_ Structure containing the execution payload
     /// @dev Validates array lengths, updates cached balance if needed, then executes each call sequentially.
-    ///      Calls can include ETH value (if ethAmount > 0) or be regular calls. Leftover ERC20 tokens
-    ///      and ETH remain in the executor contract and should be fetched via fetchAssets().
+    ///      Calls can include ETH value (if ethAmount > 0) or be regular calls.
+    ///      Leftover ERC20 tokens and ETH remain in the executor contract and should be fetched via fetchAssets().
+    ///      Only callable by the authorized Plasma Vault.
     function execute(SwapExecutorEthData calldata data_) external onlyPlasmaVault {
         uint256 len = data_.targets.length;
 
@@ -103,7 +109,7 @@ contract AsyncExecutor {
             revert AsyncExecutorInvalidArrayLength();
         }
 
-        // Update cached balance if executor already has a balance
+        // Update cached balance if executor has no cached balance
         if (balance == 0) {
             updateBalance(data_.tokenIn, data_.priceOracle);
         }
@@ -129,12 +135,13 @@ contract AsyncExecutor {
 
     /// @notice Batch asset fetch and risk management by slippage threshold
     /// @param assets_ List of ERC20 asset addresses to fetch and transfer
-    /// @param priceOracle_ Address of price oracle contract to value assets
+    /// @param priceOracle_ Address of price oracle contract to value assets (must not be address(0))
     /// @param slippage_ Maximum allowed slippage as percentage in WAD format (1e18 = 100%, 5e16 = 5%)
     /// @dev Calculates total USD value of all assets, converts to underlying asset units, and validates
-    ///      against cached balance with slippage tolerance. If validation passes, transfers all assets
-    ///      to Plasma Vault and resets cached balance to zero. Reverts if actual balance is below
-    ///      minimum allowed threshold (cached balance - slippage).
+    ///      against cached balance with slippage tolerance.
+    ///      If validation passes, transfers all assets to Plasma Vault and resets cached balance to zero.
+    ///      Reverts if actual balance is below minimum allowed threshold (cached balance - slippage).
+    ///      Only callable by the authorized Plasma Vault.
     function fetchAssets(address[] calldata assets_, address priceOracle_, uint256 slippage_)
         external
         onlyPlasmaVault
@@ -178,10 +185,11 @@ contract AsyncExecutor {
     }
 
     /// @notice Updates cached balance expressed in the vault underlying asset
-    /// @param asset_ ERC20 asset address representing the deposit token
-    /// @param priceOracle_ Price oracle used to fetch asset valuations
+    /// @param asset_ ERC20 asset address representing the deposit token (must not be address(0))
+    /// @param priceOracle_ Price oracle used to fetch asset valuations (must not be address(0))
     /// @dev Calculates USD value of the asset held by executor and converts it to underlying asset units.
-    ///      Updates the public balance state variable. Requires priceOracle_ to be non-zero.
+    ///      Updates the public balance state variable.
+    ///      Reverts if priceOracle_ is zero or if asset_ is zero.
     function updateBalance(address asset_, address priceOracle_) internal {
         if (priceOracle_ == address(0)) {
             revert AsyncExecutorInvalidPriceOracleAddress();
@@ -192,8 +200,11 @@ contract AsyncExecutor {
     }
 
     /// @notice Allows the executor to receive ETH required for subsequent calls
+    /// @dev Enables the contract to receive ETH payments for use in function calls with ETH value
     receive() external payable {}
 
+    /// @notice Modifier that restricts function access to the authorized Plasma Vault
+    /// @dev Reverts if the caller is not the authorized Plasma Vault
     modifier onlyPlasmaVault() {
         if (msg.sender != PLASMA_VAULT) {
             revert AsyncExecutorUnauthorizedCaller();
@@ -202,11 +213,12 @@ contract AsyncExecutor {
     }
 
     /// @notice Calculates USD value of a given asset held by this executor in 18-decimal precision
-    /// @param asset_ ERC20 asset address to evaluate
+    /// @param asset_ ERC20 asset address to evaluate (must not be address(0))
     /// @param priceOracle_ Price oracle responsible for quoting the asset in USD
     /// @return assetValueUsd Asset value expressed in USD with 18-decimal WAD precision
     /// @dev Fetches asset balance, converts to WAD, fetches price from oracle, converts price to WAD,
-    ///      then multiplies balance * price and divides by WAD to get USD value. Returns 0 if balance is zero.
+    ///      then multiplies balance * price and divides by WAD to get USD value.
+    ///      Returns 0 if balance is zero. Reverts if asset_ is zero.
     function _calculateAssetUsdValue(address asset_, address priceOracle_)
         private
         view
@@ -235,6 +247,7 @@ contract AsyncExecutor {
     /// @return underlyingAmount Portfolio value converted to underlying asset denomination
     /// @dev Resolves underlying asset from calling Plasma Vault, fetches price, and converts USD to underlying units.
     ///      Returns 0 if balanceInUsd is zero.
+    ///      Reverts if underlying asset address is zero.
     function _convertUsdPortfolioToUnderlying(uint256 balanceInUsd, address priceOracle)
         private
         view
@@ -257,7 +270,7 @@ contract AsyncExecutor {
     /// @notice Resolves underlying ERC4626 asset controlled by the calling Plasma Vault
     /// @return underlyingAsset Address of the underlying asset
     /// @dev Calls IERC4626.asset() on msg.sender (Plasma Vault) to get the underlying asset address.
-    ///      Reverts if the returned address is zero.
+    ///      Reverts if the returned address is zero or if msg.sender does not implement IERC4626.
     function _resolveUnderlyingAsset() private view returns (address underlyingAsset) {
         underlyingAsset = IERC4626(msg.sender).asset();
         if (underlyingAsset == address(0)) {
@@ -271,7 +284,8 @@ contract AsyncExecutor {
     /// @param underlyingPriceDecimals Number of decimals returned by the oracle price
     /// @param underlyingAssetDecimals Decimals of the underlying ERC20 asset
     /// @return underlyingAmount Amount of the underlying asset corresponding to the provided USD value
-    /// @dev Normalizes price to WAD (18 decimals), then calculates: (USD * 10^assetDecimals) / priceWad
+    /// @dev Normalizes price to WAD (18 decimals), then calculates: (USD * 10^assetDecimals) / priceWad.
+    ///      Handles cases where price decimals are less than, equal to, or greater than 18.
     function _convertUsdToUnderlyingAmount(
         uint256 balanceInUSD,
         uint256 underlyingPrice,

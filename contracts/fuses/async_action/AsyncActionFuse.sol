@@ -13,10 +13,10 @@ import {AsyncExecutor, SwapExecutorEthData} from "./AsyncExecutor.sol";
 /// @notice Input payload for executing an async action via the fuse
 /// @param tokenOut Address of the asset expected to be transferred to the async executor
 /// @param amountOut Amount of `tokenOut` to send to the async executor
-/// @param targets Sequence of contracts that will be invoked by the async executor
+/// @param targets Sequence of contract addresses that will be invoked by the async executor
 /// @param callDatas Calldata for each target invocation
 /// @param ethAmounts ETH value to forward with each call
-/// @param tokensDustToCheck Tokens that should be inspected for dust after execution (currently unused)
+/// @param tokensDustToCheck Tokens that should be inspected for dust after execution (currently unused in this implementation)
 struct AsyncActionFuseEnterData {
     address tokenOut;
     uint256 amountOut;
@@ -91,11 +91,6 @@ contract AsyncActionFuse is IFuseCommon {
     /// @custom:error AsyncActionFuseBalanceNotZero
     error AsyncActionFuseBalanceNotZero();
 
-    /// @notice Thrown when asset is not allowed for transfer
-    /// @param asset The asset address that was not allowed
-    /// @custom:error AsyncActionFuseAssetNotAllowed
-    error AsyncActionFuseAssetNotAllowed(address asset);
-
     /// @notice Thrown when executor address is zero
     /// @custom:error AsyncActionFuseInvalidExecutorAddress
     error AsyncActionFuseInvalidExecutorAddress();
@@ -126,7 +121,10 @@ contract AsyncActionFuse is IFuseCommon {
     /// @notice Validates provided payload and forwards execution instructions to the async executor
     /// @param data_ Complete execution payload encoded off-chain
     /// @dev Performs validation of token, amount, and target/selector pairs against market substrates.
+    ///      Validates that tokenOut is allowed and amountOut does not exceed allowed limits.
+    ///      Validates that each target/selector pair is in the allowed list.
     ///      If executor balance is zero and amountOut > 0, transfers tokens to executor before execution.
+    ///      Reverts if executor has non-zero balance when amountOut > 0.
     ///      Requires price oracle to be configured in the Plasma Vault.
     function enter(AsyncActionFuseEnterData calldata data_) external {
         if (data_.tokenOut == address(0)) {
@@ -148,9 +146,10 @@ contract AsyncActionFuse is IFuseCommon {
         address payable executor = payable(AsyncActionFuseLib.getAsyncExecutorAddress(W_ETH, address(this)));
 
         // Transfer tokens to executor only if executor has zero balance and amountOut > 0
+        // Revert if executor has non-zero balance when amountOut > 0 to prevent state conflicts
         if (data_.amountOut > 0 && (AsyncExecutor(executor).balance() == 0)) {
             IERC20(data_.tokenOut).safeTransfer(executor, data_.amountOut);
-        } else if (data_.amountOut > 0 && (AsyncExecutor(executor).balance() > 0)){
+        } else if (data_.amountOut > 0 && (AsyncExecutor(executor).balance() > 0)) {
             revert AsyncActionFuseBalanceNotZero();
         }
 
@@ -174,26 +173,20 @@ contract AsyncActionFuse is IFuseCommon {
 
     /// @notice Fetches assets from async executor back to Plasma Vault
     /// @param data_ Complete exit payload containing assets to fetch
-    /// @dev Validates that all assets are allowed as substrates, then calls fetchAssets on executor.
-    ///      Slippage is always read from substrates. Requires price oracle to be configured.
+    /// @dev Fetches specified assets from the async executor and transfers them to the Plasma Vault.
+    ///      Slippage tolerance is read from market substrates.
+    ///      Requires executor address to be set and price oracle to be configured in the Plasma Vault.
+    ///      Returns early if assets array is empty.
     function exit(AsyncActionFuseExitData calldata data_) external {
         uint256 assetsLength = data_.assets.length;
         if (assetsLength == 0) {
             return;
         }
 
-        bytes[] memory callDatas = new bytes[](assetsLength);
-        for (uint256 i; i < assetsLength; ++i) {
-            callDatas[i] = abi.encodeWithSelector(IERC20.transfer.selector, address(this), data_.assets[i]);
-        }
-
-
         // Get slippage from substrates
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         (, , AllowedSlippage memory allowedSlippage) =
             AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(substrates);
-
-
 
         // Get executor address
         address payable executor = payable(AsyncActionFuseLib.getAsyncExecutor());
@@ -213,12 +206,12 @@ contract AsyncActionFuse is IFuseCommon {
         emit AsyncActionFuseExit(VERSION, data_.assets);
     }
 
-    /// @notice Ensures token and amount requested are within substrate defined boundaries
+    /// @notice Ensures token and amount requested are within substrate-defined boundaries
     /// @param tokenOut_ Asset requested for transfer
     /// @param amountOut_ Amount requested for transfer
-    /// @param allowedAmounts_ Substrate encoded limits defined for the market
-    /// @dev Searches allowedAmounts_ array for matching token address and validates requested amount
-    ///      Reverts if token is not found in allowed list or if requested amount exceeds allowed limit
+    /// @param allowedAmounts_ Substrate-encoded limits defined for the market
+    /// @dev Searches allowedAmounts_ array for matching token address and validates requested amount.
+    ///      Reverts if token is not found in allowed list or if requested amount exceeds allowed limit.
     function _validateTokenOutAndAmount(
         address tokenOut_,
         uint256 amountOut_,
@@ -248,10 +241,10 @@ contract AsyncActionFuse is IFuseCommon {
     /// @notice Verifies that each target/selector pair is permitted for the market
     /// @param targets_ Array of target contract addresses
     /// @param callDatas_ Array of ABI-encoded calls
-    /// @param allowedTargets_ Substrate encoded target permissions defined for the market
+    /// @param allowedTargets_ Substrate-encoded target permissions defined for the market
     /// @dev Validates that each target address and function selector combination is present in allowedTargets_.
-    ///      Extracts selector from first 4 bytes of each callData. Reverts if callData is too short (< 4 bytes)
-    ///      or if any target/selector pair is not found in the allowed list.
+    ///      Extracts selector from first 4 bytes of each callData.
+    ///      Reverts if callData is too short (< 4 bytes) or if any target/selector pair is not found in the allowed list.
     function _validateTargets(
         address[] calldata targets_,
         bytes[] calldata callDatas_,
@@ -271,7 +264,7 @@ contract AsyncActionFuse is IFuseCommon {
             address target = targets_[i];
             bool allowed;
 
-            // Check if target/selector pair exists in allowed list
+            // Check if target/selector pair exists in the allowed list
             for (uint256 j; j < allowedTargetsLength; ++j) {
                 AllowedTargets memory allowedTarget = allowedTargets_[j];
                 if (allowedTarget.target == target && allowedTarget.selector == selector) {

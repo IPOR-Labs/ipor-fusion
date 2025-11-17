@@ -30,7 +30,9 @@ struct AsyncActionFuseSubstrate {
 
 /// @title AsyncActionFuseLib
 /// @notice Library for managing async action fuse operations
-/// @dev Provides utility functions for encoding/decoding substrate data and managing AsyncExecutor instances
+/// @dev Provides utility functions for encoding/decoding substrate data and managing AsyncExecutor instances.
+///      Supports encoding/decoding of AllowedAmountToOutside, AllowedTargets, and AllowedSlippage structures.
+///      Manages AsyncExecutor storage using ERC-7201 namespaced storage pattern.
 /// @author IPOR Labs
 library AsyncActionFuseLib {
     uint248 private constant _UINT88_MASK = (uint248(1) << 88) - 1;
@@ -49,9 +51,9 @@ library AsyncActionFuseLib {
     /// @notice Encodes AllowedAmountToOutside struct into bytes31
     /// @param data_ The AllowedAmountToOutside struct to encode
     /// @return encoded The encoded bytes31 data
-    /// @dev Encodes address (20 bytes, left-aligned) and uint88 amount (11 bytes, right-aligned) into 31 bytes
+    /// @dev Encodes address (20 bytes, left-aligned) and uint88 amount (11 bytes, right-aligned) into 31 bytes.
     ///      Layout: [address (20 bytes) | amount (11 bytes)]
-    ///      Reverts if amount exceeds uint88 maximum (2^88 - 1)
+    ///      Reverts if amount exceeds uint88 maximum (2^88 - 1).
     function encodeAllowedAmountToOutside(AllowedAmountToOutside memory data_)
         internal
         pure
@@ -70,7 +72,7 @@ library AsyncActionFuseLib {
     /// @notice Decodes bytes31 into AllowedAmountToOutside struct
     /// @param encoded_ The encoded bytes31 data
     /// @return data_ The decoded AllowedAmountToOutside struct
-    /// @dev Decodes address (20 bytes, left-aligned) and uint88 amount (11 bytes, right-aligned) from 31 bytes
+    /// @dev Decodes address (20 bytes, left-aligned) and uint88 amount (11 bytes, right-aligned) from 31 bytes.
     ///      Layout: [address (20 bytes) | amount (11 bytes)]
     function decodeAllowedAmountToOutside(bytes31 encoded_)
         internal
@@ -78,7 +80,7 @@ library AsyncActionFuseLib {
         returns (AllowedAmountToOutside memory data_)
     {
         uint248 packed = uint248(encoded_);
-        // Extract address from upper 160 bits (shifted right by 88)
+        // Extract address from upper 160 bits (shifted right by 88 bits)
         data_.asset = address(uint160(packed >> 88));
         // Extract amount from lower 88 bits
         data_.amount = uint256(uint88(packed & _UINT88_MASK));
@@ -87,9 +89,9 @@ library AsyncActionFuseLib {
     /// @notice Encodes AllowedTargets struct into bytes31
     /// @param data_ The AllowedTargets struct to encode
     /// @return encoded The encoded bytes31 data
-    /// @dev Encodes address (20 bytes, left-aligned) and bytes4 selector (4 bytes, right-aligned) into 31 bytes
+    /// @dev Encodes address (20 bytes, left-aligned) and bytes4 selector (4 bytes, right-aligned) into 31 bytes.
     ///      Layout: [address (20 bytes) | selector (4 bytes) | unused (7 bytes)]
-    ///      The remaining 7 bytes are unused but preserved for consistency with bytes31 format
+    ///      The remaining 7 bytes are unused but preserved for consistency with bytes31 format.
     function encodeAllowedTargets(AllowedTargets memory data_)
         internal
         pure
@@ -103,7 +105,7 @@ library AsyncActionFuseLib {
     /// @notice Decodes bytes31 into AllowedTargets struct
     /// @param encoded_ The encoded bytes31 data
     /// @return data_ The decoded AllowedTargets struct
-    /// @dev Decodes address (20 bytes, left-aligned) and bytes4 selector (4 bytes, right-aligned) from 31 bytes
+    /// @dev Decodes address (20 bytes, left-aligned) and bytes4 selector (4 bytes, right-aligned) from 31 bytes.
     ///      Layout: [address (20 bytes) | selector (4 bytes) | unused (7 bytes)]
     function decodeAllowedTargets(bytes31 encoded_)
         internal
@@ -111,7 +113,7 @@ library AsyncActionFuseLib {
         returns (AllowedTargets memory data_)
     {
         uint248 packed = uint248(encoded_);
-        // Extract address from upper 160 bits (shifted right by 32)
+        // Extract address from upper 160 bits (shifted right by 32 bits)
         data_.target = address(uint160(packed >> 32));
         // Extract selector from lower 32 bits
         data_.selector = bytes4(uint32(packed & _UINT32_MASK));
@@ -120,7 +122,7 @@ library AsyncActionFuseLib {
     /// @notice Encodes AsyncActionFuseSubstrate struct into bytes32
     /// @param substrate_ The AsyncActionFuseSubstrate struct to encode
     /// @return encoded The encoded bytes32 data
-    /// @dev Encodes enum substrateType (1 byte, leftmost) and bytes31 data (31 bytes, right-aligned) into 32 bytes
+    /// @dev Encodes enum substrateType (1 byte, leftmost) and bytes31 data (31 bytes, right-aligned) into 32 bytes.
     ///      Layout: [substrateType (1 byte) | data (31 bytes)]
     function encodeAsyncActionFuseSubstrate(AsyncActionFuseSubstrate memory substrate_)
         internal
@@ -136,7 +138,7 @@ library AsyncActionFuseLib {
     /// @notice Decodes bytes32 into AsyncActionFuseSubstrate struct
     /// @param encoded_ The encoded bytes32 data
     /// @return substrate_ The decoded AsyncActionFuseSubstrate struct
-    /// @dev Decodes enum substrateType (1 byte, leftmost) and bytes31 data (31 bytes, right-aligned) from 32 bytes
+    /// @dev Decodes enum substrateType (1 byte, leftmost) and bytes31 data (31 bytes, right-aligned) from 32 bytes.
     ///      Layout: [substrateType (1 byte) | data (31 bytes)]
     function decodeAsyncActionFuseSubstrate(bytes32 encoded_)
         internal
@@ -153,9 +155,9 @@ library AsyncActionFuseLib {
     /// @notice Encodes AllowedSlippage struct into bytes31
     /// @param data_ The AllowedSlippage struct to encode
     /// @return encoded The encoded bytes31 data
-    /// @dev Encodes uint248 slippage value (31 bytes) directly into bytes31
-    ///      Reverts if slippage exceeds uint248 maximum (2^248 - 1)
-    ///      Note: slippage is typically expressed as a percentage in 18-decimal WAD format (1e18 = 100%)
+    /// @dev Encodes uint248 slippage value (31 bytes) directly into bytes31.
+    ///      Reverts if slippage exceeds uint248 maximum (2^248 - 1).
+    ///      Note: slippage is typically expressed as a percentage in 18-decimal WAD format (1e18 = 100%).
     function encodeAllowedSlippage(AllowedSlippage memory data_)
         internal
         pure
@@ -172,8 +174,8 @@ library AsyncActionFuseLib {
     /// @notice Decodes bytes31 into AllowedSlippage struct
     /// @param encoded_ The encoded bytes31 data
     /// @return data_ The decoded AllowedSlippage struct
-    /// @dev Decodes uint248 slippage value (31 bytes) directly from bytes31
-    ///      Note: slippage is typically expressed as a percentage in 18-decimal WAD format (1e18 = 100%)
+    /// @dev Decodes uint248 slippage value (31 bytes) directly from bytes31.
+    ///      Note: slippage is typically expressed as a percentage in 18-decimal WAD format (1e18 = 100%).
     function decodeAllowedSlippage(bytes31 encoded_)
         internal
         pure
@@ -186,11 +188,12 @@ library AsyncActionFuseLib {
     /// @param encodedSubstrates_ Array of encoded AsyncActionFuseSubstrate data
     /// @return allowedAmounts Array of AllowedAmountToOutside structs
     /// @return allowedTargets Array of AllowedTargets structs
-    /// @return allowedSlippage 
-    /// @dev Processes each bytes32, decodes AsyncActionFuseSubstrate, and routes to appropriate array
+    /// @return allowedSlippage Single AllowedSlippage struct (last one found if multiple exist)
+    /// @dev Processes each bytes32, decodes AsyncActionFuseSubstrate, and routes to appropriate array.
     ///      Uses two-pass algorithm: first pass counts each type for array allocation,
     ///      second pass decodes and populates arrays. This approach is gas-efficient for memory allocation.
     ///      Unknown substrate types are silently ignored.
+    ///      If multiple ALLOWED_SLIPPAGE substrates exist, only the last one is returned.
     function decodeAsyncActionFuseSubstrates(bytes32[] memory encodedSubstrates_)
         internal
         pure
@@ -239,9 +242,9 @@ library AsyncActionFuseLib {
     }
 
     /// @dev Storage slot for AsyncExecutor address
-    /// @dev Uses ERC-7201 namespaced storage pattern to avoid storage collisions
+    /// @dev Uses ERC-7201 namespaced storage pattern to avoid storage collisions.
     ///      Calculation: keccak256(abi.encode(uint256(keccak256("io.ipor.asyncAction.Executor")) - 1)) & ~bytes32(uint256(0xff))
-    ///      The slot is calculated by: namespace hash - 1, then clearing the last byte to align to 256-bit boundary
+    ///      The slot is calculated by: namespace hash - 1, then clearing the last byte to align to 256-bit boundary.
     bytes32 private constant ASYNC_EXECUTOR_SLOT = 0xd11817d505e758dbdddfdf82e8802c5d790ff9a5210336904df8aac67e86d200;
 
     /// @dev Structure holding the AsyncExecutor address
@@ -253,7 +256,7 @@ library AsyncActionFuseLib {
 
     /// @notice Gets the AsyncExecutor storage pointer
     /// @return storagePtr The AsyncExecutorStorage struct from storage
-    /// @dev Uses inline assembly to access the namespaced storage slot
+    /// @dev Uses inline assembly to access the namespaced storage slot.
     function getAsyncExecutorStorage() internal pure returns (AsyncExecutorStorage storage storagePtr) {
         assembly {
             storagePtr.slot := ASYNC_EXECUTOR_SLOT
@@ -262,7 +265,7 @@ library AsyncActionFuseLib {
 
     /// @notice Sets the AsyncExecutor address
     /// @param executor_ The address of the AsyncExecutor to store
-    /// @dev Overwrites any previously stored executor address
+    /// @dev Overwrites any previously stored executor address.
     function setAsyncExecutor(address executor_) internal {
         AsyncExecutorStorage storage storagePtr = getAsyncExecutorStorage();
         storagePtr.executor = executor_;
@@ -270,6 +273,7 @@ library AsyncActionFuseLib {
 
     /// @notice Gets the AsyncExecutor address from storage
     /// @return executorAddress The address of the AsyncExecutor, or address(0) if not set
+    /// @dev Returns the executor address stored in the ERC-7201 namespaced storage slot.
     function getAsyncExecutor() internal view returns (address executorAddress) {
         AsyncExecutorStorage storage storagePtr = getAsyncExecutorStorage();
         executorAddress = storagePtr.executor;
@@ -291,4 +295,3 @@ library AsyncActionFuseLib {
         }
     }
 }
-
