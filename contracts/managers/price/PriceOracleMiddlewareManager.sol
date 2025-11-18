@@ -141,6 +141,80 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
         return PriceOracleMiddlewareManagerLib.getConfiguredAssets();
     }
 
+    /// @notice Updates max price delta threshold for a list of assets.
+    /// @param assets_ Asset addresses to configure.
+    /// @param maxPricesDelta_ Maximum price delta thresholds matching each asset.
+    function updatePriceValidation(address[] calldata assets_, uint256[] calldata maxPricesDelta_) external restricted {
+        uint256 assetsLength = assets_.length;
+        if (assetsLength == 0) {
+            revert EmptyArrayNotSupported();
+        }
+        if (assetsLength != maxPricesDelta_.length) {
+            revert ArrayLengthMismatch();
+        }
+        for (uint256 i; i < assetsLength; ++i) {
+            PriceOracleMiddlewareManagerLib.updatePriceValidation(assets_[i], maxPricesDelta_[i]);
+        }
+    }
+
+    /// @notice Removes price validation configuration for provided assets.
+    /// @param assets_ Asset addresses to clear.
+    function removePriceValidation(address[] calldata assets_) external restricted {
+        uint256 assetsLength = assets_.length;
+        if (assetsLength == 0) {
+            revert EmptyArrayNotSupported();
+        }
+        for (uint256 i; i < assetsLength; ++i) {
+            PriceOracleMiddlewareManagerLib.removePriceValidation(assets_[i]);
+        }
+    }
+
+    /// @notice Returns all assets with active price validation configuration.
+    /// @return assets Array of asset addresses with configured validation.
+    function getConfiguredPriceValidationAssets() external view returns (address[] memory assets) {
+        assets = PriceOracleMiddlewareManagerLib.getConfiguredPriceValidationAssets();
+    }
+
+    function getPriceValidationInfo(
+        address asset_
+    ) external view returns (uint256 maxPricesDelta, uint256 lastValidatedPrice, uint256 lastValidatedTimestamp) {
+        return PriceOracleMiddlewareManagerLib.getPriceValidationInfo(asset_);
+    }
+
+    function validateAllAssetsPrices() external restricted {
+        address[] memory assets = PriceOracleMiddlewareManagerLib.getConfiguredPriceValidationAssets();
+        uint256 assetsLength = assets.length;
+        if (assetsLength == 0) {
+            return;
+        }
+
+        uint256 assetPrice;
+        uint256 decimals;
+
+        for (uint256 i; i < assetsLength; ++i) {
+            (assetPrice, decimals) = _getAssetPrice(assets[i]);
+            PriceOracleMiddlewareManagerLib.validatePriceChange(assets[i], IporMath.convertToWad(assetPrice, decimals));
+        }
+    }
+
+    function validateAssetsPrices(address[] calldata assets_) external restricted {
+        uint256 assetsLength = assets_.length;
+        uint256 assetPrice;
+        uint256 decimals;
+
+        if (assetsLength == 0) {
+            return;
+        }
+
+        for (uint256 i; i < assetsLength; ++i) {
+            (assetPrice, decimals) = _getAssetPrice(assets_[i]);
+            PriceOracleMiddlewareManagerLib.validatePriceChange(
+                assets_[i],
+                IporMath.convertToWad(assetPrice, decimals)
+            );
+        }
+    }
+
     /// @notice Gets the USD price for a single asset
     /// @param asset_ The address of the asset to price
     /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
