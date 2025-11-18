@@ -157,9 +157,9 @@ library IporFusionMarkets {
     ///            selector: functionSelector
     ///          }))
     ///        }))
-    ///      - ALLOWED_SLIPPAGE: Maximum slippage threshold for balance validation (18-decimal fixed-point, 1e18 = 100%)
+    ///      - ALLOWED_EXIT_SLIPPAGE: Maximum slippage threshold for balance validation (18-decimal fixed-point, 1e18 = 100%)
     ///        Encoded as: AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(AsyncActionFuseSubstrate({
-    ///          substrateType: AsyncActionFuseSubstrateType.ALLOWED_SLIPPAGE,
+    ///          substrateType: AsyncActionFuseSubstrateType.ALLOWED_EXIT_SLIPPAGE,
     ///          data: AsyncActionFuseLib.encodeAllowedSlippage(AllowedSlippage({
     ///            slippage: slippageValue (uint248, max 2^248 - 1)
     ///          }))

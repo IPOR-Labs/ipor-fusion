@@ -163,7 +163,7 @@ contract AsyncActionFuseLibTest is Test {
         );
         inputs_[2] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
             AsyncActionFuseSubstrate({
-                substrateType: AsyncActionFuseSubstrateType.ALLOWED_SLIPPAGE,
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_EXIT_SLIPPAGE,
                 data: AsyncActionFuseLib.encodeAllowedSlippage(slippage_)
             })
         );

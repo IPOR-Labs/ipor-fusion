@@ -84,7 +84,7 @@ The integration uses three types of substrates:
     - Encodes: `address asset` (20 bytes) + `uint88 amount` (11 bytes) = 31 bytes
 2. **`ALLOWED_TARGETS`**: Defines allowed target contract addresses and function selectors
     - Encodes: `address target` (20 bytes) + `bytes4 selector` (4 bytes) = 24 bytes (7 bytes unused)
-3. **`ALLOWED_SLIPPAGE`**: Defines maximum slippage tolerance for exit operations
+3. **`ALLOWED_EXIT_SLIPPAGE`**: Defines maximum slippage tolerance for exit operations
     - Encodes: `uint248 slippage` (31 bytes) in WAD format (1e18 = 100%, 5e16 = 5%)
 
 ### Substrate Encoding
@@ -127,7 +127,7 @@ AllowedSlippage memory slippageSubstrate = AllowedSlippage({
 });
 bytes32 encodedSlippage = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
     AsyncActionFuseSubstrate({
-        substrateType: AsyncActionFuseSubstrateType.ALLOWED_SLIPPAGE,
+        substrateType: AsyncActionFuseSubstrateType.ALLOWED_EXIT_SLIPPAGE,
         data: AsyncActionFuseLib.encodeAllowedSlippage(slippageSubstrate)
     })
 );
@@ -168,7 +168,7 @@ address executor = abi.decode(result, (address));
 ### Slippage Protection
 
 -   Exit operations validate that fetched assets meet minimum value threshold
--   Slippage tolerance is configurable per market via `ALLOWED_SLIPPAGE` substrate
+-   Slippage tolerance is configurable per market via `ALLOWED_EXIT_SLIPPAGE` substrate
 -   Calculation: `minimumAllowedBalance = cachedBalance - (cachedBalance * slippage / WAD)`
 
 ### Isolation

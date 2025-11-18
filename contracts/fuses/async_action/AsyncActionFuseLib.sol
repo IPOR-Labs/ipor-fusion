@@ -6,7 +6,7 @@ import {AsyncExecutor} from "./AsyncExecutor.sol";
 enum AsyncActionFuseSubstrateType {
     ALLOWED_AMOUNT_TO_OUTSIDE,
     ALLOWED_TARGETS,
-    ALLOWED_SLIPPAGE
+    ALLOWED_EXIT_SLIPPAGE
 }
 
 struct AllowedAmountToOutside {
@@ -193,7 +193,7 @@ library AsyncActionFuseLib {
     ///      Uses two-pass algorithm: first pass counts each type for array allocation,
     ///      second pass decodes and populates arrays. This approach is gas-efficient for memory allocation.
     ///      Unknown substrate types are silently ignored.
-    ///      If multiple ALLOWED_SLIPPAGE substrates exist, only the last one is returned.
+    ///      If multiple ALLOWED_EXIT_SLIPPAGE substrates exist, only the last one is returned.
     function decodeAsyncActionFuseSubstrates(bytes32[] memory encodedSubstrates_)
         internal
         pure
@@ -237,7 +237,7 @@ library AsyncActionFuseLib {
             } else if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_TARGETS)) {
                 allowedTargets[targetIndex] = decodeAllowedTargets(dataBytes);
                 ++targetIndex;
-            } else if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_SLIPPAGE)) {
+            } else if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_EXIT_SLIPPAGE)) {
                 allowedSlippage = decodeAllowedSlippage(dataBytes);
             }
         }

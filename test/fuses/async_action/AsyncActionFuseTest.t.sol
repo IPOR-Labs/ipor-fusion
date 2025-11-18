@@ -640,7 +640,7 @@ contract AsyncActionFuseTest is Test {
         );
         substrates[5] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
             AsyncActionFuseSubstrate({
-                substrateType: AsyncActionFuseSubstrateType.ALLOWED_SLIPPAGE,
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_EXIT_SLIPPAGE,
                 data: AsyncActionFuseLib.encodeAllowedSlippage(
                     AllowedSlippage({slippage: 0}) // No slippage tolerance
                 )
