@@ -138,6 +138,38 @@ library IporFusionMarkets {
     /// @dev Substrate type: EbisuZapperSubstrate
     uint256 public constant EBISU = 39;
 
+    /// @dev Async Action market
+    /// @dev Substrate type: AsyncActionFuseSubstrate
+    /// @dev Substrate values: Three types of substrates are supported:
+    ///      - ALLOWED_AMOUNT_TO_OUTSIDE: Limits on asset amounts that can be transferred to AsyncExecutor
+    ///        Encoded as: AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(AsyncActionFuseSubstrate({
+    ///          substrateType: AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE,
+    ///          data: AsyncActionFuseLib.encodeAllowedAmountToOutside(AllowedAmountToOutside({
+    ///            asset: tokenAddress,
+    ///            amount: maxAmount (uint88, max 2^88 - 1)
+    ///          }))
+    ///        }))
+    ///      - ALLOWED_TARGETS: Permitted target addresses and function selectors for execution
+    ///        Encoded as: AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(AsyncActionFuseSubstrate({
+    ///          substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
+    ///          data: AsyncActionFuseLib.encodeAllowedTargets(AllowedTargets({
+    ///            target: contractAddress,
+    ///            selector: functionSelector
+    ///          }))
+    ///        }))
+    ///      - ALLOWED_EXIT_SLIPPAGE: Maximum slippage threshold for balance validation (18-decimal fixed-point, 1e18 = 100%)
+    ///        Encoded as: AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(AsyncActionFuseSubstrate({
+    ///          substrateType: AsyncActionFuseSubstrateType.ALLOWED_EXIT_SLIPPAGE,
+    ///          data: AsyncActionFuseLib.encodeAllowedSlippage(AllowedSlippage({
+    ///            slippage: slippageValue (uint248, max 2^248 - 1)
+    ///          }))
+    ///        }))
+    /// @dev Used for executing asynchronous multi-step operations via AsyncExecutor contract
+    /// @dev Validates token transfers and target/selector combinations against granted substrates before execution
+    /// @dev Supports batch execution of multiple calls with ETH value forwarding
+    uint256 public constant ASYNC_ACTION = 40;
+    
+    
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
