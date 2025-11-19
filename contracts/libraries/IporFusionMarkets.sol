@@ -136,6 +136,9 @@ library IporFusionMarkets {
     /// @dev Ebisu market
     /// @dev Substrate type: EbisuZapperSubstrate
     uint256 public constant EBISU = 38;
+
+    /// @dev Napier market
+    uint256 public constant NAPIER = 3822;
     
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
