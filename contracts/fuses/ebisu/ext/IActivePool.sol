@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
@@ -19,4 +18,4 @@ interface IActivePool {
     }
 
     function getNewApproxAvgInterestRateFromTroveChange(TroveChange memory) external view returns (uint256);
-} 
+}

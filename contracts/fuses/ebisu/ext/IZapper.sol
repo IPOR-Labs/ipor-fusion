@@ -34,8 +34,11 @@ interface IZapper {
 
     function openTroveWithRawETH(OpenTroveParams calldata _params) external payable returns (uint256);
 
-    function closeTroveFromCollateral(uint256 _troveId, uint256 _flashLoanAmount, uint256 _minExpectedCollateral)
-        external;
+    function closeTroveFromCollateral(
+        uint256 _troveId,
+        uint256 _flashLoanAmount,
+        uint256 _minExpectedCollateral
+    ) external;
 
     function closeTroveToRawETH(uint256 _troveId) external; // added here but the remote ABI has it
 

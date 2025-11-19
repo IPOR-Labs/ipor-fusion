@@ -75,9 +75,9 @@ contract WethEthAdapter {
 
         ebusdToken.forceApprove(zapper_, type(uint256).max);
 
-        exitFromCollateral_ ? 
-            ILeverageZapper(zapper_).closeTroveFromCollateral(troveId_, flashLoanAmount_, minExpectedCollateral_) :
-            ILeverageZapper(zapper_).closeTroveToRawETH(troveId_);
+        exitFromCollateral_
+            ? ILeverageZapper(zapper_).closeTroveFromCollateral(troveId_, flashLoanAmount_, minExpectedCollateral_)
+            : ILeverageZapper(zapper_).closeTroveToRawETH(troveId_);
 
         ebusdToken.forceApprove(zapper_, 0);
 

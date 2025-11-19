@@ -10,7 +10,7 @@ import {CErc20} from "./ext/CErc20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 struct CompoundV2SupplyFuseEnterData {
-    /// @notis asset address to supply
+    /// @notice asset address to supply
     address asset;
     /// @notice asset amount to supply
     uint256 amount;

@@ -2,21 +2,11 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {
-    AsyncActionFuseLib,
-    AllowedAmountToOutside,
-    AllowedTargets,
-    AllowedSlippage,
-    AsyncActionFuseSubstrate,
-    AsyncActionFuseSubstrateType
-} from "../../../contracts/fuses/async_action/AsyncActionFuseLib.sol";
+import {AsyncActionFuseLib, AllowedAmountToOutside, AllowedTargets, AllowedSlippage, AsyncActionFuseSubstrate, AsyncActionFuseSubstrateType} from "../../../contracts/fuses/async_action/AsyncActionFuseLib.sol";
 
 contract AsyncActionFuseLibTest is Test {
     function test_encodeAllowedAmountToOutsideRoundTrip() public {
-        AllowedAmountToOutside memory input_ = AllowedAmountToOutside({
-            asset: address(0x1234),
-            amount: 1_000_000
-        });
+        AllowedAmountToOutside memory input_ = AllowedAmountToOutside({asset: address(0x1234), amount: 1_000_000});
 
         bytes31 encoded_ = AsyncActionFuseLib.encodeAllowedAmountToOutside(input_);
         AllowedAmountToOutside memory decoded_ = AsyncActionFuseLib.decodeAllowedAmountToOutside(encoded_);
@@ -32,10 +22,7 @@ contract AsyncActionFuseLibTest is Test {
         });
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                AsyncActionFuseLib.AllowedAmountToOutsideAmountTooLarge.selector,
-                input_.amount
-            )
+            abi.encodeWithSelector(AsyncActionFuseLib.AllowedAmountToOutsideAmountTooLarge.selector, input_.amount)
         );
         this.callEncodeAllowedAmountToOutside(input_);
     }
@@ -63,13 +50,9 @@ contract AsyncActionFuseLibTest is Test {
     }
 
     function test_encodeAllowedSlippageRevertsOnOverflow() public {
-        AllowedSlippage memory input_ = AllowedSlippage({
-            slippage: uint256(type(uint248).max) + 1
-        });
+        AllowedSlippage memory input_ = AllowedSlippage({slippage: uint256(type(uint248).max) + 1});
 
-        vm.expectRevert(
-            abi.encodeWithSelector(AsyncActionFuseLib.AllowedSlippageTooLarge.selector, input_.slippage)
-        );
+        vm.expectRevert(abi.encodeWithSelector(AsyncActionFuseLib.AllowedSlippageTooLarge.selector, input_.slippage));
         this.callEncodeAllowedSlippage(input_);
     }
 
@@ -212,4 +195,3 @@ contract AsyncActionFuseLibTest is Test {
         AsyncActionFuseLib.encodeAllowedSlippage(input_);
     }
 }
-

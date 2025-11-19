@@ -9,13 +9,7 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {
-    ExchangeRateValidatorConfigLib,
-    ExchangeRateValidatorConfig,
-    HookType,
-    ValidatorData,
-    Hook
-} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
+import {ExchangeRateValidatorConfigLib, ExchangeRateValidatorConfig, HookType, ValidatorData, Hook} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
 import {SimpleExecutePreHook} from "./SimpleExecutePreHook.sol";
 
 /// @title ExchangeRateValidatorPreHookTest
@@ -121,7 +115,10 @@ contract ExchangeRateValidatorPreHookTest is Test {
         substrates[0] = substrate;
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR,
+            substrates
+        );
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -190,7 +187,10 @@ contract ExchangeRateValidatorPreHookTest is Test {
         substrates[0] = substrate;
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR,
+            substrates
+        );
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -264,7 +264,10 @@ contract ExchangeRateValidatorPreHookTest is Test {
         substrates[0] = substrate;
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR,
+            substrates
+        );
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -323,7 +326,10 @@ contract ExchangeRateValidatorPreHookTest is Test {
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR,
+            substrates
+        );
         vm.stopPrank();
 
         // Ensure user has USDC and prepare for deposit
@@ -388,7 +394,10 @@ contract ExchangeRateValidatorPreHookTest is Test {
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR,
+            substrates
+        );
         vm.stopPrank();
 
         // Ensure user has USDC and prepare for deposit
@@ -447,7 +456,9 @@ contract ExchangeRateValidatorPreHookTest is Test {
         substrates[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
             ExchangeRateValidatorConfig({
                 typ: HookType.PREHOOKS,
-                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(simplePreHook), index: 0}))
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(
+                    Hook({hookAddress: address(simplePreHook), index: 0})
+                )
             })
         );
 
@@ -462,7 +473,10 @@ contract ExchangeRateValidatorPreHookTest is Test {
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR,
+            substrates
+        );
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -528,7 +542,10 @@ contract ExchangeRateValidatorPreHookTest is Test {
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR,
+            substrates
+        );
         vm.stopPrank();
 
         // Ensure user has USDC
@@ -615,7 +632,10 @@ contract ExchangeRateValidatorPreHookTest is Test {
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.EXCHANGE_RATE_VALIDATOR, substrates);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR,
+            substrates
+        );
         vm.stopPrank();
 
         // Ensure user has USDC

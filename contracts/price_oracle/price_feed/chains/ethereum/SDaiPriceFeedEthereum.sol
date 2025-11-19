@@ -29,7 +29,7 @@ contract SDaiPriceFeedEthereum is IPriceFeed {
     error WrongDecimals();
 
     constructor() {
-        /// @def Notice! It is enough to check during construction not during runtime because DAI_CHAINLINK_FEED is immutable not upgradeable contract and decimals are not expected to change.
+        /// @dev Notice! It is enough to check during construction not during runtime because DAI_CHAINLINK_FEED is immutable not upgradeable contract and decimals are not expected to change.
         if (_decimals() != AggregatorV3Interface(DAI_CHAINLINK_FEED).decimals()) {
             revert WrongDecimals();
         }

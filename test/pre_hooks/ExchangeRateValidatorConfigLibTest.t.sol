@@ -2,13 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {
-    ExchangeRateValidatorConfigLib,
-    ExchangeRateValidatorConfig,
-    HookType,
-    Hook,
-    ValidatorData
-} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
+import {ExchangeRateValidatorConfigLib, ExchangeRateValidatorConfig, HookType, Hook, ValidatorData} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
 
 /// @title ExchangeRateValidatorConfigLibTest
 /// @notice Comprehensive tests for ExchangeRateValidatorConfigLib encoding and decoding functions
@@ -27,8 +21,8 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         });
 
         bytes32 encoded = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
-        ExchangeRateValidatorConfig memory decoded =
-            ExchangeRateValidatorConfigLib.bytes32ToExchangeRateValidatorConfig(encoded);
+        ExchangeRateValidatorConfig memory decoded = ExchangeRateValidatorConfigLib
+            .bytes32ToExchangeRateValidatorConfig(encoded);
 
         assertEq(uint256(decoded.typ), uint256(config.typ), "Decoded type should match");
         assertEq(uint256(uint248(decoded.data)), uint256(uint248(config.data)), "Decoded data should match");
@@ -49,8 +43,8 @@ contract ExchangeRateValidatorConfigLibTest is Test {
             ExchangeRateValidatorConfig memory config = ExchangeRateValidatorConfig({typ: types[i], data: data});
 
             bytes32 encoded = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
-            ExchangeRateValidatorConfig memory decoded =
-                ExchangeRateValidatorConfigLib.bytes32ToExchangeRateValidatorConfig(encoded);
+            ExchangeRateValidatorConfig memory decoded = ExchangeRateValidatorConfigLib
+                .bytes32ToExchangeRateValidatorConfig(encoded);
 
             assertEq(uint256(decoded.typ), uint256(types[i]), "Type should match");
             assertEq(uint256(uint248(decoded.data)), uint256(uint248(data)), "Data should match");
@@ -65,8 +59,8 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         });
 
         bytes32 encoded = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
-        ExchangeRateValidatorConfig memory decoded =
-            ExchangeRateValidatorConfigLib.bytes32ToExchangeRateValidatorConfig(encoded);
+        ExchangeRateValidatorConfig memory decoded = ExchangeRateValidatorConfigLib
+            .bytes32ToExchangeRateValidatorConfig(encoded);
 
         assertEq(uint256(decoded.typ), uint256(HookType.VALIDATOR), "Type should match");
         assertEq(uint256(uint248(decoded.data)), 0, "Data should be zero");
@@ -81,8 +75,8 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         });
 
         bytes32 encoded = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
-        ExchangeRateValidatorConfig memory decoded =
-            ExchangeRateValidatorConfigLib.bytes32ToExchangeRateValidatorConfig(encoded);
+        ExchangeRateValidatorConfig memory decoded = ExchangeRateValidatorConfigLib
+            .bytes32ToExchangeRateValidatorConfig(encoded);
 
         assertEq(uint256(decoded.typ), uint256(HookType.POSTHOOKS), "Type should match");
         assertEq(uint256(uint248(decoded.data)), uint256(uint248(maxData)), "Data should match max value");
@@ -94,14 +88,11 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         typ_ = uint8(bound(typ_, 0, 2));
         HookType hookType = HookType(typ_);
 
-        ExchangeRateValidatorConfig memory config = ExchangeRateValidatorConfig({
-            typ: hookType,
-            data: bytes31(data_)
-        });
+        ExchangeRateValidatorConfig memory config = ExchangeRateValidatorConfig({typ: hookType, data: bytes31(data_)});
 
         bytes32 encoded = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
-        ExchangeRateValidatorConfig memory decoded =
-            ExchangeRateValidatorConfigLib.bytes32ToExchangeRateValidatorConfig(encoded);
+        ExchangeRateValidatorConfig memory decoded = ExchangeRateValidatorConfigLib
+            .bytes32ToExchangeRateValidatorConfig(encoded);
 
         assertEq(uint256(decoded.typ), uint256(hookType), "Fuzz: Type should match");
         assertEq(uint256(uint248(decoded.data)), data_, "Fuzz: Data should match");
@@ -199,10 +190,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         uint128 exchangeRate = 123456789012345678901234567890;
         uint120 threshold = 987654321098765432109876543210;
 
-        ValidatorData memory validatorData = ValidatorData({
-            exchangeRate: exchangeRate,
-            threshold: threshold
-        });
+        ValidatorData memory validatorData = ValidatorData({exchangeRate: exchangeRate, threshold: threshold});
 
         bytes31 encoded = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
         ValidatorData memory decoded = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(encoded);
@@ -227,10 +215,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         uint128 maxExchangeRate = type(uint128).max;
         uint120 maxThreshold = type(uint120).max;
 
-        ValidatorData memory validatorData = ValidatorData({
-            exchangeRate: maxExchangeRate,
-            threshold: maxThreshold
-        });
+        ValidatorData memory validatorData = ValidatorData({exchangeRate: maxExchangeRate, threshold: maxThreshold});
 
         bytes31 encoded = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
         ValidatorData memory decoded = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(encoded);
@@ -244,10 +229,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         uint128 exchangeRate = 0x12345678901234567890123456789012;
         uint120 threshold = 0xabcdef1234567890abcdef123456;
 
-        ValidatorData memory validatorData = ValidatorData({
-            exchangeRate: exchangeRate,
-            threshold: threshold
-        });
+        ValidatorData memory validatorData = ValidatorData({exchangeRate: exchangeRate, threshold: threshold});
 
         bytes31 encoded = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
 
@@ -263,10 +245,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
 
     /// @notice Fuzz test for ValidatorData encoding/decoding
     function testFuzzValidatorData(uint128 exchangeRate_, uint120 threshold_) public {
-        ValidatorData memory validatorData = ValidatorData({
-            exchangeRate: exchangeRate_,
-            threshold: threshold_
-        });
+        ValidatorData memory validatorData = ValidatorData({exchangeRate: exchangeRate_, threshold: threshold_});
 
         bytes31 encoded = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
         ValidatorData memory decoded = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(encoded);
@@ -281,8 +260,12 @@ contract ExchangeRateValidatorConfigLibTest is Test {
     function testParseConfigsEmpty() public {
         bytes32[] memory configs = new bytes32[](0);
 
-        (Hook[] memory preHooks, Hook[] memory postHooks, ValidatorData memory validationData, uint256 index) =
-            ExchangeRateValidatorConfigLib.parseConfigs(configs);
+        (
+            Hook[] memory preHooks,
+            Hook[] memory postHooks,
+            ValidatorData memory validationData,
+            uint256 index
+        ) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
 
         assertEq(preHooks.length, 10, "PreHooks should have 10 elements");
         assertEq(postHooks.length, 10, "PostHooks should have 10 elements");
@@ -311,7 +294,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         bytes32[] memory configs = new bytes32[](1);
         configs[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
 
-        (Hook[] memory preHooks, Hook[] memory postHooks,,) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
+        (Hook[] memory preHooks, Hook[] memory postHooks, , ) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
 
         assertEq(preHooks[index].hookAddress, hookAddress, "PreHook should be at correct index");
         assertEq(preHooks[index].index, index, "PreHook index should match");
@@ -345,7 +328,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         bytes32[] memory configs = new bytes32[](1);
         configs[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
 
-        (Hook[] memory preHooks, Hook[] memory postHooks,,) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
+        (Hook[] memory preHooks, Hook[] memory postHooks, , ) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
 
         assertEq(postHooks[index].hookAddress, hookAddress, "PostHook should be at correct index");
         assertEq(postHooks[index].index, index, "PostHook index should match");
@@ -361,10 +344,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         uint128 exchangeRate = 1000000000000000000;
         uint120 threshold = 500000000000000000;
 
-        ValidatorData memory validatorData = ValidatorData({
-            exchangeRate: exchangeRate,
-            threshold: threshold
-        });
+        ValidatorData memory validatorData = ValidatorData({exchangeRate: exchangeRate, threshold: threshold});
 
         bytes31 validatorDataBytes = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
 
@@ -376,8 +356,9 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         bytes32[] memory configs = new bytes32[](1);
         configs[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(config);
 
-        (,, ValidatorData memory decodedValidationData, uint256 index) =
-            ExchangeRateValidatorConfigLib.parseConfigs(configs);
+        (, , ValidatorData memory decodedValidationData, uint256 index) = ExchangeRateValidatorConfigLib.parseConfigs(
+            configs
+        );
 
         assertEq(decodedValidationData.exchangeRate, exchangeRate, "ExchangeRate should match");
         assertEq(decodedValidationData.threshold, threshold, "Threshold should match");
@@ -433,8 +414,12 @@ contract ExchangeRateValidatorConfigLibTest is Test {
             })
         );
 
-        (Hook[] memory preHooks, Hook[] memory postHooks, ValidatorData memory decodedValidatorData, uint256 index) =
-            ExchangeRateValidatorConfigLib.parseConfigs(configs);
+        (
+            Hook[] memory preHooks,
+            Hook[] memory postHooks,
+            ValidatorData memory decodedValidatorData,
+            uint256 index
+        ) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
 
         // Verify preHooks
         assertEq(preHooks[0].hookAddress, address(0x1000), "PreHook 0 should be correct");
@@ -454,7 +439,6 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         assertEq(index, 4, "Validator index should be 4");
     }
 
-
     /// @notice Test parseConfigs with all 10 pre-hooks
     function testParseConfigsAllPreHooks() public {
         bytes32[] memory configs = new bytes32[](10);
@@ -469,7 +453,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
             );
         }
 
-        (Hook[] memory preHooks,,,) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
+        (Hook[] memory preHooks, , , ) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
 
         for (uint256 i = 0; i < 10; i++) {
             assertEq(preHooks[i].hookAddress, address(uint160(1000 + i)), "PreHook address should match");
@@ -491,7 +475,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
             );
         }
 
-        (, Hook[] memory postHooks,,) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
+        (, Hook[] memory postHooks, , ) = ExchangeRateValidatorConfigLib.parseConfigs(configs);
 
         for (uint256 i = 0; i < 10; i++) {
             assertEq(postHooks[i].hookAddress, address(uint160(2000 + i)), "PostHook address should match");
@@ -512,7 +496,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
             })
         );
 
-        (,,, uint256 index1) = ExchangeRateValidatorConfigLib.parseConfigs(configs1);
+        (, , , uint256 index1) = ExchangeRateValidatorConfigLib.parseConfigs(configs1);
         assertEq(index1, 0, "Validator index should be 0");
 
         // Validator at position 5
@@ -533,7 +517,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
             })
         );
 
-        (,,, uint256 index2) = ExchangeRateValidatorConfigLib.parseConfigs(configs2);
+        (, , , uint256 index2) = ExchangeRateValidatorConfigLib.parseConfigs(configs2);
         assertEq(index2, 5, "Validator index should be 5");
     }
 
@@ -556,8 +540,9 @@ contract ExchangeRateValidatorConfigLibTest is Test {
             })
         );
 
-        (,, ValidatorData memory decodedValidationData, uint256 index) =
-            ExchangeRateValidatorConfigLib.parseConfigs(configs);
+        (, , ValidatorData memory decodedValidationData, uint256 index) = ExchangeRateValidatorConfigLib.parseConfigs(
+            configs
+        );
 
         // Should use first validator
         assertEq(decodedValidationData.exchangeRate, 111, "Should use first validator");
@@ -578,7 +563,8 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         });
 
         bytes32 encoded1 = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(original);
-        ExchangeRateValidatorConfig memory decoded = ExchangeRateValidatorConfigLib.bytes32ToExchangeRateValidatorConfig(encoded1);
+        ExchangeRateValidatorConfig memory decoded = ExchangeRateValidatorConfigLib
+            .bytes32ToExchangeRateValidatorConfig(encoded1);
         bytes32 encoded2 = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(decoded);
 
         assertEq(encoded1, encoded2, "Round-trip encoding should be consistent");
@@ -588,10 +574,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
 
     /// @notice Test complete round-trip: Hook -> bytes31 -> Hook -> bytes31
     function testRoundTripHook() public {
-        Hook memory original = Hook({
-            hookAddress: address(0x1234567890123456789012345678901234567890),
-            index: 7
-        });
+        Hook memory original = Hook({hookAddress: address(0x1234567890123456789012345678901234567890), index: 7});
 
         bytes31 encoded1 = ExchangeRateValidatorConfigLib.hookToBytes31(original);
         Hook memory decoded = ExchangeRateValidatorConfigLib.bytes31ToHook(encoded1);
@@ -618,4 +601,3 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         assertEq(decoded.threshold, original.threshold, "Round-trip: Threshold should match");
     }
 }
-

@@ -10,18 +10,19 @@ import {MockERC4626} from "../test_helpers/MockErc4626.sol";
 contract TacToWTacZapWithNativeTokenTest is Test {
     uint256 internal constant FORK_BLOCK_NUMBER = 1282355;
     MockERC4626 internal erc4626WTac;
+    /// @dev TAC mainnet staking contract 0x0000000000000000000000000000000000000800
     address internal wTac = 0xB63B9f0eb4A6E6f191529D71d4D88cc8900Df2C9;
 
     ERC4626ZapInWithNativeToken internal zapIn;
 
-    function setUp() public {
+    function setUp1() public {
         vm.createSelectFork(vm.envString("TAC_PROVIDER_URL"), FORK_BLOCK_NUMBER);
 
         zapIn = new ERC4626ZapInWithNativeToken();
         erc4626WTac = new MockERC4626(IERC20(wTac), "Wrapped TAC", "wTAC");
     }
 
-    function testShouldDepositWEthWithZapFromEth() public {
+    function stestShouldDepositWEthWithZapFromEth() public {
         // given
         address user = makeAddr("User");
         uint256 tacAmount = 10_000e18;

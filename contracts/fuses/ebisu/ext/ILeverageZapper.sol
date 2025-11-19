@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import {IZapper} from "./IZapper.sol";
 
 interface ILeverageZapper is IZapper {
-
     struct OpenLeveragedTroveParams {
         address owner;
         uint256 ownerIndex;

@@ -57,13 +57,12 @@ contract AsyncActionBalanceFuse is IMarketBalanceFuse {
             revert AsyncActionBalanceFuseInvalidPriceOracleMiddleware();
         }
 
-        (uint256 price, uint256 priceDecimals) =
-            IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(underlyingAsset);
+        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(
+            underlyingAsset
+        );
         uint256 underlyingDecimals = IERC20Metadata(underlyingAsset).decimals();
 
         // Convert balance * price to WAD (18 decimals) accounting for both price and underlying asset decimals
-        balanceValueUsd = IporMath.convertToWad(
-            balanceInUnderlying * price, underlyingDecimals + priceDecimals
-        );
+        balanceValueUsd = IporMath.convertToWad(balanceInUnderlying * price, underlyingDecimals + priceDecimals);
     }
 }

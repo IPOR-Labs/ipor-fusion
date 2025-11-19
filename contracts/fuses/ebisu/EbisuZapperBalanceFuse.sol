@@ -22,7 +22,7 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
     constructor(uint256 marketId) {
         MARKET_ID = marketId;
     }
-    
+
     /// @notice the value contained in an open Trove is collateral - debt (each with its own price)
     /// since interest fees automatically increase the entireDebt of the trove, we do not need to include it explicitly
     function balanceOf() external view returns (uint256) {
@@ -31,7 +31,7 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
         FuseStorageLib.EbisuTroveIds storage troveData = FuseStorageLib.getEbisuTroveIds();
 
         uint256 substratesNumber = substrates.length;
-        
+
         if (substratesNumber == 0) return 0;
         address collToken;
         uint256 collTokenPrice;
@@ -50,24 +50,24 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
         for (uint256 i; i < substratesNumber; ++i) {
             target = EbisuZapperSubstrateLib.bytes32ToSubstrate(substrates[i]);
 
-            if (target.substrateType != EbisuZapperSubstrateType.ZAPPER) 
-                continue;
+            if (target.substrateType != EbisuZapperSubstrateType.ZAPPER) continue;
 
             if (ebusdAddress == address(0)) {
                 /// @dev bold token (ebUSD) is the same for all zappers
                 ebusdAddress = ILeverageZapper(target.substrateAddress).boldToken();
                 (ebusdPrice, ebusdPriceDecimals) = priceOracleMiddleware.getAssetPrice(ebusdAddress);
             }
-            
+
             troveId = troveData.troveIds[target.substrateAddress];
             if (troveId == 0) continue;
             /// @dev At this point, we expect the contract to have collToken and troveManager
             collToken = ILeverageZapper(target.substrateAddress).collToken();
             (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
-            
-            ITroveManager.LatestTroveData memory latestTroveData = 
-                ITroveManager(ILeverageZapper(target.substrateAddress).troveManager()).getLatestTroveData(troveId);
-            
+
+            ITroveManager.LatestTroveData memory latestTroveData = ITroveManager(
+                ILeverageZapper(target.substrateAddress).troveManager()
+            ).getLatestTroveData(troveId);
+
             entireCollValue += IporMath.convertToWad(
                 latestTroveData.entireColl * collTokenPrice,
                 IERC20Metadata(collToken).decimals() + collTokenPriceDecimals

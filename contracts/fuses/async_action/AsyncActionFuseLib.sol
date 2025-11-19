@@ -54,11 +54,7 @@ library AsyncActionFuseLib {
     /// @dev Encodes address (20 bytes, left-aligned) and uint88 amount (11 bytes, right-aligned) into 31 bytes.
     ///      Layout: [address (20 bytes) | amount (11 bytes)]
     ///      Reverts if amount exceeds uint88 maximum (2^88 - 1).
-    function encodeAllowedAmountToOutside(AllowedAmountToOutside memory data_)
-        internal
-        pure
-        returns (bytes31 encoded)
-    {
+    function encodeAllowedAmountToOutside(AllowedAmountToOutside memory data_) internal pure returns (bytes31 encoded) {
         if (data_.amount > type(uint88).max) {
             revert AllowedAmountToOutsideAmountTooLarge(data_.amount);
         }
@@ -74,11 +70,9 @@ library AsyncActionFuseLib {
     /// @return data_ The decoded AllowedAmountToOutside struct
     /// @dev Decodes address (20 bytes, left-aligned) and uint88 amount (11 bytes, right-aligned) from 31 bytes.
     ///      Layout: [address (20 bytes) | amount (11 bytes)]
-    function decodeAllowedAmountToOutside(bytes31 encoded_)
-        internal
-        pure
-        returns (AllowedAmountToOutside memory data_)
-    {
+    function decodeAllowedAmountToOutside(
+        bytes31 encoded_
+    ) internal pure returns (AllowedAmountToOutside memory data_) {
         uint248 packed = uint248(encoded_);
         // Extract address from upper 160 bits (shifted right by 88 bits)
         data_.asset = address(uint160(packed >> 88));
@@ -92,11 +86,7 @@ library AsyncActionFuseLib {
     /// @dev Encodes address (20 bytes, left-aligned) and bytes4 selector (4 bytes, right-aligned) into 31 bytes.
     ///      Layout: [address (20 bytes) | selector (4 bytes) | unused (7 bytes)]
     ///      The remaining 7 bytes are unused but preserved for consistency with bytes31 format.
-    function encodeAllowedTargets(AllowedTargets memory data_)
-        internal
-        pure
-        returns (bytes31 encoded)
-    {
+    function encodeAllowedTargets(AllowedTargets memory data_) internal pure returns (bytes31 encoded) {
         // Pack: address shifted left by 32 bits, selector in lower 32 bits
         uint248 packed = (uint248(uint160(data_.target)) << 32) | uint248(uint32(data_.selector));
         encoded = bytes31(packed);
@@ -107,11 +97,7 @@ library AsyncActionFuseLib {
     /// @return data_ The decoded AllowedTargets struct
     /// @dev Decodes address (20 bytes, left-aligned) and bytes4 selector (4 bytes, right-aligned) from 31 bytes.
     ///      Layout: [address (20 bytes) | selector (4 bytes) | unused (7 bytes)]
-    function decodeAllowedTargets(bytes31 encoded_)
-        internal
-        pure
-        returns (AllowedTargets memory data_)
-    {
+    function decodeAllowedTargets(bytes31 encoded_) internal pure returns (AllowedTargets memory data_) {
         uint248 packed = uint248(encoded_);
         // Extract address from upper 160 bits (shifted right by 32 bits)
         data_.target = address(uint160(packed >> 32));
@@ -124,14 +110,11 @@ library AsyncActionFuseLib {
     /// @return encoded The encoded bytes32 data
     /// @dev Encodes enum substrateType (1 byte, leftmost) and bytes31 data (31 bytes, right-aligned) into 32 bytes.
     ///      Layout: [substrateType (1 byte) | data (31 bytes)]
-    function encodeAsyncActionFuseSubstrate(AsyncActionFuseSubstrate memory substrate_)
-        internal
-        pure
-        returns (bytes32 encoded)
-    {
+    function encodeAsyncActionFuseSubstrate(
+        AsyncActionFuseSubstrate memory substrate_
+    ) internal pure returns (bytes32 encoded) {
         // Pack: substrateType in leftmost byte (shifted left by 248 bits), data in remaining 31 bytes
-        uint256 packed =
-            (uint256(uint8(substrate_.substrateType)) << 248) | uint256(uint248(substrate_.data));
+        uint256 packed = (uint256(uint8(substrate_.substrateType)) << 248) | uint256(uint248(substrate_.data));
         encoded = bytes32(packed);
     }
 
@@ -140,11 +123,9 @@ library AsyncActionFuseLib {
     /// @return substrate_ The decoded AsyncActionFuseSubstrate struct
     /// @dev Decodes enum substrateType (1 byte, leftmost) and bytes31 data (31 bytes, right-aligned) from 32 bytes.
     ///      Layout: [substrateType (1 byte) | data (31 bytes)]
-    function decodeAsyncActionFuseSubstrate(bytes32 encoded_)
-        internal
-        pure
-        returns (AsyncActionFuseSubstrate memory substrate_)
-    {
+    function decodeAsyncActionFuseSubstrate(
+        bytes32 encoded_
+    ) internal pure returns (AsyncActionFuseSubstrate memory substrate_) {
         uint256 packed = uint256(encoded_);
         // Extract substrateType from leftmost byte
         substrate_.substrateType = AsyncActionFuseSubstrateType(uint8(packed >> 248));
@@ -158,11 +139,7 @@ library AsyncActionFuseLib {
     /// @dev Encodes uint248 slippage value (31 bytes) directly into bytes31.
     ///      Reverts if slippage exceeds uint248 maximum (2^248 - 1).
     ///      Note: slippage is typically expressed as a percentage in 18-decimal WAD format (1e18 = 100%).
-    function encodeAllowedSlippage(AllowedSlippage memory data_)
-        internal
-        pure
-        returns (bytes31 encoded)
-    {
+    function encodeAllowedSlippage(AllowedSlippage memory data_) internal pure returns (bytes31 encoded) {
         if (data_.slippage > type(uint248).max) {
             revert AllowedSlippageTooLarge(data_.slippage);
         }
@@ -176,11 +153,7 @@ library AsyncActionFuseLib {
     /// @return data_ The decoded AllowedSlippage struct
     /// @dev Decodes uint248 slippage value (31 bytes) directly from bytes31.
     ///      Note: slippage is typically expressed as a percentage in 18-decimal WAD format (1e18 = 100%).
-    function decodeAllowedSlippage(bytes31 encoded_)
-        internal
-        pure
-        returns (AllowedSlippage memory data_)
-    {
+    function decodeAllowedSlippage(bytes31 encoded_) internal pure returns (AllowedSlippage memory data_) {
         data_.slippage = uint256(uint248(encoded_));
     }
 
@@ -194,7 +167,9 @@ library AsyncActionFuseLib {
     ///      second pass decodes and populates arrays. This approach is gas-efficient for memory allocation.
     ///      Unknown substrate types are silently ignored.
     ///      If multiple ALLOWED_EXIT_SLIPPAGE substrates exist, only the last one is returned.
-    function decodeAsyncActionFuseSubstrates(bytes32[] memory encodedSubstrates_)
+    function decodeAsyncActionFuseSubstrates(
+        bytes32[] memory encodedSubstrates_
+    )
         internal
         pure
         returns (
@@ -209,7 +184,7 @@ library AsyncActionFuseLib {
         uint256 targetCount;
         uint8 substrateType;
         for (uint256 i; i < length; ++i) {
-             substrateType = uint8(uint256(encodedSubstrates_[i]) >> 248);
+            substrateType = uint8(uint256(encodedSubstrates_[i]) >> 248);
             if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE)) {
                 ++amountCount;
             } else if (substrateType == uint8(AsyncActionFuseSubstrateType.ALLOWED_TARGETS)) {
@@ -225,7 +200,7 @@ library AsyncActionFuseLib {
         uint256 amountIndex;
         uint256 targetIndex;
         uint256 encoded;
-        
+
         for (uint256 i; i < length; ++i) {
             encoded = uint256(encodedSubstrates_[i]);
             substrateType = uint8(encoded >> 248);
