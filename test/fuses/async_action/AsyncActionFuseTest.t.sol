@@ -2,20 +2,9 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {
-    AsyncActionFuse,
-    AsyncActionFuseEnterData,
-    AsyncActionFuseExitData
-} from "../../../contracts/fuses/async_action/AsyncActionFuse.sol";
+import {AsyncActionFuse, AsyncActionFuseEnterData, AsyncActionFuseExitData} from "../../../contracts/fuses/async_action/AsyncActionFuse.sol";
 import {AsyncActionBalanceFuse} from "../../../contracts/fuses/async_action/AsyncActionBalanceFuse.sol";
-import {
-    AsyncActionFuseLib,
-    AllowedAmountToOutside,
-    AllowedTargets,
-    AllowedSlippage,
-    AsyncActionFuseSubstrate,
-    AsyncActionFuseSubstrateType
-} from "../../../contracts/fuses/async_action/AsyncActionFuseLib.sol";
+import {AsyncActionFuseLib, AllowedAmountToOutside, AllowedTargets, AllowedSlippage, AsyncActionFuseSubstrate, AsyncActionFuseSubstrateType} from "../../../contracts/fuses/async_action/AsyncActionFuseLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -103,10 +92,7 @@ contract AsyncActionFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
-            data: abi.encodeWithSignature(
-                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
-                enterData
-            )
+            data: abi.encodeWithSignature("enter((address,uint256,address[],bytes[],uint256[],address[]))", enterData)
         });
 
         // expect
@@ -122,10 +108,10 @@ contract AsyncActionFuseTest is Test {
         // given
         address[] memory targets = new address[](1);
         targets[0] = address(0x1234);
-        
+
         // callDatas has different length than targets
         bytes[] memory callDatas = new bytes[](0);
-        
+
         // ethAmounts has same length as targets to test callDatas mismatch
         uint256[] memory ethAmounts = new uint256[](1);
         ethAmounts[0] = 0;
@@ -142,10 +128,7 @@ contract AsyncActionFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
-            data: abi.encodeWithSignature(
-                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
-                enterData
-            )
+            data: abi.encodeWithSignature("enter((address,uint256,address[],bytes[],uint256[],address[]))", enterData)
         });
 
         // expect
@@ -161,11 +144,11 @@ contract AsyncActionFuseTest is Test {
         // given
         address[] memory targets = new address[](1);
         targets[0] = address(0x1234);
-        
+
         // callDatas has same length as targets
         bytes[] memory callDatas = new bytes[](1);
         callDatas[0] = abi.encodeWithSignature("test()");
-        
+
         // ethAmounts has different length than targets
         uint256[] memory ethAmounts = new uint256[](0);
 
@@ -181,10 +164,7 @@ contract AsyncActionFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
-            data: abi.encodeWithSignature(
-                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
-                enterData
-            )
+            data: abi.encodeWithSignature("enter((address,uint256,address[],bytes[],uint256[],address[]))", enterData)
         });
 
         // expect
@@ -213,10 +193,7 @@ contract AsyncActionFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
-            data: abi.encodeWithSignature(
-                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
-                enterData
-            )
+            data: abi.encodeWithSignature("enter((address,uint256,address[],bytes[],uint256[],address[]))", enterData)
         });
 
         // expect
@@ -241,10 +218,7 @@ contract AsyncActionFuseTest is Test {
         uint256 allowedAmount = 1e6; // 1 USDC (6 decimals)
         uint256 requestedAmount = 1e18; // Much larger than allowedAmount
 
-        AllowedAmountToOutside memory allowedAmountData = AllowedAmountToOutside({
-            asset: USDC,
-            amount: allowedAmount
-        });
+        AllowedAmountToOutside memory allowedAmountData = AllowedAmountToOutside({asset: USDC, amount: allowedAmount});
 
         AsyncActionFuseSubstrate memory substrate = AsyncActionFuseSubstrate({
             substrateType: AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE,
@@ -256,10 +230,7 @@ contract AsyncActionFuseTest is Test {
 
         // Grant substrate to market
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
-            IporFusionMarkets.ASYNC_ACTION,
-            substrates
-        );
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
         vm.stopPrank();
 
         AsyncActionFuseEnterData memory enterData = AsyncActionFuseEnterData({
@@ -274,10 +245,7 @@ contract AsyncActionFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
-            data: abi.encodeWithSignature(
-                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
-                enterData
-            )
+            data: abi.encodeWithSignature("enter((address,uint256,address[],bytes[],uint256[],address[]))", enterData)
         });
 
         // expect
@@ -300,18 +268,12 @@ contract AsyncActionFuseTest is Test {
         // given
         // Configure USDC as allowed tokenOut
         uint256 allowedAmount = 1e18;
-        AllowedAmountToOutside memory allowedAmountData = AllowedAmountToOutside({
-            asset: USDC,
-            amount: allowedAmount
-        });
+        AllowedAmountToOutside memory allowedAmountData = AllowedAmountToOutside({asset: USDC, amount: allowedAmount});
 
         // Configure one allowed target/selector pair
         address allowedTarget = address(0x1111111111111111111111111111111111111111);
         bytes4 allowedSelector = bytes4(keccak256("allowedFunction()"));
-        AllowedTargets memory allowedTargetData = AllowedTargets({
-            target: allowedTarget,
-            selector: allowedSelector
-        });
+        AllowedTargets memory allowedTargetData = AllowedTargets({target: allowedTarget, selector: allowedSelector});
 
         // Create substrates array with both allowedAmount and allowedTarget
         bytes32[] memory substrates = new bytes32[](2);
@@ -330,10 +292,7 @@ contract AsyncActionFuseTest is Test {
 
         // Grant substrates to market
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
-            IporFusionMarkets.ASYNC_ACTION,
-            substrates
-        );
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
         vm.stopPrank();
 
         // Use a target/selector that is NOT in the allowed list
@@ -361,10 +320,7 @@ contract AsyncActionFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
-            data: abi.encodeWithSignature(
-                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
-                enterData
-            )
+            data: abi.encodeWithSignature("enter((address,uint256,address[],bytes[],uint256[],address[]))", enterData)
         });
 
         // expect
@@ -385,15 +341,12 @@ contract AsyncActionFuseTest is Test {
     function testEnterDepositsUsdcToMockTokenVault() public {
         // given
         uint256 depositAmount = 1_000e6; // 1,000 USDC (6 decimals)
-        
+
         // Deploy MockTokenVault
         MockTokenVault mockVault = new MockTokenVault();
 
         // Configure USDC as allowed tokenOut
-        AllowedAmountToOutside memory allowedAmountData = AllowedAmountToOutside({
-            asset: USDC,
-            amount: depositAmount
-        });
+        AllowedAmountToOutside memory allowedAmountData = AllowedAmountToOutside({asset: USDC, amount: depositAmount});
 
         // Configure allowed targets: USDC.approve and MockTokenVault.deposit
         bytes32[] memory substrates = new bytes32[](3);
@@ -407,10 +360,7 @@ contract AsyncActionFuseTest is Test {
             AsyncActionFuseSubstrate({
                 substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
                 data: AsyncActionFuseLib.encodeAllowedTargets(
-                    AllowedTargets({
-                        target: USDC,
-                        selector: IERC20.approve.selector
-                    })
+                    AllowedTargets({target: USDC, selector: IERC20.approve.selector})
                 )
             })
         );
@@ -418,20 +368,14 @@ contract AsyncActionFuseTest is Test {
             AsyncActionFuseSubstrate({
                 substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
                 data: AsyncActionFuseLib.encodeAllowedTargets(
-                    AllowedTargets({
-                        target: address(mockVault),
-                        selector: MockTokenVault.deposit.selector
-                    })
+                    AllowedTargets({target: address(mockVault), selector: MockTokenVault.deposit.selector})
                 )
             })
         );
 
         // Grant substrates to market
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
-            IporFusionMarkets.ASYNC_ACTION,
-            substrates
-        );
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
         vm.stopPrank();
 
         // Get executor address to approve
@@ -462,10 +406,7 @@ contract AsyncActionFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
-            data: abi.encodeWithSignature(
-                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
-                enterData
-            )
+            data: abi.encodeWithSignature("enter((address,uint256,address[],bytes[],uint256[],address[]))", enterData)
         });
 
         // Verify initial balance is zero
@@ -487,15 +428,12 @@ contract AsyncActionFuseTest is Test {
     function testCannotExecuteDepositTwice() public {
         // given
         uint256 depositAmount = 1_000e6; // 1,000 USDC (6 decimals)
-        
+
         // Deploy MockTokenVault
         MockTokenVault mockVault = new MockTokenVault();
 
         // Configure USDC as allowed tokenOut
-        AllowedAmountToOutside memory allowedAmountData = AllowedAmountToOutside({
-            asset: USDC,
-            amount: depositAmount
-        });
+        AllowedAmountToOutside memory allowedAmountData = AllowedAmountToOutside({asset: USDC, amount: depositAmount});
 
         // Configure allowed targets: USDC.approve and MockTokenVault.deposit
         bytes32[] memory substrates = new bytes32[](3);
@@ -509,10 +447,7 @@ contract AsyncActionFuseTest is Test {
             AsyncActionFuseSubstrate({
                 substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
                 data: AsyncActionFuseLib.encodeAllowedTargets(
-                    AllowedTargets({
-                        target: USDC,
-                        selector: IERC20.approve.selector
-                    })
+                    AllowedTargets({target: USDC, selector: IERC20.approve.selector})
                 )
             })
         );
@@ -520,20 +455,14 @@ contract AsyncActionFuseTest is Test {
             AsyncActionFuseSubstrate({
                 substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
                 data: AsyncActionFuseLib.encodeAllowedTargets(
-                    AllowedTargets({
-                        target: address(mockVault),
-                        selector: MockTokenVault.deposit.selector
-                    })
+                    AllowedTargets({target: address(mockVault), selector: MockTokenVault.deposit.selector})
                 )
             })
         );
 
         // Grant substrates to market
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
-            IporFusionMarkets.ASYNC_ACTION,
-            substrates
-        );
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
         vm.stopPrank();
 
         // Get executor address
@@ -564,10 +493,7 @@ contract AsyncActionFuseTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
-            data: abi.encodeWithSignature(
-                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
-                enterData
-            )
+            data: abi.encodeWithSignature("enter((address,uint256,address[],bytes[],uint256[],address[]))", enterData)
         });
 
         // Execute first deposit - should succeed
@@ -577,7 +503,6 @@ contract AsyncActionFuseTest is Test {
         // Verify first deposit succeeded
         uint256 balanceAfterFirst = mockVault.balanceOf(USDC);
         assertEq(balanceAfterFirst, depositAmount, "First deposit should succeed");
-
 
         // Try to execute second deposit - should revert because executor balance > 0
         // AsyncActionFuse checks if balance > 0 and amountOut > 0, then reverts with AsyncActionFuseBalanceNotZero
@@ -648,10 +573,7 @@ contract AsyncActionFuseTest is Test {
         );
 
         vm.startPrank(ATOMIST);
-        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
-            IporFusionMarkets.ASYNC_ACTION,
-            substrates
-        );
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
         vm.stopPrank();
 
         // First execute: Deposit to MockTokenVault
@@ -714,14 +636,10 @@ contract AsyncActionFuseTest is Test {
         FuseAction[] memory exitActions = new FuseAction[](1);
         address[] memory assetsToFetch = new address[](1);
         assetsToFetch[0] = USDC;
-        
+
         bytes[] memory fetchCallDatas = new bytes[](1);
-        fetchCallDatas[0] = abi.encodeWithSignature(
-            "transfer(address,uint256)",
-            PLASMA_VAULT,
-            0
-        );
-        
+        fetchCallDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", PLASMA_VAULT, 0);
+
         exitActions[0] = FuseAction({
             fuse: address(_asyncActionFuse),
             data: abi.encodeWithSignature(
@@ -782,4 +700,3 @@ contract AsyncActionFuseTest is Test {
         return ethAmounts;
     }
 }
-

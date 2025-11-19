@@ -7,8 +7,7 @@ pragma solidity 0.8.26;
 library WethEthAdapterStorageLib {
     /// @dev Storage slot for WETH ETH adapter address
     /// @dev Calculation: keccak256(abi.encode(uint256(keccak256("io.ipor.ebisu.WethEthAdapter")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant WETH_ETH_ADAPTER_SLOT =
-        0x0129b8eb100deb46c8d563a313bc53ab38d2bf7ea1b50270934f4d98d5e3b300;
+    bytes32 private constant WETH_ETH_ADAPTER_SLOT = 0x0129b8eb100deb46c8d563a313bc53ab38d2bf7ea1b50270934f4d98d5e3b300;
 
     /// @dev Structure holding the WETH ETH adapter address
     /// @custom:storage-location erc7201:io.ipor.ebisu.WethEthAdapter

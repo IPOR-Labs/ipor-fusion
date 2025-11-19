@@ -34,14 +34,12 @@ contract EbisuWethEthAdapterAddressReader {
         );
         adapterAddress = abi.decode(readResult.data, (address));
     }
-    
+
     /// @notice Converts a adapter address string (Bech32) to two bytes32 values
     /// @param adapteraddress_ The adapter address string to convert
     /// @return firstSlot_ First bytes32 value containing first part of string
     /// @return secondSlot_ Second bytes32 value containing second part of string
-    function convertAdapetrAddressToBytes32(
-        string memory adapteraddress_
-    ) external pure returns (bytes32, bytes32) {
+    function convertAdapetrAddressToBytes32(string memory adapteraddress_) external pure returns (bytes32, bytes32) {
         return TacValidatorAddressConverter.validatorAddressToBytes32(adapteraddress_);
     }
 
