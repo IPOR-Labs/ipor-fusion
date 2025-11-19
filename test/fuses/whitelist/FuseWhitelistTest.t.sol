@@ -4,13 +4,18 @@ pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {FuseWhitelist} from "../../../contracts/fuses/whitelist/FuseWhitelist.sol";
 import {FuseWhitelistLib} from "../../../contracts/fuses/whitelist/FuseWhitelistLib.sol";
-import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
-import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {FuseTypes} from "../../../contracts/deploy/initialization/FuseTypes.sol";
-import {FuseStatus} from "../../../contracts/deploy/initialization/FuseStatus.sol";
 import {FuseMetadataTypes} from "../../../contracts/deploy/initialization/FuseMetadataTypes.sol";
+import {FuseStatus} from "../../../contracts/deploy/initialization/FuseStatus.sol";
+import {FuseTypes} from "../../../contracts/deploy/initialization/FuseTypes.sol";
+import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
+
+// Simple contract without MARKET_ID() for testing
+contract FuseWithoutMarketId {
+    // This contract intentionally doesn't implement IFuseCommon.MARKET_ID()
+}
 
 contract FuseWhitelistTest is Test {
     FuseWhitelist private _fuseWhitelist;
@@ -21,6 +26,7 @@ contract FuseWhitelistTest is Test {
     address ADD_FUSE_MANAGER_ROLE = TestAddresses.ATOMIST;
     address UPDATE_FUSE_STATE_ROLE = TestAddresses.ATOMIST;
     address UPDATE_FUSE_METADATA_ROLE = TestAddresses.ATOMIST;
+    address UPDATE_FUSE_TYPE_ROLE = TestAddresses.ATOMIST;
 
     function setUp() public {
         // Setup code will be added here
@@ -37,6 +43,7 @@ contract FuseWhitelistTest is Test {
         _fuseWhitelist.grantRole(_fuseWhitelist.ADD_FUSE_MANAGER_ROLE(), ADD_FUSE_MANAGER_ROLE);
         _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_STATE_MANAGER_ROLE(), UPDATE_FUSE_STATE_ROLE);
         _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_METADATA_MANAGER_ROLE(), UPDATE_FUSE_METADATA_ROLE);
+        _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_TYPE_MANAGER_ROLE(), UPDATE_FUSE_TYPE_ROLE);
         vm.stopPrank();
     }
 
@@ -439,17 +446,19 @@ contract FuseWhitelistTest is Test {
         assertEq(fusesByType.length, 1, "Fuses by type should be equal to the input");
         assertEq(fusesByType[0], fuses[1], "Fuses by type should be equal to the input");
 
-        (uint16 fuseState, uint16 fuseType, address fuseAddress, uint32 timestamp) = _fuseWhitelist.getFuseByAddress(
-            fuses[0]
-        );
-        assertEq(fuseAddress, fuses[0], "Fuses by address should be equal to the input");
-        assertEq(fuseState, 0, "Fuses by address should be equal to the input");
-        assertEq(fuseType, 1, "Fuses by address should be equal to the input");
+        {
+            (uint16 fuseState, uint16 fuseType, address fuseAddress, ) = _fuseWhitelist.getFuseByAddress(fuses[0]);
+            assertEq(fuseAddress, fuses[0], "Fuses by address should be equal to the input");
+            assertEq(fuseState, 0, "Fuses by address should be equal to the input");
+            assertEq(fuseType, 1, "Fuses by address should be equal to the input");
+        }
 
-        (fuseState, fuseType, fuseAddress, timestamp) = _fuseWhitelist.getFuseByAddress(fuses[1]);
-        assertEq(fuseAddress, fuses[1], "Fuses by address should be equal to the input");
-        assertEq(fuseState, 0, "Fuses by address should be equal to the input");
-        assertEq(fuseType, 2, "Fuses by address should be equal to the input");
+        {
+            (uint16 fuseState2, uint16 fuseType2, address fuseAddress2, ) = _fuseWhitelist.getFuseByAddress(fuses[1]);
+            assertEq(fuseAddress2, fuses[1], "Fuses by address should be equal to the input");
+            assertEq(fuseState2, 0, "Fuses by address should be equal to the input");
+            assertEq(fuseType2, 2, "Fuses by address should be equal to the input");
+        }
     }
 
     function test_AddFuses_UnknownType() public {
@@ -531,11 +540,14 @@ contract FuseWhitelistTest is Test {
         vm.stopPrank();
 
         // Verify initial state
-        (uint16 fuseState, uint16 fuseTypeBefore, address fuseAddressBefore, uint32 timestamp) = _fuseWhitelist
-            .getFuseByAddress(fuseAddress);
-        assertEq(fuseState, 0, "Initial state should be 0");
-        assertEq(fuseTypeBefore, fuseType, "Fuse type should be correct");
-        assertEq(fuseAddressBefore, fuseAddress, "Fuse address should be correct");
+        {
+            (uint16 fuseState, uint16 fuseTypeBefore, address fuseAddressBefore, ) = _fuseWhitelist.getFuseByAddress(
+                fuseAddress
+            );
+            assertEq(fuseState, 0, "Initial state should be 0");
+            assertEq(fuseTypeBefore, fuseType, "Fuse type should be correct");
+            assertEq(fuseAddressBefore, fuseAddress, "Fuse address should be correct");
+        }
 
         // Act
         vm.startPrank(UPDATE_FUSE_STATE_ROLE);
@@ -544,10 +556,14 @@ contract FuseWhitelistTest is Test {
 
         // Assert
         assertTrue(result, "Function should return true");
-        (fuseState, fuseTypeBefore, fuseAddressBefore, timestamp) = _fuseWhitelist.getFuseByAddress(fuseAddress);
-        assertEq(fuseState, 1, "State should be updated to 1");
-        assertEq(fuseTypeBefore, fuseType, "Fuse type should remain unchanged");
-        assertEq(fuseAddressBefore, fuseAddress, "Fuse address should remain unchanged");
+        {
+            (uint16 fuseStateAfter, uint16 fuseTypeAfter, address fuseAddressAfter, ) = _fuseWhitelist.getFuseByAddress(
+                fuseAddress
+            );
+            assertEq(fuseStateAfter, 1, "State should be updated to 1");
+            assertEq(fuseTypeAfter, fuseType, "Fuse type should remain unchanged");
+            assertEq(fuseAddressAfter, fuseAddress, "Fuse address should remain unchanged");
+        }
     }
 
     function test_UpdateFuseState_NonExistentFuse() public {
@@ -1426,6 +1442,589 @@ contract FuseWhitelistTest is Test {
             )
         );
         _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
+    }
+
+    function test_AddFuses_DuplicateAddress() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+        uint16 fuseState = 0;
+
+        // Add fuse first time
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = fuseState;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Verify fuse was added
+        (uint16 state, uint16 typeFuse, address address_, uint32 timestamp) = _fuseWhitelist.getFuseByAddress(
+            fuseAddress
+        );
+        assertEq(state, fuseState, "Fuse state should match");
+        assertEq(typeFuse, fuseType, "Fuse type should match");
+        assertEq(address_, fuseAddress, "Fuse address should match");
+        assertTrue(timestamp > 0, "Timestamp should be set");
+
+        // Act & Assert - Try to add the same fuse again
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelist.FuseWhitelistFuseAlreadyExists.selector, fuseAddress));
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+    }
+
+    function test_AddFuses_DuplicateAddressInSameBatch() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+        uint16 fuseState = 0;
+
+        // Try to add the same fuse address twice in the same batch
+        address[] memory fuses = new address[](2);
+        fuses[0] = fuseAddress;
+        fuses[1] = fuseAddress; // Duplicate address
+
+        uint16[] memory types = new uint16[](2);
+        types[0] = fuseType;
+        types[1] = fuseType;
+
+        uint16[] memory states = new uint16[](2);
+        states[0] = fuseState;
+        states[1] = fuseState;
+
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
+        // Act & Assert
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        // First fuse should be added successfully, second one should fail
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelist.FuseWhitelistFuseAlreadyExists.selector, fuseAddress));
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+    }
+
+    function test_UpdateFuseType_Success() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 initialFuseType = 1;
+        uint16 newFuseType = 2;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = initialFuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Verify initial state
+        {
+            (, uint16 fuseTypeBefore, address fuseAddressBefore, ) = _fuseWhitelist.getFuseByAddress(fuseAddress);
+            assertEq(fuseTypeBefore, initialFuseType, "Initial fuse type should be correct");
+            assertEq(fuseAddressBefore, fuseAddress, "Fuse address should be correct");
+        }
+
+        // Verify fuse is in type 1 list
+        {
+            address[] memory fusesByType1Before = _fuseWhitelist.getFusesByType(initialFuseType);
+            assertEq(fusesByType1Before.length, 1, "Fuse should be in type 1 list");
+            assertEq(fusesByType1Before[0], fuseAddress, "Fuse address should match");
+        }
+
+        // Verify fuse is not in type 2 list
+        {
+            address[] memory fusesByType2Before = _fuseWhitelist.getFusesByType(newFuseType);
+            assertEq(fusesByType2Before.length, 0, "Fuse should not be in type 2 list");
+        }
+
+        // Act
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = fuseAddress;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = newFuseType;
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        bool result = _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+
+        // Assert
+        assertTrue(result, "Function should return true");
+        {
+            (uint16 fuseStateAfter, uint16 fuseTypeAfter, address fuseAddressAfter, ) = _fuseWhitelist.getFuseByAddress(
+                fuseAddress
+            );
+            assertEq(fuseTypeAfter, newFuseType, "Fuse type should be updated to new type");
+            assertEq(fuseAddressAfter, fuseAddress, "Fuse address should remain unchanged");
+            assertEq(fuseStateAfter, 0, "Fuse state should remain unchanged");
+        }
+
+        // Verify fuse is removed from type 1 list
+        {
+            address[] memory fusesByType1After = _fuseWhitelist.getFusesByType(initialFuseType);
+            assertEq(fusesByType1After.length, 0, "Fuse should be removed from type 1 list");
+        }
+
+        // Verify fuse is added to type 2 list
+        {
+            address[] memory fusesByType2After = _fuseWhitelist.getFusesByType(newFuseType);
+            assertEq(fusesByType2After.length, 1, "Fuse should be added to type 2 list");
+            assertEq(fusesByType2After[0], fuseAddress, "Fuse address should match");
+        }
+    }
+
+    function test_UpdateFuseType_MultipleFuses() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress1 = address(new Erc4626SupplyFuse(1));
+        address fuseAddress2 = address(new Erc4626SupplyFuse(2));
+        uint16 initialFuseType1 = 1;
+        uint16 initialFuseType2 = 1;
+        uint16 newFuseType1 = 2;
+        uint16 newFuseType2 = 2;
+
+        // Add fuses first
+        address[] memory fuses = new address[](2);
+        fuses[0] = fuseAddress1;
+        fuses[1] = fuseAddress2;
+        uint16[] memory types = new uint16[](2);
+        types[0] = initialFuseType1;
+        types[1] = initialFuseType2;
+        uint16[] memory states = new uint16[](2);
+        states[0] = 0;
+        states[1] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act
+        address[] memory fuseAddresses = new address[](2);
+        fuseAddresses[0] = fuseAddress1;
+        fuseAddresses[1] = fuseAddress2;
+        uint16[] memory newTypes = new uint16[](2);
+        newTypes[0] = newFuseType1;
+        newTypes[1] = newFuseType2;
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        bool result = _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+
+        // Assert
+        assertTrue(result, "Function should return true");
+
+        // Verify first fuse
+        (, uint16 fuseType1, , ) = _fuseWhitelist.getFuseByAddress(fuseAddress1);
+        assertEq(fuseType1, newFuseType1, "First fuse type should be updated");
+
+        // Verify second fuse
+        (, uint16 fuseType2, , ) = _fuseWhitelist.getFuseByAddress(fuseAddress2);
+        assertEq(fuseType2, newFuseType2, "Second fuse type should be updated");
+
+        // Verify type lists
+        address[] memory fusesByType1 = _fuseWhitelist.getFusesByType(initialFuseType1);
+        assertEq(fusesByType1.length, 0, "Type 1 list should be empty");
+
+        address[] memory fusesByType2 = _fuseWhitelist.getFusesByType(newFuseType1);
+        assertEq(fusesByType2.length, 2, "Type 2 list should contain both fuses");
+    }
+
+    function test_UpdateFuseType_InvalidInputLength() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = fuseAddress;
+        uint16[] memory newTypes = new uint16[](2); // Different length
+        newTypes[0] = 2;
+        newTypes[1] = 2;
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        vm.expectRevert(FuseWhitelist.FuseWhitelistInvalidInputLength.selector);
+        _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+    }
+
+    function test_UpdateFuseType_NonExistentFuse() public {
+        // Arrange
+        addFuseTypesAndStates();
+        address nonExistentFuse = address(0x999);
+
+        // Act & Assert
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = nonExistentFuse;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = 2;
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+    }
+
+    function test_UpdateFuseType_InvalidFuseType() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert - Try to update to non-existent type
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = fuseAddress;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = 999; // Non-existent type
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.InvalidFuseTypeId.selector, 999));
+        _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+    }
+
+    function test_UpdateFuseType_SameType() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert - Try to update to the same type
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = fuseAddress;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = fuseType; // Same type
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.InvalidFuseTypeId.selector, fuseType));
+        _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+    }
+
+    function test_UpdateFuseType_Unauthorized() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = fuseAddress;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = 2;
+
+        vm.prank(address(0x123)); // Random address without role
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                address(0x123),
+                keccak256("UPDATE_FUSE_TYPE_MANAGER_ROLE")
+            )
+        );
+        _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+    }
+
+    function test_UpdateFuseType_EventEmitted() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 initialFuseType = 1;
+        uint16 newFuseType = 2;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = initialFuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = fuseAddress;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = newFuseType;
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.FuseTypeUpdated(fuseAddress, initialFuseType, newFuseType);
+        bool result = _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+
+        assertTrue(result, "Function should return true");
+    }
+
+    function test_UpdateFuseType_MultipleFuses_EventsEmitted() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress1 = address(new Erc4626SupplyFuse(1));
+        address fuseAddress2 = address(new Erc4626SupplyFuse(2));
+        uint16 initialFuseType1 = 1;
+        uint16 initialFuseType2 = 1;
+        uint16 newFuseType1 = 2;
+        uint16 newFuseType2 = 2;
+
+        // Add fuses first
+        address[] memory fuses = new address[](2);
+        fuses[0] = fuseAddress1;
+        fuses[1] = fuseAddress2;
+        uint16[] memory types = new uint16[](2);
+        types[0] = initialFuseType1;
+        types[1] = initialFuseType2;
+        uint16[] memory states = new uint16[](2);
+        states[0] = 0;
+        states[1] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert
+        address[] memory fuseAddresses = new address[](2);
+        fuseAddresses[0] = fuseAddress1;
+        fuseAddresses[1] = fuseAddress2;
+        uint16[] memory newTypes = new uint16[](2);
+        newTypes[0] = newFuseType1;
+        newTypes[1] = newFuseType2;
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.FuseTypeUpdated(fuseAddress1, initialFuseType1, newFuseType1);
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.FuseTypeUpdated(fuseAddress2, initialFuseType2, newFuseType2);
+        bool result = _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+
+        assertTrue(result, "Function should return true");
+    }
+
+    function test_UpdateFuseType_EmptyArrays() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        // Act
+        address[] memory fuseAddresses = new address[](0);
+        uint16[] memory newTypes = new uint16[](0);
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        bool result = _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+
+        // Assert
+        assertTrue(result, "Function should return true for empty arrays");
+    }
+
+    function test_UpdateFuseType_TypeListsUpdated() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 initialFuseType = 1;
+        uint16 newFuseType = 2;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = initialFuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Verify initial state
+        address[] memory fusesByType1Before = _fuseWhitelist.getFusesByType(initialFuseType);
+        assertEq(fusesByType1Before.length, 1, "Fuse should be in type 1 list before update");
+        assertEq(fusesByType1Before[0], fuseAddress, "Fuse address should match");
+
+        address[] memory fusesByType2Before = _fuseWhitelist.getFusesByType(newFuseType);
+        assertEq(fusesByType2Before.length, 0, "Fuse should not be in type 2 list before update");
+
+        // Act
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = fuseAddress;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = newFuseType;
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        bool result = _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+
+        // Assert
+        assertTrue(result, "Function should return true");
+
+        // Verify fuse is removed from type 1 list
+        address[] memory fusesByType1After = _fuseWhitelist.getFusesByType(initialFuseType);
+        assertEq(fusesByType1After.length, 0, "Fuse should be removed from type 1 list");
+
+        // Verify fuse is added to type 2 list
+        address[] memory fusesByType2After = _fuseWhitelist.getFusesByType(newFuseType);
+        assertEq(fusesByType2After.length, 1, "Fuse should be added to type 2 list");
+        assertEq(fusesByType2After[0], fuseAddress, "Fuse address should match");
+    }
+
+    function test_UpdateFuseType_MarketIdListsUpdated() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress1 = address(new Erc4626SupplyFuse(1)); // Market ID 1
+        address fuseAddress2 = address(new Erc4626SupplyFuse(2)); // Market ID 2
+        uint16 initialFuseType = 1;
+        uint16 newFuseType = 2;
+
+        // Add fuses first
+        address[] memory fuses = new address[](2);
+        fuses[0] = fuseAddress1;
+        fuses[1] = fuseAddress2;
+        uint16[] memory types = new uint16[](2);
+        types[0] = initialFuseType;
+        types[1] = initialFuseType;
+        uint16[] memory states = new uint16[](2);
+        states[0] = 0;
+        states[1] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+        deploymentTimestamps[1] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Verify initial market ID lists
+        {
+            address[] memory fusesByMarketId1Before = _fuseWhitelist.getFusesByMarketId(1);
+            assertEq(fusesByMarketId1Before.length, 1, "Market ID 1 should have 1 fuse");
+            assertEq(fusesByMarketId1Before[0], fuseAddress1, "Fuse address should match");
+        }
+        {
+            address[] memory fusesByMarketId2Before = _fuseWhitelist.getFusesByMarketId(2);
+            assertEq(fusesByMarketId2Before.length, 1, "Market ID 2 should have 1 fuse");
+            assertEq(fusesByMarketId2Before[0], fuseAddress2, "Fuse address should match");
+        }
+
+        // Act - Update first fuse type
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = fuseAddress1;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = newFuseType;
+
+        vm.startPrank(UPDATE_FUSE_TYPE_ROLE);
+        bool result = _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+        vm.stopPrank();
+
+        // Assert
+        assertTrue(result, "Function should return true");
+
+        // Verify market ID lists are still correct (market ID doesn't change, only type)
+        {
+            address[] memory fusesByMarketId1After = _fuseWhitelist.getFusesByMarketId(1);
+            assertEq(fusesByMarketId1After.length, 1, "Market ID 1 should still have 1 fuse");
+            assertEq(fusesByMarketId1After[0], fuseAddress1, "Fuse address should still match");
+        }
+
+        // Verify fuse type was updated
+        {
+            (, uint16 fuseTypeAfter, , ) = _fuseWhitelist.getFuseByAddress(fuseAddress1);
+            assertEq(fuseTypeAfter, newFuseType, "Fuse type should be updated");
+        }
     }
 
     function addFuseTypesAndStates() public {

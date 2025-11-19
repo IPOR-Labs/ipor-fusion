@@ -94,6 +94,8 @@ library FuseWhitelistLib {
     error FuseNotFound(address fuseAddress);
     /// @notice Thrown when attempting to add a fuse info with a zero deployment timestamp
     error ZeroDeploymentTimestamp();
+    /// @notice Thrown when attempting to update a fuse type that does not have a MARKET_ID() method
+    error FuseDoesNotHaveMarketId(address fuseAddress);
 
     /// @notice Emitted when a new fuse type is added
     /// @param fuseId The ID of the added fuse type
@@ -130,7 +132,11 @@ library FuseWhitelistLib {
     /// @param fuseType The type of the fuse
     /// @param timestamp When the fuse was added
     event FuseInfoAdded(address fuseAddress, uint16 fuseType, uint32 timestamp);
-
+    /// @notice Emitted when a fuse type is updated
+    /// @param fuseAddress The address of the updated fuse
+    /// @param oldFuseType The old type of the fuse
+    /// @param newFuseType The new type of the fuse
+    event FuseTypeUpdated(address fuseAddress, uint16 oldFuseType, uint16 newFuseType);
     /// @notice Storage slot for FusesTypes struct
     /// @dev Storage slot calculation:
     /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseTypes")) - 1)) & ~bytes32(uint256(0xff))
@@ -306,9 +312,55 @@ library FuseWhitelistLib {
         if (bytes(fusesTypes.fusesTypes[fuseTypeId_]).length == 0) {
             revert InvalidFuseTypeId(fuseTypeId_);
         }
-
         fuseListsByType.fusesByType[fuseTypeId_].push(fuse_);
         emit FuseAddedToListByType(fuseTypeId_, fuse_);
+    }
+
+    /// @notice Updates the type of an existing fuse
+    /// @param fuseAddress_ The address of the fuse to update
+    /// @param fuseType_ The new fuse type ID
+    /// @dev Reverts if:
+    /// - fuseAddress_ is not found
+    /// - fuseType_ is invalid or same as current type
+    /// @dev Removes fuse from old type list and adds to new type list
+    function updateFuseType(address fuseAddress_, uint16 fuseType_) internal {
+        FuseInfo storage fuseInfo = _getFuseListByAddressSlot().fusesByAddress[fuseAddress_];
+        FusesTypes storage fusesTypes = _getFusesTypesSlot();
+
+        if (fuseInfo.fuseAddress == address(0)) {
+            revert FuseNotFound(fuseAddress_);
+        }
+
+        if (bytes(fusesTypes.fusesTypes[fuseType_]).length == 0 || fuseInfo.fuseType == fuseType_) {
+            revert InvalidFuseTypeId(fuseType_);
+        }
+
+        uint16 oldFuseType = fuseInfo.fuseType;
+        FuseListsByType storage fuseListsByType = _getFuseListsByTypeSlot();
+        _removeAddressFromList(fuseListsByType.fusesByType[oldFuseType], fuseAddress_);
+        fuseListsByType.fusesByType[fuseType_].push(fuseAddress_);
+
+        fuseInfo.fuseType = fuseType_;
+
+        emit FuseTypeUpdated(fuseAddress_, oldFuseType, fuseType_);
+    }
+
+    /// @notice Removes an address from a storage array using gas-optimized swap-and-pop pattern
+    /// @param list_ The storage array to remove the address from
+    /// @param addressToRemove_ The address to remove from the array
+    /// @return True if the address was found and removed, false otherwise
+    /// @dev If the address is found, it's swapped with the last element and the last element is removed.
+    ///      This avoids shifting all elements and reduces gas costs from O(n) to O(1).
+    function _removeAddressFromList(address[] storage list_, address addressToRemove_) private returns (bool) {
+        uint256 length = list_.length;
+        for (uint256 i; i < length; ++i) {
+            if (list_[i] == addressToRemove_) {
+                list_[i] = list_[length - 1];
+                list_.pop();
+                return true;
+            }
+        }
+        return false;
     }
 
     /// @notice Adds basic information about a fuse
@@ -442,6 +494,14 @@ library FuseWhitelistLib {
         return _getFuseListByAddressSlot().fusesByAddress[fuseAddress_];
     }
 
+    /// @notice Checks if a fuse address exists in the whitelist
+    /// @param fuseAddress_ The address of the fuse to check
+    /// @return True if the fuse address exists in the whitelist, false otherwise
+    /// @dev Returns false if the fuse address is zero or if the fuse has not been registered
+    function isFuseAddressExists(address fuseAddress_) internal view returns (bool) {
+        return getFuseByAddress(fuseAddress_).fuseAddress != address(0);
+    }
+
     /// @notice Adds a fuse to its market ID list
     /// @param fuseAddress_ The address of the fuse to add
     /// @dev Automatically determines market ID from the fuse contract, only adds if MARKET_ID() method exists
@@ -454,6 +514,7 @@ library FuseWhitelistLib {
         } catch {
             // Fuse doesn't have MARKET_ID() method, skip adding to market ID list
             // This is intentionally empty - we want to silently skip fuses without MARKET_ID()
+            // solhint-disable-next-line no-empty-blocks
         }
     }
 
@@ -484,7 +545,7 @@ library FuseWhitelistLib {
             fuseInfo = getFuseByAddress(fusesByType[i]);
             if (fuseInfo.fuseType == type_ && fuseInfo.fuseState == status_) {
                 tempFuses[numberOfFuses] = fusesByType[i];
-                numberOfFuses++;
+                ++numberOfFuses;
             }
         }
 
@@ -499,7 +560,7 @@ library FuseWhitelistLib {
         return result;
     }
 
-    /// @dev Internal function to get FusesTypes struct from storage
+    /// @notice Internal function to get FusesTypes struct from storage
     /// @return fusesTypes The FusesTypes struct from storage
     function _getFusesTypesSlot() private pure returns (FusesTypes storage fusesTypes) {
         assembly {
@@ -507,7 +568,7 @@ library FuseWhitelistLib {
         }
     }
 
-    /// @dev Internal function to get FuseInfoByMarketId struct from storage
+    /// @notice Internal function to get FuseInfoByMarketId struct from storage
     /// @return fuseInfoByMarketId The FuseInfoByMarketId struct from storage
     function _getFuseInfoByMarketIdSlot() private pure returns (FuseInfoByMarketId storage fuseInfoByMarketId) {
         assembly {
@@ -515,7 +576,7 @@ library FuseWhitelistLib {
         }
     }
 
-    /// @dev Internal function to get FusesStates struct from storage
+    /// @notice Internal function to get FusesStates struct from storage
     /// @return fusesStates The FusesStates struct from storage
     function _getFusesStatesSlot() private pure returns (FusesStates storage fusesStates) {
         assembly {
@@ -523,7 +584,7 @@ library FuseWhitelistLib {
         }
     }
 
-    /// @dev Internal function to get FuseListsByType struct from storage
+    /// @notice Internal function to get FuseListsByType struct from storage
     /// @return fuseListsByType The FuseListsByType struct from storage
     function _getFuseListsByTypeSlot() private pure returns (FuseListsByType storage fuseListsByType) {
         assembly {
@@ -531,7 +592,7 @@ library FuseWhitelistLib {
         }
     }
 
-    /// @dev Internal function to get MetadataTypes struct from storage
+    /// @notice Internal function to get MetadataTypes struct from storage
     /// @return metadataTypes The MetadataTypes struct from storage
     function _getMetadataTypesSlot() private pure returns (MetadataTypes storage metadataTypes) {
         assembly {
@@ -539,7 +600,7 @@ library FuseWhitelistLib {
         }
     }
 
-    /// @dev Internal function to get FuseInfo struct from storage
+    /// @notice Internal function to get FuseInfo struct from storage
     /// @return fuseInfo The FuseInfo struct from storage
     function _getFuseListByAddressSlot() private pure returns (FuseListByAddress storage fuseInfo) {
         assembly {
