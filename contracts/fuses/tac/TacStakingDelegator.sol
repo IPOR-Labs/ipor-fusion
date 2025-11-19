@@ -7,6 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IStaking} from "./ext/IStaking.sol";
 import {IwTAC} from "./ext/IwTAC.sol";
 
+// @dev This contract is deprecated and should not be used
 /// @title TacStakingDelegator
 /// @notice Delegator for TAC staking operations on behalf of the PlasmaVault
 /// @dev Handles delegation, redelegation, undelegation, instant withdrawals, and emergency exit

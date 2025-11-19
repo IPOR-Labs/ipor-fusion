@@ -5,6 +5,7 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {TacStakingDelegator} from "./TacStakingDelegator.sol";
 import {TacStakingStorageLib} from "./lib/TacStakingStorageLib.sol";
 
+// @dev This contract is deprecated and should not be used
 /// @title TacStakingEmergencyFuse
 /// @notice Fuse for emergency exit of TacStakingDelegator
 /// @dev This fuse is used to emergency exit with all wTAC and native TAC from the TacStakingDelegator

@@ -26,6 +26,7 @@ struct TacStakingDelegateFuseExitData {
     uint256[] tacAmounts;
 }
 
+// @dev This contract is deprecated and should not be used
 contract TacStakingDelegateFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for IERC20;
 

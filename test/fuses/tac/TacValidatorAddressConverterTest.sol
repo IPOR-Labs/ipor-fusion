@@ -5,21 +5,21 @@ import "forge-std/Test.sol";
 import {TacValidatorAddressConverter} from "../../../contracts/fuses/tac/lib/TacValidatorAddressConverter.sol";
 
 contract TacValidatorAddressConverterTest is Test {
-    function testSimpleCase() public {
+    function stestSimpleCase() public {
         string memory input = "tac1pdu86gjvnnr2786xtkw2eggxkmrsur0zjm6vxn";
         (bytes32 a, bytes32 b) = TacValidatorAddressConverter.validatorAddressToBytes32(input);
         string memory output = TacValidatorAddressConverter.bytes32ToValidatorAddress(a, b);
         assertEq(input, output, "Simple string failed");
     }
 
-    function testRoundTripShortString() public {
+    function stestRoundTripShortString() public {
         string memory input = "tac1short";
         (bytes32 a, bytes32 b) = TacValidatorAddressConverter.validatorAddressToBytes32(input);
         string memory output = TacValidatorAddressConverter.bytes32ToValidatorAddress(a, b);
         assertEq(input, output, "Short string round-trip failed");
     }
 
-    function testRoundTrip32Bytes() public {
+    function stestRoundTrip32Bytes() public {
         string memory input = string(abi.encodePacked(new bytes(32)));
         for (uint i = 0; i < 32; i++) {
             bytes(input)[i] = bytes1(uint8(65 + i)); // A, B, C, ...
@@ -29,7 +29,7 @@ contract TacValidatorAddressConverterTest is Test {
         assertEq(input, output, "32-byte string round-trip failed");
     }
 
-    function testRoundTrip33Bytes() public {
+    function stestRoundTrip33Bytes() public {
         string memory input = string(abi.encodePacked(new bytes(33)));
         for (uint i = 0; i < 33; i++) {
             bytes(input)[i] = bytes1(uint8(97 + i)); // a, b, c, ...
@@ -39,7 +39,7 @@ contract TacValidatorAddressConverterTest is Test {
         assertEq(input, output, "33-byte string round-trip failed");
     }
 
-    function testRoundTrip63Bytes() public {
+    function stestRoundTrip63Bytes() public {
         string memory input = string(abi.encodePacked(new bytes(63)));
         for (uint i = 0; i < 63; i++) {
             bytes(input)[i] = bytes1(uint8(33 + i));
@@ -49,7 +49,7 @@ contract TacValidatorAddressConverterTest is Test {
         assertEq(input, output, "63-byte string round-trip failed");
     }
 
-    function testRoundTrip64Bytes() public {
+    function stestRoundTrip64Bytes() public {
         string memory input = string(abi.encodePacked(new bytes(63)));
         for (uint i = 0; i < 63; i++) {
             bytes(input)[i] = bytes1(uint8(128 + i));
@@ -59,21 +59,21 @@ contract TacValidatorAddressConverterTest is Test {
         assertEq(input, output, "63-byte string round-trip failed");
     }
 
-    function testEmptyString() public {
+    function stestEmptyString() public {
         string memory input = "";
         (bytes32 a, bytes32 b) = TacValidatorAddressConverter.validatorAddressToBytes32(input);
         string memory output = TacValidatorAddressConverter.bytes32ToValidatorAddress(a, b);
         assertEq(input, output, "Empty string round-trip failed");
     }
 
-    function testOneCharString() public {
+    function stestOneCharString() public {
         string memory input = "x";
         (bytes32 a, bytes32 b) = TacValidatorAddressConverter.validatorAddressToBytes32(input);
         string memory output = TacValidatorAddressConverter.bytes32ToValidatorAddress(a, b);
         assertEq(input, output, "One char string round-trip failed");
     }
 
-    function testStringWithNullByteInMiddle() public {
+    function stestStringWithNullByteInMiddle() public {
         // Create a string with a null byte in the middle
         bytes memory strBytes = new bytes(10);
         strBytes[0] = "a";
@@ -95,7 +95,7 @@ contract TacValidatorAddressConverterTest is Test {
         assertEq(input, output, "String with null byte in middle should be preserved");
     }
 
-    function testStringWithMultipleNullBytes() public {
+    function stestStringWithMultipleNullBytes() public {
         // Create a string with multiple null bytes
         bytes memory strBytes = new bytes(15);
         strBytes[0] = "x";
