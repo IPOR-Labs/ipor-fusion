@@ -18,6 +18,13 @@ contract EbisuAdjustInterestRateFuse is IFuseCommon {
 
     event EbisuAdjustInterestRateFuseEnter(uint256 troveId, uint256 newAnnualInterestRate);
 
+    /// @notice Data to close an open Trove through Zapper
+    /// @param zapper the zapper address
+    /// @param registry the registry where the borrower operations for the trove is listed
+    /// @param newAnnualInterestRate the new annual interest rate
+    /// @param maxUpfrontFee the maximum upfront fee to be paid for the operation
+    /// @param upperHint upper bound given to SortedTroves to facilitate array insertion on Liquity (better values -> gas saving)
+    /// @param lowerHint lower bound given to SortedTroves to facilitate array insertion on Liquity (better values -> gas saving)
     struct EbisuAdjustInterestRateFuseEnterData {
         address zapper;
         address registry;
@@ -31,6 +38,7 @@ contract EbisuAdjustInterestRateFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
+    /// @notice adjusts the interest rate of the Trove open by this Plasma Vault
     function enter(EbisuAdjustInterestRateFuseEnterData calldata data_) external {
         _requireSupportedSubstrates(data_.zapper, data_.registry);
 
