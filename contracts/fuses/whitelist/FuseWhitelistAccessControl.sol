@@ -32,6 +32,11 @@ abstract contract FuseWhitelistAccessControl is AccessControlEnumerableUpgradeab
     /// - updateFuseState()
     bytes32 public constant UPDATE_FUSE_STATE_MANAGER_ROLE = keccak256("UPDATE_FUSE_STATE_MANAGER_ROLE");
 
+    /// @notice Role for updating fuse types
+    /// @dev Protects:
+    /// - updateFuseType()
+    bytes32 public constant UPDATE_FUSE_TYPE_MANAGER_ROLE = keccak256("UPDATE_FUSE_TYPE_MANAGER_ROLE");
+
     /// @notice Role for updating fuse metadata
     /// @dev Protects:
     /// - updateFuseMetadata()
@@ -42,14 +47,15 @@ abstract contract FuseWhitelistAccessControl is AccessControlEnumerableUpgradeab
         _disableInitializers();
     }
 
-    /**
-     * @dev Initializes the contract granting the deployer the default admin role.
-     * This function can only be called once through the proxy's constructor.
-     */
+    /// @notice Initializes the access control system
+    /// @dev Grants the deployer the default admin role
+    /// @dev This function can only be called once through the proxy's constructor
     function __IporFusionAccessControl_init() internal onlyInitializing {
         __AccessControlEnumerable_init();
         __IporFusionAccessControl_init_unchained();
     }
 
+    /// @notice Unchained initialization function
+    /// @dev Used for additional initialization logic if needed
     function __IporFusionAccessControl_init_unchained() internal onlyInitializing {}
 }
