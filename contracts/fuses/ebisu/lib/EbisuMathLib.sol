@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 library EbisuMathLib {
     /// @notice calculates the trove id (given by Liquity), as a function of our ownerIndex (given by us)

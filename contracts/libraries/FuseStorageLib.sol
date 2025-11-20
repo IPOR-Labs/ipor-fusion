@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title Fuses storage library responsible for managing storage fuses in the Plasma Vault
 library FuseStorageLib {

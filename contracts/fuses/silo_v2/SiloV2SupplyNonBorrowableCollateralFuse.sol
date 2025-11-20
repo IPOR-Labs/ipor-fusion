@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ISilo} from "./ext/ISilo.sol";
 import {SiloV2SupplyCollateralFuseAbstract, SiloV2SupplyCollateralFuseEnterData, SiloV2SupplyCollateralFuseExitData} from "./SiloV2SupplyCollateralFuseAbstract.sol";
