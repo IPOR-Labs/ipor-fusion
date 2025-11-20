@@ -9,10 +9,10 @@ import {IUniversalRouter} from "../../../contracts/fuses/napier/ext/IUniversalRo
 interface NapierFactory {
     function DEFAULT_SPLIT_RATIO_BPS() external pure returns (uint16);
 
-    function isValidImplementation(
-        NapierHelper.ModuleIndex moduleType,
-        address implementation
-    ) external view returns (bool);
+    function isValidImplementation(NapierHelper.ModuleIndex moduleType, address implementation)
+        external
+        view
+        returns (bool);
 }
 
 /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -33,6 +33,7 @@ library NapierHelper {
         REWARD_PROXY_MODULE_INDEX, // 1
         VERIFIER_MODULE_INDEX, // 2
         POOL_FEE_MODULE_INDEX // 3
+
     }
 
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -94,10 +95,11 @@ library NapierHelper {
     /// @param scalarRoot Scalar root value for the hook
     /// @param initialAnchor Initial anchor value for the hook
     /// @return encodedParams Encoded hook parameters
-    function encodeHookParams(
-        uint256 scalarRoot,
-        int256 initialAnchor
-    ) internal pure returns (bytes memory encodedParams) {
+    function encodeHookParams(uint256 scalarRoot, int256 initialAnchor)
+        internal
+        pure
+        returns (bytes memory encodedParams)
+    {
         return abi.encode(DEFAULT_CARDINALITY_NEXT, abi.encode(scalarRoot, initialAnchor));
     }
 
@@ -166,9 +168,7 @@ library NapierHelper {
 
         // Build commands: TP_CREATE_POOL + TP_SPLIT_INITIAL_LIQUIDITY + TP_ADD_LIQUIDITY
         bytes memory commands = abi.encodePacked(
-            bytes1(uint8(TP_CREATE_POOL)),
-            bytes1(uint8(TP_SPLIT_INITIAL_LIQUIDITY)),
-            bytes1(uint8(TP_ADD_LIQUIDITY))
+            bytes1(uint8(TP_CREATE_POOL)), bytes1(uint8(TP_SPLIT_INITIAL_LIQUIDITY)), bytes1(uint8(TP_ADD_LIQUIDITY))
         );
 
         // Build inputs array
@@ -207,12 +207,8 @@ library NapierHelper {
         uint16 postSettlementFeePct
     ) internal pure returns (uint256 packed) {
         uint256 splitFeePct = NapierFactory(factory).DEFAULT_SPLIT_RATIO_BPS();
-        packed =
-            (uint256(postSettlementFeePct) << 64) |
-            (uint256(redemptionFeePct) << 48) |
-            (uint256(performanceFeePct) << 32) |
-            (uint256(issuanceFeePct) << 16) |
-            uint256(splitFeePct);
+        packed = (uint256(postSettlementFeePct) << 64) | (uint256(redemptionFeePct) << 48)
+            | (uint256(performanceFeePct) << 32) | (uint256(issuanceFeePct) << 16) | uint256(splitFeePct);
     }
 
     /// @notice Pack pool fee parameters into a single uint256 (FeePctsPool)
@@ -220,11 +216,11 @@ library NapierHelper {
     /// @param ammFeeParams AMM fee parameters (128-bit encoded value)
     /// @param reserveFeePct Reserve fee percentage in basis points (0-10000)
     /// @return packed The packed pool fee parameters as uint256
-    function packFeePctsPool(
-        address factory,
-        uint128 ammFeeParams,
-        uint16 reserveFeePct
-    ) internal pure returns (uint256 packed) {
+    function packFeePctsPool(address factory, uint128 ammFeeParams, uint16 reserveFeePct)
+        internal
+        pure
+        returns (uint256 packed)
+    {
         uint256 splitFeePct = NapierFactory(factory).DEFAULT_SPLIT_RATIO_BPS();
         packed = (uint256(reserveFeePct) << 144) | (uint256(ammFeeParams) << 16) | uint256(splitFeePct);
     }
@@ -258,13 +254,8 @@ library NapierHelper {
                 startSalt++;
             }
 
-            address predictedAddress = predictPrincipalTokenAddress(
-                bytes32(startSalt),
-                initCodeHash,
-                factory,
-                msgSender,
-                router
-            );
+            address predictedAddress =
+                predictPrincipalTokenAddress(bytes32(startSalt), initCodeHash, factory, msgSender, router);
 
             // Check if predicted PT address > underlying address
             if (uint160(predictedAddress) > underlyingValue) {
