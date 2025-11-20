@@ -11,6 +11,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../contracts/factory/PlasmaVaultFactory.sol";
@@ -71,7 +72,7 @@ contract PlasmaVaultDepositFeeTest is Test {
         fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
         vm.stopPrank();
 
-        FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "AreodromeSlipstream",
             "VSS",
             _UNDERLYING_TOKEN,

@@ -7,6 +7,7 @@ import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {EulerV2BatchFuse, EulerV2BatchItem, EulerV2BatchFuseData} from "../../../contracts/fuses/euler/EulerV2BatchFuse.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {EulerFuseLib, EulerSubstrate} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
@@ -43,7 +44,7 @@ contract EulerV2Batch is Test {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 23485836);
 
-        FusionFactoryLib.FusionInstance memory fusionInstance = FusionFactory(FUSION_FACTORY).create(
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = FusionFactory(FUSION_FACTORY).create(
             "EulerV2Batch",
             "EULERV2BATCH",
             USDC,

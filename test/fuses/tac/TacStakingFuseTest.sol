@@ -15,6 +15,7 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {RewardsManagerFactory} from "../../../contracts/factory/RewardsManagerFactory.sol";
 import {WithdrawManagerFactory} from "../../../contracts/factory/WithdrawManagerFactory.sol";
@@ -1745,7 +1746,7 @@ contract TacStakingFuseTest is Test {
     }
 
     function _createVaultWithFusionFactory() private {
-        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
             "TAC Staking Vault",
             "tacVault",
             wTAC,

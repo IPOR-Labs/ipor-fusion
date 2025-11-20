@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {FusionFactory} from "../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../contracts/managers/access/IporFusionAccessManager.sol";
@@ -44,7 +45,7 @@ contract TestConfigurationExample is Test {
 
         fusionFactory = FusionFactory(FUSION_FACTORY_PROXY);
 
-        FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "Test Configuration Vault",
             "TCV",
             USDC,
