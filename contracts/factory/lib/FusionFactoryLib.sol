@@ -1,27 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {RewardsManagerFactory} from "../RewardsManagerFactory.sol";
-import {WithdrawManagerFactory} from "../WithdrawManagerFactory.sol";
+
+import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
+import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
+import {FeeConfig} from "../../managers/fee/FeeManagerFactory.sol";
+import {FeeManager} from "../../managers/fee/FeeManager.sol";
+import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
+import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
+import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
+import {IPlasmaVaultGovernance} from "../../interfaces/IPlasmaVaultGovernance.sol";
+import {IRewardsClaimManager} from "../../interfaces/IRewardsClaimManager.sol";
+import {DataForInitialization, IporFusionAccessManagerInitializerLibV1, PlasmaVaultAddress} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {PlasmaVaultInitData} from "../../vaults/PlasmaVault.sol";
+import {AccessManagerFactory} from "../AccessManagerFactory.sol";
 import {ContextManagerFactory} from "../ContextManagerFactory.sol";
 import {PriceManagerFactory} from "../PriceManagerFactory.sol";
 import {PlasmaVaultFactory} from "../PlasmaVaultFactory.sol";
-import {AccessManagerFactory} from "../AccessManagerFactory.sol";
+import {RewardsManagerFactory} from "../RewardsManagerFactory.sol";
+import {WithdrawManagerFactory} from "../WithdrawManagerFactory.sol";
 import {FusionFactoryStorageLib} from "./FusionFactoryStorageLib.sol";
-import {PlasmaVaultInitData} from "../../vaults/PlasmaVault.sol";
-import {FeeConfig} from "../../managers/fee/FeeManagerFactory.sol";
-import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
-import {DataForInitialization} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {IporFusionAccessManagerInitializerLibV1} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {IPlasmaVaultGovernance} from "../../interfaces/IPlasmaVaultGovernance.sol";
-import {IRewardsClaimManager} from "../../interfaces/IRewardsClaimManager.sol";
-import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
-import {FeeManager} from "../../managers/fee/FeeManager.sol";
-import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
-import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
-import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
-import {PlasmaVaultAddress} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 /**
  * @title Fusion Factory Library

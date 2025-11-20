@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title Non-fungible token for positions
 /// @notice Wraps CL positions in a non-fungible token interface which allows for them to be transferred
