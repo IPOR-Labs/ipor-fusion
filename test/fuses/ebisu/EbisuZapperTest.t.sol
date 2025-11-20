@@ -7,6 +7,8 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, 
 
 import {EbisuZapperCreateFuse, EbisuZapperCreateFuseEnterData, EbisuZapperCreateFuseExitData} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
 
+import {EbisuAdjustInterestRateFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol";
+
 import {EbisuZapperBalanceFuse} from "../../../contracts/fuses/ebisu/EbisuZapperBalanceFuse.sol";
 import {ITroveManager} from "../../../contracts/fuses/ebisu/ext/ITroveManager.sol";
 import {ILeverageZapper} from "../../../contracts/fuses/ebisu/ext/ILeverageZapper.sol";
@@ -49,6 +51,12 @@ interface EBUSDPriceFeed {
     function latestRound() external view returns (uint256);
 }
 
+interface IEbisuBorrowerOperationsHelperMinimal {
+    function getInterestIndividualDelegateOf(
+        uint256 troveId
+    ) external view returns (address account, uint128 minRate, uint128 maxRate, uint256 minInterestRateChangePeriod);
+}
+
 contract EbisuZapperTest is Test {
     // Base Asset
     address internal constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -78,6 +86,7 @@ contract EbisuZapperTest is Test {
     EbisuZapperBalanceFuse private balanceFuse;
     ERC20BalanceFuse private erc20BalanceFuse;
     UniversalTokenSwapperFuse private swapFuse;
+    EbisuAdjustInterestRateFuse private adjustRateFuse;
 
     address private accessManager;
     PriceOracleMiddleware private priceOracle;
@@ -676,6 +685,37 @@ contract EbisuZapperTest is Test {
         plasmaVault.execute(swapCalls);
     }
 
+    function testShouldAdjustInterestRateViaFuseEbisu() public {
+        testShouldEnterToEbisuZapper();
+
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), SUSDE_ZAPPER, 1);
+
+        uint256 newRate = 30 * 1e16; // 30%
+
+        EbisuAdjustInterestRateFuse.EbisuAdjustInterestRateFuseEnterData memory adjustData = EbisuAdjustInterestRateFuse
+            .EbisuAdjustInterestRateFuseEnterData({
+                zapper: SUSDE_ZAPPER,
+                registry: SUSDE_REGISTRY,
+                newAnnualInterestRate: newRate,
+                maxUpfrontFee: 5 * 1e18,
+                upperHint: 0,
+                lowerHint: 0
+            });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(adjustRateFuse),
+            abi.encodeWithSelector(EbisuAdjustInterestRateFuse.enter.selector, adjustData)
+        );
+
+        plasmaVault.execute(calls);
+
+        ITroveManager troveManager = ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
+        ITroveManager.LatestTroveData memory troveData = troveManager.getLatestTroveData(troveId);
+        assertEq(troveData.annualInterestRate, newRate, "Interest rate was not updated by fuse");
+    }
+
     // --- helpers ---
 
     function _setupMarketConfigs(
@@ -735,10 +775,13 @@ contract EbisuZapperTest is Test {
             1e18
         );
 
-        fuses = new address[](3);
+        adjustRateFuse = new EbisuAdjustInterestRateFuse(IporFusionMarkets.EBISU);
+
+        fuses = new address[](4);
         fuses[0] = address(zapperFuse);
         fuses[1] = address(leverModifyFuse);
-        fuses[2] = address(swapFuse);
+        fuses[2] = address(adjustRateFuse);
+        fuses[3] = address(swapFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
