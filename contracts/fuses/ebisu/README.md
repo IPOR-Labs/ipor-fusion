@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ebisu integration allows IPOR Fusion to interact with the Ebisu Zapper contracts. This allows users to open leveraged troves on Liquity and to manage them via levering them up or down (increase/decrease debt and collateral)
+Ebisu integration allows IPOR Fusion to interact with the Ebisu Zapper contracts. This allows users to open leveraged troves on Liquity and to manage them via levering them up or down (increase/decrease debt and collateral) and by adjusting their annual interest rate.
 
 **What Ebisu does:**
 Ebisu is a wrapper on top of Liquity which allows to automatically open leveraged troves. A trove on Liquity is conceptually an overcollateralized loan where the user gets ebUSD, a stablecoin, against posting a collateral. The leverage is implemented in Ebisu's "Zapper" smart contract, which executes flash loans on Balancer. The flash loan gets collateral tokens which are used to mint more ebUSD, which are then swapped into a dex to re-obtain the collateral token to repay the flash loan. The same mechanism is used to perform leveraging down/up, where both the trove debt and collateral are respectively decreased/increased.
@@ -11,11 +11,13 @@ Troves can be closed either "to raw ETH", where the user pays directly the ebUSD
 
 Since Troves can be controlled by LeverageUp and LeverageDown, there's no point in having more than one Trove open at any time for any given Zapper. This is enforced at FuseStorageLib level, in which the mapping is simply zapper => id.
 
+The annual interest rate of an open Trove can be modified by the Trove owner during the life of the Trove. In our case, the Trove owner is the Plasma Vault, therefore a Fuse to adjust the interest rate is required. This is implemented in EbisuAdjustedInterestRateFuse.sol.
+
 ## Market Structure
 
 The integration uses a single market for all operations:
 
--   **Market ID 38** (`EBISU`) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove operations
+-   **Market ID 38** (`EBISU`) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove/adjustTroveInterestRate operations
 
 ## Architecture
 
@@ -31,6 +33,7 @@ The integration uses a single market for all operations:
 
 -   **`EbisuZapperCreateFuse`**: Opens and closes a Leveraged Trove using Ebisu's Zapper contract.
 -   **`EbisuZapperLeverModifyFuse`**: Handles levering up and down of open Troves.
+-   **`EbisuAdjustInterestRateFuse`**: Adjusts the annual interest rate of an open Trove.
 
 ## Balance Calculation
 
