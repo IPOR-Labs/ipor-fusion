@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {FusionFactoryStorageLib} from "./lib/FusionFactoryStorageLib.sol";
 
+import {FusionFactoryLogicLib} from "./lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryLib} from "./lib/FusionFactoryLib.sol";
 
 import {FusionFactoryAccessControl} from "./FusionFactoryAccessControl.sol";
@@ -87,7 +88,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_
-    ) external returns (FusionFactoryLib.FusionInstance memory) {
+    ) external returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.create(
                 assetName_,
@@ -114,7 +115,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_
-    ) external returns (FusionFactoryLib.FusionInstance memory) {
+    ) external returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.clone(
                 assetName_,
@@ -140,7 +141,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_
-    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLib.FusionInstance memory) {
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.create(
                 assetName_,
@@ -168,7 +169,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_
-    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLib.FusionInstance memory) {
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.clone(assetName_, assetSymbol_, underlyingToken_, redemptionDelayInSeconds_, owner_, true);
     }
