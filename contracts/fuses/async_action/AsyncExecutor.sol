@@ -91,7 +91,6 @@ contract AsyncExecutor {
         _;
     }
 
-
     /// @notice Initializes the AsyncExecutor contract
     /// @param wEth_ Address of the WETH token contract (must not be address(0))
     /// @param plasmaVault_ Address of the controlling Plasma Vault (must not be address(0))
@@ -152,10 +151,7 @@ contract AsyncExecutor {
     ///      If validation passes, transfers all assets to Plasma Vault and resets cached balance to zero.
     ///      Reverts if actual balance is below minimum allowed threshold (cached balance - slippage).
     ///      Only callable by the authorized Plasma Vault.
-    function fetchAssets(address[] calldata assets_, address priceOracle_, uint256 slippage_)
-        external
-        onlyPlasmaVault
-    {
+    function fetchAssets(address[] calldata assets_, address priceOracle_, uint256 slippage_) external onlyPlasmaVault {
         if (priceOracle_ == address(0)) {
             revert AsyncExecutorInvalidPriceOracleAddress();
         }
@@ -220,11 +216,10 @@ contract AsyncExecutor {
     /// @dev Fetches asset balance, converts to WAD, fetches price from oracle, converts price to WAD,
     ///      then multiplies balance * price and divides by WAD to get USD value.
     ///      Returns 0 if balance is zero. Reverts if asset_ is zero.
-    function _calculateAssetUsdValue(address asset_, address priceOracle_)
-        private
-        view
-        returns (uint256 assetValueUsd)
-    {
+    function _calculateAssetUsdValue(
+        address asset_,
+        address priceOracle_
+    ) private view returns (uint256 assetValueUsd) {
         if (asset_ == address(0)) {
             revert AsyncExecutorInvalidAssetAddress();
         }
@@ -249,22 +244,25 @@ contract AsyncExecutor {
     /// @dev Resolves underlying asset from calling Plasma Vault, fetches price, and converts USD to underlying units.
     ///      Returns 0 if balanceInUsd is zero.
     ///      Reverts if underlying asset address is zero.
-    function _convertUsdPortfolioToUnderlying(uint256 balanceInUsd, address priceOracle)
-        private
-        view
-        returns (uint256 underlyingAmount)
-    {
+    function _convertUsdPortfolioToUnderlying(
+        uint256 balanceInUsd,
+        address priceOracle
+    ) private view returns (uint256 underlyingAmount) {
         if (balanceInUsd == 0) {
             return 0;
         }
 
         address underlyingAsset = _resolveUnderlyingAsset();
-        (uint256 underlyingPrice, uint256 underlyingPriceDecimals) =
-            IPriceOracleMiddleware(priceOracle).getAssetPrice(underlyingAsset);
+        (uint256 underlyingPrice, uint256 underlyingPriceDecimals) = IPriceOracleMiddleware(priceOracle).getAssetPrice(
+            underlyingAsset
+        );
         uint256 underlyingAssetDecimals = IERC20Metadata(underlyingAsset).decimals();
 
         underlyingAmount = _convertUsdToUnderlyingAmount(
-            balanceInUsd, underlyingPrice, underlyingPriceDecimals, underlyingAssetDecimals
+            balanceInUsd,
+            underlyingPrice,
+            underlyingPriceDecimals,
+            underlyingAssetDecimals
         );
     }
 

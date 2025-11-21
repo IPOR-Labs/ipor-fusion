@@ -21,4 +21,3 @@ contract ReadAsyncExecutor {
         executorAddress = AsyncActionFuseLib.getAsyncExecutor();
     }
 }
-

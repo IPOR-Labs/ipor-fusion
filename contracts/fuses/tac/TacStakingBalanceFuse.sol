@@ -12,6 +12,7 @@ import {IStaking, Coin, UnbondingDelegationOutput} from "./ext/IStaking.sol";
 import {TacStakingStorageLib} from "./lib/TacStakingStorageLib.sol";
 import {TacValidatorAddressConverter} from "./lib/TacValidatorAddressConverter.sol";
 
+// @dev This contract is deprecated and should not be used
 contract TacStakingBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using Address for address;

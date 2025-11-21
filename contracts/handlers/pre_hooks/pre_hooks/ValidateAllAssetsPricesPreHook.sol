@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import { IPreHook } from "../IPreHook.sol";
-import { PlasmaVaultLib } from "../../../libraries/PlasmaVaultLib.sol";
-import { PriceOracleMiddlewareManager } from "../../../managers/price/PriceOracleMiddlewareManager.sol";
+import {IPreHook} from "../IPreHook.sol";
+import {PlasmaVaultLib} from "../../../libraries/PlasmaVaultLib.sol";
+import {PriceOracleMiddlewareManager} from "../../../managers/price/PriceOracleMiddlewareManager.sol";
 
 /// @title Validate All Assets Prices Pre-Hook
 /// @notice Pre-hook that enforces price validation across all configured assets prior to executing a PlasmaVault action.
@@ -22,4 +22,3 @@ contract ValidateAllAssetsPricesPreHook is IPreHook {
         PriceOracleMiddlewareManager(priceOracleMiddlewareManager).validateAllAssetsPrices();
     }
 }
-

@@ -168,8 +168,7 @@ library IporFusionMarkets {
     /// @dev Validates token transfers and target/selector combinations against granted substrates before execution
     /// @dev Supports batch execution of multiple calls with ETH value forwarding
     uint256 public constant ASYNC_ACTION = 40;
-    
-    
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
@@ -260,7 +259,7 @@ library IporFusionMarkets {
     /// @dev Meta Morpho Market 10
     uint256 public constant META_MORPHO_0010 = 200_010;
 
-        /// @dev Exchange Rate Limiter market for pre-hook execution
+    /// @dev Exchange Rate Limiter market for pre-hook execution
     /// @dev Substrate type: bytes32 packed ExchangeRateLimiterConfig (see ExchangeRateLimiterConfigLib)
     /// @dev Substrate values:
     /// @dev  - PREHOOKS/POSTHOOKS: Hook { hookAddress, index } packed into bytes31 and wrapped into bytes32 with HookType

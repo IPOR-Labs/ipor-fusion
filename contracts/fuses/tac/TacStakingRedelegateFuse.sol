@@ -20,7 +20,7 @@ struct TacStakingRedelegateFuseEnterData {
     string[] validatorDstAddresses;
     uint256[] wTacAmounts;
 }
-
+// @dev This contract is deprecated and should not be used
 contract TacStakingRedelegateFuse is IFuseCommon {
     error TacStakingRedelegateFuseInvalidDelegatorAddress();
     error TacStakingRedelegateFuseSubstrateNotGranted(string validator);

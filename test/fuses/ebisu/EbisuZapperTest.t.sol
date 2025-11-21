@@ -3,20 +3,9 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 
-import {
-    MarketSubstratesConfig,
-    MarketBalanceFuseConfig,
-    FeeConfig,
-    FuseAction,
-    PlasmaVault,
-    PlasmaVaultInitData
-} from "../../../contracts/vaults/PlasmaVault.sol";
+import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 
-import {
-    EbisuZapperCreateFuse,
-    EbisuZapperCreateFuseEnterData,
-    EbisuZapperCreateFuseExitData
-} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
+import {EbisuZapperCreateFuse, EbisuZapperCreateFuseEnterData, EbisuZapperCreateFuseExitData} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
 
 import {EbisuAdjustInterestRateFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol";
 
@@ -38,19 +27,13 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {EbisuWethEthAdapterAddressReader} from "../../../contracts/readers/EbisuWethEthAdapterAddressReader.sol";
 import {UniversalReader, ReadResult} from "../../../contracts/universal_reader/UniversalReader.sol";
-import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} 
-    from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 
-import {
-    EbisuZapperLeverModifyFuse,
-    EbisuZapperLeverModifyFuseEnterData,
-    EbisuZapperLeverModifyFuseExitData
-} from "../../../contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol";
+import {EbisuZapperLeverModifyFuse, EbisuZapperLeverModifyFuseEnterData, EbisuZapperLeverModifyFuseExitData} from "../../../contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol";
 import {WethEthAdapterStorageLib} from "../../../contracts/fuses/ebisu/lib/WethEthAdapterStorageLib.sol";
-import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} 
-    from "../../../contracts/fuses/ebisu/lib/EbisuZapperSubstrateLib.sol";
+import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "../../../contracts/fuses/ebisu/lib/EbisuZapperSubstrateLib.sol";
 import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 
 contract MockDex {
@@ -124,10 +107,10 @@ contract EbisuZapperTest is Test {
         assets[0] = EBUSD; // borrowed
         assets[1] = WEETH; // collateral
         assets[2] = SUSDE; // collateral
-        assets[3] = WBTC;  // collateral
-        assets[4] = LBTC;  // collateral
-        assets[5] = WETH;  // compensation
-        assets[6] = USDC;  // base token
+        assets[3] = WBTC; // collateral
+        assets[4] = LBTC; // collateral
+        assets[5] = WETH; // compensation
+        assets[6] = USDC; // base token
 
         // price feeders
         address[] memory priceFeeds = new address[](7);
@@ -199,12 +182,12 @@ contract EbisuZapperTest is Test {
         EbisuZapperCreateFuseEnterData memory enterData = EbisuZapperCreateFuseEnterData({
             zapper: SUSDE_ZAPPER,
             registry: SUSDE_REGISTRY,
-            collAmount: 10_000 * 1e18,        // 10_000 sUSDe collateral
-            ebusdAmount: 5_000 * 1e18,        // 5_000 ebUSD debt
+            collAmount: 10_000 * 1e18, // 10_000 sUSDe collateral
+            ebusdAmount: 5_000 * 1e18, // 5_000 ebUSD debt
             upperHint: 0,
             lowerHint: 0,
-            flashLoanAmount: 1_000 * 1e18,    // 1_000 further sUSDe from flashloan
-            annualInterestRate: 20 * 1e16,    // 20%
+            flashLoanAmount: 1_000 * 1e18, // 1_000 further sUSDe from flashloan
+            annualInterestRate: 20 * 1e16, // 20%
             maxUpfrontFee: 5 * 1e18
         });
 
@@ -245,16 +228,10 @@ contract EbisuZapperTest is Test {
             assertEq(usdcBalance, 90_000 * 1e6, "USDC balance incorrect");
 
             (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
-            uint256 susdeUSDValue = IporMath.convertToWad(
-                susdeBalance * price,
-                18 + priceDecimals
-            );
+            uint256 susdeUSDValue = IporMath.convertToWad(susdeBalance * price, 18 + priceDecimals);
             (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
             uint256 susdeUSDCvalue = IporMath.convertWadToAssetDecimals(
-                IporMath.division(
-                    susdeUSDValue * IporMath.BASIS_OF_POWER ** 8,
-                    price
-                ),
+                IporMath.division(susdeUSDValue * IporMath.BASIS_OF_POWER ** 8, price),
                 16
             );
             assertEq(totalAssetsAfterSwap, susdeUSDCvalue + usdcBalance, "total assets after swap incorrect");
@@ -288,17 +265,11 @@ contract EbisuZapperTest is Test {
 
             // coll (sUSDe) value in USD
             (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
-            uint256 collUSDvalue = IporMath.convertToWad(
-                troveData.entireColl * price,
-                18 + priceDecimals
-            );
+            uint256 collUSDvalue = IporMath.convertToWad(troveData.entireColl * price, 18 + priceDecimals);
 
             // debt (ebUSD) value in USD
             (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-            uint256 debtUSDvalue = IporMath.convertToWad(
-                troveData.entireDebt * price,
-                18 + priceDecimals
-            );
+            uint256 debtUSDvalue = IporMath.convertToWad(troveData.entireDebt * price, 18 + priceDecimals);
 
             // check balanceOf() matches
             ReadResult memory readResult = UniversalReader(address(plasmaVault)).read(
@@ -313,10 +284,7 @@ contract EbisuZapperTest is Test {
             // transport all in USDC
             (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
             uint256 ebisuUSDCvalue = IporMath.convertWadToAssetDecimals(
-                IporMath.division(
-                    balanceOfFromFuse * IporMath.BASIS_OF_POWER ** 8,
-                    price
-                ),
+                IporMath.division(balanceOfFromFuse * IporMath.BASIS_OF_POWER ** 8, price),
                 16
             );
 
@@ -328,18 +296,12 @@ contract EbisuZapperTest is Test {
             // assets in ERC20 are now USDC and a value of sUSDe equal to ebusdAmount * price(EBUSD) - flashloanAmount * price(SUSDE)
             uint256 totalAssetsInERC20 = plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
             (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-            uint256 ebisuUSDvalue = IporMath.convertToWad(
-                enterData.ebusdAmount * price,
-                18 + priceDecimals
-            );
+            uint256 ebisuUSDvalue = IporMath.convertToWad(enterData.ebusdAmount * price, 18 + priceDecimals);
 
             // transport value in sUSDe
             (price, priceDecimals) = priceOracle.getAssetPrice(SUSDE);
             uint256 ebisuSUSDEvalue = IporMath.convertWadToAssetDecimals(
-                IporMath.division(
-                    ebisuUSDvalue * IporMath.BASIS_OF_POWER ** 8,
-                    price
-                ),
+                IporMath.division(ebisuUSDvalue * IporMath.BASIS_OF_POWER ** 8, price),
                 28
             );
 
@@ -347,17 +309,11 @@ contract EbisuZapperTest is Test {
             // slippage + oracles not matching Balancer's ones cause discrepancies of around 2%
             _eqWithTolerance(susdeBalance, ebisuSUSDEvalue - enterData.flashLoanAmount, 200);
 
-            uint256 susdeUSDvalue = IporMath.convertToWad(
-                susdeBalance * price,
-                18 + priceDecimals
-            );
+            uint256 susdeUSDvalue = IporMath.convertToWad(susdeBalance * price, 18 + priceDecimals);
             // transport value in USDC
             (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
             uint256 susdeUSDCBalance = IporMath.convertWadToAssetDecimals(
-                IporMath.division(
-                    susdeUSDvalue * IporMath.BASIS_OF_POWER ** 8,
-                    price
-                ),
+                IporMath.division(susdeUSDvalue * IporMath.BASIS_OF_POWER ** 8, price),
                 16
             );
             // then
@@ -390,10 +346,7 @@ contract EbisuZapperTest is Test {
             // transport value in USDC
             (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
             uint256 feeUSDCBalance = IporMath.convertWadToAssetDecimals(
-                IporMath.division(
-                    feeUSDValue * IporMath.BASIS_OF_POWER ** 8,
-                    price
-                ),
+                IporMath.division(feeUSDValue * IporMath.BASIS_OF_POWER ** 8, price),
                 16
             );
             // then
@@ -422,12 +375,9 @@ contract EbisuZapperTest is Test {
             abi.encodeWithSignature("exit((address,uint256,uint256,bool))", exitData)
         );
 
-        address wethEthAdapter =
-            wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
-        uint256 troveId =
-            EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), SUSDE_ZAPPER, 1);
-        ITroveManager troveManager =
-            ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), SUSDE_ZAPPER, 1);
+        ITroveManager troveManager = ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
 
         uint256 totalAssetsBefore = plasmaVault.totalAssets();
 
@@ -459,9 +409,7 @@ contract EbisuZapperTest is Test {
         // so the net asset change is 0
         uint256 totalAssetsAfter = plasmaVault.totalAssets();
         assertEq(totalAssetsAfter, totalAssetsBefore + 1); // extremely tiny rounding error
-
     }
-
 
     function testShouldExitFromCollateralFromEbisuZapper() public {
         // given
@@ -478,10 +426,7 @@ contract EbisuZapperTest is Test {
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(zapperFuse),
-            abi.encodeWithSignature(
-                "exit((address,uint256,uint256,bool))",
-                exitData
-            )
+            abi.encodeWithSignature("exit((address,uint256,uint256,bool))", exitData)
         );
 
         uint256 totalAssetsBefore = plasmaVault.totalAssets();
@@ -547,9 +492,21 @@ contract EbisuZapperTest is Test {
         ITroveManager.LatestTroveData memory finalData = troveManager.getLatestTroveData(troveId);
 
         // then
-        assertGe(finalData.entireDebt, initialDebt + leverUpData.ebusdAmount, "Debt should be at least initial debt + ebusd amount");
-        assertLe(finalData.entireDebt, initialDebt + leverUpData.ebusdAmount + leverUpData.maxUpfrontFee, "Debt increased too much"); 
-        assertEq(finalData.entireColl, initialColl + leverUpData.flashLoanAmount, "Collateral should have increased after lever up");
+        assertGe(
+            finalData.entireDebt,
+            initialDebt + leverUpData.ebusdAmount,
+            "Debt should be at least initial debt + ebusd amount"
+        );
+        assertLe(
+            finalData.entireDebt,
+            initialDebt + leverUpData.ebusdAmount + leverUpData.maxUpfrontFee,
+            "Debt increased too much"
+        );
+        assertEq(
+            finalData.entireColl,
+            initialColl + leverUpData.flashLoanAmount,
+            "Collateral should have increased after lever up"
+        );
 
         {
             // balanceOf() should be up to date
@@ -560,15 +517,9 @@ contract EbisuZapperTest is Test {
 
             uint256 balanceOfFromFuse = abi.decode(readResult.data, (uint256));
             (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
-            uint256 collUSDvalue = IporMath.convertToWad(
-                finalData.entireColl * price,
-                18 + priceDecimals
-            );
+            uint256 collUSDvalue = IporMath.convertToWad(finalData.entireColl * price, 18 + priceDecimals);
             (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-            uint256 debtUSDvalue =  IporMath.convertToWad(
-                finalData.entireDebt * price,
-                18 + priceDecimals
-            );
+            uint256 debtUSDvalue = IporMath.convertToWad(finalData.entireDebt * price, 18 + priceDecimals);
             assertEq(balanceOfFromFuse, collUSDvalue - debtUSDvalue, "balance after lever up incorrect");
         }
         {
@@ -579,29 +530,27 @@ contract EbisuZapperTest is Test {
                 18 + priceDecimals
             );
             (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-            uint256 debtUSDvalueChange =  IporMath.convertToWad(
-                (finalData.entireDebt - initialData.entireDebt)* price,
+            uint256 debtUSDvalueChange = IporMath.convertToWad(
+                (finalData.entireDebt - initialData.entireDebt) * price,
                 18 + priceDecimals
             );
 
             // transport in USDC
             (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
             uint256 collChange = IporMath.convertWadToAssetDecimals(
-                    IporMath.division(
-                        collUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
-                        price
-                    ),
+                IporMath.division(collUSDvalueChange * IporMath.BASIS_OF_POWER ** 8, price),
                 16
             );
             uint256 debtChange = IporMath.convertWadToAssetDecimals(
-                    IporMath.division(
-                        debtUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
-                        price
-                    ),
+                IporMath.division(debtUSDvalueChange * IporMath.BASIS_OF_POWER ** 8, price),
                 16
             );
 
-            assertEq(plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU), totalAssetsInMarketBefore + collChange - debtChange, "Extra assets in EBISU mismatch");
+            assertEq(
+                plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU),
+                totalAssetsInMarketBefore + collChange - debtChange,
+                "Extra assets in EBISU mismatch"
+            );
         }
 
         // ------ CHECK ASSETS CHANGE ------
@@ -655,15 +604,9 @@ contract EbisuZapperTest is Test {
 
             uint256 balanceOfFromFuse = abi.decode(readResult.data, (uint256));
             (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
-            uint256 collValue = IporMath.convertToWad(
-                finalColl * price,
-                18 + priceDecimals
-            );
+            uint256 collValue = IporMath.convertToWad(finalColl * price, 18 + priceDecimals);
             (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-            uint256 debtValue =  IporMath.convertToWad(
-                finalDebt * price,
-                18 + priceDecimals
-            );
+            uint256 debtValue = IporMath.convertToWad(finalDebt * price, 18 + priceDecimals);
             assertEq(balanceOfFromFuse, collValue - debtValue, "balance after lever up incorrect");
         }
         {
@@ -674,29 +617,27 @@ contract EbisuZapperTest is Test {
                 18 + priceDecimals
             );
             (price, priceDecimals) = priceOracle.getAssetPrice(EBUSD);
-            uint256 debtUSDvalueChange =  IporMath.convertToWad(
-                (initialData.entireDebt - finalData.entireDebt)* price,
+            uint256 debtUSDvalueChange = IporMath.convertToWad(
+                (initialData.entireDebt - finalData.entireDebt) * price,
                 18 + priceDecimals
             );
 
             // transport in USDC
             (price, priceDecimals) = priceOracle.getAssetPrice(USDC);
             uint256 collChange = IporMath.convertWadToAssetDecimals(
-                    IporMath.division(
-                        collUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
-                        price
-                    ),
+                IporMath.division(collUSDvalueChange * IporMath.BASIS_OF_POWER ** 8, price),
                 16
             );
             uint256 debtChange = IporMath.convertWadToAssetDecimals(
-                    IporMath.division(
-                        debtUSDvalueChange * IporMath.BASIS_OF_POWER ** 8,
-                        price
-                    ),
+                IporMath.division(debtUSDvalueChange * IporMath.BASIS_OF_POWER ** 8, price),
                 16
             );
 
-            assertEq(plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU), totalAssetsInMarketBefore + debtChange - collChange, "Change of assets in EBISU mismatch");
+            assertEq(
+                plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU),
+                totalAssetsInMarketBefore + debtChange - collChange,
+                "Change of assets in EBISU mismatch"
+            );
         }
         // ------ CHECK ASSETS CHANGE ------
         // Vault effect of closing a position from collateral is
@@ -717,7 +658,13 @@ contract EbisuZapperTest is Test {
         bytes[] memory data = new bytes[](3);
         data[0] = abi.encodeWithSignature("approve(address,uint256)", address(mockDex), amountToSwap);
         // assume 1:1 conversion rate with decimals
-        data[1] = abi.encodeWithSignature("swap(address,address,uint256,uint256)", USDC, tokenToObtain, amountToSwap, amountToSwap * 1e12);
+        data[1] = abi.encodeWithSignature(
+            "swap(address,address,uint256,uint256)",
+            USDC,
+            tokenToObtain,
+            amountToSwap,
+            amountToSwap * 1e12
+        );
         data[2] = abi.encodeWithSignature("approve(address,uint256)", address(mockDex), 0);
         UniversalTokenSwapperData memory swapData = UniversalTokenSwapperData({targets: targets, data: data});
 
@@ -779,52 +726,28 @@ contract EbisuZapperTest is Test {
         // - the corresponding address registries used
         bytes32[] memory ebisuSubs = new bytes32[](8);
         ebisuSubs[0] = EbisuZapperSubstrateLib.substrateToBytes32(
-            EbisuZapperSubstrate({
-                substrateAddress: WEETH_ZAPPER,
-                substrateType: EbisuZapperSubstrateType.ZAPPER
-            })
+            EbisuZapperSubstrate({substrateAddress: WEETH_ZAPPER, substrateType: EbisuZapperSubstrateType.ZAPPER})
         );
         ebisuSubs[1] = EbisuZapperSubstrateLib.substrateToBytes32(
-            EbisuZapperSubstrate({
-                substrateAddress: SUSDE_ZAPPER,
-                substrateType: EbisuZapperSubstrateType.ZAPPER
-            })
+            EbisuZapperSubstrate({substrateAddress: SUSDE_ZAPPER, substrateType: EbisuZapperSubstrateType.ZAPPER})
         );
         ebisuSubs[2] = EbisuZapperSubstrateLib.substrateToBytes32(
-            EbisuZapperSubstrate({
-                substrateAddress: WBTC_ZAPPER,
-                substrateType: EbisuZapperSubstrateType.ZAPPER
-            })
+            EbisuZapperSubstrate({substrateAddress: WBTC_ZAPPER, substrateType: EbisuZapperSubstrateType.ZAPPER})
         );
         ebisuSubs[3] = EbisuZapperSubstrateLib.substrateToBytes32(
-            EbisuZapperSubstrate({
-                substrateAddress: LBTC_ZAPPER,
-                substrateType: EbisuZapperSubstrateType.ZAPPER
-            })
+            EbisuZapperSubstrate({substrateAddress: LBTC_ZAPPER, substrateType: EbisuZapperSubstrateType.ZAPPER})
         );
         ebisuSubs[4] = EbisuZapperSubstrateLib.substrateToBytes32(
-            EbisuZapperSubstrate({
-                substrateAddress: WEETH_REGISTRY,
-                substrateType: EbisuZapperSubstrateType.REGISTRY
-            })
+            EbisuZapperSubstrate({substrateAddress: WEETH_REGISTRY, substrateType: EbisuZapperSubstrateType.REGISTRY})
         );
         ebisuSubs[5] = EbisuZapperSubstrateLib.substrateToBytes32(
-            EbisuZapperSubstrate({
-                substrateAddress: SUSDE_REGISTRY,
-                substrateType: EbisuZapperSubstrateType.REGISTRY
-            })
+            EbisuZapperSubstrate({substrateAddress: SUSDE_REGISTRY, substrateType: EbisuZapperSubstrateType.REGISTRY})
         );
         ebisuSubs[6] = EbisuZapperSubstrateLib.substrateToBytes32(
-            EbisuZapperSubstrate({
-                substrateAddress: WBTC_REGISTRY,
-                substrateType: EbisuZapperSubstrateType.REGISTRY
-            })
+            EbisuZapperSubstrate({substrateAddress: WBTC_REGISTRY, substrateType: EbisuZapperSubstrateType.REGISTRY})
         );
         ebisuSubs[7] = EbisuZapperSubstrateLib.substrateToBytes32(
-            EbisuZapperSubstrate({
-                substrateAddress: LBTC_REGISTRY,
-                substrateType: EbisuZapperSubstrateType.REGISTRY
-            })
+            EbisuZapperSubstrate({substrateAddress: LBTC_REGISTRY, substrateType: EbisuZapperSubstrateType.REGISTRY})
         );
 
         bytes32[] memory erc20Assets = new bytes32[](2);
@@ -844,8 +767,8 @@ contract EbisuZapperTest is Test {
     }
 
     function _setupFuses() private returns (address[] memory fuses) {
-        zapperFuse   = new EbisuZapperCreateFuse(IporFusionMarkets.EBISU, WETH);      // OPEN + CLOSE
-        leverModifyFuse  = new EbisuZapperLeverModifyFuse(IporFusionMarkets.EBISU);
+        zapperFuse = new EbisuZapperCreateFuse(IporFusionMarkets.EBISU, WETH); // OPEN + CLOSE
+        leverModifyFuse = new EbisuZapperLeverModifyFuse(IporFusionMarkets.EBISU);
         swapFuse = new UniversalTokenSwapperFuse(
             IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
             address(new SwapExecutor()),
@@ -901,7 +824,7 @@ contract EbisuZapperTest is Test {
 
     function _eqWithTolerance(uint256 a, uint256 b, uint256 tol) private pure {
         // tol in basis points 1 = 0.01%
-        assertLe(a, b * (10000 + tol) / 10000, "Equality with tolerance exceeded: a too big");
-        assertGe(a * (10000 + tol) / 10000, b, "Equality with tolerance exceeded: b too big");
+        assertLe(a, (b * (10000 + tol)) / 10000, "Equality with tolerance exceeded: a too big");
+        assertGe((a * (10000 + tol)) / 10000, b, "Equality with tolerance exceeded: b too big");
     }
 }

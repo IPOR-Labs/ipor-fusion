@@ -14,7 +14,7 @@ import {PriceOracleMiddlewareManagerLib} from "../../contracts/managers/price/Pr
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
- 
+
 /// @title ValidateAllAssetsPricesPreHookTest
 /// @notice Placeholder test suite for `ValidateAllAssetsPricesPreHook`
 contract ValidateAllAssetsPricesPreHookTest is Test {
@@ -30,7 +30,6 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 23784250);
 
-
         _validateAllAssetsPricesPreHook = new ValidateAllAssetsPricesPreHook();
         _mutableValuePriceFeed = new MutableValuePriceFeed(1e18);
 
@@ -38,8 +37,10 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
         FusionFactory factory = FusionFactory(FACTORY);
         FusionFactoryStorageLib.BaseAddresses memory baseAddresses = factory.getBaseAddresses();
 
-        PriceOracleMiddlewareManager priceOracleMiddlewareManager =
-            new PriceOracleMiddlewareManager(ADMIN, baseAddresses.priceManagerBase);
+        PriceOracleMiddlewareManager priceOracleMiddlewareManager = new PriceOracleMiddlewareManager(
+            ADMIN,
+            baseAddresses.priceManagerBase
+        );
         baseAddresses.priceManagerBase = address(priceOracleMiddlewareManager);
 
         vm.startPrank(ADMIN);
@@ -55,16 +56,14 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
             baseAddresses.contextManagerBase
         );
 
-
-
         _fusionInstance = factory.clone("TEST PLASMA VAULT", "TPLASMA", USDC, 0, ADMIN);
 
-
-        IporFusionAccessManager iporFusionAccessManager = IporFusionAccessManager(address(_fusionInstance.accessManager));
+        IporFusionAccessManager iporFusionAccessManager = IporFusionAccessManager(
+            address(_fusionInstance.accessManager)
+        );
         iporFusionAccessManager.grantRole(Roles.ATOMIST_ROLE, ADMIN, 0);
         iporFusionAccessManager.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, ADMIN, 0);
         iporFusionAccessManager.grantRole(Roles.PRE_HOOKS_MANAGER_ROLE, ADMIN, 0);
-
 
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = IERC4626.deposit.selector;
@@ -149,4 +148,3 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
         vm.stopPrank();
     }
 }
-

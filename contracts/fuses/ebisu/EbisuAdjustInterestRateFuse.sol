@@ -72,7 +72,10 @@ contract EbisuAdjustInterestRateFuse is IFuseCommon {
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
                 EbisuZapperSubstrateLib.substrateToBytes32(
-                    EbisuZapperSubstrate({substrateType: EbisuZapperSubstrateType.REGISTRY, substrateAddress: registry_})
+                    EbisuZapperSubstrate({
+                        substrateType: EbisuZapperSubstrateType.REGISTRY,
+                        substrateAddress: registry_
+                    })
                 )
             )
         ) revert UnsupportedSubstrate();

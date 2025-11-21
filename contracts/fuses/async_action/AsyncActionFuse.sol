@@ -138,8 +138,8 @@ contract AsyncActionFuse is IFuseCommon {
         }
 
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-        (AllowedAmountToOutside[] memory allowedAmounts, AllowedTargets[] memory allowedTargets,) =
-            AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(substrates);
+        (AllowedAmountToOutside[] memory allowedAmounts, AllowedTargets[] memory allowedTargets, ) = AsyncActionFuseLib
+            .decodeAsyncActionFuseSubstrates(substrates);
 
         _validateTokenOutAndAmount(data_.tokenOut, data_.amountOut, allowedAmounts);
         _validateTargets(data_.targets, data_.callDatas, allowedTargets);
@@ -186,8 +186,8 @@ contract AsyncActionFuse is IFuseCommon {
 
         // Get slippage from substrates
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-        (, AllowedTargets[] memory allowedTargets, AllowedSlippage memory allowedSlippage) =
-            AsyncActionFuseLib.decodeAsyncActionFuseSubstrates(substrates);
+        (, AllowedTargets[] memory allowedTargets, AllowedSlippage memory allowedSlippage) = AsyncActionFuseLib
+            .decodeAsyncActionFuseSubstrates(substrates);
 
         // Get executor address
         address payable executor = payable(AsyncActionFuseLib.getAsyncExecutor());
@@ -255,10 +255,10 @@ contract AsyncActionFuse is IFuseCommon {
     ) private pure {
         uint256 targetsLength = targets_.length;
         uint256 allowedTargetsLength = allowedTargets_.length;
-        bytes calldata callData; 
+        bytes calldata callData;
 
         for (uint256 i; i < targetsLength; ++i) {
-           callData = callDatas_[i];
+            callData = callDatas_[i];
             if (callData.length < 4) {
                 revert AsyncActionFuseCallDataTooShort(i);
             }
