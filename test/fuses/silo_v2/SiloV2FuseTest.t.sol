@@ -8,6 +8,7 @@ import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovern
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 
 // SiloV2 Fuses
 import {SiloV2BalanceFuse} from "../../../contracts/fuses/silo_v2/SiloV2BalanceFuse.sol";
@@ -950,7 +951,7 @@ contract SiloV2FuseTest is Test {
 
     function _createVaultWithFusionFactory() private {
         // Create vault using FusionFactory
-        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
             "SiloV2 Test Vault",
             "SILO2",
             WE_ETH, // underlying token
