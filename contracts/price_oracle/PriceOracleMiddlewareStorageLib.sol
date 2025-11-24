@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title PriceOracleMiddlewareStorageLib
 /// @notice Storage library for managing price feed sources for assets in the Price Oracle system

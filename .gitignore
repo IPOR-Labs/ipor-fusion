@@ -20,3 +20,7 @@
 ### AI context ###
 ai_context
 .cursorrules
+
+### Coverage ###
+coverage_html/
+lcov.info

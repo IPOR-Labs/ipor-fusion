@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -92,16 +92,29 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
      * @param data_ The data containing the parameters for increasing liquidity
      */
     function enter(RamsesV2ModifyPositionFuseEnterData calldata data_) public {
-        if (
-            !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
-            !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
-        ) {
-            revert RamsesV2ModifyPositionFuseUnsupportedToken(data_.token0, data_.token1);
+        {
+            if (
+                !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
+                !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
+            ) {
+                revert RamsesV2ModifyPositionFuseUnsupportedToken(data_.token0, data_.token1);
+            }
         }
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
 
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = _increaseLiquidity(data_);
+
+        IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
+        IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
+
+        emit RamsesV2ModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
+    }
+
+    function _increaseLiquidity(
+        RamsesV2ModifyPositionFuseEnterData calldata data_
+    ) private returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         INonfungiblePositionManagerRamses.IncreaseLiquidityParams memory params = INonfungiblePositionManagerRamses
             .IncreaseLiquidityParams({
                 tokenId: data_.tokenId,
@@ -112,15 +125,7 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
                 deadline: data_.deadline
             });
 
-        // Note that the pool defined by token0/token1 and fee tier must already be created and initialized in order to mint
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = INonfungiblePositionManagerRamses(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).increaseLiquidity(params);
-
-        IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
-        IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
-
-        emit RamsesV2ModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
+        return INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).increaseLiquidity(params);
     }
 
     /**
@@ -128,6 +133,14 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
      * @param data_ The data containing the parameters for decreasing liquidity
      */
     function exit(RamsesV2ModifyPositionFuseExitData calldata data_) public {
+        (uint256 amount0, uint256 amount1) = _decreaseLiquidity(data_);
+
+        emit RamsesV2ModifyPositionFuseExit(VERSION, data_.tokenId, amount0, amount1);
+    }
+
+    function _decreaseLiquidity(
+        RamsesV2ModifyPositionFuseExitData calldata data_
+    ) private returns (uint256 amount0, uint256 amount1) {
         INonfungiblePositionManagerRamses.DecreaseLiquidityParams memory params = INonfungiblePositionManagerRamses
             .DecreaseLiquidityParams({
                 tokenId: data_.tokenId,
@@ -138,9 +151,6 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
             });
 
         /// @dev This method doesn't transfer the liquidity to the caller
-        (uint256 amount0, uint256 amount1) = INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER)
-            .decreaseLiquidity(params);
-
-        emit RamsesV2ModifyPositionFuseExit(VERSION, data_.tokenId, amount0, amount1);
+        return INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).decreaseLiquidity(params);
     }
 }

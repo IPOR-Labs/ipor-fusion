@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -100,36 +100,19 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
      * @param data_ The data containing the parameters for creating a new position
      */
     function enter(RamsesV2NewPositionFuseEnterData calldata data_) public {
-        if (
-            !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
-            !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
-        ) {
-            revert RamsesV2NewPositionFuseUnsupportedToken(data_.token0, data_.token1);
+        {
+            if (
+                !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
+                !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
+            ) {
+                revert RamsesV2NewPositionFuseUnsupportedToken(data_.token0, data_.token1);
+            }
         }
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
 
-        // Note that the pool defined by token0/token1 and fee tier must already be created and initialized in order to mint
-        (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = INonfungiblePositionManagerRamses(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).mint(
-                /// @dev The values for tickLower and tickUpper may not work for all tick spacings. Setting amount0Min and amount1Min to 0 is unsafe.
-                INonfungiblePositionManagerRamses.MintParams({
-                    token0: data_.token0,
-                    token1: data_.token1,
-                    fee: data_.fee,
-                    tickLower: data_.tickLower,
-                    tickUpper: data_.tickUpper,
-                    amount0Desired: data_.amount0Desired,
-                    amount1Desired: data_.amount1Desired,
-                    amount0Min: data_.amount0Min,
-                    amount1Min: data_.amount1Min,
-                    recipient: address(this),
-                    deadline: data_.deadline,
-                    veRamTokenId: data_.veRamTokenId
-                })
-            );
+        (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = _mint(data_);
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
@@ -150,6 +133,26 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
             data_.tickLower,
             data_.tickUpper
         );
+    }
+
+    function _mint(
+        RamsesV2NewPositionFuseEnterData calldata data_
+    ) private returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
+        INonfungiblePositionManagerRamses.MintParams memory params = INonfungiblePositionManagerRamses.MintParams({
+            token0: data_.token0,
+            token1: data_.token1,
+            fee: data_.fee,
+            tickLower: data_.tickLower,
+            tickUpper: data_.tickUpper,
+            amount0Desired: data_.amount0Desired,
+            amount1Desired: data_.amount1Desired,
+            amount0Min: data_.amount0Min,
+            amount1Min: data_.amount1Min,
+            recipient: address(this),
+            deadline: data_.deadline,
+            veRamTokenId: data_.veRamTokenId
+        });
+        return INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).mint(params);
     }
 
     /**
