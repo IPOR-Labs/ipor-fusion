@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
@@ -42,6 +43,9 @@ contract AreodromeSlipstreamTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
     using PlasmaVaultHelper for PlasmaVault;
     using IporFusionAccessManagerHelper for IporFusionAccessManager;
+    using Address for address;
+
+    error InvalidReturnData();
 
     // Test constants
     address private constant _WETH = 0x4200000000000000000000000000000000000006;
@@ -397,8 +401,7 @@ contract AreodromeSlipstreamTest is Test {
             0
         );
 
-        (, , , , , , , uint128 liquidityBefore, , , , ) = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER)
-            .positions(tokenId);
+        uint128 liquidityBefore = _getLiquidity(tokenId);
 
         AreodromeSlipstreamModifyPositionFuseExitData
             memory modifyParams = AreodromeSlipstreamModifyPositionFuseExitData({
@@ -429,8 +432,7 @@ contract AreodromeSlipstreamTest is Test {
             IporFusionMarkets.AREODROME_SLIPSTREAM
         );
 
-        (, , , , , , , uint128 liquidityAfter, , , , ) = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER)
-            .positions(tokenId);
+        uint128 liquidityAfter = _getLiquidity(tokenId);
     }
 
     function test_shouldCollectFromNFTPosition() public {
@@ -567,5 +569,43 @@ contract AreodromeSlipstreamTest is Test {
         uint256 balanceAfter = IERC20(rewardToken).balanceOf(address(_rewardsClaimManager));
 
         assertGe(balanceAfter, balanceBefore, "balanceAfter should be greater than or equal to balanceBefore");
+    }
+
+    /// @notice Helper function to get liquidity from a position token
+    /// @param tokenId_ The token ID of the position
+    /// @return liquidity The liquidity of the position
+    function _getLiquidity(uint256 tokenId_) private view returns (uint128 liquidity) {
+        // INonfungiblePositionManager.positions(tokenId) selector: 0x99fbab88
+        // 0x99fbab88 = bytes4(keccak256("positions(uint256)"))
+        bytes memory returnData = _NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
+            abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_)
+        );
+
+        // positions returns (
+        //    uint96 nonce,                    // offset 0
+        //    address operator,                // offset 1
+        //    address token0,                  // offset 2
+        //    address token1,                  // offset 3
+        //    int24 tickSpacing,               // offset 4
+        //    int24 tickLower,                 // offset 5
+        //    int24 tickUpper,                 // offset 6
+        //    uint128 liquidity,               // offset 7
+        //    ... )
+        // All types are padded to 32 bytes in ABI encoding.
+
+        if (returnData.length < 256) revert InvalidReturnData();
+
+        assembly {
+            // returnData is a pointer to bytes array in memory.
+            // First 32 bytes at returnData is the length of the array.
+            // The actual data starts at returnData + 32.
+
+            // liquidity is at index 7: 32 (length) + 32 * 7 = 256
+            // liquidity is uint128, so we need to mask the upper bits
+            // mload loads 32 bytes, but liquidity is only 128 bits (16 bytes)
+            // We need to mask to get only the lower 128 bits: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+            let liquidityValue := mload(add(returnData, 256))
+            liquidity := and(liquidityValue, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+        }
     }
 }
