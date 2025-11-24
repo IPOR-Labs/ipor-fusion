@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {INonfungiblePositionManager, IUniswapV3Pool, IUniswapV3Factory} from "./ext/INonfungiblePositionManager.sol";
-import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
+import {INonfungiblePositionManager, IUniswapV3Factory, IUniswapV3Pool} from "./ext/INonfungiblePositionManager.sol";
 import {PositionValue} from "./ext/PositionValue.sol";
 
 /// @notice Data for entering new position in Uniswap V3
@@ -44,6 +46,9 @@ struct UniswapV3NewPositionFuseExitData {
 /// @dev Associated with fuse balance UniswapV3Balance.
 contract UniswapV3NewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
+    using Address for address;
+
+    error InvalidReturnData();
 
     event UniswapV3NewPositionFuseEnter(
         address version,
@@ -72,6 +77,8 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
+    /// @notice Enters a new Uniswap V3 position.
+    /// @param data_ The data required to enter the new position.
     function enter(UniswapV3NewPositionFuseEnterData calldata data_) public {
         if (
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
@@ -124,6 +131,8 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         );
     }
 
+    /// @notice Exits one or more Uniswap V3 positions.
+    /// @param closePositions The data required to exit the positions.
     function exit(UniswapV3NewPositionFuseExitData calldata closePositions) public {
         FuseStorageLib.UniswapV3TokenIds storage tokensIds = FuseStorageLib.getUniswapV3TokenIds();
 
@@ -147,15 +156,56 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         }
     }
 
+    /// @notice Extracts token0, token1, and fee from a position using assembly for gas optimization.
+    /// @param tokenId_ The ID of the token that represents the position
+    /// @return token0 The address of the token0 for a specific pool
+    /// @return token1 The address of the token1 for a specific pool
+    /// @return fee The fee associated with the pool
+    function getPositionInfo(uint256 tokenId_) private view returns (address token0, address token1, uint24 fee) {
+        bytes memory returnData = NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
+            abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_)
+        );
+
+        if (returnData.length < 160) revert InvalidReturnData();
+
+        assembly {
+            token0 := mload(add(returnData, 96))
+            token1 := mload(add(returnData, 128))
+            let feeValue := mload(add(returnData, 160))
+            fee := and(feeValue, 0xFFFFFF)
+        }
+    }
+
+    /// @notice Gets sqrtPriceX96 from a pool using assembly for gas optimization.
+    /// @param factory_ The Uniswap V3 factory address
+    /// @param token0_ The address of the token0 for a specific pool
+    /// @param token1_ The address of the token1 for a specific pool
+    /// @param fee_ The fee associated with the pool
+    /// @return sqrtPriceX96 The current price of the pool as a sqrt(token1/token0) Q64.96 value
+    function getSqrtPriceX96(
+        address factory_,
+        address token0_,
+        address token1_,
+        uint24 fee_
+    ) private view returns (uint160 sqrtPriceX96) {
+        address pool = IUniswapV3Factory(factory_).getPool(token0_, token1_, fee_);
+
+        bytes memory returnData = pool.functionStaticCall(abi.encodeWithSelector(IUniswapV3Pool.slot0.selector));
+
+        if (returnData.length < 64) revert InvalidReturnData();
+
+        assembly {
+            let sqrtPriceValue := mload(add(returnData, 32))
+            sqrtPriceX96 := and(sqrtPriceValue, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+        }
+    }
+
     function _canExit(uint256 tokenId) private view returns (bool) {
-        (, , address token0, address token1, uint24 fee, , , , , , , ) = INonfungiblePositionManager(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).positions(tokenId);
+        (address token0, address token1, uint24 fee) = getPositionInfo(tokenId);
 
         address factory = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).factory();
 
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(IUniswapV3Factory(factory).getPool(token0, token1, fee))
-            .slot0();
+        uint160 sqrtPriceX96 = getSqrtPriceX96(factory, token0, token1, fee);
 
         (uint256 amount0, uint256 amount1) = PositionValue.total(
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER),

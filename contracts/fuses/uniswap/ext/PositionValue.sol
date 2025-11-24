@@ -3,15 +3,119 @@ pragma solidity >=0.8.26;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
-import "./TickMath.sol";
-import "./Tick.sol";
+
+import {FullMath} from "./FullMath.sol";
 import {INonfungiblePositionManager} from "./INonfungiblePositionManager.sol";
-import "./LiquidityAmounts.sol";
-import "./PoolAddress.sol";
-import "./PositionKey.sol";
+import {LiquidityAmounts} from "./LiquidityAmounts.sol";
+import {PoolAddress} from "./PoolAddress.sol";
+import {TickMath} from "./TickMath.sol";
 
 /// @title Returns information about the token value held in a Uniswap V3 NFT
 library PositionValue {
+    error InvalidReturnData();
+
+    /// @notice Extracts tickLower, tickUpper, and liquidity from a position using assembly for gas optimization.
+    /// @param positionManager_ The Uniswap V3 NonfungiblePositionManager
+    /// @param tokenId_ The tokenId of the token for which to get the position info
+    /// @return tickLower The lower end of the tick range for the position
+    /// @return tickUpper The higher end of the tick range for the position
+    /// @return liquidity The liquidity of the position
+    function getPositionTicksAndLiquidity(
+        INonfungiblePositionManager positionManager_,
+        uint256 tokenId_
+    ) internal view returns (int24 tickLower, int24 tickUpper, uint128 liquidity) {
+        address positionManagerAddress = address(positionManager_);
+        bytes memory callData = abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_);
+
+        bool success;
+        bytes memory returnData;
+        assembly {
+            let callDataLength := mload(callData)
+            let callDataPointer := add(callData, 0x20)
+            success := staticcall(gas(), positionManagerAddress, callDataPointer, callDataLength, 0, 0)
+            let returnDataSize := returndatasize()
+            returnData := mload(0x40)
+            mstore(returnData, returnDataSize)
+            mstore(0x40, add(returnData, add(returnDataSize, 0x20)))
+            returndatacopy(add(returnData, 0x20), 0, returnDataSize)
+        }
+
+        if (!success || returnData.length < 256) revert InvalidReturnData();
+
+        assembly {
+            // tickLower at offset 5: 32 (length) + 32 * 5 = 192
+            // tickUpper at offset 6: 32 (length) + 32 * 6 = 224
+            // liquidity at offset 7: 32 (length) + 32 * 7 = 256
+            // In ABI encoding, signed integers are sign-extended to 32 bytes, so Solidity will handle conversion
+            tickLower := mload(add(returnData, 192))
+            tickUpper := mload(add(returnData, 224))
+            liquidity := and(mload(add(returnData, 256)), 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+        }
+    }
+
+    /// @notice Extracts all position data needed for fee calculation using assembly for gas optimization.
+    /// @param positionManager_ The Uniswap V3 NonfungiblePositionManager
+    /// @param tokenId_ The tokenId of the token for which to get the position info
+    /// @return feeParams The FeeParams struct containing all position data
+    function getPositionFeeParams(
+        INonfungiblePositionManager positionManager_,
+        uint256 tokenId_
+    ) internal view returns (FeeParams memory feeParams) {
+        address positionManagerAddress = address(positionManager_);
+        bytes memory callData = abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_);
+
+        bool success;
+        bytes memory returnData;
+        assembly {
+            let callDataLength := mload(callData)
+            let callDataPointer := add(callData, 0x20)
+            success := staticcall(gas(), positionManagerAddress, callDataPointer, callDataLength, 0, 0)
+            let returnDataSize := returndatasize()
+            returnData := mload(0x40)
+            mstore(returnData, returnDataSize)
+            mstore(0x40, add(returnData, add(returnDataSize, 0x20)))
+            returndatacopy(add(returnData, 0x20), 0, returnDataSize)
+        }
+
+        if (!success || returnData.length < 384) revert InvalidReturnData();
+
+        address token0;
+        address token1;
+        uint24 fee;
+        int24 tickLower;
+        int24 tickUpper;
+        uint128 liquidity;
+        uint256 positionFeeGrowthInside0LastX128;
+        uint256 positionFeeGrowthInside1LastX128;
+        uint256 tokensOwed0;
+        uint256 tokensOwed1;
+        assembly {
+            token0 := mload(add(returnData, 96))
+            token1 := mload(add(returnData, 128))
+            fee := and(mload(add(returnData, 160)), 0xFFFFFF)
+            tickLower := mload(add(returnData, 192))
+            tickUpper := mload(add(returnData, 224))
+            liquidity := and(mload(add(returnData, 256)), 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+            positionFeeGrowthInside0LastX128 := mload(add(returnData, 288))
+            positionFeeGrowthInside1LastX128 := mload(add(returnData, 320))
+            tokensOwed0 := and(mload(add(returnData, 352)), 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+            tokensOwed1 := and(mload(add(returnData, 384)), 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+        }
+
+        feeParams = FeeParams(
+            token0,
+            token1,
+            fee,
+            tickLower,
+            tickUpper,
+            liquidity,
+            positionFeeGrowthInside0LastX128,
+            positionFeeGrowthInside1LastX128,
+            tokensOwed0,
+            tokensOwed1
+        );
+    }
+
     /// @notice Returns the total amounts of token0 and token1, i.e. the sum of fees and principal
     /// that a given nonfungible position manager token is worth
     /// @param positionManager The Uniswap V3 NonfungiblePositionManager
@@ -41,7 +145,7 @@ library PositionValue {
         uint256 tokenId,
         uint160 sqrtRatioX96
     ) internal view returns (uint256 amount0, uint256 amount1) {
-        (, , , , , int24 tickLower, int24 tickUpper, uint128 liquidity, , , , ) = positionManager.positions(tokenId);
+        (int24 tickLower, int24 tickUpper, uint128 liquidity) = getPositionTicksAndLiquidity(positionManager, tokenId);
 
         return
             LiquidityAmounts.getAmountsForLiquidity(
@@ -74,43 +178,15 @@ library PositionValue {
         INonfungiblePositionManager positionManager,
         uint256 tokenId
     ) internal view returns (uint256 amount0, uint256 amount1) {
-        (
-            ,
-            ,
-            address token0,
-            address token1,
-            uint24 fee,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            uint256 positionFeeGrowthInside0LastX128,
-            uint256 positionFeeGrowthInside1LastX128,
-            uint256 tokensOwed0,
-            uint256 tokensOwed1
-        ) = positionManager.positions(tokenId);
+        FeeParams memory feeParams = getPositionFeeParams(positionManager, tokenId);
 
-        return
-            _fees(
-                positionManager,
-                FeeParams({
-                    token0: token0,
-                    token1: token1,
-                    fee: fee,
-                    tickLower: tickLower,
-                    tickUpper: tickUpper,
-                    liquidity: liquidity,
-                    positionFeeGrowthInside0LastX128: positionFeeGrowthInside0LastX128,
-                    positionFeeGrowthInside1LastX128: positionFeeGrowthInside1LastX128,
-                    tokensOwed0: tokensOwed0,
-                    tokensOwed1: tokensOwed1
-                })
-            );
+        return _fees(positionManager, feeParams);
     }
 
     function _fees(
         INonfungiblePositionManager positionManager,
         FeeParams memory feeParams
-    ) private view returns (uint256 amount0, uint256 amount1) {
+    ) internal view returns (uint256 amount0, uint256 amount1) {
         (uint256 poolFeeGrowthInside0LastX128, uint256 poolFeeGrowthInside1LastX128) = _getFeeGrowthInside(
             IUniswapV3Pool(
                 PoolAddress.computeAddress(
@@ -143,7 +219,7 @@ library PositionValue {
         IUniswapV3Pool pool,
         int24 tickLower,
         int24 tickUpper
-    ) private view returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) {
+    ) internal view returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) {
         (, int24 tickCurrent, , , , , ) = pool.slot0();
         (, , uint256 lowerFeeGrowthOutside0X128, uint256 lowerFeeGrowthOutside1X128, , , , ) = pool.ticks(tickLower);
         (, , uint256 upperFeeGrowthOutside0X128, uint256 upperFeeGrowthOutside1X128, , , , ) = pool.ticks(tickUpper);
@@ -168,7 +244,7 @@ library PositionValue {
         }
     }
 
-    function _subtractOrZero(uint256 a, uint256 b) private pure returns (uint256) {
+    function _subtractOrZero(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? a - b : 0;
     }
 }
