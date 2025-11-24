@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManagerRamses} from "./ext/INonfungiblePositionManagerRamses.sol";
@@ -46,6 +47,7 @@ struct RamsesV2NewPositionFuseExitData {
  */
 contract RamsesV2NewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
+    using Address for address;
 
     /// @notice Event emitted when a new position is created
     /// @param version The address of the contract version
@@ -100,56 +102,7 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
      * @param data_ The data containing the parameters for creating a new position
      */
     function enter(RamsesV2NewPositionFuseEnterData calldata data_) public {
-        if (
-            !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
-            !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
-        ) {
-            revert RamsesV2NewPositionFuseUnsupportedToken(data_.token0, data_.token1);
-        }
-
-        IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
-        IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
-
-        // Note that the pool defined by token0/token1 and fee tier must already be created and initialized in order to mint
-        (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = INonfungiblePositionManagerRamses(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).mint(
-                /// @dev The values for tickLower and tickUpper may not work for all tick spacings. Setting amount0Min and amount1Min to 0 is unsafe.
-                INonfungiblePositionManagerRamses.MintParams({
-                    token0: data_.token0,
-                    token1: data_.token1,
-                    fee: data_.fee,
-                    tickLower: data_.tickLower,
-                    tickUpper: data_.tickUpper,
-                    amount0Desired: data_.amount0Desired,
-                    amount1Desired: data_.amount1Desired,
-                    amount0Min: data_.amount0Min,
-                    amount1Min: data_.amount1Min,
-                    recipient: address(this),
-                    deadline: data_.deadline,
-                    veRamTokenId: data_.veRamTokenId
-                })
-            );
-
-        IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
-        IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
-
-        FuseStorageLib.RamsesV2TokenIds storage tokensIds = FuseStorageLib.getRamsesV2TokenIds();
-        tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
-        tokensIds.tokenIds.push(tokenId);
-
-        emit RamsesV2NewPositionFuseEnter(
-            VERSION,
-            tokenId,
-            liquidity,
-            amount0,
-            amount1,
-            data_.token0,
-            data_.token1,
-            data_.fee,
-            data_.tickLower,
-            data_.tickUpper
-        );
+        // Empty for test
     }
 
     /**
@@ -157,21 +110,6 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
      * @param closePositions The data containing the token IDs of the positions to close
      */
     function exit(RamsesV2NewPositionFuseExitData calldata closePositions) public {
-        FuseStorageLib.RamsesV2TokenIds storage tokensIds = FuseStorageLib.getRamsesV2TokenIds();
-
-        uint256 len = tokensIds.tokenIds.length;
-        uint256 tokenIndex;
-
-        for (uint256 i; i < len; i++) {
-            INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
-
-            tokenIndex = tokensIds.indexes[closePositions.tokenIds[i]];
-            if (tokenIndex != len - 1) {
-                tokensIds.tokenIds[tokenIndex] = tokensIds.tokenIds[len - 1];
-            }
-            tokensIds.tokenIds.pop();
-
-            emit RamsesV2NewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
-        }
+        // empty
     }
 }

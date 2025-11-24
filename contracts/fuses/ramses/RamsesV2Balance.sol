@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
@@ -19,6 +20,8 @@ import {PositionKey} from "./ext/PositionKey.sol";
  * @dev Fuse balance for Ramses V2 positions. This contract calculates the balance of a given market by summing up the value of all positions.
  */
 contract RamsesV2Balance is IMarketBalanceFuse {
+    using Address for address;
+
     uint256 public immutable MARKET_ID;
     // @dev Manage NFTs representing liquidity positions
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
@@ -168,31 +171,9 @@ contract RamsesV2Balance is IMarketBalanceFuse {
     function _getPositionData(
         uint256 tokenId
     ) internal view returns (INonfungiblePositionManagerRamses.Position memory position) {
-        (
-            ,
-            address operator,
-            address token0,
-            address token1,
-            uint24 fee,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        ) = INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).positions(tokenId);
-        position.operator = operator;
-        position.token0 = token0;
-        position.token1 = token1;
-        position.fee = fee;
-        position.tickLower = tickLower;
-        position.tickUpper = tickUpper;
-        position.liquidity = liquidity;
-        position.feeGrowthInside0Last = feeGrowthInside0LastX128;
-        position.feeGrowthInside1Last = feeGrowthInside1LastX128;
-        position.tokensOwed0 = tokensOwed0;
-        position.tokensOwed1 = tokensOwed1;
-        return position;
+        bytes memory returnData = NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
+            abi.encodeWithSelector(INonfungiblePositionManagerRamses.positions.selector, tokenId)
+        );
+        position = abi.decode(returnData, (INonfungiblePositionManagerRamses.Position));
     }
 }
