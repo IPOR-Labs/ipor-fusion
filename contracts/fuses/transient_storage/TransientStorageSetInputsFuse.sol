@@ -37,12 +37,4 @@ contract TransientStorageSetInputsFuse is IFuseCommon {
             TransientStorageLib.setInputs(data_.fuse[i], data_.inputsByFuse[i]);
         }
     }
-
-    /// @notice Exits the market (no-op for this fuse)
-    /// @dev Function is not used
-    /// @param data_ The exit data (unused)
-    function exit(bytes calldata data_) external pure {
-        // do nothing
-        data_;
-    }
 }
