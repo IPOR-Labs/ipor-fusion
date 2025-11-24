@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.30;
+
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
-import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
-import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
-import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+
 import {AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
 import {AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {CompoundV2SupplyFuseEnterData, CompoundV2SupplyFuseExitData} from "../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
 import {CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
+import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
+import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 
 contract PlasmaVaultMock {
     using Address for address;
@@ -88,6 +90,10 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(msg.data);
     }
 
+    function instantWithdraw(bytes32[] calldata params_) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSelector(bytes4(0xbe1946da), params_));
+    }
+
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
         PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket(marketId, assets);
     }
@@ -118,5 +124,15 @@ contract PlasmaVaultMock {
 
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external {
         PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
+    }
+
+    function configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses_) external {
+        PlasmaVaultLib.configureInstantWithdrawalFuses(fuses_);
+    }
+
+    function addFuses(address[] calldata fuses_) external {
+        for (uint256 i; i < fuses_.length; ++i) {
+            FusesLib.addFuse(fuses_[i]);
+        }
     }
 }
