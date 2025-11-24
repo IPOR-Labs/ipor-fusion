@@ -20,6 +20,11 @@ enum TransientStorageParamTypes {
 /// @notice Library for managing transient storage in the IPOR Fusion protocol
 /// @author IPOR Labs
 library TransientStorageLib {
+    /// @notice Error thrown when accessing an index outside the bounds of the array
+    /// @param index The index that was accessed
+    /// @param length The length of the array
+    error TransientStorageError(uint256 index, uint256 length);
+
     /**
      * @dev Storage slot for transient storage configuration following ERC-7201 namespaced storage pattern
      * @notice This storage location is used to store the transient data
@@ -52,10 +57,30 @@ library TransientStorageLib {
         }
     }
 
+    /// @notice Clears all input parameters for a specific account in transient storage
+    /// @param account_ The address of the account
+    function clearInputs(address account_) internal {
+        bytes32 inputsSlot = keccak256(abi.encode(account_, TRANSIENT_STORAGE_SLOT));
+        uint256 len = uint256(tload(inputsSlot));
+        if (len == 0) {
+            return;
+        }
+
+        tstore(inputsSlot, bytes32(0));
+
+        bytes32 dataStartSlot = keccak256(abi.encode(inputsSlot));
+        bytes32 elementSlot;
+        for (uint256 i; i < len; ++i) {
+            elementSlot = bytes32(uint256(dataStartSlot) + i);
+            tstore(elementSlot, bytes32(0));
+        }
+    }
+
     /// @notice Sets input parameters for a specific account in transient storage
     /// @param account_ The address of the account
     /// @param inputs_ Array of input values
     function setInputs(address account_, bytes32[] memory inputs_) internal {
+        clearInputs(account_);
         // Data struct is at keccak256(account . TRANSIENT_STORAGE_SLOT)
         // inputs array is at offset 0 of Data struct
         bytes32 inputsSlot = keccak256(abi.encode(account_, TRANSIENT_STORAGE_SLOT));
@@ -77,6 +102,11 @@ library TransientStorageLib {
     /// @param value_ The value to set
     function setInput(address account_, uint256 index_, bytes32 value_) internal {
         bytes32 inputsSlot = keccak256(abi.encode(account_, TRANSIENT_STORAGE_SLOT));
+        uint256 len = uint256(tload(inputsSlot));
+        if (index_ >= len) {
+            revert TransientStorageError(index_, len);
+        }
+
         bytes32 dataStartSlot = keccak256(abi.encode(inputsSlot));
         bytes32 elementSlot = bytes32(uint256(dataStartSlot) + index_);
         tstore(elementSlot, value_);
@@ -88,6 +118,11 @@ library TransientStorageLib {
     /// @return The input value at the specified index
     function getInput(address account_, uint256 index_) internal view returns (bytes32) {
         bytes32 inputsSlot = keccak256(abi.encode(account_, TRANSIENT_STORAGE_SLOT));
+        uint256 len = uint256(tload(inputsSlot));
+        if (index_ >= len) {
+            revert TransientStorageError(index_, len);
+        }
+
         bytes32 dataStartSlot = keccak256(abi.encode(inputsSlot));
         bytes32 elementSlot = bytes32(uint256(dataStartSlot) + index_);
         return tload(elementSlot);
@@ -112,14 +147,16 @@ library TransientStorageLib {
     /// @param account_ The address of the account
     /// @param outputs_ Array of output values
     function setOutputs(address account_, bytes32[] memory outputs_) internal {
+        clearOutputs(account_);
         // outputs array is at offset 1 of Data struct
         bytes32 outputsSlot = bytes32(uint256(keccak256(abi.encode(account_, TRANSIENT_STORAGE_SLOT))) + 1);
-
+        uint256 len = outputs_.length;
         tstore(outputsSlot, bytes32(outputs_.length));
 
         bytes32 dataStartSlot = keccak256(abi.encode(outputsSlot));
-        for (uint256 i = 0; i < outputs_.length; ++i) {
-            bytes32 elementSlot = bytes32(uint256(dataStartSlot) + i);
+        bytes32 elementSlot;
+        for (uint256 i; i < len; ++i) {
+            elementSlot = bytes32(uint256(dataStartSlot) + i);
             tstore(elementSlot, outputs_[i]);
         }
     }
@@ -130,6 +167,11 @@ library TransientStorageLib {
     /// @return The output value at the specified index
     function getOutput(address account_, uint256 index_) internal view returns (bytes32) {
         bytes32 outputsSlot = bytes32(uint256(keccak256(abi.encode(account_, TRANSIENT_STORAGE_SLOT))) + 1);
+        uint256 len = uint256(tload(outputsSlot));
+        if (index_ >= len) {
+            revert TransientStorageError(index_, len);
+        }
+
         bytes32 dataStartSlot = keccak256(abi.encode(outputsSlot));
         bytes32 elementSlot = bytes32(uint256(dataStartSlot) + index_);
         return tload(elementSlot);
@@ -144,8 +186,9 @@ library TransientStorageLib {
         outputs = new bytes32[](len);
 
         bytes32 dataStartSlot = keccak256(abi.encode(outputsSlot));
-        for (uint256 i = 0; i < len; ++i) {
-            bytes32 elementSlot = bytes32(uint256(dataStartSlot) + i);
+        bytes32 elementSlot;
+        for (uint256 i; i < len; ++i) {
+            elementSlot = bytes32(uint256(dataStartSlot) + i);
             outputs[i] = tload(elementSlot);
         }
     }
