@@ -73,26 +73,33 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
     }
 
     function enter(AreodromeSlipstreamNewPositionFuseEnterData calldata data_) public {
-        if (
-            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
-                MARKET_ID,
-                AreodromeSlipstreamSubstrateLib.substrateToBytes32(
-                    AreodromeSlipstreamSubstrate({
-                        substrateType: AreodromeSlipstreamSubstrateType.Pool,
-                        substrateAddress: AreodromeSlipstreamSubstrateLib.getPoolAddress(
-                            FACTORY,
-                            data_.token0,
-                            data_.token1,
-                            data_.tickSpacing
-                        )
-                    })
+        {
+            if (
+                !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                    MARKET_ID,
+                    AreodromeSlipstreamSubstrateLib.substrateToBytes32(
+                        AreodromeSlipstreamSubstrate({
+                            substrateType: AreodromeSlipstreamSubstrateType.Pool,
+                            substrateAddress: AreodromeSlipstreamSubstrateLib.getPoolAddress(
+                                FACTORY,
+                                data_.token0,
+                                data_.token1,
+                                data_.tickSpacing
+                            )
+                        })
+                    )
                 )
-            )
-        ) {
-            /// @dev this is to avoid stack too deep error
-            revert AreodromeSlipstreamNewPositionFuseUnsupportedPool(
-                AreodromeSlipstreamSubstrateLib.getPoolAddress(FACTORY, data_.token0, data_.token1, data_.tickSpacing)
-            );
+            ) {
+                /// @dev this is to avoid stack too deep error
+                revert AreodromeSlipstreamNewPositionFuseUnsupportedPool(
+                    AreodromeSlipstreamSubstrateLib.getPoolAddress(
+                        FACTORY,
+                        data_.token0,
+                        data_.token1,
+                        data_.tickSpacing
+                    )
+                );
+            }
         }
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);

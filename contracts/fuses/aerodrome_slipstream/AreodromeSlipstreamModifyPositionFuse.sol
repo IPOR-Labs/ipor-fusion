@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
@@ -42,6 +43,7 @@ struct AreodromeSlipstreamModifyPositionFuseExitData {
 
 contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
+    using Address for address;
 
     event AreodromeSlipstreamModifyPositionFuseEnter(
         address version,
@@ -72,10 +74,49 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
         FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
     }
 
-    function enter(AreodromeSlipstreamModifyPositionFuseEnterData calldata data_) public {
-        (, , address token0, address token1, int24 tickSpacing, , , , , , , ) = INonfungiblePositionManager(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).positions(data_.tokenId);
+    function validatePool(uint256 tokenId) external view {
+        address token0;
+        address token1;
+        int24 tickSpacing;
+
+        // INonfungiblePositionManager.positions(tokenId) selector: 0x99fbab88
+        // 0x99fbab88 = bytes4(keccak256("positions(uint256)"))
+        bytes memory returnData = NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
+            abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId)
+        );
+
+        // positions returns (
+        //    uint96 nonce,                    // offset 0
+        //    address operator,                // offset 1
+        //    address token0,                  // offset 2
+        //    address token1,                  // offset 3
+        //    int24 tickSpacing,               // offset 4
+        //    ... )
+        // All types are padded to 32 bytes in ABI encoding.
+
+        if (returnData.length < 160) revert("Invalid return data");
+
+        assembly {
+            // returnData is a pointer to bytes array in memory.
+            // First 32 bytes at returnData is the length of the array.
+            // The actual data starts at returnData + 32.
+
+            // We need to skip nonce (index 0) and operator (index 1).
+            // Each slot is 32 bytes.
+            // token0 is at index 2: 32 (length) + 32 * 2 = 96
+            token0 := mload(add(returnData, 96))
+
+            // token1 is at index 3: 32 (length) + 32 * 3 = 128
+            token1 := mload(add(returnData, 128))
+
+            // tickSpacing is at index 4: 32 (length) + 32 * 4 = 160
+            // tickSpacing is int24, so we need to ensure we handle sign extension correctly?
+            // mload loads 32 bytes.
+            // In ABI encoding, signed integers are sign-extended to 32 bytes.
+            // Since tickSpacing is int24, it fits in int256/uint256 variable in assembly.
+            // When assigning to int24 solidity variable, it will be cast implicitly.
+            tickSpacing := mload(add(returnData, 160))
+        }
 
         address pool = AreodromeSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
 
@@ -92,6 +133,10 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
         ) {
             revert AreodromeSlipstreamModifyPositionFuseUnsupportedPool(pool);
         }
+    }
+
+    function enter(AreodromeSlipstreamModifyPositionFuseEnterData calldata data_) public {
+        // this.validatePool(data_.tokenId);
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
@@ -117,25 +162,7 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     }
 
     function exit(AreodromeSlipstreamModifyPositionFuseExitData calldata data_) public {
-        (, , address token0, address token1, int24 tickSpacing, , , , , , , ) = INonfungiblePositionManager(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).positions(data_.tokenId);
-
-        address pool = AreodromeSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
-
-        if (
-            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
-                MARKET_ID,
-                AreodromeSlipstreamSubstrateLib.substrateToBytes32(
-                    AreodromeSlipstreamSubstrate({
-                        substrateType: AreodromeSlipstreamSubstrateType.Pool,
-                        substrateAddress: pool
-                    })
-                )
-            )
-        ) {
-            revert AreodromeSlipstreamModifyPositionFuseUnsupportedPool(pool);
-        }
+        // this.validatePool(data_.tokenId);
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
