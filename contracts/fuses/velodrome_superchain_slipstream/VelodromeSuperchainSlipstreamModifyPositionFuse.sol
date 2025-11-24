@@ -8,6 +8,7 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 
+/// @notice Data for entering a position in Velodrome Superchain Slipstream
 struct VelodromeSuperchainSlipstreamModifyPositionFuseEnterData {
     /// @notice The address of the token0 for a specific pool
     address token0;
@@ -27,6 +28,7 @@ struct VelodromeSuperchainSlipstreamModifyPositionFuseEnterData {
     uint256 deadline;
 }
 
+/// @notice Data for exiting (decreasing liquidity) a position in Velodrome Superchain Slipstream
 struct VelodromeSuperchainSlipstreamModifyPositionFuseExitData {
     /// @notice The ID of the token for which liquidity is being decreased
     uint256 tokenId;
@@ -40,9 +42,17 @@ struct VelodromeSuperchainSlipstreamModifyPositionFuseExitData {
     uint256 deadline;
 }
 
+/// @title Fuse for modifying Velodrome Superchain Slipstream positions
+/// @notice Allows increasing and decreasing liquidity for existing positions
 contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
+    /// @notice Emitted when liquidity is increased
+    /// @param version The address of the fuse version
+    /// @param tokenId The ID of the token
+    /// @param liquidity The amount of liquidity added
+    /// @param amount0 The amount of token0 added
+    /// @param amount1 The amount of token1 added
     event VelodromeSuperchainSlipstreamModifyPositionFuseEnter(
         address version,
         uint256 tokenId,
@@ -50,6 +60,12 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
         uint256 amount0,
         uint256 amount1
     );
+
+    /// @notice Emitted when liquidity is decreased
+    /// @param version The address of the fuse version
+    /// @param tokenId The ID of the token
+    /// @param amount0 The amount of token0 received
+    /// @param amount1 The amount of token1 received
     event VelodromeSuperchainSlipstreamModifyPositionFuseExit(
         address version,
         uint256 tokenId,
@@ -58,13 +74,20 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
     );
 
     error VelodromeSuperchainSlipstreamModifyPositionFuseUnsupportedPool(address pool);
+    error InvalidReturnData();
 
+    /// @notice The address of this fuse contract
     address public immutable VERSION;
+    /// @notice The market ID this fuse belongs to
     uint256 public immutable MARKET_ID;
-    /// @dev Manage NFTs representing liquidity positions
+    /// @notice Manage NFTs representing liquidity positions
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
+    /// @notice The Velodrome Factory address
     address public immutable FACTORY;
 
+    /// @notice Initializes the contract
+    /// @param marketId_ The market ID
+    /// @param nonfungiblePositionManager_ The address of the non-fungible position manager
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
@@ -72,10 +95,10 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
         FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
     }
 
+    /// @notice Increases liquidity for an existing position
+    /// @param data_ The data for increasing liquidity
     function enter(VelodromeSuperchainSlipstreamModifyPositionFuseEnterData calldata data_) public {
-        (, , address token0, address token1, int24 tickSpacing, , , , , , , ) = INonfungiblePositionManager(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).positions(data_.tokenId);
+        (address token0, address token1, int24 tickSpacing) = _getPositionInfo(data_.tokenId);
 
         address pool = VelodromeSuperchainSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
 
@@ -116,10 +139,10 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
         emit VelodromeSuperchainSlipstreamModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
     }
 
+    /// @notice Decreases liquidity for an existing position
+    /// @param data_ The data for decreasing liquidity
     function exit(VelodromeSuperchainSlipstreamModifyPositionFuseExitData calldata data_) public {
-        (, , address token0, address token1, int24 tickSpacing, , , , , , , ) = INonfungiblePositionManager(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).positions(data_.tokenId);
+        (address token0, address token1, int24 tickSpacing) = _getPositionInfo(data_.tokenId);
 
         address pool = VelodromeSuperchainSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
 
@@ -150,5 +173,43 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
             .decreaseLiquidity(params);
 
         emit VelodromeSuperchainSlipstreamModifyPositionFuseExit(VERSION, data_.tokenId, amount0, amount1);
+    }
+
+    /// @notice Gets the token0, token1, and tickSpacing for a given position token ID
+    /// @param tokenId_ The ID of the token that represents the position
+    /// @return token0 The address of the token0 for a specific pool
+    /// @return token1 The address of the token1 for a specific pool
+    /// @return tickSpacing The tick spacing associated with the pool
+    function _getPositionInfo(
+        uint256 tokenId_
+    ) private view returns (address token0, address token1, int24 tickSpacing) {
+        bytes memory callData = abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_);
+        address positionManager = NONFUNGIBLE_POSITION_MANAGER;
+
+        bool success;
+        bytes memory returnData;
+
+        assembly {
+            let callDataLength := mload(callData)
+            let callDataPointer := add(callData, 0x20)
+            success := staticcall(gas(), positionManager, callDataPointer, callDataLength, 0, 0)
+
+            let returnDataSize := returndatasize()
+            returnData := mload(0x40)
+            mstore(returnData, returnDataSize)
+            mstore(0x40, add(returnData, add(returnDataSize, 0x20)))
+            returndatacopy(add(returnData, 0x20), 0, returnDataSize)
+        }
+
+        if (!success || returnData.length < 160) revert InvalidReturnData();
+
+        assembly {
+            // token0 at index 2: 32 (length) + 32 * 2 = 96
+            token0 := mload(add(returnData, 96))
+            // token1 at index 3: 32 (length) + 32 * 3 = 128
+            token1 := mload(add(returnData, 128))
+            // tickSpacing at index 4: 32 (length) + 32 * 4 = 160
+            tickSpacing := mload(add(returnData, 160))
+        }
     }
 }
