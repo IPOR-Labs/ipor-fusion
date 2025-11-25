@@ -64,13 +64,13 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param version The address of the fuse version
     /// @param asset The address of the asset withdrawn
     /// @param amount The amount of the asset withdrawn
-    event AaveV3SupplyFuseExit(address indexed version, address indexed asset, uint256 amount);
+    event AaveV3SupplyFuseExit(address version, address asset, uint256 amount);
 
     /// @notice Emitted when exiting the Aave V3 supply fuse fails
     /// @param version The address of the fuse version
     /// @param asset The address of the asset withdrawn
     /// @param amount The amount of the asset withdrawn
-    event AaveV3SupplyFuseExitFailed(address indexed version, address indexed asset, uint256 amount);
+    event AaveV3SupplyFuseExitFailed(address version, address asset, uint256 amount);
 
     /// @notice Thrown when the asset is not supported by the fuse
     /// @param action The action being performed (enter/exit)
