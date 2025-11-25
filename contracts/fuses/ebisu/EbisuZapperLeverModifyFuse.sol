@@ -11,15 +11,15 @@ import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType}
 struct EbisuZapperLeverModifyFuseEnterData {
     address zapper;
     uint256 flashLoanAmount;
-    uint256 ebusdAmount;     // BOLD/EBUSD to add as debt
-    uint256 maxUpfrontFee;   // safety bound for zapper
+    uint256 ebusdAmount; // BOLD/EBUSD to add as debt
+    uint256 maxUpfrontFee; // safety bound for zapper
 }
 
 /// @notice "exit" is a lever-down action
 struct EbisuZapperLeverModifyFuseExitData {
     address zapper;
     uint256 flashLoanAmount;
-    uint256 minBoldAmount;  // minimum BOLD/EBUSD to receive when deleveraging
+    uint256 minBoldAmount; // minimum BOLD/EBUSD to receive when deleveraging
 }
 
 /// @notice Fuse to operate lever-up and lever-down in the open trove
@@ -28,7 +28,12 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
 
     error UnsupportedSubstrate();
 
-    event EbisuZapperLeverModifyLeverDown(address zapper, uint256 troveId, uint256 flashLoanAmount, uint256 minBoldAmount);
+    event EbisuZapperLeverModifyLeverDown(
+        address zapper,
+        uint256 troveId,
+        uint256 flashLoanAmount,
+        uint256 minBoldAmount
+    );
     event EbisuZapperLeverModifyLeverUp(address zapper, uint256 troveId, uint256 flashLoanAmount, uint256 ebusdAmount);
 
     constructor(uint256 marketId_) {
@@ -41,12 +46,17 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
     /// This has the effect of increasing both the debt and the collateral of the trove
     /// Any collateral dust is given back to the plasmaVault
     function enter(EbisuZapperLeverModifyFuseEnterData memory data_) external {
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
-            EbisuZapperSubstrateLib.substrateToBytes32(
-                EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.ZAPPER,
-                    substrateAddress: data_.zapper
-            })))) revert UnsupportedSubstrate();
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                EbisuZapperSubstrateLib.substrateToBytes32(
+                    EbisuZapperSubstrate({
+                        substrateType: EbisuZapperSubstrateType.ZAPPER,
+                        substrateAddress: data_.zapper
+                    })
+                )
+            )
+        ) revert UnsupportedSubstrate();
 
         uint256 troveId = FuseStorageLib.getEbisuTroveIds().troveIds[data_.zapper];
 
@@ -69,12 +79,17 @@ contract EbisuZapperLeverModifyFuse is IFuseCommon {
     /// This has the effect of decreasing both the debt and the collateral amount from the trove
     /// Any dust in ebUSD is given back to the plasmaVault
     function exit(EbisuZapperLeverModifyFuseExitData memory data_) external {
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, 
-            EbisuZapperSubstrateLib.substrateToBytes32(
-                EbisuZapperSubstrate({
-                    substrateType: EbisuZapperSubstrateType.ZAPPER,
-                    substrateAddress: data_.zapper
-            })))) revert UnsupportedSubstrate();
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                EbisuZapperSubstrateLib.substrateToBytes32(
+                    EbisuZapperSubstrate({
+                        substrateType: EbisuZapperSubstrateType.ZAPPER,
+                        substrateAddress: data_.zapper
+                    })
+                )
+            )
+        ) revert UnsupportedSubstrate();
 
         uint256 troveId = FuseStorageLib.getEbisuTroveIds().troveIds[data_.zapper];
 

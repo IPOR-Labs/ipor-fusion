@@ -76,7 +76,10 @@ contract AaveV3BorrowAgainstIsolatedCollateralEthereum is BorrowTest {
     function setupFuses() public override {
         AaveV3SupplyFuse fuseSupplyLoc = new AaveV3SupplyFuse(getMarketId(), ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         AaveV3BorrowFuse fuseBorrowLoc = new AaveV3BorrowFuse(getMarketId(), ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
-        AaveV3CollateralFuse fuseCollateral = new AaveV3CollateralFuse(getMarketId(), ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
+        AaveV3CollateralFuse fuseCollateral = new AaveV3CollateralFuse(
+            getMarketId(),
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
+        );
         fuses = new address[](3);
         fuses[0] = address(fuseSupplyLoc);
         fuses[1] = address(fuseBorrowLoc);

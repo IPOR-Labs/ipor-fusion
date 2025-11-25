@@ -9,7 +9,6 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import "./ITroveManager.sol";
 
 interface IAddressesRegistry {
-
     function CCR() external view returns (uint256);
     function SCR() external view returns (uint256);
     function MCR() external view returns (uint256);

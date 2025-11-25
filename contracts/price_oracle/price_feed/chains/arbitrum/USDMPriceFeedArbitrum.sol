@@ -29,7 +29,7 @@ contract USDMPriceFeedArbitrum is IPriceFeed {
     constructor() {
         CHRONICLE = IChronicle(WUSDM_USD_ORACLE_FEED);
 
-        /// @def Notice! It is enough to check during construction not during runtime because WUSDM_USD_ORACLE_FEED is immutable not upgradeable contract and decimals are not expected to change.
+        /// @dev Notice! It is enough to check during construction not during runtime because WUSDM_USD_ORACLE_FEED is immutable not upgradeable contract and decimals are not expected to change.
         if (CHRONICLE_DECIMALS != CHRONICLE.decimals()) {
             revert Errors.WrongDecimals();
         }

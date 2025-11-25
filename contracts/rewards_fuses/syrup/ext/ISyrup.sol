@@ -21,4 +21,3 @@ interface ISyrup {
      */
     function asset() external view returns (address asset);
 }
-

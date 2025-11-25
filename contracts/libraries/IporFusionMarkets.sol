@@ -116,6 +116,7 @@ library IporFusionMarkets {
     /// @dev Substrate type: address
     /// @dev Substrate values: Yield Basis LT tokens addresses
     uint256 public constant YIELD_BASIS_LT = 37;
+
     /// @dev Enso Finance market
     /// @dev Substrate type: EnsoSubstrate
     /// @dev Substrate values: Encoded combination of target address and function selector
@@ -135,10 +136,42 @@ library IporFusionMarkets {
 
     /// @dev Ebisu market
     /// @dev Substrate type: EbisuZapperSubstrate
-    uint256 public constant EBISU = 38;
+
+    uint256 public constant EBISU = 39;
+
+    /// @dev Async Action market
+    /// @dev Substrate type: AsyncActionFuseSubstrate
+    /// @dev Substrate values: Three types of substrates are supported:
+    ///      - ALLOWED_AMOUNT_TO_OUTSIDE: Limits on asset amounts that can be transferred to AsyncExecutor
+    ///        Encoded as: AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(AsyncActionFuseSubstrate({
+    ///          substrateType: AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE,
+    ///          data: AsyncActionFuseLib.encodeAllowedAmountToOutside(AllowedAmountToOutside({
+    ///            asset: tokenAddress,
+    ///            amount: maxAmount (uint88, max 2^88 - 1)
+    ///          }))
+    ///        }))
+    ///      - ALLOWED_TARGETS: Permitted target addresses and function selectors for execution
+    ///        Encoded as: AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(AsyncActionFuseSubstrate({
+    ///          substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
+    ///          data: AsyncActionFuseLib.encodeAllowedTargets(AllowedTargets({
+    ///            target: contractAddress,
+    ///            selector: functionSelector
+    ///          }))
+    ///        }))
+    ///      - ALLOWED_EXIT_SLIPPAGE: Maximum slippage threshold for balance validation (18-decimal fixed-point, 1e18 = 100%)
+    ///        Encoded as: AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(AsyncActionFuseSubstrate({
+    ///          substrateType: AsyncActionFuseSubstrateType.ALLOWED_EXIT_SLIPPAGE,
+    ///          data: AsyncActionFuseLib.encodeAllowedSlippage(AllowedSlippage({
+    ///            slippage: slippageValue (uint248, max 2^248 - 1)
+    ///          }))
+    ///        }))
+    /// @dev Used for executing asynchronous multi-step operations via AsyncExecutor contract
+    /// @dev Validates token transfers and target/selector combinations against granted substrates before execution
+    /// @dev Supports batch execution of multiple calls with ETH value forwarding
+    uint256 public constant ASYNC_ACTION = 40;
 
     /// @dev Napier market
-    uint256 public constant NAPIER = 3822;
+    uint256 public constant NAPIER = 3822; // 0xeee
     
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
@@ -229,6 +262,15 @@ library IporFusionMarkets {
 
     /// @dev Meta Morpho Market 10
     uint256 public constant META_MORPHO_0010 = 200_010;
+
+    /// @dev Exchange Rate Limiter market for pre-hook execution
+    /// @dev Substrate type: bytes32 packed ExchangeRateLimiterConfig (see ExchangeRateLimiterConfigLib)
+    /// @dev Substrate values:
+    /// @dev  - PREHOOKS/POSTHOOKS: Hook { hookAddress, index } packed into bytes31 and wrapped into bytes32 with HookType
+    /// @dev  - VALIDATOR: ValidatorData { exchangeRate, threshold } packed into bytes31 and wrapped into bytes32 with HookType
+    /// @dev Threshold is expressed in 1e18 precision, where 1e18 = 100%
+    /// @dev Used by ExchangeRateLimiterPreHook to orchestrate pre/post hooks and validate exchange rate drift
+    uint256 public constant EXCHANGE_RATE_VALIDATOR = type(uint256).max - 2;
 
     /// @dev Special market ID used to validate balances of substrates (assets) defined in this market.
     /// @dev This market ID is used only for balance validation purposes and does not represent an actual market.

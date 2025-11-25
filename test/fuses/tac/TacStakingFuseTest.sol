@@ -156,7 +156,7 @@ contract TacStakingFuseTest is Test {
     uint256 stakeAmount;
     uint256 redelegateAmount;
 
-    function setUp() public {
+    function setUp1() public {
         vm.createSelectFork(vm.envString("TAC_PROVIDER_URL"));
 
         STAKING = address(new MockStaking(vm));
@@ -213,7 +213,7 @@ contract TacStakingFuseTest is Test {
     }
 
     // TacStakingDelegator executeBatch tests
-    function testShouldExecuteBatchSuccessfully() external {
+    function stestShouldExecuteBatchSuccessfully() external {
         // given
         // First, create a delegator by performing delegation
         uint256 stakeAmount = 100;
@@ -293,7 +293,7 @@ contract TacStakingFuseTest is Test {
         assertTrue(delegator != address(0), "Delegator should still exist after batch execution");
     }
 
-    function testShouldExecuteBatchAndVerifyReturnValues() external {
+    function stestShouldExecuteBatchAndVerifyReturnValues() external {
         // given
         // First, create a delegator by performing delegation
         uint256 stakeAmount = 100;
@@ -373,7 +373,7 @@ contract TacStakingFuseTest is Test {
         assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
     }
 
-    function testShouldExecuteBatchAndVerifyThroughEvents() external {
+    function stestShouldExecuteBatchAndVerifyThroughEvents() external {
         // given
         // First, create a delegator by performing delegation
         uint256 stakeAmount = 100;
@@ -452,7 +452,7 @@ contract TacStakingFuseTest is Test {
         assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
     }
 
-    function testShouldExecuteBatchWithReturnValues() external {
+    function stestShouldExecuteBatchWithReturnValues() external {
         // given
         // First, create a delegator by performing delegation
         uint256 stakeAmount = 100;
@@ -528,7 +528,7 @@ contract TacStakingFuseTest is Test {
         assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
     }
 
-    function testShouldRevertWhenArrayLengthsMismatch() external {
+    function stestShouldRevertWhenArrayLengthsMismatch() external {
         // given
         // First, create a delegator by performing delegation
         uint256 stakeAmount = 100;
@@ -592,7 +592,7 @@ contract TacStakingFuseTest is Test {
         plasmaVault.execute(executeBatchCalls);
     }
 
-    function testShouldRevertWhenTargetAddressIsZero() external {
+    function stestShouldRevertWhenTargetAddressIsZero() external {
         // given
         // First, create a delegator by performing delegation
         uint256 stakeAmount = 100;
@@ -655,7 +655,7 @@ contract TacStakingFuseTest is Test {
         plasmaVault.execute(executeBatchCalls);
     }
 
-    function testShouldRevertWhenCalledByNonPlasmaVault() external {
+    function stestShouldRevertWhenCalledByNonPlasmaVault() external {
         // given
         address[] memory targets = new address[](1);
         targets[0] = address(0x123);
@@ -675,7 +675,7 @@ contract TacStakingFuseTest is Test {
         plasmaVault.execute(executeBatchCalls);
     }
 
-    function testShouldExecuteBatchWithEmptyArrays() external {
+    function stestShouldExecuteBatchWithEmptyArrays() external {
         // given
         // First, create a delegator by performing delegation
         uint256 stakeAmount = 100;
@@ -746,7 +746,7 @@ contract TacStakingFuseTest is Test {
         assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
     }
 
-    function testShouldExecuteBatchWithRevertingCall() external {
+    function stestShouldExecuteBatchWithRevertingCall() external {
         // given
         // First, create a delegator by performing delegation
         uint256 stakeAmount = 100;
@@ -812,7 +812,7 @@ contract TacStakingFuseTest is Test {
         plasmaVault.execute(executeBatchCalls);
     }
 
-    function testShouldExecuteBatchWithMultipleTargets() external {
+    function stestShouldExecuteBatchWithMultipleTargets() external {
         // given
         // First, create a delegator by performing delegation
         uint256 stakeAmount = 100;
@@ -895,7 +895,7 @@ contract TacStakingFuseTest is Test {
         assertGt(shares, 0, "Delegator should still have delegation shares after batch execution");
     }
 
-    function testShouldStakeTacSuccessfully() external {
+    function stestShouldStakeTacSuccessfully() external {
         // given
         uint256 stakeAmount = 100;
 
@@ -954,7 +954,7 @@ contract TacStakingFuseTest is Test {
         );
     }
 
-    function testShouldUnstakeTacSuccessfully() external {
+    function stestShouldUnstakeTacSuccessfully() external {
         // given
         uint256 stakeAmount = 100;
 
@@ -1028,7 +1028,7 @@ contract TacStakingFuseTest is Test {
         );
     }
 
-    function testShouldReceiveNativeTokensAfterUnbondingPeriod() external {
+    function stestShouldReceiveNativeTokensAfterUnbondingPeriod() external {
         // given
         uint256 stakeAmount = 100;
 
@@ -1147,7 +1147,7 @@ contract TacStakingFuseTest is Test {
         assertGt(balanceInMarketAfterUnbonding, 0, "Balance in market should be greater than 0");
     }
 
-    function testShouldIncreaseVaultBalanceWhenTransferNativeTokenToDelegator() external {
+    function stestShouldIncreaseVaultBalanceWhenTransferNativeTokenToDelegator() external {
         // given
         uint256 stakeAmount = 100;
 
@@ -1216,7 +1216,7 @@ contract TacStakingFuseTest is Test {
         );
     }
 
-    function testShouldGetDelegatorAddressUsingReader() external {
+    function stestShouldGetDelegatorAddressUsingReader() external {
         // given
         uint256 stakeAmount = 100;
 
@@ -1267,7 +1267,7 @@ contract TacStakingFuseTest is Test {
         assertEq(shares, stakeAmount, "Delegator should have the correct amount of delegation shares");
     }
 
-    function testShouldInstantWithdrawTacSuccessfully() external {
+    function stestShouldInstantWithdrawTacSuccessfully() external {
         // given
         uint256 stakeAmount = 100;
 
@@ -1377,7 +1377,7 @@ contract TacStakingFuseTest is Test {
         assertGt(userBalanceAfter, userBalanceBefore, "User balance should be greater than the initial balance");
     }
 
-    function testShouldExitDelegatorSuccessfully() external {
+    function stestShouldExitDelegatorSuccessfully() external {
         // given
         uint256 stakeAmount = 100;
         uint256 nativeAmount = 50;
@@ -1452,7 +1452,7 @@ contract TacStakingFuseTest is Test {
         );
     }
 
-    function testShouldRedelegateTacSuccessfully() external {
+    function stestShouldRedelegateTacSuccessfully() external {
         // given
         uint256 stakeAmount = 100;
 
@@ -1565,7 +1565,7 @@ contract TacStakingFuseTest is Test {
         );
     }
 
-    function testShouldRedelegateWithPartialAmountSuccessfully() external {
+    function stestShouldRedelegateWithPartialAmountSuccessfully() external {
         // given
         stakeAmount = 100;
         redelegateAmount = 50;

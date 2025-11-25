@@ -278,7 +278,11 @@ contract LiquityStabilityPoolFuseTest is Test {
         uint256 liquityMarketAfter = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
 
         // then
-        assertEq(ERC20(BOLD).balanceOf(address(plasmaVault)), initialBoldBalance + 1e10, "BOLD should be obtained after the swap");
+        assertEq(
+            ERC20(BOLD).balanceOf(address(plasmaVault)),
+            initialBoldBalance + 1e10,
+            "BOLD should be obtained after the swap"
+        );
         assertEq(ERC20(WETH).balanceOf(address(plasmaVault)), 0, "WETH balance should be zero after the swap");
         assertEq(totalAssetsAfter, totalAssetsBefore + 1e10, "Total has increased exactly of the swap amount");
         assertEq(liquityMarketAfter, liquityMarketBefore, "Liquity assets should be equal");
@@ -344,9 +348,14 @@ contract LiquityStabilityPoolFuseTest is Test {
 
         uint256 expectedLiquityMarket = compounded + yieldGain + stashedValue + collGainValue;
         uint256 actualLiquityMarket = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
-        
+
         // 0.01% tolerance due to oracle price errors
-        _eqWithTolerance(actualLiquityMarket, expectedLiquityMarket, 1, "Liquity market balance should equal sum of components");
+        _eqWithTolerance(
+            actualLiquityMarket,
+            expectedLiquityMarket,
+            1,
+            "Liquity market balance should equal sum of components"
+        );
     }
 
     //Complete lifecycle test of gain state transitions
@@ -501,7 +510,7 @@ contract LiquityStabilityPoolFuseTest is Test {
 
     function _eqWithTolerance(uint256 a, uint256 b, uint256 tol, string memory str) private pure {
         // tol in basis points 1 = 0.01%
-        assertLe(a, b * (10000 + tol) / 10000, str);
-        assertGe(a * (10000 + tol) / 10000, b, str);
+        assertLe(a, (b * (10000 + tol)) / 10000, str);
+        assertGe((a * (10000 + tol)) / 10000, b, str);
     }
 }

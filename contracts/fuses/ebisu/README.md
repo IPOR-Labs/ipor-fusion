@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ebisu integration allows IPOR Fusion to interact with the Ebisu Zapper contracts. This allows users to open leveraged troves on Liquity and to manage them via levering them up or down (increase/decrease debt and collateral)
+Ebisu integration allows IPOR Fusion to interact with the Ebisu Zapper contracts. This allows users to open leveraged troves on Liquity and to manage them via levering them up or down (increase/decrease debt and collateral) and by adjusting their annual interest rate.
 
 **What Ebisu does:**
 Ebisu is a wrapper on top of Liquity which allows to automatically open leveraged troves. A trove on Liquity is conceptually an overcollateralized loan where the user gets ebUSD, a stablecoin, against posting a collateral. The leverage is implemented in Ebisu's "Zapper" smart contract, which executes flash loans on Balancer. The flash loan gets collateral tokens which are used to mint more ebUSD, which are then swapped into a dex to re-obtain the collateral token to repay the flash loan. The same mechanism is used to perform leveraging down/up, where both the trove debt and collateral are respectively decreased/increased.
@@ -11,33 +11,39 @@ Troves can be closed either "to raw ETH", where the user pays directly the ebUSD
 
 Since Troves can be controlled by LeverageUp and LeverageDown, there's no point in having more than one Trove open at any time for any given Zapper. This is enforced at FuseStorageLib level, in which the mapping is simply zapper => id.
 
+The annual interest rate of an open Trove can be modified by the Trove owner during the life of the Trove. In our case, the Trove owner is the Plasma Vault, therefore a Fuse to adjust the interest rate is required. This is implemented in EbisuAdjustedInterestRateFuse.sol.
+
 ## Market Structure
 
 The integration uses a single market for all operations:
 
--   **Market ID 38** (`EBISU`) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove operations
+-   **Market ID 38** (`EBISU`) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove/adjustTroveInterestRate operations
 
 ## Architecture
 
 ### Troves and Stability Pool
 
 **Liquity** has two main components: troves and the stability pool.
-- The **Troves** are ERC721 which mint the native "BOLD" token (in Ebisu's case, this token is ebUSD) in exchange of a deposit of some collateral (WETH, sUSDe, WBTC...)
-- The **Stability Pool** gathers the collateral of the Troves and BOLD (ebUSD) tokens deposited by LPs. This is responsible for the stability of BOLD price: every time a liquidation occurs, a quantity of BOLD corresponding to the liquidated trove is burnt from the stability pool and the collateral is handed over to the stability pool's LPs.
 
-**Ebisu** is a wrapper on top of Liquity where you can open troves with automatic leverage, thanks to the "Zapper" contract which executes flash loans done on Balancer. 
+-   The **Troves** are ERC721 which mint the native "BOLD" token (in Ebisu's case, this token is ebUSD) in exchange of a deposit of some collateral (WETH, sUSDe, WBTC...)
+-   The **Stability Pool** gathers the collateral of the Troves and BOLD (ebUSD) tokens deposited by LPs. This is responsible for the stability of BOLD price: every time a liquidation occurs, a quantity of BOLD corresponding to the liquidated trove is burnt from the stability pool and the collateral is handed over to the stability pool's LPs.
+
+**Ebisu** is a wrapper on top of Liquity where you can open troves with automatic leverage, thanks to the "Zapper" contract which executes flash loans done on Balancer.
 
 ### Key Components
 
 -   **`EbisuZapperCreateFuse`**: Opens and closes a Leveraged Trove using Ebisu's Zapper contract.
 -   **`EbisuZapperLeverModifyFuse`**: Handles levering up and down of open Troves.
+-   **`EbisuAdjustInterestRateFuse`**: Adjusts the annual interest rate of an open Trove.
 
 ## Balance Calculation
 
-The balance corresponding to an open Trove is 
+The balance corresponding to an open Trove is
+
 ```
 collateral * collTokenPrice - debt * ebUSDPrice
 ```
+
 This ensures that the `totalAssets()` quantity is an invariant (approximate, modulo slippage due to swaps following flash loans and fees) for all the Fuse's operations. This balance is floored with zero in case the debt exceeds the collateral; however, this situation is unlikely, since Liquity liquidates such Troves much before this happens.
 
 ### Important Notes
@@ -52,12 +58,12 @@ Substrates are configured as a pair `(type, address)` where "type" can be `UNDEF
 
 #### Zappers and Registries examples on Ethereum Mainnet:
 
-| Branch Name     | Leverage Zapper Address                     | Registry Address                             | Collateral Asset |
-| -------------- | -------------------------------------------- | -------------------------------------------- | ---------------- |
-| weETH Branch   | `0x54965fd4dacbc5ab969c2f52e866c1a37ad66923` | `0x329a7baa50bb43a6149af8c9cf781876b6fd7b3a` | weETH            |
-| sUSDe Branch   | `0x10C14374104f9FC2dAE4b38F945ff8a52f48151d` | `0x411ed8575a1e3822bbc763dc578dd9bfaf526c1f` | sUSDe            |
-| WBTC Branch    | `0x175a17755ea596875CB3c996D007072C3f761F6B` | `0x0cac6a40ee0d35851fd6d9710c5180f30b494350` | WBTC             |
-| LBTC Branch    | `0xe32e9ab36558e5341a4c05fd635db4ba1f3f51cf` | `0x7f034988af49248d3d5bd81a2ce76ed4a3006243` | LBTC             |
+| Branch Name  | Leverage Zapper Address                      | Registry Address                             | Collateral Asset |
+| ------------ | -------------------------------------------- | -------------------------------------------- | ---------------- |
+| weETH Branch | `0x54965fd4dacbc5ab969c2f52e866c1a37ad66923` | `0x329a7baa50bb43a6149af8c9cf781876b6fd7b3a` | weETH            |
+| sUSDe Branch | `0x10C14374104f9FC2dAE4b38F945ff8a52f48151d` | `0x411ed8575a1e3822bbc763dc578dd9bfaf526c1f` | sUSDe            |
+| WBTC Branch  | `0x175a17755ea596875CB3c996D007072C3f761F6B` | `0x0cac6a40ee0d35851fd6d9710c5180f30b494350` | WBTC             |
+| LBTC Branch  | `0xe32e9ab36558e5341a4c05fd635db4ba1f3f51cf` | `0x7f034988af49248d3d5bd81a2ce76ed4a3006243` | LBTC             |
 
 ## Price Oracle Setup
 

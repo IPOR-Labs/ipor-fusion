@@ -162,7 +162,6 @@ library FuseStorageLib {
      */
     bytes32 private constant RAMSES_V2_TOKEN_IDS = 0x1a3831a406f27d4d5d820158b29ce95a1e8e840bf416921917aa388e2461b700;
 
-
     /**
      * @dev Storage slot for managing Ebisu Troves position token IDs in the Plasma Vault
      * @notice Tracks and manages Ebisu Troves positions held by the vault
@@ -200,8 +199,7 @@ library FuseStorageLib {
      * - Essential for position ownership verification
      * - Parallel structure to Uniswap V3 position tracking
      */
-    bytes32 private constant EBISU_TROVE_IDS =
-        0x9b098fe9de431f116cec9bcef5a806a02e41a628f070feb12cb5ddc28d703300;
+    bytes32 private constant EBISU_TROVE_IDS = 0x9b098fe9de431f116cec9bcef5a806a02e41a628f070feb12cb5ddc28d703300;
 
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {

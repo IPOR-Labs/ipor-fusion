@@ -2,8 +2,9 @@
 pragma solidity 0.8.26;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {FuseWhitelistLib, FuseInfo} from "./FuseWhitelistLib.sol";
+
 import {FuseWhitelistAccessControl} from "./FuseWhitelistAccessControl.sol";
+import {FuseWhitelistLib, FuseInfo} from "./FuseWhitelistLib.sol";
 import {UniversalReader} from "../../universal_reader/UniversalReader.sol";
 
 /// @title FuseWhitelist
@@ -12,6 +13,7 @@ import {UniversalReader} from "../../universal_reader/UniversalReader.sol";
 contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, UniversalReader {
     error FuseWhitelistInvalidInputLength();
     error FuseWhitelistInvalidInput();
+    error FuseWhitelistFuseAlreadyExists(address fuseAddress);
 
     /// @notice Initializes the contract
     /// @param initialAdmin_ The address that will own the contract
@@ -36,7 +38,7 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         if (length != fuseTypeNames_.length) {
             revert FuseWhitelistInvalidInputLength();
         }
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             FuseWhitelistLib.addFuseType(fuseTypeIds_[i], fuseTypeNames_[i]);
         }
         return true;
@@ -56,7 +58,7 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         if (length != fuseStateNames_.length) {
             revert FuseWhitelistInvalidInputLength();
         }
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             FuseWhitelistLib.addFuseState(fuseStateIds_[i], fuseStateNames_[i]);
         }
         return true;
@@ -76,7 +78,7 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         if (length != metadataTypes_.length) {
             revert FuseWhitelistInvalidInputLength();
         }
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             FuseWhitelistLib.addMetadataType(metadataIds_[i], metadataTypes_[i]);
         }
         return true;
@@ -86,6 +88,7 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
     /// @param fuses_ Array of fuse contract addresses
     /// @param types_ Array of fuse type IDs corresponding to each fuse
     /// @param states_ Array of fuse state IDs corresponding to each fuse
+    /// @param deploymentTimestamps_ Array of deployment timestamps corresponding to each fuse
     /// @return bool True if operation was successful
     /// @dev Requires ADD_FUSE_MANAGER_ROLE
     /// @dev All arrays must have equal length
@@ -97,14 +100,39 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         uint32[] calldata deploymentTimestamps_
     ) external onlyRole(ADD_FUSE_MANAGER_ROLE) returns (bool) {
         uint256 length = fuses_.length;
-        if (length != types_.length || length != states_.length) {
+        if (length != types_.length || length != states_.length || length != deploymentTimestamps_.length) {
             revert FuseWhitelistInvalidInputLength();
         }
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
+            if (FuseWhitelistLib.isFuseAddressExists(fuses_[i])) {
+                revert FuseWhitelistFuseAlreadyExists(fuses_[i]);
+            }
             FuseWhitelistLib.addFuseToListByType(types_[i], fuses_[i]);
             FuseWhitelistLib.addFuseInfo(types_[i], fuses_[i], deploymentTimestamps_[i]);
             FuseWhitelistLib.addFuseToMarketId(fuses_[i]);
             FuseWhitelistLib.updateFuseState(fuses_[i], states_[i]);
+        }
+        return true;
+    }
+
+    /// @notice Updates the type of existing fuses
+    /// @param fuseAddresses_ Array of fuse addresses to update
+    /// @param fuseTypes_ Array of new fuse type IDs for each fuse
+    /// @return bool True if operation was successful
+    /// @dev Requires UPDATE_FUSE_TYPE_MANAGER_ROLE
+    /// @dev All arrays must have equal length
+    /// @dev Each fuse must exist in the system
+    /// @dev Each new fuse type must be valid
+    function updateFuseType(
+        address[] calldata fuseAddresses_,
+        uint16[] calldata fuseTypes_
+    ) external onlyRole(UPDATE_FUSE_TYPE_MANAGER_ROLE) returns (bool) {
+        uint256 length = fuseAddresses_.length;
+        if (length != fuseTypes_.length) {
+            revert FuseWhitelistInvalidInputLength();
+        }
+        for (uint256 i; i < length; ++i) {
+            FuseWhitelistLib.updateFuseType(fuseAddresses_[i], fuseTypes_[i]);
         }
         return true;
     }
@@ -159,7 +187,7 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         if (length != metadataIds_.length || length != metadatas_.length) {
             revert FuseWhitelistInvalidInputLength();
         }
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             FuseWhitelistLib.updateFuseMetadata(fuseAddresses_[i], metadataIds_[i], metadatas_[i]);
         }
         return true;
@@ -230,6 +258,12 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         timestamp = fuseInfo.timestamp;
     }
 
+    /// @notice Retrieves all metadata information for a specific fuse
+    /// @param fuseAddress_ The address of the fuse to query
+    /// @return metadataIds Array of metadata type IDs associated with the fuse
+    /// @return metadata Array of metadata value arrays corresponding to each metadata ID
+    /// @dev Reverts if fuseAddress_ is zero address
+    /// @dev Returns empty arrays if fuse has no metadata
     function getFuseMetadataInfo(
         address fuseAddress_
     ) external view returns (uint256[] memory metadataIds, bytes32[][] memory metadata) {
@@ -248,7 +282,7 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         metadataIds = new uint256[](length);
         metadata = new bytes32[][](length);
 
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             metadataIds[i] = fuseInfo.metadataIds[i];
             metadata[i] = fuseInfo.metadata[metadataIds[i]];
         }
@@ -274,8 +308,10 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         return FuseWhitelistLib.getFusesByTypeAndMarketIdAndStatus(type_, marketId_, status_);
     }
 
+    /// @notice Authorizes an upgrade to a new implementation
+    /// @param newImplementation_ Address of the new implementation
     /// @dev Required by the OZ UUPS module
-    /// @param newImplementation Address of the new implementation
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE
     //solhint-disable-next-line
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    function _authorizeUpgrade(address newImplementation_) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }
