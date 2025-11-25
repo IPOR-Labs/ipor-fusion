@@ -2,24 +2,24 @@
 pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {BorrowTest} from "../supplyFuseTemplate/BorrowTests.sol";
-import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
-import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
-import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
-import {PlasmaVault, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
+import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
-import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {WstETHPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
+import {PlasmaVault, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {BorrowTest} from "../supplyFuseTemplate/BorrowTests.sol";
 
 contract AaveV3WstEthBorrowEthereum is BorrowTest {
     address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address private constant WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address private constant CHAINLINK_ETH = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-    address public constant AAVE_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
     address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
     address public constant AAVE_PRICE_ORACLE = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
 
@@ -55,7 +55,7 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
         sources[1] = address(new WstETHPriceFeedEthereum());
     }
 
-    function setupMarketConfigs() public override returns (MarketSubstratesConfig[] memory marketConfigs) {
+    function setupMarketConfigs() public view override returns (MarketSubstratesConfig[] memory marketConfigs) {
         marketConfigs = new MarketSubstratesConfig[](1);
         bytes32[] memory assets = new bytes32[](2);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(W_ETH);
@@ -63,7 +63,8 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
         marketConfigs[0] = MarketSubstratesConfig(getMarketId(), assets);
     }
 
-    function setupMarketConfigsWithErc20Balance() public returns (MarketSubstratesConfig[] memory marketConfigs) {
+    /// @notice Setup market configs with ERC20 balance fuse for testing ERC20 balance tracking
+    function setupMarketConfigsWithErc20Balance() public view returns (MarketSubstratesConfig[] memory marketConfigs) {
         marketConfigs = new MarketSubstratesConfig[](2);
         bytes32[] memory assets = new bytes32[](2);
         assets[0] = PlasmaVaultConfigLib.addressToBytes32(W_ETH);
@@ -93,6 +94,7 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
         balanceFuses[0] = MarketBalanceFuseConfig(getMarketId(), address(aaveV3Balances));
     }
 
+    /// @notice Setup balance fuses with ERC20 balance fuse for testing ERC20 balance tracking
     function setupBalanceFusesWithErc20Balance() public returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         AaveV3BalanceFuse aaveV3Balances = new AaveV3BalanceFuse(
             getMarketId(),
@@ -107,6 +109,7 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
         balanceFuses[1] = MarketBalanceFuseConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, address(erc20Balances));
     }
 
+    /// @notice Setup dependency balance graphs with ERC20 balance fuse for testing ERC20 balance tracking
     function setupDependencyBalanceGraphsWithErc20BalanceFuse() public {
         uint256[] memory marketIds = new uint256[](1);
 
@@ -319,5 +322,106 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
 
         assertEq(assetsInMarketAfter, depositAmount, "assetsInMarketBefore");
         assertEq(assetsInMarketBefore, 0, "assetsInMarketAfter");
+    }
+
+    /// @notice Test that constructor reverts when initialized with zero address
+    function testShouldRevertWhenInitializingWithZeroAddress() public {
+        vm.expectRevert(Errors.WrongAddress.selector);
+        new AaveV3BorrowFuse(getMarketId(), address(0));
+    }
+
+    /// @notice Test that enter function returns early (no-op) when amount is zero.
+    /// @dev If this was not the case, a revert would occur because borrowing without collateral is not allowed in Aave.
+    function testShouldReturnWhenEnteringWithZeroAmount() public {
+        // given
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        AaveV3BorrowFuseEnterData memory enterBorrowData = AaveV3BorrowFuseEnterData({asset: borrowAsset, amount: 0});
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(fuses[1], abi.encodeWithSignature("enter((address,uint256))", enterBorrowData));
+
+        uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
+
+        // when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(calls);
+
+        // then
+        uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
+        assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
+    }
+
+    /// @notice Test that enter function reverts when asset is not supported
+    function testShouldRevertWhenEnteringWithUnsupportedAsset() public {
+        // given
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        address unsupportedAsset = address(0x123);
+        AaveV3BorrowFuseEnterData memory enterBorrowData = AaveV3BorrowFuseEnterData({
+            asset: unsupportedAsset,
+            amount: 100
+        });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(fuses[1], abi.encodeWithSignature("enter((address,uint256))", enterBorrowData));
+
+        // when
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AaveV3BorrowFuse.AaveV3BorrowFuseUnsupportedAsset.selector,
+                "enter",
+                unsupportedAsset
+            )
+        );
+        PlasmaVault(plasmaVault).execute(calls);
+    }
+
+    /// @notice Test that exit function returns early (no-op) when amount is zero
+    function testShouldReturnWhenExitingWithZeroAmount() public {
+        // given
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        AaveV3BorrowFuseExitData memory exitBorrowData = AaveV3BorrowFuseExitData({asset: borrowAsset, amount: 0});
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(fuses[1], abi.encodeWithSignature("exit((address,uint256))", exitBorrowData));
+
+        uint256 totalSharesBefore = PlasmaVault(plasmaVault).totalSupply();
+
+        // when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(calls);
+
+        // then
+        uint256 totalSharesAfter = PlasmaVault(plasmaVault).totalSupply();
+        assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
+    }
+
+    /// @notice Test that exit function reverts when asset is not supported
+    function testShouldRevertWhenExitingWithUnsupportedAsset() public {
+        // given
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        address unsupportedAsset = address(0x123);
+        AaveV3BorrowFuseExitData memory exitBorrowData = AaveV3BorrowFuseExitData({
+            asset: unsupportedAsset,
+            amount: 100
+        });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(fuses[1], abi.encodeWithSignature("exit((address,uint256))", exitBorrowData));
+
+        // when
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSelector(AaveV3BorrowFuse.AaveV3BorrowFuseUnsupportedAsset.selector, "exit", unsupportedAsset)
+        );
+        PlasmaVault(plasmaVault).execute(calls);
     }
 }
