@@ -303,7 +303,7 @@ contract AaveV3BorrowAgainstIsolatedCollateralEthereum is BorrowTest {
         vm.expectRevert(
             abi.encodeWithSelector(
                 AaveV3CollateralFuse.AaveV3CollateralFuseUnsupportedAsset.selector,
-                "enter",
+                "exit",
                 unsupportedAsset
             )
         );
