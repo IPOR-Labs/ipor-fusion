@@ -20,6 +20,7 @@ library NapierConstants {
 
     ///  Napier V2 Periphery - Arbitrum Network
     address public constant ARB_UNIVERSAL_ROUTER = 0x000000d8B6Fb27de7229923DB7649e50DC5937e8;
+    address public constant ARB_TOKI_ORACLE = 0xe9aa72336E86Abcf572356823b4db70e26539fe8;
     address public constant ARB_CHAINLINK_COMPT_ORACLE_FACTORY = 0x00000013f81B2e719d7183CFDd9f0e46CFbC8564;
     address public constant ARB_TOKI_LINEAR_PRICE_ORACLE_IMPL = 0x0615eda12810C18E5B5382661e9e118880e18B85;
     address public constant ARB_TOKI_TWAP_ORACLE_IMPL = 0x3c1f9Df2f1C58CeEF741A0BC4b916Be32465EC3c;
