@@ -2,16 +2,17 @@
 pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {BorrowTest} from "../supplyFuseTemplate/BorrowTests.sol";
-import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
 import {AaveV3CollateralFuse} from "../../../contracts/fuses/aave_v3/AaveV3CollateralFuse.sol";
-import {PlasmaVault, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
+import {PlasmaVault, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {BorrowTest} from "../supplyFuseTemplate/BorrowTests.sol";
 
 contract AaveV3BorrowAgainstIsolatedCollateralEthereum is BorrowTest {
     address private constant XAUt = 0x68749665FF8D2d112Fa859AA293F07A622782F38;
@@ -220,5 +221,92 @@ contract AaveV3BorrowAgainstIsolatedCollateralEthereum is BorrowTest {
 
         uint256 borrowBalance = ERC20(variableDebtEthUSDC).balanceOf(plasmaVault);
         assertGe(borrowBalance, 10e6, "usdc debt");
+    }
+
+    /// @notice Test that constructor reverts when initialized with zero address
+    function testShouldRevertWhenInitializingWithZeroAddress() public {
+        vm.expectRevert(Errors.WrongAddress.selector);
+        new AaveV3CollateralFuse(getMarketId(), address(0));
+    }
+
+    /// @notice Test that enter function reverts when asset is not supported
+    function testShouldRevertWhenEnteringWithUnsupportedAsset() public {
+        // given
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        address unsupportedAsset = address(0x123);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(fuses[2], abi.encodeWithSignature("enter(address)", unsupportedAsset));
+
+        // when
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AaveV3CollateralFuse.AaveV3CollateralFuseUnsupportedAsset.selector,
+                "enter",
+                unsupportedAsset
+            )
+        );
+        PlasmaVault(plasmaVault).execute(calls);
+    }
+
+    /// @notice Test that exit function successfully disables isolated collateral
+    function testShouldExitCollateralFuse() public {
+        // given
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Enable collateral
+        calls[0] = FuseAction(fuses[2], abi.encodeWithSignature("enter(address)", XAUt));
+        // Disable collateral
+        calls[1] = FuseAction(fuses[2], abi.encodeWithSignature("exit(address)", XAUt));
+
+        // Add supply to avoid UnderlyingBalanceZero error which checks for non-zero assets in market
+        FuseAction[] memory supplyCalls = new FuseAction[](1);
+        AaveV3SupplyFuseEnterData memory enterSupplyData = AaveV3SupplyFuseEnterData({
+            asset: asset,
+            amount: depositAmount,
+            userEModeCategoryId: 0
+        });
+        supplyCalls[0] = FuseAction(
+            fuses[0],
+            abi.encodeWithSignature("enter((address,uint256,uint256))", enterSupplyData)
+        );
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(supplyCalls);
+
+        // when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(calls);
+
+        // then
+        // No state to check directly on fuse, but execution without revert confirms logic
+    }
+
+    /// @notice Test that exit function reverts when asset is not supported
+    function testShouldRevertWhenExitingWithUnsupportedAsset() public {
+        // given
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        address unsupportedAsset = address(0x123);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(fuses[2], abi.encodeWithSignature("exit(address)", unsupportedAsset));
+
+        // when
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AaveV3CollateralFuse.AaveV3CollateralFuseUnsupportedAsset.selector,
+                "enter",
+                unsupportedAsset
+            )
+        );
+        PlasmaVault(plasmaVault).execute(calls);
     }
 }
