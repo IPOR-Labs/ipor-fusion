@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
+import {PlasmaVaultHelper} from "../../test_helpers/PlasmaVaultHelper.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -18,10 +18,9 @@ import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AreodromeSlipstreamCollectFuse, AreodromeSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
-import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEnterData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol";
+import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEnterData, AreodromeSlipstreamNewPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol";
 import {AreodromeSlipstreamModifyPositionFuse, AreodromeSlipstreamModifyPositionFuseEnterData, AreodromeSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol";
 import {AreodromeSlipstreamCLGaugeFuse, AreodromeSlipstreamCLGaugeFuseEnterData, AreodromeSlipstreamCLGaugeFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol";
-import {AreodromeSlipstreamCollectFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
 import {AreodromeSlipstreamBalanceFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalanceFuse.sol";
 import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
@@ -607,5 +606,274 @@ contract AreodromeSlipstreamTest is Test {
             let liquidityValue := mload(add(returnData, 256))
             liquidity := and(liquidityValue, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
         }
+    }
+
+    function testShouldReturnWhenEnteringWithZeroTokenId() public {
+        // given
+        AreodromeSlipstreamCLGaugeFuseEnterData memory stakeParams = AreodromeSlipstreamCLGaugeFuseEnterData({
+            gaugeAddress: _AREODROME_GAUGE,
+            tokenId: 0
+        });
+
+        FuseAction[] memory stakeCalls = new FuseAction[](1);
+        stakeCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCLGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", stakeParams)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(stakeCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenEnteringWithUnsupportedGauge() public {
+        // given
+        address unsupportedGauge = address(0x1234567890123456789012345678901234567890);
+        AreodromeSlipstreamCLGaugeFuseEnterData memory stakeParams = AreodromeSlipstreamCLGaugeFuseEnterData({
+            gaugeAddress: unsupportedGauge,
+            tokenId: 123
+        });
+
+        FuseAction[] memory stakeCalls = new FuseAction[](1);
+        stakeCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCLGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", stakeParams)
+        );
+
+        bytes memory errorData = abi.encodeWithSelector(
+            AreodromeSlipstreamCLGaugeFuse.AreodromeSlipstreamCLGaugeFuseUnsupportedGauge.selector,
+            unsupportedGauge
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(errorData);
+        _plasmaVault.execute(stakeCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenExitingWithUnsupportedGauge() public {
+        // given
+        address unsupportedGauge = address(0x1234567890123456789012345678901234567890);
+        AreodromeSlipstreamCLGaugeFuseExitData memory unstakeParams = AreodromeSlipstreamCLGaugeFuseExitData({
+            gaugeAddress: unsupportedGauge,
+            tokenId: 123
+        });
+
+        FuseAction[] memory unstakeCalls = new FuseAction[](1);
+        unstakeCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCLGaugeFuse),
+            abi.encodeWithSignature("exit((address,uint256))", unstakeParams)
+        );
+
+        bytes memory errorData = abi.encodeWithSelector(
+            AreodromeSlipstreamCLGaugeFuse.AreodromeSlipstreamCLGaugeFuseUnsupportedGauge.selector,
+            unsupportedGauge
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(errorData);
+        _plasmaVault.execute(unstakeCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldReturnWhenCollectingWithEmptyTokenIds() public {
+        // given
+        uint256[] memory tokenIds = new uint256[](0);
+        AreodromeSlipstreamCollectFuseEnterData memory collectParams = AreodromeSlipstreamCollectFuseEnterData({
+            tokenIds: tokenIds
+        });
+
+        FuseAction[] memory collectCalls = new FuseAction[](1);
+        collectCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCollectFuse),
+            abi.encodeWithSignature("enter((uint256[]))", collectParams)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(collectCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenDeployingModifyPositionFuseWithZeroAddress() public {
+        vm.expectRevert(AreodromeSlipstreamModifyPositionFuse.InvalidAddress.selector);
+        new AreodromeSlipstreamModifyPositionFuse(IporFusionMarkets.AREODROME_SLIPSTREAM, address(0));
+    }
+
+    function testShouldRevertWhenDeployingNewPositionFuseWithZeroAddress() public {
+        vm.expectRevert(AreodromeSlipstreamNewPositionFuse.InvalidAddress.selector);
+        new AreodromeSlipstreamNewPositionFuse(IporFusionMarkets.AREODROME_SLIPSTREAM, address(0));
+    }
+
+    function testShouldRevertWhenEnteringNewPositionWithUnsupportedPool() public {
+        // given
+        AreodromeSlipstreamNewPositionFuseEnterData memory mintParams = AreodromeSlipstreamNewPositionFuseEnterData({
+            token0: address(0x1),
+            token1: address(0x2),
+            tickSpacing: 100,
+            tickLower: 100,
+            tickUpper: 300,
+            amount0Desired: 10e18,
+            amount1Desired: 1_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100,
+            sqrtPriceX96: 0
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_areodromeSlipstreamNewPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,int24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint160))",
+                mintParams
+            )
+        );
+
+        address expectedPool = AreodromeSlipstreamSubstrateLib.getPoolAddress(
+            INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).factory(),
+            address(0x1),
+            address(0x2),
+            100
+        );
+
+        bytes memory errorData = abi.encodeWithSelector(
+            AreodromeSlipstreamNewPositionFuse.AreodromeSlipstreamNewPositionFuseUnsupportedPool.selector,
+            expectedPool
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(errorData);
+        _plasmaVault.execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldBurnPosition() public {
+        test_shouldCollectFromNFTPosition();
+
+        // given
+        uint256 tokenId = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+
+        uint128 liquidity = _getLiquidity(tokenId);
+
+        // 1. Decrease remaining liquidity to 0
+        AreodromeSlipstreamModifyPositionFuseExitData
+            memory modifyParams = AreodromeSlipstreamModifyPositionFuseExitData({
+                tokenId: tokenId,
+                liquidity: liquidity,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 100
+            });
+
+        FuseAction[] memory modifyCalls = new FuseAction[](1);
+        modifyCalls[0] = FuseAction(
+            address(_areodromeSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", modifyParams)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(modifyCalls);
+        vm.stopPrank();
+
+        // 2. Collect remaining fees (if any generated during decrease)
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        AreodromeSlipstreamCollectFuseEnterData memory collectParams = AreodromeSlipstreamCollectFuseEnterData({
+            tokenIds: tokenIds
+        });
+
+        FuseAction[] memory collectCalls = new FuseAction[](1);
+        collectCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCollectFuse),
+            abi.encodeWithSignature("enter((uint256[]))", collectParams)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(collectCalls);
+        vm.stopPrank();
+
+        // 3. Burn position
+        AreodromeSlipstreamNewPositionFuseExitData memory burnParams = AreodromeSlipstreamNewPositionFuseExitData({
+            tokenIds: tokenIds
+        });
+
+        FuseAction[] memory burnCalls = new FuseAction[](1);
+        burnCalls[0] = FuseAction(
+            address(_areodromeSlipstreamNewPositionFuse),
+            abi.encodeWithSignature("exit((uint256[]))", burnParams)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(burnCalls);
+        vm.stopPrank();
+
+        // then
+        // Check that token is burned (owner should be 0 or revert)
+        vm.expectRevert("ERC721: owner query for nonexistent token");
+        INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).ownerOf(tokenId);
+    }
+
+    function testShouldRevertWhenEnteringModifyPositionWithUnsupportedPool() public {
+        test_shouldCollectFeesFromNFTPositions(); // This sets up a position
+
+        // Grant new substrates without the pool (this revokes old ones and grants new)
+        bytes32[] memory newSubstrates = new bytes32[](1);
+        newSubstrates[0] = AreodromeSlipstreamSubstrateLib.substrateToBytes32(
+            AreodromeSlipstreamSubstrate({
+                substrateType: AreodromeSlipstreamSubstrateType.Gauge,
+                substrateAddress: _AREODROME_GAUGE
+            })
+        );
+
+        vm.startPrank(_FUSE_MANAGER);
+        _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.AREODROME_SLIPSTREAM, newSubstrates);
+        vm.stopPrank();
+
+        // Try to modify existing position (which uses the pool that's no longer granted)
+        uint256 tokenId = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+
+        AreodromeSlipstreamModifyPositionFuseEnterData
+            memory modifyParams = AreodromeSlipstreamModifyPositionFuseEnterData({
+                token0: _WETH,
+                token1: _USDC,
+                tokenId: tokenId,
+                amount0Desired: 100e18,
+                amount1Desired: 10_00e6,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 100
+            });
+
+        FuseAction[] memory modifyCalls = new FuseAction[](1);
+        modifyCalls[0] = FuseAction(
+            address(_areodromeSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                modifyParams
+            )
+        );
+
+        bytes memory errorData = abi.encodeWithSelector(
+            AreodromeSlipstreamModifyPositionFuse.AreodromeSlipstreamModifyPositionFuseUnsupportedPool.selector,
+            _AREODROME_POOL
+        );
+
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(errorData);
+        _plasmaVault.execute(modifyCalls);
+        vm.stopPrank();
     }
 }

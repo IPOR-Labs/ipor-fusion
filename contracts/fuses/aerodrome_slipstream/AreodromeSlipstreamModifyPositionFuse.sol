@@ -56,6 +56,7 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
 
     error AreodromeSlipstreamModifyPositionFuseUnsupportedPool(address pool);
     error InvalidAddress();
+    error InvalidReturnData();
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -74,7 +75,7 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
         FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
     }
 
-    function validatePool(uint256 tokenId) external view {
+    function validatePool(uint256 tokenId) internal view {
         address token0;
         address token1;
         int24 tickSpacing;
@@ -94,7 +95,7 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
         //    ... )
         // All types are padded to 32 bytes in ABI encoding.
 
-        if (returnData.length < 160) revert("Invalid return data");
+        if (returnData.length < 160) revert InvalidReturnData();
 
         assembly {
             // returnData is a pointer to bytes array in memory.
@@ -136,7 +137,7 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     }
 
     function enter(AreodromeSlipstreamModifyPositionFuseEnterData calldata data_) public {
-        // this.validatePool(data_.tokenId);
+        validatePool(data_.tokenId);
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
@@ -162,7 +163,7 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     }
 
     function exit(AreodromeSlipstreamModifyPositionFuseExitData calldata data_) public {
-        // this.validatePool(data_.tokenId);
+        validatePool(data_.tokenId);
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
