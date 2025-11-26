@@ -34,6 +34,8 @@ import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.
 import {AreodromeSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol";
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 
 /// @title AreodromeSlipstreamTest
 /// @notice Test suite for Velodrom Superchain Slipstream Collect Fuse
@@ -76,6 +78,7 @@ contract AreodromeSlipstreamTest is Test {
     AreodromeSlipstreamCollectFuse private _areodromeSlipstreamCollectFuse;
     AreodromeSlipstreamBalanceFuse private _areodromeSlipstreamBalance;
     AreodromeSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
+    TransientStorageSetInputsFuse private _transientStorageSetInputsFuse;
 
     function setUp() public {
         // Fork Base network
@@ -146,13 +149,15 @@ contract AreodromeSlipstreamTest is Test {
         );
 
         _velodromeGaugeClaimFuse = new AreodromeSlipstreamGaugeClaimFuse(IporFusionMarkets.AREODROME_SLIPSTREAM);
+        _transientStorageSetInputsFuse = new TransientStorageSetInputsFuse();
 
         // Setup fuses
-        address[] memory fuses = new address[](4);
+        address[] memory fuses = new address[](5);
         fuses[0] = address(_areodromeSlipstreamNewPositionFuse);
         fuses[1] = address(_areodromeSlipstreamModifyPositionFuse);
         fuses[2] = address(_areodromeSlipstreamCLGaugeFuse);
         fuses[3] = address(_areodromeSlipstreamCollectFuse);
+        fuses[4] = address(_transientStorageSetInputsFuse);
 
         address[] memory rewardFuses = new address[](1);
         rewardFuses[0] = address(_velodromeGaugeClaimFuse);
@@ -708,6 +713,13 @@ contract AreodromeSlipstreamTest is Test {
         new AreodromeSlipstreamNewPositionFuse(IporFusionMarkets.AREODROME_SLIPSTREAM, address(0));
     }
 
+    /// @notice Tests that deploying CollectFuse with zero address reverts
+    /// @dev Verifies InvalidAddress error is thrown when nonfungiblePositionManager is zero address
+    function testShouldRevertWhenDeployingCollectFuseWithZeroAddress() public {
+        vm.expectRevert(AreodromeSlipstreamCollectFuse.InvalidAddress.selector);
+        new AreodromeSlipstreamCollectFuse(IporFusionMarkets.AREODROME_SLIPSTREAM, address(0));
+    }
+
     function testShouldRevertWhenEnteringNewPositionWithUnsupportedPool() public {
         // given
         AreodromeSlipstreamNewPositionFuseEnterData memory mintParams = AreodromeSlipstreamNewPositionFuseEnterData({
@@ -875,5 +887,530 @@ contract AreodromeSlipstreamTest is Test {
         vm.expectRevert(errorData);
         _plasmaVault.execute(modifyCalls);
         vm.stopPrank();
+    }
+
+    /// @notice Tests entering gauge using transient storage
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and stakes NFT to gauge
+    function testShouldEnterGaugeUsingTransientStorage() public {
+        test_shouldCollectFromNFTPosition();
+
+        // given
+        uint256 tokenId = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs
+        bytes32[] memory inputs = new bytes32[](2);
+        inputs[0] = TypeConversionLib.toBytes32(_AREODROME_GAUGE);
+        inputs[1] = TypeConversionLib.toBytes32(tokenId);
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_areodromeSlipstreamCLGaugeFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+
+        // 2. Enter Transient
+        calls[1] = FuseAction(address(_areodromeSlipstreamCLGaugeFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256[] memory stakedValues = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
+        assertEq(stakedValues[0], tokenId, "stakedValues[0] should be equal to tokenId");
+    }
+
+    /// @notice Tests exiting gauge using transient storage
+    /// @dev Verifies that exitTransient() correctly reads inputs from transient storage and unstakes NFT from gauge
+    function testShouldExitGaugeUsingTransientStorage() public {
+        test_shouldStakeToGauge();
+
+        // given
+        uint256[] memory stakedValuesBefore = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
+        uint256 tokenId = stakedValuesBefore[0];
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs
+        bytes32[] memory inputs = new bytes32[](2);
+        inputs[0] = TypeConversionLib.toBytes32(_AREODROME_GAUGE);
+        inputs[1] = TypeConversionLib.toBytes32(tokenId);
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_areodromeSlipstreamCLGaugeFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+
+        // 2. Exit Transient
+        calls[1] = FuseAction(address(_areodromeSlipstreamCLGaugeFuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256[] memory stakedValuesAfter = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
+        assertEq(
+            stakedValuesBefore.length - 1,
+            stakedValuesAfter.length,
+            "stakedValuesAfter should have one less element"
+        );
+    }
+
+    /// @notice Tests collecting fees using transient storage
+    /// @dev Verifies that enterTransient() correctly reads tokenIds from transient storage and collects fees
+    function testShouldCollectFeesUsingTransientStorage() public {
+        test_shouldDecreasePosition();
+
+        // given
+        uint256 tokenId = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs
+        bytes32[] memory inputs = new bytes32[](2);
+        inputs[0] = TypeConversionLib.toBytes32(uint256(1)); // length
+        inputs[1] = TypeConversionLib.toBytes32(tokenId);
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_areodromeSlipstreamCollectFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+
+        // 2. Enter Transient
+        calls[1] = FuseAction(address(_areodromeSlipstreamCollectFuse), abi.encodeWithSignature("enterTransient()"));
+
+        uint256 wethBalanceBefore = IERC20(_WETH).balanceOf(address(_plasmaVault));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 wethBalanceAfter = IERC20(_WETH).balanceOf(address(_plasmaVault));
+        assertGe(
+            wethBalanceAfter,
+            wethBalanceBefore,
+            "wethBalanceAfter should be greater than or equal to wethBalanceBefore"
+        );
+    }
+
+    /// @notice Tests collecting fees with empty tokenIds array using transient storage
+    /// @dev Verifies that enterTransient() handles empty array case correctly
+    function testShouldReturnWhenCollectingWithEmptyTokenIdsUsingTransientStorage() public {
+        // given
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs (empty array - length = 0)
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(uint256(0)); // length = 0
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_areodromeSlipstreamCollectFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+
+        // 2. Enter Transient
+        calls[1] = FuseAction(address(_areodromeSlipstreamCollectFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then - should not revert (empty array case)
+    }
+
+    /// @notice Tests increasing position liquidity using transient storage
+    /// @dev Verifies that enterTransient() correctly reads all parameters from transient storage and increases liquidity
+    function testShouldIncreasePositionUsingTransientStorage() public {
+        test_shouldCollectFeesFromNFTPositions();
+
+        // given
+        uint256 tokenId = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs
+        bytes32[] memory inputs = new bytes32[](8);
+        inputs[0] = TypeConversionLib.toBytes32(_WETH);
+        inputs[1] = TypeConversionLib.toBytes32(_USDC);
+        inputs[2] = TypeConversionLib.toBytes32(tokenId);
+        inputs[3] = TypeConversionLib.toBytes32(uint256(100e18));
+        inputs[4] = TypeConversionLib.toBytes32(uint256(10_00e6));
+        inputs[5] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[6] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[7] = TypeConversionLib.toBytes32(uint256(block.timestamp + 100));
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_areodromeSlipstreamModifyPositionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+
+        // 2. Enter Transient
+        calls[1] = FuseAction(
+            address(_areodromeSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature("enterTransient()")
+        );
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        assertGt(
+            marketBalanceAfter,
+            marketBalanceBefore,
+            "marketBalanceAfter should be greater than marketBalanceBefore"
+        );
+    }
+
+    /// @notice Tests decreasing position liquidity using transient storage
+    /// @dev Verifies that exitTransient() correctly reads all parameters from transient storage and decreases liquidity
+    function testShouldDecreasePositionUsingTransientStorage() public {
+        test_shouldCreateSecondPosition();
+
+        // given
+        uint256 tokenId = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+
+        uint128 liquidityBefore = _getLiquidity(tokenId);
+        uint256 wethBalanceBefore = IERC20(_WETH).balanceOf(address(_plasmaVault));
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs
+        bytes32[] memory inputs = new bytes32[](5);
+        inputs[0] = TypeConversionLib.toBytes32(tokenId);
+        inputs[1] = TypeConversionLib.toBytes32(uint256(liquidityBefore / 4));
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[4] = TypeConversionLib.toBytes32(uint256(block.timestamp + 100));
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_areodromeSlipstreamModifyPositionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+
+        // 2. Exit Transient
+        calls[1] = FuseAction(
+            address(_areodromeSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature("exitTransient()")
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint128 liquidityAfter = _getLiquidity(tokenId);
+        uint256 wethBalanceAfter = IERC20(_WETH).balanceOf(address(_plasmaVault));
+
+        assertLt(liquidityAfter, liquidityBefore, "liquidityAfter should be less than liquidityBefore");
+        assertGe(
+            wethBalanceAfter,
+            wethBalanceBefore,
+            "wethBalanceAfter should be greater than or equal to wethBalanceBefore"
+        );
+    }
+
+    /// @notice Tests creating new NFT position using transient storage
+    /// @dev Verifies that enterTransient() correctly reads all parameters from transient storage and mints new position
+    function testShouldCreateNewPositionUsingTransientStorage() public {
+        // given
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs
+        bytes32[] memory inputs = new bytes32[](11);
+        inputs[0] = TypeConversionLib.toBytes32(_WETH);
+        inputs[1] = TypeConversionLib.toBytes32(_USDC);
+        inputs[2] = TypeConversionLib.toBytes32(uint256(int256(int24(100))));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(int256(int24(100))));
+        inputs[4] = TypeConversionLib.toBytes32(uint256(int256(int24(300))));
+        inputs[5] = TypeConversionLib.toBytes32(uint256(10e18));
+        inputs[6] = TypeConversionLib.toBytes32(uint256(1_000e6));
+        inputs[7] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[8] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[9] = TypeConversionLib.toBytes32(uint256(block.timestamp + 100));
+        inputs[10] = TypeConversionLib.toBytes32(uint256(0));
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_areodromeSlipstreamNewPositionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+
+        // 2. Enter Transient
+        calls[1] = FuseAction(
+            address(_areodromeSlipstreamNewPositionFuse),
+            abi.encodeWithSignature("enterTransient()")
+        );
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        assertGt(
+            marketBalanceAfter,
+            marketBalanceBefore,
+            "marketBalanceAfter should be greater than marketBalanceBefore"
+        );
+
+        uint256 nft = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+        assertTrue(nft > 0, "nft should be greater than 0");
+    }
+
+    /// @notice Tests burning NFT position using transient storage
+    /// @dev Verifies that exitTransient() correctly reads tokenIds from transient storage and burns positions
+    function testShouldBurnPositionUsingTransientStorage() public {
+        test_shouldCollectFromNFTPosition();
+
+        // given
+        uint256 tokenId = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+
+        uint128 liquidity = _getLiquidity(tokenId);
+
+        // 1. Decrease remaining liquidity to 0
+        AreodromeSlipstreamModifyPositionFuseExitData
+            memory modifyParams = AreodromeSlipstreamModifyPositionFuseExitData({
+                tokenId: tokenId,
+                liquidity: liquidity,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 100
+            });
+
+        FuseAction[] memory modifyCalls = new FuseAction[](1);
+        modifyCalls[0] = FuseAction(
+            address(_areodromeSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", modifyParams)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(modifyCalls);
+        vm.stopPrank();
+
+        // 2. Collect remaining fees (if any generated during decrease)
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        AreodromeSlipstreamCollectFuseEnterData memory collectParams = AreodromeSlipstreamCollectFuseEnterData({
+            tokenIds: tokenIds
+        });
+
+        FuseAction[] memory collectCalls = new FuseAction[](1);
+        collectCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCollectFuse),
+            abi.encodeWithSignature("enter((uint256[]))", collectParams)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(collectCalls);
+        vm.stopPrank();
+
+        // 3. Burn position using transient storage
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs
+        bytes32[] memory inputs = new bytes32[](2);
+        inputs[0] = TypeConversionLib.toBytes32(uint256(1)); // length
+        inputs[1] = TypeConversionLib.toBytes32(tokenId);
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_areodromeSlipstreamNewPositionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+
+        // 2. Exit Transient
+        calls[1] = FuseAction(address(_areodromeSlipstreamNewPositionFuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        // Check that token is burned (owner should be 0 or revert)
+        vm.expectRevert("ERC721: owner query for nonexistent token");
+        INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).ownerOf(tokenId);
+    }
+
+    /// @notice Tests burning positions with empty tokenIds array using transient storage
+    /// @dev Verifies that exitTransient() handles empty array case correctly
+    function testShouldReturnWhenBurningWithEmptyTokenIdsUsingTransientStorage() public {
+        // given
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs (empty array - length = 0)
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(uint256(0)); // length = 0
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_areodromeSlipstreamNewPositionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+
+        // 2. Exit Transient
+        calls[1] = FuseAction(address(_areodromeSlipstreamNewPositionFuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then - should not revert (empty array case)
+    }
+
+    /// @notice Tests burning positions with empty tokenIds array
+    /// @dev Verifies that exit() handles empty array case correctly
+    function testShouldReturnWhenBurningWithEmptyTokenIds() public {
+        // given
+        AreodromeSlipstreamNewPositionFuseExitData memory burnParams = AreodromeSlipstreamNewPositionFuseExitData({
+            tokenIds: new uint256[](0)
+        });
+
+        FuseAction[] memory burnCalls = new FuseAction[](1);
+        burnCalls[0] = FuseAction(
+            address(_areodromeSlipstreamNewPositionFuse),
+            abi.encodeWithSignature("exit((uint256[]))", burnParams)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(burnCalls);
+        vm.stopPrank();
+
+        // then - should not revert (empty array case)
     }
 }
