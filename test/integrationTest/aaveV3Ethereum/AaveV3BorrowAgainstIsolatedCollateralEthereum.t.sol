@@ -7,8 +7,10 @@ import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData} from "../../../contracts/fu
 import {AaveV3CollateralFuse} from "../../../contracts/fuses/aave_v3/AaveV3CollateralFuse.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
 import {PlasmaVault, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -81,10 +83,12 @@ contract AaveV3BorrowAgainstIsolatedCollateralEthereum is BorrowTest {
             getMarketId(),
             ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
-        fuses = new address[](3);
+        TransientStorageSetInputsFuse fuseSetInputsLoc = new TransientStorageSetInputsFuse();
+        fuses = new address[](4);
         fuses[0] = address(fuseSupplyLoc);
         fuses[1] = address(fuseBorrowLoc);
         fuses[2] = address(fuseCollateral);
+        fuses[3] = address(fuseSetInputsLoc);
     }
 
     function setupBalanceFuses() public override returns (MarketBalanceFuseConfig[] memory balanceFuses) {
@@ -297,6 +301,190 @@ contract AaveV3BorrowAgainstIsolatedCollateralEthereum is BorrowTest {
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(fuses[2], abi.encodeWithSignature("exit(address)", unsupportedAsset));
+
+        // when
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AaveV3CollateralFuse.AaveV3CollateralFuseUnsupportedAsset.selector,
+                "exit",
+                unsupportedAsset
+            )
+        );
+        PlasmaVault(plasmaVault).execute(calls);
+    }
+
+    /// @notice Test that enterTransient function successfully enables collateral using transient storage
+    function testShouldEnterCollateralUsingTransientStorage() public {
+        // solhint-disable-line function-max-lines
+        //given
+        initPlasmaVaultCustom(setupMarketConfigsWithErc20Balance(), setupBalanceFusesWithErc20Balance());
+        initApprove();
+
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        // First supply assets to Aave
+        FuseAction[] memory supplyCalls = new FuseAction[](1);
+        AaveV3SupplyFuseEnterData memory enterSupplyData = AaveV3SupplyFuseEnterData({
+            asset: asset,
+            amount: depositAmount,
+            userEModeCategoryId: 0
+        });
+        supplyCalls[0] = FuseAction(
+            fuses[0],
+            abi.encodeWithSignature("enter((address,uint256,uint256))", enterSupplyData)
+        );
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(supplyCalls);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // 1. Prepare Transient Inputs
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(XAUt);
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = fuses[2]; // AaveV3CollateralFuse
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls[0] = FuseAction(fuses[3], abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData));
+
+        // 2. Enter Transient
+        calls[1] = FuseAction(fuses[2], abi.encodeWithSignature("enterTransient()"));
+
+        //when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(calls);
+
+        //then
+        // Execution without revert confirms that collateral was enabled successfully
+    }
+
+    /// @notice Test that exitTransient function successfully disables collateral using transient storage
+    function testShouldExitCollateralUsingTransientStorage() public {
+        // solhint-disable-line function-max-lines
+        //given
+        initPlasmaVaultCustom(setupMarketConfigsWithErc20Balance(), setupBalanceFusesWithErc20Balance());
+        initApprove();
+
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        // Setup: Enable collateral first
+        FuseAction[] memory enableCalls = new FuseAction[](1);
+        enableCalls[0] = FuseAction(fuses[2], abi.encodeWithSignature("enter(address)", XAUt));
+
+        // Add supply to avoid UnderlyingBalanceZero error
+        FuseAction[] memory supplyCalls = new FuseAction[](1);
+        AaveV3SupplyFuseEnterData memory enterSupplyData = AaveV3SupplyFuseEnterData({
+            asset: asset,
+            amount: depositAmount,
+            userEModeCategoryId: 0
+        });
+        supplyCalls[0] = FuseAction(
+            fuses[0],
+            abi.encodeWithSignature("enter((address,uint256,uint256))", enterSupplyData)
+        );
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(supplyCalls);
+
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(enableCalls);
+
+        // Prepare Exit Transient
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(XAUt);
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = fuses[2]; // AaveV3CollateralFuse
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        exitCalls[0] = FuseAction(fuses[3], abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData));
+
+        exitCalls[1] = FuseAction(fuses[2], abi.encodeWithSignature("exitTransient()"));
+
+        //when
+        vm.prank(alpha);
+        PlasmaVault(plasmaVault).execute(exitCalls);
+
+        //then
+        // Execution without revert confirms that collateral was disabled successfully
+    }
+
+    /// @notice Test that enterTransient function reverts when asset is not supported
+    function testShouldRevertWhenEnteringTransientWithUnsupportedAsset() public {
+        // given
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        address unsupportedAsset = address(0x123);
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(unsupportedAsset);
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = fuses[2];
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(fuses[3], abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData));
+        calls[1] = FuseAction(fuses[2], abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AaveV3CollateralFuse.AaveV3CollateralFuseUnsupportedAsset.selector,
+                "enter",
+                unsupportedAsset
+            )
+        );
+        PlasmaVault(plasmaVault).execute(calls);
+    }
+
+    /// @notice Test that exitTransient function reverts when asset is not supported
+    function testShouldRevertWhenExitingTransientWithUnsupportedAsset() public {
+        // given
+        vm.prank(accounts[1]);
+        PlasmaVault(plasmaVault).deposit(depositAmount, accounts[1]);
+
+        address unsupportedAsset = address(0x123);
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(unsupportedAsset);
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = fuses[2];
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(fuses[3], abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData));
+        calls[1] = FuseAction(fuses[2], abi.encodeWithSignature("exitTransient()"));
 
         // when
         vm.prank(alpha);

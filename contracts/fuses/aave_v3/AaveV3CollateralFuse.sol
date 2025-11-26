@@ -64,7 +64,7 @@ contract AaveV3CollateralFuse is IFuseCommon {
     /// @notice Enters the Aave V3 Collateral Fuse using transient storage for inputs
     /// @dev Reads asset from transient storage
     /// @dev Writes returned asset to transient storage outputs
-    function enter() external {
+    function enterTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32);
 
@@ -92,7 +92,7 @@ contract AaveV3CollateralFuse is IFuseCommon {
     /// @notice Exits the Aave V3 Collateral Fuse using transient storage for inputs
     /// @dev Reads asset from transient storage
     /// @dev Writes returned asset to transient storage outputs
-    function exit() external {
+    function exitTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32);
 
