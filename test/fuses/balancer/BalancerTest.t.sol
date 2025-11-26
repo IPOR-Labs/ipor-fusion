@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
-import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
-import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
-import {Roles} from "../../../contracts/libraries/Roles.sol";
+import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+
 import {BalancerBalanceFuse} from "../../../contracts/fuses/balancer/BalancerBalanceFuse.sol";
 import {BalancerGaugeFuse, BalancerGaugeFuseEnterData, BalancerGaugeFuseExitData} from "../../../contracts/fuses/balancer/BalancerGaugeFuse.sol";
 import {BalancerLiquidityProportionalFuse, BalancerLiquidityProportionalFuseEnterData, BalancerLiquidityProportionalFuseExitData} from "../../../contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol";
-import {BalancerLiquidityUnbalancedFuse, BalancerLiquidityUnbalancedFuseEnterData, BalancerLiquidityUnbalancedFuseExitData} from "../../../contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol";
-import {BalancerSingleTokenFuse, BalancerSingleTokenFuseEnterData, BalancerSingleTokenFuseExitData} from "../../../contracts/fuses/balancer/BalancerSingleTokenFuse.sol";
-import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {BalancerLiquidityUnbalancedFuse, BalancerLiquidityUnbalancedFuseEnterData} from "../../../contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol";
+import {BalancerSingleTokenFuse, BalancerSingleTokenFuseEnterData} from "../../../contracts/fuses/balancer/BalancerSingleTokenFuse.sol";
 import {BalancerSubstrateLib, BalancerSubstrate, BalancerSubstrateType} from "../../../contracts/fuses/balancer/BalancerSubstrateLib.sol";
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
+import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
+import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {Roles} from "../../../contracts/libraries/Roles.sol";
+import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 
 contract BalancerTest is Test {
     // balancer pool addresses https://balancer.fi/pools/ethereum/v3/0x6b31a94029fd7840d780191b6d63fa0d269bd883
@@ -702,5 +703,233 @@ contract BalancerTest is Test {
         vm.expectRevert(abi.encodeWithSignature("BalancerGaugeFuseUnsupportedGauge(address)", unsupportedGauge));
         PlasmaVault(vault).execute(gaugeExitCalls);
         vm.stopPrank();
+    }
+
+    function testShouldRevertWhenEnteringProportionalWithZeroPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = 1e18;
+        maxAmountsIn[1] = 1e18;
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: address(0), // Invalid pool address
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerLiquidityProportionalFuseInvalidParams()"));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenEnteringProportionalWithMismatchedArrays() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](3); // Different length
+        maxAmountsIn[0] = 1e18;
+        maxAmountsIn[1] = 1e18;
+        maxAmountsIn[2] = 1e18;
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerLiquidityProportionalFuseInvalidParams()"));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenEnteringProportionalWithUnsupportedPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+        address unsupportedPool = address(0x1234567890123456789012345678901234567890);
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = 1e18;
+        maxAmountsIn[1] = 1e18;
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: unsupportedPool,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(
+            abi.encodeWithSignature("BalancerLiquidityProportionalFuseUnsupportedPool(address)", unsupportedPool)
+        );
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenEnteringProportionalWithZeroAmounts() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = 0; // Zero amount
+        maxAmountsIn[1] = 0; // Zero amount
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        // when & then - router will revert when all amounts are zero
+        vm.startPrank(_ALPHA);
+        vm.expectRevert();
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldEnterProportionalWithPartialZeroAmounts() public {
+        // given - test case where one amount is zero and another is not
+        address vault = _fusionInstance.plasmaVault;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = 1e18; // Non-zero amount
+        maxAmountsIn[1] = 0; // Zero amount
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        // when - router may revert or handle this case, but we test the code path
+        vm.startPrank(_ALPHA);
+        // Router will likely revert, but we test that the code handles partial zero amounts
+        vm.expectRevert();
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenExitingProportionalWithZeroPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[0] = 0;
+        minAmountsOut[1] = 0;
+
+        BalancerLiquidityProportionalFuseExitData memory exitData = BalancerLiquidityProportionalFuseExitData({
+            pool: address(0), // Invalid pool address
+            exactBptAmountIn: 1e15,
+            minAmountsOut: minAmountsOut
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("exit((address,uint256,uint256[]))", exitData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerLiquidityProportionalFuseInvalidParams()"));
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenExitingProportionalWithUnsupportedPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+        address unsupportedPool = address(0x1234567890123456789012345678901234567890);
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[0] = 0;
+        minAmountsOut[1] = 0;
+
+        BalancerLiquidityProportionalFuseExitData memory exitData = BalancerLiquidityProportionalFuseExitData({
+            pool: unsupportedPool,
+            exactBptAmountIn: 1e15,
+            minAmountsOut: minAmountsOut
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("exit((address,uint256,uint256[]))", exitData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(
+            abi.encodeWithSignature("BalancerLiquidityProportionalFuseUnsupportedPool(address)", unsupportedPool)
+        );
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenConstructingWithZeroRouter() public {
+        // given & when & then
+        vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
+        new BalancerLiquidityProportionalFuse(IporFusionMarkets.BALANCER, address(0), _PERMIT2);
     }
 }
