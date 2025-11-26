@@ -1699,6 +1699,426 @@ contract BalancerTest is Test {
         assertLt(bptBalanceAfterExit, bptBalanceBeforeExit, "BPT balance should decrease after exit");
     }
 
+    /// @notice Test that enterTransient function successfully adds unbalanced liquidity using transient storage
+    function testShouldEnterUnbalancedUsingTransientStorage() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        // Prepare transient storage inputs
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        {
+            bytes32[] memory inputs = new bytes32[](6);
+            inputs[0] = TypeConversionLib.toBytes32(_BALANCER_POOL);
+            inputs[1] = TypeConversionLib.toBytes32(_FW_ETH);
+            inputs[2] = TypeConversionLib.toBytes32(_FWST_ETH);
+            inputs[3] = TypeConversionLib.toBytes32(uint256(1e18));
+            inputs[4] = TypeConversionLib.toBytes32(uint256(1e18));
+            inputs[5] = TypeConversionLib.toBytes32(uint256(0));
+            inputsByFuse[0] = inputs;
+        }
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerLiquidityUnbalancedFuse);
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+        enterCalls[1] = FuseAction({
+            fuse: address(_balancerLiquidityUnbalancedFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        uint256 bptBalanceBefore = IERC20(_BALANCER_POOL).balanceOf(vault);
+        uint256 fwEthBalanceBefore = IERC20(_FW_ETH).balanceOf(vault);
+        uint256 fwstEthBalanceBefore = IERC20(_FWST_ETH).balanceOf(vault);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+
+        // then
+        assertGt(IERC20(_BALANCER_POOL).balanceOf(vault), bptBalanceBefore, "BPT balance should increase");
+        assertLt(IERC20(_FW_ETH).balanceOf(vault), fwEthBalanceBefore, "FW_ETH balance should decrease");
+        assertLt(IERC20(_FWST_ETH).balanceOf(vault), fwstEthBalanceBefore, "FWST_ETH balance should decrease");
+    }
+
+    /// @notice Test that exitTransient function reverts when pool is zero address
+    function testShouldRevertWhenExitingUnbalancedTransientWithZeroPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        // Prepare transient storage inputs for exit
+        // Layout: pool (1), maxBptAmountIn (1), minAmountsOut (2) -> Total 4
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(address(0)); // Invalid pool address
+        inputs[1] = TypeConversionLib.toBytes32(uint256(1e15));
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerLiquidityUnbalancedFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        exitCalls[1] = FuseAction({
+            fuse: address(_balancerLiquidityUnbalancedFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerLiquidityUnbalancedFuseInvalidParams()"));
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that exitTransient function reverts when pool is unsupported
+    function testShouldRevertWhenExitingUnbalancedTransientWithUnsupportedPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+        address unsupportedPool = address(0x1234567890123456789012345678901234567890);
+
+        // Prepare transient storage inputs for exit
+        // Layout: pool (1), maxBptAmountIn (1), minAmountsOut (2) -> Total 4
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(unsupportedPool);
+        inputs[1] = TypeConversionLib.toBytes32(uint256(1e15));
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerLiquidityUnbalancedFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        exitCalls[1] = FuseAction({
+            fuse: address(_balancerLiquidityUnbalancedFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(
+            abi.encodeWithSignature("BalancerLiquidityUnbalancedFuseUnsupportedPool(address)", unsupportedPool)
+        );
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that enterTransient function successfully adds single token liquidity using transient storage
+    function testShouldEnterSingleTokenUsingTransientStorage() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        // Prepare transient storage inputs
+        // Layout: pool (1), tokenIn (1), maxAmountIn (1), exactBptAmountOut (1) -> Total 4
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        {
+            bytes32[] memory inputs = new bytes32[](4);
+            inputs[0] = TypeConversionLib.toBytes32(_BALANCER_POOL);
+            inputs[1] = TypeConversionLib.toBytes32(_FW_ETH);
+            inputs[2] = TypeConversionLib.toBytes32(uint256(1e18));
+            inputs[3] = TypeConversionLib.toBytes32(uint256(1e15));
+            inputsByFuse[0] = inputs;
+        }
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerSingleTokenFuse);
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+        enterCalls[1] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        uint256 bptBalanceBefore = IERC20(_BALANCER_POOL).balanceOf(vault);
+        uint256 fwEthBalanceBefore = IERC20(_FW_ETH).balanceOf(vault);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+
+        // then
+        assertGt(IERC20(_BALANCER_POOL).balanceOf(vault), bptBalanceBefore, "BPT balance should increase");
+        assertLt(IERC20(_FW_ETH).balanceOf(vault), fwEthBalanceBefore, "FW_ETH balance should decrease");
+    }
+
+    /// @notice Test that enterTransient function reverts when pool is zero address
+    function testShouldRevertWhenEnteringSingleTokenTransientWithZeroPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(address(0)); // Invalid pool address
+        inputs[1] = TypeConversionLib.toBytes32(_FW_ETH);
+        inputs[2] = TypeConversionLib.toBytes32(uint256(1e18));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(1e15));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerSingleTokenFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        enterCalls[1] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseInvalidParams()"));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that enterTransient function reverts when tokenIn is zero address
+    function testShouldRevertWhenEnteringSingleTokenTransientWithZeroTokenIn() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(_BALANCER_POOL);
+        inputs[1] = TypeConversionLib.toBytes32(address(0)); // Invalid token address
+        inputs[2] = TypeConversionLib.toBytes32(uint256(1e18));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(1e15));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerSingleTokenFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        enterCalls[1] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseInvalidParams()"));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that enterTransient function reverts when pool is unsupported
+    function testShouldRevertWhenEnteringSingleTokenTransientWithUnsupportedPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+        address unsupportedPool = address(0x1234567890123456789012345678901234567890);
+
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(unsupportedPool);
+        inputs[1] = TypeConversionLib.toBytes32(_FW_ETH);
+        inputs[2] = TypeConversionLib.toBytes32(uint256(1e18));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(1e15));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerSingleTokenFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        enterCalls[1] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseUnsupportedPool(address)", unsupportedPool));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that exitTransient function reverts when pool is zero address
+    function testShouldRevertWhenExitingSingleTokenTransientWithZeroPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        // Prepare transient storage inputs for exit
+        // Layout: pool (1), tokenOut (1), maxBptAmountIn (1), exactAmountOut (1) -> Total 4
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(address(0)); // Invalid pool address
+        inputs[1] = TypeConversionLib.toBytes32(_FW_ETH);
+        inputs[2] = TypeConversionLib.toBytes32(uint256(1e15));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(1e10));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerSingleTokenFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        exitCalls[1] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseInvalidParams()"));
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that exitTransient function reverts when tokenOut is zero address
+    function testShouldRevertWhenExitingSingleTokenTransientWithZeroTokenOut() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        // Prepare transient storage inputs for exit
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(_BALANCER_POOL);
+        inputs[1] = TypeConversionLib.toBytes32(address(0)); // Invalid token address
+        inputs[2] = TypeConversionLib.toBytes32(uint256(1e15));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(1e10));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerSingleTokenFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        exitCalls[1] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseInvalidParams()"));
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that exitTransient function reverts when pool is unsupported
+    function testShouldRevertWhenExitingSingleTokenTransientWithUnsupportedPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+        address unsupportedPool = address(0x1234567890123456789012345678901234567890);
+
+        // Prepare transient storage inputs for exit
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(unsupportedPool);
+        inputs[1] = TypeConversionLib.toBytes32(_FW_ETH);
+        inputs[2] = TypeConversionLib.toBytes32(uint256(1e15));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(1e10));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerSingleTokenFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        exitCalls[1] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseUnsupportedPool(address)", unsupportedPool));
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
     function _asArray(address addr) private pure returns (address[] memory) {
         address[] memory arr = new address[](1);
         arr[0] = addr;
