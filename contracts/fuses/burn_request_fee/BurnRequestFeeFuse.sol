@@ -4,6 +4,8 @@ pragma solidity 0.8.30;
 import {IFuseCommon} from "../IFuse.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 /**
  * @title BurnRequestFeeFuse - Fuse for Burning Request Fee Shares
@@ -102,7 +104,7 @@ contract BurnRequestFeeFuse is IFuseCommon, ERC20Upgradeable {
     /// - Uses safe burning mechanism
     ///
     /// @param data_ Struct containing the amount of shares to burn
-    function enter(BurnRequestFeeDataEnter memory data_) external {
+    function enter(BurnRequestFeeDataEnter memory data_) public {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
         if (withdrawManager == address(0)) {
@@ -118,9 +120,25 @@ contract BurnRequestFeeFuse is IFuseCommon, ERC20Upgradeable {
         emit BurnRequestFeeEnter(VERSION, data_.amount);
     }
 
+    /// @notice Burns request fee shares using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls enter(), and writes outputs to transient storage
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        BurnRequestFeeDataEnter memory data = BurnRequestFeeDataEnter({amount: TypeConversionLib.toUint256(inputs[0])});
+
+        enter(data);
+    }
+
     /// @notice Exit function (not implemented)
     /// @dev Always reverts as this fuse only supports burning
     function exit() external pure {
+        revert BurnRequestFeeExitNotImplemented();
+    }
+
+    /// @notice Exit function using transient storage (not implemented)
+    /// @dev Always reverts as this fuse only supports burning
+    function exitTransient() external pure {
         revert BurnRequestFeeExitNotImplemented();
     }
 }

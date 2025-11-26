@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager, WithdrawRequestInfo} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
@@ -13,9 +14,12 @@ import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {BurnRequestFeeFuse} from "../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
+import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {UpdateWithdrawManagerMaintenanceFuse, UpdateWithdrawManagerMaintenanceFuseEnterData} from "../../contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol";
 import {UniversalReader, ReadResult} from "../../contracts/universal_reader/UniversalReader.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {TypeConversionLib} from "../../contracts/libraries/TypeConversionLib.sol";
 
 contract PlasmaVaultScheduledWithdraw is Test {
     address private constant _ATOMIST = address(1111111);
@@ -30,6 +34,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
     address private _withdrawManager;
     BurnRequestFeeFuse private _burnRequestFeeFuse;
     UpdateWithdrawManagerMaintenanceFuse private _updateWithdrawManagerMaintenanceFuse;
+    TransientStorageSetInputsFuse private _transientStorageSetInputsFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 256415332);
@@ -86,18 +91,25 @@ contract PlasmaVaultScheduledWithdraw is Test {
         _updateWithdrawManagerMaintenanceFuse = new UpdateWithdrawManagerMaintenanceFuse(
             IporFusionMarkets.ZERO_BALANCE_MARKET
         );
+        _transientStorageSetInputsFuse = new TransientStorageSetInputsFuse();
 
-        fuses = new address[](2);
+        fuses = new address[](3);
         fuses[0] = address(_burnRequestFeeFuse);
         fuses[1] = address(_updateWithdrawManagerMaintenanceFuse);
+        fuses[2] = address(_transientStorageSetInputsFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
         ZeroBalanceFuse zeroBalanceFuse = new ZeroBalanceFuse(IporFusionMarkets.ZERO_BALANCE_MARKET);
-        balanceFuses = new MarketBalanceFuseConfig[](1);
+        ERC20BalanceFuse erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
+        balanceFuses = new MarketBalanceFuseConfig[](2);
         balanceFuses[0] = MarketBalanceFuseConfig({
             marketId: IporFusionMarkets.ZERO_BALANCE_MARKET,
             fuse: address(zeroBalanceFuse)
+        });
+        balanceFuses[1] = MarketBalanceFuseConfig({
+            marketId: IporFusionMarkets.ERC20_VAULT_BALANCE,
+            fuse: address(erc20BalanceFuse)
         });
     }
 
@@ -353,6 +365,163 @@ contract PlasmaVaultScheduledWithdraw is Test {
         assertEq(balanceAfter, 0);
         assertEq(balanceWithdrawManagerBefore, 1000000000);
         assertEq(balanceWithdrawManagerAfter, 0);
+    }
+
+    /// @notice Test that enter function returns early when amount is zero
+    function testShouldReturnWhenBurnRequestFeeWithZeroAmount() external {
+        // given
+        uint256 balanceWithdrawManagerBefore = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(address(_burnRequestFeeFuse), abi.encodeWithSignature("enter((uint256))", uint256(0)));
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+
+        // then
+        uint256 balanceWithdrawManagerAfter = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
+        assertEq(
+            balanceWithdrawManagerBefore,
+            balanceWithdrawManagerAfter,
+            "Balance should not change with zero amount"
+        );
+    }
+
+    /// @notice Test that exit function reverts with BurnRequestFeeExitNotImplemented error
+    function testShouldRevertWhenBurnRequestFeeExit() external {
+        // given
+        bytes memory error = abi.encodeWithSignature("BurnRequestFeeExitNotImplemented()");
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(address(_burnRequestFeeFuse), abi.encodeWithSignature("exit()"));
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that enterTransient function successfully burns request fee shares using transient storage
+    function testShouldBeAbleToBurnRequestFeeUsingTransientStorage() external {
+        // given
+        uint256 withdrawAmount = 1_000e8;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateRequestFee(0.01e18);
+        WithdrawManager(_withdrawManager).updatePlasmaVaultAddress(_plasmaVault);
+        vm.stopPrank();
+
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 hours);
+
+        vm.prank(_ALPHA);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, withdrawAmount);
+
+        vm.warp(block.timestamp + 10 hours);
+
+        uint256 balanceWithdrawManagerBefore = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
+
+        // Prepare transient storage inputs
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(balanceWithdrawManagerBefore);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_burnRequestFeeFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory actions = new FuseAction[](2);
+        actions[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        actions[1] = FuseAction({
+            fuse: address(_burnRequestFeeFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+
+        // then
+        uint256 balanceWithdrawManagerAfter = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
+        assertEq(balanceWithdrawManagerBefore, 1000000000);
+        assertEq(balanceWithdrawManagerAfter, 0);
+    }
+
+    /// @notice Test that enterTransient function returns early when amount is zero
+    function testShouldReturnWhenBurnRequestFeeTransientWithZeroAmount() external {
+        // given
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(uint256(0));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_burnRequestFeeFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory actions = new FuseAction[](2);
+        actions[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        actions[1] = FuseAction({
+            fuse: address(_burnRequestFeeFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        uint256 balanceWithdrawManagerBefore = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+
+        // then
+        uint256 balanceWithdrawManagerAfter = PlasmaVaultBase(_plasmaVault).balanceOf(address(_withdrawManager));
+        assertEq(
+            balanceWithdrawManagerBefore,
+            balanceWithdrawManagerAfter,
+            "Balance should not change with zero amount"
+        );
+    }
+
+    /// @notice Test that exitTransient function reverts with BurnRequestFeeExitNotImplemented error
+    function testShouldRevertWhenBurnRequestFeeExitTransient() external {
+        // given
+        bytes memory error = abi.encodeWithSignature("BurnRequestFeeExitNotImplemented()");
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: address(_burnRequestFeeFuse), data: abi.encodeWithSignature("exitTransient()")});
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
     }
 
     function testShouldNOTBeAbleToRedeemFromRequestBecauseNoExecutionReleaseFunds() external {
