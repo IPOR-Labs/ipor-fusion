@@ -9,7 +9,7 @@ import {BalancerBalanceFuse} from "../../../contracts/fuses/balancer/BalancerBal
 import {BalancerGaugeFuse, BalancerGaugeFuseEnterData, BalancerGaugeFuseExitData} from "../../../contracts/fuses/balancer/BalancerGaugeFuse.sol";
 import {BalancerLiquidityProportionalFuse, BalancerLiquidityProportionalFuseEnterData, BalancerLiquidityProportionalFuseExitData} from "../../../contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol";
 import {BalancerLiquidityUnbalancedFuse, BalancerLiquidityUnbalancedFuseEnterData, BalancerLiquidityUnbalancedFuseExitData} from "../../../contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol";
-import {BalancerSingleTokenFuse, BalancerSingleTokenFuseEnterData} from "../../../contracts/fuses/balancer/BalancerSingleTokenFuse.sol";
+import {BalancerSingleTokenFuse, BalancerSingleTokenFuseEnterData, BalancerSingleTokenFuseExitData} from "../../../contracts/fuses/balancer/BalancerSingleTokenFuse.sol";
 import {BalancerSubstrateLib, BalancerSubstrate, BalancerSubstrateType} from "../../../contracts/fuses/balancer/BalancerSubstrateLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
@@ -1126,5 +1126,138 @@ contract BalancerTest is Test {
         // given & when & then
         vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
         new BalancerLiquidityUnbalancedFuse(IporFusionMarkets.BALANCER, address(0), _PERMIT2);
+    }
+
+    function testShouldRevertWhenEnteringSingleTokenWithUnsupportedPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+        address unsupportedPool = address(0x1234567890123456789012345678901234567890);
+
+        BalancerSingleTokenFuseEnterData memory enterData = BalancerSingleTokenFuseEnterData({
+            pool: unsupportedPool,
+            tokenIn: _FW_ETH,
+            maxAmountIn: 1e18,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("enter((address,address,uint256,uint256))", enterData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseUnsupportedPool(address)", unsupportedPool));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenExitingSingleTokenWithZeroPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        BalancerSingleTokenFuseExitData memory exitData = BalancerSingleTokenFuseExitData({
+            pool: address(0), // Invalid pool address
+            tokenOut: _FW_ETH,
+            maxBptAmountIn: 1e15,
+            exactAmountOut: 1e10
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("exit((address,address,uint256,uint256))", exitData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseInvalidParams()"));
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenExitingSingleTokenWithZeroTokenOut() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        BalancerSingleTokenFuseExitData memory exitData = BalancerSingleTokenFuseExitData({
+            pool: _BALANCER_POOL,
+            tokenOut: address(0), // Invalid token address
+            maxBptAmountIn: 1e15,
+            exactAmountOut: 1e10
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("exit((address,address,uint256,uint256))", exitData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseInvalidParams()"));
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenExitingSingleTokenWithUnsupportedPool() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+        address unsupportedPool = address(0x1234567890123456789012345678901234567890);
+
+        BalancerSingleTokenFuseExitData memory exitData = BalancerSingleTokenFuseExitData({
+            pool: unsupportedPool,
+            tokenOut: _FW_ETH,
+            maxBptAmountIn: 1e15,
+            exactAmountOut: 1e10
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("exit((address,address,uint256,uint256))", exitData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSignature("BalancerSingleTokenFuseUnsupportedPool(address)", unsupportedPool));
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldReturnWhenExitingSingleTokenWithZeroBptAmount() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        BalancerSingleTokenFuseExitData memory exitData = BalancerSingleTokenFuseExitData({
+            pool: _BALANCER_POOL,
+            tokenOut: _FW_ETH,
+            maxBptAmountIn: 0, // Zero amount should cause early return
+            exactAmountOut: 1e10
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("exit((address,address,uint256,uint256))", exitData)
+        });
+
+        uint256 bptBalanceBefore = IERC20(_BALANCER_POOL).balanceOf(vault);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 bptBalanceAfter = IERC20(_BALANCER_POOL).balanceOf(vault);
+        assertEq(bptBalanceAfter, bptBalanceBefore, "BPT balance should not change with zero maxBptAmountIn");
+    }
+
+    function testShouldRevertWhenConstructingSingleTokenWithZeroRouter() public {
+        // given & when & then
+        vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
+        new BalancerSingleTokenFuse(IporFusionMarkets.BALANCER, address(0), _PERMIT2);
     }
 }
