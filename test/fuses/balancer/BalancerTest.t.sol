@@ -22,6 +22,9 @@ import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
+import {TransientStorageLib} from "../../../contracts/transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 
 contract BalancerTest is Test {
     // balancer pool addresses https://balancer.fi/pools/ethereum/v3/0x6b31a94029fd7840d780191b6d63fa0d269bd883
@@ -50,6 +53,7 @@ contract BalancerTest is Test {
     BalancerLiquidityProportionalFuse private _balancerLiquidityProportionalFuse;
     BalancerLiquidityUnbalancedFuse private _balancerLiquidityUnbalancedFuse;
     BalancerSingleTokenFuse private _balancerSingleTokenFuse;
+    TransientStorageSetInputsFuse private _transientStorageSetInputsFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 23137973);
@@ -95,12 +99,14 @@ contract BalancerTest is Test {
             _PERMIT2
         );
         _balancerSingleTokenFuse = new BalancerSingleTokenFuse(IporFusionMarkets.BALANCER, _BALANCER_ROUTER, _PERMIT2);
+        _transientStorageSetInputsFuse = new TransientStorageSetInputsFuse();
 
-        address[] memory fuses = new address[](4);
+        address[] memory fuses = new address[](5);
         fuses[0] = address(_balancerGaugeFuse);
         fuses[1] = address(_balancerLiquidityProportionalFuse);
         fuses[2] = address(_balancerLiquidityUnbalancedFuse);
         fuses[3] = address(_balancerSingleTokenFuse);
+        fuses[4] = address(_transientStorageSetInputsFuse);
 
         vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_fusionInstance.plasmaVault).addFuses(fuses);
@@ -1259,5 +1265,316 @@ contract BalancerTest is Test {
         // given & when & then
         vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
         new BalancerSingleTokenFuse(IporFusionMarkets.BALANCER, address(0), _PERMIT2);
+    }
+
+    function testShouldRevertWhenEnteringGaugeWithInsufficientBptAmount() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        // Mock insufficient BPT amount by setting a high minimum
+        BalancerGaugeFuseEnterData memory gaugeEnterData = BalancerGaugeFuseEnterData({
+            gaugeAddress: _BALANCER_GAUGE,
+            bptAmount: 1e18,
+            minBptAmount: 2e18 // Higher than bptAmount
+        });
+
+        FuseAction[] memory gaugeEnterCalls = new FuseAction[](1);
+        gaugeEnterCalls[0] = FuseAction({
+            fuse: address(_balancerGaugeFuse),
+            data: abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "BalancerGaugeFuseInsufficientBptAmount(address,uint256,uint256)",
+                _BALANCER_GAUGE,
+                1e18,
+                2e18
+            )
+        );
+        PlasmaVault(vault).execute(gaugeEnterCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenExitingGaugeWithInsufficientBptAmount() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        BalancerGaugeFuseExitData memory gaugeExitData = BalancerGaugeFuseExitData({
+            gaugeAddress: _BALANCER_GAUGE,
+            bptAmount: 1e18,
+            minBptAmount: 2e18
+        });
+
+        FuseAction[] memory gaugeExitCalls = new FuseAction[](1);
+        gaugeExitCalls[0] = FuseAction({
+            fuse: address(_balancerGaugeFuse),
+            data: abi.encodeWithSignature("exit((address,uint256,uint256))", gaugeExitData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "BalancerGaugeFuseInsufficientBptAmount(address,uint256,uint256)",
+                _BALANCER_GAUGE,
+                1e18,
+                2e18
+            )
+        );
+        PlasmaVault(vault).execute(gaugeExitCalls);
+        vm.stopPrank();
+    }
+
+    function testShouldEnterGaugeUsingTransientStorage() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        // Add liquidity to get BPT tokens in the vault
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = IERC20(_FW_ETH).balanceOf(vault);
+        maxAmountsIn[1] = IERC20(_FWST_ETH).balanceOf(vault);
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory setupCalls = new FuseAction[](1);
+        setupCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(setupCalls);
+        vm.stopPrank();
+
+        uint256 bptBalance = IERC20(_BALANCER_POOL).balanceOf(vault);
+        uint256 enterAmount = bptBalance / 2;
+
+        // Prepare transient storage inputs
+        bytes32[] memory inputs = new bytes32[](3);
+        inputs[0] = TypeConversionLib.toBytes32(_BALANCER_GAUGE);
+        inputs[1] = TypeConversionLib.toBytes32(enterAmount); // amount
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0)); // minAmount
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerGaugeFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        enterCalls[1] = FuseAction({
+            fuse: address(_balancerGaugeFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 gaugeBalance = IERC20(_BALANCER_GAUGE).balanceOf(vault);
+        assertEq(gaugeBalance, enterAmount, "Gauge balance should match enter amount");
+    }
+
+    function testShouldExitGaugeUsingTransientStorage() public {
+        // First add liquidity and stake in gauge to have gauge tokens to withdraw
+        address vault = _fusionInstance.plasmaVault;
+
+        // 1. Enter Pool
+        BalancerLiquidityProportionalFuseEnterData memory enterData;
+        {
+            address[] memory tokens = new address[](2);
+            tokens[0] = _FW_ETH;
+            tokens[1] = _FWST_ETH;
+
+            uint256[] memory maxAmountsIn = new uint256[](2);
+            maxAmountsIn[0] = IERC20(_FW_ETH).balanceOf(vault);
+            maxAmountsIn[1] = IERC20(_FWST_ETH).balanceOf(vault);
+
+            enterData = BalancerLiquidityProportionalFuseEnterData({
+                pool: _BALANCER_POOL,
+                tokens: tokens,
+                maxAmountsIn: maxAmountsIn,
+                exactBptAmountOut: 1e15
+            });
+        }
+
+        FuseAction[] memory setupCalls = new FuseAction[](1);
+        setupCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(setupCalls);
+        vm.stopPrank();
+
+        // 2. Enter Gauge
+        uint256 bptBalance = IERC20(_BALANCER_POOL).balanceOf(vault);
+        FuseAction[] memory gaugeEnterCalls = new FuseAction[](1);
+        gaugeEnterCalls[0] = FuseAction({
+            fuse: address(_balancerGaugeFuse),
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,uint256))",
+                BalancerGaugeFuseEnterData({gaugeAddress: _BALANCER_GAUGE, bptAmount: bptBalance, minBptAmount: 0})
+            )
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(gaugeEnterCalls);
+        vm.stopPrank();
+
+        // 3. Exit Gauge via Transient
+        uint256 gaugeBalance = IERC20(_BALANCER_GAUGE).balanceOf(vault);
+        uint256 exitAmount = gaugeBalance / 2;
+
+        // Prepare transient storage inputs
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        {
+            bytes32[] memory inputs = new bytes32[](3);
+            inputs[0] = TypeConversionLib.toBytes32(_BALANCER_GAUGE);
+            inputs[1] = TypeConversionLib.toBytes32(exitAmount);
+            inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+            inputsByFuse[0] = inputs;
+        }
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerGaugeFuse);
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+        exitCalls[1] = FuseAction({
+            fuse: address(_balancerGaugeFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+
+        // then
+        assertEq(
+            IERC20(_BALANCER_GAUGE).balanceOf(vault),
+            gaugeBalance - exitAmount,
+            "Gauge balance decrease mismatch"
+        );
+    }
+
+    function testShouldReturnWhenEnteringTransientGaugeWithZeroAmount() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        bytes32[] memory inputs = new bytes32[](3);
+        inputs[0] = TypeConversionLib.toBytes32(_BALANCER_GAUGE);
+        inputs[1] = TypeConversionLib.toBytes32(uint256(0)); // Zero amount
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerGaugeFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        enterCalls[1] = FuseAction({
+            fuse: address(_balancerGaugeFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        uint256 gaugeBalanceBefore = IERC20(_BALANCER_GAUGE).balanceOf(vault);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 gaugeBalanceAfter = IERC20(_BALANCER_GAUGE).balanceOf(vault);
+        assertEq(gaugeBalanceAfter, gaugeBalanceBefore, "Gauge balance should not change");
+    }
+
+    function testShouldReturnWhenExitingTransientGaugeWithZeroAmount() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        bytes32[] memory inputs = new bytes32[](3);
+        inputs[0] = TypeConversionLib.toBytes32(_BALANCER_GAUGE);
+        inputs[1] = TypeConversionLib.toBytes32(uint256(0)); // Zero amount
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerGaugeFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        exitCalls[1] = FuseAction({
+            fuse: address(_balancerGaugeFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        uint256 gaugeBalanceBefore = IERC20(_BALANCER_GAUGE).balanceOf(vault);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 gaugeBalanceAfter = IERC20(_BALANCER_GAUGE).balanceOf(vault);
+        assertEq(gaugeBalanceAfter, gaugeBalanceBefore, "Gauge balance should not change");
+    }
+
+    function _asArray(address addr) private pure returns (address[] memory) {
+        address[] memory arr = new address[](1);
+        arr[0] = addr;
+        return arr;
     }
 }
