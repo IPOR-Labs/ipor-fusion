@@ -14,6 +14,7 @@ import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
 import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
+import {TransientStorageLib} from "../../contracts/transient_storage/TransientStorageLib.sol";
 
 contract PlasmaVaultMock {
     using Address for address;
@@ -36,6 +37,10 @@ contract PlasmaVaultMock {
 
     function enterAaveV3Supply(AaveV3SupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256,uint256))", data));
+    }
+
+    function enterAaveV3SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
     }
 
     function enterAaveV2Supply(AaveV2SupplyFuseEnterData memory data) external {
@@ -62,6 +67,10 @@ contract PlasmaVaultMock {
 
     function exitAaveV3Supply(AaveV3SupplyFuseExitData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+    }
+
+    function exitAaveV3SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
 
     function exitSparkSupply(SparkSupplyFuseExitData memory data) external {
@@ -134,5 +143,27 @@ contract PlasmaVaultMock {
         for (uint256 i; i < fuses_.length; ++i) {
             FusesLib.addFuse(fuses_[i]);
         }
+    }
+
+    /// @notice Sets input parameters for a specific account in transient storage
+    /// @param account_ The address of the account
+    /// @param inputs_ Array of input values
+    function setInputs(address account_, bytes32[] calldata inputs_) external {
+        TransientStorageLib.setInputs(account_, inputs_);
+    }
+
+    /// @notice Retrieves a single input parameter for a specific account at a given index
+    /// @param account_ The address of the account
+    /// @param index_ The index of the input parameter
+    /// @return The input value at the specified index
+    function getInput(address account_, uint256 index_) external view returns (bytes32) {
+        return TransientStorageLib.getInput(account_, index_);
+    }
+
+    /// @notice Retrieves all input parameters for a specific account
+    /// @param account_ The address of the account
+    /// @return inputs Array of input values
+    function getInputs(address account_) external view returns (bytes32[] memory) {
+        return TransientStorageLib.getInputs(account_);
     }
 }

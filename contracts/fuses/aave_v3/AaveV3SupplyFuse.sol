@@ -126,7 +126,7 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Enters (supplies) assets to Aave V3 protocol using transient storage for inputs
     /// @dev Reads asset, amount, and userEModeCategoryId from transient storage
     /// @dev Writes returned asset and amount to transient storage outputs
-    function enter() external {
+    function enterTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
         bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 1);
         bytes32 userEModeCategoryIdBytes32 = TransientStorageLib.getInput(VERSION, 2);
@@ -161,7 +161,7 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Exits (withdraws) assets from Aave V3 protocol using transient storage for inputs
     /// @dev Reads asset and amount from transient storage
     /// @dev Writes returned asset and amount to transient storage outputs
-    function exit() external {
+    function exitTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
         bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 1);
 
