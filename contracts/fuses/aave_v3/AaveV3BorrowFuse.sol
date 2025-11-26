@@ -104,7 +104,7 @@ contract AaveV3BorrowFuse is IFuseCommon {
     /// @notice Enters (borrows) assets from Aave V3 protocol using transient storage for inputs
     /// @dev Reads asset and amount from transient storage
     /// @dev Writes returned asset and amount to transient storage outputs
-    function enter() external {
+    function enterTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
         bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 1);
 
@@ -149,7 +149,7 @@ contract AaveV3BorrowFuse is IFuseCommon {
     /// @notice Exits (repays) assets to Aave V3 protocol using transient storage for inputs
     /// @dev Reads asset and amount from transient storage
     /// @dev Writes returned asset and amount to transient storage outputs
-    function exit() external {
+    function exitTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
         bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 1);
 
