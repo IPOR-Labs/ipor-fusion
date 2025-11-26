@@ -4,8 +4,11 @@ pragma solidity 0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 import {IRouter} from "./ext/IRouter.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
@@ -108,7 +111,9 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         PERMIT2 = permit2_;
     }
 
-    function enter(BalancerLiquidityUnbalancedFuseEnterData calldata data_) external payable {
+    function enter(
+        BalancerLiquidityUnbalancedFuseEnterData memory data_
+    ) public payable returns (uint256 bptAmountOut) {
         if (data_.pool == address(0)) {
             revert BalancerLiquidityUnbalancedFuseInvalidParams();
         }
@@ -143,7 +148,7 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
             }
         }
 
-        uint256 bptAmountOut = IRouter(BALANCER_ROUTER).addLiquidityUnbalanced(
+        bptAmountOut = IRouter(BALANCER_ROUTER).addLiquidityUnbalanced(
             data_.pool,
             data_.exactAmountsIn,
             data_.minBptAmountOut,
@@ -160,7 +165,41 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         }
     }
 
-    function exit(BalancerLiquidityUnbalancedFuseExitData calldata data_) external payable {
+    /// @notice Adds liquidity with unbalanced amounts using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls enter(), and writes outputs to transient storage
+    function enterTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address pool = TypeConversionLib.toAddress(inputs[0]);
+        uint256 len = (inputs.length - 2) / 2;
+        address[] memory tokens = new address[](len);
+        uint256[] memory exactAmountsIn = new uint256[](len);
+
+        for (uint256 i; i < len; ++i) {
+            tokens[i] = TypeConversionLib.toAddress(inputs[1 + i]);
+            exactAmountsIn[i] = TypeConversionLib.toUint256(inputs[1 + len + i]);
+        }
+
+        uint256 minBptAmountOut = TypeConversionLib.toUint256(inputs[1 + 2 * len]);
+
+        BalancerLiquidityUnbalancedFuseEnterData memory data = BalancerLiquidityUnbalancedFuseEnterData({
+            pool: pool,
+            tokens: tokens,
+            exactAmountsIn: exactAmountsIn,
+            minBptAmountOut: minBptAmountOut
+        });
+
+        uint256 bptAmountOut = enter(data);
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(bptAmountOut);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    function exit(
+        BalancerLiquidityUnbalancedFuseExitData memory data_
+    ) public payable returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         if (data_.pool == address(0)) {
             revert BalancerLiquidityUnbalancedFuseInvalidParams();
         }
@@ -177,12 +216,13 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         }
 
         if (data_.maxBptAmountIn == 0) {
-            return;
+            return (0, amountsOut);
         }
 
+        // Approve BPT (pool token) to router for burning
         IERC20(data_.pool).forceApprove(BALANCER_ROUTER, data_.maxBptAmountIn);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = IRouter(BALANCER_ROUTER).removeLiquidityCustom(
+        (bptAmountIn, amountsOut, ) = IRouter(BALANCER_ROUTER).removeLiquidityCustom(
             data_.pool,
             data_.maxBptAmountIn,
             data_.minAmountsOut,
@@ -193,5 +233,36 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         emit BalancerLiquidityUnbalancedFuseExit(VERSION, data_.pool, bptAmountIn, amountsOut);
 
         IERC20(data_.pool).forceApprove(BALANCER_ROUTER, 0);
+    }
+
+    /// @notice Removes liquidity with unbalanced amounts using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls exit(), and writes outputs to transient storage
+    function exitTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address pool = TypeConversionLib.toAddress(inputs[0]);
+        uint256 maxBptAmountIn = TypeConversionLib.toUint256(inputs[1]);
+        uint256 len = inputs.length - 2;
+        uint256[] memory minAmountsOut = new uint256[](len);
+
+        for (uint256 i; i < len; ++i) {
+            minAmountsOut[i] = TypeConversionLib.toUint256(inputs[2 + i]);
+        }
+
+        BalancerLiquidityUnbalancedFuseExitData memory data = BalancerLiquidityUnbalancedFuseExitData({
+            pool: pool,
+            maxBptAmountIn: maxBptAmountIn,
+            minAmountsOut: minAmountsOut
+        });
+
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = exit(data);
+
+        bytes32[] memory outputs = new bytes32[](1 + len);
+        outputs[0] = TypeConversionLib.toBytes32(bptAmountIn);
+        for (uint256 i; i < len; ++i) {
+            outputs[1 + i] = TypeConversionLib.toBytes32(amountsOut[i]);
+        }
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

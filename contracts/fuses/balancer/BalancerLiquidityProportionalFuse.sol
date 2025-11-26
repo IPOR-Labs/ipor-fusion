@@ -3,14 +3,16 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 import {IRouter} from "./ext/IRouter.sol";
 import {IPermit2} from "./ext/IPermit2.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @notice Data required to add liquidity proportionally into a Balancer V3 pool
 struct BalancerLiquidityProportionalFuseEnterData {
@@ -74,7 +76,9 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
 
     /// @notice Adds liquidity proportionally into a Balancer V3 pool
     /// @param data_ Encoded parameters required by the Balancer Router
-    function enter(BalancerLiquidityProportionalFuseEnterData calldata data_) external payable {
+    function enter(
+        BalancerLiquidityProportionalFuseEnterData memory data_
+    ) public payable returns (uint256[] memory amountsIn) {
         if (data_.pool == address(0)) {
             revert BalancerLiquidityProportionalFuseInvalidParams();
         }
@@ -109,7 +113,7 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
             }
         }
 
-        uint256[] memory amountsIn = IRouter(BALANCER_ROUTER).addLiquidityProportional(
+        amountsIn = IRouter(BALANCER_ROUTER).addLiquidityProportional(
             data_.pool,
             data_.maxAmountsIn,
             data_.exactBptAmountOut,
@@ -126,9 +130,45 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
         }
     }
 
+    /// @notice Adds liquidity proportionally using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls enter(), and writes outputs to transient storage
+    function enterTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address pool = TypeConversionLib.toAddress(inputs[0]);
+        uint256 len = (inputs.length - 2) / 2;
+        address[] memory tokens = new address[](len);
+        uint256[] memory maxAmountsIn = new uint256[](len);
+
+        for (uint256 i; i < len; ++i) {
+            tokens[i] = TypeConversionLib.toAddress(inputs[1 + i]);
+            maxAmountsIn[i] = TypeConversionLib.toUint256(inputs[1 + len + i]);
+        }
+
+        uint256 exactBptAmountOut = TypeConversionLib.toUint256(inputs[1 + 2 * len]);
+
+        BalancerLiquidityProportionalFuseEnterData memory data = BalancerLiquidityProportionalFuseEnterData({
+            pool: pool,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: exactBptAmountOut
+        });
+
+        uint256[] memory amountsIn = enter(data);
+
+        bytes32[] memory outputs = new bytes32[](len);
+        for (uint256 i; i < len; ++i) {
+            outputs[i] = TypeConversionLib.toBytes32(amountsIn[i]);
+        }
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
     /// @notice Removes liquidity proportionally from a Balancer V3 pool
     /// @param data_ Parameters for proportional liquidity removal
-    function exit(BalancerLiquidityProportionalFuseExitData calldata data_) external payable {
+    function exit(
+        BalancerLiquidityProportionalFuseExitData memory data_
+    ) public payable returns (uint256[] memory amountsOut) {
         if (data_.pool == address(0)) {
             revert BalancerLiquidityProportionalFuseInvalidParams();
         }
@@ -145,13 +185,13 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
         }
 
         if (data_.exactBptAmountIn == 0) {
-            return;
+            return amountsOut;
         }
 
         // Approve BPT (pool token) to router for burning
         IERC20(data_.pool).forceApprove(BALANCER_ROUTER, data_.exactBptAmountIn);
 
-        uint256[] memory amountsOut = IRouter(BALANCER_ROUTER).removeLiquidityProportional(
+        amountsOut = IRouter(BALANCER_ROUTER).removeLiquidityProportional(
             data_.pool,
             data_.exactBptAmountIn,
             data_.minAmountsOut,
@@ -162,5 +202,35 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
         emit BalancerLiquidityProportionalFuseExit(VERSION, data_.pool, amountsOut, data_.exactBptAmountIn);
 
         IERC20(data_.pool).forceApprove(BALANCER_ROUTER, 0);
+    }
+
+    /// @notice Removes liquidity proportionally using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls exit(), and writes outputs to transient storage
+    function exitTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address pool = TypeConversionLib.toAddress(inputs[0]);
+        uint256 exactBptAmountIn = TypeConversionLib.toUint256(inputs[1]);
+        uint256 len = inputs.length - 2;
+        uint256[] memory minAmountsOut = new uint256[](len);
+
+        for (uint256 i; i < len; ++i) {
+            minAmountsOut[i] = TypeConversionLib.toUint256(inputs[2 + i]);
+        }
+
+        BalancerLiquidityProportionalFuseExitData memory data = BalancerLiquidityProportionalFuseExitData({
+            pool: pool,
+            exactBptAmountIn: exactBptAmountIn,
+            minAmountsOut: minAmountsOut
+        });
+
+        uint256[] memory amountsOut = exit(data);
+
+        bytes32[] memory outputs = new bytes32[](len);
+        for (uint256 i; i < len; ++i) {
+            outputs[i] = TypeConversionLib.toBytes32(amountsOut[i]);
+        }
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

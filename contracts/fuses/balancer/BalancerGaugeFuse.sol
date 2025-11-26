@@ -2,11 +2,14 @@
 pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
 import {ILiquidityGauge} from "./ext/ILiquidityGauge.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 struct BalancerGaugeFuseEnterData {
     address gaugeAddress;
@@ -37,9 +40,9 @@ contract BalancerGaugeFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(BalancerGaugeFuseEnterData calldata data_) external {
+    function enter(BalancerGaugeFuseEnterData memory data_) public payable returns (uint256 depositAmount) {
         if (data_.bptAmount == 0) {
-            return;
+            return 0;
         }
 
         if (
@@ -58,7 +61,7 @@ contract BalancerGaugeFuse is IFuseCommon {
         address lpToken = ILiquidityGauge(data_.gaugeAddress).lp_token();
         uint256 balanceOfPlasmaVault = IERC20(lpToken).balanceOf(address(this));
 
-        uint256 depositAmount = data_.bptAmount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.bptAmount;
+        depositAmount = data_.bptAmount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.bptAmount;
 
         if (depositAmount < data_.minBptAmount) {
             revert BalancerGaugeFuseInsufficientBptAmount(data_.gaugeAddress, data_.bptAmount, data_.minBptAmount);
@@ -70,9 +73,28 @@ contract BalancerGaugeFuse is IFuseCommon {
         emit BalancerGaugeFuseEnter(VERSION, data_.gaugeAddress, data_.bptAmount);
     }
 
-    function exit(BalancerGaugeFuseExitData calldata data_) external {
+    /// @notice Deposits BPT into a gauge using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls enter(), and writes outputs to transient storage
+    function enterTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        BalancerGaugeFuseEnterData memory data = BalancerGaugeFuseEnterData({
+            gaugeAddress: TypeConversionLib.toAddress(inputs[0]),
+            bptAmount: TypeConversionLib.toUint256(inputs[1]),
+            minBptAmount: TypeConversionLib.toUint256(inputs[2])
+        });
+
+        uint256 depositAmount = enter(data);
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(depositAmount);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    function exit(BalancerGaugeFuseExitData memory data_) public payable returns (uint256 withdrawAmount) {
         if (data_.bptAmount == 0) {
-            return;
+            return 0;
         }
 
         if (
@@ -91,7 +113,7 @@ contract BalancerGaugeFuse is IFuseCommon {
 
         uint256 balanceOfPlasmaVault = IERC20(data_.gaugeAddress).balanceOf(address(this));
 
-        uint256 withdrawAmount = data_.bptAmount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.bptAmount;
+        withdrawAmount = data_.bptAmount > balanceOfPlasmaVault ? balanceOfPlasmaVault : data_.bptAmount;
 
         if (withdrawAmount < data_.minBptAmount) {
             revert BalancerGaugeFuseInsufficientBptAmount(data_.gaugeAddress, data_.bptAmount, data_.minBptAmount);
@@ -100,5 +122,24 @@ contract BalancerGaugeFuse is IFuseCommon {
         ILiquidityGauge(data_.gaugeAddress).withdraw(withdrawAmount, false);
 
         emit BalancerGaugeFuseExit(VERSION, data_.gaugeAddress, withdrawAmount);
+    }
+
+    /// @notice Withdraws BPT from a gauge using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls exit(), and writes outputs to transient storage
+    function exitTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        BalancerGaugeFuseExitData memory data = BalancerGaugeFuseExitData({
+            gaugeAddress: TypeConversionLib.toAddress(inputs[0]),
+            bptAmount: TypeConversionLib.toUint256(inputs[1]),
+            minBptAmount: TypeConversionLib.toUint256(inputs[2])
+        });
+
+        uint256 withdrawAmount = exit(data);
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(withdrawAmount);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

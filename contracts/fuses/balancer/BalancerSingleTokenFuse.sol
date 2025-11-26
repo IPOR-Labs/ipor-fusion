@@ -3,13 +3,15 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 import {IRouter} from "./ext/IRouter.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IPermit2} from "./ext/IPermit2.sol";
 
 struct BalancerSingleTokenFuseEnterData {
@@ -65,7 +67,7 @@ contract BalancerSingleTokenFuse is IFuseCommon {
         PERMIT2 = permit2_;
     }
 
-    function enter(BalancerSingleTokenFuseEnterData calldata data_) external {
+    function enter(BalancerSingleTokenFuseEnterData memory data_) public payable returns (uint256 amountIn) {
         if (data_.pool == address(0) || data_.tokenIn == address(0)) {
             revert BalancerSingleTokenFuseInvalidParams();
         }
@@ -82,7 +84,7 @@ contract BalancerSingleTokenFuse is IFuseCommon {
         }
 
         if (data_.maxAmountIn == 0) {
-            return;
+            return 0;
         }
 
         address[] memory tokens = new address[](1);
@@ -98,7 +100,7 @@ contract BalancerSingleTokenFuse is IFuseCommon {
             uint48(block.timestamp + 1)
         );
 
-        uint256 amountIn = IRouter(BALANCER_ROUTER).addLiquiditySingleTokenExactOut(
+        amountIn = IRouter(BALANCER_ROUTER).addLiquiditySingleTokenExactOut(
             data_.pool,
             IERC20(data_.tokenIn),
             data_.maxAmountIn,
@@ -112,7 +114,27 @@ contract BalancerSingleTokenFuse is IFuseCommon {
         IERC20(data_.tokenIn).forceApprove(PERMIT2, 0);
     }
 
-    function exit(BalancerSingleTokenFuseExitData calldata data_) external payable {
+    /// @notice Adds single token liquidity using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls enter(), and writes outputs to transient storage
+    function enterTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        BalancerSingleTokenFuseEnterData memory data = BalancerSingleTokenFuseEnterData({
+            pool: TypeConversionLib.toAddress(inputs[0]),
+            tokenIn: TypeConversionLib.toAddress(inputs[1]),
+            maxAmountIn: TypeConversionLib.toUint256(inputs[2]),
+            exactBptAmountOut: TypeConversionLib.toUint256(inputs[3])
+        });
+
+        uint256 amountIn = enter(data);
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(amountIn);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    function exit(BalancerSingleTokenFuseExitData memory data_) public payable returns (uint256 bptAmountIn) {
         if (data_.pool == address(0) || data_.tokenOut == address(0)) {
             revert BalancerSingleTokenFuseInvalidParams();
         }
@@ -129,12 +151,12 @@ contract BalancerSingleTokenFuse is IFuseCommon {
         }
 
         if (data_.maxBptAmountIn == 0) {
-            return;
+            return 0;
         }
 
         IERC20(data_.pool).forceApprove(BALANCER_ROUTER, data_.maxBptAmountIn);
 
-        uint256 bptAmountIn = IRouter(BALANCER_ROUTER).removeLiquiditySingleTokenExactOut{value: msg.value}(
+        bptAmountIn = IRouter(BALANCER_ROUTER).removeLiquiditySingleTokenExactOut{value: msg.value}(
             data_.pool,
             data_.maxBptAmountIn,
             IERC20(data_.tokenOut),
@@ -146,5 +168,25 @@ contract BalancerSingleTokenFuse is IFuseCommon {
         emit BalancerSingleTokenFuseExit(VERSION, data_.pool, data_.tokenOut, bptAmountIn, data_.exactAmountOut);
 
         IERC20(data_.pool).forceApprove(BALANCER_ROUTER, 0);
+    }
+
+    /// @notice Removes single token liquidity using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls exit(), and writes outputs to transient storage
+    function exitTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        BalancerSingleTokenFuseExitData memory data = BalancerSingleTokenFuseExitData({
+            pool: TypeConversionLib.toAddress(inputs[0]),
+            tokenOut: TypeConversionLib.toAddress(inputs[1]),
+            maxBptAmountIn: TypeConversionLib.toUint256(inputs[2]),
+            exactAmountOut: TypeConversionLib.toUint256(inputs[3])
+        });
+
+        uint256 bptAmountIn = exit(data);
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(bptAmountIn);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
