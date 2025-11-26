@@ -1572,6 +1572,133 @@ contract BalancerTest is Test {
         assertEq(gaugeBalanceAfter, gaugeBalanceBefore, "Gauge balance should not change");
     }
 
+    /// @notice Test that enterTransient function successfully adds liquidity proportionally using transient storage
+    function testShouldEnterProportionalUsingTransientStorage() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        uint256 amount1 = IERC20(_FW_ETH).balanceOf(vault);
+        uint256 amount2 = IERC20(_FWST_ETH).balanceOf(vault);
+        uint256 exactBptAmountOut = 1e15;
+
+        // Prepare transient storage inputs
+        // Layout: pool (1), tokens (2), maxAmountsIn (2), exactBptAmountOut (1) -> Total 6
+        bytes32[] memory inputs = new bytes32[](6);
+        inputs[0] = TypeConversionLib.toBytes32(_BALANCER_POOL);
+        inputs[1] = TypeConversionLib.toBytes32(_FW_ETH);
+        inputs[2] = TypeConversionLib.toBytes32(_FWST_ETH);
+        inputs[3] = TypeConversionLib.toBytes32(amount1);
+        inputs[4] = TypeConversionLib.toBytes32(amount2);
+        inputs[5] = TypeConversionLib.toBytes32(exactBptAmountOut);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerLiquidityProportionalFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        enterCalls[1] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        uint256 bptBalanceBefore = IERC20(_BALANCER_POOL).balanceOf(vault);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 bptBalanceAfter = IERC20(_BALANCER_POOL).balanceOf(vault);
+        assertGt(bptBalanceAfter, bptBalanceBefore, "BPT balance should increase");
+    }
+
+    /// @notice Test that exitTransient function successfully removes liquidity proportionally using transient storage
+    function testShouldExitProportionalUsingTransientStorage() public {
+        // given
+        address vault = _fusionInstance.plasmaVault;
+
+        // 1. Enter Pool using standard method to setup
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = IERC20(_FW_ETH).balanceOf(vault);
+        maxAmountsIn[1] = IERC20(_FWST_ETH).balanceOf(vault);
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory setupCalls = new FuseAction[](1);
+        setupCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(setupCalls);
+        vm.stopPrank();
+
+        uint256 bptBalance = IERC20(_BALANCER_POOL).balanceOf(vault);
+        uint256 exitBptAmount = bptBalance / 2;
+
+        // Prepare transient storage inputs for exit
+        // Layout: pool (1), exactBptAmountIn (1), minAmountsOut (2) -> Total 4
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(_BALANCER_POOL);
+        inputs[1] = TypeConversionLib.toBytes32(exitBptAmount);
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0)); // minAmount1
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0)); // minAmount2
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerLiquidityProportionalFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        exitCalls[1] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        uint256 bptBalanceBeforeExit = IERC20(_BALANCER_POOL).balanceOf(vault);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(exitCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 bptBalanceAfterExit = IERC20(_BALANCER_POOL).balanceOf(vault);
+        assertLt(bptBalanceAfterExit, bptBalanceBeforeExit, "BPT balance should decrease after exit");
+    }
+
     function _asArray(address addr) private pure returns (address[] memory) {
         address[] memory arr = new address[](1);
         arr[0] = addr;
