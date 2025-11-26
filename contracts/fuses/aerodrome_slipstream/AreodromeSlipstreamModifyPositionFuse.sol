@@ -5,6 +5,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
@@ -136,7 +138,16 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
         }
     }
 
-    function enter(AreodromeSlipstreamModifyPositionFuseEnterData calldata data_) public {
+    /// @notice Increases liquidity in an existing position
+    /// @dev Validates the pool, approves tokens, increases liquidity, and resets approvals
+    /// @param data_ The data containing token addresses, tokenId, amounts, and deadline
+    /// @return tokenId The ID of the token
+    /// @return liquidity The amount of liquidity added
+    /// @return amount0 The amount of token0 used
+    /// @return amount1 The amount of token1 used
+    function enter(
+        AreodromeSlipstreamModifyPositionFuseEnterData memory data_
+    ) public returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         validatePool(data_.tokenId);
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
@@ -152,17 +163,71 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
                 deadline: data_.deadline
             });
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = INonfungiblePositionManager(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).increaseLiquidity(params);
+        (liquidity, amount0, amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).increaseLiquidity(
+            params
+        );
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
         emit AreodromeSlipstreamModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
+
+        return (data_.tokenId, liquidity, amount0, amount1);
     }
 
-    function exit(AreodromeSlipstreamModifyPositionFuseExitData calldata data_) public {
+    /// @notice Increases liquidity in an existing position using transient storage for inputs
+    /// @dev Reads token0, token1, tokenId, amount0Desired, amount1Desired, amount0Min, amount1Min, deadline from transient storage
+    /// @dev Writes returned tokenId, liquidity, amount0, amount1 to transient storage outputs
+    function enterTransient() external {
+        bytes32 token0Bytes32 = TransientStorageLib.getInput(VERSION, 0);
+        bytes32 token1Bytes32 = TransientStorageLib.getInput(VERSION, 1);
+        bytes32 tokenIdBytes32 = TransientStorageLib.getInput(VERSION, 2);
+        bytes32 amount0DesiredBytes32 = TransientStorageLib.getInput(VERSION, 3);
+        bytes32 amount1DesiredBytes32 = TransientStorageLib.getInput(VERSION, 4);
+        bytes32 amount0MinBytes32 = TransientStorageLib.getInput(VERSION, 5);
+        bytes32 amount1MinBytes32 = TransientStorageLib.getInput(VERSION, 6);
+        bytes32 deadlineBytes32 = TransientStorageLib.getInput(VERSION, 7);
+
+        address token0 = PlasmaVaultConfigLib.bytes32ToAddress(token0Bytes32);
+        address token1 = PlasmaVaultConfigLib.bytes32ToAddress(token1Bytes32);
+        uint256 tokenId = TypeConversionLib.toUint256(tokenIdBytes32);
+        uint256 amount0Desired = TypeConversionLib.toUint256(amount0DesiredBytes32);
+        uint256 amount1Desired = TypeConversionLib.toUint256(amount1DesiredBytes32);
+        uint256 amount0Min = TypeConversionLib.toUint256(amount0MinBytes32);
+        uint256 amount1Min = TypeConversionLib.toUint256(amount1MinBytes32);
+        uint256 deadline = TypeConversionLib.toUint256(deadlineBytes32);
+
+        AreodromeSlipstreamModifyPositionFuseEnterData memory data = AreodromeSlipstreamModifyPositionFuseEnterData({
+            token0: token0,
+            token1: token1,
+            tokenId: tokenId,
+            amount0Desired: amount0Desired,
+            amount1Desired: amount1Desired,
+            amount0Min: amount0Min,
+            amount1Min: amount1Min,
+            deadline: deadline
+        });
+
+        (uint256 returnedTokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = enter(data);
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(returnedTokenId);
+        outputs[1] = TypeConversionLib.toBytes32(uint256(liquidity));
+        outputs[2] = TypeConversionLib.toBytes32(amount0);
+        outputs[3] = TypeConversionLib.toBytes32(amount1);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Decreases liquidity in an existing position
+    /// @dev Validates the pool and decreases liquidity by the specified amount
+    /// @param data_ The data containing tokenId, liquidity amount, minimum amounts, and deadline
+    /// @return tokenId The ID of the token
+    /// @return amount0 The amount of token0 received
+    /// @return amount1 The amount of token1 received
+    function exit(
+        AreodromeSlipstreamModifyPositionFuseExitData memory data_
+    ) public returns (uint256 tokenId, uint256 amount0, uint256 amount1) {
         validatePool(data_.tokenId);
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
@@ -174,9 +239,44 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
                 deadline: data_.deadline
             });
 
-        (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER)
-            .decreaseLiquidity(params);
+        (amount0, amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).decreaseLiquidity(params);
 
         emit AreodromeSlipstreamModifyPositionFuseExit(VERSION, data_.tokenId, amount0, amount1);
+
+        return (data_.tokenId, amount0, amount1);
+    }
+
+    /// @notice Decreases liquidity in an existing position using transient storage for inputs
+    /// @dev Reads tokenId, liquidity, amount0Min, amount1Min, deadline from transient storage
+    /// @dev Writes returned tokenId, amount0, amount1 to transient storage outputs
+    function exitTransient() external {
+        bytes32 tokenIdBytes32 = TransientStorageLib.getInput(VERSION, 0);
+        bytes32 liquidityBytes32 = TransientStorageLib.getInput(VERSION, 1);
+        bytes32 amount0MinBytes32 = TransientStorageLib.getInput(VERSION, 2);
+        bytes32 amount1MinBytes32 = TransientStorageLib.getInput(VERSION, 3);
+        bytes32 deadlineBytes32 = TransientStorageLib.getInput(VERSION, 4);
+
+        uint256 tokenId = TypeConversionLib.toUint256(tokenIdBytes32);
+        uint128 liquidity = uint128(TypeConversionLib.toUint256(liquidityBytes32));
+        uint256 amount0Min = TypeConversionLib.toUint256(amount0MinBytes32);
+        uint256 amount1Min = TypeConversionLib.toUint256(amount1MinBytes32);
+        uint256 deadline = TypeConversionLib.toUint256(deadlineBytes32);
+
+        AreodromeSlipstreamModifyPositionFuseExitData memory data = AreodromeSlipstreamModifyPositionFuseExitData({
+            tokenId: tokenId,
+            liquidity: liquidity,
+            amount0Min: amount0Min,
+            amount1Min: amount1Min,
+            deadline: deadline
+        });
+
+        (uint256 returnedTokenId, uint256 amount0, uint256 amount1) = exit(data);
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedTokenId);
+        outputs[1] = TypeConversionLib.toBytes32(amount0);
+        outputs[2] = TypeConversionLib.toBytes32(amount1);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
