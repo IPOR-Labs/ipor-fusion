@@ -17,6 +17,9 @@ import {MockEthReceiver} from "./MockEthReceiver.sol";
 import {ReadAsyncExecutor} from "../../../contracts/readers/ReadAsyncExecutor.sol";
 import {UniversalReader, ReadResult} from "../../../contracts/universal_reader/UniversalReader.sol";
 import {AsyncExecutor} from "../../../contracts/fuses/async_action/AsyncExecutor.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 
 /// @title AsyncActionFuseTest
 /// @notice Tests for AsyncActionFuse
@@ -25,6 +28,7 @@ contract AsyncActionFuseTest is Test {
     AsyncActionBalanceFuse private _asyncActionBalanceFuse;
     IporFusionAccessManager private _accessManager;
     ReadAsyncExecutor private _readAsyncExecutor;
+    TransientStorageSetInputsFuse private _transientStorageSetInputsFuse;
     address private constant PLASMA_VAULT = 0x6f66b845604dad6E80b2A1472e6cAcbbE66A8C40;
     address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -42,6 +46,7 @@ contract AsyncActionFuseTest is Test {
         _asyncActionFuse = new AsyncActionFuse(IporFusionMarkets.ASYNC_ACTION, WETH);
         _asyncActionBalanceFuse = new AsyncActionBalanceFuse(IporFusionMarkets.ASYNC_ACTION);
         _readAsyncExecutor = new ReadAsyncExecutor();
+        _transientStorageSetInputsFuse = new TransientStorageSetInputsFuse();
 
         vm.startPrank(OWNER);
         _accessManager.grantRole(Roles.PRE_HOOKS_MANAGER_ROLE, ATOMIST, 0);
@@ -53,8 +58,9 @@ contract AsyncActionFuseTest is Test {
         vm.stopPrank();
 
         // Add fuses to vault
-        address[] memory fuses = new address[](1);
+        address[] memory fuses = new address[](2);
         fuses[0] = address(_asyncActionFuse);
+        fuses[1] = address(_transientStorageSetInputsFuse);
 
         vm.startPrank(ATOMIST);
         PlasmaVaultGovernance(PLASMA_VAULT).addFuses(fuses);
@@ -702,6 +708,20 @@ contract AsyncActionFuseTest is Test {
         return ethAmounts;
     }
 
+    /// @notice Helper function to encode bytes array into bytes32 chunks for transient storage
+    /// @param data_ The bytes array to encode
+    /// @return chunks Array of bytes32 chunks
+    function _encodeBytesToChunks(bytes memory data_) private pure returns (bytes32[] memory chunks) {
+        uint256 chunksCount = (data_.length + 31) / 32;
+        chunks = new bytes32[](chunksCount);
+        for (uint256 i; i < chunksCount; ++i) {
+            assembly {
+                let chunk := mload(add(add(data_, 0x20), mul(i, 32)))
+                mstore(add(chunks, add(0x20, mul(i, 32))), chunk)
+            }
+        }
+    }
+
     /// @notice Test that execute with ethAmount > 0 sends ETH correctly
     function testExecuteWithEthAmount() public {
         // given
@@ -1256,5 +1276,486 @@ contract AsyncActionFuseTest is Test {
         // then
         assertTrue(success, "ETH transfer should succeed");
         assertEq(executor.balance, ethAmount, "Executor should have received ETH");
+    }
+
+    /// @notice Test that enterTransient() correctly reads inputs from transient storage and executes enter with empty targets
+    function testEnterTransient() public {
+        // given
+        uint256 depositAmount = 1_000e6; // 1,000 USDC (6 decimals)
+
+        // Configure substrates
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE,
+                data: AsyncActionFuseLib.encodeAllowedAmountToOutside(
+                    AllowedAmountToOutside({asset: USDC, amount: depositAmount})
+                )
+            })
+        );
+
+        vm.startPrank(ATOMIST);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
+        vm.stopPrank();
+
+        // Prepare transient inputs with empty targets
+        // Input 0: tokenOut (address)
+        // Input 1: amountOut (uint256)
+        // Input 2: targetsLength (uint256) = 0
+        // Input 3: callDatasLength (uint256) = 0
+        // Input 4: ethAmountsLength (uint256) = 0
+        bytes32[] memory inputs = new bytes32[](5);
+        inputs[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+        inputs[1] = TypeConversionLib.toBytes32(depositAmount);
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0)); // targetsLength = 0
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0)); // callDatasLength = 0
+        inputs[4] = TypeConversionLib.toBytes32(uint256(0)); // ethAmountsLength = 0
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_asyncActionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory actions = new FuseAction[](2);
+        actions[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        actions[1] = FuseAction(address(_asyncActionFuse), abi.encodeWithSignature("enterTransient()"));
+
+        uint256 executorBalanceBefore = IERC20(USDC).balanceOf(PLASMA_VAULT);
+
+        // when
+        vm.prank(ATOMIST);
+        PlasmaVault(PLASMA_VAULT).execute(actions);
+
+        // then - get executor address after execution (it's created during enter)
+        ReadResult memory readResult = UniversalReader(PLASMA_VAULT).read(
+            address(_readAsyncExecutor),
+            abi.encodeWithSignature("readAsyncExecutorAddress()")
+        );
+        address payable executor = payable(abi.decode(readResult.data, (address)));
+
+        uint256 executorBalanceAfter = IERC20(USDC).balanceOf(executor);
+        assertEq(executorBalanceAfter, depositAmount, "Executor should have received the deposit amount");
+    }
+
+    /// @notice Test that enterTransient() works with empty targets array
+    function testEnterTransientWithEmptyTargets() public {
+        // given
+        uint256 depositAmount = 1_000e6; // 1,000 USDC (6 decimals)
+
+        // Configure substrates
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE,
+                data: AsyncActionFuseLib.encodeAllowedAmountToOutside(
+                    AllowedAmountToOutside({asset: USDC, amount: depositAmount})
+                )
+            })
+        );
+
+        vm.startPrank(ATOMIST);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
+        vm.stopPrank();
+
+        // Prepare transient inputs with empty targets
+        // Input 0: tokenOut (address)
+        // Input 1: amountOut (uint256)
+        // Input 2: targetsLength (uint256) = 0
+        // Input 3: callDatasLength (uint256) = 0
+        // Input 4: ethAmountsLength (uint256) = 0
+        bytes32[] memory inputs = new bytes32[](5);
+        inputs[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+        inputs[1] = TypeConversionLib.toBytes32(depositAmount);
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0)); // targetsLength = 0
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0)); // callDatasLength = 0
+        inputs[4] = TypeConversionLib.toBytes32(uint256(0)); // ethAmountsLength = 0
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_asyncActionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory actions = new FuseAction[](2);
+        actions[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        actions[1] = FuseAction(address(_asyncActionFuse), abi.encodeWithSignature("enterTransient()"));
+
+        uint256 executorBalanceBefore = IERC20(USDC).balanceOf(PLASMA_VAULT);
+
+        // when
+        vm.prank(ATOMIST);
+        PlasmaVault(PLASMA_VAULT).execute(actions);
+
+        // then - get executor address after execution (it's created during enter)
+        ReadResult memory readResult = UniversalReader(PLASMA_VAULT).read(
+            address(_readAsyncExecutor),
+            abi.encodeWithSignature("readAsyncExecutorAddress()")
+        );
+        address payable executor = payable(abi.decode(readResult.data, (address)));
+
+        uint256 executorBalanceAfter = IERC20(USDC).balanceOf(executor);
+        assertEq(executorBalanceAfter, depositAmount, "Executor should have received the deposit amount");
+    }
+
+    /// @notice Test that enterTransient() correctly reads inputs from transient storage with full data (targets, callDatas, ethAmounts)
+    function testEnterTransientWithFullData() public {
+        // given
+        uint256 depositAmount = 1_000e6; // 1,000 USDC (6 decimals)
+        MockTokenVault mockVault = new MockTokenVault();
+
+        // Configure substrates
+        bytes32[] memory substrates = new bytes32[](3);
+        substrates[0] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE,
+                data: AsyncActionFuseLib.encodeAllowedAmountToOutside(
+                    AllowedAmountToOutside({asset: USDC, amount: depositAmount})
+                )
+            })
+        );
+        substrates[1] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
+                data: AsyncActionFuseLib.encodeAllowedTargets(
+                    AllowedTargets({target: USDC, selector: IERC20.approve.selector})
+                )
+            })
+        );
+        substrates[2] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
+                data: AsyncActionFuseLib.encodeAllowedTargets(
+                    AllowedTargets({target: address(mockVault), selector: MockTokenVault.deposit.selector})
+                )
+            })
+        );
+
+        vm.startPrank(ATOMIST);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
+        vm.stopPrank();
+
+        // Prepare callDatas
+        bytes memory callData0 = abi.encodeWithSelector(IERC20.approve.selector, address(mockVault), depositAmount);
+        bytes memory callData1 = abi.encodeWithSelector(MockTokenVault.deposit.selector, USDC, depositAmount);
+
+        bytes32[] memory chunks0 = _encodeBytesToChunks(callData0);
+        bytes32[] memory chunks1 = _encodeBytesToChunks(callData1);
+
+        // Prepare transient inputs
+        // Structure: tokenOut(1) + amountOut(1) + targetsLength(1) + targets(2) + callDatasLength(1) +
+        //            callData0Length(1) + callData0Chunks + callData1Length(1) + callData1Chunks +
+        //            ethAmountsLength(1) + ethAmounts(2)
+        uint256 inputsLength = 1 + 1 + 1 + 2 + 1 + 1 + chunks0.length + 1 + chunks1.length + 1 + 2;
+        bytes32[] memory inputs = new bytes32[](inputsLength);
+
+        uint256 idx = 0;
+        inputs[idx] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+        idx++;
+        inputs[idx] = TypeConversionLib.toBytes32(depositAmount);
+        idx++;
+        inputs[idx] = TypeConversionLib.toBytes32(uint256(2));
+        idx++;
+        inputs[idx] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+        idx++;
+        inputs[idx] = PlasmaVaultConfigLib.addressToBytes32(address(mockVault));
+        idx++;
+        inputs[idx] = TypeConversionLib.toBytes32(uint256(2));
+        idx++;
+
+        inputs[idx] = TypeConversionLib.toBytes32(uint256(callData0.length));
+        idx++;
+        for (uint256 i; i < chunks0.length; ++i) {
+            inputs[idx] = chunks0[i];
+            idx++;
+        }
+
+        inputs[idx] = TypeConversionLib.toBytes32(uint256(callData1.length));
+        idx++;
+        for (uint256 i; i < chunks1.length; ++i) {
+            inputs[idx] = chunks1[i];
+            idx++;
+        }
+
+        inputs[idx] = TypeConversionLib.toBytes32(uint256(2));
+        idx++;
+        inputs[idx] = TypeConversionLib.toBytes32(uint256(0));
+        idx++;
+        inputs[idx] = TypeConversionLib.toBytes32(uint256(0));
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_asyncActionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory actions = new FuseAction[](2);
+        actions[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        actions[1] = FuseAction(address(_asyncActionFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        vm.prank(ATOMIST);
+        PlasmaVault(PLASMA_VAULT).execute(actions);
+
+        // then
+        assertEq(mockVault.balanceOf(USDC), depositAmount, "MockVault should have received the deposit amount");
+    }
+
+    /// @notice Test that exitTransient() correctly reads inputs from transient storage and executes exit
+    function testExitTransient() public {
+        // given
+        uint256 depositAmount = 1_000e6; // 1,000 USDC (6 decimals)
+        MockTokenVault mockVault = new MockTokenVault();
+
+        // Configure substrates
+        bytes32[] memory substrates = new bytes32[](6);
+        substrates[0] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE,
+                data: AsyncActionFuseLib.encodeAllowedAmountToOutside(
+                    AllowedAmountToOutside({asset: USDC, amount: depositAmount})
+                )
+            })
+        );
+        substrates[1] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
+                data: AsyncActionFuseLib.encodeAllowedTargets(
+                    AllowedTargets({target: USDC, selector: IERC20.approve.selector})
+                )
+            })
+        );
+        substrates[2] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
+                data: AsyncActionFuseLib.encodeAllowedTargets(
+                    AllowedTargets({target: address(mockVault), selector: MockTokenVault.deposit.selector})
+                )
+            })
+        );
+        substrates[3] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_EXIT_SLIPPAGE,
+                data: AsyncActionFuseLib.encodeAllowedSlippage(AllowedSlippage({slippage: 0}))
+            })
+        );
+        substrates[4] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
+                data: AsyncActionFuseLib.encodeAllowedTargets(
+                    AllowedTargets({target: USDC, selector: IERC20.transfer.selector})
+                )
+            })
+        );
+        substrates[5] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_TARGETS,
+                data: AsyncActionFuseLib.encodeAllowedTargets(
+                    AllowedTargets({target: address(mockVault), selector: MockTokenVault.withdraw.selector})
+                )
+            })
+        );
+
+        vm.startPrank(ATOMIST);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
+        vm.stopPrank();
+
+        // First execute: Deposit to MockTokenVault
+        FuseAction[] memory depositActions = new FuseAction[](1);
+        depositActions[0] = FuseAction({
+            fuse: address(_asyncActionFuse),
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
+                AsyncActionFuseEnterData({
+                    tokenOut: USDC,
+                    amountOut: depositAmount,
+                    targets: _createDepositTargets(address(mockVault)),
+                    callDatas: _createDepositCallDatas(address(mockVault), depositAmount),
+                    ethAmounts: _createEthAmounts(2),
+                    tokensDustToCheck: new address[](0)
+                })
+            )
+        });
+
+        vm.prank(ATOMIST);
+        PlasmaVault(PLASMA_VAULT).execute(depositActions);
+
+        // Get executor address
+        ReadResult memory readResult = UniversalReader(PLASMA_VAULT).read(
+            address(_readAsyncExecutor),
+            abi.encodeWithSignature("readAsyncExecutorAddress()")
+        );
+        address executor = abi.decode(readResult.data, (address));
+
+        // Second execute: Withdraw from MockTokenVault to executor
+        FuseAction[] memory withdrawActions = new FuseAction[](1);
+        withdrawActions[0] = FuseAction({
+            fuse: address(_asyncActionFuse),
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
+                AsyncActionFuseEnterData({
+                    tokenOut: USDC,
+                    amountOut: 0,
+                    targets: _createWithdrawTargets(address(mockVault)),
+                    callDatas: _createWithdrawCallDatas(depositAmount),
+                    ethAmounts: _createEthAmounts(1),
+                    tokensDustToCheck: new address[](0)
+                })
+            )
+        });
+
+        vm.prank(ATOMIST);
+        PlasmaVault(PLASMA_VAULT).execute(withdrawActions);
+
+        // Verify executor has tokens
+        assertEq(IERC20(USDC).balanceOf(executor), depositAmount, "Executor should have received the withdrawn tokens");
+
+        // Prepare transient inputs for exit
+        // Input 0: assetsLength (uint256)
+        // Input 1: assets[0] (address)
+        // Input 2: fetchCallDatasLength (uint256)
+        // Input 3: fetchCallData[0] length (uint256)
+        // Input 4+: fetchCallData[0] chunks (bytes32[])
+        bytes memory fetchCallData = abi.encodeWithSignature("transfer(address,uint256)", PLASMA_VAULT, 0);
+        uint256 fetchCallDataChunks = (fetchCallData.length + 31) / 32; // ceil(fetchCallData.length / 32)
+        uint256 exitInputsLength = 4 + fetchCallDataChunks;
+
+        bytes32[] memory exitInputs = new bytes32[](exitInputsLength);
+        exitInputs[0] = TypeConversionLib.toBytes32(uint256(1)); // assetsLength = 1
+        exitInputs[1] = PlasmaVaultConfigLib.addressToBytes32(USDC);
+        exitInputs[2] = TypeConversionLib.toBytes32(uint256(1)); // fetchCallDatasLength = 1
+        exitInputs[3] = TypeConversionLib.toBytes32(uint256(fetchCallData.length)); // fetchCallData[0] length
+
+        // Encode fetchCallData chunks
+        for (uint256 i; i < fetchCallDataChunks; ++i) {
+            bytes32 chunk;
+            assembly {
+                chunk := mload(add(add(fetchCallData, 0x20), mul(i, 32)))
+            }
+            exitInputs[4 + i] = chunk;
+        }
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_asyncActionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = exitInputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitActions = new FuseAction[](2);
+        exitActions[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        exitActions[1] = FuseAction(address(_asyncActionFuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.prank(ATOMIST);
+        PlasmaVault(PLASMA_VAULT).execute(exitActions);
+
+        // then
+        uint256 plasmaVaultBalanceAfter = IERC20(USDC).balanceOf(PLASMA_VAULT);
+        assertGt(plasmaVaultBalanceAfter, 0, "PlasmaVault should have received the tokens from executor");
+        assertEq(IERC20(USDC).balanceOf(executor), 0, "Executor should have zero USDC balance after exit");
+    }
+
+    /// @notice Test that exitTransient() works with empty assets array
+    function testExitTransientWithEmptyAssets() public {
+        // given
+        // Configure substrates
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_AMOUNT_TO_OUTSIDE,
+                data: AsyncActionFuseLib.encodeAllowedAmountToOutside(
+                    AllowedAmountToOutside({asset: USDC, amount: 1000e6})
+                )
+            })
+        );
+        substrates[1] = AsyncActionFuseLib.encodeAsyncActionFuseSubstrate(
+            AsyncActionFuseSubstrate({
+                substrateType: AsyncActionFuseSubstrateType.ALLOWED_EXIT_SLIPPAGE,
+                data: AsyncActionFuseLib.encodeAllowedSlippage(AllowedSlippage({slippage: 0}))
+            })
+        );
+
+        vm.startPrank(ATOMIST);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(IporFusionMarkets.ASYNC_ACTION, substrates);
+        vm.stopPrank();
+
+        // First, create executor by doing an enter with amountOut = 0
+        FuseAction[] memory initActions = new FuseAction[](1);
+        initActions[0] = FuseAction({
+            fuse: address(_asyncActionFuse),
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,address[],bytes[],uint256[],address[]))",
+                AsyncActionFuseEnterData({
+                    tokenOut: USDC,
+                    amountOut: 0,
+                    targets: new address[](0),
+                    callDatas: new bytes[](0),
+                    ethAmounts: new uint256[](0),
+                    tokensDustToCheck: new address[](0)
+                })
+            )
+        });
+
+        vm.prank(ATOMIST);
+        PlasmaVault(PLASMA_VAULT).execute(initActions);
+
+        // Prepare transient inputs for exit with empty assets
+        // Input 0: assetsLength (uint256) = 0
+        // Input 1: fetchCallDatasLength (uint256) = 0
+        bytes32[] memory exitInputs = new bytes32[](2);
+        exitInputs[0] = TypeConversionLib.toBytes32(uint256(0)); // assetsLength = 0
+        exitInputs[1] = TypeConversionLib.toBytes32(uint256(0)); // fetchCallDatasLength = 0
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_asyncActionFuse);
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = exitInputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitActions = new FuseAction[](2);
+        exitActions[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        exitActions[1] = FuseAction(address(_asyncActionFuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.prank(ATOMIST);
+        PlasmaVault(PLASMA_VAULT).execute(exitActions);
+
+        // then - should succeed without reverting (empty assets array returns early)
+        assertTrue(true, "Exit with empty assets should succeed");
     }
 }

@@ -179,13 +179,17 @@ contract AsyncActionFuse is IFuseCommon {
     }
 
     /// @notice Validates provided payload and forwards execution instructions to the async executor using transient storage
-    /// @dev Reads tokenOut, amountOut, targets from transient storage.
-    ///      First input (index 0): tokenOut (address)
-    ///      Second input (index 1): amountOut (uint256)
-    ///      Third input (index 2): targetsLength (uint256)
-    ///      Next targetsLength inputs (indices 3 to 3+targetsLength-1): targets (address[])
-    ///      Note: callDatas and ethAmounts are not supported in transient storage due to bytes[] complexity.
-    ///      They should be set to empty arrays when using enterTransient.
+    /// @dev Reads tokenOut, amountOut, targets, callDatas, and ethAmounts from transient storage.
+    ///      Input 0: tokenOut (address)
+    ///      Input 1: amountOut (uint256)
+    ///      Input 2: targetsLength (uint256)
+    ///      Inputs 3 to 3+targetsLength-1: targets (address[])
+    ///      Input 3+targetsLength: callDatasLength (uint256)
+    ///      For each callData (i from 0 to callDatasLength-1):
+    ///        Input 3+targetsLength+1+i*2: callDataLength (uint256)
+    ///        Inputs 3+targetsLength+1+i*2+1 to 3+targetsLength+1+i*2+1+ceil(callDataLength/32)-1: callData chunks (bytes32[])
+    ///      Input after callDatas: ethAmountsLength (uint256)
+    ///      Inputs after ethAmountsLength: ethAmounts (uint256[])
     ///      Writes returned tokenOut and amountOut to transient storage outputs.
     function enterTransient() external {
         bytes32 tokenOutBytes32 = TransientStorageLib.getInput(VERSION, 0);
@@ -202,10 +206,44 @@ contract AsyncActionFuse is IFuseCommon {
             targets[i] = PlasmaVaultConfigLib.bytes32ToAddress(targetBytes32);
         }
 
-        // callDatas and ethAmounts are not supported in transient storage due to bytes[] complexity
-        // They should be empty arrays when using enterTransient
-        bytes[] memory callDatas = new bytes[](targetsLength);
-        uint256[] memory ethAmounts = new uint256[](targetsLength);
+        // Read callDatas
+        uint256 currentIndex = 3 + targetsLength;
+        bytes32 callDatasLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+        uint256 callDatasLength = TypeConversionLib.toUint256(callDatasLengthBytes32);
+        ++currentIndex;
+
+        bytes[] memory callDatas = new bytes[](callDatasLength);
+        for (uint256 i; i < callDatasLength; ++i) {
+            bytes32 callDataLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+            uint256 callDataLength = TypeConversionLib.toUint256(callDataLengthBytes32);
+            ++currentIndex;
+
+            bytes memory callData = new bytes(callDataLength);
+            uint256 chunksCount = (callDataLength + 31) / 32; // ceil(callDataLength / 32)
+            for (uint256 j; j < chunksCount; ++j) {
+                bytes32 chunk = TransientStorageLib.getInput(VERSION, currentIndex);
+                uint256 chunkStart = j * 32;
+                assembly {
+                    let dataPtr := add(add(callData, 0x20), chunkStart)
+                    mstore(dataPtr, chunk)
+                }
+                ++currentIndex;
+            }
+            callDatas[i] = callData;
+        }
+
+        // Read ethAmounts
+        bytes32 ethAmountsLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+        uint256 ethAmountsLength = TypeConversionLib.toUint256(ethAmountsLengthBytes32);
+        ++currentIndex;
+
+        uint256[] memory ethAmounts = new uint256[](ethAmountsLength);
+        for (uint256 i; i < ethAmountsLength; ++i) {
+            bytes32 ethAmountBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+            ethAmounts[i] = TypeConversionLib.toUint256(ethAmountBytes32);
+            ++currentIndex;
+        }
+
         address[] memory tokensDustToCheck = new address[](0);
 
         AsyncActionFuseEnterData memory data = AsyncActionFuseEnterData({
@@ -267,11 +305,13 @@ contract AsyncActionFuse is IFuseCommon {
     }
 
     /// @notice Fetches assets from async executor back to Plasma Vault using transient storage
-    /// @dev Reads assets array from transient storage (first element is length, subsequent elements are asset addresses).
-    ///      First input (index 0): assetsLength (uint256)
-    ///      Next assetsLength inputs (indices 1 to assetsLength): assets (address[])
-    ///      Note: fetchCallDatas are not supported in transient storage due to bytes[] complexity.
-    ///      They should be set to empty arrays when using exitTransient.
+    /// @dev Reads assets array and fetchCallDatas from transient storage.
+    ///      Input 0: assetsLength (uint256)
+    ///      Inputs 1 to assetsLength: assets (address[])
+    ///      Input assetsLength+1: fetchCallDatasLength (uint256)
+    ///      For each fetchCallData (i from 0 to fetchCallDatasLength-1):
+    ///        Input assetsLength+2+i*2: fetchCallDataLength (uint256)
+    ///        Inputs assetsLength+2+i*2+1 to assetsLength+2+i*2+1+ceil(fetchCallDataLength/32)-1: fetchCallData chunks (bytes32[])
     ///      Writes returned assets array length to transient storage outputs.
     function exitTransient() external {
         bytes32 assetsLengthBytes32 = TransientStorageLib.getInput(VERSION, 0);
@@ -283,9 +323,31 @@ contract AsyncActionFuse is IFuseCommon {
             assets[i] = PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32);
         }
 
-        // fetchCallDatas are not supported in transient storage due to bytes[] complexity
-        // They should be empty arrays when using exitTransient
-        bytes[] memory fetchCallDatas = new bytes[](assetsLength);
+        // Read fetchCallDatas
+        uint256 currentIndex = 1 + assetsLength;
+        bytes32 fetchCallDatasLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+        uint256 fetchCallDatasLength = TypeConversionLib.toUint256(fetchCallDatasLengthBytes32);
+        ++currentIndex;
+
+        bytes[] memory fetchCallDatas = new bytes[](fetchCallDatasLength);
+        for (uint256 i; i < fetchCallDatasLength; ++i) {
+            bytes32 fetchCallDataLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+            uint256 fetchCallDataLength = TypeConversionLib.toUint256(fetchCallDataLengthBytes32);
+            ++currentIndex;
+
+            bytes memory fetchCallData = new bytes(fetchCallDataLength);
+            uint256 chunksCount = (fetchCallDataLength + 31) / 32; // ceil(fetchCallDataLength / 32)
+            for (uint256 j; j < chunksCount; ++j) {
+                bytes32 chunk = TransientStorageLib.getInput(VERSION, currentIndex);
+                uint256 chunkStart = j * 32;
+                assembly {
+                    let dataPtr := add(add(fetchCallData, 0x20), chunkStart)
+                    mstore(dataPtr, chunk)
+                }
+                ++currentIndex;
+            }
+            fetchCallDatas[i] = fetchCallData;
+        }
 
         AsyncActionFuseExitData memory data = AsyncActionFuseExitData({assets: assets, fetchCallDatas: fetchCallDatas});
 
