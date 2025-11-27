@@ -16,6 +16,8 @@ import {WethEthAdapterStorageLib} from "./lib/WethEthAdapterStorageLib.sol";
 import {WethEthAdapter} from "./WethEthAdapter.sol";
 import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 
 /// @notice Data to open a new Trove through Zapper
 /// @param zapper the zapper address
@@ -53,6 +55,7 @@ struct EbisuZapperCreateFuseExitData {
 
 contract EbisuZapperCreateFuse is IFuseCommon {
     using SafeERC20 for IERC20;
+    address public immutable VERSION;
     uint256 public immutable MARKET_ID;
     address public immutable WETH;
 
@@ -88,6 +91,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
 
     constructor(uint256 marketId_, address weth_) {
         if (weth_ == address(0)) revert WethAddressNotValid();
+        VERSION = address(this);
         MARKET_ID = marketId_;
         WETH = weth_;
     }
@@ -97,7 +101,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
     /// The remaining part (leverage) is obtained thanks to a flash loan performed by the Zapper
     /// The result is having a Trove open with collateral collAmount + flashLoanAmount, and debt ebusdAmount + fees
     /// An amount of 0.375 ETH must be deposited on the Zapper contract, thus we need the WethEthAdapter
-    function enter(EbisuZapperCreateFuseEnterData calldata data_) external {
+    function enter(EbisuZapperCreateFuseEnterData memory data_) public returns (address zapper, uint256 troveId) {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
@@ -152,16 +156,16 @@ contract EbisuZapperCreateFuse is IFuseCommon {
             receiver: adapter
         });
 
-        ILeverageZapper zapper = ILeverageZapper(data_.zapper);
+        ILeverageZapper zapperContract = ILeverageZapper(data_.zapper);
 
         IERC20(WETH).safeTransfer(adapter, ETH_GAS_COMPENSATION);
 
-        IERC20(zapper.collToken()).safeTransfer(adapter, data_.collAmount);
+        IERC20(zapperContract.collToken()).safeTransfer(adapter, data_.collAmount);
 
         /// @dev minEthToSpend = ETH_GAS_COMPENSATION by default
         IWethEthAdapter(adapter).openTroveByZapper(params, data_.zapper, ETH_GAS_COMPENSATION);
 
-        uint256 troveId = EbisuMathLib.calculateTroveId(adapter, address(this), data_.zapper, ownerIndex);
+        troveId = EbisuMathLib.calculateTroveId(adapter, address(this), data_.zapper, ownerIndex);
         troveDataStorage.troveIds[data_.zapper] = troveId;
 
         emit EbisuZapperCreateFuseEnter(
@@ -171,6 +175,29 @@ contract EbisuZapperCreateFuse is IFuseCommon {
             data_.ebusdAmount,
             troveId
         );
+
+        return (data_.zapper, troveId);
+    }
+
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        EbisuZapperCreateFuseEnterData memory data;
+        data.zapper = TypeConversionLib.toAddress(inputs[0]);
+        data.registry = TypeConversionLib.toAddress(inputs[1]);
+        data.collAmount = TypeConversionLib.toUint256(inputs[2]);
+        data.ebusdAmount = TypeConversionLib.toUint256(inputs[3]);
+        data.upperHint = TypeConversionLib.toUint256(inputs[4]);
+        data.lowerHint = TypeConversionLib.toUint256(inputs[5]);
+        data.flashLoanAmount = TypeConversionLib.toUint256(inputs[6]);
+        data.annualInterestRate = TypeConversionLib.toUint256(inputs[7]);
+        data.maxUpfrontFee = TypeConversionLib.toUint256(inputs[8]);
+
+        (address zapper, uint256 troveId) = enter(data);
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(zapper);
+        outputs[1] = TypeConversionLib.toBytes32(troveId);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     /// @notice closing a Liquity (leveraged) Trove through Ebisu's Zapper
@@ -178,7 +205,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
     /// If exitFromCollateral = false, ebUSD debt is repaid by a direct transfer by the PlasmaVault
     /// In both cases, the PlasmaVault receives the excess collateral tokens
     /// In the case exitFromCollateral = true, the PlasmaVault may receive excess ebUSD too.
-    function exit(EbisuZapperCreateFuseExitData calldata data_) external {
+    function exit(EbisuZapperCreateFuseExitData memory data_) public returns (address zapper, uint256 ownerIndex) {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 MARKET_ID,
@@ -215,6 +242,24 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         delete troveDataStorage.troveIds[data_.zapper];
 
         emit EbisuZapperCreateFuseExit(data_.zapper, troveDataStorage.latestOwnerIndex);
+
+        return (data_.zapper, troveDataStorage.latestOwnerIndex);
+    }
+
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        EbisuZapperCreateFuseExitData memory data;
+        data.zapper = TypeConversionLib.toAddress(inputs[0]);
+        data.flashLoanAmount = TypeConversionLib.toUint256(inputs[1]);
+        data.minExpectedCollateral = TypeConversionLib.toUint256(inputs[2]);
+        data.exitFromCollateral = TypeConversionLib.toBool(inputs[3]);
+
+        (address zapper, uint256 ownerIndex) = exit(data);
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(zapper);
+        outputs[1] = TypeConversionLib.toBytes32(ownerIndex);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     // -------- internal helpers --------
@@ -233,7 +278,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         }
     }
 
-    function _checkUpfrontFeeAndDebt(EbisuZapperCreateFuseEnterData calldata data_) internal {
+    function _checkUpfrontFeeAndDebt(EbisuZapperCreateFuseEnterData memory data_) internal {
         IAddressesRegistry reg = IAddressesRegistry(data_.registry);
         IActivePool activePool = reg.activePool();
 

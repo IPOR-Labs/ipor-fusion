@@ -27,4 +27,8 @@ contract TransientStorageSetterFuse {
             }
         }
     }
+
+    function getOutputs(address account_) external view returns (bytes32[] memory) {
+        return TransientStorageLib.getOutputs(account_);
+    }
 }
