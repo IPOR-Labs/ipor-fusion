@@ -895,6 +895,82 @@ contract EbisuZapperTest is Test {
         assertEq(troveData.entireDebt, 0);
     }
 
+    function testLeverModifyTransient() public {
+        // Setup similar to testLeverUpEffectsEbisu
+        testShouldEnterToEbisuZapper();
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), SUSDE_ZAPPER, 1);
+        ITroveManager troveManager = ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
+
+        ITroveManager.LatestTroveData memory initialData = troveManager.getLatestTroveData(troveId);
+
+        // Lever Up
+        EbisuZapperLeverModifyFuseEnterData memory leverUpData = EbisuZapperLeverModifyFuseEnterData({
+            zapper: SUSDE_ZAPPER,
+            flashLoanAmount: 100 * 1e18,
+            ebusdAmount: 500 * 1e18,
+            maxUpfrontFee: 2 * 1e18
+        });
+
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(leverUpData.zapper);
+        inputs[1] = TypeConversionLib.toBytes32(leverUpData.flashLoanAmount);
+        inputs[2] = TypeConversionLib.toBytes32(leverUpData.ebusdAmount);
+        inputs[3] = TypeConversionLib.toBytes32(leverUpData.maxUpfrontFee);
+
+        bytes32[] memory expectedOutputs = new bytes32[](2);
+        expectedOutputs[0] = TypeConversionLib.toBytes32(leverUpData.zapper);
+        expectedOutputs[1] = TypeConversionLib.toBytes32(troveId);
+
+        FuseAction[] memory leverUpCalls = new FuseAction[](3);
+        leverUpCalls[0] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("setInputs(address,bytes32[])", address(leverModifyFuse), inputs)
+        );
+        leverUpCalls[1] = FuseAction(address(leverModifyFuse), abi.encodeWithSignature("enterTransient()"));
+        leverUpCalls[2] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("checkOutputs(address,bytes32[])", address(leverModifyFuse), expectedOutputs)
+        );
+
+        plasmaVault.execute(leverUpCalls);
+
+        ITroveManager.LatestTroveData memory finalData = troveManager.getLatestTroveData(troveId);
+        assertGe(finalData.entireDebt, initialData.entireDebt + leverUpData.ebusdAmount);
+
+        // Lever Down
+        EbisuZapperLeverModifyFuseExitData memory leverDownData = EbisuZapperLeverModifyFuseExitData({
+            zapper: SUSDE_ZAPPER,
+            flashLoanAmount: 500 * 1e18,
+            minBoldAmount: 200 * 1e18
+        });
+
+        bytes32[] memory exitInputs = new bytes32[](3);
+        exitInputs[0] = TypeConversionLib.toBytes32(leverDownData.zapper);
+        exitInputs[1] = TypeConversionLib.toBytes32(leverDownData.flashLoanAmount);
+        exitInputs[2] = TypeConversionLib.toBytes32(leverDownData.minBoldAmount);
+
+        bytes32[] memory expectedExitOutputs = new bytes32[](2);
+        expectedExitOutputs[0] = TypeConversionLib.toBytes32(leverDownData.zapper);
+        expectedExitOutputs[1] = TypeConversionLib.toBytes32(troveId);
+
+        FuseAction[] memory leverDownCalls = new FuseAction[](3);
+        leverDownCalls[0] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("setInputs(address,bytes32[])", address(leverModifyFuse), exitInputs)
+        );
+        leverDownCalls[1] = FuseAction(address(leverModifyFuse), abi.encodeWithSignature("exitTransient()"));
+        leverDownCalls[2] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("checkOutputs(address,bytes32[])", address(leverModifyFuse), expectedExitOutputs)
+        );
+
+        plasmaVault.execute(leverDownCalls);
+
+        ITroveManager.LatestTroveData memory finalData2 = troveManager.getLatestTroveData(troveId);
+        assertLt(finalData2.entireDebt, finalData.entireDebt);
+    }
+
     // --- internal swapper function ---
 
     function _swapUSDCtoToken(uint256 amountToSwap, address tokenToObtain) private {
