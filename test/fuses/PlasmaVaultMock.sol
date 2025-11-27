@@ -35,6 +35,14 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
     }
 
+    function enterCompoundV2SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitCompoundV2SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
+
     function enterAaveV3Supply(AaveV3SupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256,uint256))", data));
     }
