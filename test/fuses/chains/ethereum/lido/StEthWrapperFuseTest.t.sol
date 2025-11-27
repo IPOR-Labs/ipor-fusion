@@ -5,24 +5,29 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FuseAction, FeeConfig} from "../../../../../contracts/vaults/PlasmaVault.sol";
-import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultBase} from "../../../../../contracts/vaults/PlasmaVaultBase.sol";
-import {PriceOracleMiddleware} from "../../../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {WstETHPriceFeedEthereum} from "../../../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
 import {StEthWrapperFuse} from "../../../../../contracts/fuses/chains/ethereum/lido/StEthWrapperFuse.sol";
-import {WithdrawManager} from "../../../../../contracts/managers/withdraw/WithdrawManager.sol";
-import {PlasmaVaultConfigurator} from "../../../../utils/PlasmaVaultConfigurator.sol";
-import {IporFusionAccessManager} from "../../../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {ERC20BalanceFuse} from "../../../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {IporFusionMarkets} from "../../../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {ERC20BalanceFuse} from "../../../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {FeeConfigHelper} from "../../../../test_helpers/FeeConfigHelper.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {TypeConversionLib} from "../../../../../contracts/libraries/TypeConversionLib.sol";
+import {Errors} from "../../../../../contracts/libraries/errors/Errors.sol";
+import {IporFusionAccessManager} from "../../../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../../../../contracts/managers/fee/FeeAccount.sol";
+import {WithdrawManager} from "../../../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PriceOracleMiddleware} from "../../../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {WstETHPriceFeedEthereum} from "../../../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
+import {PlasmaVault, PlasmaVaultInitData, FuseAction, FeeConfig, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultBase} from "../../../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {FeeConfigHelper} from "../../../../test_helpers/FeeConfigHelper.sol";
+import {PlasmaVaultConfigurator} from "../../../../utils/PlasmaVaultConfigurator.sol";
 import {IWstETH} from "./IWstETH.sol";
 
+/// @title StEthWrapperFuseTest
+/// @notice Tests for StEthWrapperFuse
+/// @author IPOR Labs
 contract StEthWrapperFuseTest is Test {
     ///  assets
     address private constant _WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -45,7 +50,9 @@ contract StEthWrapperFuseTest is Test {
     address private _accessManager;
 
     address private _stEthWrapperFuse;
+    address private _transientStorageSetInputsFuse;
 
+    /// @notice Setup the test environment
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 23041700);
 
@@ -84,6 +91,8 @@ contract StEthWrapperFuseTest is Test {
         _initialDepositIntoPlasmaVault();
     }
 
+    /// @notice Create price oracle
+    /// @return Address of the price oracle
     function _createPriceOracle() private returns (address) {
         PriceOracleMiddleware implementation = new PriceOracleMiddleware(_CHAINLINK_REGISTRY);
         PriceOracleMiddleware priceOracle = PriceOracleMiddleware(
@@ -111,6 +120,8 @@ contract StEthWrapperFuseTest is Test {
         return address(priceOracle);
     }
 
+    /// @notice Setup market configs
+    /// @return marketConfigs_ Array of market configs
     function _setupMarketConfigsErc20() private returns (MarketSubstratesConfig[] memory marketConfigs_) {
         marketConfigs_ = new MarketSubstratesConfig[](1);
 
@@ -122,13 +133,19 @@ contract StEthWrapperFuseTest is Test {
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, tokens);
     }
 
+    /// @notice Setup fuses
+    /// @return fuses Array of fuses
     function _setupFuses() private returns (address[] memory fuses) {
         _stEthWrapperFuse = address(new StEthWrapperFuse(IporFusionMarkets.ERC20_VAULT_BALANCE));
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
 
-        fuses = new address[](1);
+        fuses = new address[](2);
         fuses[0] = address(_stEthWrapperFuse);
+        fuses[1] = address(_transientStorageSetInputsFuse);
     }
 
+    /// @notice Setup balance fuses
+    /// @return balanceFuses_ Array of balance fuses
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
         ERC20BalanceFuse erc20Balance = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
 
@@ -136,15 +153,20 @@ contract StEthWrapperFuseTest is Test {
         balanceFuses_[0] = MarketBalanceFuseConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, address(erc20Balance));
     }
 
+    /// @notice Setup fee config
+    /// @return feeConfig Fee configuration
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
         feeConfig = FeeConfigHelper.createZeroFeeConfig();
     }
 
+    /// @notice Create access manager
+    /// @return accessManager_ Address of the access manager
     function _createAccessManager() private returns (address accessManager_) {
         accessManager_ = address(new IporFusionAccessManager(_ATOMIST, 0));
         _accessManager = accessManager_;
     }
 
+    /// @notice Initialize access manager
     function _initAccessManager() private {
         address[] memory initAddress = new address[](3);
         initAddress[0] = address(this);
@@ -194,6 +216,7 @@ contract StEthWrapperFuseTest is Test {
         vm.stopPrank();
     }
 
+    /// @notice Initial deposit into plasma vault
     function _initialDepositIntoPlasmaVault() private {
         /// this transfer is only for testing purposes, in production one have to swap underlying assets to this assets
         vm.startPrank(_stETH_HOLDER);
@@ -210,6 +233,7 @@ contract StEthWrapperFuseTest is Test {
     //********************                              TESTS                                       ********************
     //******************************************************************************************************************
 
+    /// @notice Tests wrapping stETH to wstETH
     function testShouldBeAbleWrap() external {
         // given
         uint256 stEthToWrap = 50e18;
@@ -241,6 +265,7 @@ contract StEthWrapperFuseTest is Test {
         assertApproxEqAbs(plasmaVaultBalanceAfter, 50e18, _errorDelta, "stETH balance before should be 50");
     }
 
+    /// @notice Tests wrapping stETH to wstETH with smaller amount than requested
     function testShouldBeAbleWrapSmallerAmountThanRequested() external {
         // given
         uint256 stEthToWrap = 101e18;
@@ -272,6 +297,7 @@ contract StEthWrapperFuseTest is Test {
         assertApproxEqAbs(plasmaVaultBalanceAfter, 0, _errorDelta, "stETH balance before should be 50");
     }
 
+    /// @notice Tests unwrapping wstETH to stETH
     function testShouldBeAbleUnwrap() external {
         // given
         uint256 stEthToWrap = 50e18;
@@ -319,6 +345,7 @@ contract StEthWrapperFuseTest is Test {
         assertApproxEqAbs(plasmaVaultBalanceAfter, 100e18, _errorDelta, "stETH balance before should be 50");
     }
 
+    /// @notice Tests unwrapping wstETH to stETH with smaller amount than requested
     function testShouldBeAbleUnwrapSmallerAmountThanRequested() external {
         // given
         uint256 stEthToWrap = 50e18;
@@ -364,5 +391,269 @@ contract StEthWrapperFuseTest is Test {
 
         assertApproxEqAbs(wstEthBalanceAfter, 0, _errorDelta, "invalid wstETH balance");
         assertApproxEqAbs(plasmaVaultBalanceAfter, 100e18, _errorDelta, "stETH balance before should be 50");
+    }
+
+    /// @notice Tests entering the wrapper via transient storage inputs
+    function testShouldEnterTransient() external {
+        // given
+        uint256 stEthToWrap = 50e18;
+        address fuseAddress = _stEthWrapperFuse;
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(stEthToWrap);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory inputData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+
+        enterCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSelector(TransientStorageSetInputsFuse.enter.selector, inputData)
+        });
+        enterCalls[1] = FuseAction({fuse: _stEthWrapperFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        uint256 wstEthBalanceBefore = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceBefore = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 expectedWstEthAmount = IWstETH(_wstETH_ADDRESS).getWstETHByStETH(stEthToWrap);
+
+        //when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        //then
+        uint256 wstEthBalanceAfter = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceAfter = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        assertEq(wstEthBalanceBefore, 0, "wstETH balance before should be 0");
+        assertApproxEqAbs(plasmaVaultBalanceBefore, 100e18, _errorDelta, "stETH balance before should be 100");
+        assertApproxEqAbs(wstEthBalanceAfter, expectedWstEthAmount, _errorDelta, "invalid wstETH balance");
+        assertApproxEqAbs(plasmaVaultBalanceAfter, 50e18, _errorDelta, "stETH balance before should be 50");
+    }
+
+    /// @notice Tests exiting the wrapper via transient storage inputs
+    function testShouldExitTransient() external {
+        // given
+        uint256 stEthToWrap = 50e18;
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: _stEthWrapperFuse,
+            data: abi.encodeWithSignature("enter(uint256)", stEthToWrap)
+        });
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        uint256 wstEthBalanceAfterWrap = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+
+        address fuseAddress = _stEthWrapperFuse;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(wstEthBalanceAfterWrap);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory inputData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSelector(TransientStorageSetInputsFuse.enter.selector, inputData)
+        });
+        exitCalls[1] = FuseAction({fuse: _stEthWrapperFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        //when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(exitCalls);
+        vm.stopPrank();
+
+        //then
+        uint256 wstEthBalanceAfter = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceAfter = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        assertApproxEqAbs(wstEthBalanceAfter, 0, _errorDelta, "invalid wstETH balance");
+        assertApproxEqAbs(plasmaVaultBalanceAfter, 100e18, _errorDelta, "stETH balance after should be 100");
+    }
+
+    /// @notice Tests entering with zero amount
+    function testShouldReturnWhenEnteringWithZeroAmount() external {
+        // given
+        uint256 stEthToWrap = 0;
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: _stEthWrapperFuse,
+            data: abi.encodeWithSignature("enter(uint256)", stEthToWrap)
+        });
+
+        uint256 wstEthBalanceBefore = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceBefore = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        //when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        //then
+        uint256 wstEthBalanceAfter = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceAfter = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        assertEq(wstEthBalanceAfter, wstEthBalanceBefore, "wstETH balance should not change");
+        assertEq(plasmaVaultBalanceAfter, plasmaVaultBalanceBefore, "stETH balance should not change");
+    }
+
+    /// @notice Tests exiting with zero amount
+    function testShouldReturnWhenExitingWithZeroAmount() external {
+        // given
+        uint256 wstEthToUnwrap = 0;
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction({
+            fuse: _stEthWrapperFuse,
+            data: abi.encodeWithSignature("exit(uint256)", wstEthToUnwrap)
+        });
+
+        uint256 wstEthBalanceBefore = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceBefore = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        //when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(exitCalls);
+        vm.stopPrank();
+
+        //then
+        uint256 wstEthBalanceAfter = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceAfter = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        assertEq(wstEthBalanceAfter, wstEthBalanceBefore, "wstETH balance should not change");
+        assertEq(plasmaVaultBalanceAfter, plasmaVaultBalanceBefore, "stETH balance should not change");
+    }
+
+    /// @notice Tests entering transient with zero amount
+    function testShouldReturnWhenEnteringTransientWithZeroAmount() external {
+        // given
+        address fuseAddress = _stEthWrapperFuse;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(uint256(0));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory inputData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSelector(TransientStorageSetInputsFuse.enter.selector, inputData)
+        });
+        enterCalls[1] = FuseAction({fuse: _stEthWrapperFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        uint256 wstEthBalanceBefore = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceBefore = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        //when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        //then
+        uint256 wstEthBalanceAfter = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceAfter = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        assertEq(wstEthBalanceAfter, wstEthBalanceBefore, "wstETH balance should not change");
+        assertEq(plasmaVaultBalanceAfter, plasmaVaultBalanceBefore, "stETH balance should not change");
+    }
+
+    /// @notice Tests exiting transient with zero amount
+    function testShouldReturnWhenExitingTransientWithZeroAmount() external {
+        // given
+        address fuseAddress = _stEthWrapperFuse;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = TypeConversionLib.toBytes32(uint256(0));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory inputData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSelector(TransientStorageSetInputsFuse.enter.selector, inputData)
+        });
+        exitCalls[1] = FuseAction({fuse: _stEthWrapperFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        uint256 wstEthBalanceBefore = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceBefore = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        //when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(exitCalls);
+        vm.stopPrank();
+
+        //then
+        uint256 wstEthBalanceAfter = ERC20(_wstETH_ADDRESS).balanceOf(_plasmaVault);
+        uint256 plasmaVaultBalanceAfter = ERC20(_stETH_ADDRESS).balanceOf(_plasmaVault);
+
+        assertEq(wstEthBalanceAfter, wstEthBalanceBefore, "wstETH balance should not change");
+        assertEq(plasmaVaultBalanceAfter, plasmaVaultBalanceBefore, "stETH balance should not change");
+    }
+
+    /// @notice Tests constructor reverts with zero market id
+    function testShouldRevertWhenMarketIdIsZero() external {
+        vm.expectRevert(Errors.WrongValue.selector);
+        new StEthWrapperFuse(0);
+    }
+
+    /// @notice Tests validation fails when asset is not supported
+    function testShouldRevertWhenAssetIsNotSupported() external {
+        // Deploy a fuse with a random market ID that doesn't have configured assets
+        address badFuse = address(new StEthWrapperFuse(99999));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = badFuse;
+        vm.startPrank(_ATOMIST);
+        PlasmaVaultGovernance(_plasmaVault).addFuses(fuses);
+        vm.stopPrank();
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({fuse: badFuse, data: abi.encodeWithSignature("enter(uint256)", 10e18)});
+
+        vm.startPrank(_ALPHA);
+        // The revert happens inside the fuse via delegatecall.
+        // The fuse checks underlyingAsset (stETH) vs ST_ETH (match)
+        // So _validateSubstrates passes the first check.
+        // But it fails the second check: underlyingAsset (stETH) != WST_ETH (True)
+        // AND isSubstrateAsAssetGranted(99999, WST_ETH) -> False
+        // So it should revert StEthWrapperFuseUnsupportedAsset("enter", WST_ETH)
+        vm.expectRevert(
+            abi.encodeWithSelector(StEthWrapperFuse.StEthWrapperFuseUnsupportedAsset.selector, "enter", _wstETH_ADDRESS)
+        );
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
     }
 }
