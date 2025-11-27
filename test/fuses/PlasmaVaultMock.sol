@@ -31,6 +31,10 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
     }
 
+    function enterCompoundV3SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
     function enterCompoundV2Supply(CompoundV2SupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
     }
@@ -75,6 +79,10 @@ contract PlasmaVaultMock {
 
     function exitCompoundV3Supply(CompoundV3SupplyFuseExitData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+    }
+
+    function exitCompoundV3SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
 
     function exitCompoundV2Supply(CompoundV2SupplyFuseExitData memory data) external {
@@ -181,6 +189,13 @@ contract PlasmaVaultMock {
     /// @return inputs Array of input values
     function getInputs(address account_) external view returns (bytes32[] memory) {
         return TransientStorageLib.getInputs(account_);
+    }
+
+    /// @notice Retrieves all output parameters for a specific account
+    /// @param account_ The address of the account
+    /// @return outputs Array of output values
+    function getOutputs(address account_) external view returns (bytes32[] memory) {
+        return TransientStorageLib.getOutputs(account_);
     }
 
     function execute(address fuse_, bytes calldata data_) external {
