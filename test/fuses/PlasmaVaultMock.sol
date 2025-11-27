@@ -61,6 +61,14 @@ contract PlasmaVaultMock {
     function enterErc4626Supply(Erc4626SupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
     }
+
+    function enterErc4626SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitErc4626SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
     function enterSparkSupply(SparkSupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256))", data));
     }
@@ -200,5 +208,21 @@ contract PlasmaVaultMock {
 
     function execute(address fuse_, bytes calldata data_) external {
         address(fuse_).functionDelegateCall(data_);
+    }
+
+    fallback() external payable {
+        address target = fuse;
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let result := delegatecall(gas(), target, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch result
+            case 0 {
+                revert(0, returndatasize())
+            }
+            default {
+                return(0, returndatasize())
+            }
+        }
     }
 }

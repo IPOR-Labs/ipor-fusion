@@ -9,6 +9,8 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 /// @notice Data structure for entering - supply - the ERC4626 vault
 struct Erc4626SupplyFuseEnterData {
@@ -52,9 +54,9 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    function enter(Erc4626SupplyFuseEnterData memory data_) external {
+    function enter(Erc4626SupplyFuseEnterData memory data_) external returns (uint256 finalVaultAssetAmount) {
         if (data_.vaultAssetAmount == 0) {
-            return;
+            return 0;
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.vault)) {
@@ -63,13 +65,13 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address underlyingAsset = IERC4626(data_.vault).asset();
 
-        uint256 finalVaultAssetAmount = IporMath.min(
+        finalVaultAssetAmount = IporMath.min(
             data_.vaultAssetAmount,
             IERC4626(underlyingAsset).balanceOf(address(this))
         );
 
         if (finalVaultAssetAmount == 0) {
-            return;
+            return 0;
         }
 
         ERC20(underlyingAsset).forceApprove(data_.vault, finalVaultAssetAmount);
@@ -79,8 +81,32 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         emit Erc4626SupplyFuseEnter(VERSION, underlyingAsset, data_.vault, finalVaultAssetAmount);
     }
 
-    function exit(Erc4626SupplyFuseExitData calldata data_) external {
-        _exit(data_, false);
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address vault = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        uint256 suppliedAmount = this.enter(Erc4626SupplyFuseEnterData(vault, amount));
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(suppliedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    function exit(Erc4626SupplyFuseExitData calldata data_) external returns (uint256 shares) {
+        return _exit(data_, false);
+    }
+
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address vault = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        uint256 shares = this.exit(Erc4626SupplyFuseExitData(vault, amount));
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(shares);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
@@ -92,9 +118,9 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         _exit(Erc4626SupplyFuseExitData(vault, amount), true);
     }
 
-    function _exit(Erc4626SupplyFuseExitData memory data_, bool catchExceptions_) internal {
+    function _exit(Erc4626SupplyFuseExitData memory data_, bool catchExceptions_) internal returns (uint256 shares) {
         if (data_.vaultAssetAmount == 0) {
-            return;
+            return 0;
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.vault)) {
@@ -107,24 +133,29 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         );
 
         if (finalVaultAssetAmount == 0) {
-            return;
+            return 0;
         }
 
-        _performWithdraw(data_.vault, finalVaultAssetAmount, catchExceptions_);
+        return _performWithdraw(data_.vault, finalVaultAssetAmount, catchExceptions_);
     }
 
-    function _performWithdraw(address vault_, uint256 finalVaultAssetAmount_, bool catchExceptions_) private {
+    function _performWithdraw(
+        address vault_,
+        uint256 finalVaultAssetAmount_,
+        bool catchExceptions_
+    ) private returns (uint256 shares) {
         if (catchExceptions_) {
             try IERC4626(vault_).withdraw(finalVaultAssetAmount_, address(this), address(this)) returns (
-                uint256 shares
+                uint256 shares_
             ) {
+                shares = shares_;
                 emit Erc4626SupplyFuseExit(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_, shares);
             } catch {
                 /// @dev if withdraw failed, continue with the next step
                 emit Erc4626SupplyFuseExitFailed(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_);
             }
         } else {
-            uint256 shares = IERC4626(vault_).withdraw(finalVaultAssetAmount_, address(this), address(this));
+            shares = IERC4626(vault_).withdraw(finalVaultAssetAmount_, address(this), address(this));
             emit Erc4626SupplyFuseExit(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_, shares);
         }
     }
