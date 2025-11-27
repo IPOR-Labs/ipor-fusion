@@ -53,6 +53,14 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256))", data));
     }
 
+    function enterSparkSupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitSparkSupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
+
     function enterMorphoSupply(MorphoSupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((bytes32,uint256))", data));
     }
@@ -165,5 +173,9 @@ contract PlasmaVaultMock {
     /// @return inputs Array of input values
     function getInputs(address account_) external view returns (bytes32[] memory) {
         return TransientStorageLib.getInputs(account_);
+    }
+
+    function execute(address fuse_, bytes calldata data_) external {
+        address(fuse_).functionDelegateCall(data_);
     }
 }
