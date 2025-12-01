@@ -22,7 +22,7 @@ struct EulerV2BatchFuseData {
     address[] assetsForApprovals;
     address[] eulerVaultsForApprovals;
 }
-
+/// DODO ADD TRANSIENT METHOD
 contract EulerV2BatchFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 

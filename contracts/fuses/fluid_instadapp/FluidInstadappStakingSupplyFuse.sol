@@ -6,10 +6,12 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuse.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IFluidLendingStakingRewards} from "./ext/IFluidLendingStakingRewards.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 
 /// @notice Data structure for entering - supplying - the Fluid Instadapp Staking protocol
 struct FluidInstadappStakingSupplyFuseEnterData {
@@ -46,27 +48,40 @@ contract FluidInstadappStakingSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    function enter(FluidInstadappStakingSupplyFuseEnterData memory data_) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.stakingPool)) {
-            revert FluidInstadappStakingSupplyFuseUnsupportedStakingPool("enter", data_.stakingPool);
+    /// @notice Enters the Fluid Instadapp Staking protocol
+    /// @param data_ The data structure containing the parameters for entering
+    /// @return stakingPool The address of the staking pool
+    /// @return stakingToken The address of the staking token
+    /// @return deposit The amount deposited
+    function enter(
+        FluidInstadappStakingSupplyFuseEnterData memory data_
+    ) public returns (address stakingPool, address stakingToken, uint256 deposit) {
+        stakingPool = data_.stakingPool;
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, stakingPool)) {
+            revert FluidInstadappStakingSupplyFuseUnsupportedStakingPool("enter", stakingPool);
         }
 
-        address stakingToken = IFluidLendingStakingRewards(data_.stakingPool).stakingToken();
-        uint256 deposit = IporMath.min(data_.fluidTokenAmount, IERC20(stakingToken).balanceOf(address(this)));
+        stakingToken = IFluidLendingStakingRewards(stakingPool).stakingToken();
+        deposit = IporMath.min(data_.fluidTokenAmount, IERC20(stakingToken).balanceOf(address(this)));
 
         if (deposit == 0) {
-            return;
+            return (stakingPool, stakingToken, deposit);
         }
 
-        IERC20(stakingToken).forceApprove(data_.stakingPool, deposit);
-        IFluidLendingStakingRewards(data_.stakingPool).stake(deposit);
+        IERC20(stakingToken).forceApprove(stakingPool, deposit);
+        IFluidLendingStakingRewards(stakingPool).stake(deposit);
 
-        emit FluidInstadappStakingFuseEnter(VERSION, data_.stakingPool, stakingToken, deposit);
+        emit FluidInstadappStakingFuseEnter(VERSION, stakingPool, stakingToken, deposit);
     }
 
     /// @notice Exits from the Market
-    function exit(FluidInstadappStakingSupplyFuseExitData memory data_) external {
-        _exit(data_, false);
+    /// @param data_ The data structure containing the parameters for exiting
+    /// @return stakingPool The address of the staking pool
+    /// @return withdrawAmount The amount withdrawn
+    function exit(
+        FluidInstadappStakingSupplyFuseExitData memory data_
+    ) public returns (address stakingPool, uint256 withdrawAmount) {
+        return _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
@@ -90,19 +105,23 @@ contract FluidInstadappStakingSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         );
     }
 
-    function _exit(FluidInstadappStakingSupplyFuseExitData memory data_, bool catchExceptions_) internal {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.stakingPool)) {
-            revert FluidInstadappStakingSupplyFuseUnsupportedStakingPool("enter", data_.stakingPool);
+    function _exit(
+        FluidInstadappStakingSupplyFuseExitData memory data_,
+        bool catchExceptions_
+    ) internal returns (address stakingPool, uint256 withdrawAmount) {
+        stakingPool = data_.stakingPool;
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, stakingPool)) {
+            revert FluidInstadappStakingSupplyFuseUnsupportedStakingPool("enter", stakingPool);
         }
 
-        uint256 balanceOf = IFluidLendingStakingRewards(data_.stakingPool).balanceOf(address(this));
-        uint256 withdrawAmount = IporMath.min(data_.fluidTokenAmount, balanceOf);
+        uint256 balanceOf = IFluidLendingStakingRewards(stakingPool).balanceOf(address(this));
+        withdrawAmount = IporMath.min(data_.fluidTokenAmount, balanceOf);
 
         if (withdrawAmount == 0) {
-            return;
+            return (stakingPool, withdrawAmount);
         }
 
-        _performWithdraw(data_.stakingPool, withdrawAmount, catchExceptions_);
+        _performWithdraw(stakingPool, withdrawAmount, catchExceptions_);
     }
 
     function _performWithdraw(address stakingPool_, uint256 withdrawAmount_, bool catchExceptions_) private {
@@ -117,5 +136,38 @@ contract FluidInstadappStakingSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             IFluidLendingStakingRewards(stakingPool_).withdraw(withdrawAmount_);
             emit FluidInstadappStakingFuseExit(VERSION, stakingPool_, withdrawAmount_);
         }
+    }
+
+    /// @notice Enters the Fluid Instadapp Staking protocol using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        uint256 fluidTokenAmount = TypeConversionLib.toUint256(inputs[0]);
+        address stakingPool = TypeConversionLib.toAddress(inputs[1]);
+
+        (address returnedStakingPool, address returnedStakingToken, uint256 returnedDeposit) = enter(
+            FluidInstadappStakingSupplyFuseEnterData({fluidTokenAmount: fluidTokenAmount, stakingPool: stakingPool})
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedStakingPool);
+        outputs[1] = TypeConversionLib.toBytes32(returnedStakingToken);
+        outputs[2] = TypeConversionLib.toBytes32(returnedDeposit);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits from the Fluid Instadapp Staking protocol using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        uint256 fluidTokenAmount = TypeConversionLib.toUint256(inputs[0]);
+        address stakingPool = TypeConversionLib.toAddress(inputs[1]);
+
+        (address returnedStakingPool, uint256 returnedWithdrawAmount) = exit(
+            FluidInstadappStakingSupplyFuseExitData({fluidTokenAmount: fluidTokenAmount, stakingPool: stakingPool})
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(returnedStakingPool);
+        outputs[1] = TypeConversionLib.toBytes32(returnedWithdrawAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
