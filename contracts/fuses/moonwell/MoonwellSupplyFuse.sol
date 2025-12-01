@@ -4,11 +4,14 @@ pragma solidity 0.8.30;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
 import {IFuseCommon} from "../IFuse.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {MErc20} from "./ext/MErc20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {MoonwellHelperLib} from "./MoonwellHelperLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 /// @notice Data for supplying assets to Moonwell
 /// @param asset Asset address to supply
@@ -54,35 +57,49 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     /// @notice Supply assets to Moonwell
     /// @param data_ Struct containing asset and amount to supply
-    function enter(MoonwellSupplyFuseEnterData memory data_) external {
+    /// @return asset Asset address supplied
+    /// @return market Market address (mToken)
+    /// @return amount Amount supplied
+    function enter(
+        MoonwellSupplyFuseEnterData memory data_
+    ) public returns (address asset, address market, uint256 amount) {
         if (data_.amount == 0) {
-            return;
+            return (data_.asset, address(0), 0);
         }
 
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         MErc20 mToken = MErc20(MoonwellHelperLib.getMToken(assetsRaw, data_.asset));
+        market = address(mToken);
 
         uint256 balance = ERC20(data_.asset).balanceOf(address(this));
         uint256 finalAmount = data_.amount > balance ? balance : data_.amount;
 
         if (finalAmount == 0) {
-            return;
+            return (data_.asset, market, 0);
         }
 
-        ERC20(data_.asset).forceApprove(address(mToken), finalAmount);
+        asset = data_.asset;
+        amount = finalAmount;
 
-        uint256 mintResult = mToken.mint(finalAmount);
+        ERC20(asset).forceApprove(market, amount);
+
+        uint256 mintResult = mToken.mint(amount);
         if (mintResult != 0) {
             revert MoonwellSupplyFuseMintFailed();
         }
 
-        emit MoonwellSupplyEnterFuse(VERSION, data_.asset, address(mToken), finalAmount);
+        emit MoonwellSupplyEnterFuse(VERSION, asset, market, amount);
     }
 
     /// @notice Withdraw assets from Moonwell
     /// @param data_ Struct containing asset and amount to withdraw
-    function exit(MoonwellSupplyFuseExitData calldata data_) external {
-        _exit(data_, false);
+    /// @return asset Asset address withdrawn
+    /// @return market Market address (mToken)
+    /// @return amount Amount withdrawn (or attempted if failed)
+    function exit(
+        MoonwellSupplyFuseExitData memory data_
+    ) public returns (address asset, address market, uint256 amount) {
+        return _exit(data_, false);
     }
 
     /// @notice Handle instant withdrawals
@@ -97,48 +114,102 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     /// @dev Internal function to handle withdrawals
     /// @param data_ Struct containing withdrawal parameters
-    function _exit(MoonwellSupplyFuseExitData memory data_, bool catchExceptions_) internal {
+    /// @param catchExceptions_ Whether to catch exceptions during withdrawal
+    /// @return asset Asset address withdrawn
+    /// @return market Market address (mToken)
+    /// @return amount Amount withdrawn (or attempted if failed)
+    function _exit(
+        MoonwellSupplyFuseExitData memory data_,
+        bool catchExceptions_
+    ) internal returns (address asset, address market, uint256 amount) {
         if (data_.amount == 0) {
-            return;
+            return (data_.asset, address(0), 0);
         }
 
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         MErc20 mToken = MErc20(MoonwellHelperLib.getMToken(assetsRaw, data_.asset));
+        market = address(mToken);
+        asset = data_.asset;
 
         uint256 balance = mToken.balanceOfUnderlying(address(this));
         uint256 amountToWithdraw = data_.amount > balance ? balance : data_.amount;
 
         if (amountToWithdraw == 0) {
-            return;
+            return (asset, market, 0);
         }
 
-        _performWithdraw(data_.asset, address(mToken), amountToWithdraw, catchExceptions_);
+        amount = _performWithdraw(asset, market, amountToWithdraw, catchExceptions_);
     }
 
+    /// @dev Internal function to perform withdrawal
+    /// @param asset_ Asset address
+    /// @param mToken_ Market address (mToken)
+    /// @param amountToWithdraw_ Amount to withdraw
+    /// @param catchExceptions_ Whether to catch exceptions
+    /// @return amount Amount withdrawn (or attempted if failed)
     function _performWithdraw(
         address asset_,
         address mToken_,
         uint256 amountToWithdraw_,
         bool catchExceptions_
-    ) private {
+    ) private returns (uint256 amount) {
         if (catchExceptions_) {
             try MErc20(mToken_).redeemUnderlying(amountToWithdraw_) returns (uint256 redeemResult) {
                 if (redeemResult != 0) {
-                    emit MoonwellSupplyExitFuse(VERSION, asset_, mToken_, redeemResult);
+                    amount = redeemResult;
+                    emit MoonwellSupplyExitFuse(VERSION, asset_, mToken_, amount);
                 } else {
-                    emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amountToWithdraw_);
+                    amount = amountToWithdraw_;
+                    emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amount);
                 }
             } catch {
                 /// @dev if withdraw failed, continue with the next step
-                emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amountToWithdraw_);
+                amount = amountToWithdraw_;
+                emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amount);
             }
         } else {
             uint256 redeemResult = MErc20(mToken_).redeemUnderlying(amountToWithdraw_);
             if (redeemResult != 0) {
-                emit MoonwellSupplyExitFuse(VERSION, asset_, mToken_, redeemResult);
+                amount = redeemResult;
+                emit MoonwellSupplyExitFuse(VERSION, asset_, mToken_, amount);
             } else {
-                emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amountToWithdraw_);
+                amount = amountToWithdraw_;
+                emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amount);
             }
         }
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address asset = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address returnedAsset, address returnedMarket, uint256 returnedAmount) = enter(
+            MoonwellSupplyFuseEnterData(asset, amount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedAsset);
+        outputs[1] = TypeConversionLib.toBytes32(returnedMarket);
+        outputs[2] = TypeConversionLib.toBytes32(returnedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address asset = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address returnedAsset, address returnedMarket, uint256 returnedAmount) = exit(
+            MoonwellSupplyFuseExitData(asset, amount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedAsset);
+        outputs[1] = TypeConversionLib.toBytes32(returnedMarket);
+        outputs[2] = TypeConversionLib.toBytes32(returnedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
