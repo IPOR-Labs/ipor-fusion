@@ -3,6 +3,8 @@ pragma solidity 0.8.30;
 
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 import {EulerFuseLib} from "./EulerFuseLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 import {IFuseCommon} from "../IFuseCommon.sol";
 
@@ -42,29 +44,53 @@ contract EulerV2ControllerFuse is IFuseCommon {
 
     /// @notice Enters the Euler V2 Controller Fuse with the specified parameters, enabling controlling collateral on Plasma Vault subAccount by EulerVault
     /// @param data_ The data structure containing the parameters for entering the Euler V2 Controller Fuse
-    function enter(EulerV2ControllerFuseEnterData memory data_) external {
+    /// @return eulerVault The address of the Euler vault
+    /// @return subAccount The generated sub-account address
+    function enter(
+        EulerV2ControllerFuseEnterData memory data_
+    ) public returns (address eulerVault, address subAccount) {
         if (!EulerFuseLib.canBorrow(MARKET_ID, data_.eulerVault, data_.subAccount)) {
             revert EulerV2ControllerFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
         }
 
-        address subAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
+        subAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
+        eulerVault = data_.eulerVault;
 
         /* solhint-disable avoid-low-level-calls */
-        EVC.enableController(subAccount, data_.eulerVault);
+        EVC.enableController(subAccount, eulerVault);
         /* solhint-enable avoid-low-level-calls */
 
-        emit EulerV2EnableControllerFuse(VERSION, data_.eulerVault, subAccount);
+        emit EulerV2EnableControllerFuse(VERSION, eulerVault, subAccount);
+    }
+
+    /// @notice Enters the Euler V2 Controller Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address eulerVault = TypeConversionLib.toAddress(inputs[0]);
+        bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[1])));
+
+        (address returnedEulerVault, address returnedSubAccount) = enter(
+            EulerV2ControllerFuseEnterData(eulerVault, subAccount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(returnedEulerVault);
+        outputs[1] = TypeConversionLib.toBytes32(returnedSubAccount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     /// @notice Exits the Euler V2 Controller Fuse with the specified parameters
     /// @param data_ The data structure containing the parameters for exiting the Euler V2 Controller Fuse
-    function exit(EulerV2ControllerFuseExitData memory data_) external {
+    /// @return eulerVault The address of the Euler vault
+    /// @return subAccount The generated sub-account address
+    function exit(EulerV2ControllerFuseExitData memory data_) public returns (address eulerVault, address subAccount) {
         /// @dev This is a safety check to ensure that the vault is supported by the fuse
         if (!EulerFuseLib.canSupply(MARKET_ID, data_.eulerVault, data_.subAccount)) {
             revert EulerV2ControllerFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
         }
 
-        address subAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
+        subAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
+        eulerVault = data_.eulerVault;
 
         bytes memory disableController = abi.encodeWithSignature("disableController()");
 
@@ -75,9 +101,25 @@ contract EulerV2ControllerFuse is IFuseCommon {
         // 4. EulerVault calls disableController on the EVC
         // This process ensures the controller is properly disabled for the subAccount
         /* solhint-disable avoid-low-level-calls */
-        EVC.call(data_.eulerVault, subAccount, 0, disableController);
+        EVC.call(eulerVault, subAccount, 0, disableController);
         /* solhint-enable avoid-low-level-calls */
 
-        emit EulerV2DisableControllerFuse(VERSION, data_.eulerVault, subAccount);
+        emit EulerV2DisableControllerFuse(VERSION, eulerVault, subAccount);
+    }
+
+    /// @notice Exits the Euler V2 Controller Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address eulerVault = TypeConversionLib.toAddress(inputs[0]);
+        bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[1])));
+
+        (address returnedEulerVault, address returnedSubAccount) = exit(
+            EulerV2ControllerFuseExitData(eulerVault, subAccount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(returnedEulerVault);
+        outputs[1] = TypeConversionLib.toBytes32(returnedSubAccount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

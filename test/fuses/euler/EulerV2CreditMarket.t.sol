@@ -1089,6 +1089,42 @@ contract EulerCreditMarketTest is Test {
         vm.stopPrank();
     }
 
+    function testShouldEnableVaultAsControllerForSubAccountOneUsingTransient() external {
+        // Setup transient storage inputs - create inline to save stack space
+        address[] memory fuses = new address[](1);
+        fuses[0] = _eulerControllerFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_PRIME_USDC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+
+        enterCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        enterCalls[1] = FuseAction({fuse: _eulerControllerFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        address[] memory controllersBefore = IEVC(_EVC).getControllers(_subAccountOneAddress);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        // then
+        address[] memory controllersAfter = IEVC(_EVC).getControllers(_subAccountOneAddress);
+
+        assertEq(controllersBefore.length, 0, "controllerBefore");
+        assertEq(controllersAfter[0], EULER_VAULT_PRIME_USDC, "controllerAfter");
+    }
+
     function testShouldDisableController() external {
         FuseAction[] memory enterCalls = new FuseAction[](1);
 
@@ -1115,6 +1151,56 @@ contract EulerCreditMarketTest is Test {
                 EulerV2ControllerFuseExitData({eulerVault: EULER_VAULT_PRIME_USDC, subAccount: _SUB_ACCOUNT_BYTE_ONE})
             )
         });
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(exitCalls);
+        vm.stopPrank();
+
+        // then
+        address[] memory controllersAfter = IEVC(_EVC).getControllers(_subAccountOneAddress);
+
+        assertEq(controllersBefore.length, 1, "controllerBefore");
+        assertEq(controllersAfter.length, 0, "controllerAfter");
+    }
+
+    function testShouldDisableControllerUsingTransient() external {
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+
+        enterCalls[0] = FuseAction({
+            fuse: _eulerControllerFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2ControllerFuseEnterData({eulerVault: EULER_VAULT_PRIME_USDC, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        address[] memory controllersBefore = IEVC(_EVC).getControllers(_subAccountOneAddress);
+
+        // Setup transient storage inputs - create inline to save stack space
+        address[] memory fuses = new address[](1);
+        fuses[0] = _eulerControllerFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_PRIME_USDC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+
+        exitCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        exitCalls[1] = FuseAction({fuse: _eulerControllerFuse, data: abi.encodeWithSignature("exitTransient()")});
 
         // when
         vm.startPrank(_ALPHA);
