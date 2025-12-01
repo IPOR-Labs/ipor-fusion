@@ -69,6 +69,14 @@ contract PlasmaVaultMock {
     function exitErc4626SupplyTransient() external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
+
+    function enterEulerV2SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitEulerV2SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
     function enterSparkSupply(SparkSupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256))", data));
     }
