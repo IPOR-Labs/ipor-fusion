@@ -3,6 +3,8 @@ pragma solidity 0.8.30;
 
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 import {EulerFuseLib} from "./EulerFuseLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 import {IFuseCommon} from "../IFuseCommon.sol";
 
@@ -42,24 +44,64 @@ contract EulerV2CollateralFuse is IFuseCommon {
 
     /// @notice Enters the Euler V2 Collateral Fuse with the specified parameters, enabling collateral for the given vault and sub-account
     /// @param data_ The data structure containing the parameters for entering the Euler V2 Collateral Fuse and enabling collateral
-    function enter(EulerV2CollateralFuseEnterData memory data_) external {
+    /// @return eulerVault The address of the Euler vault
+    /// @return subAccount The generated sub-account address
+    function enter(
+        EulerV2CollateralFuseEnterData memory data_
+    ) public returns (address eulerVault, address subAccount) {
         if (!EulerFuseLib.canCollateral(MARKET_ID, data_.eulerVault, data_.subAccount)) {
             revert EulerV2CollateralFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
         }
 
-        address subAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
+        subAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
+        eulerVault = data_.eulerVault;
 
-        EVC.enableCollateral(subAccount, data_.eulerVault);
+        EVC.enableCollateral(subAccount, eulerVault);
 
-        emit EulerV2EnableCollateralFuse(VERSION, data_.eulerVault, subAccount);
+        emit EulerV2EnableCollateralFuse(VERSION, eulerVault, subAccount);
     }
     /// @notice Exits the Euler V2 Collateral Fuse with the specified parameters, disabling collateral for the given vault and sub-account
     /// @param data_ The data structure containing the parameters for exiting the Euler V2 Collateral Fuse and disabling collateral
-    function exit(EulerV2CollateralFuseExitData memory data_) external {
-        address subAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
+    /// @return eulerVault The address of the Euler vault
+    /// @return subAccount The generated sub-account address
+    function exit(EulerV2CollateralFuseExitData memory data_) public returns (address eulerVault, address subAccount) {
+        subAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
+        eulerVault = data_.eulerVault;
 
-        EVC.disableCollateral(subAccount, data_.eulerVault);
+        EVC.disableCollateral(subAccount, eulerVault);
 
-        emit EulerV2DisableCollateralFuse(VERSION, data_.eulerVault, subAccount);
+        emit EulerV2DisableCollateralFuse(VERSION, eulerVault, subAccount);
+    }
+
+    /// @notice Enters the Euler V2 Collateral Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address eulerVault = TypeConversionLib.toAddress(inputs[0]);
+        bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[1])));
+
+        (address returnedEulerVault, address returnedSubAccount) = enter(
+            EulerV2CollateralFuseEnterData(eulerVault, subAccount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(returnedEulerVault);
+        outputs[1] = TypeConversionLib.toBytes32(returnedSubAccount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Euler V2 Collateral Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address eulerVault = TypeConversionLib.toAddress(inputs[0]);
+        bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[1])));
+
+        (address returnedEulerVault, address returnedSubAccount) = exit(
+            EulerV2CollateralFuseExitData(eulerVault, subAccount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(returnedEulerVault);
+        outputs[1] = TypeConversionLib.toBytes32(returnedSubAccount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

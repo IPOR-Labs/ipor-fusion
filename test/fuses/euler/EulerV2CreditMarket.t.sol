@@ -1040,6 +1040,209 @@ contract EulerCreditMarketTest is Test {
         assertEq(collateralsAfter.length, 2, "collateralsAfter.length");
     }
 
+    function testShouldEnableVaultAsCollateralForSubAccountOneUsingTransient() external {
+        // Setup transient storage inputs - create inline to save stack space
+        address[] memory fusesArray = new address[](1);
+        fusesArray[0] = _eulerCollateralFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_WETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        FuseAction[] memory enterCalls = new FuseAction[](10);
+
+        enterCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesArray, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        enterCalls[1] = FuseAction({fuse: _eulerCollateralFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_WSTETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        enterCalls[2] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesArray, inputsByFuse: inputsByFuse})
+            )
+        });
+        enterCalls[3] = FuseAction({fuse: _eulerCollateralFuse, data: abi.encodeWithSignature("enterTransient()")});
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_USDT);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        enterCalls[4] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesArray, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        enterCalls[5] = FuseAction({fuse: _eulerCollateralFuse, data: abi.encodeWithSignature("enterTransient()")});
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_PRIME_WETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        enterCalls[6] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesArray, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        enterCalls[7] = FuseAction({fuse: _eulerCollateralFuse, data: abi.encodeWithSignature("enterTransient()")});
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_PRIME_WSTETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        enterCalls[8] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesArray, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        enterCalls[9] = FuseAction({fuse: _eulerCollateralFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        address[] memory collateralsBefore = IEVC(_EVC).getCollaterals(_subAccountOneAddress);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        // then
+        address[] memory collateralsAfter = IEVC(_EVC).getCollaterals(_subAccountOneAddress);
+
+        assertEq(collateralsBefore.length, 0, "collateralsBefore.length");
+        assertEq(collateralsAfter.length, 5, "collateralsAfter.length");
+    }
+
+    function testShouldDisableCollateralUsingTransient() external {
+        FuseAction[] memory enterCalls = new FuseAction[](5);
+
+        enterCalls[0] = FuseAction({
+            fuse: _eulerCollateralFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2CollateralFuseEnterData({eulerVault: EULER_VAULT_WETH, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        enterCalls[1] = FuseAction({
+            fuse: _eulerCollateralFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2CollateralFuseEnterData({eulerVault: EULER_VAULT_WSTETH, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        enterCalls[2] = FuseAction({
+            fuse: _eulerCollateralFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2CollateralFuseEnterData({eulerVault: EULER_VAULT_USDT, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        enterCalls[3] = FuseAction({
+            fuse: _eulerCollateralFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2CollateralFuseEnterData({eulerVault: EULER_VAULT_PRIME_WETH, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        enterCalls[4] = FuseAction({
+            fuse: _eulerCollateralFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2CollateralFuseEnterData({
+                    eulerVault: EULER_VAULT_PRIME_WSTETH,
+                    subAccount: _SUB_ACCOUNT_BYTE_ONE
+                })
+            )
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        address[] memory collateralsBefore = IEVC(_EVC).getCollaterals(_subAccountOneAddress);
+
+        // Setup transient storage inputs - create inline to save stack space
+        address[] memory fuses = new address[](1);
+        fuses[0] = _eulerCollateralFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_WETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        FuseAction[] memory exitCalls = new FuseAction[](6);
+
+        exitCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        exitCalls[1] = FuseAction({fuse: _eulerCollateralFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_WSTETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        exitCalls[2] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        exitCalls[3] = FuseAction({fuse: _eulerCollateralFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_USDT);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        exitCalls[4] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        exitCalls[5] = FuseAction({fuse: _eulerCollateralFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(exitCalls);
+        vm.stopPrank();
+
+        // then
+        address[] memory collateralsAfter = IEVC(_EVC).getCollaterals(_subAccountOneAddress);
+
+        assertEq(collateralsBefore.length, 5, "collateralsBefore.length");
+        assertEq(collateralsAfter.length, 2, "collateralsAfter.length");
+    }
+
     function testShouldEnableVaultAsControllerForSubAccountOne() external {
         FuseAction[] memory enterCalls = new FuseAction[](1);
 
