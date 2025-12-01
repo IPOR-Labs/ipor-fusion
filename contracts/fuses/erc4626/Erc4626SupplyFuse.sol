@@ -54,7 +54,7 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    function enter(Erc4626SupplyFuseEnterData memory data_) external returns (uint256 finalVaultAssetAmount) {
+    function enter(Erc4626SupplyFuseEnterData memory data_) public returns (uint256 finalVaultAssetAmount) {
         if (data_.vaultAssetAmount == 0) {
             return 0;
         }
@@ -86,15 +86,15 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         address vault = TypeConversionLib.toAddress(inputs[0]);
         uint256 amount = TypeConversionLib.toUint256(inputs[1]);
 
-        uint256 suppliedAmount = this.enter(Erc4626SupplyFuseEnterData(vault, amount));
+        uint256 suppliedAmount = enter(Erc4626SupplyFuseEnterData({vault: vault, vaultAssetAmount: amount}));
 
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(suppliedAmount);
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
-    function exit(Erc4626SupplyFuseExitData calldata data_) external returns (uint256 shares) {
-        return _exit(data_, false);
+    function exit(Erc4626SupplyFuseExitData memory data_) public returns (uint256 shares) {
+        return _exit({data_: data_, catchExceptions_: false});
     }
 
     function exitTransient() external {
@@ -102,7 +102,7 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         address vault = TypeConversionLib.toAddress(inputs[0]);
         uint256 amount = TypeConversionLib.toUint256(inputs[1]);
 
-        uint256 shares = this.exit(Erc4626SupplyFuseExitData(vault, amount));
+        uint256 shares = exit(Erc4626SupplyFuseExitData({vault: vault, vaultAssetAmount: amount}));
 
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(shares);

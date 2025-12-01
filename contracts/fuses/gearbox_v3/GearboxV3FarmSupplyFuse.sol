@@ -6,6 +6,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IFarmingPool} from "./ext/IFarmingPool.sol";
@@ -43,31 +45,44 @@ contract GearboxV3FarmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    function enter(GearboxV3FarmdSupplyFuseEnterData memory data_) external {
+    /// @notice Enters the Gearbox V3 Farmd protocol by depositing dToken to farmdToken
+    /// @param data_ The data structure containing the parameters for entering the Gearbox V3 Farmd protocol
+    /// @return farmdToken The address of the farmd token
+    /// @return dToken The address of the dToken
+    /// @return amount The amount deposited
+    function enter(
+        GearboxV3FarmdSupplyFuseEnterData memory data_
+    ) public returns (address farmdToken, address dToken, uint256 amount) {
         if (data_.dTokenAmount == 0) {
-            return;
+            return (address(0), address(0), 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.farmdToken)) {
             revert GearboxV3FarmdSupplyFuseUnsupportedFarmdToken("enter", data_.farmdToken);
         }
 
-        address dToken = IFarmingPool(data_.farmdToken).stakingToken();
+        dToken = IFarmingPool(data_.farmdToken).stakingToken();
         uint256 dTokenDepositAmount = IporMath.min(data_.dTokenAmount, IERC20(dToken).balanceOf(address(this)));
 
         if (dTokenDepositAmount == 0) {
-            return;
+            return (address(0), address(0), 0);
         }
 
         IERC20(dToken).forceApprove(data_.farmdToken, dTokenDepositAmount);
         IFarmingPool(data_.farmdToken).deposit(dTokenDepositAmount);
 
-        emit GearboxV3FarmdFuseEnter(VERSION, data_.farmdToken, dToken, dTokenDepositAmount);
+        farmdToken = data_.farmdToken;
+        amount = dTokenDepositAmount;
+
+        emit GearboxV3FarmdFuseEnter(VERSION, farmdToken, dToken, amount);
     }
 
     /// @notice Exits from the Market
-    function exit(GearboxV3FarmdSupplyFuseExitData memory data_) external {
-        _exit(data_, false);
+    /// @param data_ The data structure containing the parameters for exiting the Gearbox V3 Farmd protocol
+    /// @return farmdToken The address of the farmd token
+    /// @return amount The amount withdrawn
+    function exit(GearboxV3FarmdSupplyFuseExitData memory data_) public returns (address farmdToken, uint256 amount) {
+        (farmdToken, amount) = _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset of Plasma Vault, params[1] - Farm dToken address
@@ -86,13 +101,16 @@ contract GearboxV3FarmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         );
     }
 
-    function _exit(GearboxV3FarmdSupplyFuseExitData memory data_, bool catchExceptions_) internal {
+    function _exit(
+        GearboxV3FarmdSupplyFuseExitData memory data_,
+        bool catchExceptions_
+    ) internal returns (address farmdToken, uint256 amount) {
         if (data_.dTokenAmount == 0) {
-            return;
+            return (address(0), 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.farmdToken)) {
-            revert GearboxV3FarmdSupplyFuseUnsupportedFarmdToken("enter", data_.farmdToken);
+            revert GearboxV3FarmdSupplyFuseUnsupportedFarmdToken("exit", data_.farmdToken);
         }
 
         uint256 withdrawAmount = IporMath.min(
@@ -101,10 +119,13 @@ contract GearboxV3FarmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         );
 
         if (withdrawAmount == 0) {
-            return;
+            return (address(0), 0);
         }
 
-        _performWithdraw(data_.farmdToken, withdrawAmount, catchExceptions_);
+        farmdToken = data_.farmdToken;
+        amount = withdrawAmount;
+
+        _performWithdraw(farmdToken, withdrawAmount, catchExceptions_);
     }
 
     function _performWithdraw(address farmdToken_, uint256 withdrawAmount_, bool catchExceptions_) private {
@@ -119,5 +140,38 @@ contract GearboxV3FarmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             IFarmingPool(farmdToken_).withdraw(withdrawAmount_);
             emit GearboxV3FarmdFuseExit(VERSION, farmdToken_, withdrawAmount_);
         }
+    }
+
+    /// @notice Enters the Gearbox V3 Farmd protocol using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        uint256 dTokenAmount = TypeConversionLib.toUint256(inputs[0]);
+        address farmdToken = TypeConversionLib.toAddress(inputs[1]);
+
+        (address returnedFarmdToken, address returnedDToken, uint256 returnedAmount) = enter(
+            GearboxV3FarmdSupplyFuseEnterData({dTokenAmount: dTokenAmount, farmdToken: farmdToken})
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedFarmdToken);
+        outputs[1] = TypeConversionLib.toBytes32(returnedDToken);
+        outputs[2] = TypeConversionLib.toBytes32(returnedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits from the Gearbox V3 Farmd protocol using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        uint256 dTokenAmount = TypeConversionLib.toUint256(inputs[0]);
+        address farmdToken = TypeConversionLib.toAddress(inputs[1]);
+
+        (address returnedFarmdToken, uint256 returnedAmount) = exit(
+            GearboxV3FarmdSupplyFuseExitData({dTokenAmount: dTokenAmount, farmdToken: farmdToken})
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(returnedFarmdToken);
+        outputs[1] = TypeConversionLib.toBytes32(returnedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
