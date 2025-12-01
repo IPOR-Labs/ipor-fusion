@@ -1773,4 +1773,190 @@ contract EulerCreditMarketTest is Test {
         assertApproxEqAbs(plasmaVaultUsdcBalanceBefore, 11_000e6, _errorDelta, "plasmaVaultUsdcBalanceBefore");
         assertApproxEqAbs(plasmaVaultUsdcBalanceAfter, 10_000e6, _errorDelta, "plasmaVaultUsdcBalanceAfter");
     }
+
+    function testShouldBeAbleToBorrowUsingBorrowFuseTransient() external {
+        //given
+        uint256 wethDepositAmount = 100e18;
+        uint256 borrowAmount = 1_000e6;
+
+        FuseAction[] memory enterCalls = new FuseAction[](3);
+
+        enterCalls[0] = FuseAction({
+            fuse: _eulerSupplyFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,bytes1))",
+                EulerV2SupplyFuseEnterData({
+                    eulerVault: EULER_VAULT_WETH,
+                    maxAmount: wethDepositAmount,
+                    subAccount: _SUB_ACCOUNT_BYTE_ONE
+                })
+            )
+        });
+
+        enterCalls[1] = FuseAction({
+            fuse: _eulerCollateralFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2CollateralFuseEnterData({eulerVault: EULER_VAULT_WETH, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        enterCalls[2] = FuseAction({
+            fuse: _eulerControllerFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2ControllerFuseEnterData({eulerVault: EULER_VAULT_PRIME_USDC, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        // Setup transient storage inputs for borrow fuse - create inline to save stack space
+        address[] memory fuses = new address[](1);
+        fuses[0] = _eulerBorrowFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_PRIME_USDC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(borrowAmount);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        FuseAction[] memory borrowCalls = new FuseAction[](2);
+
+        borrowCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        borrowCalls[1] = FuseAction({fuse: _eulerBorrowFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        uint256 balanceInEulerMarketBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
+        uint256 plasmaVaultBalanceBefore = PlasmaVault(_plasmaVault).maxWithdraw(_USER);
+        uint256 plasmaVaultUsdcBalanceBefore = ERC20(_USDC).balanceOf(_plasmaVault);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(borrowCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 balanceInEulerMarketAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
+        uint256 plasmaVaultBalanceAfter = PlasmaVault(_plasmaVault).maxWithdraw(_USER);
+        uint256 plasmaVaultUsdcBalanceAfter = ERC20(_USDC).balanceOf(_plasmaVault);
+
+        assertApproxEqAbs(balanceInEulerMarketBefore, 261471771078, _errorDelta, "balanceInEulerMarketBefore");
+        assertApproxEqAbs(balanceInEulerMarketAfter, 260471771078, _errorDelta, "balanceInEulerMarketAfter");
+
+        assertApproxEqAbs(plasmaVaultBalanceBefore, plasmaVaultBalanceAfter, _errorDelta, "plasmaVaultBalance");
+
+        assertApproxEqAbs(plasmaVaultUsdcBalanceBefore, 10_000e6, _errorDelta, "plasmaVaultUsdcBalanceBefore");
+        assertApproxEqAbs(plasmaVaultUsdcBalanceAfter, 11_000e6, _errorDelta, "plasmaVaultUsdcBalanceAfter");
+    }
+
+    function testShouldBeAbleToRepayUsingBorrowFuseTransient() external {
+        //given
+        uint256 wethDepositAmount = 100e18;
+        uint256 borrowAmount = 1_000e6;
+
+        FuseAction[] memory enterCalls = new FuseAction[](4);
+
+        enterCalls[0] = FuseAction({
+            fuse: _eulerSupplyFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,bytes1))",
+                EulerV2SupplyFuseEnterData({
+                    eulerVault: EULER_VAULT_WETH,
+                    maxAmount: wethDepositAmount,
+                    subAccount: _SUB_ACCOUNT_BYTE_ONE
+                })
+            )
+        });
+
+        enterCalls[1] = FuseAction({
+            fuse: _eulerCollateralFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2CollateralFuseEnterData({eulerVault: EULER_VAULT_WETH, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        enterCalls[2] = FuseAction({
+            fuse: _eulerControllerFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,bytes1))",
+                EulerV2ControllerFuseEnterData({eulerVault: EULER_VAULT_PRIME_USDC, subAccount: _SUB_ACCOUNT_BYTE_ONE})
+            )
+        });
+
+        enterCalls[3] = FuseAction({
+            fuse: _eulerBorrowFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,bytes1))",
+                EulerV2BorrowFuseEnterData({
+                    eulerVault: EULER_VAULT_PRIME_USDC,
+                    assetAmount: borrowAmount,
+                    subAccount: _SUB_ACCOUNT_BYTE_ONE
+                })
+            )
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        // Setup transient storage inputs for repay - create inline to save stack space
+        address[] memory fuses = new address[](1);
+        fuses[0] = _eulerBorrowFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_PRIME_USDC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(borrowAmount);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+
+        FuseAction[] memory repayCalls = new FuseAction[](2);
+
+        repayCalls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        repayCalls[1] = FuseAction({fuse: _eulerBorrowFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        uint256 balanceInEulerMarketBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
+        uint256 plasmaVaultBalanceBefore = PlasmaVault(_plasmaVault).maxWithdraw(_USER);
+        uint256 plasmaVaultUsdcBalanceBefore = ERC20(_USDC).balanceOf(_plasmaVault);
+
+        uint256 deptBalanceBefore = IBorrowing(EULER_VAULT_PRIME_USDC).debtOf(_subAccountOneAddress);
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(repayCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 balanceInEulerMarketAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
+        uint256 plasmaVaultBalanceAfter = PlasmaVault(_plasmaVault).maxWithdraw(_USER);
+        uint256 plasmaVaultUsdcBalanceAfter = ERC20(_USDC).balanceOf(_plasmaVault);
+        uint256 deptBalanceAfter = IBorrowing(EULER_VAULT_PRIME_USDC).debtOf(_subAccountOneAddress);
+
+        assertApproxEqAbs(deptBalanceBefore, 1_000e6, _errorDelta, "deptBalanceBefore");
+        assertApproxEqAbs(deptBalanceAfter, 0, _errorDelta, "deptBalanceAfter");
+
+        assertApproxEqAbs(balanceInEulerMarketBefore, 260471771078, _errorDelta, "balanceInEulerMarketBefore");
+        assertApproxEqAbs(balanceInEulerMarketAfter, 261471771078, _errorDelta, "balanceInEulerMarketAfter");
+
+        assertApproxEqAbs(plasmaVaultBalanceBefore, plasmaVaultBalanceAfter, _errorDelta, "plasmaVaultBalance");
+
+        assertApproxEqAbs(plasmaVaultUsdcBalanceBefore, 11_000e6, _errorDelta, "plasmaVaultUsdcBalanceBefore");
+        assertApproxEqAbs(plasmaVaultUsdcBalanceAfter, 10_000e6, _errorDelta, "plasmaVaultUsdcBalanceAfter");
+    }
 }
