@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {UniversalReader, ReadResult} from "../../universal_reader/UniversalReader.sol";
 import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @notice Data structure for entering - requesting shares - the Plasma Vault
 struct PlasmaVaultRequestSharesFuseEnterData {
     /// @dev amount of shares to request
@@ -30,9 +33,15 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(PlasmaVaultRequestSharesFuseEnterData memory data_) external {
+    /// @notice Requests shares from the Plasma Vault
+    /// @param data_ The data structure containing plasma vault address and shares amount
+    /// @return plasmaVault The address of the Plasma Vault
+    /// @return sharesAmount The amount of shares requested
+    function enter(
+        PlasmaVaultRequestSharesFuseEnterData memory data_
+    ) public returns (address plasmaVault, uint256 sharesAmount) {
         if (data_.sharesAmount == 0) {
-            return;
+            return (data_.plasmaVault, 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.plasmaVault)) {
@@ -44,7 +53,7 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
         uint256 finalSharesAmount = balance < data_.sharesAmount ? balance : data_.sharesAmount;
 
         if (finalSharesAmount == 0) {
-            return;
+            return (data_.plasmaVault, 0);
         }
 
         ReadResult memory readResult = UniversalReader(data_.plasmaVault).read(
@@ -59,7 +68,27 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
 
         WithdrawManager(withdrawManager).requestShares(finalSharesAmount);
 
-        emit PlasmaVaultRequestSharesFuseEnter(VERSION, data_.plasmaVault, data_.sharesAmount);
+        plasmaVault = data_.plasmaVault;
+        sharesAmount = data_.sharesAmount;
+
+        emit PlasmaVaultRequestSharesFuseEnter(VERSION, plasmaVault, sharesAmount);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        uint256 sharesAmount = TypeConversionLib.toUint256(inputs[0]);
+        address plasmaVault = TypeConversionLib.toAddress(inputs[1]);
+
+        (address returnedPlasmaVault, uint256 returnedSharesAmount) = enter(
+            PlasmaVaultRequestSharesFuseEnterData({sharesAmount: sharesAmount, plasmaVault: plasmaVault})
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(returnedPlasmaVault);
+        outputs[1] = TypeConversionLib.toBytes32(returnedSharesAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     function getWithdrawManager() external view returns (address) {
