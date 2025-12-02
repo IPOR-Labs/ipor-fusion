@@ -71,9 +71,21 @@ abstract contract SiloV2SupplyCollateralFuseAbstract is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function _enter(ISilo.CollateralType collateralType_, SiloV2SupplyCollateralFuseEnterData memory data_) internal {
+    function _enter(
+        ISilo.CollateralType collateralType_,
+        SiloV2SupplyCollateralFuseEnterData memory data_
+    )
+        internal
+        returns (
+            ISilo.CollateralType collateralType,
+            address siloConfig,
+            address silo,
+            uint256 siloShares,
+            uint256 siloAssetAmount
+        )
+    {
         if (data_.siloAssetAmount == 0) {
-            return;
+            return (collateralType_, data_.siloConfig, address(0), 0, 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.siloConfig)) {
@@ -82,41 +94,43 @@ abstract contract SiloV2SupplyCollateralFuseAbstract is IFuseCommon {
 
         (address silo0, address silo1) = ISiloConfig(data_.siloConfig).getSilos();
 
-        address silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
+        silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
 
         address siloAssetAddress = ISilo(silo).asset();
 
-        uint256 finalSiloAssetAmount = IporMath.min(
-            ERC20(siloAssetAddress).balanceOf(address(this)),
-            data_.siloAssetAmount
-        );
+        siloAssetAmount = IporMath.min(ERC20(siloAssetAddress).balanceOf(address(this)), data_.siloAssetAmount);
 
-        if (finalSiloAssetAmount < data_.minSiloAssetAmount) {
-            revert SiloV2SupplyCollateralFuseInsufficientSiloAssetAmount(
-                finalSiloAssetAmount,
-                data_.minSiloAssetAmount
-            );
+        if (siloAssetAmount < data_.minSiloAssetAmount) {
+            revert SiloV2SupplyCollateralFuseInsufficientSiloAssetAmount(siloAssetAmount, data_.minSiloAssetAmount);
         }
 
-        IERC20(siloAssetAddress).forceApprove(silo, finalSiloAssetAmount);
+        IERC20(siloAssetAddress).forceApprove(silo, siloAssetAmount);
 
-        uint256 siloShares = ISilo(silo).deposit(finalSiloAssetAmount, address(this), collateralType_);
+        siloShares = ISilo(silo).deposit(siloAssetAmount, address(this), collateralType_);
 
         IERC20(siloAssetAddress).forceApprove(silo, 0);
 
-        emit SiloV2SupplyCollateralFuseEnter(
-            VERSION,
-            collateralType_,
-            data_.siloConfig,
-            silo,
-            siloShares,
-            finalSiloAssetAmount
-        );
+        collateralType = collateralType_;
+        siloConfig = data_.siloConfig;
+
+        emit SiloV2SupplyCollateralFuseEnter(VERSION, collateralType, siloConfig, silo, siloShares, siloAssetAmount);
     }
 
-    function _exit(ISilo.CollateralType collateralType_, SiloV2SupplyCollateralFuseExitData calldata data_) internal {
+    function _exit(
+        ISilo.CollateralType collateralType_,
+        SiloV2SupplyCollateralFuseExitData memory data_
+    )
+        internal
+        returns (
+            ISilo.CollateralType collateralType,
+            address siloConfig,
+            address silo,
+            uint256 siloShares,
+            uint256 siloAssetAmount
+        )
+    {
         if (data_.siloShares == 0) {
-            return;
+            return (collateralType_, data_.siloConfig, address(0), 0, 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.siloConfig)) {
@@ -125,23 +139,19 @@ abstract contract SiloV2SupplyCollateralFuseAbstract is IFuseCommon {
 
         (address silo0, address silo1) = ISiloConfig(data_.siloConfig).getSilos();
 
-        address silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
+        silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
 
-        uint256 finalSiloShares = IporMath.min(ISilo(silo).maxRedeem(address(this), collateralType_), data_.siloShares);
+        siloShares = IporMath.min(ISilo(silo).maxRedeem(address(this), collateralType_), data_.siloShares);
 
-        if (finalSiloShares < data_.minSiloShares) {
-            revert SiloV2SupplyCollateralFuseInsufficientSiloShares(finalSiloShares, data_.minSiloShares);
+        if (siloShares < data_.minSiloShares) {
+            revert SiloV2SupplyCollateralFuseInsufficientSiloShares(siloShares, data_.minSiloShares);
         }
 
-        uint256 siloAssetAmount = ISilo(silo).redeem(finalSiloShares, address(this), address(this), collateralType_);
+        siloAssetAmount = ISilo(silo).redeem(siloShares, address(this), address(this), collateralType_);
 
-        emit SiloV2SupplyCollateralFuseExit(
-            VERSION,
-            collateralType_,
-            data_.siloConfig,
-            silo,
-            finalSiloShares,
-            siloAssetAmount
-        );
+        collateralType = collateralType_;
+        siloConfig = data_.siloConfig;
+
+        emit SiloV2SupplyCollateralFuseExit(VERSION, collateralType, siloConfig, silo, siloShares, siloAssetAmount);
     }
 }
