@@ -7,6 +7,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuseCommon} from "../IFuseCommon.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 import {IMorpho, MarketParams, Id} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoBalancesLib.sol";
@@ -58,9 +60,16 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MORPHO = IMorpho(morpho_);
     }
 
-    function enter(MorphoSupplyFuseEnterData memory data_) external {
+    /// @notice Supply assets to Morpho protocol
+    /// @param data_ Struct containing morphoMarketId and amount to supply
+    /// @return asset Asset address supplied
+    /// @return market Morpho market ID
+    /// @return amount Amount supplied
+    function enter(
+        MorphoSupplyFuseEnterData memory data_
+    ) public returns (address asset, bytes32 market, uint256 amount) {
         if (data_.amount == 0) {
-            return;
+            return (address(0), bytes32(0), 0);
         }
 
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoMarketId)) {
@@ -73,11 +82,22 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         (uint256 assetsSupplied, ) = MORPHO.supply(marketParams, data_.amount, 0, address(this), bytes(""));
 
-        emit MorphoSupplyFuseEnter(VERSION, marketParams.loanToken, data_.morphoMarketId, assetsSupplied);
+        asset = marketParams.loanToken;
+        market = data_.morphoMarketId;
+        amount = assetsSupplied;
+
+        emit MorphoSupplyFuseEnter(VERSION, asset, market, amount);
     }
 
-    function exit(MorphoSupplyFuseExitData calldata data_) external {
-        _exit(data_, false);
+    /// @notice Withdraw assets from Morpho protocol
+    /// @param data_ Struct containing morphoMarketId and amount to withdraw
+    /// @return asset Asset address withdrawn
+    /// @return market Morpho market ID
+    /// @return amount Amount withdrawn
+    function exit(
+        MorphoSupplyFuseExitData memory data_
+    ) public returns (address asset, bytes32 market, uint256 amount) {
+        return _exit(data_, false);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - Morpho market id
@@ -89,9 +109,12 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         _exit(MorphoSupplyFuseExitData(morphoMarketId, amount), true);
     }
 
-    function _exit(MorphoSupplyFuseExitData memory data_, bool catchExceptions_) internal {
+    function _exit(
+        MorphoSupplyFuseExitData memory data_,
+        bool catchExceptions_
+    ) internal returns (address asset, bytes32 market, uint256 amount) {
         if (data_.amount == 0) {
-            return;
+            return (address(0), bytes32(0), 0);
         }
 
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, data_.morphoMarketId)) {
@@ -109,19 +132,22 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 shares = MORPHO.supplyShares(id, address(this));
 
         if (shares == 0) {
-            return;
+            return (address(0), bytes32(0), 0);
         }
 
         uint256 assetsMax = shares.toAssetsDown(totalSupplyAssets, totalSupplyShares);
 
         if (assetsMax == 0) {
-            return;
+            return (address(0), bytes32(0), 0);
         }
 
+        asset = marketParams.loanToken;
+        market = data_.morphoMarketId;
+
         if (data_.amount >= assetsMax) {
-            _performWithdraw(marketParams, data_.morphoMarketId, 0, shares, catchExceptions_);
+            amount = _performWithdraw(marketParams, data_.morphoMarketId, 0, shares, catchExceptions_);
         } else {
-            _performWithdraw(marketParams, data_.morphoMarketId, data_.amount, 0, catchExceptions_);
+            amount = _performWithdraw(marketParams, data_.morphoMarketId, data_.amount, 0, catchExceptions_);
         }
     }
 
@@ -131,15 +157,17 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 assets_,
         uint256 shares_,
         bool catchExceptions_
-    ) private {
+    ) private returns (uint256 amount) {
         if (catchExceptions_) {
             try MORPHO.withdraw(marketParams_, assets_, shares_, address(this), address(this)) returns (
                 uint256 assetsWithdrawn,
-                uint256 sharesWithdrawn
+                uint256 /* sharesWithdrawn */
             ) {
-                emit MorphoSupplyFuseExit(VERSION, marketParams_.loanToken, morphoMarketId_, assetsWithdrawn);
+                amount = assetsWithdrawn;
+                emit MorphoSupplyFuseExit(VERSION, marketParams_.loanToken, morphoMarketId_, amount);
             } catch {
                 /// @dev if withdraw failed, continue with the next step
+                amount = 0;
                 emit MorphoSupplyFuseExitFailed(VERSION, marketParams_.loanToken, morphoMarketId_);
             }
         } else {
@@ -150,7 +178,42 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 address(this),
                 address(this)
             );
-            emit MorphoSupplyFuseExit(VERSION, marketParams_.loanToken, morphoMarketId_, assetsWithdrawn);
+            amount = assetsWithdrawn;
+            emit MorphoSupplyFuseExit(VERSION, marketParams_.loanToken, morphoMarketId_, amount);
         }
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        bytes32 morphoMarketId = inputs[0];
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address returnedAsset, bytes32 returnedMarket, uint256 returnedAmount) = enter(
+            MorphoSupplyFuseEnterData(morphoMarketId, amount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedAsset);
+        outputs[1] = returnedMarket;
+        outputs[2] = TypeConversionLib.toBytes32(returnedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        bytes32 morphoMarketId = inputs[0];
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address returnedAsset, bytes32 returnedMarket, uint256 returnedAmount) = exit(
+            MorphoSupplyFuseExitData(morphoMarketId, amount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedAsset);
+        outputs[1] = returnedMarket;
+        outputs[2] = TypeConversionLib.toBytes32(returnedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
