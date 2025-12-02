@@ -476,4 +476,71 @@ contract PendleSwapPTFuseTest is Test {
         );
         assertApproxEqAbs(erc20MarketAfter, 0, ERROR_DELTA, "ERC20 market balance should be 0");
     }
+
+    function testShouldRedeemPTForTokenUsingTransient() public {
+        // First swap tokens for PT
+        testSwapTokenForPT();
+
+        vm.warp(block.timestamp + 356 days);
+
+        // Given
+        IPMarket market = IPMarket(_MARKET);
+        (, IPPrincipalToken pt, ) = market.readTokens();
+        uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
+        uint256 totalAssetsBefore = _plasmaVault.totalAssets();
+
+        // Prepare inputs for enterTransient()
+        // Inputs order: market, netPyIn, tokenOut, minTokenOut, tokenRedeemSy, pendleSwap,
+        //               swapType, extRouter, extCalldataLength, extCalldataFirst32Bytes, needScale
+        address[] memory fuses = new address[](1);
+        fuses[0] = _pendleAddresses.redeemPTAfterMaturityFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](11);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_MARKET); // market
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(ptBalanceBefore); // netPyIn
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(_UNDERLYING_TOKEN); // tokenOut
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(uint256(0)); // minTokenOut
+        inputsByFuse[0][4] = TypeConversionLib.toBytes32(_UNDERLYING_TOKEN); // tokenRedeemSy
+        inputsByFuse[0][5] = TypeConversionLib.toBytes32(address(0)); // pendleSwap
+        inputsByFuse[0][6] = TypeConversionLib.toBytes32(uint256(0)); // swapType (SwapType.NONE = 0)
+        inputsByFuse[0][7] = TypeConversionLib.toBytes32(address(0)); // extRouter
+        inputsByFuse[0][8] = TypeConversionLib.toBytes32(uint256(0)); // extCalldataLength
+        inputsByFuse[0][9] = bytes32(0); // extCalldataFirst32Bytes (empty)
+        inputsByFuse[0][10] = TypeConversionLib.toBytes32(uint256(0)); // needScale (false)
+
+        // When
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+        calls[1] = FuseAction({
+            fuse: _pendleAddresses.redeemPTAfterMaturityFuse,
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        vm.prank(TestAddresses.ALPHA);
+        _plasmaVault.execute(calls);
+
+        // Then
+        uint256 ptBalanceAfter = pt.balanceOf(address(_plasmaVault));
+        uint256 totalAssetsAfter = _plasmaVault.totalAssets();
+        uint256 erc20MarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
+
+        assertApproxEqAbs(ptBalanceBefore, 12117435159760642058, 0, "PT balance should be 12117435159760642058");
+        assertApproxEqAbs(ptBalanceAfter, 0, ERROR_DELTA, "PT balance should be 0");
+
+        assertApproxEqAbs(totalAssetsBefore, 8434352772450140063, 0, "Total assets should be 8434352772450140063");
+        assertApproxEqAbs(
+            totalAssetsAfter,
+            10222875153389507980,
+            ERROR_DELTA,
+            "Total assets should be 10222875153389507980"
+        );
+        assertApproxEqAbs(erc20MarketAfter, 0, ERROR_DELTA, "ERC20 market balance should be 0");
+    }
 }
