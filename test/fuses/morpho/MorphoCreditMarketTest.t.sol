@@ -5,30 +5,30 @@ import {Test} from "forge-std/Test.sol";
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {WstETHPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
-import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
-import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FuseAction, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
-import {MorphoSupplyFuse, MorphoSupplyFuseEnterData} from "../../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
-import {MorphoCollateralFuse, MorphoCollateralFuseEnterData} from "../../../contracts/fuses/morpho/MorphoCollateralFuse.sol";
-import {MorphoBorrowFuse, MorphoBorrowFuseEnterData, MorphoBorrowFuseExitData} from "../../../contracts/fuses/morpho/MorphoBorrowFuse.sol";
-import {MorphoBalanceFuse} from "../../../contracts/fuses/morpho/MorphoBalanceFuse.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
-import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-
+import {MorphoBalanceFuse} from "../../../contracts/fuses/morpho/MorphoBalanceFuse.sol";
+import {MorphoBorrowFuse, MorphoBorrowFuseEnterData, MorphoBorrowFuseExitData} from "../../../contracts/fuses/morpho/MorphoBorrowFuse.sol";
+import {MorphoCollateralFuse, MorphoCollateralFuseEnterData} from "../../../contracts/fuses/morpho/MorphoCollateralFuse.sol";
+import {MorphoSupplyFuse, MorphoSupplyFuseEnterData} from "../../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {WstETHPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {IWETH9} from "./IWETH9.sol";
 import {IstETH} from "./IstETH.sol";
 import {IWstETH} from "./IWstETH.sol";
-import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
-import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
 contract MorphoCreditMarketTest is Test {
     address private constant _W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -53,6 +53,7 @@ contract MorphoCreditMarketTest is Test {
     address private _morphoSupplyFuse;
     address private _morphoCollateralFuse;
     address private _morphoBorrowFuse;
+    address private _transientStorageSetInputsFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20919795);
@@ -163,11 +164,13 @@ contract MorphoCreditMarketTest is Test {
         _morphoSupplyFuse = address(new MorphoSupplyFuse(IporFusionMarkets.MORPHO, _MORPHO));
         _morphoCollateralFuse = address(new MorphoCollateralFuse(IporFusionMarkets.MORPHO, _MORPHO));
         _morphoBorrowFuse = address(new MorphoBorrowFuse(IporFusionMarkets.MORPHO, _MORPHO));
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
 
-        fuses = new address[](3);
+        fuses = new address[](4);
         fuses[0] = address(_morphoSupplyFuse);
         fuses[1] = address(_morphoCollateralFuse);
         fuses[2] = address(_morphoBorrowFuse);
+        fuses[3] = address(_transientStorageSetInputsFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
@@ -783,5 +786,136 @@ contract MorphoCreditMarketTest is Test {
 
         assertApproxEqAbs(totalInErc20Before, 10160889078553952986767, _errorDelta, "totalInErc20Before");
         assertApproxEqAbs(totalInErc20After, 10076215002899336711877, _errorDelta, "totalInErc20After");
+    }
+
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and supplies collateral
+    function testShouldSupplyCollateralUsingTransientStorage() external {
+        // given
+        uint256 supplyAmount = 5_000e18;
+
+        uint256 totalAssetsBefore = PlasmaVault(_plasmaVault).totalAssets();
+        uint256 totalInMorphoBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.MORPHO);
+        uint256 totalInErc20Before = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.ERC20_VAULT_BALANCE
+        );
+
+        // Prepare transient inputs
+        address[] memory fuses = new address[](1);
+        fuses[0] = _morphoCollateralFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = _MORPHO_MARKET_ID;
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(supplyAmount);
+
+        // Create FuseAction array with two actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs to transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Call enterTransient()
+        calls[1] = FuseAction({fuse: _morphoCollateralFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 totalAssetsAfter = PlasmaVault(_plasmaVault).totalAssets();
+        uint256 totalInMorphoAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.MORPHO);
+        uint256 totalInErc20After = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.ERC20_VAULT_BALANCE
+        );
+
+        assertApproxEqAbs(totalAssetsBefore, 18467407565461627488973, _errorDelta, "totalAssetsBefore");
+        assertApproxEqAbs(totalAssetsAfter, 18467407565461627488973, _errorDelta, "totalAssetsAfter");
+
+        assertApproxEqAbs(totalInMorphoBefore, 0, _errorDelta, "totalInMorphoBefore");
+        assertApproxEqAbs(totalInMorphoAfter, 5000000000000000000000, _errorDelta, "totalInMorphoAfter");
+
+        assertApproxEqAbs(totalInErc20Before, 8467407565461627488973, _errorDelta, "totalInErc20Before");
+        assertApproxEqAbs(totalInErc20After, 8467407565461627488973, _errorDelta, "totalInErc20After");
+    }
+
+    /// @dev Verifies that exitTransient() correctly reads inputs from transient storage and withdraws collateral
+    function testShouldWithdrawCollateralUsingTransientStorage() external {
+        // given
+        uint256 supplyAmount = 5_000e18;
+        uint256 withdrawAmount = 1_000e18;
+
+        // First, supply collateral using regular method
+        MorphoCollateralFuseEnterData memory supplyCollateralParams = MorphoCollateralFuseEnterData(
+            _MORPHO_MARKET_ID,
+            supplyAmount
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_morphoCollateralFuse),
+            abi.encodeWithSignature("enter((bytes32,uint256))", supplyCollateralParams)
+        );
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        uint256 totalAssetsBefore = PlasmaVault(_plasmaVault).totalAssets();
+        uint256 totalInMorphoBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.MORPHO);
+        uint256 totalInErc20Before = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.ERC20_VAULT_BALANCE
+        );
+
+        // Prepare transient inputs
+        address[] memory fuses = new address[](1);
+        fuses[0] = _morphoCollateralFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = _MORPHO_MARKET_ID;
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(withdrawAmount);
+
+        // Create FuseAction array with two actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs to transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Call exitTransient()
+        calls[1] = FuseAction({fuse: _morphoCollateralFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 totalAssetsAfter = PlasmaVault(_plasmaVault).totalAssets();
+        uint256 totalInMorphoAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.MORPHO);
+        uint256 totalInErc20After = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.ERC20_VAULT_BALANCE
+        );
+
+        assertApproxEqAbs(totalAssetsBefore, 18467407565461627488971, _errorDelta, "totalAssetsBefore");
+        assertApproxEqAbs(totalAssetsAfter, 18467407565461627488971, _errorDelta, "totalAssetsAfter");
+
+        assertApproxEqAbs(totalInMorphoBefore, 5000000000000000000000, _errorDelta, "totalInMorphoBefore");
+        assertApproxEqAbs(totalInMorphoAfter, 4000000000000000000000, _errorDelta, "totalInMorphoAfter");
+
+        assertApproxEqAbs(totalInErc20Before, 8467407565461627488973, _errorDelta, "totalInErc20Before");
+        assertApproxEqAbs(totalInErc20After, 8467407565461627488973, _errorDelta, "totalInErc20After");
     }
 }
