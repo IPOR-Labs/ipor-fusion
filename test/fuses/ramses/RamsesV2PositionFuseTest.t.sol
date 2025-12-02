@@ -927,4 +927,289 @@ contract RamsesV2PositionFuseTest is Test {
 
         assertEq(tokenIdMintPosition, closeTokenId, "tokenIdMintPosition = closeTokenId");
     }
+
+    /// @notice Tests increasing liquidity using transient storage
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and increases liquidity
+    function testShouldIncreaseLiquidityUsingTransientStorage() external {
+        // given - first create a position
+        RamsesV2NewPositionFuseEnterData memory mintParams = RamsesV2NewPositionFuseEnterData({
+            token0: USDC,
+            token1: USDT,
+            fee: 100,
+            tickLower: -100,
+            tickUpper: 101,
+            amount0Desired: 1_000e6,
+            amount1Desired: 1_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100,
+            veRamTokenId: 0
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_ramsesV2NewPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint256))",
+                mintParams
+            )
+        );
+
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        (, uint256 tokenId, , uint256 amount0, uint256 amount1) = _extractMarketIdsFromEvent(entries);
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.RAMSES_V2_POSITIONS
+        );
+        uint256 erc20BalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.ERC20_VAULT_BALANCE
+        );
+
+        // Prepare transient inputs for increase liquidity
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_ramsesV2ModifyPositionFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](8);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(USDC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(USDT);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(tokenId);
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(uint256(2_000e6));
+        inputsByFuse[0][4] = TypeConversionLib.toBytes32(uint256(2_000e6));
+        inputsByFuse[0][5] = TypeConversionLib.toBytes32(uint256(0));
+        inputsByFuse[0][6] = TypeConversionLib.toBytes32(uint256(0));
+        inputsByFuse[0][7] = TypeConversionLib.toBytes32(uint256(block.timestamp + 100));
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(_ramsesV2ModifyPositionFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(calls);
+        Vm.Log[] memory entriesIncreaseLiquidity = vm.getRecordedLogs();
+
+        // then
+        (, , , uint256 amount0Increase, uint256 amount1Increase) = _extractIncreaseLiquidityFromEvent(
+            entriesIncreaseLiquidity
+        );
+
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.RAMSES_V2_POSITIONS
+        );
+        uint256 erc20BalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.ERC20_VAULT_BALANCE
+        );
+
+        assertGt(marketBalanceAfter, marketBalanceBefore, "marketBalanceAfter>marketBalanceBefore");
+        assertGt(erc20BalanceBefore, erc20BalanceAfter, "erc20BalanceBefore>erc20BalanceAfter");
+
+        assertGt(amount0Increase, amount0, "amount0Increase>amount0");
+        assertGt(amount1Increase, amount1, "amount1Increase>amount1");
+    }
+
+    /// @notice Tests decreasing liquidity using transient storage
+    /// @dev Verifies that exitTransient() correctly reads inputs from transient storage and decreases liquidity
+    function testShouldDecreaseLiquidityUsingTransientStorage() external {
+        // given - first create a position
+        RamsesV2NewPositionFuseEnterData memory mintParams = RamsesV2NewPositionFuseEnterData({
+            token0: USDC,
+            token1: USDT,
+            fee: 100,
+            tickLower: 100,
+            tickUpper: 1000,
+            amount0Desired: 1_000e6,
+            amount1Desired: 1_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100,
+            veRamTokenId: 0
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_ramsesV2NewPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint256))",
+                mintParams
+            )
+        );
+
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        (
+            ,
+            uint256 tokenIdMintPosition,
+            uint128 liquidity,
+            uint256 amount0MintPosition,
+            uint256 amount1MintPosition
+        ) = _extractMarketIdsFromEvent(entries);
+
+        // Prepare transient inputs for decrease liquidity
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_ramsesV2ModifyPositionFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](5);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(tokenIdMintPosition);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(liquidity));
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(0));
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(uint256(0));
+        inputsByFuse[0][4] = TypeConversionLib.toBytes32(block.timestamp + 100000);
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(_ramsesV2ModifyPositionFuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(calls);
+        Vm.Log[] memory entriesDecreaseLiquidity = vm.getRecordedLogs();
+
+        // then
+        (
+            ,
+            uint256 tokenIdDecrease,
+            uint256 amount0Decrease,
+            uint256 amount1Decrease
+        ) = _extractDecreaseLiquidityFromEvent(entriesDecreaseLiquidity);
+
+        assertApproxEqAbs(amount0MintPosition, 1000000000, 1e6, "amount0MintPosition");
+        assertApproxEqAbs(amount0Decrease, 1000000000, 1e6, "amount0Decrease");
+
+        assertApproxEqAbs(amount1MintPosition, 0, 1e6, "amount1MintPosition");
+        assertApproxEqAbs(amount1Decrease, 0, 1e6, "amount1Decrease");
+
+        assertEq(tokenIdMintPosition, tokenIdDecrease, "tokenIdMintPosition = tokenIdDecrease");
+    }
+
+    /// @notice Tests collecting fees using transient storage
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and collects fees
+    function testShouldCollectFeesUsingTransientStorage() external {
+        // given - first create a position
+        RamsesV2NewPositionFuseEnterData memory mintParams = RamsesV2NewPositionFuseEnterData({
+            token0: USDC,
+            token1: USDT,
+            fee: 100,
+            tickLower: 100,
+            tickUpper: 1000,
+            amount0Desired: 1_000e6,
+            amount1Desired: 1_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100,
+            veRamTokenId: 0
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_ramsesV2NewPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint256))",
+                mintParams
+            )
+        );
+
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        (, uint256 tokenIdMintPosition, uint128 liquidity, , ) = _extractMarketIdsFromEvent(entries);
+
+        // Decrease liquidity completely to generate fees
+        RamsesV2ModifyPositionFuseExitData memory exitDataDecrease = RamsesV2ModifyPositionFuseExitData({
+            tokenId: tokenIdMintPosition,
+            liquidity: liquidity,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100000
+        });
+
+        FuseAction[] memory exitCallsDecrease = new FuseAction[](1);
+        exitCallsDecrease[0] = FuseAction(
+            address(_ramsesV2ModifyPositionFuse),
+            abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", exitDataDecrease)
+        );
+        PlasmaVault(_plasmaVault).execute(exitCallsDecrease);
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.RAMSES_V2_POSITIONS
+        );
+        uint256 erc20BalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.ERC20_VAULT_BALANCE
+        );
+
+        uint256 usdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
+
+        // Prepare transient inputs for collect fees
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_ramsesV2CollectFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2); // length + 1 tokenId
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(uint256(1)); // length
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(tokenIdMintPosition);
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(_ramsesV2CollectFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(calls);
+        Vm.Log[] memory entriesCollect = vm.getRecordedLogs();
+
+        // then
+        (, , uint256 amount0Collect, uint256 amount1Collect) = _extractCollectFeesFromEvent(entriesCollect);
+
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.RAMSES_V2_POSITIONS
+        );
+        uint256 erc20BalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.ERC20_VAULT_BALANCE
+        );
+
+        uint256 usdcBalanceAfter = ERC20(USDC).balanceOf(_plasmaVault);
+
+        assertApproxEqAbs(amount0Collect, 1000000000, 1e6, "amount0Collect");
+        assertApproxEqAbs(amount1Collect, 0, 1e6, "amount1Collect");
+
+        assertApproxEqAbs(marketBalanceBefore, 1000000000, 1e6, "marketBalanceBefore");
+        assertApproxEqAbs(marketBalanceAfter, 0, 1e6, "marketBalanceAfter");
+
+        assertApproxEqAbs(erc20BalanceBefore, 9999319143, 1e6, "erc20BalanceBefore");
+        assertApproxEqAbs(erc20BalanceAfter, 9999319143, 1e6, "erc20BalanceAfter");
+
+        assertApproxEqAbs(usdcBalanceBefore, 9000000000, 1e6, "usdcBalanceBefore");
+        assertApproxEqAbs(usdcBalanceAfter, 9999999999, 1e6, "usdcBalanceAfter");
+    }
 }

@@ -4,6 +4,8 @@ pragma solidity 0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManagerRamses} from "./ext/INonfungiblePositionManagerRamses.sol";
 
@@ -90,8 +92,14 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
     /**
      * @notice Function to increase liquidity in a position
      * @param data_ The data containing the parameters for increasing liquidity
+     * @return tokenId The ID of the token
+     * @return liquidity The amount of liquidity added
+     * @return amount0 The amount of token0 added
+     * @return amount1 The amount of token1 added
      */
-    function enter(RamsesV2ModifyPositionFuseEnterData calldata data_) public {
+    function enter(
+        RamsesV2ModifyPositionFuseEnterData memory data_
+    ) public returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         {
             if (
                 !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
@@ -104,16 +112,18 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = _increaseLiquidity(data_);
+        (liquidity, amount0, amount1) = _increaseLiquidity(data_);
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
-        emit RamsesV2ModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
+        tokenId = data_.tokenId;
+
+        emit RamsesV2ModifyPositionFuseEnter(VERSION, tokenId, liquidity, amount0, amount1);
     }
 
     function _increaseLiquidity(
-        RamsesV2ModifyPositionFuseEnterData calldata data_
+        RamsesV2ModifyPositionFuseEnterData memory data_
     ) private returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         INonfungiblePositionManagerRamses.IncreaseLiquidityParams memory params = INonfungiblePositionManagerRamses
             .IncreaseLiquidityParams({
@@ -131,15 +141,22 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
     /**
      * @notice Function to decrease liquidity in a position
      * @param data_ The data containing the parameters for decreasing liquidity
+     * @return tokenId The ID of the token
+     * @return amount0 The amount of token0 removed
+     * @return amount1 The amount of token1 removed
      */
-    function exit(RamsesV2ModifyPositionFuseExitData calldata data_) public {
-        (uint256 amount0, uint256 amount1) = _decreaseLiquidity(data_);
+    function exit(
+        RamsesV2ModifyPositionFuseExitData memory data_
+    ) public returns (uint256 tokenId, uint256 amount0, uint256 amount1) {
+        (amount0, amount1) = _decreaseLiquidity(data_);
 
-        emit RamsesV2ModifyPositionFuseExit(VERSION, data_.tokenId, amount0, amount1);
+        tokenId = data_.tokenId;
+
+        emit RamsesV2ModifyPositionFuseExit(VERSION, tokenId, amount0, amount1);
     }
 
     function _decreaseLiquidity(
-        RamsesV2ModifyPositionFuseExitData calldata data_
+        RamsesV2ModifyPositionFuseExitData memory data_
     ) private returns (uint256 amount0, uint256 amount1) {
         INonfungiblePositionManagerRamses.DecreaseLiquidityParams memory params = INonfungiblePositionManagerRamses
             .DecreaseLiquidityParams({
@@ -152,5 +169,53 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
 
         /// @dev This method doesn't transfer the liquidity to the caller
         return INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).decreaseLiquidity(params);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    /// @dev Reads all parameters from transient storage and writes returned values to outputs
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        RamsesV2ModifyPositionFuseEnterData memory data_ = RamsesV2ModifyPositionFuseEnterData({
+            token0: TypeConversionLib.toAddress(inputs[0]),
+            token1: TypeConversionLib.toAddress(inputs[1]),
+            tokenId: TypeConversionLib.toUint256(inputs[2]),
+            amount0Desired: TypeConversionLib.toUint256(inputs[3]),
+            amount1Desired: TypeConversionLib.toUint256(inputs[4]),
+            amount0Min: TypeConversionLib.toUint256(inputs[5]),
+            amount1Min: TypeConversionLib.toUint256(inputs[6]),
+            deadline: TypeConversionLib.toUint256(inputs[7])
+        });
+
+        (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = enter(data_);
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(tokenId);
+        outputs[1] = TypeConversionLib.toBytes32(uint256(liquidity));
+        outputs[2] = TypeConversionLib.toBytes32(amount0);
+        outputs[3] = TypeConversionLib.toBytes32(amount1);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    /// @dev Reads all parameters from transient storage and writes returned values to outputs
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        RamsesV2ModifyPositionFuseExitData memory data_ = RamsesV2ModifyPositionFuseExitData({
+            tokenId: TypeConversionLib.toUint256(inputs[0]),
+            liquidity: uint128(TypeConversionLib.toUint256(inputs[1])),
+            amount0Min: TypeConversionLib.toUint256(inputs[2]),
+            amount1Min: TypeConversionLib.toUint256(inputs[3]),
+            deadline: TypeConversionLib.toUint256(inputs[4])
+        });
+
+        (uint256 tokenId, uint256 amount0, uint256 amount1) = exit(data_);
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(tokenId);
+        outputs[1] = TypeConversionLib.toBytes32(amount0);
+        outputs[2] = TypeConversionLib.toBytes32(amount1);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
