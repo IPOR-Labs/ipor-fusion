@@ -20,6 +20,8 @@ import {RamsesV2ModifyPositionFuse, RamsesV2ModifyPositionFuseEnterData, RamsesV
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {RamsesV2CollectFuse, RamsesV2CollectFuseEnterData} from "../../../contracts/fuses/ramses/RamsesV2CollectFuse.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -48,6 +50,7 @@ contract RamsesV2PositionFuseTest is Test {
     RamsesV2NewPositionFuse private _ramsesV2NewPositionFuse;
     RamsesV2ModifyPositionFuse private _ramsesV2ModifyPositionFuse;
     RamsesV2CollectFuse private _ramsesV2CollectFuse;
+    address private _transientStorageSetInputsFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 254261635);
@@ -263,13 +266,9 @@ contract RamsesV2PositionFuseTest is Test {
         Vm.Log[] memory entriesIncreaseLiquidity = vm.getRecordedLogs();
 
         // then
-        (
-            ,
-            uint256 tokenIdIncrease,
-            ,
-            uint256 amount0Increase,
-            uint256 amount1Increase
-        ) = _extractIncreaseLiquidityFromEvent(entriesIncreaseLiquidity);
+        (, , , uint256 amount0Increase, uint256 amount1Increase) = _extractIncreaseLiquidityFromEvent(
+            entriesIncreaseLiquidity
+        );
 
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
             IporFusionMarkets.RAMSES_V2_POSITIONS
@@ -661,10 +660,13 @@ contract RamsesV2PositionFuseTest is Test {
             _NONFUNGIBLE_POSITION_MANAGER
         );
 
-        fuses = new address[](3);
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
+
+        fuses = new address[](4);
         fuses[0] = address(_ramsesV2NewPositionFuse);
         fuses[1] = address(_ramsesV2ModifyPositionFuse);
         fuses[2] = address(_ramsesV2CollectFuse);
+        fuses[3] = _transientStorageSetInputsFuse;
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
@@ -765,5 +767,164 @@ contract RamsesV2PositionFuseTest is Test {
                 break;
             }
         }
+    }
+
+    /// @notice Tests entering new position using transient storage
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and creates a new position
+    function testShouldEnterNewPositionUsingTransientStorage() external {
+        // given
+        uint256 amount0Desired = 1_000e6;
+        uint256 amount1Desired = 1_000e6;
+        uint24 fee = 50;
+        int24 tickLower = -1;
+        int24 tickUpper = 1;
+        uint256 deadline = block.timestamp + 100;
+        uint256 veRamTokenId = 0;
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.RAMSES_V2_POSITIONS
+        );
+
+        // Prepare transient inputs
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_ramsesV2NewPositionFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](11);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(USDC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(USDT);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(fee));
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(uint256(int256(tickLower)));
+        inputsByFuse[0][4] = TypeConversionLib.toBytes32(uint256(int256(tickUpper)));
+        inputsByFuse[0][5] = TypeConversionLib.toBytes32(amount0Desired);
+        inputsByFuse[0][6] = TypeConversionLib.toBytes32(amount1Desired);
+        inputsByFuse[0][7] = TypeConversionLib.toBytes32(uint256(0));
+        inputsByFuse[0][8] = TypeConversionLib.toBytes32(uint256(0));
+        inputsByFuse[0][9] = TypeConversionLib.toBytes32(deadline);
+        inputsByFuse[0][10] = TypeConversionLib.toBytes32(veRamTokenId);
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(_ramsesV2NewPositionFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(calls);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        // then
+        (, uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = _extractMarketIdsFromEvent(entries);
+
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.RAMSES_V2_POSITIONS
+        );
+
+        assertEq(marketBalanceBefore, 0, "marketBalanceBefore");
+        assertApproxEqAbs(marketBalanceAfter, amount0 + amount1, 1e6, "marketBalanceAfter");
+
+        assertGt(tokenId, 0, "tokenId");
+        assertGt(liquidity, 0, "liquidity");
+    }
+
+    /// @notice Tests exiting position using transient storage
+    /// @dev Verifies that exitTransient() correctly reads inputs from transient storage and closes positions
+    function testShouldExitPositionUsingTransientStorage() external {
+        // given - first create a position
+        RamsesV2NewPositionFuseEnterData memory mintParams = RamsesV2NewPositionFuseEnterData({
+            token0: USDC,
+            token1: USDT,
+            fee: 100,
+            tickLower: 100,
+            tickUpper: 1000,
+            amount0Desired: 1_000e6,
+            amount1Desired: 1_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100,
+            veRamTokenId: 0
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_ramsesV2NewPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint256))",
+                mintParams
+            )
+        );
+
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        (, uint256 tokenIdMintPosition, uint128 liquidity, , ) = _extractMarketIdsFromEvent(entries);
+
+        // Decrease liquidity first
+        RamsesV2ModifyPositionFuseExitData memory exitDataDecrease = RamsesV2ModifyPositionFuseExitData({
+            tokenId: tokenIdMintPosition,
+            liquidity: liquidity,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100000
+        });
+
+        FuseAction[] memory exitCallsDecrease = new FuseAction[](1);
+        exitCallsDecrease[0] = FuseAction(
+            address(_ramsesV2ModifyPositionFuse),
+            abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", exitDataDecrease)
+        );
+        PlasmaVault(_plasmaVault).execute(exitCallsDecrease);
+
+        // Collect fees
+        RamsesV2CollectFuseEnterData memory collectFeesData;
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenIdMintPosition;
+        collectFeesData.tokenIds = tokenIds;
+
+        FuseAction[] memory enterCollect = new FuseAction[](1);
+        enterCollect[0] = FuseAction(
+            address(_ramsesV2CollectFuse),
+            abi.encodeWithSignature("enter((uint256[]))", collectFeesData)
+        );
+        PlasmaVault(_plasmaVault).execute(enterCollect);
+
+        // Prepare transient inputs for exit
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_ramsesV2NewPositionFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2); // length + 1 tokenId
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(uint256(1)); // length
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(tokenIdMintPosition);
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        exitCalls[1] = FuseAction(address(_ramsesV2NewPositionFuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(exitCalls);
+        Vm.Log[] memory entriesClosePosition = vm.getRecordedLogs();
+
+        // then
+        (, uint256 closeTokenId) = _extractClosePositionFromEvent(entriesClosePosition);
+
+        assertEq(tokenIdMintPosition, closeTokenId, "tokenIdMintPosition = closeTokenId");
     }
 }
