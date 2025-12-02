@@ -7,8 +7,10 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 struct StakeDaoV2SupplyFuseEnterData {
     /// @dev Stake DAO V2 reward vault address, with underlying asset as lp token
@@ -79,25 +81,41 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
+    /// @notice Supplies assets to Stake DAO V2 reward vault
     /// @dev Alpha have to prepare lp token underlying asset in the vault before entering
-    function enter(StakeDaoV2SupplyFuseEnterData memory data_) external {
+    /// @param data_ Struct containing reward vault address, lp token underlying amount, and minimum amount
+    /// @return rewardVault Reward vault address
+    /// @return rewardVaultShares Amount of reward vault shares received
+    /// @return lpTokenAmount Amount of lp tokens deposited
+    /// @return finalLpTokenUnderlyingAmount Final amount of lp token underlying asset supplied
+    function enter(
+        StakeDaoV2SupplyFuseEnterData memory data_
+    )
+        public
+        returns (
+            address rewardVault,
+            uint256 rewardVaultShares,
+            uint256 lpTokenAmount,
+            uint256 finalLpTokenUnderlyingAmount
+        )
+    {
         if (data_.lpTokenUnderlyingAmount == 0) {
-            return;
+            return (address(0), 0, 0, 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.rewardVault)) {
             revert StakeDaoV2SupplyFuseUnsupportedRewardVault("enter", data_.rewardVault);
         }
 
-        IERC4626 rewardVault = IERC4626(data_.rewardVault);
+        IERC4626 rewardVaultContract = IERC4626(data_.rewardVault);
 
-        address lpTokenAddress = rewardVault.asset();
+        address lpTokenAddress = rewardVaultContract.asset();
 
         address lpTokenUnderlyingAddress = IERC4626(lpTokenAddress).asset();
 
         address plasmaVault = address(this);
 
-        uint256 finalLpTokenUnderlyingAmount = IporMath.min(
+        finalLpTokenUnderlyingAmount = IporMath.min(
             ERC20(lpTokenUnderlyingAddress).balanceOf(plasmaVault),
             data_.lpTokenUnderlyingAmount
         );
@@ -111,31 +129,60 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         ERC20(lpTokenUnderlyingAddress).forceApprove(lpTokenAddress, finalLpTokenUnderlyingAmount);
 
-        uint256 lpTokenAmount = IERC4626(lpTokenAddress).deposit(finalLpTokenUnderlyingAmount, plasmaVault);
+        lpTokenAmount = IERC4626(lpTokenAddress).deposit(finalLpTokenUnderlyingAmount, plasmaVault);
 
         ERC20(lpTokenAddress).forceApprove(data_.rewardVault, lpTokenAmount);
 
-        uint256 rewardVaultShares = rewardVault.deposit(lpTokenAmount, plasmaVault);
+        rewardVaultShares = rewardVaultContract.deposit(lpTokenAmount, plasmaVault);
 
         ERC20(lpTokenUnderlyingAddress).forceApprove(lpTokenAddress, 0);
         ERC20(lpTokenAddress).forceApprove(data_.rewardVault, 0);
 
+        rewardVault = data_.rewardVault;
+
         emit StakeDaoV2SupplyFuseEnter(
             VERSION,
-            data_.rewardVault,
+            rewardVault,
             rewardVaultShares,
             lpTokenAmount,
             finalLpTokenUnderlyingAmount
         );
     }
 
-    function exit(StakeDaoV2SupplyFuseExitData calldata data_) external {
-        _exit(data_, false);
+    /// @notice Exits the Stake DAO V2 reward vault
+    /// @param data_ Struct containing reward vault address, reward vault shares, and minimum shares
+    /// @return rewardVault Reward vault address
+    /// @return finalRewardVaultShares Final amount of reward vault shares withdrawn
+    /// @return lpTokenAmount Amount of lp tokens received
+    /// @return lpTokenUnderlyingAmount Amount of lp token underlying asset received
+    function exit(
+        StakeDaoV2SupplyFuseExitData memory data_
+    )
+        public
+        returns (
+            address rewardVault,
+            uint256 finalRewardVaultShares,
+            uint256 lpTokenAmount,
+            uint256 lpTokenUnderlyingAmount
+        )
+    {
+        return _exit(data_, false);
     }
 
-    function _exit(StakeDaoV2SupplyFuseExitData memory data_, bool catchExceptions_) internal {
+    function _exit(
+        StakeDaoV2SupplyFuseExitData memory data_,
+        bool catchExceptions_
+    )
+        internal
+        returns (
+            address rewardVault,
+            uint256 finalRewardVaultShares,
+            uint256 lpTokenAmount,
+            uint256 lpTokenUnderlyingAmount
+        )
+    {
         if (data_.rewardVaultShares == 0) {
-            return;
+            return (address(0), 0, 0, 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.rewardVault)) {
@@ -144,10 +191,7 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address plasmaVault = address(this);
 
-        uint256 finalRewardVaultShares = IporMath.min(
-            ERC20(data_.rewardVault).balanceOf(plasmaVault),
-            data_.rewardVaultShares
-        );
+        finalRewardVaultShares = IporMath.min(ERC20(data_.rewardVault).balanceOf(plasmaVault), data_.rewardVaultShares);
 
         if (finalRewardVaultShares < data_.minRewardVaultShares) {
             revert StakeDaoV2SupplyFuseInsufficientRewardVaultShares(
@@ -156,17 +200,16 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             );
         }
 
-        IERC4626 rewardVault = IERC4626(data_.rewardVault);
+        IERC4626 rewardVaultContract = IERC4626(data_.rewardVault);
 
-        uint256 lpTokenAmount;
-        uint256 lpTokenUnderlyingAmount;
+        rewardVault = data_.rewardVault;
 
         if (catchExceptions_) {
-            try rewardVault.redeem(finalRewardVaultShares, plasmaVault, plasmaVault) returns (
+            try rewardVaultContract.redeem(finalRewardVaultShares, plasmaVault, plasmaVault) returns (
                 uint256 lpTokenAmountTemp
             ) {
                 lpTokenAmount = lpTokenAmountTemp;
-                try IERC4626(rewardVault.asset()).redeem(lpTokenAmountTemp, plasmaVault, plasmaVault) returns (
+                try IERC4626(rewardVaultContract.asset()).redeem(lpTokenAmountTemp, plasmaVault, plasmaVault) returns (
                     uint256 lpTokenUnderlyingAmountTemp
                 ) {
                     lpTokenUnderlyingAmount = lpTokenUnderlyingAmountTemp;
@@ -174,7 +217,7 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                     /// @dev if redeem failed, continue with the next step
                     emit StakeDaoV2SupplyFuseExitFailed(
                         VERSION,
-                        data_.rewardVault,
+                        rewardVault,
                         finalRewardVaultShares,
                         lpTokenAmount,
                         lpTokenUnderlyingAmount
@@ -184,21 +227,25 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 /// @dev if redeem failed, continue with the next step
                 emit StakeDaoV2SupplyFuseExitFailed(
                     VERSION,
-                    data_.rewardVault,
+                    rewardVault,
                     finalRewardVaultShares,
                     lpTokenAmount,
                     lpTokenUnderlyingAmount
                 );
             }
         } else {
-            lpTokenAmount = rewardVault.redeem(finalRewardVaultShares, plasmaVault, plasmaVault);
+            lpTokenAmount = rewardVaultContract.redeem(finalRewardVaultShares, plasmaVault, plasmaVault);
 
-            lpTokenUnderlyingAmount = IERC4626(rewardVault.asset()).redeem(lpTokenAmount, plasmaVault, plasmaVault);
+            lpTokenUnderlyingAmount = IERC4626(rewardVaultContract.asset()).redeem(
+                lpTokenAmount,
+                plasmaVault,
+                plasmaVault
+            );
         }
 
         emit StakeDaoV2SupplyFuseExit(
             VERSION,
-            data_.rewardVault,
+            rewardVault,
             finalRewardVaultShares,
             lpTokenAmount,
             lpTokenUnderlyingAmount
@@ -226,5 +273,49 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 sharesToRequest = sharesShouldRequest > plasmaVaultBalance ? plasmaVaultBalance : sharesShouldRequest;
 
         _exit(StakeDaoV2SupplyFuseExitData(address(rewardVault), sharesToRequest, sharesToRequest), true);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address rewardVault = TypeConversionLib.toAddress(inputs[0]);
+        uint256 lpTokenUnderlyingAmount = TypeConversionLib.toUint256(inputs[1]);
+        uint256 minLpTokenUnderlyingAmount = TypeConversionLib.toUint256(inputs[2]);
+
+        (
+            address returnedRewardVault,
+            uint256 returnedRewardVaultShares,
+            uint256 returnedLpTokenAmount,
+            uint256 returnedFinalLpTokenUnderlyingAmount
+        ) = enter(StakeDaoV2SupplyFuseEnterData(rewardVault, lpTokenUnderlyingAmount, minLpTokenUnderlyingAmount));
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(returnedRewardVault);
+        outputs[1] = TypeConversionLib.toBytes32(returnedRewardVaultShares);
+        outputs[2] = TypeConversionLib.toBytes32(returnedLpTokenAmount);
+        outputs[3] = TypeConversionLib.toBytes32(returnedFinalLpTokenUnderlyingAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address rewardVault = TypeConversionLib.toAddress(inputs[0]);
+        uint256 rewardVaultShares = TypeConversionLib.toUint256(inputs[1]);
+        uint256 minRewardVaultShares = TypeConversionLib.toUint256(inputs[2]);
+
+        (
+            address returnedRewardVault,
+            uint256 returnedFinalRewardVaultShares,
+            uint256 returnedLpTokenAmount,
+            uint256 returnedLpTokenUnderlyingAmount
+        ) = exit(StakeDaoV2SupplyFuseExitData(rewardVault, rewardVaultShares, minRewardVaultShares));
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(returnedRewardVault);
+        outputs[1] = TypeConversionLib.toBytes32(returnedFinalRewardVaultShares);
+        outputs[2] = TypeConversionLib.toBytes32(returnedLpTokenAmount);
+        outputs[3] = TypeConversionLib.toBytes32(returnedLpTokenUnderlyingAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
