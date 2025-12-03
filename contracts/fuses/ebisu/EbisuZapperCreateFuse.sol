@@ -238,7 +238,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         IActivePool activePool = reg.activePool();
 
         IActivePool.TroveChange memory change;
-        change.collIncrease = data_.collAmount;
+        change.collIncrease = data_.collAmount + data_.flashLoanAmount;
         change.debtIncrease = data_.ebusdAmount;
         change.newWeightedRecordedDebt = change.debtIncrease * data_.annualInterestRate;
 
