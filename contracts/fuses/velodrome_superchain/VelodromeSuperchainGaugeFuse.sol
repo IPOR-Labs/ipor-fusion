@@ -3,7 +3,10 @@ pragma solidity 0.8.30;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {ILeafGauge} from "./ext/ILeafGauge.sol";
 import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "./VelodromeSuperchainLib.sol";
@@ -18,6 +21,11 @@ struct VelodromeSuperchainGaugeFuseExitData {
     address gaugeAddress;
     uint256 amount;
     uint256 minAmount;
+}
+
+struct VelodromeSuperchainGaugeFuseResult {
+    address gaugeAddress;
+    uint256 amount;
 }
 
 contract VelodromeSuperchainGaugeFuse is IFuseCommon {
@@ -39,13 +47,18 @@ contract VelodromeSuperchainGaugeFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(VelodromeSuperchainGaugeFuseEnterData memory data_) external {
+    function enter(
+        VelodromeSuperchainGaugeFuseEnterData memory data_
+    ) public returns (VelodromeSuperchainGaugeFuseResult memory result) {
         if (data_.gaugeAddress == address(0)) {
             revert VelodromeSuperchainGaugeFuseInvalidGauge();
         }
 
+        result.gaugeAddress = data_.gaugeAddress;
+
         if (data_.amount == 0) {
-            return;
+            result.amount = 0;
+            return result;
         }
 
         if (
@@ -73,7 +86,8 @@ contract VelodromeSuperchainGaugeFuse is IFuseCommon {
         }
 
         if (amountToDeposit == 0) {
-            return;
+            result.amount = 0;
+            return result;
         }
 
         IERC20(stakingToken).forceApprove(data_.gaugeAddress, amountToDeposit);
@@ -82,13 +96,19 @@ contract VelodromeSuperchainGaugeFuse is IFuseCommon {
 
         IERC20(stakingToken).forceApprove(data_.gaugeAddress, 0);
 
-        emit VelodromeSuperchainGaugeFuseEnter(VERSION, data_.gaugeAddress, amountToDeposit);
+        result.amount = amountToDeposit;
+
+        emit VelodromeSuperchainGaugeFuseEnter(VERSION, result.gaugeAddress, result.amount);
     }
 
-    function exit(VelodromeSuperchainGaugeFuseExitData memory data_) external {
+    function exit(
+        VelodromeSuperchainGaugeFuseExitData memory data_
+    ) public returns (VelodromeSuperchainGaugeFuseResult memory result) {
         if (data_.gaugeAddress == address(0)) {
             revert VelodromeSuperchainGaugeFuseInvalidGauge();
         }
+
+        result.gaugeAddress = data_.gaugeAddress;
 
         if (data_.amount == 0) {
             revert VelodromeSuperchainGaugeFuseInvalidAmount();
@@ -117,11 +137,50 @@ contract VelodromeSuperchainGaugeFuse is IFuseCommon {
         }
 
         if (amountToWithdraw == 0) {
-            return;
+            result.amount = 0;
+            return result;
         }
 
         ILeafGauge(data_.gaugeAddress).withdraw(amountToWithdraw);
 
-        emit VelodromeSuperchainGaugeFuseExit(VERSION, data_.gaugeAddress, amountToWithdraw);
+        result.amount = amountToWithdraw;
+
+        emit VelodromeSuperchainGaugeFuseExit(VERSION, result.gaugeAddress, result.amount);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        VelodromeSuperchainGaugeFuseResult memory result = enter(
+            VelodromeSuperchainGaugeFuseEnterData(
+                TypeConversionLib.toAddress(inputs[0]),
+                TypeConversionLib.toUint256(inputs[1]),
+                TypeConversionLib.toUint256(inputs[2])
+            )
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(result.gaugeAddress);
+        outputs[1] = TypeConversionLib.toBytes32(result.amount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        VelodromeSuperchainGaugeFuseResult memory result = exit(
+            VelodromeSuperchainGaugeFuseExitData(
+                TypeConversionLib.toAddress(inputs[0]),
+                TypeConversionLib.toUint256(inputs[1]),
+                TypeConversionLib.toUint256(inputs[2])
+            )
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(result.gaugeAddress);
+        outputs[1] = TypeConversionLib.toBytes32(result.amount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
