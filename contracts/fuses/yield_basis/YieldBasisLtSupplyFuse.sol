@@ -10,6 +10,8 @@ import {FullMath} from "../ramses/ext/FullMath.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IYieldBasisLT} from "./ext/IYieldBasisLT.sol";
 /// @notice Data structure for entering - supply - the Yield Basis vault
 struct YieldBasisLtSupplyFuseEnterData {
@@ -71,20 +73,38 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    function enter(YieldBasisLtSupplyFuseEnterData memory data_) external {
+    /// @notice Supply assets to Yield Basis vault
+    /// @param data_ Struct containing ltAddress, ltAssetAmount, debt, and minSharesToReceive
+    /// @return ltAddress Leveraged Liquidity Token address
+    /// @return ltAssetToken Asset token address
+    /// @return ltAssetAmount Amount of underlying asset supplied
+    /// @return debt Amount of debt taken
+    /// @return ltSharesAmountReceived Amount of shares received
+    function enter(
+        YieldBasisLtSupplyFuseEnterData memory data_
+    )
+        public
+        returns (
+            address ltAddress,
+            address ltAssetToken,
+            uint256 ltAssetAmount,
+            uint256 debt,
+            uint256 ltSharesAmountReceived
+        )
+    {
         if (data_.ltAssetAmount == 0) {
-            return;
+            return (address(0), address(0), 0, 0, 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.ltAddress)) {
             revert YieldBasisLtSupplyFuseUnsupportedVault("enter", data_.ltAddress);
         }
 
-        address ltAssetToken = IYieldBasisLT(data_.ltAddress).ASSET_TOKEN();
+        ltAssetToken = IYieldBasisLT(data_.ltAddress).ASSET_TOKEN();
 
         IERC20(ltAssetToken).forceApprove(data_.ltAddress, data_.ltAssetAmount);
 
-        uint256 ltSharesAmountReceived = IYieldBasisLT(data_.ltAddress).deposit(
+        ltSharesAmountReceived = IYieldBasisLT(data_.ltAddress).deposit(
             data_.ltAssetAmount,
             data_.debt,
             data_.minSharesToReceive,
@@ -93,18 +113,22 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         IERC20(ltAssetToken).forceApprove(data_.ltAddress, 0);
 
-        emit YieldBasisLtSupplyFuseEnter(
-            VERSION,
-            data_.ltAddress,
-            ltAssetToken,
-            data_.ltAssetAmount,
-            data_.debt,
-            ltSharesAmountReceived
-        );
+        ltAddress = data_.ltAddress;
+        ltAssetAmount = data_.ltAssetAmount;
+        debt = data_.debt;
+
+        emit YieldBasisLtSupplyFuseEnter(VERSION, ltAddress, ltAssetToken, ltAssetAmount, debt, ltSharesAmountReceived);
     }
 
-    function exit(YieldBasisLtSupplyFuseExitData calldata data_) external {
-        _exit(data_);
+    /// @notice Withdraw assets from Yield Basis vault
+    /// @param data_ Struct containing ltAddress, ltSharesAmount, and minLtAssetAmountToReceive
+    /// @return ltAddress Leveraged Liquidity Token address
+    /// @return ltSharesAmount Amount of shares withdrawn
+    /// @return ltAssetAmountReceived Amount of underlying asset received
+    function exit(
+        YieldBasisLtSupplyFuseExitData memory data_
+    ) public returns (address ltAddress, uint256 ltSharesAmount, uint256 ltAssetAmountReceived) {
+        return _exit(data_);
     }
 
     /// @dev params[0] - amount in underlying assets, params[1] - LT address
@@ -139,21 +163,74 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         _exit(YieldBasisLtSupplyFuseExitData(ltAddress, ltSharesToWithdraw, 0));
     }
 
-    function _exit(YieldBasisLtSupplyFuseExitData memory data_) internal {
+    /// @notice Internal function to withdraw assets from Yield Basis vault
+    /// @param data_ Struct containing ltAddress, ltSharesAmount, and minLtAssetAmountToReceive
+    /// @return ltAddress Leveraged Liquidity Token address
+    /// @return ltSharesAmount Amount of shares withdrawn
+    /// @return ltAssetAmountReceived Amount of underlying asset received
+    function _exit(
+        YieldBasisLtSupplyFuseExitData memory data_
+    ) internal returns (address ltAddress, uint256 ltSharesAmount, uint256 ltAssetAmountReceived) {
         if (data_.ltSharesAmount == 0) {
-            return;
+            return (address(0), 0, 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.ltAddress)) {
             revert YieldBasisLtSupplyFuseUnsupportedVault("exit", data_.ltAddress);
         }
 
-        uint256 ltAssetAmountReceived = IYieldBasisLT(data_.ltAddress).withdraw(
+        ltAssetAmountReceived = IYieldBasisLT(data_.ltAddress).withdraw(
             data_.ltSharesAmount,
             data_.minLtAssetAmountToReceive,
             address(this)
         );
 
-        emit YieldBasisLtSupplyFuseExit(VERSION, data_.ltAddress, data_.ltSharesAmount, ltAssetAmountReceived);
+        ltAddress = data_.ltAddress;
+        ltSharesAmount = data_.ltSharesAmount;
+
+        emit YieldBasisLtSupplyFuseExit(VERSION, ltAddress, ltSharesAmount, ltAssetAmountReceived);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address ltAddress = TypeConversionLib.toAddress(inputs[0]);
+        uint256 ltAssetAmount = TypeConversionLib.toUint256(inputs[1]);
+        uint256 debt = TypeConversionLib.toUint256(inputs[2]);
+        uint256 minSharesToReceive = TypeConversionLib.toUint256(inputs[3]);
+
+        (
+            address returnedLtAddress,
+            address returnedLtAssetToken,
+            uint256 returnedLtAssetAmount,
+            uint256 returnedDebt,
+            uint256 returnedLtSharesAmountReceived
+        ) = enter(YieldBasisLtSupplyFuseEnterData(ltAddress, ltAssetAmount, debt, minSharesToReceive));
+
+        bytes32[] memory outputs = new bytes32[](5);
+        outputs[0] = TypeConversionLib.toBytes32(returnedLtAddress);
+        outputs[1] = TypeConversionLib.toBytes32(returnedLtAssetToken);
+        outputs[2] = TypeConversionLib.toBytes32(returnedLtAssetAmount);
+        outputs[3] = TypeConversionLib.toBytes32(returnedDebt);
+        outputs[4] = TypeConversionLib.toBytes32(returnedLtSharesAmountReceived);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address ltAddress = TypeConversionLib.toAddress(inputs[0]);
+        uint256 ltSharesAmount = TypeConversionLib.toUint256(inputs[1]);
+        uint256 minLtAssetAmountToReceive = TypeConversionLib.toUint256(inputs[2]);
+
+        (address returnedLtAddress, uint256 returnedLtSharesAmount, uint256 returnedLtAssetAmountReceived) = exit(
+            YieldBasisLtSupplyFuseExitData(ltAddress, ltSharesAmount, minLtAssetAmountToReceive)
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedLtAddress);
+        outputs[1] = TypeConversionLib.toBytes32(returnedLtSharesAmount);
+        outputs[2] = TypeConversionLib.toBytes32(returnedLtAssetAmountReceived);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
