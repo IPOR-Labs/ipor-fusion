@@ -4,8 +4,10 @@ pragma solidity 0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 
 /// @notice Data for entering UniswapV3ModifyPositionFuse.sol - increase liquidity
 struct UniswapV3ModifyPositionFuseEnterData {
@@ -67,7 +69,15 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
-    function enter(UniswapV3ModifyPositionFuseEnterData calldata data_) public {
+    /// @notice Increases liquidity for an existing Uniswap V3 position
+    /// @param data_ The data structure containing the parameters for increasing liquidity
+    /// @return tokenId The ID of the token that represents the position
+    /// @return liquidity The amount of liquidity added
+    /// @return amount0 The amount of token0 added
+    /// @return amount1 The amount of token1 added
+    function enter(
+        UniswapV3ModifyPositionFuseEnterData memory data_
+    ) public returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         if (
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
@@ -89,17 +99,26 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
             });
 
         // Note that the pool defined by token0/token1 and fee tier must already be created and initialized in order to mint
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = INonfungiblePositionManager(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).increaseLiquidity(params);
+        (liquidity, amount0, amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).increaseLiquidity(
+            params
+        );
+
+        tokenId = data_.tokenId;
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
-        emit UniswapV3ModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
+        emit UniswapV3ModifyPositionFuseEnter(VERSION, tokenId, liquidity, amount0, amount1);
     }
 
-    function exit(UniswapV3ModifyPositionFuseExitData calldata data_) public {
+    /// @notice Decreases liquidity for an existing Uniswap V3 position
+    /// @param data_ The data structure containing the parameters for decreasing liquidity
+    /// @return tokenId The ID of the token for which liquidity was decreased
+    /// @return amount0 The amount of token0 received
+    /// @return amount1 The amount of token1 received
+    function exit(
+        UniswapV3ModifyPositionFuseExitData memory data_
+    ) public returns (uint256 tokenId, uint256 amount0, uint256 amount1) {
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
                 tokenId: data_.tokenId,
@@ -110,9 +129,69 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
             });
 
         /// @dev This method doesn't transfer the liquidity to the caller
-        (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER)
-            .decreaseLiquidity(params);
+        (amount0, amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).decreaseLiquidity(params);
 
-        emit UniswapV3ModifyPositionFuseExit(VERSION, data_.tokenId, amount0, amount1);
+        tokenId = data_.tokenId;
+
+        emit UniswapV3ModifyPositionFuseExit(VERSION, tokenId, amount0, amount1);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address token0 = TypeConversionLib.toAddress(inputs[0]);
+        address token1 = TypeConversionLib.toAddress(inputs[1]);
+        uint256 tokenId = TypeConversionLib.toUint256(inputs[2]);
+        uint256 amount0Desired = TypeConversionLib.toUint256(inputs[3]);
+        uint256 amount1Desired = TypeConversionLib.toUint256(inputs[4]);
+        uint256 amount0Min = TypeConversionLib.toUint256(inputs[5]);
+        uint256 amount1Min = TypeConversionLib.toUint256(inputs[6]);
+        uint256 deadline = TypeConversionLib.toUint256(inputs[7]);
+
+        (uint256 returnedTokenId, uint128 returnedLiquidity, uint256 returnedAmount0, uint256 returnedAmount1) = enter(
+            UniswapV3ModifyPositionFuseEnterData({
+                token0: token0,
+                token1: token1,
+                tokenId: tokenId,
+                amount0Desired: amount0Desired,
+                amount1Desired: amount1Desired,
+                amount0Min: amount0Min,
+                amount1Min: amount1Min,
+                deadline: deadline
+            })
+        );
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(returnedTokenId);
+        outputs[1] = TypeConversionLib.toBytes32(uint256(returnedLiquidity));
+        outputs[2] = TypeConversionLib.toBytes32(returnedAmount0);
+        outputs[3] = TypeConversionLib.toBytes32(returnedAmount1);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        uint256 tokenId = TypeConversionLib.toUint256(inputs[0]);
+        uint128 liquidity = uint128(TypeConversionLib.toUint256(inputs[1]));
+        uint256 amount0Min = TypeConversionLib.toUint256(inputs[2]);
+        uint256 amount1Min = TypeConversionLib.toUint256(inputs[3]);
+        uint256 deadline = TypeConversionLib.toUint256(inputs[4]);
+
+        (uint256 returnedTokenId, uint256 returnedAmount0, uint256 returnedAmount1) = exit(
+            UniswapV3ModifyPositionFuseExitData({
+                tokenId: tokenId,
+                liquidity: liquidity,
+                amount0Min: amount0Min,
+                amount1Min: amount1Min,
+                deadline: deadline
+            })
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedTokenId);
+        outputs[1] = TypeConversionLib.toBytes32(returnedAmount0);
+        outputs[2] = TypeConversionLib.toBytes32(returnedAmount1);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
