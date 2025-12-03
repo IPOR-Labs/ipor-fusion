@@ -258,7 +258,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
             revert NewOracleFailureDetected();
         }
 
-        uint256 icr = LiquityMath.computeCR(data_.collAmount, newDebt, price);
+        uint256 icr = LiquityMath.computeCR(change.collIncrease, newDebt, price);
         if (icr < mcr) {
             revert ICRBelowMCR(icr, mcr);
         }
