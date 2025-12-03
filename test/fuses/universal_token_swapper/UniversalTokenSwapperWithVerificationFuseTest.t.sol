@@ -16,9 +16,12 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 import {SwapExecutorEth, SwapExecutorEthData} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
 import {UniversalTokenSwapperWithVerificationFuse, UniversalTokenSwapperWithVerificationEnterData, UniversalTokenSwapperWithVerificationData, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
@@ -51,6 +54,7 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
     address private _executor;
 
     UniversalTokenSwapperWithVerificationFuse private _universalTokenSwapperFuse;
+    address private _transientStorageSetInputsFuse;
 
     ///@dev this value is from the UniversalRouter contract https://github.com/Uniswap/universal-router/blob/main/contracts/libraries/Commands.sol
     uint256 private constant _V3_SWAP_EXACT_IN = 0x00;
@@ -85,7 +89,8 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
         sources[5] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         PriceOracleMiddleware(_priceOracle).setAssetsPricesSources(assets, sources);
 
-        WithdrawManager withdrawManager = new WithdrawManager(address(_accessManager));
+        _createAccessManager();
+        WithdrawManager withdrawManager = new WithdrawManager(_accessManager);
 
         // plasma vault
         _plasmaVault = address(new PlasmaVault());
@@ -96,7 +101,7 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
                 USDC,
                 _priceOracle,
                 _setupFeeConfig(),
-                _createAccessManager(),
+                _accessManager,
                 address(new PlasmaVaultBase()),
                 address(withdrawManager)
             )
@@ -458,6 +463,109 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
+    function testShouldEnterUsingTransient() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        bytes32[][] memory inputsByFuse;
+        {
+            bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+            address[] memory targets = new address[](2);
+            targets[0] = USDC;
+            targets[1] = _UNIVERSAL_ROUTER;
+
+            bytes[] memory inputs = new bytes[](1);
+            inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
+
+            bytes[] memory callDatas = new bytes[](2);
+            callDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+            callDatas[1] = abi.encodeWithSignature(
+                "execute(bytes,bytes[])",
+                abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
+                inputs
+            );
+
+            uint256[] memory ethAmounts = new uint256[](2);
+            address[] memory dustToCheck = new address[](0);
+
+            // Calculate total inputs count dynamically
+            uint256 totalInputs = 4 + targets.length + 1; // tokenIn, tokenOut, amountIn, targetsLength, targets[], callDatasLength
+            for (uint256 i; i < callDatas.length; ++i) {
+                totalInputs += 1 + (callDatas[i].length + 31) / 32; // length + chunks for each callData
+            }
+            totalInputs += 1 + ethAmounts.length + 1 + dustToCheck.length; // ethAmountsLength, ethAmounts[], tokensDustToCheckLength, tokensDustToCheck[]
+
+            inputsByFuse = new bytes32[][](1);
+            inputsByFuse[0] = new bytes32[](totalInputs);
+
+            uint256 inputIndex = 0;
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(USDC);
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(USDT);
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(depositAmount);
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(targets.length);
+            for (uint256 i; i < targets.length; ++i) {
+                inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(targets[i]);
+            }
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(callDatas.length);
+            for (uint256 i; i < callDatas.length; ++i) {
+                bytes memory callData = callDatas[i];
+                uint256 dataLen = callData.length;
+                inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(dataLen);
+                uint256 chunksCount = (dataLen + 31) / 32;
+                for (uint256 j; j < chunksCount; ++j) {
+                    bytes32 chunk;
+                    assembly {
+                        chunk := mload(add(add(callData, 0x20), mul(j, 32)))
+                    }
+                    inputsByFuse[0][inputIndex++] = chunk;
+                }
+            }
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(ethAmounts.length);
+            for (uint256 i; i < ethAmounts.length; ++i) {
+                inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(ethAmounts[i]);
+            }
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(dustToCheck.length);
+            for (uint256 i; i < dustToCheck.length; ++i) {
+                inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(dustToCheck[i]);
+            }
+        }
+
+        // when
+        uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
+        uint256 plasmaVaultUsdtBalanceBefore = ERC20(USDT).balanceOf(_plasmaVault);
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_universalTokenSwapperFuse);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesToSet, inputsByFuse: inputsByFuse})
+            )
+        );
+        calls[1] = FuseAction(address(_universalTokenSwapperFuse), abi.encodeWithSignature("enterTransient()"));
+
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        // then
+        assertEq(plasmaVaultUsdcBalanceBefore, depositAmount, "plasmaVaultUsdcBalanceBefore");
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), 0, "plasmaVaultUsdcBalanceAfter");
+        assertEq(plasmaVaultUsdtBalanceBefore, 0, "plasmaVaultUsdtBalanceBefore");
+        assertGt(ERC20(USDT).balanceOf(_plasmaVault), 0, "plasmaVaultUsdtBalanceAfter");
+    }
+
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
         feeConfig_ = FeeConfigHelper.createZeroFeeConfig();
     }
@@ -550,17 +658,20 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
             _executor,
             1e18
         );
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
 
-        fuses_ = new address[](1);
+        fuses_ = new address[](2);
         fuses_[0] = address(_universalTokenSwapperFuse);
+        fuses_[1] = _transientStorageSetInputsFuse;
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
-        // @Dev this setup is ignored for tests
         ZeroBalanceFuse zeroBalance = new ZeroBalanceFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER);
+        ERC20BalanceFuse erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
 
-        balanceFuses_ = new MarketBalanceFuseConfig[](1);
+        balanceFuses_ = new MarketBalanceFuseConfig[](2);
         balanceFuses_[0] = MarketBalanceFuseConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, address(zeroBalance));
+        balanceFuses_[1] = MarketBalanceFuseConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, address(erc20BalanceFuse));
     }
 
     /// @notice Converts UniversalTokenSwapperSubstrate to bytes32

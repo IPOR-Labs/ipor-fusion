@@ -9,6 +9,8 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {SwapExecutor, SwapExecutorData} from "./SwapExecutor.sol";
 
 /// @notice Data structure used for executing a swap operation.
@@ -69,7 +71,18 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         SLIPPAGE_REVERSE = _ONE - slippageReverse_;
     }
 
-    function enter(UniversalTokenSwapperEnterData calldata data_) external {
+    /// @notice Enters the swap operation
+    /// @param data_ The input data for the swap
+    /// @return tokenIn The input token address
+    /// @return tokenOut The output token address
+    /// @return tokenInDelta The amount of input token consumed
+    /// @return tokenOutDelta The amount of output token received
+    function enter(
+        UniversalTokenSwapperEnterData memory data_
+    ) public returns (address tokenIn, address tokenOut, uint256 tokenInDelta, uint256 tokenOutDelta) {
+        tokenIn = data_.tokenIn;
+        tokenOut = data_.tokenOut;
+
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
         }
@@ -95,7 +108,10 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         });
 
         if (data_.amountIn == 0) {
-            return;
+            tokenInDelta = 0;
+            tokenOutDelta = 0;
+            _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
+            return (tokenIn, tokenOut, tokenInDelta, tokenOutDelta);
         }
 
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
@@ -113,31 +129,50 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         balances.tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(plasmaVault);
 
         if (balances.tokenInBalanceAfter >= balances.tokenInBalanceBefore) {
-            return;
+            tokenInDelta = 0;
+            tokenOutDelta = 0;
+            _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
+            return (tokenIn, tokenOut, tokenInDelta, tokenOutDelta);
         }
 
-        uint256 tokenInDelta = balances.tokenInBalanceBefore - balances.tokenInBalanceAfter;
+        tokenInDelta = balances.tokenInBalanceBefore - balances.tokenInBalanceAfter;
 
         if (balances.tokenOutBalanceAfter <= balances.tokenOutBalanceBefore) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
 
-        uint256 tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
+        tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
 
+        _checkSlippage(data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+
+        _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
+    }
+
+    /// @notice Checks slippage tolerance for the swap
+    /// @param tokenIn_ The input token address
+    /// @param tokenOut_ The output token address
+    /// @param tokenInDelta_ The amount of input token consumed
+    /// @param tokenOutDelta_ The amount of output token received
+    function _checkSlippage(
+        address tokenIn_,
+        address tokenOut_,
+        uint256 tokenInDelta_,
+        uint256 tokenOutDelta_
+    ) private view {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 
         (uint256 tokenInPrice, uint256 tokenInPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
-            .getAssetPrice(data_.tokenIn);
+            .getAssetPrice(tokenIn_);
         (uint256 tokenOutPrice, uint256 tokenOutPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
-            .getAssetPrice(data_.tokenOut);
+            .getAssetPrice(tokenOut_);
 
         uint256 amountUsdInDelta = IporMath.convertToWad(
-            tokenInDelta * tokenInPrice,
-            IERC20Metadata(data_.tokenIn).decimals() + tokenInPriceDecimals
+            tokenInDelta_ * tokenInPrice,
+            IERC20Metadata(tokenIn_).decimals() + tokenInPriceDecimals
         );
         uint256 amountUsdOutDelta = IporMath.convertToWad(
-            tokenOutDelta * tokenOutPrice,
-            IERC20Metadata(data_.tokenOut).decimals() + tokenOutPriceDecimals
+            tokenOutDelta_ * tokenOutPrice,
+            IERC20Metadata(tokenOut_).decimals() + tokenOutPriceDecimals
         );
 
         uint256 quotient = IporMath.division(amountUsdOutDelta * 1e18, amountUsdInDelta);
@@ -145,15 +180,96 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         if (quotient < SLIPPAGE_REVERSE) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
-
-        _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
     }
 
     function _emitUniversalTokenSwapperFuseEnter(
-        UniversalTokenSwapperEnterData calldata data_,
+        UniversalTokenSwapperEnterData memory data_,
         uint256 tokenInDelta,
         uint256 tokenOutDelta
     ) private {
         emit UniversalTokenSwapperFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    /// @dev Reads tokenIn, tokenOut, amountIn, targets array, and data arrays from transient storage.
+    ///      Input 0: tokenIn (address)
+    ///      Input 1: tokenOut (address)
+    ///      Input 2: amountIn (uint256)
+    ///      Input 3: targetsLength (uint256)
+    ///      Inputs 4 to 3+targetsLength: targets (address[])
+    ///      Input 3+targetsLength+1: dataLength (uint256)
+    ///      For each data (i from 0 to dataLength-1):
+    ///        Input 3+targetsLength+1+i*2+1: dataLength (uint256)
+    ///        Inputs 3+targetsLength+1+i*2+2 to 3+targetsLength+1+i*2+1+ceil(dataLength/32): data chunks (bytes32[])
+    ///      Writes returned tokenIn, tokenOut, tokenInDelta, and tokenOutDelta to transient storage outputs.
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address tokenIn = TypeConversionLib.toAddress(inputs[0]);
+        address tokenOut = TypeConversionLib.toAddress(inputs[1]);
+        uint256 amountIn = TypeConversionLib.toUint256(inputs[2]);
+
+        uint256 currentIndex = 3;
+        address[] memory targets;
+        (targets, currentIndex) = _readTargets(currentIndex);
+        bytes[] memory data;
+        (data, currentIndex) = _readData(currentIndex);
+
+        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amountIn: amountIn,
+            data: UniversalTokenSwapperData({targets: targets, data: data})
+        });
+
+        (address returnedTokenIn, address returnedTokenOut, uint256 tokenInDelta, uint256 tokenOutDelta) = enter(
+            enterData
+        );
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(returnedTokenIn);
+        outputs[1] = TypeConversionLib.toBytes32(returnedTokenOut);
+        outputs[2] = TypeConversionLib.toBytes32(tokenInDelta);
+        outputs[3] = TypeConversionLib.toBytes32(tokenOutDelta);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Reads targets from transient storage
+    /// @param currentIndex The current index in transient storage
+    /// @return targets The array of target addresses
+    /// @return nextIndex The next index in transient storage
+    function _readTargets(uint256 currentIndex) private view returns (address[] memory targets, uint256 nextIndex) {
+        uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
+        nextIndex = currentIndex + 1;
+        targets = new address[](len);
+        for (uint256 i; i < len; ++i) {
+            targets[i] = TypeConversionLib.toAddress(TransientStorageLib.getInput(VERSION, nextIndex));
+            ++nextIndex;
+        }
+    }
+
+    /// @notice Reads data bytes arrays from transient storage
+    /// @param currentIndex The current index in transient storage
+    /// @return data The array of bytes data
+    /// @return nextIndex The next index in transient storage
+    function _readData(uint256 currentIndex) private view returns (bytes[] memory data, uint256 nextIndex) {
+        uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
+        nextIndex = currentIndex + 1;
+        data = new bytes[](len);
+        for (uint256 i; i < len; ++i) {
+            uint256 dataLen = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, nextIndex));
+            ++nextIndex;
+            bytes memory callData = new bytes(dataLen);
+            uint256 chunksCount = (dataLen + 31) / 32;
+            for (uint256 j; j < chunksCount; ++j) {
+                bytes32 chunk = TransientStorageLib.getInput(VERSION, nextIndex);
+                uint256 chunkStart = j * 32;
+                assembly {
+                    mstore(add(add(callData, 0x20), chunkStart), chunk)
+                }
+                ++nextIndex;
+            }
+            data[i] = callData;
+        }
     }
 }
