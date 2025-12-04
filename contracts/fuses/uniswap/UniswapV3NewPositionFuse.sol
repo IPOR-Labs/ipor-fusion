@@ -44,8 +44,11 @@ struct UniswapV3NewPositionFuseExitData {
     uint256[] tokenIds;
 }
 
-/// @title Fuse responsible for create new Uniswap V3 positions.
-/// @dev Associated with fuse balance UniswapV3Balance.
+/// @title UniswapV3NewPositionFuse
+/// @notice Fuse for creating and managing new Uniswap V3 liquidity positions
+/// @dev This fuse allows the PlasmaVault to create new Uniswap V3 positions by providing liquidity to pools.
+///      It handles position creation (minting NFTs) and position closure (burning NFTs).
+///      Associated with fuse balance UniswapV3Balance.
 contract UniswapV3NewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
     using Address for address;

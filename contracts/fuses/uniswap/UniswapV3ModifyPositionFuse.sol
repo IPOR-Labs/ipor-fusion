@@ -43,7 +43,11 @@ struct UniswapV3ModifyPositionFuseExitData {
     uint256 deadline;
 }
 
-/// @dev Associated with fuse balance UniswapV3Balance.
+/// @title UniswapV3ModifyPositionFuse
+/// @notice Fuse for modifying existing Uniswap V3 liquidity positions
+/// @dev This fuse allows the PlasmaVault to increase or decrease liquidity in existing Uniswap V3 positions.
+///      It supports both adding liquidity (enter) and removing liquidity (exit) from positions.
+///      Associated with fuse balance UniswapV3Balance.
 contract UniswapV3ModifyPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 

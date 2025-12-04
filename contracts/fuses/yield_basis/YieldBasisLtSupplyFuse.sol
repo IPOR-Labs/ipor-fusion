@@ -35,8 +35,11 @@ struct YieldBasisLtSupplyFuseExitData {
     uint256 minLtAssetAmountToReceive;
 }
 
-/// @title Generic fuse for Yield Basis vaults responsible for supplying and withdrawing assets from the Yield Basis vaults based on preconfigured market substrates
-/// @dev Substrates in this fuse are the assets that are used in the Yield Basis vaults for a given MARKET_ID
+/// @title YieldBasisLtSupplyFuse
+/// @notice Generic fuse for Yield Basis vaults responsible for supplying and withdrawing assets from the Yield Basis vaults based on preconfigured market substrates
+/// @dev Substrates in this fuse are the assets that are used in the Yield Basis vaults for a given MARKET_ID.
+///      This fuse implements both IFuseCommon (for enter/exit operations) and IFuseInstantWithdraw (for instant withdrawal functionality).
+///      It supports transient storage operations through enterTransient() and exitTransient() methods.
 contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for IERC20;
 
@@ -131,9 +134,17 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         return _exit(data_);
     }
 
-    /// @dev params[0] - amount in underlying assets, params[1] - LT address
+    /**
+     * @notice Performs instant withdrawal from Yield Basis vault based on underlying asset amount
+     * @dev This function calculates the required LT shares based on the underlying asset amount and withdraws them.
+     *      It implements the IFuseInstantWithdraw interface for instant withdrawal functionality.
+     *      params[0] - amount in underlying assets (bytes32 encoded uint256)
+     *      params[1] - LT address (bytes32 encoded address)
+     * @param params_ Array of bytes32 parameters:
+     *                - params[0]: Amount in underlying assets (bytes32 encoded uint256)
+     *                - params[1]: Leveraged Liquidity Token address (bytes32 encoded address)
+     */
     function instantWithdraw(bytes32[] calldata params_) external override {
-        /// @dev params[0] - amount in underlying assets, params[1] - LT address
         address plasmaVaultAddress = address(this);
         uint256 plasmaVaultUnderlyingAssetsAmount = uint256(params_[0]);
         uint256 plasmaVaultUnderlyingAssetsAmountDecimals = IERC20Metadata(IERC4626(plasmaVaultAddress).asset())

@@ -12,12 +12,20 @@ import {ISiloConfig} from "./ext/ISiloConfig.sol";
 import {ISilo} from "./ext/ISilo.sol";
 import {IShareToken} from "./ext/IShareToken.sol";
 
+/// @title SiloV2BalanceFuse
+/// @notice Fuse for calculating the balance of assets in Silo V2 protocol
+/// @dev This fuse calculates the total balance of assets held in Silo V2 markets by the PlasmaVault,
+///      accounting for both positive balances (protected and collateral shares) and negative balances (debt shares).
 contract SiloV2BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
 
+    /// @dev The version of the contract.
+    address public immutable VERSION;
+    /// @dev The unique identifier for IporFusionMarkets.
     uint256 public immutable MARKET_ID;
 
     constructor(uint256 marketId_) {
+        VERSION = address(this);
         MARKET_ID = marketId_;
     }
 

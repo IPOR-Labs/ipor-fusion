@@ -49,10 +49,21 @@ struct VelodromeSuperchainSlipstreamNewPositionFuseEnterResult {
     int24 tickUpper;
 }
 
+/**
+ * @title VelodromeSuperchainSlipstreamNewPositionFuse
+ * @notice Fuse contract for creating and closing Velodrome Superchain Slipstream liquidity positions
+ * @dev This contract allows the Plasma Vault to interact with Velodrome Superchain Slipstream protocol,
+ *      enabling the creation of new NFT positions representing concentrated liquidity and the closing
+ *      of existing positions. It validates pool substrates, handles token approvals using forceApprove
+ *      pattern, and manages position lifecycle. Supports both standard and transient storage patterns
+ *      for gas-efficient operations.
+ * @author IPOR Labs
+ */
 contract VelodromeSuperchainSlipstreamNewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
     error VelodromeSuperchainSlipstreamNewPositionFuseUnsupportedPool(address pool);
+    error VelodromeSuperchainSlipstreamNewPositionFuseInvalidAddress();
 
     event VelodromeSuperchainSlipstreamNewPositionFuseEnter(
         address indexed version,
@@ -74,16 +85,31 @@ contract VelodromeSuperchainSlipstreamNewPositionFuse is IFuseCommon {
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
     address public immutable FACTORY;
 
+    /**
+     * @notice Initializes the VelodromeSuperchainSlipstreamNewPositionFuse with market ID and position manager
+     * @param marketId_ The market ID used to identify the market and validate pool substrates
+     * @param nonfungiblePositionManager_ The address of the Velodrome Superchain Slipstream NonfungiblePositionManager (must not be address(0))
+     * @dev Reverts if nonfungiblePositionManager_ is zero address. Retrieves factory address from position manager.
+     */
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
+        if (nonfungiblePositionManager_ == address(0)) {
+            revert VelodromeSuperchainSlipstreamNewPositionFuseInvalidAddress();
+        }
         VERSION = address(this);
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
         FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
     }
 
-    /// @notice Enters a new Velodrome Superchain Slipstream position
-    /// @param data_ The data required to enter the position
-    /// @return result The result containing tokenId, liquidity, amounts, tokens, and tick information
+    /**
+     * @notice Creates a new Velodrome Superchain Slipstream NFT position
+     * @dev Validates that the pool is granted as a substrate, approves tokens using forceApprove pattern,
+     *      mints a new position via the NonfungiblePositionManager, resets approvals, and emits an event.
+     *      The position represents concentrated liquidity within a specified tick range.
+     * @param data_ The enter data containing token addresses, tick parameters, amounts, slippage protection, and deadline
+     * @return result The result containing tokenId, liquidity, actual amounts used, token addresses, and tick information
+     * @custom:reverts VelodromeSuperchainSlipstreamNewPositionFuseUnsupportedPool If pool is not granted as a substrate
+     */
     function enter(
         VelodromeSuperchainSlipstreamNewPositionFuseEnterData memory data_
     ) public returns (VelodromeSuperchainSlipstreamNewPositionFuseEnterResult memory result) {
@@ -163,9 +189,14 @@ contract VelodromeSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         );
     }
 
-    /// @notice Exits one or more Velodrome Superchain Slipstream positions
-    /// @param closePositions_ The data required to exit the positions
-    /// @return tokenIds The array of token IDs that were closed
+    /**
+     * @notice Closes one or more Velodrome Superchain Slipstream NFT positions
+     * @dev Burns the specified NFT positions, which removes liquidity and returns tokens to the vault.
+     *      Iterates through all provided token IDs and burns each position. Emits an event for each
+     *      closed position.
+     * @param closePositions_ The exit data containing array of token IDs to close
+     * @return tokenIds The array of token IDs that were successfully closed
+     */
     function exit(
         VelodromeSuperchainSlipstreamNewPositionFuseExitData memory closePositions_
     ) public returns (uint256[] memory tokenIds) {
@@ -180,8 +211,33 @@ contract VelodromeSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         }
     }
 
-    /// @notice Enters the Fuse using transient storage for parameters
-    /// @dev Reads all parameters from transient storage and writes returned values to outputs
+    /**
+     * @notice Enters the Fuse using transient storage for parameters
+     * @dev Reads token0, token1, tickSpacing, tickLower, tickUpper, amount0Desired, amount1Desired,
+     *      amount0Min, amount1Min, deadline, and sqrtPriceX96 from transient storage inputs,
+     *      calls enter() with the decoded data, and writes the result (tokenId, liquidity, amount0,
+     *      amount1, token0, token1, tickSpacing, tickLower, tickUpper) to transient storage outputs.
+     *      Input 0: token0 (address)
+     *      Input 1: token1 (address)
+     *      Input 2: tickSpacing (int24)
+     *      Input 3: tickLower (int24)
+     *      Input 4: tickUpper (int24)
+     *      Input 5: amount0Desired (uint256)
+     *      Input 6: amount1Desired (uint256)
+     *      Input 7: amount0Min (uint256)
+     *      Input 8: amount1Min (uint256)
+     *      Input 9: deadline (uint256)
+     *      Input 10: sqrtPriceX96 (uint160)
+     *      Output 0: tokenId (uint256)
+     *      Output 1: liquidity (uint128 as uint256)
+     *      Output 2: amount0 (uint256)
+     *      Output 3: amount1 (uint256)
+     *      Output 4: token0 (address)
+     *      Output 5: token1 (address)
+     *      Output 6: tickSpacing (int24 as uint256)
+     *      Output 7: tickLower (int24 as uint256)
+     *      Output 8: tickUpper (int24 as uint256)
+     */
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
 
@@ -215,9 +271,14 @@ contract VelodromeSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
-    /// @notice Exits the Fuse using transient storage for parameters
-    /// @dev Reads tokenIds array from transient storage (first element is length, subsequent elements are tokenIds)
-    /// @dev Writes returned tokenIds array length to transient storage outputs
+    /**
+     * @notice Exits the Fuse using transient storage for parameters
+     * @dev Reads tokenIds array from transient storage (first element is length, subsequent elements are tokenIds),
+     *      calls exit() with the decoded data, and writes the returned tokenIds array length to transient storage outputs.
+     *      Input 0: tokenIdsLength (uint256)
+     *      Inputs 1 to tokenIdsLength: tokenIds (uint256[])
+     *      Output 0: returnedTokenIdsLength (uint256)
+     */
     function exitTransient() external {
         bytes32 lengthBytes32 = TransientStorageLib.getInput(VERSION, 0);
         uint256 len = TypeConversionLib.toUint256(lengthBytes32);

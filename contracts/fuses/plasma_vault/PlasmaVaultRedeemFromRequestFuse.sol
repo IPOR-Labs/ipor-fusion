@@ -34,9 +34,15 @@ contract PlasmaVaultRedeemFromRequestFuse is IFuseCommon {
     }
 
     /// @notice Enters the Fuse - redeems shares from request
+    /// @dev This function redeems shares from a previously submitted withdrawal request. The balance comparison
+    ///      logic ensures that we only attempt to redeem shares that are actually available. When a withdrawal
+    ///      request is made via PlasmaVaultRequestSharesFuse, the vault receives plasma vault tokens representing
+    ///      the requested shares. This function checks the vault's current balance of these tokens and limits the
+    ///      redemption to the minimum of: (1) the requested shares amount, or (2) the actual balance available.
+    ///      This prevents attempting to redeem more shares than have been requested and are available for redemption.
     /// @param data_ Data structure containing shares amount and plasma vault address
     /// @return plasmaVault Address of the Plasma Vault
-    /// @return sharesAmount Final amount of shares redeemed
+    /// @return sharesAmount Final amount of shares redeemed (may be less than requested if balance is insufficient)
     function enter(
         PlasmaVaultRedeemFromRequestFuseEnterData memory data_
     ) public returns (address plasmaVault, uint256 sharesAmount) {
@@ -48,8 +54,12 @@ contract PlasmaVaultRedeemFromRequestFuse is IFuseCommon {
             revert PlasmaVaultRedeemFromRequestFuseUnsupportedVault("enter", data_.plasmaVault);
         }
 
+        // Get the vault's current balance of plasma vault tokens (shares available for redemption)
+        // These tokens represent shares that were previously requested via PlasmaVaultRequestSharesFuse
         uint256 balance = IERC20(data_.plasmaVault).balanceOf(address(this));
 
+        // Use the minimum of requested amount and available balance to prevent over-redemption
+        // This ensures we only redeem shares that are actually available from previous withdrawal requests
         uint256 finalSharesAmount = balance < data_.sharesAmount ? balance : data_.sharesAmount;
 
         if (finalSharesAmount == 0) {

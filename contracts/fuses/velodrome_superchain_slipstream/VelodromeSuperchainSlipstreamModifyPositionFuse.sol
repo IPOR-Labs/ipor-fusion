@@ -98,6 +98,7 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
     );
 
     error VelodromeSuperchainSlipstreamModifyPositionFuseUnsupportedPool(address pool);
+    error VelodromeSuperchainSlipstreamModifyPositionFuseInvalidAddress();
     error InvalidReturnData();
 
     /// @notice The address of this fuse contract
@@ -109,10 +110,16 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
     /// @notice The Velodrome Factory address
     address public immutable FACTORY;
 
-    /// @notice Initializes the contract
-    /// @param marketId_ The market ID
-    /// @param nonfungiblePositionManager_ The address of the non-fungible position manager
+    /**
+     * @notice Initializes the VelodromeSuperchainSlipstreamModifyPositionFuse with market ID and position manager
+     * @param marketId_ The market ID used to identify the market and validate pool substrates
+     * @param nonfungiblePositionManager_ The address of the Velodrome Superchain Slipstream NonfungiblePositionManager (must not be address(0))
+     * @dev Reverts if nonfungiblePositionManager_ is zero address. Retrieves factory address from position manager.
+     */
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
+        if (nonfungiblePositionManager_ == address(0)) {
+            revert VelodromeSuperchainSlipstreamModifyPositionFuseInvalidAddress();
+        }
         VERSION = address(this);
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;

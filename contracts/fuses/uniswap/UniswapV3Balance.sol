@@ -12,18 +12,44 @@ import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {INonfungiblePositionManager, IUniswapV3Factory, IUniswapV3Pool} from "./ext/INonfungiblePositionManager.sol";
 import {PositionValue} from "./ext/PositionValue.sol";
 
-/// @title Fuse balance for Uniswap V3 positions.
+/**
+ * @title UniswapV3Balance
+ * @notice Fuse balance for Uniswap V3 positions
+ * @dev This contract calculates the total balance of assets in Uniswap V3 liquidity positions
+ *      by iterating through all position token IDs stored in fuse storage, calculating the
+ *      value of each position (including fees and principal), and converting to USD using
+ *      the price oracle middleware.
+ * @author IPOR Labs
+ */
 contract UniswapV3Balance is IMarketBalanceFuse {
     using Address for address;
 
     error InvalidReturnData();
 
+    /// @notice Address of this fuse contract version
+    /// @dev Immutable value set in constructor, used for tracking and versioning
+    address public immutable VERSION;
+
+    /// @notice Market ID this fuse operates on
+    /// @dev Immutable value set in constructor, used to identify the market
     uint256 public immutable MARKET_ID;
-    /// @dev Manage NFTs representing liquidity positions
+
+    /// @notice Nonfungible Position Manager contract address
+    /// @dev Manages NFTs representing Uniswap V3 liquidity positions
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
+
+    /// @notice Uniswap V3 Factory contract address
+    /// @dev Used to get pool addresses from token pairs and fees
     address public immutable UNISWAP_FACTORY;
 
+    /**
+     * @notice Initializes the UniswapV3Balance fuse with market ID and protocol addresses
+     * @param marketId_ The market ID used to identify the market
+     * @param nonfungiblePositionManager_ The address of the Uniswap V3 Nonfungible Position Manager
+     * @param uniswapFactory_ The address of the Uniswap V3 Factory
+     */
     constructor(uint256 marketId_, address nonfungiblePositionManager_, address uniswapFactory_) {
+        VERSION = address(this);
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
         UNISWAP_FACTORY = uniswapFactory_;
@@ -117,8 +143,17 @@ contract UniswapV3Balance is IMarketBalanceFuse {
         }
     }
 
-    /// @notice Calculates the total assets in the market for Uniswap V3 positions.
-    /// @return balance The total balance of assets in the market.
+    /**
+     * @notice Calculates the total assets in the market for Uniswap V3 positions
+     * @dev This function:
+     *      1. Retrieves all Uniswap V3 position token IDs from fuse storage
+     *      2. For each position, extracts token0, token1, and fee information
+     *      3. Gets the current pool price (sqrtPriceX96) from the Uniswap V3 pool
+     *      4. Calculates the total value of the position (principal + fees) using PositionValue.total()
+     *      5. Converts token0 and token1 amounts to USD using the price oracle middleware
+     *      6. Sums all position values and returns the total balance in USD (WAD format, 18 decimals)
+     * @return balance The total balance of assets in the market, normalized to WAD (18 decimals)
+     */
     function balanceOf() external view override returns (uint256) {
         uint256[] memory tokenIds = FuseStorageLib.getUniswapV3TokenIds().tokenIds;
         uint256 len = tokenIds.length;

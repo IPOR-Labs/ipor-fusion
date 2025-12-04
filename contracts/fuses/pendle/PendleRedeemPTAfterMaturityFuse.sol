@@ -96,6 +96,7 @@ contract PendleRedeemPTAfterMaturityFuse is IFuseCommon {
     /// @notice Enters the Fuse using transient storage for parameters
     /// @dev Inputs order: market, netPyIn, tokenOut, minTokenOut, tokenRedeemSy, pendleSwap,
     ///      swapType, extRouter, extCalldataLength, extCalldataFirst32Bytes, needScale
+    /// TODO: NEED to be fixed, SwapData is not supported in transient storage
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
 

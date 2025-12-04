@@ -24,9 +24,20 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
 
     error InvalidPool();
 
+    /// @notice Address of this fuse contract version
+    /// @dev Immutable value set in constructor, used for tracking and versioning
+    address public immutable VERSION;
+
+    /// @notice Market ID this fuse operates on
+    /// @dev Immutable value set in constructor, used to retrieve market substrates (Velodrome pool and gauge addresses)
     uint256 public immutable MARKET_ID;
 
+    /**
+     * @notice Initializes the VelodromeSuperchainBalanceFuse with a market ID
+     * @param marketId_ The market ID used to identify the market and retrieve substrates
+     */
     constructor(uint256 marketId_) {
+        VERSION = address(this);
         MARKET_ID = marketId_;
     }
 

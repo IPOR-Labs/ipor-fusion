@@ -33,6 +33,11 @@ struct UniversalTokenSwapperEnterData {
     UniversalTokenSwapperData data;
 }
 
+/// @notice Data structure used to track token balances before and after swap operations
+/// @param tokenInBalanceBefore The balance of input token before the swap operation
+/// @param tokenOutBalanceBefore The balance of output token before the swap operation
+/// @param tokenInBalanceAfter The balance of input token after the swap operation
+/// @param tokenOutBalanceAfter The balance of output token after the swap operation
 struct Balances {
     uint256 tokenInBalanceBefore;
     uint256 tokenOutBalanceBefore;
@@ -40,7 +45,15 @@ struct Balances {
     uint256 tokenOutBalanceAfter;
 }
 
-/// @title This contract is designed to execute every swap operation and check the slippage on any DEX.
+/**
+ * @title UniversalTokenSwapperFuse
+ * @notice Universal fuse contract designed to execute swap operations on any DEX and validate slippage
+ * @dev This contract provides a generic interface for executing token swaps across multiple DEX protocols.
+ *      It validates asset permissions, executes swaps via an external executor, tracks balances,
+ *      and enforces slippage protection using price oracle middleware. Supports transient storage
+ *      for gas-efficient parameter passing.
+ * @author IPOR Labs
+ */
 contract UniversalTokenSwapperFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
@@ -53,6 +66,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     );
     error UniversalTokenSwapperFuseUnsupportedAsset(address asset);
     error UniversalTokenSwapperFuseSlippageFail();
+    error UniversalTokenSwapperFuseInvalidExecutorAddress();
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -61,13 +75,23 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     uint256 public immutable SLIPPAGE_REVERSE;
     uint256 private constant _ONE = 1e18;
 
+    /**
+     * @notice Initializes the UniversalTokenSwapperFuse with market ID, executor address, and slippage tolerance
+     * @param marketId_ The market ID used to identify the market and validate asset permissions
+     * @param executor_ The address of the swap executor contract (must not be address(0))
+     * @param slippageReverse_ The slippage tolerance in WAD decimals (1e18 - slippage percentage)
+     * @dev Reverts if executor_ is zero address or slippageReverse_ exceeds 1e18
+     */
     constructor(uint256 marketId_, address executor_, uint256 slippageReverse_) {
-        VERSION = address(this);
-        MARKET_ID = marketId_;
-        EXECUTOR = executor_;
+        if (executor_ == address(0)) {
+            revert UniversalTokenSwapperFuseInvalidExecutorAddress();
+        }
         if (slippageReverse_ > _ONE) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
+        VERSION = address(this);
+        MARKET_ID = marketId_;
+        EXECUTOR = executor_;
         SLIPPAGE_REVERSE = _ONE - slippageReverse_;
     }
 
@@ -148,11 +172,18 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
     }
 
-    /// @notice Checks slippage tolerance for the swap
-    /// @param tokenIn_ The input token address
-    /// @param tokenOut_ The output token address
-    /// @param tokenInDelta_ The amount of input token consumed
-    /// @param tokenOutDelta_ The amount of output token received
+    /**
+     * @notice Checks slippage tolerance for the swap operation
+     * @dev Validates that the output token amount meets the minimum slippage requirement
+     *      by comparing the USD value of output tokens against the USD value of input tokens.
+     *      Uses price oracle middleware to get current token prices and converts amounts to USD.
+     *      Reverts if the output/input ratio is below the SLIPPAGE_REVERSE threshold.
+     * @param tokenIn_ The input token address
+     * @param tokenOut_ The output token address
+     * @param tokenInDelta_ The amount of input token consumed in the swap
+     * @param tokenOutDelta_ The amount of output token received from the swap
+     * @custom:reverts UniversalTokenSwapperFuseSlippageFail If slippage exceeds the allowed tolerance
+     */
     function _checkSlippage(
         address tokenIn_,
         address tokenOut_,
@@ -234,10 +265,15 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
-    /// @notice Reads targets from transient storage
-    /// @param currentIndex The current index in transient storage
-    /// @return targets The array of target addresses
-    /// @return nextIndex The next index in transient storage
+    /**
+     * @notice Reads target addresses from transient storage inputs
+     * @dev Reads the length of targets array from transient storage at currentIndex,
+     *      then reads each target address sequentially. Used by enterTransient() to
+     *      decode swap target addresses from transient storage.
+     * @param currentIndex The current index in transient storage where targets length is stored
+     * @return targets The array of target addresses read from transient storage
+     * @return nextIndex The next index in transient storage after reading all targets
+     */
     function _readTargets(uint256 currentIndex) private view returns (address[] memory targets, uint256 nextIndex) {
         uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
         nextIndex = currentIndex + 1;
@@ -248,10 +284,16 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         }
     }
 
-    /// @notice Reads data bytes arrays from transient storage
-    /// @param currentIndex The current index in transient storage
-    /// @return data The array of bytes data
-    /// @return nextIndex The next index in transient storage
+    /**
+     * @notice Reads bytes arrays (call data) from transient storage inputs
+     * @dev Reads the length of data array from transient storage at currentIndex,
+     *      then reads each bytes array sequentially. Each bytes array is stored as
+     *      chunks of 32 bytes (bytes32) in transient storage. Used by enterTransient()
+     *      to decode swap call data from transient storage.
+     * @param currentIndex The current index in transient storage where data length is stored
+     * @return data The array of bytes data (call data) read from transient storage
+     * @return nextIndex The next index in transient storage after reading all data arrays
+     */
     function _readData(uint256 currentIndex) private view returns (bytes[] memory data, uint256 nextIndex) {
         uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
         nextIndex = currentIndex + 1;

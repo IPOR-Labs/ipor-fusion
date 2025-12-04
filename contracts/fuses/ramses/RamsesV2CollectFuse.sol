@@ -8,7 +8,9 @@ import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManagerRamses} from "./ext/INonfungiblePositionManagerRamses.sol";
 
+/// @notice Data structure for entering - collecting fees from Ramses V2 positions
 struct RamsesV2CollectFuseEnterData {
+    /// @dev Array of token IDs representing liquidity positions to collect fees from
     uint256[] tokenIds;
 }
 /**

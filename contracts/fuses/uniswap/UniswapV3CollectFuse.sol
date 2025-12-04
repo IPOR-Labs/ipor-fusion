@@ -8,10 +8,16 @@ import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
+/// @notice Data for collecting fees from Uniswap V3 positions
 struct UniswapV3CollectFuseEnterData {
+    /// @param tokenIds Array of NFT token IDs representing Uniswap V3 liquidity positions to collect fees from
     uint256[] tokenIds;
 }
 
+/// @title UniswapV3CollectFuse
+/// @notice Fuse for collecting fees from Uniswap V3 liquidity positions
+/// @dev This fuse allows the PlasmaVault to collect accumulated fees from Uniswap V3 positions.
+///      It iterates through the provided token IDs and collects fees from each position.
 contract UniswapV3CollectFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 

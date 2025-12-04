@@ -11,23 +11,43 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {ILeafGauge} from "./ext/ILeafGauge.sol";
 import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "./VelodromeSuperchainLib.sol";
 
+/// @notice Data structure used for entering a gauge deposit operation
+/// @param gaugeAddress The address of the Velodrome Superchain gauge contract
+/// @param amount The amount of staking tokens to deposit into the gauge
+/// @param minAmount The minimum amount that must be deposited (slippage protection)
 struct VelodromeSuperchainGaugeFuseEnterData {
     address gaugeAddress;
     uint256 amount;
     uint256 minAmount;
 }
 
+/// @notice Data structure used for exiting a gauge withdrawal operation
+/// @param gaugeAddress The address of the Velodrome Superchain gauge contract
+/// @param amount The amount of staking tokens to withdraw from the gauge
+/// @param minAmount The minimum amount that must be withdrawn (slippage protection)
 struct VelodromeSuperchainGaugeFuseExitData {
     address gaugeAddress;
     uint256 amount;
     uint256 minAmount;
 }
 
+/// @notice Data structure returned from enter and exit operations
+/// @param gaugeAddress The address of the Velodrome Superchain gauge contract
+/// @param amount The actual amount deposited or withdrawn
 struct VelodromeSuperchainGaugeFuseResult {
     address gaugeAddress;
     uint256 amount;
 }
 
+/**
+ * @title VelodromeSuperchainGaugeFuse
+ * @notice Fuse contract for depositing and withdrawing staking tokens to/from Velodrome Superchain gauges
+ * @dev This contract allows the Plasma Vault to interact with Velodrome Superchain gauge contracts,
+ *      enabling staking of LP tokens to earn rewards. It validates gauge addresses, checks substrate
+ *      permissions, handles balance checks, and enforces minimum amount requirements. Supports both
+ *      standard and transient storage patterns for gas-efficient operations.
+ * @author IPOR Labs
+ */
 contract VelodromeSuperchainGaugeFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
@@ -47,6 +67,18 @@ contract VelodromeSuperchainGaugeFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
+    /**
+     * @notice Deposits staking tokens into a Velodrome Superchain gauge
+     * @dev Validates the gauge address, checks substrate permissions, retrieves the staking token
+     *      from the gauge, checks available balance, and deposits tokens using forceApprove pattern.
+     *      Uses the minimum of requested amount and available balance. Reverts if gauge is invalid,
+     *      substrate is not granted, or minimum amount requirement is not met.
+     * @param data_ The enter data containing gauge address, amount to deposit, and minimum amount
+     * @return result The result containing gauge address and actual amount deposited
+     * @custom:reverts VelodromeSuperchainGaugeFuseInvalidGauge If gauge address is zero
+     * @custom:reverts VelodromeSuperchainGaugeFuseUnsupportedGauge If gauge is not granted as a substrate
+     * @custom:reverts VelodromeSuperchainGaugeFuseMinAmountNotMet If deposited amount is below minimum
+     */
     function enter(
         VelodromeSuperchainGaugeFuseEnterData memory data_
     ) public returns (VelodromeSuperchainGaugeFuseResult memory result) {
@@ -101,6 +133,19 @@ contract VelodromeSuperchainGaugeFuse is IFuseCommon {
         emit VelodromeSuperchainGaugeFuseEnter(VERSION, result.gaugeAddress, result.amount);
     }
 
+    /**
+     * @notice Withdraws staking tokens from a Velodrome Superchain gauge
+     * @dev Validates the gauge address, checks substrate permissions, checks available balance
+     *      in the gauge, and withdraws tokens. Uses the minimum of requested amount and available
+     *      balance. Reverts if gauge is invalid, substrate is not granted, amount is zero,
+     *      or minimum amount requirement is not met.
+     * @param data_ The exit data containing gauge address, amount to withdraw, and minimum amount
+     * @return result The result containing gauge address and actual amount withdrawn
+     * @custom:reverts VelodromeSuperchainGaugeFuseInvalidGauge If gauge address is zero
+     * @custom:reverts VelodromeSuperchainGaugeFuseInvalidAmount If amount is zero
+     * @custom:reverts VelodromeSuperchainGaugeFuseUnsupportedGauge If gauge is not granted as a substrate
+     * @custom:reverts VelodromeSuperchainGaugeFuseMinAmountNotMet If withdrawn amount is below minimum
+     */
     function exit(
         VelodromeSuperchainGaugeFuseExitData memory data_
     ) public returns (VelodromeSuperchainGaugeFuseResult memory result) {
@@ -148,7 +193,17 @@ contract VelodromeSuperchainGaugeFuse is IFuseCommon {
         emit VelodromeSuperchainGaugeFuseExit(VERSION, result.gaugeAddress, result.amount);
     }
 
-    /// @notice Enters the Fuse using transient storage for parameters
+    /**
+     * @notice Enters the Fuse using transient storage for parameters
+     * @dev Reads gauge address, amount, and minAmount from transient storage inputs,
+     *      calls enter() with the decoded data, and writes the result (gaugeAddress and amount)
+     *      to transient storage outputs.
+     *      Input 0: gaugeAddress (address)
+     *      Input 1: amount (uint256)
+     *      Input 2: minAmount (uint256)
+     *      Output 0: gaugeAddress (address)
+     *      Output 1: amount (uint256)
+     */
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
 
@@ -166,7 +221,17 @@ contract VelodromeSuperchainGaugeFuse is IFuseCommon {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
-    /// @notice Exits the Fuse using transient storage for parameters
+    /**
+     * @notice Exits the Fuse using transient storage for parameters
+     * @dev Reads gauge address, amount, and minAmount from transient storage inputs,
+     *      calls exit() with the decoded data, and writes the result (gaugeAddress and amount)
+     *      to transient storage outputs.
+     *      Input 0: gaugeAddress (address)
+     *      Input 1: amount (uint256)
+     *      Input 2: minAmount (uint256)
+     *      Output 0: gaugeAddress (address)
+     *      Output 1: amount (uint256)
+     */
     function exitTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
 

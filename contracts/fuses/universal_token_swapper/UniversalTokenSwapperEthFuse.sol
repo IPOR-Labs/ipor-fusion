@@ -35,6 +35,11 @@ struct UniversalTokenSwapperEthEnterData {
     UniversalTokenSwapperEthData data;
 }
 
+/// @notice Data structure used to track token balances before and after swap operations
+/// @param tokenInBalanceBefore The balance of input token before the swap operation
+/// @param tokenOutBalanceBefore The balance of output token before the swap operation
+/// @param tokenInBalanceAfter The balance of input token after the swap operation
+/// @param tokenOutBalanceAfter The balance of output token after the swap operation
 struct Balances {
     uint256 tokenInBalanceBefore;
     uint256 tokenOutBalanceBefore;
@@ -42,7 +47,15 @@ struct Balances {
     uint256 tokenOutBalanceAfter;
 }
 
-/// @title This contract is designed to execute every swap operation and check the slippage on any DEX.
+/**
+ * @title UniversalTokenSwapperEthFuse
+ * @notice Universal fuse contract designed to execute swap operations on any DEX with ETH support and validate slippage
+ * @dev This contract provides a generic interface for executing token swaps across multiple DEX protocols with support
+ *      for ETH transfers. It validates asset permissions, executes swaps via an external executor, tracks balances,
+ *      and enforces slippage protection using price oracle middleware. Supports transient storage for gas-efficient
+ *      parameter passing. Includes support for ETH amounts and dust token checking.
+ * @author IPOR Labs
+ */
 contract UniversalTokenSwapperEthFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
@@ -143,6 +156,18 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
     }
 
+    /**
+     * @notice Checks slippage tolerance for the swap operation
+     * @dev Validates that the output token amount meets the minimum slippage requirement
+     *      by comparing the USD value of output tokens against the USD value of input tokens.
+     *      Uses price oracle middleware to get current token prices and converts amounts to USD.
+     *      Reverts if the output/input ratio is below the SLIPPAGE_REVERSE threshold.
+     * @param tokenIn_ The input token address
+     * @param tokenOut_ The output token address
+     * @param tokenInDelta_ The amount of input token consumed in the swap
+     * @param tokenOutDelta_ The amount of output token received from the swap
+     * @custom:reverts UniversalTokenSwapperFuseSlippageFail If slippage exceeds the allowed tolerance
+     */
     function _checkSlippage(
         address tokenIn_,
         address tokenOut_,
@@ -230,10 +255,15 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
-    /// @notice Reads targets from transient storage
-    /// @param currentIndex The current index in transient storage
-    /// @return targets The array of target addresses
-    /// @return nextIndex The next index in transient storage
+    /**
+     * @notice Reads target addresses from transient storage inputs
+     * @dev Reads the length of targets array from transient storage at currentIndex,
+     *      then reads each target address sequentially. Used by enterTransient() to
+     *      decode swap target addresses from transient storage.
+     * @param currentIndex The current index in transient storage where targets length is stored
+     * @return targets The array of target addresses read from transient storage
+     * @return nextIndex The next index in transient storage after reading all targets
+     */
     function _readTargets(uint256 currentIndex) private view returns (address[] memory targets, uint256 nextIndex) {
         uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
         nextIndex = currentIndex + 1;
@@ -244,10 +274,16 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         }
     }
 
-    /// @notice Reads callDatas from transient storage
-    /// @param currentIndex The current index in transient storage
-    /// @return callDatas The array of call data bytes
-    /// @return nextIndex The next index in transient storage
+    /**
+     * @notice Reads bytes arrays (call data) from transient storage inputs
+     * @dev Reads the length of callDatas array from transient storage at currentIndex,
+     *      then reads each bytes array sequentially. Each bytes array is stored as
+     *      chunks of 32 bytes (bytes32) in transient storage. Used by enterTransient()
+     *      to decode swap call data from transient storage.
+     * @param currentIndex The current index in transient storage where callDatas length is stored
+     * @return callDatas The array of bytes data (call data) read from transient storage
+     * @return nextIndex The next index in transient storage after reading all call data arrays
+     */
     function _readCallDatas(uint256 currentIndex) private view returns (bytes[] memory callDatas, uint256 nextIndex) {
         uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
         nextIndex = currentIndex + 1;
@@ -269,10 +305,15 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         }
     }
 
-    /// @notice Reads ethAmounts from transient storage
-    /// @param currentIndex The current index in transient storage
-    /// @return ethAmounts The array of ETH amounts
-    /// @return nextIndex The next index in transient storage
+    /**
+     * @notice Reads ETH amounts from transient storage inputs
+     * @dev Reads the length of ethAmounts array from transient storage at currentIndex,
+     *      then reads each ETH amount sequentially. Used by enterTransient() to decode
+     *      ETH amounts to be sent with each swap call from transient storage.
+     * @param currentIndex The current index in transient storage where ethAmounts length is stored
+     * @return ethAmounts The array of ETH amounts (in wei) read from transient storage
+     * @return nextIndex The next index in transient storage after reading all ETH amounts
+     */
     function _readEthAmounts(
         uint256 currentIndex
     ) private view returns (uint256[] memory ethAmounts, uint256 nextIndex) {
@@ -285,10 +326,15 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         }
     }
 
-    /// @notice Reads tokensDustToCheck from transient storage
-    /// @param currentIndex The current index in transient storage
-    /// @return tokensDustToCheck The array of tokens to check for dust
-    /// @return nextIndex The next index in transient storage
+    /**
+     * @notice Reads token addresses for dust checking from transient storage inputs
+     * @dev Reads the length of tokensDustToCheck array from transient storage at currentIndex,
+     *      then reads each token address sequentially. Used by enterTransient() to decode
+     *      token addresses that should be checked for dust balances after swap execution.
+     * @param currentIndex The current index in transient storage where tokensDustToCheck length is stored
+     * @return tokensDustToCheck The array of token addresses to check for dust balances
+     * @return nextIndex The next index in transient storage after reading all token addresses
+     */
     function _readTokensDustToCheck(
         uint256 currentIndex
     ) private view returns (address[] memory tokensDustToCheck, uint256 nextIndex) {
@@ -301,6 +347,14 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         }
     }
 
+    /**
+     * @notice Validates that all required substrates (assets) are granted for the swap operation
+     * @dev Checks that tokenIn, tokenOut, all target addresses, and all tokensDustToCheck addresses
+     *      are granted as substrates in the market configuration. Reverts if any asset is not granted.
+     *      This ensures that only approved assets can be used in swap operations.
+     * @param data_ The swap operation data containing all addresses to validate
+     * @custom:reverts UniversalTokenSwapperFuseUnsupportedAsset If any asset is not granted as a substrate
+     */
     function _checkSubstrates(UniversalTokenSwapperEthEnterData memory data_) private view {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);

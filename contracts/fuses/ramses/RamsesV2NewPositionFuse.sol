@@ -200,16 +200,23 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
 
         tokenIds = closePositions.tokenIds;
 
-        for (uint256 i; i < len; ++i) {
-            INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
+        uint256 tokenId;
+        uint256 lastTokenId;
+        for (uint256 i; i < closePositions.tokenIds.length; ++i) {
+            tokenId = closePositions.tokenIds[i];
+            INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
 
-            tokenIndex = tokensIds.indexes[closePositions.tokenIds[i]];
+            tokenIndex = tokensIds.indexes[tokenId];
             if (tokenIndex != len - 1) {
-                tokensIds.tokenIds[tokenIndex] = tokensIds.tokenIds[len - 1];
+                lastTokenId = tokensIds.tokenIds[len - 1];
+                tokensIds.tokenIds[tokenIndex] = lastTokenId;
+                tokensIds.indexes[lastTokenId] = tokenIndex;
             }
             tokensIds.tokenIds.pop();
+            delete tokensIds.indexes[tokenId];
+            --len;
 
-            emit RamsesV2NewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
+            emit RamsesV2NewPositionFuseExit(VERSION, tokenId);
         }
     }
 

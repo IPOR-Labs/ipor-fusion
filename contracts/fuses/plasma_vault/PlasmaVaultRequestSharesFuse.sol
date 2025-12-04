@@ -91,6 +91,8 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
+    /// @notice Returns the address of the WithdrawManager
+    /// @return The address of the WithdrawManager contract
     function getWithdrawManager() external view returns (address) {
         return PlasmaVaultStorageLib.getWithdrawManager().manager;
     }

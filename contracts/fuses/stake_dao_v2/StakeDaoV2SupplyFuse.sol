@@ -13,23 +13,23 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 struct StakeDaoV2SupplyFuseEnterData {
-    /// @dev Stake DAO V2 reward vault address, with underlying asset as lp token
+    /// @param rewardVault Stake DAO V2 reward vault address, with underlying asset as lp token
     /// @dev Example: Stake DAO Curve Vault for crvUSD Vault (sd-cvcrvUSD-vault) [0x1544E663DD326a6d853a0cc4ceEf0860eb82B287]
     address rewardVault;
-    /// @dev amount of lp token underlying asset amount to supply,
+    /// @param lpTokenUnderlyingAmount Amount of lp token underlying asset amount to supply
     /// @dev Example: Curve.Fi USD Stablecoin (crvUSD) [0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5] in vault Curve Vault for crvUSD (cvcrvUSD) [0xe07f1151887b8FDC6800f737252f6b91b46b5865]
     uint256 lpTokenUnderlyingAmount;
-    /// @dev minimum amount of lp token underlying asset to supply, if not enough underlying asset is supplied, the enter will revert
+    /// @param minLpTokenUnderlyingAmount Minimum amount of lp token underlying asset to supply, if not enough underlying asset is supplied, the enter will revert
     uint256 minLpTokenUnderlyingAmount;
 }
 
 struct StakeDaoV2SupplyFuseExitData {
-    /// @dev Stake DAO V2 reward vault address, with underlying asset as lp token
+    /// @param rewardVault Stake DAO V2 reward vault address, with underlying asset as lp token
     /// @dev Example: Stake DAO Curve Vault for crvUSD Vault (sd-cvcrvUSD-vault) [0x1544E663DD326a6d853a0cc4ceEf0860eb82B287]
     address rewardVault;
-    /// @dev amount of reward vault shares to withdraw,
+    /// @param rewardVaultShares Amount of reward vault shares to withdraw
     uint256 rewardVaultShares;
-    /// @dev minimum amount of reward vault shares to withdraw,
+    /// @param minRewardVaultShares Minimum amount of reward vault shares to withdraw
     uint256 minRewardVaultShares;
 }
 

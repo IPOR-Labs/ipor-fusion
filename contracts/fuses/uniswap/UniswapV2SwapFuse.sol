@@ -3,7 +3,10 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IUniversalRouter} from "./ext/IUniversalRouter.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 
@@ -71,11 +74,17 @@ contract UniswapV2SwapFuse is IFuseCommon {
      * - The contract must have enough balance of the input token to perform the swap.
      *
      * Emits an `UniswapV2SwapFuseEnter` event indicating the details of the swap.
+     * @param data_ The swap data containing tokenInAmount, path, and minOutAmount
+     * @return tokenInAmount The amount of input tokens used for the swap
+     * @return path The token path used for the swap
+     * @return minOutAmount The minimum amount of output tokens expected from the swap
      */
-    function enter(UniswapV2SwapFuseEnterData memory data_) public {
+    function enter(
+        UniswapV2SwapFuseEnterData memory data_
+    ) public returns (uint256 tokenInAmount, address[] memory path, uint256 minOutAmount) {
         uint256 pathLength = data_.path.length;
         if (data_.tokenInAmount == 0 || pathLength < 2) {
-            return;
+            return (data_.tokenInAmount, data_.path, data_.minOutAmount);
         }
 
         for (uint256 i; i < pathLength; ++i) {
@@ -90,7 +99,7 @@ contract UniswapV2SwapFuse is IFuseCommon {
         uint256 inputAmount = data_.tokenInAmount <= vaultBalance ? data_.tokenInAmount : vaultBalance;
 
         if (inputAmount == 0) {
-            return;
+            return (data_.tokenInAmount, data_.path, data_.minOutAmount);
         }
 
         IERC20(data_.path[0]).safeTransfer(UNIVERSAL_ROUTER, inputAmount);
@@ -109,6 +118,75 @@ contract UniswapV2SwapFuse is IFuseCommon {
 
         IUniversalRouter(UNIVERSAL_ROUTER).execute(commands, inputs);
 
-        emit UniswapV2SwapFuseEnter(VERSION, data_.tokenInAmount, data_.path, data_.minOutAmount);
+        tokenInAmount = data_.tokenInAmount;
+        path = data_.path;
+        minOutAmount = data_.minOutAmount;
+
+        emit UniswapV2SwapFuseEnter(VERSION, tokenInAmount, path, minOutAmount);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    /// @dev Reads inputs from transient storage: tokenInAmount (inputs[0]), pathLength (inputs[1]),
+    ///      path addresses (inputs[2..2+pathLength-1]), minOutAmount (inputs[2+pathLength]).
+    ///      Writes returned tokenInAmount, path length, path addresses, and minOutAmount to transient storage outputs.
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        uint256 tokenInAmount = TypeConversionLib.toUint256(inputs[0]);
+        uint256 pathLength = TypeConversionLib.toUint256(inputs[1]);
+
+        address[] memory path = _buildAddressArrayFromInputs(inputs, 2, pathLength);
+
+        uint256 minOutAmount = TypeConversionLib.toUint256(inputs[2 + pathLength]);
+
+        UniswapV2SwapFuseEnterData memory data = UniswapV2SwapFuseEnterData({
+            tokenInAmount: tokenInAmount,
+            path: path,
+            minOutAmount: minOutAmount
+        });
+
+        (uint256 returnedTokenInAmount, address[] memory returnedPath, uint256 returnedMinOutAmount) = enter(data);
+
+        _storeOutputs(returnedTokenInAmount, returnedPath, returnedMinOutAmount);
+    }
+
+    /// @notice Helper function to build address array from transient storage inputs
+    /// @param inputs_ Array of input values from transient storage
+    /// @param startIndex_ Starting index where address data begins
+    /// @param length_ Number of addresses in the array
+    /// @return The constructed address array
+    function _buildAddressArrayFromInputs(
+        bytes32[] memory inputs_,
+        uint256 startIndex_,
+        uint256 length_
+    ) private pure returns (address[] memory) {
+        address[] memory result = new address[](length_);
+        for (uint256 i; i < length_; ++i) {
+            result[i] = TypeConversionLib.toAddress(inputs_[startIndex_ + i]);
+        }
+        return result;
+    }
+
+    /// @notice Helper function to store outputs including address array path to transient storage
+    /// @param tokenInAmount_ The amount of input tokens used for the swap
+    /// @param path_ The token path used for the swap
+    /// @param minOutAmount_ The minimum amount of output tokens expected from the swap
+    function _storeOutputs(uint256 tokenInAmount_, address[] memory path_, uint256 minOutAmount_) private {
+        uint256 pathLength = path_.length;
+        // Outputs: [tokenInAmount, pathLength, pathAddresses..., minOutAmount]
+        uint256 outputsLength = 2 + pathLength + 1;
+        bytes32[] memory outputs = new bytes32[](outputsLength);
+
+        outputs[0] = TypeConversionLib.toBytes32(tokenInAmount_);
+        outputs[1] = TypeConversionLib.toBytes32(pathLength);
+
+        // Store path addresses
+        for (uint256 i; i < pathLength; ++i) {
+            outputs[2 + i] = TypeConversionLib.toBytes32(path_[i]);
+        }
+
+        outputs[outputsLength - 1] = TypeConversionLib.toBytes32(minOutAmount_);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

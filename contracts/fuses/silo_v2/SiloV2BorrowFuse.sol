@@ -29,6 +29,10 @@ struct SiloV2BorrowFuseExitData {
     uint256 siloAssetAmount;
 }
 
+/// @title SiloV2BorrowFuse
+/// @notice Fuse for borrowing and repaying assets on Silo V2 protocol
+/// @dev This fuse allows the PlasmaVault to borrow assets from Silo V2 markets and repay the borrowed amounts.
+///      The fuse supports both standard function calls and transient storage based calls.
 contract SiloV2BorrowFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
