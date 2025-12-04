@@ -13,16 +13,31 @@ import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IFarmingPool} from "./ext/IFarmingPool.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 
+/**
+ * @notice Data structure for entering - supplying - the Gearbox V3 Farm protocol
+ * @dev Contains parameters required to stake dToken in a Gearbox V3 Farm pool
+ */
 struct GearboxV3FarmdSupplyFuseEnterData {
-    /// @dev max dTokenAmount to deposit, in dToken decimals
+    /// @notice The maximum amount of dToken to deposit (in dToken decimals)
+    /// @dev The actual deposited amount may be less if the Plasma Vault doesn't have enough balance.
+    ///      The function will use the minimum of this value and the available balance.
     uint256 dTokenAmount;
+    /// @notice The address of the farmdToken (farming pool) where dToken will be staked
+    /// @dev This is the Gearbox V3 Farm pool address that accepts dToken deposits and farms rewards (e.g., ARB for dUSDC)
     address farmdToken;
 }
 
+/**
+ * @notice Data structure for exiting - withdrawing - the Gearbox V3 Farm protocol
+ * @dev Contains parameters required to unstake dToken from a Gearbox V3 Farm pool
+ */
 struct GearboxV3FarmdSupplyFuseExitData {
-    /// @dev amount to withdraw, in dToken decimals
+    /// @notice The amount of dToken to withdraw (in dToken decimals)
+    /// @dev The actual withdrawn amount may be less if the staked balance is insufficient.
+    ///      The function will use the minimum of this value and the available staked balance.
     uint256 dTokenAmount;
-    /// @dev farmd token address where dToken is staked and farmed token (ARB for dUSDC)
+    /// @notice The address of the farmdToken (farming pool) from which dToken will be unstaked
+    /// @dev This is the Gearbox V3 Farm pool address where dToken is currently staked and farming rewards
     address farmdToken;
 }
 

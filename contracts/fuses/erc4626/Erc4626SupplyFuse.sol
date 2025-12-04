@@ -34,7 +34,19 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
+    /// @notice Emitted when assets are successfully deposited into an ERC4626 vault
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the underlying asset being deposited
+    /// @param vault The address of the ERC4626 vault receiving the deposit
+    /// @param vaultAssetAmount The amount of underlying assets deposited into the vault
     event Erc4626SupplyFuseEnter(address version, address asset, address vault, uint256 vaultAssetAmount);
+
+    /// @notice Emitted when assets are successfully withdrawn from an ERC4626 vault
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the underlying asset being withdrawn
+    /// @param vault The address of the ERC4626 vault from which assets are withdrawn
+    /// @param vaultAssetAmount The amount of underlying assets withdrawn from the vault
+    /// @param shares The amount of vault shares redeemed for the withdrawal
     event Erc4626SupplyFuseExit(
         address version,
         address asset,
@@ -42,6 +54,12 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 vaultAssetAmount,
         uint256 shares
     );
+
+    /// @notice Emitted when withdrawal from an ERC4626 vault fails (used in instant withdraw scenarios)
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the underlying asset that failed to withdraw
+    /// @param vault The address of the ERC4626 vault from which withdrawal was attempted
+    /// @param vaultAssetAmount The amount of underlying assets that failed to withdraw
     event Erc4626SupplyFuseExitFailed(address version, address asset, address vault, uint256 vaultAssetAmount);
 
     error Erc4626SupplyFuseUnsupportedVault(string action, address asset);

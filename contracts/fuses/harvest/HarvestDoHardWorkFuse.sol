@@ -8,43 +8,74 @@ import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.s
 import {IHarvestController} from "./ext/IHarvestController.sol";
 import {IHarvestVault} from "./ext/IHarvestVault.sol";
 
-/// @notice Data for performing hard work on Harvest vaults
-/// @param vaults Array of vault addresses to perform hard work on
+/**
+ * @notice Data structure for performing hard work on Harvest vaults
+ * @dev Contains parameters required to trigger harvest operations on multiple Harvest protocol vaults
+ */
 struct HarvestDoHardWorkFuseEnterData {
+    /// @notice Array of Harvest vault addresses to perform hard work on
+    /// @dev Each vault address must be granted as a substrate for the market.
+    ///      Hard work triggers reward harvesting and strategy rebalancing for each vault.
     address[] vaults;
 }
 
-/// @title HarvestDoHardWorkFuse
-/// @notice Fuse responsible for performing harvest operations on vaults
-/// @dev This fuse handles the harvesting of rewards and performing hard work on vaults
-/// @author IPOR Labs
+/**
+ * @title Fuse for Harvest protocol responsible for performing hard work operations on vaults
+ * @notice Triggers harvest operations (doHardWork) on Harvest protocol vaults to harvest rewards and rebalance strategies
+ * @dev This fuse iterates through provided vault addresses, validates they are granted substrates,
+ *      retrieves the controller (comptroller) for each vault, and calls doHardWork() to trigger
+ *      reward harvesting and strategy rebalancing. All vaults must be granted as substrates for the market.
+ * @author IPOR Labs
+ */
 contract HarvestDoHardWorkFuse is IFuseCommon {
-    /// @notice Version of this contract for tracking
+    /// @notice Address of this fuse contract version
+    /// @dev Immutable value set in constructor, used for tracking and versioning
     address public immutable VERSION;
 
-    /// @notice Market ID this fuse is associated with
+    /// @notice Market ID this fuse operates on
+    /// @dev Immutable value set in constructor, used to validate vault substrates
     uint256 public immutable MARKET_ID;
 
     /// @notice Emitted after performing hard work on a Harvest vault
-    /// @param version Address of the fuse implementation that executed the hard work
-    /// @param vault Address of the vault that had hard work performed
-    /// @param comptroller Address of the comptroller that executed the hard work
-    event HarvestDoHardWorkFuseEnter(address indexed version, address indexed vault, address indexed comptroller);
+    /// @param version The address of this fuse contract version
+    /// @param vault The address of the Harvest vault that had hard work performed
+    /// @param comptroller The address of the comptroller (controller) that executed the hard work
+    event HarvestDoHardWorkFuseEnter(address version, address vault, address comptroller);
 
+    /// @notice Thrown when a vault address is not granted as a substrate for the market
+    /// @param vault The address of the vault that is not supported
+    /// @custom:error UnsupportedVault
     error UnsupportedVault(address vault);
+
+    /// @notice Thrown when a vault's controller (comptroller) address is zero
+    /// @param vault The address of the vault with invalid controller
+    /// @custom:error UnsupportedComptroller
     error UnsupportedComptroller(address vault);
 
-    /// @notice Creates a new instance of HarvestDoHardWorkFuse
-    /// @param marketId_ The market ID this fuse is associated with
+    /**
+     * @notice Initializes the HarvestDoHardWorkFuse with a market ID
+     * @param marketId_ The market ID used to validate vault substrates
+     */
     constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
-    /// @notice Performs hard work on specified Harvest vaults
-    /// @param data_ Struct containing array of vault addresses to perform hard work on
-    /// @return vaults Array of vault addresses that had hard work performed
-    /// @return comptrollers Array of comptroller addresses corresponding to each vault
+    /**
+     * @notice Performs hard work on specified Harvest vaults
+     * @dev This function:
+     *      1. Iterates through all vault addresses provided in the data structure
+     *      2. Validates each vault is granted as a substrate for the market
+     *      3. Retrieves the controller (comptroller) address for each vault
+     *      4. Validates the controller address is not zero
+     *      5. Calls doHardWork() on the controller for each vault to trigger reward harvesting and strategy rebalancing
+     *      6. Emits an event for each successful hard work operation
+     * @param data_ The data structure containing the array of vault addresses to perform hard work on
+     * @return vaults Array of vault addresses that had hard work performed (same order as input)
+     * @return comptrollers Array of comptroller addresses corresponding to each vault (same order as input)
+     * @custom:revert UnsupportedVault When a vault is not granted as a substrate for the market
+     * @custom:revert UnsupportedComptroller When a vault's controller address is zero
+     */
     function enter(
         HarvestDoHardWorkFuseEnterData memory data_
     ) public returns (address[] memory vaults, address[] memory comptrollers) {

@@ -11,18 +11,55 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
-/// @title Fuse Gearbox V3 Farm Balance protocol responsible for calculating the balance of the Plasma Vault in the Gearbox V3 Farm protocol based on preconfigured market substrates
-/// @dev Substrates in this fuse are the farmDToken addresses that are used in the Gearbox V3 Farm protocol for a given MARKET_ID
+/**
+ * @title Fuse Gearbox V3 Farm Balance protocol responsible for calculating the balance of the Plasma Vault in the Gearbox V3 Farm protocol based on preconfigured market substrates
+ * @notice Calculates the balance of staked assets in Gearbox V3 Farm protocol, converted to underlying asset value in USD
+ * @dev Substrates in this fuse are the farmDToken addresses that are used in the Gearbox V3 Farm protocol for a given MARKET_ID.
+ *      This fuse retrieves the staking balance from the first configured substrate, converts farmDToken to dToken (1:1 exchange rate),
+ *      converts dToken to underlying assets, and converts to USD using price oracle middleware. The result is normalized to WAD (18 decimals).
+ */
 contract GearboxV3FarmBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
+    /// @notice Thrown when market ID is zero
+    /// @custom:error GearboxV3FarmBalanceFuseInvalidMarketId
+    error GearboxV3FarmBalanceFuseInvalidMarketId();
+
+    /// @notice Address of this fuse contract version
+    /// @dev Immutable value set in constructor, used for tracking and versioning
+    address public immutable VERSION;
+
+    /// @notice Market ID this fuse operates on
+    /// @dev Immutable value set in constructor, used to retrieve market substrates (farmDToken addresses)
     uint256 public immutable MARKET_ID;
 
+    /**
+     * @notice Initializes the GearboxV3FarmBalanceFuse with a specific market ID
+     * @param marketId_ The market ID used to identify the Gearbox V3 Farm farmDToken substrates
+     * @dev Reverts if marketId_ is zero
+     */
     constructor(uint256 marketId_) {
+        if (marketId_ == 0) {
+            revert GearboxV3FarmBalanceFuseInvalidMarketId();
+        }
+        VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
-    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    /**
+     * @notice Calculates the balance of staked assets in Gearbox V3 Farm protocol
+     * @dev This function:
+     *      1. Retrieves the first substrate (farmDToken address) configured for the market
+     *      2. Gets the dToken (staking token) from the farmDToken
+     *      3. Gets the underlying asset from the dToken (ERC4626 vault)
+     *      4. Retrieves the staking balance from the farmDToken
+     *      5. Converts farmDToken balance to dToken (1:1 exchange rate)
+     *      6. Converts dToken balance to underlying assets using convertToAssets()
+     *      7. Retrieves the underlying asset price from price oracle middleware
+     *      8. Converts underlying asset amount to USD value normalized to WAD (18 decimals)
+     *      Note: Only the first substrate is used for balance calculation.
+     * @return The balance of staked assets in USD, normalized to WAD (18 decimals)
+     */
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 

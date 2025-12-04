@@ -36,15 +36,43 @@ struct EulerV2SupplyFuseExitData {
 contract EulerV2SupplyFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
+    /// @notice Emitted when assets are successfully deposited into an Euler V2 vault
+    /// @param version The address of this fuse contract version
+    /// @param eulerVault The address of the Euler V2 vault receiving the deposit
+    /// @param supplyAmount The amount of assets deposited into the vault
+    /// @param subAccount The sub-account address used for the deposit
     event EulerV2SupplyEnterFuse(address version, address eulerVault, uint256 supplyAmount, address subAccount);
+
+    /// @notice Emitted when assets are successfully withdrawn from an Euler V2 vault
+    /// @param version The address of this fuse contract version
+    /// @param eulerVault The address of the Euler V2 vault from which assets are withdrawn
+    /// @param withdrawnAmount The amount of assets withdrawn from the vault
+    /// @param subAccount The sub-account address used for the withdrawal
     event EulerV2SupplyExitFuse(address version, address eulerVault, uint256 withdrawnAmount, address subAccount);
 
+    /// @notice Thrown when attempting to supply to an unsupported Euler V2 vault or sub-account combination
+    /// @param vault The address of the vault that is not supported
+    /// @param subAccount The sub-account identifier that is not supported
+    /// @custom:error EulerV2SupplyFuseUnsupportedEnterAction
     error EulerV2SupplyFuseUnsupportedEnterAction(address vault, bytes1 subAccount);
 
+    /// @notice Address of this fuse contract version
+    /// @dev Immutable value set in constructor, used for tracking and versioning
     address public immutable VERSION;
+
+    /// @notice Market ID this fuse operates on
+    /// @dev Immutable value set in constructor, used to retrieve market substrates (Euler V2 vault addresses)
     uint256 public immutable MARKET_ID;
+
+    /// @notice Ethereum Vault Connector (EVC) address for Euler V2 protocol
+    /// @dev Immutable value set in constructor, used for Euler V2 protocol interactions through EVC
     IEVC public immutable EVC;
 
+    /**
+     * @notice Initializes the EulerV2SupplyFuse with a market ID and EVC address
+     * @param marketId_ The market ID used to identify the Euler V2 vault substrates
+     * @param eulerV2EVC_ The address of the Ethereum Vault Connector for Euler V2 protocol
+     */
     constructor(uint256 marketId_, address eulerV2EVC_) {
         VERSION = address(this);
         MARKET_ID = marketId_;

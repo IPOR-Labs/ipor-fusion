@@ -15,25 +15,58 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IBorrowing} from "./ext/IBorrowing.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 
-/// @title Fuse for Euler V2 vaults responsible for calculating the balance of the Plasma Vault in Euler V2 vaults based on preconfigured market substrates
-/// @dev Substrates in this fuse are the vaults that are used in the Euler V2 protocol for a given MARKET_ID
+/**
+ * @title Fuse for Euler V2 vaults responsible for calculating the balance of the Plasma Vault in Euler V2 vaults based on preconfigured market substrates
+ * @notice Calculates the net balance (collateral - debt) of the Plasma Vault across all configured Euler V2 vaults
+ * @dev Substrates in this fuse are the Euler V2 vault addresses that are used for a given MARKET_ID.
+ *      This fuse iterates through all configured substrates, calculates collateral value from ERC4626 vault shares,
+ *      subtracts debt value, and returns the net balance in USD normalized to WAD (18 decimals).
+ */
 contract EulerV2BalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
     using SafeCast for int256;
 
+    /// @notice Address of this fuse contract version
+    /// @dev Immutable value set in constructor, used for tracking and versioning
+    address public immutable VERSION;
+
+    /// @notice Market ID this fuse operates on
+    /// @dev Immutable value set in constructor, used to retrieve market substrates (Euler V2 vault addresses)
     uint256 public immutable MARKET_ID;
+
+    /// @notice Ethereum Vault Connector (EVC) address for Euler V2 protocol
+    /// @dev Immutable value set in constructor, used for Euler V2 protocol interactions
     IEVC public immutable EVC;
 
+    /**
+     * @notice Initializes the EulerV2BalanceFuse with a market ID and EVC address
+     * @param marketId_ The market ID used to identify the Euler V2 vault substrates
+     * @param eulerV2EVC_ The address of the Ethereum Vault Connector for Euler V2 protocol (must not be address(0))
+     * @dev Reverts if eulerV2EVC_ is zero address
+     */
     constructor(uint256 marketId_, address eulerV2EVC_) {
         if (eulerV2EVC_ == address(0)) {
             revert Errors.WrongAddress();
         }
+        VERSION = address(this);
         MARKET_ID = marketId_;
         EVC = IEVC(eulerV2EVC_);
     }
 
-    /// @return The balance of the Plasma Vault associated with Fuse Balance marketId in USD, represented in 8 decimals
-    /// @dev The balance is calculated as the sum of the balance of the underlying assets in the vaults minus the debt in the vaults
+    /**
+     * @notice Calculates the net balance (collateral - debt) of the Plasma Vault in Euler V2 vaults
+     * @dev This function:
+     *      1. Retrieves all substrates (Euler V2 vault addresses) configured for the market
+     *      2. For each vault, generates the sub-account address for the Plasma Vault
+     *      3. Calculates collateral value: converts ERC4626 vault shares to underlying assets and converts to USD
+     *      4. Calculates debt value: retrieves debt from the vault and converts to USD
+     *      5. Subtracts debt from collateral to get net balance
+     *      6. Returns the total net balance normalized to WAD (18 decimals)
+     *      The price oracle middleware provides prices in USD with its own decimal precision.
+     *      All values are normalized to WAD (18 decimals) using IporMath.convertToWad().
+     * @return The net balance (collateral - debt) of the Plasma Vault in USD, normalized to WAD (18 decimals)
+     * @custom:revert Errors.UnsupportedQuoteCurrencyFromOracle When price oracle cannot provide a price for the asset
+     */
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
