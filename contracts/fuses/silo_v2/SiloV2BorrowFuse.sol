@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IFuseCommon} from "../IFuseCommon.sol";
-
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {SiloIndex} from "./SiloIndex.sol";
+
+import {IFuseCommon} from "../IFuseCommon.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {ISilo} from "./ext/ISilo.sol";
 import {ISiloConfig} from "./ext/ISiloConfig.sol";
+import {SiloIndex} from "./SiloIndex.sol";
 struct SiloV2BorrowFuseEnterData {
     /// @dev Silo Config address - contract that manages the Silo
     address siloConfig;
@@ -27,6 +29,10 @@ struct SiloV2BorrowFuseExitData {
     uint256 siloAssetAmount;
 }
 
+/// @title SiloV2BorrowFuse
+/// @notice Fuse for borrowing and repaying assets on Silo V2 protocol
+/// @dev This fuse allows the PlasmaVault to borrow assets from Silo V2 markets and repay the borrowed amounts.
+///      The fuse supports both standard function calls and transient storage based calls.
 contract SiloV2BorrowFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
@@ -60,9 +66,17 @@ contract SiloV2BorrowFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(SiloV2BorrowFuseEnterData calldata data_) public {
+    /// @notice Enters the Fuse
+    /// @param data_ The input data for entering the fuse
+    /// @return siloConfig The silo config address
+    /// @return silo The silo address
+    /// @return siloAssetAmountBorrowed The amount of Silo underlying asset borrowed
+    /// @return siloSharesBorrowed The amount of Silo shares borrowed
+    function enter(
+        SiloV2BorrowFuseEnterData memory data_
+    ) public returns (address siloConfig, address silo, uint256 siloAssetAmountBorrowed, uint256 siloSharesBorrowed) {
         if (data_.siloAssetAmount == 0) {
-            return;
+            return (data_.siloConfig, address(0), 0, 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.siloConfig)) {
@@ -71,16 +85,26 @@ contract SiloV2BorrowFuse is IFuseCommon {
 
         (address silo0, address silo1) = ISiloConfig(data_.siloConfig).getSilos();
 
-        address silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
+        silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
 
-        uint256 sharesBorrowed = ISilo(silo).borrow(data_.siloAssetAmount, address(this), address(this));
+        siloSharesBorrowed = ISilo(silo).borrow(data_.siloAssetAmount, address(this), address(this));
+        siloAssetAmountBorrowed = data_.siloAssetAmount;
+        siloConfig = data_.siloConfig;
 
-        emit SiloV2BorrowFuseEvent(VERSION, MARKET_ID, data_.siloConfig, silo, data_.siloAssetAmount, sharesBorrowed);
+        emit SiloV2BorrowFuseEvent(VERSION, MARKET_ID, siloConfig, silo, siloAssetAmountBorrowed, siloSharesBorrowed);
     }
 
-    function exit(SiloV2BorrowFuseExitData calldata data_) public {
+    /// @notice Exits the Fuse
+    /// @param data_ The input data for exiting the fuse
+    /// @return siloConfig The silo config address
+    /// @return silo The silo address
+    /// @return siloAssetAmountRepaid The amount of Silo underlying asset repaid
+    /// @return siloSharesRepaid The amount of Silo shares repaid
+    function exit(
+        SiloV2BorrowFuseExitData memory data_
+    ) public returns (address siloConfig, address silo, uint256 siloAssetAmountRepaid, uint256 siloSharesRepaid) {
         if (data_.siloAssetAmount == 0) {
-            return;
+            return (data_.siloConfig, address(0), 0, 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.siloConfig)) {
@@ -89,16 +113,58 @@ contract SiloV2BorrowFuse is IFuseCommon {
 
         (address silo0, address silo1) = ISiloConfig(data_.siloConfig).getSilos();
 
-        address silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
+        silo = data_.siloIndex == SiloIndex.SILO0 ? silo0 : silo1;
 
         address siloAssetAddress = ISilo(silo).asset();
 
         ERC20(siloAssetAddress).forceApprove(silo, data_.siloAssetAmount);
 
-        uint256 sharesRepaid = ISilo(silo).repay(data_.siloAssetAmount, address(this));
+        siloSharesRepaid = ISilo(silo).repay(data_.siloAssetAmount, address(this));
+        siloAssetAmountRepaid = data_.siloAssetAmount;
+        siloConfig = data_.siloConfig;
 
         ERC20(siloAssetAddress).forceApprove(silo, 0);
 
-        emit SiloV2BorrowFuseRepay(VERSION, MARKET_ID, data_.siloConfig, silo, data_.siloAssetAmount, sharesRepaid);
+        emit SiloV2BorrowFuseRepay(VERSION, MARKET_ID, siloConfig, silo, siloAssetAmountRepaid, siloSharesRepaid);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address siloConfig = TypeConversionLib.toAddress(inputs[0]);
+        SiloIndex siloIndex = SiloIndex(TypeConversionLib.toUint256(inputs[1]));
+        uint256 siloAssetAmount = TypeConversionLib.toUint256(inputs[2]);
+
+        (address returnedSiloConfig, address silo, uint256 siloAssetAmountBorrowed, uint256 siloSharesBorrowed) = enter(
+            SiloV2BorrowFuseEnterData({siloConfig: siloConfig, siloIndex: siloIndex, siloAssetAmount: siloAssetAmount})
+        );
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(returnedSiloConfig);
+        outputs[1] = TypeConversionLib.toBytes32(silo);
+        outputs[2] = TypeConversionLib.toBytes32(siloAssetAmountBorrowed);
+        outputs[3] = TypeConversionLib.toBytes32(siloSharesBorrowed);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address siloConfig = TypeConversionLib.toAddress(inputs[0]);
+        SiloIndex siloIndex = SiloIndex(TypeConversionLib.toUint256(inputs[1]));
+        uint256 siloAssetAmount = TypeConversionLib.toUint256(inputs[2]);
+
+        (address returnedSiloConfig, address silo, uint256 siloAssetAmountRepaid, uint256 siloSharesRepaid) = exit(
+            SiloV2BorrowFuseExitData({siloConfig: siloConfig, siloIndex: siloIndex, siloAssetAmount: siloAssetAmount})
+        );
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(returnedSiloConfig);
+        outputs[1] = TypeConversionLib.toBytes32(silo);
+        outputs[2] = TypeConversionLib.toBytes32(siloAssetAmountRepaid);
+        outputs[3] = TypeConversionLib.toBytes32(siloSharesRepaid);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

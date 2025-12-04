@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IYieldBasisLT} from "./ext/IYieldBasisLT.sol";
@@ -17,9 +17,20 @@ import {FullMath} from "../ramses/ext/FullMath.sol";
 contract YieldBasisLtBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
+    /// @notice Address of this fuse contract version
+    /// @dev Immutable value set in constructor, used for tracking and versioning
+    address public immutable VERSION;
+
+    /// @notice Market ID this fuse operates on
+    /// @dev Immutable value set in constructor, used to retrieve market substrates (Yield Basis LT token addresses)
     uint256 public immutable MARKET_ID;
 
+    /**
+     * @notice Initializes the YieldBasisLtBalanceFuse with a market ID
+     * @param marketId_ The market ID used to identify the market and retrieve substrates
+     */
     constructor(uint256 marketId_) {
+        VERSION = address(this);
         MARKET_ID = marketId_;
     }
 

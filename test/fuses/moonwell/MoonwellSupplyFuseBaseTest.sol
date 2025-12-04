@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
-import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {PriceOracleMiddlewareHelper} from "../../test_helpers/PriceOracleMiddlewareHelper.sol";
-import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccessManagerHelper.sol";
-import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {MoonwellHelper, MoonWellAddresses} from "../../test_helpers/MoonwellHelper.sol";
 import {MoonwellSupplyFuseEnterData, MoonwellSupplyFuseExitData} from "../../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
 import {MoonwellHelperLib} from "../../../contracts/fuses/moonwell/MoonwellHelperLib.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
+import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
+import {PriceOracleMiddlewareHelper} from "../../test_helpers/PriceOracleMiddlewareHelper.sol";
+import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccessManagerHelper.sol";
+import {MoonwellHelper, MoonWellAddresses} from "../../test_helpers/MoonwellHelper.sol";
 
 contract MoonwellSupplyFuseBaseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
@@ -32,6 +35,7 @@ contract MoonwellSupplyFuseBaseTest is Test {
     IporFusionAccessManager private _accessManager;
 
     MoonWellAddresses private _moonwellAddresses;
+    address private _transientStorageSetInputsFuse;
 
     function setUp() public {
         // Fork Base network
@@ -66,6 +70,14 @@ contract MoonwellSupplyFuseBaseTest is Test {
         mTokens[0] = TestAddresses.BASE_M_USDC;
 
         _moonwellAddresses = MoonwellHelper.addSupplyToMarket(_plasmaVault, mTokens, vm);
+
+        // Add TransientStorageSetInputsFuse to vault
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
+        address[] memory transientFuses = new address[](1);
+        transientFuses[0] = _transientStorageSetInputsFuse;
+        vm.startPrank(TestAddresses.FUSE_MANAGER);
+        _plasmaVault.addFusesToVault(transientFuses);
+        vm.stopPrank();
 
         vm.startPrank(TestAddresses.ATOMIST);
         _priceOracleMiddleware.addSource(TestAddresses.BASE_USDC, TestAddresses.BASE_CHAINLINK_USDC_PRICE);
@@ -378,5 +390,117 @@ contract MoonwellSupplyFuseBaseTest is Test {
         vm.prank(TestAddresses.ALPHA);
         vm.expectRevert(abi.encodeWithSelector(MoonwellHelperLib.MoonwellSupplyFuseUnsupportedAsset.selector, _DAI));
         _plasmaVault.execute(actions);
+    }
+
+    /// @notice Tests entering Moonwell Supply Fuse using transient storage
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and supplies assets
+    function testShouldEnterUsingTransientStorage() public {
+        // Setup
+        uint256 supplyAmount = 500e6; // 500 USDC
+        uint256 totalAssetBefore = _plasmaVault.totalAssets();
+        uint256 balanceInMarketBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
+
+        // Prepare transient inputs
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = _moonwellAddresses.suppluFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_UNDERLYING_TOKEN);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(supplyAmount);
+
+        // Create FuseAction array with two actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs to transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesToSet, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Call enterTransient()
+        calls[1] = FuseAction({fuse: _moonwellAddresses.suppluFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        // Execute through PlasmaVault
+        vm.prank(TestAddresses.ALPHA);
+        _plasmaVault.execute(calls);
+
+        // Verify supply
+        uint256 mUsdcBalance = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
+        uint256 totalAssetAfter = _plasmaVault.totalAssets();
+        uint256 balanceInMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
+
+        assertApproxEqAbs(balanceInMarketBefore, 0, ERROR_DELTA, "Balance in market should be 0");
+        assertApproxEqAbs(balanceInMarketAfter, supplyAmount, ERROR_DELTA, "Balance in market should be 500 USDC");
+        assertApproxEqAbs(totalAssetAfter, totalAssetBefore, ERROR_DELTA, "Total assets should be 1000 USDC");
+        assertApproxEqAbs(mUsdcBalance, 2391512054653, ERROR_DELTA, "M_USDC balance should be 2391512054653 mUSDC");
+    }
+
+    /// @notice Tests exiting Moonwell Supply Fuse using transient storage
+    /// @dev Verifies that exitTransient() correctly reads inputs from transient storage and withdraws assets
+    function testShouldExitUsingTransientStorage() public {
+        // Setup: First supply 600 USDC
+        uint256 supplyAmount = 600e6;
+        _executeSupply(supplyAmount);
+
+        uint256 balanceInMarketAfterSupply = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
+        assertApproxEqAbs(balanceInMarketAfterSupply, supplyAmount, ERROR_DELTA, "Should be 600 USDC after supply");
+
+        // Setup for withdrawal via transient storage
+        uint256 withdrawAmount = 300e6; // 300 USDC
+        uint256 totalAssetBefore = _plasmaVault.totalAssets();
+
+        // Prepare transient inputs
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = _moonwellAddresses.suppluFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_UNDERLYING_TOKEN);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(withdrawAmount);
+
+        // Create FuseAction array with two actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs to transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesToSet, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Call exitTransient()
+        calls[1] = FuseAction({fuse: _moonwellAddresses.suppluFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        // Execute through PlasmaVault
+        vm.prank(TestAddresses.ALPHA);
+        _plasmaVault.execute(calls);
+
+        // Verify withdrawal
+        uint256 mUsdcBalanceAfterWithdraw = IERC20(TestAddresses.BASE_M_USDC).balanceOf(address(_plasmaVault));
+        uint256 totalAssetAfter = _plasmaVault.totalAssets();
+        uint256 balanceInMarketAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.MOONWELL);
+        uint256 remainingAmount = supplyAmount - withdrawAmount;
+
+        assertApproxEqAbs(
+            mUsdcBalanceAfterWithdraw,
+            1434907232792,
+            ERROR_DELTA,
+            "M_USDC balance after withdraw should be ~1434907232792"
+        );
+
+        assertApproxEqAbs(
+            balanceInMarketAfter,
+            remainingAmount,
+            ERROR_DELTA,
+            "Final balance in market should be 300 USDC"
+        );
+
+        assertApproxEqAbs(totalAssetAfter, totalAssetBefore, ERROR_DELTA, "Total assets should remain 1000 USDC");
     }
 }

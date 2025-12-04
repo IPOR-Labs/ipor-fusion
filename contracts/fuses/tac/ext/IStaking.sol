@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 // @dev Allocation represents a single allocation for an IBC fungible token transfer.
 struct ICS20Allocation {

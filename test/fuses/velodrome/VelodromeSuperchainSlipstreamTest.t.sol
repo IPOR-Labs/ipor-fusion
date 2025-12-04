@@ -1,42 +1,44 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
-import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
-import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {PriceOracleMiddlewareHelper} from "../../test_helpers/PriceOracleMiddlewareHelper.sol";
-import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccessManagerHelper.sol";
-import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
-import {Roles} from "../../../contracts/libraries/Roles.sol";
-import {VelodromeSuperchainSlipstreamCollectFuse, VelodromeSuperchainSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
-import {INonfungiblePositionManager} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/INonfungiblePositionManager.sol";
-import {VelodromeSuperchainSlipstreamNewPositionFuse, VelodromeSuperchainSlipstreamNewPositionFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol";
-import {VelodromeSuperchainSlipstreamModifyPositionFuse, VelodromeSuperchainSlipstreamModifyPositionFuseEnterData, VelodromeSuperchainSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol";
-import {VelodromeSuperchainSlipstreamLeafCLGaugeFuse, VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData, VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol";
-import {VelodromeSuperchainSlipstreamCollectFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
-import {VelodromeSuperchainSlipstreamBalanceFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalanceFuse.sol";
-import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamSubstrateLib.sol";
-import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
-import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {INonfungiblePositionManager} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/INonfungiblePositionManager.sol";
-import {ILeafCLGauge} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/ILeafCLGauge.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
-import {VelodromeSuperchainSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainSlipstreamGaugeClaimFuse.sol";
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {VelodromeSuperchainSlipstreamBalanceFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalanceFuse.sol";
+import {VelodromeSuperchainSlipstreamCollectFuse, VelodromeSuperchainSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
+import {VelodromeSuperchainSlipstreamLeafCLGaugeFuse, VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData, VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol";
+import {VelodromeSuperchainSlipstreamModifyPositionFuse, VelodromeSuperchainSlipstreamModifyPositionFuseEnterData, VelodromeSuperchainSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol";
+import {VelodromeSuperchainSlipstreamNewPositionFuse, VelodromeSuperchainSlipstreamNewPositionFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol";
+import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {ILeafGauge} from "../../../contracts/fuses/velodrome_superchain/ext/ILeafGauge.sol";
+import {ILeafCLGauge} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/ILeafCLGauge.sol";
+import {INonfungiblePositionManager} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/INonfungiblePositionManager.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {Roles} from "../../../contracts/libraries/Roles.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
+import {VelodromeSuperchainSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainSlipstreamGaugeClaimFuse.sol";
+import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccessManagerHelper.sol";
+import {PlasmaVaultHelper} from "../../test_helpers/PlasmaVaultHelper.sol";
+import {PriceOracleMiddlewareHelper} from "../../test_helpers/PriceOracleMiddlewareHelper.sol";
+import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 
 /// @title VelodromeSuperchainSlipstreamTest
 /// @notice Test suite for Velodrom Superchain Slipstream Collect Fuse
@@ -45,6 +47,9 @@ contract VelodromeSuperchainSlipstreamTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
     using PlasmaVaultHelper for PlasmaVault;
     using IporFusionAccessManagerHelper for IporFusionAccessManager;
+    using Address for address;
+
+    error InvalidReturnData();
 
     // Test constants
     address private constant _USDTO = 0x0200C29006150606B650577BBE7B6248F58470c1;
@@ -76,6 +81,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
     VelodromeSuperchainSlipstreamCollectFuse private _velodromSuperchainSlipstreamCollectFuse;
     VelodromeSuperchainSlipstreamBalanceFuse private _velodromSuperchainSlipstreamBalanceFuse;
     VelodromeSuperchainSlipstreamGaugeClaimFuse private _velodromeGaugeClaimFuse;
+    TransientStorageSetInputsFuse private _transientStorageSetInputsFuse;
 
     function setUp() public {
         // Fork Base network
@@ -151,12 +157,15 @@ contract VelodromeSuperchainSlipstreamTest is Test {
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
 
+        _transientStorageSetInputsFuse = new TransientStorageSetInputsFuse();
+
         // Setup fuses
-        address[] memory fuses = new address[](4);
+        address[] memory fuses = new address[](5);
         fuses[0] = address(_velodromSuperchainSlipstreamNewPositionFuse);
         fuses[1] = address(_velodromSuperchainSlipstreamModifyPositionFuse);
         fuses[2] = address(_velodromSuperchainSlipstreamLeafCLGaugeFuse);
         fuses[3] = address(_velodromSuperchainSlipstreamCollectFuse);
+        fuses[4] = address(_transientStorageSetInputsFuse);
 
         address[] memory rewardFuses = new address[](1);
         rewardFuses[0] = address(_velodromeGaugeClaimFuse);
@@ -272,8 +281,6 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
-        uint256 usdceBalanceBefore = IERC20(_USDCE).balanceOf(address(_plasmaVault));
-        uint256 usdtoBalanceBefore = IERC20(_USDTO).balanceOf(address(_plasmaVault));
 
         // when
         vm.startPrank(_ALPHA);
@@ -284,8 +291,6 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
-        uint256 usdceBalanceAfter = IERC20(_USDCE).balanceOf(address(_plasmaVault));
-        uint256 usdtoBalanceAfter = IERC20(_USDTO).balanceOf(address(_plasmaVault));
 
         uint256[] memory nfts = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
             address(_plasmaVault),
@@ -327,8 +332,6 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
-        uint256 usdceBalanceBefore = IERC20(_USDCE).balanceOf(address(_plasmaVault));
-        uint256 usdtoBalanceBefore = IERC20(_USDTO).balanceOf(address(_plasmaVault));
 
         // when
         vm.startPrank(_ALPHA);
@@ -339,8 +342,6 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
-        uint256 usdceBalanceAfter = IERC20(_USDCE).balanceOf(address(_plasmaVault));
-        uint256 usdtoBalanceAfter = IERC20(_USDTO).balanceOf(address(_plasmaVault));
 
         uint256[] memory nfts = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
             address(_plasmaVault),
@@ -384,8 +385,6 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
-        uint256 usdceBalanceBefore = IERC20(_USDCE).balanceOf(address(_plasmaVault));
-        uint256 usdtoBalanceBefore = IERC20(_USDTO).balanceOf(address(_plasmaVault));
 
         // when
         vm.startPrank(_ALPHA);
@@ -396,8 +395,6 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
-        uint256 usdceBalanceAfter = IERC20(_USDCE).balanceOf(address(_plasmaVault));
-        uint256 usdtoBalanceAfter = IERC20(_USDTO).balanceOf(address(_plasmaVault));
 
         assertGt(marketBalanceAfter, marketBalanceBefore, "marketBalanceAfter > marketBalanceBefore");
     }
@@ -411,8 +408,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
             _VELODROME_POOL
         );
 
-        (, , , , , , , uint128 liquidityBefore, , , , ) = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER)
-            .positions(tokenIds[0]);
+        uint128 liquidityBefore = _getLiquidity(tokenIds[0]);
 
         VelodromeSuperchainSlipstreamModifyPositionFuseExitData
             memory modifyParams = VelodromeSuperchainSlipstreamModifyPositionFuseExitData({
@@ -443,11 +439,48 @@ contract VelodromeSuperchainSlipstreamTest is Test {
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
         );
 
-        (, , , , , , , uint128 liquidityAfter, , , , ) = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER)
-            .positions(tokenIds[0]);
+        uint128 liquidityAfter = _getLiquidity(tokenIds[0]);
 
         assertGt(marketBalanceBefore, marketBalanceAfter, "marketBalanceBefore > marketBalanceAfter");
         assertGt(liquidityBefore, liquidityAfter, "liquidityBefore > liquidityAfter");
+    }
+
+    /// @notice Helper function to get liquidity from a position token
+    /// @param tokenId_ The token ID of the position
+    /// @return liquidity The liquidity of the position
+    function _getLiquidity(uint256 tokenId_) private view returns (uint128 liquidity) {
+        // INonfungiblePositionManager.positions(tokenId) selector: 0x99fbab88
+        // 0x99fbab88 = bytes4(keccak256("positions(uint256)"))
+        bytes memory returnData = _NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
+            abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_)
+        );
+
+        // positions returns (
+        //    uint96 nonce,                    // offset 0
+        //    address operator,                // offset 1
+        //    address token0,                  // offset 2
+        //    address token1,                  // offset 3
+        //    int24 tickSpacing,               // offset 4
+        //    int24 tickLower,                 // offset 5
+        //    int24 tickUpper,                 // offset 6
+        //    uint128 liquidity,               // offset 7
+        //    ... )
+        // All types are padded to 32 bytes in ABI encoding.
+
+        if (returnData.length < 256) revert InvalidReturnData();
+
+        assembly {
+            // returnData is a pointer to bytes array in memory.
+            // First 32 bytes at returnData is the length of the array.
+            // The actual data starts at returnData + 32.
+
+            // liquidity is at index 7: 32 (length) + 32 * 7 = 256
+            // liquidity is uint128, so we need to mask the upper bits
+            // mload loads 32 bytes, but liquidity is only 128 bits (16 bytes)
+            // We need to mask to get only the lower 128 bits: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+            let liquidityValue := mload(add(returnData, 256))
+            liquidity := and(liquidityValue, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+        }
     }
 
     function test_shouldCollectFromNFTPosition() public {
@@ -556,8 +589,6 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         vm.stopPrank();
 
         // then
-        uint256[] memory stakedValuesAfter = ILeafCLGauge(_VELODROME_GAUGE).stakedValues(address(_plasmaVault));
-
         uint256[] memory tokenIdsAfter = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
             address(_plasmaVault),
             _VELODROME_POOL
@@ -591,5 +622,483 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         uint256 balanceAfter = IERC20(rewardToken).balanceOf(address(_rewardsClaimManager));
 
         assertGt(balanceAfter, balanceBefore, "balanceAfter should be greater than balanceBefore");
+    }
+
+    /// @notice Test that enterTransient() correctly reads inputs from transient storage and creates a new position
+    function test_shouldEnterUsingTransientStorage() public {
+        // given
+        uint256 amount0Desired = 1_000e6;
+        uint256 amount1Desired = 1_000e6;
+        uint256 amount0Min = 0;
+        uint256 amount1Min = 0;
+        uint256 deadline = block.timestamp + 100;
+        uint160 sqrtPriceX96 = 0;
+        int24 tickSpacing = 1;
+        int24 tickLower = 0;
+        int24 tickUpper = 101;
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+        uint256 usdceBalanceBefore = IERC20(_USDCE).balanceOf(address(_plasmaVault));
+        uint256 usdtoBalanceBefore = IERC20(_USDTO).balanceOf(address(_plasmaVault));
+
+        // Prepare transient inputs: token0, token1, tickSpacing, tickLower, tickUpper, amount0Desired, amount1Desired, amount0Min, amount1Min, deadline, sqrtPriceX96
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromSuperchainSlipstreamNewPositionFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](11);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_USDTO); // token0
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(_USDCE); // token1
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(int256(tickSpacing))); // tickSpacing
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(uint256(int256(tickLower))); // tickLower
+        inputsByFuse[0][4] = TypeConversionLib.toBytes32(uint256(int256(tickUpper))); // tickUpper
+        inputsByFuse[0][5] = TypeConversionLib.toBytes32(amount0Desired);
+        inputsByFuse[0][6] = TypeConversionLib.toBytes32(amount1Desired);
+        inputsByFuse[0][7] = TypeConversionLib.toBytes32(amount0Min);
+        inputsByFuse[0][8] = TypeConversionLib.toBytes32(amount1Min);
+        inputsByFuse[0][9] = TypeConversionLib.toBytes32(deadline);
+        inputsByFuse[0][10] = TypeConversionLib.toBytes32(uint256(sqrtPriceX96)); // sqrtPriceX96
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(
+            address(_velodromSuperchainSlipstreamNewPositionFuse),
+            abi.encodeWithSignature("enterTransient()")
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+        uint256 usdceBalanceAfter = IERC20(_USDCE).balanceOf(address(_plasmaVault));
+        uint256 usdtoBalanceAfter = IERC20(_USDTO).balanceOf(address(_plasmaVault));
+
+        uint256[] memory nfts = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
+            address(_plasmaVault),
+            _VELODROME_POOL
+        );
+
+        assertGt(marketBalanceAfter, marketBalanceBefore, "marketBalanceAfter > marketBalanceBefore");
+        assertTrue(nfts.length > 0, "nfts.length > 0");
+        assertLt(usdceBalanceAfter, usdceBalanceBefore, "usdceBalanceAfter < usdceBalanceBefore");
+        assertLt(usdtoBalanceAfter, usdtoBalanceBefore, "usdtoBalanceAfter < usdtoBalanceBefore");
+    }
+
+    /// @notice Test that exitTransient() correctly reads inputs from transient storage and closes positions
+    function test_shouldExitUsingTransientStorage() public {
+        // given - first create a position using regular enter
+        test_shouldCollectFeesFromNFTPositions();
+
+        uint256[] memory tokenIds = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
+            address(_plasmaVault),
+            _VELODROME_POOL
+        );
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+
+        // Decrease liquidity and collect fees to allow burning
+        uint128 liquidity = _getLiquidity(tokenIds[0]);
+
+        VelodromeSuperchainSlipstreamModifyPositionFuseExitData
+            memory modifyParams = VelodromeSuperchainSlipstreamModifyPositionFuseExitData({
+                tokenId: tokenIds[0],
+                liquidity: liquidity,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 100
+            });
+
+        VelodromeSuperchainSlipstreamCollectFuseEnterData
+            memory collectParams = VelodromeSuperchainSlipstreamCollectFuseEnterData({tokenIds: tokenIds});
+
+        FuseAction[] memory prepareCalls = new FuseAction[](2);
+        prepareCalls[0] = FuseAction(
+            address(_velodromSuperchainSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", modifyParams)
+        );
+        prepareCalls[1] = FuseAction(
+            address(_velodromSuperchainSlipstreamCollectFuse),
+            abi.encodeWithSignature("enter((uint256[]))", collectParams)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(prepareCalls);
+        vm.stopPrank();
+
+        // Prepare transient inputs for exit: length + tokenIds
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromSuperchainSlipstreamNewPositionFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](1 + tokenIds.length); // length + tokenIds
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(uint256(tokenIds.length)); // length
+        for (uint256 i; i < tokenIds.length; ++i) {
+            inputsByFuse[0][1 + i] = TypeConversionLib.toBytes32(tokenIds[i]); // tokenId
+        }
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(
+            address(_velodromSuperchainSlipstreamNewPositionFuse),
+            abi.encodeWithSignature("exitTransient()")
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+
+        uint256[] memory nftsAfter = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
+            address(_plasmaVault),
+            _VELODROME_POOL
+        );
+
+        assertLt(marketBalanceAfter, marketBalanceBefore, "marketBalanceAfter < marketBalanceBefore");
+        assertEq(nftsAfter.length, 0, "nftsAfter.length == 0");
+    }
+
+    /// @notice Test that exitTransient() handles empty array case correctly
+    function test_shouldExitUsingTransientStorageWithEmptyArray() public {
+        // given - no positions exist
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+
+        // Prepare transient inputs for exit: length = 0
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromSuperchainSlipstreamNewPositionFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](1);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(uint256(0)); // length = 0
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(
+            address(_velodromSuperchainSlipstreamNewPositionFuse),
+            abi.encodeWithSignature("exitTransient()")
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+
+        assertEq(marketBalanceAfter, marketBalanceBefore, "marketBalanceAfter == marketBalanceBefore");
+    }
+
+    /// @notice Test that enterTransient() correctly reads inputs from transient storage and increases liquidity
+    function test_shouldIncreasePositionUsingTransientStorage() public {
+        // given - first create a position using regular enter
+        test_shouldCollectFeesFromNFTPositions();
+
+        uint256[] memory tokenIds = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
+            address(_plasmaVault),
+            _VELODROME_POOL
+        );
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+
+        // Prepare transient inputs: token0, token1, tokenId, amount0Desired, amount1Desired, amount0Min, amount1Min, deadline
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromSuperchainSlipstreamModifyPositionFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](8);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_USDTO); // token0
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(_USDCE); // token1
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(tokenIds[0]); // tokenId
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(uint256(2_000e6)); // amount0Desired
+        inputsByFuse[0][4] = TypeConversionLib.toBytes32(uint256(2_000e6)); // amount1Desired
+        inputsByFuse[0][5] = TypeConversionLib.toBytes32(uint256(0)); // amount0Min
+        inputsByFuse[0][6] = TypeConversionLib.toBytes32(uint256(0)); // amount1Min
+        inputsByFuse[0][7] = TypeConversionLib.toBytes32(uint256(block.timestamp + 100)); // deadline
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(
+            address(_velodromSuperchainSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature("enterTransient()")
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+
+        assertGt(marketBalanceAfter, marketBalanceBefore, "marketBalanceAfter > marketBalanceBefore");
+    }
+
+    /// @notice Test that exitTransient() correctly reads inputs from transient storage and decreases liquidity
+    function test_shouldDecreasePositionUsingTransientStorage() public {
+        // given - first create a position and increase it
+        test_shouldIncreasePosition();
+
+        uint256[] memory tokenIds = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
+            address(_plasmaVault),
+            _VELODROME_POOL
+        );
+
+        uint128 liquidityBefore = _getLiquidity(tokenIds[0]);
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+
+        // Prepare transient inputs: tokenId, liquidity, amount0Min, amount1Min, deadline
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromSuperchainSlipstreamModifyPositionFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](5);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(tokenIds[0]); // tokenId
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(liquidityBefore / 2)); // liquidity
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(0)); // amount0Min
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(uint256(0)); // amount1Min
+        inputsByFuse[0][4] = TypeConversionLib.toBytes32(uint256(block.timestamp + 100)); // deadline
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(
+            address(_velodromSuperchainSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature("exitTransient()")
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+        uint128 liquidityAfter = _getLiquidity(tokenIds[0]);
+
+        assertGt(marketBalanceBefore, marketBalanceAfter, "marketBalanceBefore > marketBalanceAfter");
+        assertGt(liquidityBefore, liquidityAfter, "liquidityBefore > liquidityAfter");
+    }
+
+    /// @notice Test that enterTransient() correctly reads inputs from transient storage and stakes to gauge
+    function test_shouldStakeToGaugeUsingTransientStorage() public {
+        // given - first create a position
+        test_shouldCollectFromNFTPosition();
+
+        uint256[] memory tokenIds = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
+            address(_plasmaVault),
+            _VELODROME_POOL
+        );
+
+        // Prepare transient inputs: gaugeAddress, tokenId
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromSuperchainSlipstreamLeafCLGaugeFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_VELODROME_GAUGE); // gaugeAddress
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(tokenIds[0]); // tokenId
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(
+            address(_velodromSuperchainSlipstreamLeafCLGaugeFuse),
+            abi.encodeWithSignature("enterTransient()")
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256[] memory stakedValues = ILeafCLGauge(_VELODROME_GAUGE).stakedValues(address(_plasmaVault));
+
+        assertEq(stakedValues[0], tokenIds[0], "stakedValues[0] should be equal to tokenIds[0]");
+    }
+
+    /// @notice Test that exitTransient() correctly reads inputs from transient storage and unstakes from gauge
+    function test_shouldUnstakeFromGaugeUsingTransientStorage() public {
+        // given - first stake to gauge
+        test_shouldStakeToGauge();
+
+        uint256[] memory stakedValues = ILeafCLGauge(_VELODROME_GAUGE).stakedValues(address(_plasmaVault));
+
+        uint256[] memory tokenIdsBefore = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
+            address(_plasmaVault),
+            _VELODROME_POOL
+        );
+
+        // Prepare transient inputs: gaugeAddress, tokenId
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromSuperchainSlipstreamLeafCLGaugeFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_VELODROME_GAUGE); // gaugeAddress
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(stakedValues[0]); // tokenId
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(
+            address(_velodromSuperchainSlipstreamLeafCLGaugeFuse),
+            abi.encodeWithSignature("exitTransient()")
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256[] memory tokenIdsAfter = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
+            address(_plasmaVault),
+            _VELODROME_POOL
+        );
+
+        assertEq(tokenIdsBefore.length + 1, tokenIdsAfter.length, "tokenIdsBefore should be equal to tokenIdsAfter");
+    }
+
+    /// @notice Test that enterTransient() correctly reads inputs from transient storage and collects fees
+    function test_shouldCollectFromNFTPositionUsingTransientStorage() public {
+        test_shouldDecreasePosition();
+
+        // given
+        uint256[] memory tokenIds = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).userPositions(
+            address(_plasmaVault),
+            _VELODROME_POOL
+        );
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+        uint256 usdceBalanceBefore = IERC20(_USDCE).balanceOf(address(_plasmaVault));
+        uint256 usdtoBalanceBefore = IERC20(_USDTO).balanceOf(address(_plasmaVault));
+
+        // Prepare transient inputs: length, tokenIds
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromSuperchainSlipstreamCollectFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](1 + tokenIds.length);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(tokenIds.length);
+        for (uint256 i = 0; i < tokenIds.length; ++i) {
+            inputsByFuse[0][i + 1] = TypeConversionLib.toBytes32(tokenIds[i]);
+        }
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(
+            address(_velodromSuperchainSlipstreamCollectFuse),
+            abi.encodeWithSignature("enterTransient()")
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM
+        );
+        uint256 usdceBalanceAfter = IERC20(_USDCE).balanceOf(address(_plasmaVault));
+        uint256 usdtoBalanceAfter = IERC20(_USDTO).balanceOf(address(_plasmaVault));
+
+        assertGt(usdceBalanceAfter, usdceBalanceBefore, "usdceBalanceAfter should be greater than usdceBalanceBefore");
+        assertGt(usdtoBalanceAfter, usdtoBalanceBefore, "usdtoBalanceAfter should be greater than usdtoBalanceBefore");
+        assertGt(
+            marketBalanceBefore,
+            marketBalanceAfter,
+            "marketBalanceBefore should be greater than marketBalanceAfter"
+        );
     }
 }
