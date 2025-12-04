@@ -9,6 +9,7 @@ import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovern
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 
 // Enso Fuses
 import {EnsoFuse, EnsoFuseEnterData, EnsoFuseExitData} from "../../../contracts/fuses/enso/EnsoFuse.sol";
@@ -99,7 +100,7 @@ contract EnsoFuseTest is Test {
 
     function _createVaultWithFusionFactory() private {
         // Create vault using FusionFactory with USDC as underlying
-        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
             "Enso Test Vault",
             "ENSO-V",
             USDC, // underlying token

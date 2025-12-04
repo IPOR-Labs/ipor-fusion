@@ -88,7 +88,6 @@ contract StEthWrapperFuseTest is Test {
         );
 
         _initAccessManager();
-        _initialDepositIntoPlasmaVault();
     }
 
     /// @notice Create price oracle
@@ -236,6 +235,7 @@ contract StEthWrapperFuseTest is Test {
     /// @notice Tests wrapping stETH to wstETH
     function testShouldBeAbleWrap() external {
         // given
+        _initialDepositIntoPlasmaVault();
         uint256 stEthToWrap = 50e18;
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
@@ -265,9 +265,26 @@ contract StEthWrapperFuseTest is Test {
         assertApproxEqAbs(plasmaVaultBalanceAfter, 50e18, _errorDelta, "stETH balance before should be 50");
     }
 
-    /// @notice Tests wrapping stETH to wstETH with smaller amount than requested
+    function testSkipWhenFinalAmountToWrapIsEqualZero() external {
+        // given
+        uint256 stEthToWrap = 100e18;
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+
+        enterCalls[0] = FuseAction({
+            fuse: _stEthWrapperFuse,
+            data: abi.encodeWithSignature("enter(uint256)", stEthToWrap)
+        });
+
+        //when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(enterCalls); //no fail
+        vm.stopPrank();
+    }
+
     function testShouldBeAbleWrapSmallerAmountThanRequested() external {
         // given
+        _initialDepositIntoPlasmaVault();
         uint256 stEthToWrap = 101e18;
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
@@ -300,6 +317,7 @@ contract StEthWrapperFuseTest is Test {
     /// @notice Tests unwrapping wstETH to stETH
     function testShouldBeAbleUnwrap() external {
         // given
+        _initialDepositIntoPlasmaVault();
         uint256 stEthToWrap = 50e18;
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
@@ -348,6 +366,7 @@ contract StEthWrapperFuseTest is Test {
     /// @notice Tests unwrapping wstETH to stETH with smaller amount than requested
     function testShouldBeAbleUnwrapSmallerAmountThanRequested() external {
         // given
+        _initialDepositIntoPlasmaVault();
         uint256 stEthToWrap = 50e18;
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
@@ -396,6 +415,7 @@ contract StEthWrapperFuseTest is Test {
     /// @notice Tests entering the wrapper via transient storage inputs
     function testShouldEnterTransient() external {
         // given
+        _initialDepositIntoPlasmaVault();
         uint256 stEthToWrap = 50e18;
         address fuseAddress = _stEthWrapperFuse;
 
@@ -442,6 +462,7 @@ contract StEthWrapperFuseTest is Test {
     /// @notice Tests exiting the wrapper via transient storage inputs
     function testShouldExitTransient() external {
         // given
+        _initialDepositIntoPlasmaVault();
         uint256 stEthToWrap = 50e18;
 
         FuseAction[] memory enterCalls = new FuseAction[](1);

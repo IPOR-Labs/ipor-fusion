@@ -8,6 +8,7 @@ import {AccessManagerFactory} from "../../../contracts/factory/AccessManagerFact
 import {ContextManagerFactory} from "../../../contracts/factory/ContextManagerFactory.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {PriceManagerFactory} from "../../../contracts/factory/PriceManagerFactory.sol";
@@ -839,7 +840,7 @@ contract YieldBasisFuseTest is Test {
     }
 
     function _createVaultWithFusionFactory() private {
-        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
             "Yield Basis Vault",
             "yieldBasisVault",
             WBTC,

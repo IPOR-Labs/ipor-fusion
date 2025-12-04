@@ -15,6 +15,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AerodromeBalanceFuse} from "../../../contracts/fuses/aerodrome/AerodromeBalanceFuse.sol";
 import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "../../../contracts/fuses/aerodrome/AreodromeLib.sol";
@@ -73,7 +74,7 @@ contract AerodromeFuseTests is Test {
 
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
 
-        FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "Aerodrome",
             "AERO",
             _UNDERLYING_TOKEN,

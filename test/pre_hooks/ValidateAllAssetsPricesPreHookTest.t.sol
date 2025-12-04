@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {ValidateAllAssetsPricesPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/ValidateAllAssetsPricesPreHook.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -23,7 +24,7 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
     address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
-    FusionFactoryLib.FusionInstance private _fusionInstance;
+    FusionFactoryLogicLib.FusionInstance private _fusionInstance;
     ValidateAllAssetsPricesPreHook private _validateAllAssetsPricesPreHook;
     MutableValuePriceFeed private _mutableValuePriceFeed;
 

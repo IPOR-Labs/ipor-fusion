@@ -7,6 +7,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
@@ -102,7 +103,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
         vm.stopPrank();
 
-        FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "VelodromeSuperchainSlipstream",
             "VSS",
             _UNDERLYING_TOKEN,

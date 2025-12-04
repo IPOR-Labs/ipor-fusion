@@ -15,6 +15,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {VelodromeSuperchainBalanceFuse} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainBalanceFuse.sol";
 import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainLib.sol";
@@ -78,7 +79,7 @@ contract VelodromeSuperchainFuseTests is Test {
 
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
 
-        FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "Velodrome",
             "VEL",
             _UNDERLYING_TOKEN,

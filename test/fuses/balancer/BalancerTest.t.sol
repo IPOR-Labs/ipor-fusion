@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
+import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
+import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
@@ -48,7 +56,7 @@ contract BalancerTest is Test {
 
     BalancerBalanceFuse private _balancerBalanceFuse;
 
-    FusionFactoryLib.FusionInstance private _fusionInstance;
+    FusionFactoryLogicLib.FusionInstance private _fusionInstance;
     BalancerGaugeFuse private _balancerGaugeFuse;
     BalancerLiquidityProportionalFuse private _balancerLiquidityProportionalFuse;
     BalancerLiquidityUnbalancedFuse private _balancerLiquidityUnbalancedFuse;
