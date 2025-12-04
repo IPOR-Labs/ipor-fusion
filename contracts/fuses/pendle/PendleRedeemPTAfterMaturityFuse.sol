@@ -94,11 +94,26 @@ contract PendleRedeemPTAfterMaturityFuse is IFuseCommon {
     }
 
     /// @notice Enters the Fuse using transient storage for parameters
-    /// @dev Inputs order: market, netPyIn, tokenOut, minTokenOut, tokenRedeemSy, pendleSwap,
-    ///      swapType, extRouter, extCalldataLength, extCalldataFirst32Bytes, needScale
-    /// TODO: NEED to be fixed, SwapData is not supported in transient storage
+    /// @dev Inputs layout (N = ceil(extCalldataLength/32)):
+    ///      | Index    | Value                                    |
+    ///      |----------|------------------------------------------|
+    ///      | 0        | market                                   |
+    ///      | 1        | netPyIn                                  |
+    ///      | 2        | tokenOut                                 |
+    ///      | 3        | minTokenOut                              |
+    ///      | 4        | tokenRedeemSy                            |
+    ///      | 5        | pendleSwap                               |
+    ///      | 6        | swapType                                 |
+    ///      | 7        | extRouter                                |
+    ///      | 8        | extCalldataLength (in bytes)             |
+    ///      | 9..9+N-1 | extCalldata chunks (N = ceil(length/32)) |
+    ///      | 9+N      | needScale                                |
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        uint256 extCalldataLength = TypeConversionLib.toUint256(inputs[8]);
+        uint256 extCalldataChunks = (extCalldataLength + 31) / 32;
+        uint256 needScaleIndex = 9 + extCalldataChunks;
 
         // Construct data struct inline to reduce stack depth
         PendleRedeemPTAfterMaturityFuseEnterData memory data_ = PendleRedeemPTAfterMaturityFuseEnterData({
@@ -113,7 +128,7 @@ contract PendleRedeemPTAfterMaturityFuse is IFuseCommon {
                     swapType: SwapType(uint8(TypeConversionLib.toUint256(inputs[6]))),
                     extRouter: TypeConversionLib.toAddress(inputs[7]),
                     extCalldata: _buildExtCalldata(inputs, 8),
-                    needScale: TypeConversionLib.toUint256(inputs[10]) != 0
+                    needScale: TypeConversionLib.toUint256(inputs[needScaleIndex]) != 0
                 })
             })
         });
@@ -130,6 +145,7 @@ contract PendleRedeemPTAfterMaturityFuse is IFuseCommon {
     /// @param inputs_ Array of input values from transient storage
     /// @param lengthIndex_ Index where extCalldata length is stored
     /// @return extCalldata The constructed bytes array
+    /// @dev extCalldata is stored as: length (bytes) at lengthIndex_, followed by ceil(length/32) bytes32 chunks
     function _buildExtCalldata(
         bytes32[] memory inputs_,
         uint256 lengthIndex_
@@ -138,13 +154,15 @@ contract PendleRedeemPTAfterMaturityFuse is IFuseCommon {
         if (extCalldataLength == 0) {
             return extCalldata;
         }
-        // For simplicity, handle up to 32 bytes
-        if (extCalldataLength <= 32) {
-            bytes32 firstBytes = inputs_[lengthIndex_ + 1];
-            extCalldata = new bytes(extCalldataLength);
+
+        extCalldata = new bytes(extCalldataLength);
+        uint256 chunksCount = (extCalldataLength + 31) / 32;
+
+        for (uint256 i; i < chunksCount; ++i) {
+            bytes32 chunk = inputs_[lengthIndex_ + 1 + i];
+            uint256 offset = i * 32;
             assembly {
-                mstore(add(extCalldata, 32), firstBytes)
-                mstore(extCalldata, extCalldataLength)
+                mstore(add(add(extCalldata, 32), offset), chunk)
             }
         }
     }
