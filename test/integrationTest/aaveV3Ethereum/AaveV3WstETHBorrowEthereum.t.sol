@@ -364,7 +364,7 @@ contract AaveV3WstEthBorrowEthereum is BorrowTest {
 
     /// @notice Test that constructor reverts when initialized with zero address
     function testShouldRevertWhenInitializingWithZeroAddress() public {
-        vm.expectRevert(Errors.WrongAddress.selector);
+        vm.expectRevert(AaveV3BorrowFuse.AaveV3BorrowFuseInvalidAddress.selector);
         new AaveV3BorrowFuse(getMarketId(), address(0));
     }
 

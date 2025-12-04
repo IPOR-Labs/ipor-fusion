@@ -3,28 +3,65 @@ pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPool} from "./ext/IPool.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IGauge} from "./ext/IGauge.sol";
 import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodromeLib.sol";
 
+/// @title AerodromeBalanceFuse
+/// @notice Fuse for Aerodrome protocol responsible for calculating the balance of the Plasma Vault in Aerodrome protocol
+/// @dev This fuse calculates the total balance by iterating through all market substrates (pools and gauges) configured for the given MARKET_ID.
+///      For each substrate, it calculates:
+///      1. Balance from liquidity: The value of LP tokens held, calculated as a proportion of pool reserves
+///      2. Balance from fees: Accumulated fees calculated using index deltas and claimable amounts
+///      The final balance is converted to USD using the price oracle middleware and normalized to WAD (18 decimals).
+///      Substrates in this fuse can be either Pool addresses or Gauge addresses. For gauges, the underlying pool is retrieved.
+/// @author IPOR Labs
 contract AerodromeBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
+    /// @notice Custom error thrown when a pool has invalid token addresses (zero address)
     error InvalidPool();
 
+    /// @notice The address of this fuse version for tracking purposes
+    address public immutable VERSION;
+
+    /// @notice The market ID associated with this fuse
+    /// @dev This ID is used to retrieve the list of substrates (pools/gauges) configured for this market
     uint256 public immutable MARKET_ID;
 
+    /// @notice Constructor to initialize the fuse with a market ID
+    /// @param marketId_ The unique identifier for the market configuration
+    /// @dev The market ID is used to retrieve the list of substrates (pools/gauges) that this fuse will track.
+    ///      VERSION is set to the address of this contract instance for tracking purposes.
     constructor(uint256 marketId_) {
+        VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
-    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    /// @notice Calculates the total balance of the Plasma Vault in Aerodrome protocol
+    /// @dev This function iterates through all substrates (pools/gauges) configured for the MARKET_ID and calculates:
+    ///      1. For each substrate, retrieves the underlying pool address:
+    ///         - If substrate is a Gauge: retrieves the staking token (pool) from the gauge
+    ///         - If substrate is a Pool: uses the pool address directly
+    ///      2. Gets the LP token balance (liquidity) held by the vault for that pool
+    ///      3. Calculates balance from liquidity: proportionally calculates the value of underlying tokens
+    ///         based on the LP token balance relative to total supply and pool reserves
+    ///      4. Calculates balance from fees: accumulates claimable fees using index deltas
+    ///      5. Converts all balances to USD using price oracle middleware
+    ///      6. Normalizes results to WAD (18 decimals) and sums all balances
+    ///      The calculation methodology ensures that:
+    ///      - Both LP token value and accumulated fees are included in the balance
+    ///      - Index deltas track fee accumulation over time
+    ///      - All token amounts are converted to USD using oracle prices
+    ///      - Final result is normalized to WAD precision (18 decimals) for consistency
+    /// @return The total balance of the Plasma Vault in Aerodrome protocol, normalized to WAD (18 decimals)
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory pools = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
@@ -62,6 +99,22 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         return balance;
     }
 
+    /// @notice Calculates the USD value of LP tokens based on underlying pool reserves
+    /// @dev This function implements the balance calculation methodology for liquidity positions:
+    ///      1. Retrieves the two tokens (token0 and token1) that make up the pool
+    ///      2. Gets the current reserves of both tokens in the pool
+    ///      3. Gets the total supply of LP tokens for the pool
+    ///      4. Calculates the proportional share of reserves:
+    ///         amount0 = (liquidity_ * reserve0) / totalSupply
+    ///         amount1 = (liquidity_ * reserve1) / totalSupply
+    ///      5. Retrieves USD prices for both tokens from the price oracle middleware
+    ///      6. Converts each token amount to USD value and normalizes to WAD (18 decimals)
+    ///      The calculation assumes that LP tokens represent a proportional share of the pool's reserves.
+    ///      If totalSupply is zero, the function returns 0 to prevent division by zero.
+    /// @param pool_ The address of the Aerodrome pool
+    /// @param priceOracleMiddleware_ The address of the price oracle middleware for USD price conversion
+    /// @param liquidity_ The amount of LP tokens held by the vault
+    /// @return balanceInUsd The USD value of the LP tokens, normalized to WAD (18 decimals)
     function _calculateBalanceFromLiquidity(
         address pool_,
         address priceOracleMiddleware_,
@@ -77,6 +130,11 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         (uint256 reserve0, uint256 reserve1, ) = IPool(pool_).getReserves();
         uint256 totalSupply = IERC20(pool_).totalSupply();
 
+        // Prevent division by zero: if totalSupply is zero, return 0 balance
+        if (totalSupply == 0) {
+            return 0;
+        }
+
         uint256 amount0 = (liquidity_ * reserve0) / totalSupply;
         uint256 amount1 = (liquidity_ * reserve1) / totalSupply;
 
@@ -89,6 +147,35 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         return balanceInUsd;
     }
 
+    /// @notice Calculates the USD value of accumulated fees from the pool using index delta calculations
+    /// @dev This function implements the fee calculation logic using index deltas:
+    ///      Fee Accumulation Mechanism:
+    ///      - Aerodrome pools track fees using two indices per token (index0 and index1)
+    ///      - Each pool maintains a global index that accumulates fees over time
+    ///      - Each liquidity provider has a supplyIndex that tracks their last checkpoint
+    ///      - The difference (delta) between current index and supplyIndex represents accumulated fees
+    ///
+    ///      Index Delta Calculation:
+    ///      1. Retrieves the current global indices (index0, index1) from the pool
+    ///      2. Retrieves the vault's last checkpoint indices (supplyIndex0, supplyIndex1)
+    ///      3. Calculates deltas: delta0 = index0 - supplyIndex0, delta1 = index1 - supplyIndex1
+    ///      4. The delta represents the fee growth per unit of liquidity since last checkpoint
+    ///
+    ///      Fee Amount Calculation:
+    ///      1. Gets already claimable fees (claimable0, claimable1) that haven't been claimed yet
+    ///      2. Calculates additional fees from index deltas:
+    ///         additionalFees0 = (liquidity_ * delta0) / 1e18
+    ///         additionalFees1 = (liquidity_ * delta1) / 1e18
+    ///      3. Total claimable = already claimable + additional fees from deltas
+    ///      4. Converts claimable amounts to USD using price oracle middleware
+    ///      5. Normalizes to WAD (18 decimals) and returns total USD value
+    ///
+    ///      The index delta approach ensures accurate fee tracking even if fees accumulate between balance checks.
+    ///      Only positive deltas are considered to avoid underflow issues.
+    /// @param pool_ The address of the Aerodrome pool
+    /// @param priceOracleMiddleware_ The address of the price oracle middleware for USD price conversion
+    /// @param liquidity_ The amount of LP tokens held by the vault
+    /// @return balanceInUsd The USD value of accumulated fees, normalized to WAD (18 decimals)
     function _calculateBalanceFromFees(
         address pool_,
         address priceOracleMiddleware_,
@@ -100,12 +187,16 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         uint256 index0 = IPool(pool_).index0();
         uint256 index1 = IPool(pool_).index1();
 
+        // Calculate index deltas: difference between current global index and vault's last checkpoint
         uint256 delta0 = index0 - supplyIndex0;
         uint256 delta1 = index1 - supplyIndex1;
 
+        // Get already claimable fees that haven't been claimed yet
         uint256 claimable0 = IPool(pool_).claimable0(plasmaVault);
         uint256 claimable1 = IPool(pool_).claimable1(plasmaVault);
 
+        // Add fees accumulated since last checkpoint using index deltas
+        // delta represents fee growth per unit of liquidity, multiplied by liquidity to get total fees
         if (delta0 > 0) {
             claimable0 += (liquidity_ * delta0) / 1e18;
         }
@@ -114,6 +205,7 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
             claimable1 += (liquidity_ * delta1) / 1e18;
         }
 
+        // Convert claimable fees to USD value
         if (claimable0 > 0) {
             address token0 = IPool(pool_).token0();
             (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
@@ -137,23 +229,5 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         }
 
         return balanceInUsd;
-    }
-
-    function substratesToBytes32(AerodromeSubstrate[] memory substrates_) private pure returns (bytes32[] memory) {
-        bytes32[] memory bytes32Substrates = new bytes32[](substrates_.length);
-        for (uint256 i; i < substrates_.length; ++i) {
-            bytes32Substrates[i] = AerodromeSubstrateLib.substrateToBytes32(substrates_[i]);
-        }
-        return bytes32Substrates;
-    }
-
-    function bytes32ToSubstrate(
-        bytes32[] memory bytes32Substrates_
-    ) private pure returns (AerodromeSubstrate[] memory) {
-        AerodromeSubstrate[] memory substrates = new AerodromeSubstrate[](bytes32Substrates_.length);
-        for (uint256 i; i < bytes32Substrates_.length; ++i) {
-            substrates[i] = AerodromeSubstrateLib.bytes32ToSubstrate(bytes32Substrates_[i]);
-        }
-        return substrates;
     }
 }

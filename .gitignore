@@ -33,3 +33,6 @@ tools/check_tests_build.sh
 tools/check_fuses_build.sh
 tools/check_fuses_tests_build.sh
 tools/check_coverage.sh
+.claude/
+CLAUDE.md
+docs/

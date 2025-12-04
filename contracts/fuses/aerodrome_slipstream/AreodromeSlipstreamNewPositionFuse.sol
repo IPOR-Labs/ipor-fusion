@@ -42,10 +42,11 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
 
     error AreodromeSlipstreamNewPositionFuseUnsupportedPool(address pool);
     error InvalidAddress();
+    error InvalidAmount();
 
     event AreodromeSlipstreamNewPositionFuseEnter(
-        address indexed version,
-        uint256 indexed tokenId,
+        address version,
+        uint256 tokenId,
         uint128 liquidity,
         uint256 amount0,
         uint256 amount1,
@@ -56,7 +57,7 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
         int24 tickUpper
     );
 
-    event AreodromeSlipstreamNewPositionFuseExit(address indexed version, uint256 indexed tokenId);
+    event AreodromeSlipstreamNewPositionFuseExit(address version, uint256 tokenId);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -72,6 +73,10 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
         FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
+
+        if (FACTORY == address(0)) {
+            revert InvalidAddress();
+        }
     }
 
     /// @notice Creates a new NFT position
@@ -113,8 +118,13 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
             }
         }
 
-        IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
-        IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
+        if (data_.amount0Desired > 0) {
+            IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
+        }
+
+        if (data_.amount1Desired > 0) {
+            IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
+        }
 
         (tokenId, liquidity, amount0, amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).mint(
             INonfungiblePositionManager.MintParams({
@@ -166,8 +176,8 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
         bytes32 deadlineBytes32 = TransientStorageLib.getInput(VERSION, 9);
         bytes32 sqrtPriceX96Bytes32 = TransientStorageLib.getInput(VERSION, 10);
 
-        address token0 = PlasmaVaultConfigLib.bytes32ToAddress(token0Bytes32);
-        address token1 = PlasmaVaultConfigLib.bytes32ToAddress(token1Bytes32);
+        address token0 = TypeConversionLib.toAddress(token0Bytes32);
+        address token1 = TypeConversionLib.toAddress(token1Bytes32);
         int24 tickSpacing = int24(int256(TypeConversionLib.toUint256(tickSpacingBytes32)));
         int24 tickLower = int24(int256(TypeConversionLib.toUint256(tickLowerBytes32)));
         int24 tickUpper = int24(int256(TypeConversionLib.toUint256(tickUpperBytes32)));

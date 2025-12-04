@@ -8,24 +8,52 @@ import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.s
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
+/// @notice Data structure used for collecting fees from Aerodrome Slipstream NFT positions
+/// @dev This structure contains the list of NFT token IDs representing liquidity positions to collect fees from
+/// @param tokenIds Array of NFT token IDs representing liquidity positions in Aerodrome Slipstream pools
 struct AreodromeSlipstreamCollectFuseEnterData {
     uint256[] tokenIds;
 }
 
+/// @title AreodromeSlipstreamCollectFuse
+/// @notice Fuse for collecting accumulated fees from Aerodrome Slipstream NFT positions
+/// @dev This fuse allows users to collect fees that have accumulated in their NFT liquidity positions.
+///      It iterates through multiple token IDs and collects fees from each position.
+///      Supports both standard function calls and transient storage-based calls.
+/// @author IPOR Labs
 contract AreodromeSlipstreamCollectFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
+    /// @notice Emitted when fees are collected from an NFT position
+    /// @param version The address of the fuse contract version (VERSION immutable)
+    /// @param tokenId The NFT token ID representing the liquidity position
+    /// @param amount0 The amount of token0 collected as fees
+    /// @param amount1 The amount of token1 collected as fees
     event AreodromeSlipstreamCollectFuseEnter(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
 
+    /// @notice Thrown when an unsupported method is called
     error UnsupportedMethod();
+
+    /// @notice Thrown when an invalid address (zero address) is provided
     error InvalidAddress();
 
+    /// @notice The version identifier of this fuse contract
     address public immutable VERSION;
+
+    /// @notice The market ID associated with this fuse
+    /// @dev Used for market-specific configuration and validation
     uint256 public immutable MARKET_ID;
 
-    /// @dev Manage NFTs representing liquidity positions
+    /// @notice The address of the Aerodrome Slipstream NonfungiblePositionManager contract
+    /// @dev Manages NFT positions representing liquidity in Aerodrome Slipstream pools
     address public immutable NONFUNGIBLE_POSITION_MANAGER;
 
+    /// @notice Constructor to initialize the fuse with market ID and position manager
+    /// @param marketId_ The unique identifier for the market configuration
+    /// @param nonfungiblePositionManager_ The address of the Aerodrome Slipstream NonfungiblePositionManager contract
+    /// @dev Validates that nonfungiblePositionManager_ is not zero address.
+    ///      Sets VERSION to the address of this contract instance.
+    /// @custom:revert InvalidAddress When nonfungiblePositionManager_ is zero address
     constructor(uint256 marketId_, address nonfungiblePositionManager_) {
         if (nonfungiblePositionManager_ == address(0)) {
             revert InvalidAddress();
@@ -37,9 +65,12 @@ contract AreodromeSlipstreamCollectFuse is IFuseCommon {
     }
 
     /// @notice Collects fees from multiple NFT positions
-    /// @param data_ Enter data containing array of token IDs
-    /// @return totalAmount0 The total amount of token0 collected
-    /// @return totalAmount1 The total amount of token1 collected
+    /// @dev Iterates through the provided token IDs and collects accumulated fees from each position.
+    ///      Returns early with zero amounts if the tokenIds array is empty.
+    ///      Emits an event for each position from which fees are collected.
+    /// @param data_ Enter data containing array of token IDs representing liquidity positions
+    /// @return totalAmount0 The total amount of token0 collected across all positions
+    /// @return totalAmount1 The total amount of token1 collected across all positions
     function enter(
         AreodromeSlipstreamCollectFuseEnterData memory data_
     ) public returns (uint256 totalAmount0, uint256 totalAmount1) {
