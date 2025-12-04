@@ -11,9 +11,13 @@ import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.s
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 /**
- * @dev data structure used for entering the Liquity Stability Pool by providing BOLD to it
- * @param registry The registry to which the stability pool is registered
- * @param amount The amount of BOLD to provide
+ * @notice Data structure used for entering the Liquity Stability Pool by providing BOLD to it
+ * @dev This structure contains the registry address and amount of BOLD tokens to deposit into the stability pool.
+ *      The registry address must be granted as a substrate for the market and will be validated before execution.
+ * @param registry The address of the Liquity AddressesRegistry contract that contains the stability pool configuration.
+ *                 This registry must be granted as a substrate for the MARKET_ID.
+ * @param amount The amount of BOLD tokens to deposit into the stability pool (in BOLD token decimals).
+ *               If zero, the function will return early without executing any operations.
  */
 struct LiquityStabilityPoolFuseEnterData {
     address registry;
@@ -21,9 +25,15 @@ struct LiquityStabilityPoolFuseEnterData {
 }
 
 /**
- * @dev data structure used for exiting the Liquity Stability Pool by withdrawing BOLD and rewards from it
- * @param registry The registry to which the stability pool is registered
- * @param amount The amount of BOLD to withdraw (collateral is always totally withdrawn)
+ * @notice Data structure used for exiting the Liquity Stability Pool by withdrawing BOLD and rewards from it
+ * @dev This structure contains the registry address and amount of BOLD tokens to withdraw from the stability pool.
+ *      When exiting, all collateral rewards are automatically claimed and withdrawn regardless of the BOLD amount.
+ *      The registry address must be granted as a substrate for the market and will be validated before execution.
+ * @param registry The address of the Liquity AddressesRegistry contract that contains the stability pool configuration.
+ *                 This registry must be granted as a substrate for the MARKET_ID.
+ * @param amount The amount of BOLD tokens to withdraw from the stability pool (in BOLD token decimals).
+ *               If zero and there are no deposits, only collateral rewards will be claimed.
+ *               Collateral rewards are always fully withdrawn regardless of this amount.
  */
 struct LiquityStabilityPoolFuseExitData {
     address registry;

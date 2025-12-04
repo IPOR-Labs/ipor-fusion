@@ -116,7 +116,7 @@ contract MorphoBorrowFuse is IFuseCommon {
 
         MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoMarketId));
 
-        /// @dev Approve the loan token to be spent by MORPHO, to max value because cost of calculation in case when want to send shears to repay
+        /// @dev Approve the loan token to be spent by MORPHO, to max value because cost of calculation in case when want to send shares to repay
         ERC20(marketParams.loanToken).forceApprove(address(MORPHO), type(uint256).max);
 
         (assetsRepaid, sharesRepaid) = MORPHO.repay(

@@ -32,9 +32,28 @@ contract MoonwellEnableMarketFuse is IFuseCommon {
     /// @notice Moonwell Comptroller contract reference
     MComptroller public immutable COMPTROLLER;
 
+    /// @notice Emitted when markets (mTokens) are successfully enabled as collateral in Moonwell
+    /// @param version The address of this fuse contract version
+    /// @param mTokens Array of mToken addresses that were successfully enabled as collateral
     event MoonwellMarketEnabled(address version, address[] mTokens);
+
+    /// @notice Emitted when a market (mToken) is successfully disabled as collateral in Moonwell
+    /// @param version The address of this fuse contract version
+    /// @param mToken The mToken address that was successfully disabled as collateral
     event MoonwellMarketDisabled(address version, address mToken);
+
+    /// @notice Emitted when enabling markets (mTokens) as collateral fails
+    /// @param version The address of this fuse contract version
+    /// @param mTokens Array of mToken addresses for which enabling as collateral failed
+    /// @dev This event is emitted when one or more mTokens in the array failed to be enabled,
+    ///      typically due to an error code returned by the Moonwell Comptroller
     event MoonwellMarketEnableFailed(address version, address[] mTokens);
+
+    /// @notice Emitted when disabling a market (mToken) as collateral fails
+    /// @param version The address of this fuse contract version
+    /// @param mToken The mToken address for which disabling as collateral failed
+    /// @dev This event is emitted when the mToken failed to be disabled, typically due to
+    ///      an error code returned by the Moonwell Comptroller (e.g., if there's outstanding debt)
     event MoonwellMarketDisableFailed(address version, address mToken);
 
     error MoonwellEnableMarketFuseUnsupportedMToken(address mToken);

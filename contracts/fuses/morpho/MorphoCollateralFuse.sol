@@ -12,18 +12,22 @@ import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.s
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 /// @notice Structure for entering (supplyCollateral) to the Morpho protocol
+/// @param morphoMarketId The Morpho market ID (bytes32) to supply collateral to
+/// @param collateralAmount The maximum amount of collateral tokens to supply (in collateral token decimals)
 struct MorphoCollateralFuseEnterData {
-    // vault address
+    /// @notice The Morpho market ID to supply collateral to
     bytes32 morphoMarketId;
-    // max amount to supply (in collateral token decimals)
+    /// @notice The maximum amount of collateral tokens to supply (in collateral token decimals)
     uint256 collateralAmount;
 }
 
 /// @notice Structure for exiting (withdrawCollateral) from the Morpho protocol
+/// @param morphoMarketId The Morpho market ID (bytes32) to withdraw collateral from
+/// @param maxCollateralAmount The maximum amount of collateral tokens to withdraw (in collateral token decimals)
 struct MorphoCollateralFuseExitData {
-    // vault address
+    /// @notice The Morpho market ID to withdraw collateral from
     bytes32 morphoMarketId;
-    // max amount to supply (in collateral token decimals)`
+    /// @notice The maximum amount of collateral tokens to withdraw (in collateral token decimals)
     uint256 maxCollateralAmount;
 }
 
@@ -33,13 +37,36 @@ contract MorphoCollateralFuse is IFuseCommon {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
+    /// @notice Address of this fuse contract version
+    /// @dev Immutable value set in constructor, used for tracking and versioning
     address public immutable VERSION;
+
+    /// @notice Market ID this fuse operates on
+    /// @dev Immutable value set in constructor, used to retrieve market substrates (Morpho Market IDs)
     uint256 public immutable MARKET_ID;
+
+    /// @notice Morpho protocol contract address
+    /// @dev Immutable value set in constructor, used for Morpho protocol interactions
     IMorpho public immutable MORPHO;
 
+    /// @notice Emitted when collateral is supplied to Morpho protocol
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the collateral token supplied
+    /// @param market The Morpho market ID
+    /// @param amount The amount of collateral tokens supplied
     event MorphoCollateralFuseEnter(address version, address asset, bytes32 market, uint256 amount);
+
+    /// @notice Emitted when collateral is withdrawn from Morpho protocol
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the collateral token withdrawn
+    /// @param market The Morpho market ID
+    /// @param amount The amount of collateral tokens withdrawn
     event MorphoCollateralFuseExit(address version, address asset, bytes32 market, uint256 amount);
 
+    /// @notice Thrown when an unsupported Morpho market is accessed
+    /// @param action The action being performed ("enter" or "exit")
+    /// @param morphoMarketId The Morpho market ID that is not supported
+    /// @custom:error MorphoCollateralUnsupportedMarket
     error MorphoCollateralUnsupportedMarket(string action, bytes32 morphoMarketId);
 
     constructor(uint256 marketId_, address morpho_) {

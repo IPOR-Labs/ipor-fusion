@@ -4,8 +4,9 @@ pragma solidity 0.8.30;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IFuseCommon} from "../IFuseCommon.sol";
 
+import {IFuseCommon} from "../IFuseCommon.sol";
+import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
@@ -15,21 +16,24 @@ import {MorphoBalancesLib} from "@morpho-org/morpho-blue/src/libraries/periphery
 import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib.sol";
 import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParamsLib.sol";
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
-import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 
 /// @notice Structure for entering (supply) to the Morpho protocol
+/// @param morphoMarketId The Morpho market ID (bytes32) to supply assets to
+/// @param amount The maximum amount of tokens to supply to the Morpho protocol
 struct MorphoSupplyFuseEnterData {
-    // vault address
+    /// @notice The Morpho market ID to supply assets to
     bytes32 morphoMarketId;
-    // max amount to supply
+    /// @notice The maximum amount of tokens to supply
     uint256 amount;
 }
 
 /// @notice Structure for exiting (withdraw) from the Morpho protocol
+/// @param morphoMarketId The Morpho market ID (bytes32) to withdraw assets from
+/// @param amount The amount of assets to withdraw from the Morpho protocol
 struct MorphoSupplyFuseExitData {
-    // vault address
+    /// @notice The Morpho market ID to withdraw assets from
     bytes32 morphoMarketId;
-    // max amount to supply
+    /// @notice The amount of assets to withdraw
     uint256 amount;
 }
 
@@ -43,12 +47,34 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SharesMathLib for uint256;
     using MarketParamsLib for MarketParams;
 
+    /// @notice Morpho protocol contract address
+    /// @dev Immutable value set in constructor, used for Morpho protocol interactions
     IMorpho public immutable MORPHO;
 
+    /// @notice Emitted when assets are supplied to Morpho protocol
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the asset supplied
+    /// @param market The Morpho market ID
+    /// @param amount The amount of assets supplied
     event MorphoSupplyFuseEnter(address version, address asset, bytes32 market, uint256 amount);
+
+    /// @notice Emitted when assets are withdrawn from Morpho protocol
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the asset withdrawn
+    /// @param market The Morpho market ID
+    /// @param amount The amount of assets withdrawn
     event MorphoSupplyFuseExit(address version, address asset, bytes32 market, uint256 amount);
+
+    /// @notice Emitted when withdrawal from Morpho protocol fails
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the asset that failed to withdraw
+    /// @param market The Morpho market ID
     event MorphoSupplyFuseExitFailed(address version, address asset, bytes32 market);
 
+    /// @notice Thrown when an unsupported Morpho market is accessed
+    /// @param action The action being performed ("enter" or "exit")
+    /// @param morphoMarketId The Morpho market ID that is not supported
+    /// @custom:error MorphoSupplyFuseUnsupportedMarket
     error MorphoSupplyFuseUnsupportedMarket(string action, bytes32 morphoMarketId);
 
     address public immutable VERSION;
@@ -183,7 +209,11 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
     }
 
-    /// @notice Enters the Fuse using transient storage for parameters
+    /**
+     * @notice Enters the Fuse using transient storage for parameters
+     * @dev Reads morphoMarketId and amount from transient storage inputs.
+     *      Writes returned asset, market, and amount to transient storage outputs.
+     */
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
         bytes32 morphoMarketId = inputs[0];
@@ -200,7 +230,11 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
-    /// @notice Exits the Fuse using transient storage for parameters
+    /**
+     * @notice Exits the Fuse using transient storage for parameters
+     * @dev Reads morphoMarketId and amount from transient storage inputs.
+     *      Writes returned asset, market, and amount to transient storage outputs.
+     */
     function exitTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
         bytes32 morphoMarketId = inputs[0];

@@ -44,8 +44,25 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Market ID this fuse is associated with
     uint256 public immutable MARKET_ID;
 
+    /// @notice Emitted when assets are successfully supplied to Moonwell
+    /// @param version The address of this fuse contract version
+    /// @param asset The underlying asset address that was supplied
+    /// @param market The mToken (market) address where the asset was supplied
+    /// @param amount The amount of underlying asset supplied (in asset decimals)
     event MoonwellSupplyEnterFuse(address version, address asset, address market, uint256 amount);
+
+    /// @notice Emitted when assets are successfully withdrawn from Moonwell
+    /// @param version The address of this fuse contract version
+    /// @param asset The underlying asset address that was withdrawn
+    /// @param market The mToken (market) address from which the asset was withdrawn
+    /// @param amount The amount of underlying asset withdrawn (in asset decimals)
     event MoonwellSupplyExitFuse(address version, address asset, address market, uint256 amount);
+
+    /// @notice Emitted when asset withdrawal from Moonwell fails
+    /// @param version The address of this fuse contract version
+    /// @param asset The underlying asset address for which withdrawal was attempted
+    /// @param market The mToken (market) address from which withdrawal was attempted
+    /// @param amount The amount of underlying asset that was attempted to be withdrawn (in asset decimals)
     event MoonwellSupplyExitFailed(address version, address asset, address market, uint256 amount);
 
     error MoonwellSupplyFuseMintFailed();
@@ -107,7 +124,7 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param params_ Array of parameters for withdrawal
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
-        address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
+        address asset = TypeConversionLib.toAddress(params_[1]);
 
         _exit(MoonwellSupplyFuseExitData(asset, amount), true);
     }

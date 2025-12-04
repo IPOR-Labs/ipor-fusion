@@ -11,19 +11,21 @@ import {MoonwellHelperLib} from "./MoonwellHelperLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
-/// @notice Data for borrowing assets from Moonwell
-/// @param asset Asset to borrow
-/// @param amount Amount to borrow
+/// @notice Data structure for borrowing assets from Moonwell
+/// @dev This structure contains the asset address and amount to borrow from Moonwell markets
 struct MoonwellBorrowFuseEnterData {
+    /// @notice The address of the underlying asset to borrow
     address asset;
+    /// @notice The amount of underlying asset to borrow (in asset decimals)
     uint256 amount;
 }
 
-/// @notice Data for repaying borrowed assets to Moonwell
-/// @param asset Asset to repay
-/// @param amount Amount to repay
+/// @notice Data structure for repaying borrowed assets to Moonwell
+/// @dev This structure contains the asset address and amount to repay to Moonwell markets
 struct MoonwellBorrowFuseExitData {
+    /// @notice The address of the borrowed asset to repay
     address asset;
+    /// @notice The amount of borrowed asset to repay (in asset decimals)
     uint256 amount;
 }
 
@@ -52,11 +54,19 @@ contract MoonwellBorrowFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    /// @notice Borrow assets from Moonwell
-    /// @param data_ Struct containing asset and amount to borrow
-    /// @return asset Asset address borrowed
-    /// @return market Market address (mToken)
-    /// @return amount Amount borrowed
+    /**
+     * @notice Borrows assets from Moonwell protocol
+     * @param data_ Struct containing the asset address and amount to borrow
+     * @return asset The address of the borrowed asset
+     * @return market The address of the mToken (market) where the asset was borrowed
+     * @return amount The amount of assets borrowed (in asset decimals)
+     * @dev This function:
+     *      1. Validates that the amount is non-zero (returns early if zero)
+     *      2. Retrieves the mToken address for the given asset from market substrates
+     *      3. Calls the mToken's borrow function to borrow the specified amount
+     *      4. Reverts if the borrow operation fails (non-zero error code)
+     *      5. Emits an event with the borrow details including the mToken address
+     */
     function enter(
         MoonwellBorrowFuseEnterData memory data_
     ) public returns (address asset, address market, uint256 amount) {
@@ -78,11 +88,21 @@ contract MoonwellBorrowFuse is IFuseCommon {
         emit MoonwellBorrowEntered(VERSION, asset, market, amount);
     }
 
-    /// @notice Repay borrowed assets to Moonwell
-    /// @param data_ Struct containing asset and amount to repay
-    /// @return asset Asset address repaid
-    /// @return market Market address (mToken)
-    /// @return amount Amount repaid
+    /**
+     * @notice Repays borrowed assets to Moonwell protocol
+     * @param data_ Struct containing the asset address and amount to repay
+     * @return asset The address of the repaid asset
+     * @return market The address of the mToken (market) where the asset was repaid
+     * @return amount The amount of assets repaid (in asset decimals)
+     * @dev This function:
+     *      1. Validates that the amount is non-zero (returns early if zero)
+     *      2. Retrieves the mToken address for the given asset from market substrates
+     *      3. Approves the mToken to spend the repayment amount
+     *      4. Calls the mToken's repayBorrow function to repay the specified amount
+     *      5. Reverts if the repay operation fails (non-zero error code)
+     *      6. Revokes the approval after repayment
+     *      7. Emits an event with the repay details including the mToken address
+     */
     function exit(
         MoonwellBorrowFuseExitData memory data_
     ) public returns (address asset, address market, uint256 amount) {
@@ -108,7 +128,13 @@ contract MoonwellBorrowFuse is IFuseCommon {
         emit MoonwellBorrowExited(VERSION, asset, market, amount);
     }
 
-    /// @notice Enters the Fuse using transient storage for parameters
+    /**
+     * @notice Enters (borrows) assets from Moonwell using transient storage for parameters
+     * @dev Reads asset and amount from transient storage inputs.
+     *      Input 0: asset address (bytes32)
+     *      Input 1: amount (bytes32)
+     *      Writes returned asset, market, and amount to transient storage outputs.
+     */
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
         address asset = TypeConversionLib.toAddress(inputs[0]);
@@ -125,7 +151,13 @@ contract MoonwellBorrowFuse is IFuseCommon {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
-    /// @notice Exits the Fuse using transient storage for parameters
+    /**
+     * @notice Exits (repays) assets to Moonwell using transient storage for parameters
+     * @dev Reads asset and amount from transient storage inputs.
+     *      Input 0: asset address (bytes32)
+     *      Input 1: amount (bytes32)
+     *      Writes returned asset, market, and amount to transient storage outputs.
+     */
     function exitTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
         address asset = TypeConversionLib.toAddress(inputs[0]);
