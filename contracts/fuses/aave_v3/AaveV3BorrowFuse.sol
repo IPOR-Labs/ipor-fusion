@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Errors} from "../../libraries/errors/Errors.sol";
+
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
@@ -61,16 +61,30 @@ contract AaveV3BorrowFuse is IFuseCommon {
     /// @param interestRateMode The interest rate mode (2 for variable)
     event AaveV3BorrowFuseExit(address version, address asset, uint256 repaidAmount, uint256 interestRateMode);
 
+    /// @notice Error thrown when an unsupported asset is used in enter or exit operations
+    /// @param action The action being performed ("enter" or "exit")
+    /// @param asset The address of the unsupported asset
     error AaveV3BorrowFuseUnsupportedAsset(string action, address asset);
+
+    /// @notice Error thrown when market ID is zero or invalid
+    /// @dev Market ID must be a non-zero value to identify the market configuration
+    error AaveV3BorrowFuseInvalidMarketId();
+
+    /// @notice Error thrown when an invalid address (zero address) is provided
+    /// @dev Used for validating Aave V3 Pool Addresses Provider address
+    error AaveV3BorrowFuseInvalidAddress();
 
     /// @notice Constructor for AaveV3BorrowFuse
     /// @param marketId_ The Market ID associated with the Fuse
     /// @param aaveV3PoolAddressesProvider_ The address of the Aave V3 Pool Addresses Provider
     constructor(uint256 marketId_, address aaveV3PoolAddressesProvider_) {
+        if (marketId_ == 0) {
+            revert AaveV3BorrowFuseInvalidMarketId();
+        }
         VERSION = address(this);
         MARKET_ID = marketId_;
         if (aaveV3PoolAddressesProvider_ == address(0)) {
-            revert Errors.WrongAddress();
+            revert AaveV3BorrowFuseInvalidAddress();
         }
         AAVE_V3_POOL_ADDRESSES_PROVIDER = aaveV3PoolAddressesProvider_;
     }

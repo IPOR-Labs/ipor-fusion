@@ -6,12 +6,10 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {AaveLendingPoolV2, ReserveData} from "../../../contracts/fuses/aave_v2/ext/AaveLendingPoolV2.sol";
 import {AaveV2SupplyFuse, AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
-import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {AaveV2SupplyFuseMock} from "./AaveV2SupplyFuseMock.sol";
-import {ILendingPoolAddressesProvider} from "./ILendingPoolAddressesProvider.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract AaveV2SupplyFuseTest is Test {
@@ -20,10 +18,8 @@ contract AaveV2SupplyFuseTest is Test {
         string name;
     }
 
+    /// @notice Aave Lending Pool V2 contract
     AaveLendingPoolV2 public constant AAVE_POOL = AaveLendingPoolV2(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
-    IAavePriceOracle public constant AAVE_PRICE_ORACLE = IAavePriceOracle(0x54586bE62E3c3580375aE3723C145253060Ca0C2);
-    ILendingPoolAddressesProvider public constant AAVE_POOL_DATA_PROVIDER =
-        ILendingPoolAddressesProvider(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
 
     SupportedToken private activeTokens;
 
@@ -59,19 +55,10 @@ contract AaveV2SupplyFuseTest is Test {
         address stableDebtTokenAddress = reserveData.stableDebtTokenAddress;
         address variableDebtTokenAddress = reserveData.variableDebtTokenAddress;
 
-        assertApproxEqAbs(balanceAfter + amount, balanceBefore, 100, "vault balance should be decreased by amount");
-        assertApproxEqAbs(
-            ERC20(aTokenAddress).balanceOf(address(vaultMock)),
-            amount,
-            100,
-            "aToken balance should be increased by amount"
-        );
-        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken balance should be 0");
-        assertEq(
-            ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)),
-            0,
-            "variableDebtToken balance should be 0"
-        );
+        assertApproxEqAbs(balanceAfter + amount, balanceBefore, 100, "vault balance decreased");
+        assertApproxEqAbs(ERC20(aTokenAddress).balanceOf(address(vaultMock)), amount, 100, "aToken balance increased");
+        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken 0");
+        assertEq(ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "variableDebtToken 0");
     }
 
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
@@ -106,19 +93,15 @@ contract AaveV2SupplyFuseTest is Test {
         address stableDebtTokenAddress = reserveData.stableDebtTokenAddress;
         address variableDebtTokenAddress = reserveData.variableDebtTokenAddress;
 
-        assertEq(balanceAfter + enterAmount - exitAmount, balanceBefore, "vault balance should be decreased by amount");
+        assertEq(balanceAfter + enterAmount - exitAmount, balanceBefore, "vault balance decreased");
         assertApproxEqAbs(
             ERC20(aTokenAddress).balanceOf(address(vaultMock)),
             enterAmount - exitAmount,
             dustOnAToken,
-            "aToken balance should be decreased by amount"
+            "aToken balance decreased"
         );
-        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken balance should be 0");
-        assertEq(
-            ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)),
-            0,
-            "variableDebtToken balance should be 0"
-        );
+        assertEq(ERC20(stableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "stableDebtToken 0");
+        assertEq(ERC20(variableDebtTokenAddress).balanceOf(address(vaultMock)), 0, "variableDebtToken 0");
     }
 
     function _getSupportedAssets() private pure returns (SupportedToken[] memory supportedTokensTemp) {
@@ -133,6 +116,11 @@ contract AaveV2SupplyFuseTest is Test {
             // USDC
             vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9); // AmmTreasuryUsdcProxy
             ERC20(asset).transfer(to, amount);
+        } else if (asset == 0xdAC17F958D2ee523a2206206994597C13D831ec7) {
+            // USDT
+            vm.prank(0xF977814e90dA44bFA03b6295A0616a897441aceC); // Binance 8
+            (bool success, ) = asset.call(abi.encodeWithSignature("transfer(address,uint256)", to, amount));
+            require(success, "Transfer failed");
         } else {
             deal(asset, to, amount);
         }
@@ -170,8 +158,8 @@ contract AaveV2SupplyFuseTest is Test {
         // Set inputs in the context of mock (transient storage is per-account)
         mock.setInputs(address(fuse), inputs);
 
-        // when - call mock.enter() directly
-        mock.enter();
+        // when - call mock.enterTransient() directly
+        mock.enterTransient();
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(mock));
@@ -213,7 +201,7 @@ contract AaveV2SupplyFuseTest is Test {
 
         // when
         vm.prank(address(vaultMock));
-        mock.enter();
+        mock.enterTransient();
 
         // then
         bytes32[] memory outputs = mock.getOutputs(address(fuse));
@@ -243,7 +231,7 @@ contract AaveV2SupplyFuseTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(AaveV2SupplyFuse.AaveV2SupplyFuseUnsupportedAsset.selector, unsupportedAsset)
         );
-        mock.enter();
+        mock.enterTransient();
     }
 
     function testEnterWithZeroAmount() external iterateSupportedTokens {
@@ -285,7 +273,7 @@ contract AaveV2SupplyFuseTest is Test {
         enterInputs[0] = TypeConversionLib.toBytes32(activeTokens.asset);
         enterInputs[1] = TypeConversionLib.toBytes32(enterAmount);
         mock.setInputs(address(fuse), enterInputs);
-        mock.enter();
+        mock.enterTransient();
 
         // Now prepare for exit
         bytes32[] memory inputs = new bytes32[](2);
@@ -296,7 +284,7 @@ contract AaveV2SupplyFuseTest is Test {
         uint256 balanceBefore = ERC20(activeTokens.asset).balanceOf(address(mock));
 
         // when
-        mock.exit();
+        mock.exitTransient();
 
         // then
         uint256 balanceAfter = ERC20(activeTokens.asset).balanceOf(address(mock));
@@ -347,7 +335,7 @@ contract AaveV2SupplyFuseTest is Test {
 
         // when
         vm.prank(address(vaultMock));
-        mock.exit();
+        mock.exitTransient();
 
         // then
         bytes32[] memory outputs = mock.getOutputs(address(fuse));
@@ -374,7 +362,7 @@ contract AaveV2SupplyFuseTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(AaveV2SupplyFuse.AaveV2SupplyFuseUnsupportedAsset.selector, unsupportedAsset)
         );
-        mock.exit();
+        mock.exitTransient();
     }
 
     function testExitWithZeroAmount() external iterateSupportedTokens {
@@ -439,7 +427,7 @@ contract AaveV2SupplyFuseTest is Test {
         mock.setInputs(address(fuse), inputs);
 
         // when
-        mock.exit();
+        mock.exitTransient();
 
         // then - should return zero values
         bytes32[] memory outputs = mock.getOutputs(address(fuse));

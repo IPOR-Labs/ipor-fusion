@@ -21,13 +21,13 @@ contract AaveV2SupplyFuseMock {
     }
 
     /// @notice Executes enter function without parameters via delegatecall
-    function enter() external {
-        address(fuse).functionDelegateCall(abi.encodeWithSelector(bytes4(keccak256("enter()"))));
+    function enterTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSelector(bytes4(keccak256("enterTransient()"))));
     }
 
     /// @notice Executes exit function without parameters via delegatecall
-    function exit() external {
-        address(fuse).functionDelegateCall(abi.encodeWithSelector(bytes4(keccak256("exit()"))));
+    function exitTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSelector(bytes4(keccak256("exitTransient()"))));
     }
 
     /// @notice Sets input parameters for a specific account in transient storage

@@ -75,11 +75,11 @@ contract AaveV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Enters (supplies) assets to Aave V2 protocol using transient storage for inputs
     /// @dev Reads asset and amount from transient storage at indices 0 and 1 respectively
     /// @dev Writes returned asset and amount to transient storage outputs
-    function enter() external {
+    function enterTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
         bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 1);
 
-        address asset = PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32);
+        address asset = TypeConversionLib.toAddress(assetBytes32);
         uint256 amount = TypeConversionLib.toUint256(amountBytes32);
 
         AaveV2SupplyFuseEnterData memory data = AaveV2SupplyFuseEnterData({asset: asset, amount: amount});
@@ -104,11 +104,11 @@ contract AaveV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Exits (withdraws) assets from Aave V2 protocol using transient storage for inputs
     /// @dev Reads asset and amount from transient storage at indices 0 and 1 respectively
     /// @dev Writes returned asset and amount to transient storage outputs
-    function exit() external {
+    function exitTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
         bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 1);
 
-        address asset = PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32);
+        address asset = TypeConversionLib.toAddress(assetBytes32);
         uint256 amount = TypeConversionLib.toUint256(amountBytes32);
 
         AaveV2SupplyFuseExitData memory data = AaveV2SupplyFuseExitData({asset: asset, amount: amount});
@@ -161,6 +161,8 @@ contract AaveV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
 
         if (amountToWithdraw == 0) {
+            // @dev Return original requested amount when balance is insufficient to maintain consistency
+            //      with the caller's expectations and allow proper handling of partial withdrawals
             return (data_.asset, data_.amount);
         }
 

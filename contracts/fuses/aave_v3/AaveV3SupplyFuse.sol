@@ -53,12 +53,7 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param asset The address of the asset supplied
     /// @param amount The amount of the asset supplied
     /// @param userEModeCategoryId The user eMode category ID
-    event AaveV3SupplyFuseEnter(
-        address indexed version,
-        address indexed asset,
-        uint256 amount,
-        uint256 userEModeCategoryId
-    );
+    event AaveV3SupplyFuseEnter(address version, address asset, uint256 amount, uint256 userEModeCategoryId);
 
     /// @notice Emitted when exiting the Aave V3 supply fuse
     /// @param version The address of the fuse version

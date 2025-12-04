@@ -49,7 +49,8 @@ contract AaveV3CollateralFuse is IFuseCommon {
     }
 
     /// @notice Enters the Aave V3 Collateral Fuse with the specified asset address, enabling isolated collateral
-    /// @param assetAddress_ collateral asset address
+    /// @param assetAddress_ The address of the collateral asset to enable as collateral
+    /// @dev Enables the specified asset to be used as collateral in Aave V3 protocol
     function enter(address assetAddress_) public {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, assetAddress_)) {
             revert AaveV3CollateralFuseUnsupportedAsset("enter", assetAddress_);
@@ -62,11 +63,11 @@ contract AaveV3CollateralFuse is IFuseCommon {
     }
 
     /// @notice Enters the Aave V3 Collateral Fuse using transient storage for inputs
-    /// @dev Reads asset from transient storage
+    /// @dev Reads asset from transient storage at index 0
     /// @dev Writes returned asset to transient storage outputs
     function enterTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
-        address asset = PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32);
+        address asset = TypeConversionLib.toAddress(assetBytes32);
 
         enter(asset);
 
@@ -77,7 +78,8 @@ contract AaveV3CollateralFuse is IFuseCommon {
     }
 
     /// @notice Exits the Aave V3 Collateral Fuse with the specified asset address, disabling isolated collateral
-    /// @param assetAddress_ collateral asset address
+    /// @param assetAddress_ The address of the collateral asset to disable as collateral
+    /// @dev Disables the specified asset from being used as collateral in Aave V3 protocol
     function exit(address assetAddress_) public {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, assetAddress_)) {
             revert AaveV3CollateralFuseUnsupportedAsset("exit", assetAddress_);
@@ -90,11 +92,11 @@ contract AaveV3CollateralFuse is IFuseCommon {
     }
 
     /// @notice Exits the Aave V3 Collateral Fuse using transient storage for inputs
-    /// @dev Reads asset from transient storage
+    /// @dev Reads asset from transient storage at index 0
     /// @dev Writes returned asset to transient storage outputs
     function exitTransient() external {
         bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 0);
-        address asset = PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32);
+        address asset = TypeConversionLib.toAddress(assetBytes32);
 
         exit(asset);
 
