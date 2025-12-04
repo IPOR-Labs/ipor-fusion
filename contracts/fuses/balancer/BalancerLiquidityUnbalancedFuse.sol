@@ -82,27 +82,60 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
     address public immutable BALANCER_ROUTER;
     address public immutable PERMIT2;
 
+    /// @notice Thrown when attempting to use a pool that is not granted for this market
+    /// @param pool The address of the pool that was not granted
+    /// @custom:error BalancerLiquidityUnbalancedFuseUnsupportedPool
     error BalancerLiquidityUnbalancedFuseUnsupportedPool(address pool);
-    error BalancerLiquidityUnbalancedFuseInvalidParams();
-    error InvalidAddress();
 
+    /// @notice Thrown when invalid parameters are provided to enter or exit functions
+    /// @custom:error BalancerLiquidityUnbalancedFuseInvalidParams
+    error BalancerLiquidityUnbalancedFuseInvalidParams();
+
+    /// @notice Thrown when router address is zero
+    /// @custom:error BalancerLiquidityUnbalancedFuseInvalidRouterAddress
+    error BalancerLiquidityUnbalancedFuseInvalidRouterAddress();
+
+    /// @notice Thrown when Permit2 address is zero
+    /// @custom:error BalancerLiquidityUnbalancedFuseInvalidPermit2Address
+    error BalancerLiquidityUnbalancedFuseInvalidPermit2Address();
+
+    /// @notice Thrown when a token is not granted as an asset for this market
+    /// @param token The address of the token that was not granted
+    /// @custom:error BalancerLiquidityUnbalancedFuseUnsupportedAsset
+    error BalancerLiquidityUnbalancedFuseUnsupportedAsset(address token);
+
+    /// @notice Emitted when liquidity is added with unbalanced amounts to a Balancer pool
+    /// @param version The address of the fuse contract version
+    /// @param pool The address of the Balancer pool
+    /// @param bptAmountOut The amount of BPT tokens minted
+    /// @param amountsIn Array of actual token amounts that were added to the pool
     event BalancerLiquidityUnbalancedFuseEnter(
-        address indexed version,
-        address indexed pool,
+        address version,
+        address pool,
         uint256 bptAmountOut,
         uint256[] amountsIn
     );
 
-    event BalancerLiquidityUnbalancedFuseExit(
-        address indexed version,
-        address indexed pool,
-        uint256 bptAmountIn,
-        uint256[] amountsOut
-    );
+    /// @notice Emitted when liquidity is removed with unbalanced amounts from a Balancer pool
+    /// @param version The address of the fuse contract version
+    /// @param pool The address of the Balancer pool
+    /// @param bptAmountIn The amount of BPT tokens burned
+    /// @param amountsOut Array of token amounts received from the pool
+    event BalancerLiquidityUnbalancedFuseExit(address version, address pool, uint256 bptAmountIn, uint256[] amountsOut);
 
+    /// @notice Constructor to initialize the fuse with market ID, Balancer router, and Permit2 addresses
+    /// @param marketId_ The unique identifier for the market configuration
+    /// @param balancerRouter_ The address of the Balancer router contract
+    /// @param permit2_ The address of the Permit2 contract for gas-efficient token approvals
+    /// @dev The market ID is used to retrieve the list of substrates (pools) that this fuse will track.
+    ///      VERSION is set to the address of this contract instance for tracking purposes.
+    ///      Both router and Permit2 addresses must be non-zero.
     constructor(uint256 marketId_, address balancerRouter_, address permit2_) {
         if (balancerRouter_ == address(0)) {
-            revert InvalidAddress();
+            revert BalancerLiquidityUnbalancedFuseInvalidRouterAddress();
+        }
+        if (permit2_ == address(0)) {
+            revert BalancerLiquidityUnbalancedFuseInvalidPermit2Address();
         }
 
         VERSION = address(this);
@@ -111,6 +144,10 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         PERMIT2 = permit2_;
     }
 
+    /// @notice Adds liquidity with unbalanced amounts into a Balancer V3 pool
+    /// @param data_ Parameters for unbalanced liquidity addition
+    /// @return bptAmountOut The amount of BPT tokens minted
+    /// @dev Validates pool substrate, token assets, and ensures proper approval cleanup
     function enter(
         BalancerLiquidityUnbalancedFuseEnterData memory data_
     ) public payable returns (uint256 bptAmountOut) {
@@ -197,6 +234,11 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
+    /// @notice Removes liquidity with unbalanced amounts from a Balancer V3 pool
+    /// @param data_ Parameters for unbalanced liquidity removal
+    /// @return bptAmountIn The amount of BPT tokens burned
+    /// @return amountsOut Array of token amounts received (corresponds to tokens array)
+    /// @dev Validates pool substrate, gets tokens from pool, and ensures proper approval cleanup
     function exit(
         BalancerLiquidityUnbalancedFuseExitData memory data_
     ) public payable returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
@@ -216,6 +258,7 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         }
 
         if (data_.maxBptAmountIn == 0) {
+            amountsOut = new uint256[](0);
             return (0, amountsOut);
         }
 

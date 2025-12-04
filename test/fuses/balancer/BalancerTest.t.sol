@@ -935,7 +935,7 @@ contract BalancerTest is Test {
 
     function testShouldRevertWhenConstructingWithZeroRouter() public {
         // given & when & then
-        vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
+        vm.expectRevert(abi.encodeWithSignature("BalancerLiquidityProportionalFuseInvalidRouterAddress()"));
         new BalancerLiquidityProportionalFuse(IporFusionMarkets.BALANCER, address(0), _PERMIT2);
     }
 
@@ -1130,7 +1130,7 @@ contract BalancerTest is Test {
 
     function testShouldRevertWhenConstructingUnbalancedWithZeroRouter() public {
         // given & when & then
-        vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
+        vm.expectRevert(abi.encodeWithSignature("BalancerLiquidityUnbalancedFuseInvalidRouterAddress()"));
         new BalancerLiquidityUnbalancedFuse(IporFusionMarkets.BALANCER, address(0), _PERMIT2);
     }
 
