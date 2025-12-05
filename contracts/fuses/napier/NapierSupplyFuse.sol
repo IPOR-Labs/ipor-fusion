@@ -51,13 +51,17 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(pt))) {
             revert NapierFuseIInvalidToken();
         }
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
+            revert NapierFuseIInvalidToken();
+        }
+
         if (data_.amountIn == 0) {
             // NOTE: The following interaction relies on pre-transfer and CONTRACT_BALANCE.
             // Passing amountIn == 0 leaves the router free to sweep any residual balances (or to no-op silently).
             // Early return to keep behaviour predictable.
             return;
         }
-
         address underlying = pt.underlying(); // vault shares
         address asset = pt.i_asset();
 

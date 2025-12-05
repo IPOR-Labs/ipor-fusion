@@ -54,6 +54,16 @@ contract NapierSwapPtFuse is NapierUniversalRouterFuse {
         }
 
         PoolKey memory key = _getPoolKey(data_.pool);
+        address tokenIn = Currency.unwrap(key.currency0);
+        address tokenOut = Currency.unwrap(key.currency1);
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokenIn)) {
+            revert NapierFuseIInvalidToken();
+        }
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokenOut)) {
+            revert NapierFuseIInvalidToken();
+        }
 
         // Buy PT with the underlying token
         bytes memory commands = abi.encodePacked(bytes1(uint8(Commands.V4_SWAP)));
@@ -94,6 +104,16 @@ contract NapierSwapPtFuse is NapierUniversalRouterFuse {
         }
 
         PoolKey memory key = _getPoolKey(data_.pool);
+        address tokenIn = Currency.unwrap(key.currency1);
+        address tokenOut = Currency.unwrap(key.currency0);
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokenIn)) {
+            revert NapierFuseIInvalidToken();
+        }
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokenOut)) {
+            revert NapierFuseIInvalidToken();
+        }
 
         // Sell PT for the underlying token
         bytes memory commands = abi.encodePacked(bytes1(uint8(Commands.V4_SWAP)));

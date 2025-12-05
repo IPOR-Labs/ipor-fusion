@@ -56,6 +56,11 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
             revert NapierFuseIInvalidToken();
         }
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
+            revert NapierFuseIInvalidToken();
+        }
+
         if (data_.principals == 0) {
             return;
         }

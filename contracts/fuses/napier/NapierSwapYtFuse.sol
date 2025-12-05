@@ -65,7 +65,16 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
         }
 
         PoolKey memory key = _getPoolKey(data_.pool);
+        address tokenIn = Currency.unwrap(key.currency0);
         address yt = IPrincipalToken(Currency.unwrap(key.currency1)).i_yt();
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokenIn)) {
+            revert NapierFuseIInvalidToken();
+        }
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
+            revert NapierFuseIInvalidToken();
+        }
 
         // Buy YT with the underlying token
         bytes memory commands = abi.encodePacked(bytes1(uint8(Commands.YT_SWAP_UNDERLYING_FOR_YT)));
@@ -81,7 +90,7 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
         uint256 balanceBefore = ERC20(yt).balanceOf(address(this));
 
-        _setupPermit2Approval(Currency.unwrap(key.currency0));
+        _setupPermit2Approval(tokenIn);
         ROUTER.execute(commands, inputs);
 
         uint256 amountOut = ERC20(yt).balanceOf(address(this)) - balanceBefore;
@@ -95,6 +104,16 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
         }
 
         PoolKey memory key = _getPoolKey(data_.pool);
+        address tokenOut = Currency.unwrap(key.currency0);
+        address yt = IPrincipalToken(Currency.unwrap(key.currency1)).i_yt();
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
+            revert NapierFuseIInvalidToken();
+        }
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokenOut)) {
+            revert NapierFuseIInvalidToken();
+        }
 
         // Sell PT for the underlying token
         bytes memory commands = abi.encodePacked(bytes1(uint8(Commands.YT_SWAP_YT_FOR_UNDERLYING)));
@@ -103,12 +122,12 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
         uint256 balanceBefore = key.currency0.balanceOf(address(this));
 
-        _setupPermit2Approval(IPrincipalToken(Currency.unwrap(key.currency1)).i_yt());
+        _setupPermit2Approval(yt);
         ROUTER.execute(commands, inputs);
 
         uint256 amountOut = key.currency0.balanceOf(address(this)) - balanceBefore;
 
-        emit NapierSwapYtFuseExit(VERSION, address(data_.pool), Currency.unwrap(key.currency0), amountOut);
+        emit NapierSwapYtFuseExit(VERSION, address(data_.pool), tokenOut, amountOut);
     }
 
     /// @notice Sets up Permit2 approval for the router to pull tokens
