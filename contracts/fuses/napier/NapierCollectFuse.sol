@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 import {IPrincipalToken} from "./ext/IPrincipalToken.sol";
@@ -39,17 +38,19 @@ contract NapierCollectFuse is NapierUniversalRouterFuse {
 
     /// @notice Collects interest and external rewards if any
     function enter(NapierCollectFuseEnterData calldata data_) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.principalToken))) {
-            revert NapierFuseIInvalidMarketId();
+        IPrincipalToken principalToken = data_.principalToken;
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(principalToken))) {
+            revert NapierFuseIInvalidToken();
         }
 
         // Collect interest (in units of the underlying token) and external rewards if any
         // If the market haven't had any YTs since the last collect, the interest is 0
-        (uint256 collected, IPrincipalToken.TokenReward[] memory rewards) = data_.principalToken.collect(
+        (uint256 collected, IPrincipalToken.TokenReward[] memory rewards) = principalToken.collect(
             address(this),
             address(this)
         );
 
-        emit NapierCollectFuseEnter(VERSION, address(data_.principalToken), collected, rewards);
+        emit NapierCollectFuseEnter(VERSION, address(principalToken), collected, rewards);
     }
 }
