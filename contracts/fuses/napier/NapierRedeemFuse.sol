@@ -47,15 +47,16 @@ contract NapierRedeemFuse is NapierUniversalRouterFuse {
 
     /// @notice Redeems PTs for tokens after the maturity
     function enter(NapierRedeemFuseEnterData calldata data_) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.principalToken))) {
-            revert NapierFuseIInvalidMarketId();
+        IPrincipalToken pt = data_.principalToken;
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(pt))) {
+            revert NapierFuseIInvalidToken();
         }
 
         if (data_.principals == 0) {
             return;
         }
 
-        IPrincipalToken pt = data_.principalToken;
         address underlyingToken = pt.underlying();
         address asset = pt.i_asset();
 

@@ -48,13 +48,13 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
     function enter(NapierCombineFuseEnterData calldata data_) external {
         IPrincipalToken pt = data_.principalToken;
 
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.principalToken))) {
-            revert NapierFuseIInvalidMarketId();
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(pt))) {
+            revert NapierFuseIInvalidToken();
         }
 
         address yt = pt.i_yt();
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
-            revert NapierFuseIInvalidMarketId();
+            revert NapierFuseIInvalidToken();
         }
         if (data_.principals == 0) {
             return;

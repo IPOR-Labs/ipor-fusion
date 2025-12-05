@@ -46,8 +46,10 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
 
     /// @notice Supplies assets into Napier PT, minting PT + YT into the vault
     function enter(NapierSupplyFuseEnterData calldata data_) external {
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.principalToken))) {
-            revert NapierFuseIInvalidMarketId();
+        IPrincipalToken pt = data_.principalToken;
+
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(pt))) {
+            revert NapierFuseIInvalidToken();
         }
         if (data_.amountIn == 0) {
             // NOTE: The following interaction relies on pre-transfer and CONTRACT_BALANCE.
@@ -55,8 +57,6 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
             // Early return to keep behaviour predictable.
             return;
         }
-
-        IPrincipalToken pt = data_.principalToken;
 
         address underlying = pt.underlying(); // vault shares
         address asset = pt.i_asset();
