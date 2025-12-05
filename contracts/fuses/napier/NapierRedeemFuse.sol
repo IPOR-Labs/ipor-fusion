@@ -53,6 +53,10 @@ contract NapierRedeemFuse is NapierUniversalRouterFuse {
             revert NapierFuseIInvalidToken();
         }
 
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
+            revert NapierFuseIInvalidToken();
+        }
+
         if (data_.principals == 0) {
             return;
         }
