@@ -92,6 +92,7 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
         _setupPermit2Approval(tokenIn);
         ROUTER.execute(commands, inputs);
+        _resetPermit2Approval(tokenIn);
 
         uint256 amountOut = ERC20(yt).balanceOf(address(this)) - balanceBefore;
 
@@ -124,6 +125,7 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
         _setupPermit2Approval(yt);
         ROUTER.execute(commands, inputs);
+        _resetPermit2Approval(yt);
 
         uint256 amountOut = key.currency0.balanceOf(address(this)) - balanceBefore;
 
@@ -133,7 +135,15 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
     /// @notice Sets up Permit2 approval for the router to pull tokens
     /// @param token The token to approve
     function _setupPermit2Approval(address token) private {
+        // Some tokens built with Solady requires an infinite amount to Permit2 approval
+        // We always approve an infinite amount to Permit2 to avoid the Permit2AllowanceIsFixedAtInfinity() error
         ERC20(token).forceApprove(PERMIT2, type(uint256).max);
-        IPermit2(PERMIT2).approve(token, address(ROUTER), type(uint160).max, uint48(block.timestamp + 1 hours));
+        IPermit2(PERMIT2).approve(token, address(ROUTER), type(uint160).max, uint48(block.timestamp));
+    }
+
+    /// @notice Resets Permit2 approval after execution
+    /// @param token The token to reset approval for
+    function _resetPermit2Approval(address token) private {
+        IPermit2(PERMIT2).approve(token, address(ROUTER), 0, uint48(block.timestamp));
     }
 }
