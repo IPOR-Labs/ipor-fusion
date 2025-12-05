@@ -136,6 +136,7 @@ library IporFusionMarkets {
 
     /// @dev Ebisu market
     /// @dev Substrate type: EbisuZapperSubstrate
+
     uint256 public constant EBISU = 39;
 
     /// @dev Async Action market
@@ -169,6 +170,9 @@ library IporFusionMarkets {
     /// @dev Supports batch execution of multiple calls with ETH value forwarding
     uint256 public constant ASYNC_ACTION = 40;
 
+    /// @dev Napier market
+    uint256 public constant NAPIER = 3822; // 0xeee
+    
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
