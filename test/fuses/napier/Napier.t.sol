@@ -269,12 +269,15 @@ contract NapierSupplyFuseTest is Test {
     function _setupNapierMarket() private {
         vm.startPrank(ATOMIST);
 
-        // Add substrates - pool, principal token, and YT token need to be granted
-        address yt = IPrincipalToken(principalToken).i_yt();
-        bytes32[] memory substrates = new bytes32[](3);
+        // Add substrates - pool, PT, YT, router, underlying (ERC4626), and base asset must be granted
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        address yt = pt.i_yt();
+        bytes32[] memory substrates = new bytes32[](5);
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(pool);
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(principalToken);
         substrates[2] = PlasmaVaultConfigLib.addressToBytes32(yt);
+        substrates[3] = PlasmaVaultConfigLib.addressToBytes32(pt.underlying());
+        substrates[4] = PlasmaVaultConfigLib.addressToBytes32(pt.i_asset());
 
         bytes32[] memory erc20Substrates = new bytes32[](2);
         erc20Substrates[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
@@ -428,6 +431,27 @@ contract NapierSupplyFuseTest is Test {
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
+    function testFuzz_Supply_RevertWhen_TokenInNotGranted(address tokenIn) public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        address underlying = pt.underlying();
+        address asset = pt.i_asset();
+
+        vm.assume(tokenIn != underlying && tokenIn != asset);
+
+        NapierSupplyFuseEnterData memory data = NapierSupplyFuseEnterData({
+            principalToken: pt,
+            tokenIn: tokenIn,
+            amountIn: 1298937
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _supplyFuse, data: abi.encodeCall(NapierSupplyFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
     function _test_Supply(NapierSupplyFuseEnterData memory data) internal {
         uint256 ptBalanceBefore = data.principalToken.balanceOf(address(_plasmaVault));
 
@@ -504,6 +528,28 @@ contract NapierSupplyFuseTest is Test {
             principals: ptBalance
         });
         _test_Redeem(data);
+    }
+
+    function testFuzz_Redeem_RevertWhen_TokenOutNotGranted(address tokenOut) public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        address underlying = pt.underlying();
+        address asset = pt.i_asset();
+        vm.assume(tokenOut != underlying && tokenOut != asset);
+
+        vm.warp(pt.maturity() + 1);
+
+        NapierRedeemFuseEnterData memory data = NapierRedeemFuseEnterData({
+            principalToken: pt,
+            tokenOut: tokenOut,
+            principals: 1298937
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _redeemFuse, data: abi.encodeCall(NapierRedeemFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
     }
 
     function _test_Redeem(NapierRedeemFuseEnterData memory data) internal {
@@ -825,6 +871,74 @@ contract NapierSupplyFuseTest is Test {
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
+    function test_SwapPt_Enter_RevertWhen_TokenInNotGranted() public {
+        _regrantNapierSubstrates(IPrincipalToken(principalToken).underlying());
+
+        NapierSwapPtFuseData memory data = NapierSwapPtFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 20212898,
+            minimumAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_SwapPt_Enter_RevertWhen_TokenOutNotGranted() public {
+        _regrantNapierSubstrates(principalToken);
+
+        NapierSwapPtFuseData memory data = NapierSwapPtFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 5019201,
+            minimumAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_SwapPt_Exit_RevertWhen_TokenInNotGranted() public {
+        _regrantNapierSubstrates(principalToken);
+
+        NapierSwapPtFuseData memory data = NapierSwapPtFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 10982012,
+            minimumAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_SwapPt_Exit_RevertWhen_TokenOutNotGranted() public {
+        _regrantNapierSubstrates(IPrincipalToken(principalToken).underlying());
+
+        NapierSwapPtFuseData memory data = NapierSwapPtFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 1821928102,
+            minimumAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
     /*                       SWAP YT TESTS                       */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -918,6 +1032,76 @@ contract NapierSupplyFuseTest is Test {
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
+    function test_SwapYt_Enter_RevertWhen_TokenInNotGranted() public {
+        _regrantNapierSubstrates(IPrincipalToken(principalToken).underlying());
+
+        NapierSwapYtEnterFuseData memory data = NapierSwapYtEnterFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 20212,
+            minimumAmount: 0,
+            approxParams: ApproximationParams({guessMin: 0, guessMax: 0, eps: 0})
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_SwapYt_Enter_RevertWhen_TokenOutNotGranted() public {
+        _regrantNapierSubstrates(IPrincipalToken(principalToken).i_yt());
+
+        NapierSwapYtEnterFuseData memory data = NapierSwapYtEnterFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 20212898,
+            minimumAmount: 0,
+            approxParams: ApproximationParams({guessMin: 0, guessMax: 0, eps: 0})
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_SwapYt_Exit_RevertWhen_TokenInNotGranted() public {
+        _regrantNapierSubstrates(IPrincipalToken(principalToken).i_yt());
+
+        NapierSwapYtExitFuseData memory data = NapierSwapYtExitFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 3903901,
+            minimumAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_SwapYt_Exit_RevertWhen_TokenOutNotGranted() public {
+        _regrantNapierSubstrates(IPrincipalToken(principalToken).underlying());
+
+        NapierSwapYtExitFuseData memory data = NapierSwapYtExitFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 212121,
+            minimumAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
     /// @notice Test revert when pool is not granted as substrate for YT swaps (exit)
     function test_SwapYt_Exit_RevertWhen_PoolNotGranted() public {
         address badPool = makeAddr("badPool");
@@ -934,5 +1118,33 @@ contract NapierSupplyFuseTest is Test {
         vm.prank(ALPHA);
         vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
         PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function _regrantNapierSubstrates(address omit) private {
+        address[] memory base = new address[](5);
+        base[0] = pool;
+        base[1] = principalToken;
+        base[2] = IPrincipalToken(principalToken).i_yt();
+        base[3] = IPrincipalToken(principalToken).underlying();
+        base[4] = IPrincipalToken(principalToken).i_asset();
+
+        uint256 count;
+        for (uint256 i; i < base.length; ++i) {
+            if (omit == address(0) || base[i] != omit) {
+                ++count;
+            }
+        }
+
+        bytes32[] memory substrates = new bytes32[](count);
+        uint256 idx;
+        for (uint256 i; i < base.length; ++i) {
+            if (omit == address(0) || base[i] != omit) {
+                substrates[idx++] = PlasmaVaultConfigLib.addressToBytes32(base[i]);
+            }
+        }
+
+        vm.startPrank(ATOMIST);
+        _plasmaVault.addSubstratesToMarket(IporFusionMarkets.NAPIER, substrates);
+        vm.stopPrank();
     }
 }
