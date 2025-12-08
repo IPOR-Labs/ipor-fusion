@@ -182,7 +182,7 @@ contract EbisuZapperTest is Test {
         EbisuZapperCreateFuseEnterData memory enterData = EbisuZapperCreateFuseEnterData({
             zapper: SUSDE_ZAPPER,
             registry: SUSDE_REGISTRY,
-            collAmount: 10_000 * 1e18, // 10_000 sUSDe collateral
+            collAmount: 4_000 * 1e18, // 4_000 sUSDe collateral
             ebusdAmount: 5_000 * 1e18, // 5_000 ebUSD debt
             upperHint: 0,
             lowerHint: 0,
@@ -223,9 +223,9 @@ contract EbisuZapperTest is Test {
             // -- 90,000 USDC (6 decimals) -> USDC value identity
             // -- 10,000 SUSDE (18 decimals) -> USDC value multiply * SUSDE price and divide by USDC price
             uint256 susdeBalance = ERC20(SUSDE).balanceOf(address(plasmaVault));
-            assertEq(susdeBalance, 10_000 * 1e18, "sUSDe balance incorrect");
+            assertEq(susdeBalance, 4_000 * 1e18, "sUSDe balance incorrect");
             uint256 usdcBalance = ERC20(USDC).balanceOf(address(plasmaVault));
-            assertEq(usdcBalance, 90_000 * 1e6, "USDC balance incorrect");
+            assertEq(usdcBalance, 96_000 * 1e6, "USDC balance incorrect");
 
             (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
             uint256 susdeUSDValue = IporMath.convertToWad(susdeBalance * price, 18 + priceDecimals);
@@ -326,7 +326,7 @@ contract EbisuZapperTest is Test {
             uint256 totalAssetsAfterExecution = plasmaVault.totalAssets();
             // They are simply the assets in ERC20 and Ebisu plus the USDC residual balance
             // then
-            assertEq(totalAssetsAfterExecution, totalAssetsInERC20 + totalAssetsInEbisu + 90_000 * 1e6);
+            assertEq(totalAssetsAfterExecution, totalAssetsInERC20 + totalAssetsInEbisu + 96_000 * 1e6);
         }
         {
             // ----- CHECK ASSET CHANGE ------
@@ -418,8 +418,8 @@ contract EbisuZapperTest is Test {
         // no need of EBUSD to repay debt if closing from collateral
         EbisuZapperCreateFuseExitData memory exitData = EbisuZapperCreateFuseExitData({
             zapper: SUSDE_ZAPPER,
-            flashLoanAmount: 10_000 * 1e18, // sUSDe needed to repay the debt
-            minExpectedCollateral: 1_000 * 1e18,
+            flashLoanAmount: 5_000 * 1e18, // sUSDe needed to repay the debt
+            minExpectedCollateral: 0,
             exitFromCollateral: true
         });
 
@@ -473,8 +473,8 @@ contract EbisuZapperTest is Test {
 
         EbisuZapperLeverModifyFuseEnterData memory leverUpData = EbisuZapperLeverModifyFuseEnterData({
             zapper: SUSDE_ZAPPER,
-            flashLoanAmount: 100 * 1e18,
-            ebusdAmount: 500 * 1e18,
+            flashLoanAmount: 500 * 1e18,
+            ebusdAmount: 700 * 1e18,
             maxUpfrontFee: 2 * 1e18
         });
 
