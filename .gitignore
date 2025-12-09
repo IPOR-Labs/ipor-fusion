@@ -26,13 +26,6 @@ coverage_html/
 lcov.info
 TODO.MD
 GEMINI.md
-check_fuses_build.sh
-check_fuses_tests_build.sh
-check_tests_build.sh
-tools/check_tests_build.sh
-tools/check_fuses_build.sh
-tools/check_fuses_tests_build.sh
-tools/check_coverage.sh
 .claude/
 CLAUDE.md
 docs/
