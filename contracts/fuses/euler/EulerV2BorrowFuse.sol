@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
@@ -8,6 +8,8 @@ import {IBorrowing} from "./ext/IBorrowing.sol";
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 
 /// @notice Data structure for entering the Euler V2 Borrow Fuse
@@ -55,17 +57,24 @@ contract EulerV2BorrowFuse is IFuseCommon {
 
     /// @notice Enters the Euler V2 Borrow Fuse with the specified parameters
     /// @param data_ The data structure containing the parameters for entering the Euler V2 Borrow Fuse
-    function enter(EulerV2BorrowFuseEnterData memory data_) external {
+    /// @return eulerVault The address of the Euler vault
+    /// @return borrowAmount The amount borrowed
+    /// @return subAccount The generated sub-account address
+    function enter(
+        EulerV2BorrowFuseEnterData memory data_
+    ) public returns (address eulerVault, uint256 borrowAmount, address subAccount) {
+        eulerVault = data_.eulerVault;
+        address plasmaVault = address(this);
+        subAccount = EulerFuseLib.generateSubAccountAddress(plasmaVault, data_.subAccount);
+
         if (data_.assetAmount == 0) {
-            return;
+            borrowAmount = 0;
+            emit EulerV2BorrowEnterFuse(VERSION, eulerVault, borrowAmount, subAccount);
+            return (eulerVault, borrowAmount, subAccount);
         }
         if (!EulerFuseLib.canBorrow(MARKET_ID, data_.eulerVault, data_.subAccount)) {
             revert EulerV2BorrowFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
         }
-
-        address plasmaVault = address(this);
-
-        address subAccount = EulerFuseLib.generateSubAccountAddress(plasmaVault, data_.subAccount);
 
         bytes memory borrowCalldata = abi.encodeWithSelector(
             IBorrowing.borrow.selector,
@@ -74,32 +83,39 @@ contract EulerV2BorrowFuse is IFuseCommon {
         );
 
         /* solhint-disable avoid-low-level-calls */
-        uint256 borrowedAmount = abi.decode(EVC.call(data_.eulerVault, subAccount, 0, borrowCalldata), (uint256));
+        borrowAmount = abi.decode(EVC.call(data_.eulerVault, subAccount, 0, borrowCalldata), (uint256));
         /* solhint-enable avoid-low-level-calls */
 
-        emit EulerV2BorrowEnterFuse(VERSION, data_.eulerVault, borrowedAmount, subAccount);
+        emit EulerV2BorrowEnterFuse(VERSION, eulerVault, borrowAmount, subAccount);
     }
 
     /// @notice Exits the Euler V2 Borrow Fuse with the specified parameters
     /// @param data_ The data structure containing the parameters for exiting the Euler V2 Borrow Fuse
-    function exit(EulerV2BorrowFuseExitData memory data_) external {
+    /// @return eulerVault The address of the Euler vault
+    /// @return repayAmount The amount repaid
+    /// @return subAccount The generated sub-account address
+    function exit(
+        EulerV2BorrowFuseExitData memory data_
+    ) public returns (address eulerVault, uint256 repayAmount, address subAccount) {
+        eulerVault = data_.eulerVault;
+        address plasmaVault = address(this);
+        subAccount = EulerFuseLib.generateSubAccountAddress(plasmaVault, data_.subAccount);
+
         if (data_.maxAssetAmount == 0) {
-            return;
+            repayAmount = 0;
+            emit EulerV2BorrowExitFuse(VERSION, eulerVault, repayAmount, subAccount);
+            return (eulerVault, repayAmount, subAccount);
         }
         if (!EulerFuseLib.canBorrow(MARKET_ID, data_.eulerVault, data_.subAccount)) {
             revert EulerV2BorrowFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
         }
-
-        address plasmaVault = address(this);
-
-        address subAccount = EulerFuseLib.generateSubAccountAddress(plasmaVault, data_.subAccount);
 
         address asset = ERC4626Upgradeable(data_.eulerVault).asset();
 
         ERC20(asset).forceApprove(data_.eulerVault, type(uint256).max);
 
         /* solhint-disable avoid-low-level-calls */
-        uint256 repaidAmount = abi.decode(
+        repayAmount = abi.decode(
             EVC.call(
                 data_.eulerVault,
                 plasmaVault,
@@ -112,6 +128,42 @@ contract EulerV2BorrowFuse is IFuseCommon {
 
         ERC20(asset).forceApprove(data_.eulerVault, 0);
 
-        emit EulerV2BorrowExitFuse(VERSION, data_.eulerVault, repaidAmount, subAccount);
+        emit EulerV2BorrowExitFuse(VERSION, eulerVault, repayAmount, subAccount);
+    }
+
+    /// @notice Enters the Euler V2 Borrow Fuse using transient storage for parameters
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address eulerVault = TypeConversionLib.toAddress(inputs[0]);
+        uint256 assetAmount = TypeConversionLib.toUint256(inputs[1]);
+        bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[2])));
+
+        (address returnedEulerVault, uint256 returnedBorrowAmount, address returnedSubAccount) = enter(
+            EulerV2BorrowFuseEnterData(eulerVault, assetAmount, subAccount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedEulerVault);
+        outputs[1] = TypeConversionLib.toBytes32(returnedBorrowAmount);
+        outputs[2] = TypeConversionLib.toBytes32(returnedSubAccount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Euler V2 Borrow Fuse using transient storage for parameters
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address eulerVault = TypeConversionLib.toAddress(inputs[0]);
+        uint256 maxAssetAmount = TypeConversionLib.toUint256(inputs[1]);
+        bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[2])));
+
+        (address returnedEulerVault, uint256 returnedRepayAmount, address returnedSubAccount) = exit(
+            EulerV2BorrowFuseExitData(eulerVault, maxAssetAmount, subAccount)
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(returnedEulerVault);
+        outputs[1] = TypeConversionLib.toBytes32(returnedRepayAmount);
+        outputs[2] = TypeConversionLib.toBytes32(returnedSubAccount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

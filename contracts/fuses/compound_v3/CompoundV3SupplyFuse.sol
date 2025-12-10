@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -9,6 +9,8 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IComet} from "./ext/IComet.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 
 struct CompoundV3SupplyFuseEnterData {
     /// @notice asset address to supply
@@ -48,9 +50,11 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         COMPOUND_BASE_TOKEN = COMET.baseToken();
     }
 
-    function enter(CompoundV3SupplyFuseEnterData memory data_) external {
+    function enter(
+        CompoundV3SupplyFuseEnterData memory data_
+    ) public returns (address asset, address market, uint256 amount) {
         if (data_.amount == 0) {
-            return;
+            return (data_.asset, address(COMET), 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
@@ -62,10 +66,47 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         COMET.supply(data_.asset, data_.amount);
 
         emit CompoundV3SupplyFuseEnter(VERSION, data_.asset, address(COMET), data_.amount);
+
+        return (data_.asset, address(COMET), data_.amount);
     }
 
-    function exit(CompoundV3SupplyFuseExitData calldata data_) external {
-        _exit(data_, false);
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address asset = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address assetUsed, address market, uint256 amountUsed) = enter(
+            CompoundV3SupplyFuseEnterData({asset: asset, amount: amount})
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(assetUsed);
+        outputs[1] = TypeConversionLib.toBytes32(market);
+        outputs[2] = TypeConversionLib.toBytes32(amountUsed);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    function exit(
+        CompoundV3SupplyFuseExitData calldata data_
+    ) external returns (address asset, address market, uint256 amount) {
+        return _exit(data_, false);
+    }
+
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address asset = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address assetUsed, address market, uint256 amountUsed) = _exit(
+            CompoundV3SupplyFuseExitData({asset: asset, amount: amount}),
+            false
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(assetUsed);
+        outputs[1] = TypeConversionLib.toBytes32(market);
+        outputs[2] = TypeConversionLib.toBytes32(amountUsed);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
@@ -77,9 +118,12 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         _exit(CompoundV3SupplyFuseExitData(asset, amount), true);
     }
 
-    function _exit(CompoundV3SupplyFuseExitData memory data_, bool catchExceptions_) internal {
+    function _exit(
+        CompoundV3SupplyFuseExitData memory data_,
+        bool catchExceptions_
+    ) internal returns (address asset, address market, uint256 amount) {
         if (data_.amount == 0) {
-            return;
+            return (data_.asset, address(COMET), 0);
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.asset)) {
@@ -89,10 +133,12 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 finalAmount = IporMath.min(data_.amount, _getBalance(data_.asset));
 
         if (finalAmount == 0) {
-            return;
+            return (data_.asset, address(COMET), 0);
         }
 
         _performWithdraw(data_.asset, finalAmount, catchExceptions_);
+
+        return (data_.asset, address(COMET), finalAmount);
     }
 
     function _getBalance(address asset_) private view returns (uint256) {
