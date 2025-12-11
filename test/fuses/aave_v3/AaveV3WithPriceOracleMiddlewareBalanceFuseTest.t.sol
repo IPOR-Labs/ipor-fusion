@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {Test, console2} from "forge-std/Test.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -44,7 +45,7 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
 
     address private constant _fusionFactory = 0x1455717668fA96534f675856347A973fA907e922;
 
-    FusionFactoryLib.FusionInstance private _fusionInstance;
+    FusionFactoryLogicLib.FusionInstance private _fusionInstance;
 
     address private _supplyFuseAaveV3 = 0x44dcB8A4c40FA9941d99F409b2948FE91B6C15d5;
     address private _aaveV3BorrowFuse = 0x1Df60F2A046F3Dce8102427e091C1Ea99aE1d774;
