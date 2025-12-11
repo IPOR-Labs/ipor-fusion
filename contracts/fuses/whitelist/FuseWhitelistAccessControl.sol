@@ -42,6 +42,13 @@ abstract contract FuseWhitelistAccessControl is AccessControlEnumerableUpgradeab
     /// - updateFuseMetadata()
     bytes32 public constant UPDATE_FUSE_METADATA_MANAGER_ROLE = keccak256("UPDATE_FUSE_METADATA_MANAGER_ROLE");
 
+    /// @notice Role for updating fuse deployment timestamps
+    /// @dev Protects:
+    /// - updateFuseDeploymentTimestamp()
+    /// - updateFusesDeploymentTimestamps()
+    bytes32 public constant UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_MANAGER_ROLE =
+        keccak256("UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_MANAGER_ROLE");
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
