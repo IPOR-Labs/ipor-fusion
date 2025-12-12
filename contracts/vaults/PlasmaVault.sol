@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
@@ -27,7 +28,6 @@ import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {FeeManagerData, FeeManagerFactory, FeeConfig} from "../managers/fee/FeeManagerFactory.sol";
 
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
-import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
@@ -212,6 +212,7 @@ contract PlasmaVault is
 {
     using Address for address;
     using Math for uint256;
+    using SafeERC20 for IERC20;
 
     /// @notice ISO-4217 currency code for USD represented as address
     /// @dev 0x348 (840 in decimal) is the ISO-4217 numeric code for USD
@@ -703,25 +704,18 @@ contract PlasmaVault is
             revert ERC4626ExceededMaxWithdraw(owner_, assets_, maxAssets);
         }
 
-        uint256 shares = convertToShares(assets_);
+        uint256 sharesForAssets = convertToShares(assets_);
 
-        uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares);
+        uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(sharesForAssets);
 
-        withdrawnShares = shares - feeSharesToBurn;
+        withdrawnShares = sharesForAssets + feeSharesToBurn;
 
-        super._withdraw(
-            _msgSender(),
-            receiver_,
-            owner_,
-            assets_ - super.convertToAssets(feeSharesToBurn),
-            withdrawnShares
-        );
+        super._withdraw(_msgSender(), receiver_, owner_, assets_, sharesForAssets);
 
         if (feeSharesToBurn > 0) {
             if (_msgSender() != owner_) {
                 _spendAllowance(owner_, _msgSender(), feeSharesToBurn);
             }
-
             _burn(owner_, feeSharesToBurn);
         }
     }
@@ -753,15 +747,18 @@ contract PlasmaVault is
     function previewWithdraw(uint256 assets_) public view override returns (uint256) {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
+        uint256 baseShares = super.previewWithdraw(assets_);
+
         if (withdrawManager != address(0)) {
-            /// @dev get withdraw fee in shares with 18 decimals
             uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
 
             if (withdrawFee > 0) {
-                return Math.mulDiv(super.previewWithdraw(assets_), 1e18, withdrawFee);
+                uint256 feeShares = Math.mulDiv(baseShares, withdrawFee, 1e18, Math.Rounding.Ceil);
+
+                return baseShares + feeShares;
             }
         }
-        return super.previewWithdraw(assets_);
+        return baseShares;
     }
 
     /// @notice Redeems vault shares for underlying assets
@@ -950,6 +947,31 @@ contract PlasmaVault is
 
         /// @dev we need to subtract fee shares to get the maximum number of shares that can be minted, We accept the error of calculating a higher fee than will actually be charged.
         return totalSupplyCap - totalSupply - feeShares;
+    }
+
+    /// @notice Calculates maximum withdrawal amount considering withdrawal fees
+    /// @dev Overrides ERC4626 maxWithdraw to account for withdrawal fee deduction
+    /// @param owner_ The address to calculate max withdrawal for
+    /// @return uint256 Maximum amount of assets that can be withdrawn
+    function maxWithdraw(address owner_) public view override returns (uint256) {
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+        uint256 ownerShares = balanceOf(owner_);
+
+        if (withdrawManager != address(0)) {
+            uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
+
+            if (withdrawFee > 0) {
+                // With a fee, effective shares = ownerShares / (1 + feeRate)
+                // Because totalShares = sharesForAssets + feeShares
+                // And feeShares = sharesForAssets * feeRate
+                // So totalShares = sharesForAssets * (1 + feeRate)
+                // Therefore sharesForAssets = totalShares / (1 + feeRate)
+                uint256 effectiveShares = Math.mulDiv(ownerShares, 1e18, 1e18 + withdrawFee, Math.Rounding.Floor);
+                return convertToAssets(effectiveShares);
+            }
+        }
+
+        return convertToAssets(ownerShares);
     }
 
     /// @notice Claims rewards from integrated protocols through fuse contracts
@@ -1159,42 +1181,41 @@ contract PlasmaVault is
         /// @dev first realize management fee, then other actions
         _realizeManagementFee();
 
-        uint256 assets;
-        uint256 vaultCurrentBalanceUnderlying;
-
         uint256 totalAssetsBefore = totalAssets();
 
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
-        uint256 assetsToRelease = convertToAssets(WithdrawManager(withdrawManager).getSharesToRelease());
+        {
+            uint256 assetsToRelease = convertToAssets(WithdrawManager(withdrawManager).getSharesToRelease());
 
-        for (uint256 i; i < REDEEM_ATTEMPTS; ++i) {
-            assets = convertToAssets(shares_);
-            vaultCurrentBalanceUnderlying = IERC20(asset()).balanceOf(address(this));
-
-            _withdrawFromMarkets(_includeSlippage(assets) + assetsToRelease, vaultCurrentBalanceUnderlying);
+            for (uint256 i; i < REDEEM_ATTEMPTS; ++i) {
+                _withdrawFromMarkets(
+                    _includeSlippage(convertToAssets(shares_)) + assetsToRelease,
+                    IERC20(asset()).balanceOf(address(this))
+                );
+            }
         }
 
         _addPerformanceFee(totalAssetsBefore);
 
+        address caller = _msgSender();
+
         if (!withFee_) {
             withdrawnAssets = convertToAssets(shares_);
-            _withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, shares_);
+            _withdraw(caller, receiver_, owner_, withdrawnAssets, shares_);
         } else {
             uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(shares_);
-            uint256 sharesToWithdraw = shares_ - feeSharesToBurn;
+            withdrawnAssets = convertToAssets(shares_ - feeSharesToBurn);
 
-            withdrawnAssets = convertToAssets(sharesToWithdraw);
-
-            super._withdraw(_msgSender(), receiver_, owner_, withdrawnAssets, sharesToWithdraw);
-
-            if (feeSharesToBurn > 0) {
-                if (_msgSender() != owner_) {
-                    _spendAllowance(owner_, _msgSender(), feeSharesToBurn);
-                }
-
-                _burn(owner_, feeSharesToBurn);
+            if (caller != owner_) {
+                _spendAllowance(owner_, caller, shares_);
             }
+
+            _burn(owner_, shares_);
+
+            SafeERC20.safeTransfer(IERC20(asset()), receiver_, withdrawnAssets);
+
+            emit Withdraw(caller, receiver_, owner_, withdrawnAssets, shares_);
         }
     }
 
