@@ -153,20 +153,13 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
 
         (, int256 price, , , ) = ptPriceFeed.latestRoundData();
 
-        if (price < expextedPriceAfterDeployment_) {
-            int256 priceDelta = expextedPriceAfterDeployment_ - price;
-            int256 priceDeltaPercentage = (priceDelta * 100) / expextedPriceAfterDeployment_;
+        uint256 expectedPrice = uint256(expextedPriceAfterDeployment_);
+        uint256 actualPrice = uint256(price);
 
-            if (priceDeltaPercentage > 1) {
-                revert IPriceOracleMiddleware.PriceDeltaTooHigh();
-            }
-        } else {
-            int256 priceDelta = price - expextedPriceAfterDeployment_;
-            int256 priceDeltaPercentage = (priceDelta * 100) / expextedPriceAfterDeployment_;
+        uint256 priceDelta = actualPrice > expectedPrice ? actualPrice - expectedPrice : expectedPrice - actualPrice;
 
-            if (priceDeltaPercentage > 1) {
-                revert IPriceOracleMiddleware.PriceDeltaTooHigh();
-            }
+        if (priceDelta * 100 > expectedPrice) {
+            revert IPriceOracleMiddleware.PriceDeltaTooHigh();
         }
 
         address pendleMarket = ptPriceFeed.PENDLE_MARKET();
