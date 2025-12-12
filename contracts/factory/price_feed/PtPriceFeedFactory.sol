@@ -85,20 +85,13 @@ contract PtPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
 
         (, int256 price, , , ) = ptPriceFeed.latestRoundData();
 
-        if (price < expextedPriceAfterDeployment_) {
-            int256 priceDelta = expextedPriceAfterDeployment_ - price;
-            int256 priceDeltaPercentage = (priceDelta * 100) / expextedPriceAfterDeployment_;
+        uint256 expectedPrice = uint256(expextedPriceAfterDeployment_);
+        uint256 actualPrice = uint256(price);
 
-            if (priceDeltaPercentage > 1) {
-                revert PriceDeltaTooHigh();
-            }
-        } else {
-            int256 priceDelta = price - expextedPriceAfterDeployment_;
-            int256 priceDeltaPercentage = (priceDelta * 100) / expextedPriceAfterDeployment_;
+        uint256 priceDelta = actualPrice > expectedPrice ? actualPrice - expectedPrice : expectedPrice - actualPrice;
 
-            if (priceDeltaPercentage > 1) {
-                revert PriceDeltaTooHigh();
-            }
+        if (priceDelta * 100 > expectedPrice) {
+            revert PriceDeltaTooHigh();
         }
 
         priceFeedAddress = address(ptPriceFeed);
