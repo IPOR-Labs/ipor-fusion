@@ -149,6 +149,9 @@ contract EbisuZapperTest is Test {
         deal(SUSDE, address(mockDex), 1e9 * 1e18);
         // deal 1_000_000_000 ebUSD to mockDex
         deal(EBUSD, address(mockDex), 1e9 * 1e18);
+
+        _setupRoles();
+
         // setup plasma vault
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
