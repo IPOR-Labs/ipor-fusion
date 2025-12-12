@@ -556,12 +556,21 @@ library PlasmaVaultLib {
     /// - Market-specific parameters
     /// - Fallback withdrawal routes
     function configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses_) internal {
+        // Get previous configuration to clean up stale entries
+        address[] memory previousFuses = PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
+
         address[] memory fusesList = new address[](fuses_.length);
 
         PlasmaVaultStorageLib.InstantWithdrawalFusesParams storage instantWithdrawalFusesParams = PlasmaVaultStorageLib
             .getInstantWithdrawalFusesParams();
 
         bytes32 key;
+
+        // Clean up stale entries from previous configuration
+        for (uint256 i; i < previousFuses.length; ++i) {
+            key = keccak256(abi.encodePacked(previousFuses[i], i));
+            delete instantWithdrawalFusesParams.value[key];
+        }
 
         for (uint256 i; i < fuses_.length; ++i) {
             if (!FusesLib.isFuseSupported(fuses_[i].fuse)) {
@@ -570,8 +579,6 @@ library PlasmaVaultLib {
 
             fusesList[i] = fuses_[i].fuse;
             key = keccak256(abi.encodePacked(fuses_[i].fuse, i));
-
-            delete instantWithdrawalFusesParams.value[key];
 
             for (uint256 j; j < fuses_[i].params.length; ++j) {
                 instantWithdrawalFusesParams.value[key].push(fuses_[i].params[j]);
