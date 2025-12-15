@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
+import {AccessManagerFactory} from "../AccessManagerFactory.sol";
+import {PlasmaVaultFactory} from "../PlasmaVaultFactory.sol";
+import {PriceManagerFactory} from "../PriceManagerFactory.sol";
 import {RewardsManagerFactory} from "../RewardsManagerFactory.sol";
 import {WithdrawManagerFactory} from "../WithdrawManagerFactory.sol";
-import {ContextManagerFactory} from "../ContextManagerFactory.sol";
-import {PriceManagerFactory} from "../PriceManagerFactory.sol";
-import {PlasmaVaultFactory} from "../PlasmaVaultFactory.sol";
-import {AccessManagerFactory} from "../AccessManagerFactory.sol";
-import {FusionFactoryStorageLib} from "./FusionFactoryStorageLib.sol";
-import {PlasmaVaultInitData} from "../../vaults/PlasmaVault.sol";
 import {FeeConfig} from "../../managers/fee/FeeManagerFactory.sol";
+import {PlasmaVaultInitData} from "../../vaults/PlasmaVault.sol";
+import {FusionFactoryStorageLib} from "./FusionFactoryStorageLib.sol";
 import {FusionFactoryLogicLib} from "./FusionFactoryLogicLib.sol";
 
 /**
@@ -35,15 +35,10 @@ library FusionFactoryLib {
     );
 
     error InvalidFactoryAddress();
-    error InvalidFeeValue();
     error InvalidAddress();
-    error BurnRequestFeeFuseNotSet();
-    error BalanceFuseBurnRequestFeeNotSet();
-    error InvalidAssetName();
-    error InvalidAssetSymbol();
+    error InvalidFeeValue();
     error InvalidUnderlyingToken();
     error InvalidOwner();
-    error InvalidPlasmaVaultAdmin();
     error InvalidWithdrawWindow();
     error InvalidIporDaoFeeRecipient();
 
