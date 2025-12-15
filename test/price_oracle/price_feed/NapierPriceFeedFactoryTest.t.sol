@@ -298,6 +298,7 @@ contract NapierPriceFeedFactoryTest is Test {
         assertEq(priceFeed.LIQUIDITY_TOKEN(), pool, "Liquidity token should match");
 
         // Verify price feed is functional
+        vm.prank(PRICE_MIDDLEWARE);
         (, int256 price, , uint256 timestamp, ) = priceFeed.latestRoundData();
         assertGt(price, 0, "Price should be positive");
         assertLt(price, 1e8, "Price should be less than 1e8");
@@ -320,6 +321,7 @@ contract NapierPriceFeedFactoryTest is Test {
         assertEq(priceFeed.LIQUIDITY_TOKEN(), pool, "Liquidity token should match");
 
         // Verify price feed is functional
+        vm.prank(PRICE_MIDDLEWARE);
         (, int256 price, , uint256 timestamp, ) = priceFeed.latestRoundData();
         assertGt(price, 0, "Price should be positive");
         assertLt(price, 1e8, "Price should be less than 1e8");
