@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
-import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -104,11 +104,13 @@ contract PlasmaVaultLibStaleEntriesTest is Test {
             assertEq(retrievedParams[0], bytes32(uint256(200 + i)), "New param value should match");
         }
 
-        // **CRITICAL CHECK**: Verify that stale entries (indices 2, 3, 4) from OLD config are cleared
+        // **CRITICAL CHECK**: Verify that stale entries (indices 2, 3, 4) from OLD config are not accessible
+        // After reconfiguration to 2 fuses, accessing indices >= 2 should revert with InstantWithdrawalFuseIndexOutOfBounds
         for (uint256 i = 2; i < 5; ++i) {
-            bytes32[] memory retrievedParams = IPlasmaVaultGovernance(address(plasmaVault))
-                .getInstantWithdrawalFusesParams(mockFuses[i], i);
-            assertEq(retrievedParams.length, 0, "Stale entry should be cleared");
+            vm.expectRevert(
+                abi.encodeWithSelector(PlasmaVaultLib.InstantWithdrawalFuseIndexOutOfBounds.selector, i, 2)
+            );
+            IPlasmaVaultGovernance(address(plasmaVault)).getInstantWithdrawalFusesParams(mockFuses[i], i);
         }
     }
 
