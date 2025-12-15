@@ -13,7 +13,7 @@ import {IUniversalRouter} from "./ext/IUniversalRouter.sol";
 import {Commands} from "./utils/Commands.sol";
 import {ApproximationParams} from "./ext/ApproximationParams.sol";
 import {NapierUniversalRouterFuse} from "./NapierUniversalRouterFuse.sol";
-import {IPermit2} from "../balancer/ext/IPermit2.sol";
+import {LibPermit2} from "./utils/LibPermit2.sol";
 
 /// @param tokenIn Asset to issue PT/YT with
 /// @param amountIn Amount of the asset to issue PT/YT with
@@ -38,9 +38,6 @@ struct NapierSwapYtExitFuseData {
 /// @dev Substrates in this fuse are the Napier V2 Principal Tokens
 contract NapierSwapYtFuse is NapierUniversalRouterFuse {
     using SafeERC20 for ERC20;
-
-    /// @notice Canonical Permit2 address
-    address private constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     /// @param version Address of this contract version
     /// @param pool Address of the Napier V2 toki pool
@@ -90,9 +87,9 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
         uint256 balanceBefore = ERC20(yt).balanceOf(address(this));
 
-        _setupPermit2Approval(tokenIn);
+        LibPermit2.setupPermit2Approval(tokenIn, address(ROUTER));
         ROUTER.execute(commands, inputs);
-        _resetPermit2Approval(tokenIn);
+        LibPermit2.resetPermit2Approval(tokenIn, address(ROUTER));
 
         uint256 amountOut = ERC20(yt).balanceOf(address(this)) - balanceBefore;
 
@@ -123,27 +120,12 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
         uint256 balanceBefore = key.currency0.balanceOf(address(this));
 
-        _setupPermit2Approval(yt);
+        LibPermit2.setupPermit2Approval(yt, address(ROUTER));
         ROUTER.execute(commands, inputs);
-        _resetPermit2Approval(yt);
+        LibPermit2.resetPermit2Approval(yt, address(ROUTER));
 
         uint256 amountOut = key.currency0.balanceOf(address(this)) - balanceBefore;
 
         emit NapierSwapYtFuseExit(VERSION, address(data_.pool), tokenOut, amountOut);
-    }
-
-    /// @notice Sets up Permit2 approval for the router to pull tokens
-    /// @param token The token to approve
-    function _setupPermit2Approval(address token) private {
-        // Some tokens built with Solady requires an infinite amount to Permit2 approval
-        // We always approve an infinite amount to Permit2 to avoid the Permit2AllowanceIsFixedAtInfinity() error
-        ERC20(token).forceApprove(PERMIT2, type(uint256).max);
-        IPermit2(PERMIT2).approve(token, address(ROUTER), type(uint160).max, uint48(block.timestamp));
-    }
-
-    /// @notice Resets Permit2 approval after execution
-    /// @param token The token to reset approval for
-    function _resetPermit2Approval(address token) private {
-        IPermit2(PERMIT2).approve(token, address(ROUTER), 0, uint48(block.timestamp));
     }
 }
