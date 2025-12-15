@@ -52,6 +52,8 @@ library PlasmaVaultLib {
 
     error InvalidPerformanceFee(uint256 feeInPercentage);
     error InvalidManagementFee(uint256 feeInPercentage);
+    /// @notice Error thrown when instant withdrawal fuse index is out of bounds
+    error InstantWithdrawalFuseIndexOutOfBounds(uint256 index, uint256 arrayLength);
 
     event InstantWithdrawalFusesConfigured(InstantWithdrawalFusesParamsStruct[] fuses);
     event PriceOracleMiddlewareChanged(address newPriceOracleMiddleware);
@@ -511,7 +513,14 @@ library PlasmaVaultLib {
     /// - Index must correspond to getInstantWithdrawalFuses array
     /// - First parameter reserved for withdrawal amount
     /// - Critical for proper withdrawal execution
+    ///
+    /// @custom:revert InstantWithdrawalFuseIndexOutOfBounds When index_ is greater than or equal to
+    /// the length of the instant withdrawal fuses array
     function getInstantWithdrawalFusesParams(address fuse_, uint256 index_) internal view returns (bytes32[] memory) {
+        uint256 fusesArrayLength = PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value.length;
+        if (index_ >= fusesArrayLength) {
+            revert InstantWithdrawalFuseIndexOutOfBounds(index_, fusesArrayLength);
+        }
         return
             PlasmaVaultStorageLib.getInstantWithdrawalFusesParams().value[keccak256(abi.encodePacked(fuse_, index_))];
     }
@@ -556,12 +565,21 @@ library PlasmaVaultLib {
     /// - Market-specific parameters
     /// - Fallback withdrawal routes
     function configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses_) internal {
+        // Get previous configuration to clean up stale entries
+        address[] memory previousFuses = PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
+
         address[] memory fusesList = new address[](fuses_.length);
 
         PlasmaVaultStorageLib.InstantWithdrawalFusesParams storage instantWithdrawalFusesParams = PlasmaVaultStorageLib
             .getInstantWithdrawalFusesParams();
 
         bytes32 key;
+
+        // Clean up stale entries from previous configuration
+        for (uint256 i; i < previousFuses.length; ++i) {
+            key = keccak256(abi.encodePacked(previousFuses[i], i));
+            delete instantWithdrawalFusesParams.value[key];
+        }
 
         for (uint256 i; i < fuses_.length; ++i) {
             if (!FusesLib.isFuseSupported(fuses_[i].fuse)) {
@@ -570,8 +588,6 @@ library PlasmaVaultLib {
 
             fusesList[i] = fuses_[i].fuse;
             key = keccak256(abi.encodePacked(fuses_[i].fuse, i));
-
-            delete instantWithdrawalFusesParams.value[key];
 
             for (uint256 j; j < fuses_[i].params.length; ++j) {
                 instantWithdrawalFusesParams.value[key].push(fuses_[i].params[j]);
