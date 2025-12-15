@@ -51,6 +51,13 @@ contract NapierCollectFuse is NapierUniversalRouterFuse {
             address(this)
         );
 
+        // Post-validation of rewards tokens
+        for (uint256 i = 0; i < rewards.length; i++) {
+            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(rewards[i].token))) {
+                revert NapierFuseIInvalidToken();
+            }
+        }
+
         emit NapierCollectFuseEnter(VERSION, address(principalToken), collected, rewards);
     }
 }
