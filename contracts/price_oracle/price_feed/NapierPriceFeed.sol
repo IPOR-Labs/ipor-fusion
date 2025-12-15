@@ -60,9 +60,8 @@ contract NapierPriceFeed is IPriceFeed {
         QUOTE = quote;
     }
 
-    /// @notice PT prices are returned in 8 decimals to match Chainlink semantics
     function decimals() public pure override returns (uint8) {
-        return 8;
+        return 18;
     }
 
     /// @inheritdoc IPriceFeed
@@ -81,8 +80,7 @@ contract NapierPriceFeed is IPriceFeed {
 
         (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(QUOTE);
 
-        uint256 scalingFactor = TOKI_CHAINLINK_ORACLE_DECIMALS + priceDecimals - decimals();
-        price = ((unitPrice.toUint256() * assetPrice) / 10 ** scalingFactor).toInt256();
+        price = ((unitPrice.toUint256() * assetPrice) / 10 ** priceDecimals).toInt256();
 
         if (price <= 0) {
             revert PriceOracleInvalidPrice();

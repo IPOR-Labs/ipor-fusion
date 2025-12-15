@@ -296,11 +296,13 @@ contract NapierPriceFeedFactoryTest is Test {
         assertEq(priceFeed.QUOTE(), USDC, "Quote asset should match");
         assertEq(priceFeed.BASE(), principalToken, "Base asset should match");
         assertEq(priceFeed.LIQUIDITY_TOKEN(), pool, "Liquidity token should match");
+        assertEq(priceFeed.decimals(), 18, "Decimals should match");
 
         // Verify price feed is functional
+        vm.prank(PRICE_MIDDLEWARE);
         (, int256 price, , uint256 timestamp, ) = priceFeed.latestRoundData();
         assertGt(price, 0, "Price should be positive");
-        assertLt(price, 1e8, "Price should be less than 1e8");
+        assertLt(price, 1e18, "Price should be less than 1e18");
         assertEq(timestamp, block.timestamp, "Timestamp should match block timestamp");
 
         console2.log("price", price);
@@ -318,11 +320,13 @@ contract NapierPriceFeedFactoryTest is Test {
         assertEq(priceFeed.QUOTE(), USDC, "Quote asset should match");
         assertEq(priceFeed.BASE(), principalToken, "Base asset should match");
         assertEq(priceFeed.LIQUIDITY_TOKEN(), pool, "Liquidity token should match");
+        assertEq(priceFeed.decimals(), 18, "Decimals should match");
 
         // Verify price feed is functional
+        vm.prank(PRICE_MIDDLEWARE);
         (, int256 price, , uint256 timestamp, ) = priceFeed.latestRoundData();
         assertGt(price, 0, "Price should be positive");
-        assertLt(price, 1e8, "Price should be less than 1e8");
+        assertLt(price, 1e18, "Price should be less than 1e18");
         assertEq(timestamp, block.timestamp, "Timestamp should match block timestamp");
 
         console2.log("price", price);
