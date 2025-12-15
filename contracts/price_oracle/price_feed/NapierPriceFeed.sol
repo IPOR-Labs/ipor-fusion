@@ -79,7 +79,7 @@ contract NapierPriceFeed is IPriceFeed {
     {
         (, int256 unitPrice, , , ) = TOKI_CHAINLINK_ORACLE.latestRoundData();
 
-        (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(QUOTE);
+        (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(msg.sender).getAssetPrice(QUOTE);
 
         uint256 scalingFactor = TOKI_CHAINLINK_ORACLE_DECIMALS + priceDecimals - decimals();
         price = ((unitPrice.toUint256() * assetPrice) / 10 ** scalingFactor).toInt256();
