@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {console2} from "forge-std/console2.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
@@ -44,7 +45,7 @@ import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInit
 import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
-import {NapierHelper} from "./NapierHelper.sol";
+import {NapierHelper, ITokiHook, ITokiOracle} from "./NapierHelper.sol";
 import {LogExpMath} from "@pendle/core-v2/contracts/core/libraries/math/LogExpMath.sol";
 import {NapierPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierPriceFeed.sol";
 import {ERC4626PriceFeed} from "../../../contracts/price_oracle/price_feed/ERC4626PriceFeed.sol";
@@ -92,6 +93,9 @@ contract NapierSupplyFuseTest is Test {
     address private ALPHA = makeAddr("alpha");
     address private PRICE_ORACLE_MIDDLEWARE_MANAGER = makeAddr("priceOracleMiddlewareManager");
     address private USER = makeAddr("user");
+    address private ALICE = makeAddr("alice");
+
+    uint256 private constant LP_TWAP_WINDOW = 1 hours;
 
     ///  Napier V2 Toki pool
     address private pool;
@@ -102,8 +106,13 @@ contract NapierSupplyFuseTest is Test {
     IporFusionAccessManager private _accessManager;
     PriceOracleMiddleware private _priceOracleMiddleware;
 
-    address private _tokiChainlinkOracle;
-    address private _napierPriceFeed;
+    // Price feeds
+    address private _ptLinarOracle;
+    address private _napierPtPriceFeed;
+    address private _napierLpPriceFeed;
+    address private _lpTwapOracle;
+
+    // Fuses
     address private _supplyFuse;
     address private _redeemFuse;
     address private _combineFuse;
@@ -125,10 +134,6 @@ contract NapierSupplyFuseTest is Test {
         vm.label(GAUNTLET_USDC_PRIME, "gauntletUSDC");
         vm.label(USDC, "USDC");
         vm.label(WETH, "WETH");
-        vm.label(pool, "pool");
-        vm.label(address(_plasmaVault), "plasma");
-        vm.label(address(_priceOracleMiddleware), "priceOracleMiddleware");
-        vm.label(address(_accessManager), "accessManager");
 
         // Deploy price oracle middleware
         vm.startPrank(ATOMIST);
@@ -167,6 +172,10 @@ contract NapierSupplyFuseTest is Test {
         // Grant ALPHA_ROLE to ALPHA so it can call execute()
         _accessManager.grantRole(Roles.ALPHA_ROLE, ALPHA, 0);
         vm.stopPrank();
+
+        vm.label(address(_plasmaVault), "plasma");
+        vm.label(address(_priceOracleMiddleware), "priceOracleMiddleware");
+        vm.label(address(_accessManager), "accessManager");
 
         _setupNapierPool();
         _setupNapierMarket();
@@ -266,8 +275,98 @@ contract NapierSupplyFuseTest is Test {
 
         principalToken = deployedPt;
         pool = deployedPool;
+        vm.stopPrank();
+
+        vm.label(pool, "pool");
+        vm.label(principalToken, "principalToken");
+
+        PoolKey memory poolKey = ITokiPoolToken(pool).i_poolKey();
+        (bool needsCapacityIncrease, uint16 cardinalityRequired, ) = ITokiOracle(NapierConstants.ARB_TOKI_ORACLE)
+            .checkTwapReadiness(pool, uint32(LP_TWAP_WINDOW));
+
+        // Increase cardinality for LP Twap Oracle dependency
+        if (needsCapacityIncrease) {
+            ITokiHook(address(poolKey.hooks)).increaseObservationsCardinalityNext(poolKey, cardinalityRequired);
+        }
+
+        // Record some historical price data for oracle
+        vm.startPrank(ALICE);
+        deal(GAUNTLET_USDC_PRIME, ALICE, 1000 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals());
+
+        ERC20(GAUNTLET_USDC_PRIME).approve(principalToken, type(uint256).max);
+        IPrincipalToken(principalToken).supply(100 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(), ALICE);
+
+        ERC20(GAUNTLET_USDC_PRIME).approve(PERMIT2, type(uint256).max);
+        ERC20(principalToken).approve(PERMIT2, type(uint256).max);
+        IPermit2(PERMIT2).approve(
+            GAUNTLET_USDC_PRIME,
+            NapierConstants.ARB_UNIVERSAL_ROUTER,
+            type(uint160).max,
+            type(uint48).max
+        );
+        IPermit2(PERMIT2).approve(
+            principalToken,
+            NapierConstants.ARB_UNIVERSAL_ROUTER,
+            type(uint160).max,
+            type(uint48).max
+        );
+
+        console2.log("NapierHelper.swap zeroForOne=true amount=%s timeJump=%s", 2 * 10 ** ERC20(principalToken).decimals(), 3 minutes);
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: false,
+            amount: 2 * 10 ** ERC20(principalToken).decimals(),
+            timeJump: 3 minutes
+        });
+
+        console2.log("NapierHelper.swap zeroForOne=false amount=%s timeJump=%s", 10 ** ERC20(principalToken).decimals(), 15 minutes);
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: false,
+            amount: 10 ** ERC20(principalToken).decimals(),
+            timeJump: 15 minutes
+        });
+
+        console2.log("NapierHelper.swap zeroForOne=true amount=%s timeJump=%s", 10 ** ERC20(principalToken).decimals(), 15 minutes);
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: false,
+            amount: 10 ** ERC20(principalToken).decimals(),
+            timeJump: 15 minutes
+        });
+
+        console2.log("NapierHelper.swap zeroForOne=true amount=%s timeJump=%s", 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(), 14 minutes);
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: true,
+            amount: 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(),
+            timeJump: 14 minutes
+        });
+
+        console2.log("NapierHelper.swap zeroForOne=true amount=%s timeJump=%s", 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(), 17 minutes);
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: true,
+            amount: 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(),
+            timeJump: 17 minutes
+        });
+
+        vm.warp(block.timestamp + 30 minutes);
 
         vm.stopPrank();
+
+        // Check if oldest data is available
+        (, , bool hasOldestData) = ITokiOracle(NapierConstants.ARB_TOKI_ORACLE).checkTwapReadiness(
+            pool,
+            uint32(LP_TWAP_WINDOW)
+        );
+
+        require(hasOldestData, "Oldest data not available after capacity increase");
     }
 
     function _setupNapierMarket() private {
@@ -305,17 +404,24 @@ contract NapierSupplyFuseTest is Test {
         // By default, on Ethereum the system uses Chainlink registry for price feeds.
         // On all chains, it uses a general priceOracleMiddleware predefined by IPOR DAO.
         // However, any price feed can be overridden in the PriceOracleMiddlewareManager.
-        _tokiChainlinkOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
+        _ptLinarOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
             NapierConstants.ARB_TOKI_LINEAR_PRICE_ORACLE_IMPL,
             abi.encode(pool, principalToken, USDC, 100), // liquidityToken, base, quote, discountRatePerYearBps
             ""
         );
-        _napierPriceFeed = address(new NapierPriceFeed(address(_priceOracleMiddleware), _tokiChainlinkOracle));
-        address customAsset = principalToken;
-        address[] memory assets = new address[](1);
-        assets[0] = customAsset;
-        address[] memory sources = new address[](1); // Price feed contract address
-        sources[0] = _napierPriceFeed;
+        _lpTwapOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
+            NapierConstants.ARB_TOKI_TWAP_ORACLE_IMPL,
+            abi.encode(pool, pool, USDC, LP_TWAP_WINDOW), // liquidityToken, base, quote, twapWindow
+            ""
+        );
+        _napierPtPriceFeed = address(new NapierPriceFeed(address(_priceOracleMiddleware), _ptLinarOracle));
+        _napierLpPriceFeed = address(new NapierPriceFeed(address(_priceOracleMiddleware), _lpTwapOracle));
+        address[] memory assets = new address[](2);
+        assets[0] = principalToken;
+        assets[1] = pool;
+        address[] memory sources = new address[](2); // Price feed contract address
+        sources[0] = _napierPtPriceFeed;
+        sources[1] = _napierLpPriceFeed;
         vm.startPrank(_priceOracleMiddleware.owner());
         _priceOracleMiddleware.setAssetsPricesSources(assets, sources);
         vm.stopPrank();
